@@ -10,11 +10,10 @@ var compression = require('compression');
 var app = express();
 app.io = socketIo();
 
-console.log(app.io);
 var routes = require('./routes/index')(app.io);
 
 // view engine setup
-app.set('views', path.join(__dirname, 'views'));
+app.set('views', path.join(__dirname, 'public', 'views'));
 app.set('view engine', 'html');
 app.engine('html', require('hbs').__express);
 

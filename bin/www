@@ -1,6 +1,46 @@
 #!/usr/bin/env node
 var debug = require('debug')('roleHaven');
 var app = require('../app');
+var path = require('path');
+var fs = require('fs');
+var minifier = require("html-minifier");
+
+function minify(inPath, outPath) {
+	fs.readdir(inPath, function(err, files) {
+        if(err) {
+            console.log(err);
+        } else {
+            files.forEach(function(file) {
+                fs.readFile(path.join(inPath, file), 'utf8', function(readError, readFile) {
+                    if(readError) {
+                        //TODO Change to proper logging
+                        console.log('ReadError', readError)
+                    } else {
+                        const minifyConfig = {
+                            removeComments : true,
+                            removeCommentsFromCDATA : true,
+                            removeCDATASectionsFromCDATA : true,
+                            collapseWhitespace : true,
+                            minifyJS : true,
+                            minifyCSS : true
+                        }
+
+                        fs.writeFile(path.join(outPath, file), minifier.minify(readFile, minifyConfig), function(writeError) {
+                            if(writeError) {
+                                //TODO Change to proper logging
+                                console.log('WriteError', writeError);
+                            }
+                        });
+                    }
+                });
+            });
+        }
+    });
+}
+
+minify(path.resolve('private/views'), path.resolve('public/views'));
+// minify(path.join(__dirname, 'private', 'stylesheets'), path.join(__dirname, 'public', 'stylesheets'));
+// minify(path.join(__dirname, 'private', 'javascripts'), path.join(__dirname, 'public', 'javascripts'));
 
 app.set('port', process.env.PORT || 8888);
 
