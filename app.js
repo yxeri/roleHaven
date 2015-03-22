@@ -1,5 +1,5 @@
 var express = require('express');
-var socketIo = require("socket.io");
+var socketIo = require('socket.io');
 var path = require('path');
 // var favicon = require('static-favicon');
 var logger = require('morgan');
@@ -7,11 +7,11 @@ var compression = require('compression');
 // var cookieParser = require('cookie-parser');
 // var bodyParser = require('body-parser');
 
-var routes = require('./routes/index');
-var users = require('./routes/users');
-
 var app = express();
 app.io = socketIo();
+
+console.log(app.io);
+var routes = require('./routes/index')(app.io);
 
 // view engine setup
 app.set('views', path.join(__dirname, 'views'));
@@ -20,19 +20,13 @@ app.engine('html', require('hbs').__express);
 
 app.use(compression());
 // app.use(favicon());
-app.use(logger('dev'));
+app.use(logger('dev')); //TODO: process.env.LOGGINGLEVEL || 'tiny'
 // app.use(bodyParser.json());
 // app.use(bodyParser.urlencoded());
 // app.use(cookieParser());
 app.use(express.static(path.join(__dirname, 'public')));
 
 app.use('/', routes);
-app.use('/users', users);
-
-//TEMP
-app.io.on('connection', function(socket){
-  console.log('a user connected');
-});
 
 /// catch 404 and forward to error handler
 app.use(function(req, res, next) {
