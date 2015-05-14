@@ -3,8 +3,8 @@ var path = require('path');
 var htmlMinifier = require('html-minifier');
 var minifier = require('node-minify');
 
-function htmlMinify(inPath, outPath, file) {
-	fs.readFile(path.join(inPath, file), 'utf8', function(readError, readFile) {
+function htmlMinify(inPath, outPath) {
+	fs.readFile(inPath, 'utf8', function(readError, readFile) {
         if(readError) {
             //TODO Change to proper logging
             console.log('ReadError', readError)
@@ -18,7 +18,7 @@ function htmlMinify(inPath, outPath, file) {
                 minifyCSS : true
             }
 
-            fs.writeFile(path.join(outPath, file), htmlMinifier.minify(readFile, minifyConfig), function(writeError) {
+            fs.writeFile(outPath, htmlMinifier.minify(readFile, minifyConfig), function(writeError) {
                 if(writeError) {
                     //TODO Change to proper logging
                     console.log('WriteError', writeError);
@@ -28,35 +28,38 @@ function htmlMinify(inPath, outPath, file) {
     });
 }
 
-function nodeMinify(inPath, outPath, file, minifierType) {
+function nodeMinify(inPath, outPath, minifierType) {
 	new minifier.minify({
         type : minifierType,
-        fileIn : path.join(inPath, file),
-        fileOut : path.join(outPath, file),
+        fileIn : inPath,
+        fileOut : outPath,
         callback : function (err) {
             if(err) {
                 console.log("Minify error", err);
             }
 
-            console.log("Minified " + path.join(inPath, file));
+            console.log("Minified " + inPath);
         }
     });
 }
 
 //TODO: Proper logging
-function minify(inPath, outPath, extension) {
+function minifyDir(inPath, outPath, extension) {
 	fs.readdir(inPath, function(err, files) {
         if(err) {
             console.log(err);
         } else {
             files.forEach(function(file) {
+                var fullInPath = path.join(inPath, file);
+                var fullOutPath = path.join(outPath, file);
+
             	if(path.extname(file).substr(1) === extension) {
                     if(extension === 'html') {
-		                htmlMinify(inPath, outPath, file);
+		                htmlMinify(fullInPath, fullOutPath);
 					} else if(extension === 'js') {
-						nodeMinify(inPath, outPath, file, "uglifyjs");
+						nodeMinify(fullInPath, fullOutPath, "uglifyjs");
 					} else if(extension === 'css') {
-						nodeMinify(inPath, outPath, file, "sqwish")
+						nodeMinify(fullInPath, fullOutPath, "sqwish")
 					}
 				}
             });
@@ -64,4 +67,17 @@ function minify(inPath, outPath, extension) {
     });
 }
 
-exports.minify = minify;
+function minifyFile(filePath, outPath) {
+    var extension = path.extname(filePath).substr(1);
+
+    if(extension === 'html') {
+        htmlMinify(filePath, outPath);
+    } else if(extension === 'js') {
+        nodeMinify(filePath, outPath, "uglifyjs");
+    } else if(extension === 'css') {
+        nodeMinify(filePath, outPath, "sqwish")
+    }
+}
+
+exports.minifyDir = minifyDir;
+exports.minifyFile = minifyFile;

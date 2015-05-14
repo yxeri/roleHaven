@@ -3,15 +3,16 @@ var debug = require('debug')('roleHaven');
 var app = require('../app');
 var path = require('path');
 var minifier = require('../minifier.js');
+var config = require('../config/config.js');
 
-minifier.minify(path.resolve('private/views'), path.resolve('public/views'), 'html');
-minifier.minify(path.resolve('private/stylesheets'), path.resolve('public/stylesheets'), 'css');
-minifier.minify(path.resolve('private/javascripts'), path.resolve('public/javascripts'), 'js');
+minifier.minifyDir(path.resolve(config.privatePaths.views), path.resolve(config.publicPaths.views), 'html');
+minifier.minifyDir(path.resolve(config.privatePaths.styles), path.resolve(config.publicPaths.styles), 'css');
+minifier.minifyDir(path.resolve(config.privatePaths.scripts), path.resolve(config.publicPaths.scripts), 'js');
 
 app.set('port', process.env.PORT || 8888);
 
 var server = app.listen(app.get('port'), function() {
-  debug('Express server listening on port ' + server.address().port);
+	debug('Express server listening on port ' + server.address().port);
 });
 
 var io = app.io;
