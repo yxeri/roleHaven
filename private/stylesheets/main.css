@@ -1,4 +1,4 @@
-* {
+body {
     margin: 0;
     color: #00FF00;
     background-color: black;
@@ -7,15 +7,30 @@
     font-size: 1em;
 }
 
-::-webkit-scrollbar {
-    display: none;
+.buffer {
+    height: 20px;
+}
+
+.logo {
+    font-size: 8px;
+    line-height: 10px;
 }
 
 #main {
+    height: 100vh;
+    overflow: hidden;
 }
 
-.buffer {
-    height: 20px;
+#main:before {
+    content : '';
+    width : 100%;
+    height : 100vh;
+    position : absolute;
+    left: 0;
+    background-color: black;
+    background: linear-gradient(white 50%, black 50%);
+    background-size: 100% 4px;
+    opacity : .15;
 }
 
 ul {
@@ -24,8 +39,9 @@ ul {
     padding: 0;
 }
 
-li {
-
+pre {
+    padding: 0;
+    margin: 0;
 }
 
 @media (min-width:1941px) {
