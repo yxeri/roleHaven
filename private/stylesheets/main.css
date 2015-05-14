@@ -7,10 +7,6 @@ body {
     font-size: 1em;
 }
 
-.buffer {
-    height: 20px;
-}
-
 .logo {
     font-size: 8px;
     line-height: 10px;
@@ -49,12 +45,20 @@ pre {
         padding-left: 30%;
         padding-right: 30%;
     }
+
+    .buffer {
+        height: 10%;
+    }
 }
 
 @media (max-width:1940px) {
     body {
         padding-left: 26%;
         padding-right: 26%;
+    }
+
+    .buffer {
+        height: 8%;
     }
 }
 
@@ -63,12 +67,20 @@ pre {
         padding-left: 22%;
         padding-right: 22%;
     }
+
+    .buffer {
+        height: 6%;
+    }
 }
 
 @media (max-width:1500px) {
     body {
         padding-left: 18%;
         padding-right: 18%;
+    }
+
+    .buffer {
+        height: 4%;
     }
 }
 
@@ -77,11 +89,30 @@ pre {
         padding-left: 14%;
         padding-right: 14%;
     }
+
+    .buffer {
+        height: 2%;
+    }
 }
 
 @media (max-width:1024px) {
     body {
         padding-left: 1em;
         padding-right: 1em;
+    }
+
+    .buffer {
+        height: 1em;
+    }
+}
+
+@media (max-width:320px) {
+    body {
+        padding-left: 0.5em;
+        padding-right: 0.5em;
+    }
+
+    .buffer {
+        height: 0.5em;
     }
 }

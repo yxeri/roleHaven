@@ -3,7 +3,7 @@
 var main = document.getElementById('main');
 var mainFeed = document.getElementById('mainFeed');
 var lastTimeout;
-var timeout = 50;
+var timeout = 100;
 var timeouts = new Array();
 //TODO Move to database
 var bootText = [
@@ -36,20 +36,20 @@ var bootText = [
 '               #######  ##########  #######',
 '                 ###       ####       ###',
 '                           ####',
-'Initiating connection to HQ',
-'Syncing data',
-'Welcome, esteemed employee #166584',
-'WEATHER WARNING: High amount of acid rain predicted',
-'RECOMMENDATION: Stay indoors.',
-'Have a productive day!',
-'WEATHER WARNING: High amount of acid rain predicted. For real. WEATHER WARNING: High amount of acid rain predicted. For real',
+// 'Initiating connection to HQ',
+// 'Syncing data',
+// 'Welcome, esteemed employee #166584',
+// 'WEATHER WARNING: High amount of acid rain predicted',
+// 'RECOMMENDATION: Stay indoors.',
+// 'Have a productive day!',
+// 'WEATHER WARNING: High amount of acid rain predicted. For real. WEATHER WARNING: High amount of acid rain predicted. For real',
 ];
 var words = {
 	'connected' : 'Connected',
 	'done' : 'Done',
 	'loadingMarker' : '.'
 }
-var interruptionSound = new Audio('sounds/interruption.mp3');
+// var interruptionSound = new Audio('sounds/interruption.mp3');
 // interruptionSound.play();
 
 main.addEventListener('click', function() {
