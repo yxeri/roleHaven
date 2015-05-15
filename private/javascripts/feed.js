@@ -5,6 +5,7 @@ var mainFeed = document.getElementById('mainFeed');
 var charTimeout = 20;
 var timeoutBuffer = 200;
 var timeouts = new Array();
+var messageQueue = new Array();
 //TODO Move to database
 var logo = {
 	speed : 2,
@@ -58,20 +59,27 @@ var bootText = {
 // interruptionSound.play();
 
 main.addEventListener('click', function() {
-	addRow("Blirp Blorp");
+	messageQueue.push({text : 'BLIRP BLORP'});
+	console.log(messageQueue);
 });
 
-printText(logo);
+messageQueue.push(logo);
+messageQueue.push(bootText);
+printText(messageQueue);
 
-function printText(textObj) {
+function printText(messageQueue) {
 	var lastTimeout = 0;
 
-	while(textObj.text.length != 0) {
-		var text = textObj.text.shift();
-		var speed = textObj.speed;
+	while(messageQueue.length != 0) {
+		var message = messageQueue.shift();
 
-		setTimeout(addRow, calculateTimer(text, speed) + lastTimeout, text, speed, true, 'logo');
-		lastTimeout += calculateTimer(text, speed);
+		while(message.text.length != 0) {
+			var text = message.text.shift();
+			var speed = message.speed;
+
+			setTimeout(addRow, calculateTimer(text, speed) + lastTimeout, text, speed, true, 'logo');
+			lastTimeout += calculateTimer(text, speed);
+		}
 	}
 }
 
