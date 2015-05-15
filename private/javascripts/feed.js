@@ -2,77 +2,93 @@
 
 var main = document.getElementById('main');
 var mainFeed = document.getElementById('mainFeed');
-var lastTimeout;
-var timeout = 100;
+var charTimeout = 20;
+var timeoutBuffer = 200;
 var timeouts = new Array();
 //TODO Move to database
-var bootText = [
-'                           ####',
-'                 ####    #########    ####',
-'                ###########################',
-'               #############################',
-'             #######        ##   #  ##########',
-'       ##########           ##    #  ###  ##########',
-'      #########             #########   #   #########',
-'        #####               ##     ########   #####',
-'      #####                 ##     ##     ##########',
-'      ####                  ##      ##     #   ######',
-'  #######                   ##########     ##    ########',
-' ########                   ##       ########     ########',
-'  ######                    ##       #      #############',
-'    ####                    ##       #      ##     ####',
-'    ####                    ##       #      ##    #####',
-'    ####                    ##       #      ###########',
-' ########                   ##       #########    ########',
-' ########                   ##########      #    #########',
-'  ########                  ##      ##     ## ###########',
-'      #####                 ##      ##     ### #####',
-'        #####               ##     ########   #####',
-'       #######              ##########   #  ########',
-'      ###########           ##    ##    # ###########',
-'       #############        ##    #   #############',
-'             ################################',
-'               ############################',
-'               #######  ##########  #######',
-'                 ###       ####       ###',
-'                           ####',
-// 'Initiating connection to HQ',
-// 'Syncing data',
-// 'Welcome, esteemed employee #166584',
-// 'WEATHER WARNING: High amount of acid rain predicted',
-// 'RECOMMENDATION: Stay indoors.',
-// 'Have a productive day!',
-// 'WEATHER WARNING: High amount of acid rain predicted. For real. WEATHER WARNING: High amount of acid rain predicted. For real',
-];
-var words = {
-	'connected' : 'Connected',
-	'done' : 'Done',
-	'loadingMarker' : '.'
+var logo = {
+	speed : 2,
+	text : [
+	' ',
+	' ',
+	'                           ####',
+	'                 ####    #########    ####',
+	'                ###########################',
+	'               #############################',
+	'             #######        ##   #  ##########',
+	'       ##########           ##    #  ###  ##########',
+	'      #########             #########   #   #########',
+	'        #####               ##     ########   #####',
+	'      #####                 ##     ##     ##########',
+	'      ####                  ##      ##     #   ######',
+	'  #######                   ##########     ##    ########',
+	' ########                   ##       ########     ########',
+	'  ######                    ##       #      #############',
+	'    ####                    ##       #      ##     ####',
+	'    ####                    ##       #      ##    #####',
+	'    ####                    ##       #      ###########',
+	' ########                   ##       #########    ########',
+	' ########                   ##########      #    #########',
+	'  ########                  ##      ##     ## ###########',
+	'      #####                 ##      ##     ### #####',
+	'        #####               ##     ########   #####',
+	'       #######              ##########   #  ########',
+	'      ###########           ##    ##    # ###########',
+	'       #############        ##    #   #############',
+	'             ################################',
+	'               ############################',
+	'               #######  ##########  #######',
+	'                 ###       ####       ###',
+	'                           ####',
+	' ',
+	' '
+	]
+};
+var bootText = {
+	text : [
+		'Initiating connection to HQ',
+		'Syncing data',
+		'Welcome, esteemed employee #166584',
+		'WEATHER WARNING: High amount of acid rain predicted',
+		'RECOMMENDATION: Stay indoors',
+		'Have a productive day!'
+	]
 }
 // var interruptionSound = new Audio('sounds/interruption.mp3');
 // interruptionSound.play();
 
 main.addEventListener('click', function() {
-	addRow();
+	addRow("Blirp Blorp");
 });
 
-printBootText();
+printText(logo);
 
-function printBootText() {
-	for(var i = 0; i < bootText.length; i++) {
-		if (i > 28) {	
-			setTimeout(addRow, timeout * i, bootText[i], false);
-		} else {
-			setTimeout(addRow, timeout * i, bootText[i], true, 'logo');
-		}
-		console.log(timeout * i);
+function printText(textObj) {
+	var lastTimeout = 0;
+
+	while(textObj.text.length != 0) {
+		var text = textObj.text.shift();
+		var speed = textObj.speed;
+
+		setTimeout(addRow, calculateTimer(text, speed) + lastTimeout, text, speed, true, 'logo');
+		lastTimeout += calculateTimer(text, speed);
 	}
 }
 
-function addRow(text, keepWhiteSpace, extraClass) {
+function calculateTimer(text, speed) {
+	var timeout = speed ? speed : charTimeout;
+	return (text.length * timeout) + timeoutBuffer;
+}
+
+function calculateCharTimer(speed) {
+	var timeout = speed ? speed : charTimeout;
+	return timeout;
+}
+
+//TODO text should not be an array
+function addRow(text, speed, keepWhiteSpace, extraClass) {
 	var row = document.createElement('li');
 	var span = document.createElement('span');
-	var text = document.createTextNode(text);
 
 	if(keepWhiteSpace) {
 		var pre = document.createElement('pre');
@@ -88,11 +104,24 @@ function addRow(text, keepWhiteSpace, extraClass) {
 		row.classList.add(extraClass);
 	}
 
-	// Add text to span element
-	span.appendChild(text);
 	// Add li element to ul element
 	mainFeed.appendChild(row);
-	setTimeout(scrollView, timeout, row);
+	addLetters(span, text, speed);
+	setTimeout(scrollView, calculateTimer(text, speed), row);
+}
+
+function addLetters(span, text, speed) {
+	var lastTimeout = 0;
+
+	for(var i = 0; i < text.length; i++) {
+		setTimeout(printLetter, calculateCharTimer(speed) + lastTimeout, span, text.charAt(i));
+		lastTimeout += calculateCharTimer(speed);
+	}
+
+}
+
+function printLetter(span, char) {
+	span.innerHTML += char;
 }
 
 function scrollView(element) {

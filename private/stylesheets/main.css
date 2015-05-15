@@ -1,7 +1,7 @@
 body {
     margin: 0;
     color: #00FF00;
-    background-color: black;
+    background-color: #001400;
     font-family: monospace;
     overflow: hidden;
     font-size: 1em;
@@ -13,20 +13,50 @@ body {
 }
 
 #main {
+    width: 100%;
     height: 100vh;
     overflow: hidden;
 }
 
 #main:before {
-    content : '';
-    width : 100%;
-    height : 100vh;
-    position : absolute;
+    content: '';
+    width: 100%;
+    height: 100vh;
+    position: absolute;
     left: 0;
     background-color: black;
-    background: linear-gradient(white 50%, black 50%);
+    background: -webkit-linear-gradient(#A0E6A0 50%, black 50%);
     background-size: 100% 4px;
-    opacity : .15;
+    opacity: .15;
+    -webkit-box-shadow: inset 0 0 60px 5px #000000;
+    -webkit-animation: light 3s linear infinite;
+}
+
+@-webkit-keyframes light {
+    0%      { opacity: .15; }
+    25%     { opacity: .19; }
+    50%     { opacity: .14; }
+    75%     { opacity: .10; }
+    100%    { opacity: .15; }
+}
+
+#mainTop {
+    left : 0;
+    top: 0;
+    width: 100%;
+    height: 100vh;
+    overflow : hidden;
+    z-index : 10;
+
+    -webkit-animation: distort 3s linear infinite;
+}
+
+@-webkit-keyframes distort {
+    0%      { -webkit-transform: scale(1, 1.001); }
+    25%     { -webkit-transform: scale(1.002, 1.004); }
+    50%     { -webkit-transform: scale(1, 1.002); }
+    75%     { -webkit-transform: scale(1.002, 1.003); }
+    100%    { -webkit-transform: scale(1.001, 1); }
 }
 
 ul {
@@ -41,7 +71,7 @@ pre {
 }
 
 @media (min-width:1941px) {
-    body {
+    #mainFeed {
         padding-left: 30%;
         padding-right: 30%;
     }
@@ -52,7 +82,7 @@ pre {
 }
 
 @media (max-width:1940px) {
-    body {
+    #mainFeed {
         padding-left: 26%;
         padding-right: 26%;
     }
@@ -63,7 +93,7 @@ pre {
 }
 
 @media (max-width:1720px) {
-    body {
+    #mainFeed {
         padding-left: 22%;
         padding-right: 22%;
     }
@@ -74,7 +104,7 @@ pre {
 }
 
 @media (max-width:1500px) {
-    body {
+    #mainFeed {
         padding-left: 18%;
         padding-right: 18%;
     }
@@ -85,7 +115,7 @@ pre {
 }
 
 @media (max-width:1280px) {
-    body {
+    #mainFeed {
         padding-left: 14%;
         padding-right: 14%;
     }
@@ -96,23 +126,12 @@ pre {
 }
 
 @media (max-width:1024px) {
-    body {
+    #mainFeed {
         padding-left: 1em;
         padding-right: 1em;
     }
 
     .buffer {
         height: 1em;
-    }
-}
-
-@media (max-width:320px) {
-    body {
-        padding-left: 0.5em;
-        padding-right: 0.5em;
-    }
-
-    .buffer {
-        height: 0.5em;
     }
 }
