@@ -6,6 +6,7 @@ var charTimeout = 20;
 var timeoutBuffer = 100;
 var timeouts = new Array();
 var messageQueue = new Array();
+var charsInProgress = 0;
 //TODO Move to database
 var logo = {
 	speed : 2,
@@ -70,20 +71,39 @@ messageQueue.push(bootText);
 setInterval(printText, 1000, messageQueue);
 
 function printText(messageQueue) {
-	var nextTimeout = 0;
+	console.log(charsInProgress);
+	if(charsInProgress == 0) {
+		var nextTimeout = 0;
+		charsInProgress = countTotalCharacters(messageQueue);
 
-	while(messageQueue.length != 0) {
-		var message = messageQueue.shift();
+		while(messageQueue.length != 0) {
+			var message = messageQueue.shift();
 
-		while(message.text.length != 0) {
-			var text = message.text.shift();
-			var speed = message.speed;
+			while(message.text.length != 0) {
+				var text = message.text.shift();
+				var speed = message.speed;
 
-			setTimeout(addRow, nextTimeout, text, speed, message.extraClass);
+				setTimeout(addRow, nextTimeout, text, speed, message.extraClass);
 
-			nextTimeout += calculateTimer(text, speed);
+				nextTimeout += calculateTimer(text, speed);
+			}
 		}
 	}
+}
+
+function countTotalCharacters(messageQueue) {
+	var total = 0;
+
+	for(var i = 0; i < messageQueue.length; i++) {
+		var message = messageQueue[i];
+
+		for(var j = 0; j < message.text.length; j++) {
+			var text = message.text[j];
+			total += text.length;
+		}
+	}
+
+	return total;
 }
 
 function calculateTimer(text, speed) {
@@ -121,6 +141,7 @@ function addLetters(span, text, speed) {
 
 function printLetter(span, char) {
 	span.innerHTML += char;
+	charsInProgress--;
 }
 
 function scrollView(element) {
