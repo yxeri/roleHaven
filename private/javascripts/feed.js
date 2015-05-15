@@ -3,13 +3,14 @@
 var main = document.getElementById('main');
 var mainFeed = document.getElementById('mainFeed');
 var charTimeout = 20;
-var timeoutBuffer = 200;
+var timeoutBuffer = 100;
 var timeouts = new Array();
 var messageQueue = new Array();
 //TODO Move to database
 var logo = {
 	speed : 2,
 	text : [
+	' ',
 	'                           ####',
 	'                 ####    #########    ####',
 	'                ###########################',
@@ -39,7 +40,6 @@ var logo = {
 	'               #######  ##########  #######',
 	'                 ###       ####       ###',
 	'                           ####',
-	' ',
 	' '
 	]
 };
@@ -71,32 +71,24 @@ messageQueue.push(bootText);
 setInterval(printText, 1000, messageQueue);
 
 function printText(messageQueue) {
-	if(inProgressQueue.length == 0) {
-		console.log("Printing", messageQueue);
-		var lastTimeout = 0;
+	var nextTimeout = 0;
 
-		while(messageQueue.length != 0) {
-			var message = messageQueue.shift();
+	while(messageQueue.length != 0) {
+		var message = messageQueue.shift();
 
-			while(message.text.length != 0) {
-				var text = message.text.shift();
-				var speed = message.speed;
+		while(message.text.length != 0) {
+			var text = message.text.shift();
+			var speed = message.speed;
 
-				setTimeout(addRow, calculateTimer(text, speed) + lastTimeout, text, speed);
-				lastTimeout += calculateTimer(text, speed);
-			}
+			setTimeout(addRow, nextTimeout, text, speed, 'logo');
+			nextTimeout += calculateTimer(text, speed);
 		}
 	}
 }
 
 function calculateTimer(text, speed) {
-	var timeout = speed ? speed : charTimeout;
+	var timeout = speed ? speed : charTimeout
 	return (text.length * timeout) + timeoutBuffer;
-}
-
-function calculateCharTimer(speed) {
-	var timeout = speed ? speed : charTimeout;
-	return timeout;
 }
 
 //TODO text should not be an array
@@ -111,15 +103,16 @@ function addRow(text, speed, extraClass) {
 	row.appendChild(span);
 	mainFeed.appendChild(row);
 	addLetters(span, text, speed);
-	setTimeout(scrollView, calculateTimer(text, speed), row);
+	setTimeout(scrollView, calculateTimer(text), row);
 }
 
 function addLetters(span, text, speed) {
 	var lastTimeout = 0;
+	var timeout = speed ? speed : charTimeout;
 
 	for(var i = 0; i < text.length; i++) {
-		setTimeout(printLetter, calculateCharTimer(speed) + lastTimeout, span, text.charAt(i));
-		lastTimeout += calculateCharTimer(speed);
+		setTimeout(printLetter, timeout + lastTimeout, span, text.charAt(i));
+		lastTimeout += timeout;
 	}
 
 }
