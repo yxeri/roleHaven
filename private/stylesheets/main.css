@@ -5,6 +5,7 @@ body {
     font-family: monospace;
     overflow: hidden;
     font-size: 1em;
+    white-space: pre-wrap;
 }
 
 .logo {
@@ -45,7 +46,6 @@ body {
     top: 0;
     width: 100%;
     height: 100vh;
-    overflow : hidden;
     z-index : 10;
 
     -webkit-animation: distort 3s linear infinite;
@@ -74,10 +74,7 @@ pre {
     #mainFeed {
         padding-left: 30%;
         padding-right: 30%;
-    }
-
-    .buffer {
-        height: 10%;
+        padding-bottom: 10%;
     }
 }
 
@@ -85,10 +82,7 @@ pre {
     #mainFeed {
         padding-left: 26%;
         padding-right: 26%;
-    }
-
-    .buffer {
-        height: 8%;
+        padding-bottom: 8%;
     }
 }
 
@@ -96,10 +90,7 @@ pre {
     #mainFeed {
         padding-left: 22%;
         padding-right: 22%;
-    }
-
-    .buffer {
-        height: 6%;
+        padding-bottom: 6%;
     }
 }
 
@@ -107,10 +98,7 @@ pre {
     #mainFeed {
         padding-left: 18%;
         padding-right: 18%;
-    }
-
-    .buffer {
-        height: 4%;
+        padding-bottom: 4%;
     }
 }
 
@@ -118,10 +106,7 @@ pre {
     #mainFeed {
         padding-left: 14%;
         padding-right: 14%;
-    }
-
-    .buffer {
-        height: 2%;
+        padding-bottom: 2%;
     }
 }
 
@@ -129,9 +114,6 @@ pre {
     #mainFeed {
         padding-left: 1em;
         padding-right: 1em;
-    }
-
-    .buffer {
-        height: 1em;
+        padding-bottom: 2em;
     }
 }

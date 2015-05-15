@@ -10,8 +10,6 @@ var messageQueue = new Array();
 var logo = {
 	speed : 2,
 	text : [
-	' ',
-	' ',
 	'                           ####',
 	'                 ####    #########    ####',
 	'                ###########################',
@@ -50,35 +48,43 @@ var bootText = {
 		'Initiating connection to HQ',
 		'Syncing data',
 		'Welcome, esteemed employee #166584',
-		'WEATHER WARNING: High amount of acid rain predicted',
+		'WEATHER WARNING: High amount of acid rain predicted. Strong winds. Solar flares. Happy things',
 		'RECOMMENDATION: Stay indoors',
-		'Have a productive day!'
+		'Have a productive day!',
+		'!_!',
+		'^_^',
+		':D'
 	]
 }
 // var interruptionSound = new Audio('sounds/interruption.mp3');
 // interruptionSound.play();
 
 main.addEventListener('click', function() {
-	messageQueue.push({text : 'BLIRP BLORP'});
-	console.log(messageQueue);
+	messageQueue.push({text : ['BLIRP BLORP']});
 });
+
+console.log("Blah");
 
 messageQueue.push(logo);
 messageQueue.push(bootText);
-printText(messageQueue);
+
+setInterval(printText, 1000, messageQueue);
 
 function printText(messageQueue) {
-	var lastTimeout = 0;
+	if(inProgressQueue.length == 0) {
+		console.log("Printing", messageQueue);
+		var lastTimeout = 0;
 
-	while(messageQueue.length != 0) {
-		var message = messageQueue.shift();
+		while(messageQueue.length != 0) {
+			var message = messageQueue.shift();
 
-		while(message.text.length != 0) {
-			var text = message.text.shift();
-			var speed = message.speed;
+			while(message.text.length != 0) {
+				var text = message.text.shift();
+				var speed = message.speed;
 
-			setTimeout(addRow, calculateTimer(text, speed) + lastTimeout, text, speed, true, 'logo');
-			lastTimeout += calculateTimer(text, speed);
+				setTimeout(addRow, calculateTimer(text, speed) + lastTimeout, text, speed);
+				lastTimeout += calculateTimer(text, speed);
+			}
 		}
 	}
 }
@@ -94,25 +100,15 @@ function calculateCharTimer(speed) {
 }
 
 //TODO text should not be an array
-function addRow(text, speed, keepWhiteSpace, extraClass) {
+function addRow(text, speed, extraClass) {
 	var row = document.createElement('li');
 	var span = document.createElement('span');
-
-	if(keepWhiteSpace) {
-		var pre = document.createElement('pre');
-		// Add pre element around span to keep whitespace intact
-		pre.appendChild(span);
-		// Add pre element to li element
-		row.appendChild(pre);
-	} else {
-		row.appendChild(span);
-	}
 
 	if(extraClass) {
 		row.classList.add(extraClass);
 	}
 
-	// Add li element to ul element
+	row.appendChild(span);
 	mainFeed.appendChild(row);
 	addLetters(span, text, speed);
 	setTimeout(scrollView, calculateTimer(text, speed), row);
