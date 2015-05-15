@@ -9,6 +9,7 @@ var messageQueue = new Array();
 //TODO Move to database
 var logo = {
 	speed : 2,
+	extraClass : 'logo',
 	text : [
 	' ',
 	'                           ####',
@@ -63,8 +64,6 @@ main.addEventListener('click', function() {
 	messageQueue.push({text : ['BLIRP BLORP']});
 });
 
-console.log("Blah");
-
 messageQueue.push(logo);
 messageQueue.push(bootText);
 
@@ -80,7 +79,8 @@ function printText(messageQueue) {
 			var text = message.text.shift();
 			var speed = message.speed;
 
-			setTimeout(addRow, nextTimeout, text, speed, 'logo');
+			setTimeout(addRow, nextTimeout, text, speed, message.extraClass);
+
 			nextTimeout += calculateTimer(text, speed);
 		}
 	}
@@ -88,6 +88,7 @@ function printText(messageQueue) {
 
 function calculateTimer(text, speed) {
 	var timeout = speed ? speed : charTimeout
+
 	return (text.length * timeout) + timeoutBuffer;
 }
 
@@ -112,6 +113,7 @@ function addLetters(span, text, speed) {
 
 	for(var i = 0; i < text.length; i++) {
 		setTimeout(printLetter, timeout + lastTimeout, span, text.charAt(i));
+
 		lastTimeout += timeout;
 	}
 
