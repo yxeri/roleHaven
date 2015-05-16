@@ -72,14 +72,14 @@ body {
     z-index : 10;
     overflow: hidden;
 
-    -webkit-animation: distort 3s linear infinite;
+    -webkit-animation: distort 2.5s linear infinite;
 }
 
 @-webkit-keyframes distort {
     0%      { -webkit-transform: scale(1); }
-    25%     { -webkit-transform: scale(1.01, 1.002); }
-    50%     { -webkit-transform: scale(1.003, 1.004); }
-    75%     { -webkit-transform: scale(1.007, 1.001); }
+    25%     { -webkit-transform: scale(1.004, 1.002); }
+    50%     { -webkit-transform: scale(1.002, 1.004); }
+    75%     { -webkit-transform: scale(1.005, 1.003); }
     100%    { -webkit-transform: scale(1); }
 }
 

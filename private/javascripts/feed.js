@@ -63,6 +63,14 @@ var bootText = {
 		':D'
 	]
 }
+var commandFailText = {	text : ['command not found'] }
+var shellText = { text : ['bush-3.2$ '] }
+var validCommands = [
+	'ls',
+	'cd',
+	'help'
+];
+
 // var interruptionSound = new Audio('sounds/interruption.mp3');
 // interruptionSound.play();
 
@@ -71,9 +79,12 @@ document.onmousedown = function() {
 	return false;
 };
 
-addEventListener('keydown', keyPress, true);
+addEventListener('keypress', keyPress, true);
+// Needed for arrow keys. They are not detected with keypress
+addEventListener('keydown', specialKeyPress, true);
 
-function keyPress(event) {
+// Needed for arrow and delete keys. They are not detected with keypress
+function specialKeyPress(event) {
 	var keyCode = event.keyCode;
 	var markerParentsChildren = marker.parentElement.childNodes;
 	var markerLocation;
@@ -85,22 +96,9 @@ function keyPress(event) {
 		}
 	}
 
-	console.log(keyCode, String.fromCharCode(keyCode));
+	console.log("special", keyCode);
 
 	switch(keyCode) {
-		// Enter
-		case 13:
-			
-
-			break;
-		// Backspace
-		case 8:
-			// Remove character to the left of the marker
-			if(markerParentsChildren[markerLocation - 1] && markerParentsChildren[markerLocation - 1].textContent) {
-				markerParentsChildren[markerLocation - 1].textContent = markerParentsChildren[markerLocation - 1].textContent.slice(0, -1);
-			}
-
-			break;
 		// Delete
 		case 46:
 			// Remove character from marker and move it right
@@ -119,6 +117,8 @@ function keyPress(event) {
 			if(markerParentsChildren[0].textContent) {
 				var leftText = markerParentsChildren[markerLocation - 1].textContent;
 				var textChar = leftText[leftText.length - 1];
+
+				console.log("Left: ", leftText, ". Char: ", textChar);
 				markerParentsChildren[markerLocation + 1].textContent = marker.textContent + markerParentsChildren[markerLocation + 1].textContent;
 				markerParentsChildren[markerLocation - 1].textContent = leftText.slice(0, -1);
 				marker.textContent = textChar;
@@ -144,15 +144,54 @@ function keyPress(event) {
 		case 40:
 			break;
 		default:
-			var textChar = String.fromCharCode(keyCode);
+			break;
+	}
+}
 
-			if(markerLocation !== 0) {
-				var leftText = markerParentsChildren[markerLocation - 1].textContent;
+function keyPress(event) {
+	var keyCode = event.keyCode;
+	var markerParentsChildren = marker.parentElement.childNodes;
+	var markerLocation;
 
-				markerParentsChildren[markerLocation - 1].textContent += textChar;
-			} else {
-				input.textContent = input.textContent + textChar;
+	for(var i = 0; i < markerParentsChildren.length; i++) {
+		if(markerParentsChildren[i] === marker) {
+			markerLocation = i;
+			break;
+		}
+	}
+
+	console.log("keypress", keyCode);
+
+	switch(keyCode) {
+		// Enter
+		case 13:
+			var message = { text : [shellText.text + marker.parentElement.textContent] };
+			var phrases = marker.parentElement.textContent.split(' ');
+
+			if(validCommands.indexOf(phrases[0]) < 0) {
+				message.text.push('- ' + phrases[0] + ': ' + commandFailText.text);
 			}
+
+			messageQueue.push(message);
+
+			for(var i = 0; i < markerParentsChildren.length; i++) {
+				markerParentsChildren[i].textContent = "";
+			}
+
+			break;
+		// Backspace
+		case 8:
+			// Remove character to the left of the marker
+			if(markerParentsChildren[markerLocation - 1] && markerParentsChildren[markerLocation - 1].textContent) {
+				markerParentsChildren[markerLocation - 1].textContent = markerParentsChildren[markerLocation - 1].textContent.slice(0, -1);
+			}
+
+			break;
+		default:
+			var textChar = String.fromCharCode(keyCode);
+			var leftText = markerParentsChildren[markerLocation - 1].textContent;
+
+			markerParentsChildren[markerLocation - 1].textContent += textChar;
 
 			break;
 	}
@@ -187,7 +226,6 @@ function printText(messageQueue) {
 		}
 	}
 }
-
 
 // Counts all characters in the message array and returns it
 function countTotalCharacters(messageQueue) {
