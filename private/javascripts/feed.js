@@ -65,11 +65,37 @@ var bootText = {
 }
 var commandFailText = {	text : ['command not found'] }
 var shellText = { text : ['bush-3.2$ '] }
-var validCommands = [
-	'ls',
-	'cd',
-	'help'
-];
+var validCommands = {
+	ls : {
+		func : function() {console.log('ls')},
+		help : ['Shows a list of files and directories in the diretory.'],
+		instructions : [
+			'Usage:',
+			' ls *directory*',
+			' ls',
+			'Example:',
+			' ls /usr/bin'
+		]
+	},
+	cd : {
+		func : function() {console.log('cd')},
+		help : ['Move to sent directory.'],
+		instructions : [
+			'Usage:',
+			' cd *directory*',
+			'Example:',
+			' cd /usr/bin'
+		]
+	},
+	help : {
+		func : function() {console.log('help')},
+		help : 'Shows a list of available commands'
+	},
+	pwd : {
+		func : function() {console.log('pwd')},
+		help: 'Shows the current directory'
+	}
+};
 
 // var interruptionSound = new Audio('sounds/interruption.mp3');
 // interruptionSound.play();
@@ -166,13 +192,24 @@ function keyPress(event) {
 		// Enter
 		case 13:
 			var message = { text : [shellText.text + marker.parentElement.textContent] };
-			var phrases = marker.parentElement.textContent.split(' ');
+			var phrases = marker.parentElement.textContent.trim().split(' ');
 
-			if(validCommands.indexOf(phrases[0]) < 0) {
+			console.log(phrases);
+
+			if(phrases[0] in validCommands) {
+				if(phrases[1] === '--help') {
+					message.text = message.text.concat(validCommands[phrases[0]].instructions);
+					console.log(message.text);
+				} else {
+					console.log('Couldnt match help');
+					validCommands[phrases[0]].func();
+				}
+
+				messageQueue.push(message);				
+			} else {
 				message.text.push('- ' + phrases[0] + ': ' + commandFailText.text);
+				messageQueue.push(message);
 			}
-
-			messageQueue.push(message);
 
 			for(var i = 0; i < markerParentsChildren.length; i++) {
 				markerParentsChildren[i].textContent = "";
