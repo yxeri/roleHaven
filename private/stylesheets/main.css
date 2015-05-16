@@ -17,6 +17,29 @@ body {
     width: 100%;
     height: 100vh;
     overflow: hidden;
+    cursor: none;
+}
+
+#input {
+    /* Needed to hide caret. text-shadow allows the text to be visible */
+    color: transparent;
+    text-shadow: 0px 0px .5px #00FF00;
+}
+
+#input:focus {
+    outline: 0;
+}
+
+#marker {
+    -webkit-animation: blinking 1s step-end infinite;
+}
+
+@-webkit-keyframes blinking {
+    from    { background-color: transparent; }
+    50% {
+        background-color: #00FF00;
+        color: black;
+    }
 }
 
 #main:before {
@@ -47,16 +70,17 @@ body {
     width: 100%;
     height: 100vh;
     z-index : 10;
+    overflow: hidden;
 
     -webkit-animation: distort 3s linear infinite;
 }
 
 @-webkit-keyframes distort {
-    0%      { -webkit-transform: scale(1, 1.001); }
-    25%     { -webkit-transform: scale(1.002, 1.004); }
-    50%     { -webkit-transform: scale(1, 1.002); }
-    75%     { -webkit-transform: scale(1.002, 1.003); }
-    100%    { -webkit-transform: scale(1.001, 1); }
+    0%      { -webkit-transform: scale(1); }
+    25%     { -webkit-transform: scale(1.01, 1.002); }
+    50%     { -webkit-transform: scale(1.003, 1.004); }
+    75%     { -webkit-transform: scale(1.007, 1.001); }
+    100%    { -webkit-transform: scale(1); }
 }
 
 ul {
@@ -71,49 +95,43 @@ pre {
 }
 
 @media (min-width:1941px) {
-    #mainFeed {
+    .feed {
         padding-left: 30%;
         padding-right: 30%;
-        padding-bottom: 10%;
     }
 }
 
 @media (max-width:1940px) {
-    #mainFeed {
+    .feed {
         padding-left: 26%;
         padding-right: 26%;
-        padding-bottom: 8%;
     }
 }
 
 @media (max-width:1720px) {
-    #mainFeed {
+    .feed {
         padding-left: 22%;
         padding-right: 22%;
-        padding-bottom: 6%;
     }
 }
 
 @media (max-width:1500px) {
-    #mainFeed {
+    .feed {
         padding-left: 18%;
         padding-right: 18%;
-        padding-bottom: 4%;
     }
 }
 
 @media (max-width:1280px) {
-    #mainFeed {
+    .feed {
         padding-left: 14%;
         padding-right: 14%;
-        padding-bottom: 2%;
     }
 }
 
 @media (max-width:1024px) {
-    #mainFeed {
+    .feed {
         padding-left: 1em;
         padding-right: 1em;
-        padding-bottom: 1em;
     }
 }

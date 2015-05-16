@@ -2,12 +2,17 @@
 
 var main = document.getElementById('main');
 var mainFeed = document.getElementById('mainFeed');
+var input = document.getElementById('input');
+var marker = document.getElementById('marker');
+// Timeout for print of a character (milliseconds)
 var charTimeout = 20;
+// Timeout between print of rows (milliseconds)
 var timeoutBuffer = 100;
-var timeouts = new Array();
-var messageQueue = new Array();
+// Queue of all the message objects that will be handled and printed
+var messageQueue = [];
+// Characters left to print during one call to printText().
+// It has to be zero before another group of messages can be printed.
 var charsInProgress = 0;
-//TODO Move to database
 var logo = {
 	speed : 2,
 	extraClass : 'logo',
@@ -61,18 +66,110 @@ var bootText = {
 // var interruptionSound = new Audio('sounds/interruption.mp3');
 // interruptionSound.play();
 
-main.addEventListener('click', function() {
-	messageQueue.push({text : ['BLIRP BLORP']});
-});
+// Disable left mouse clicks
+document.onmousedown = function() {
+	return false;
+};
+
+addEventListener('keydown', keyPress, true);
+
+function keyPress(event) {
+	var keyCode = event.keyCode;
+	var markerParentsChildren = marker.parentElement.childNodes;
+	var markerLocation;
+
+	for(var i = 0; i < markerParentsChildren.length; i++) {
+		if(markerParentsChildren[i] === marker) {
+			markerLocation = i;
+			break;
+		}
+	}
+
+	console.log(keyCode, String.fromCharCode(keyCode));
+
+	switch(keyCode) {
+		// Enter
+		case 13:
+			
+
+			break;
+		// Backspace
+		case 8:
+			// Remove character to the left of the marker
+			if(markerParentsChildren[markerLocation - 1] && markerParentsChildren[markerLocation - 1].textContent) {
+				markerParentsChildren[markerLocation - 1].textContent = markerParentsChildren[markerLocation - 1].textContent.slice(0, -1);
+			}
+
+			break;
+		// Delete
+		case 46:
+			// Remove character from marker and move it right
+			if(markerParentsChildren[markerLocation + 1].textContent) {
+				var rightText = markerParentsChildren[markerLocation + 1].textContent;
+				var textChar = rightText[0];
+				markerParentsChildren[markerLocation + 1].textContent = rightText.slice(1);
+				marker.textContent = textChar;
+			} else {
+				marker.textContent = " ";
+			}
+
+			break;
+		// Left arrow
+		case 37:
+			if(markerParentsChildren[0].textContent) {
+				var leftText = markerParentsChildren[markerLocation - 1].textContent;
+				var textChar = leftText[leftText.length - 1];
+				markerParentsChildren[markerLocation + 1].textContent = marker.textContent + markerParentsChildren[markerLocation + 1].textContent;
+				markerParentsChildren[markerLocation - 1].textContent = leftText.slice(0, -1);
+				marker.textContent = textChar;
+			}
+
+			break;
+		// Right arrow
+		case 39:
+			if(markerParentsChildren[markerParentsChildren.length - 1].textContent) {
+				var rightText = markerParentsChildren[markerLocation + 1].textContent;
+				var textChar = rightText[0];
+				
+				markerParentsChildren[markerLocation - 1].textContent = markerParentsChildren[markerLocation - 1].textContent + marker.textContent;
+				markerParentsChildren[markerLocation + 1].textContent = rightText.slice(1);
+				marker.textContent = textChar;
+			}
+
+			break;
+		// Up arrow
+		case 38:
+			break;
+		// Down arrow
+		case 40:
+			break;
+		default:
+			var textChar = String.fromCharCode(keyCode);
+
+			if(markerLocation !== 0) {
+				var leftText = markerParentsChildren[markerLocation - 1].textContent;
+
+				markerParentsChildren[markerLocation - 1].textContent += textChar;
+			} else {
+				input.textContent = input.textContent + textChar;
+			}
+
+			break;
+	}
+};
 
 messageQueue.push(logo);
 messageQueue.push(bootText);
 
+// Tries to print messages from the queue every second
 setInterval(printText, 1000, messageQueue);
 
+// Prints messages from the queue
+// It will not continue if a print is already in progress,
+// which is indicated by charsInProgress being > 0
 function printText(messageQueue) {
-	console.log(charsInProgress);
-	if(charsInProgress == 0) {
+	if(charsInProgress === 0) {
+		// Amount of time (milliseconds) for a row to finish printing
 		var nextTimeout = 0;
 		charsInProgress = countTotalCharacters(messageQueue);
 
@@ -83,7 +180,7 @@ function printText(messageQueue) {
 				var text = message.text.shift();
 				var speed = message.speed;
 
-				setTimeout(addRow, nextTimeout, text, speed, message.extraClass);
+				setTimeout(addRow, nextTimeout, text, nextTimeout, speed, message.extraClass);
 
 				nextTimeout += calculateTimer(text, speed);
 			}
@@ -91,6 +188,8 @@ function printText(messageQueue) {
 	}
 }
 
+
+// Counts all characters in the message array and returns it
 function countTotalCharacters(messageQueue) {
 	var total = 0;
 
@@ -106,14 +205,14 @@ function countTotalCharacters(messageQueue) {
 	return total;
 }
 
+// Calculates amount of time to print text (speed times amount of characters plus buffer)
 function calculateTimer(text, speed) {
 	var timeout = speed ? speed : charTimeout
 
 	return (text.length * timeout) + timeoutBuffer;
 }
 
-//TODO text should not be an array
-function addRow(text, speed, extraClass) {
+function addRow(text, timeout, speed, extraClass) {
 	var row = document.createElement('li');
 	var span = document.createElement('span');
 
@@ -124,7 +223,7 @@ function addRow(text, speed, extraClass) {
 	row.appendChild(span);
 	mainFeed.appendChild(row);
 	addLetters(span, text, speed);
-	setTimeout(scrollView, calculateTimer(text), row);
+	setTimeout(scrollView, timeout - 20, row);
 }
 
 function addLetters(span, text, speed) {
@@ -139,6 +238,7 @@ function addLetters(span, text, speed) {
 
 }
 
+// Prints one letter and decreases in progress tracker
 function printLetter(span, char) {
 	span.innerHTML += char;
 	charsInProgress--;
