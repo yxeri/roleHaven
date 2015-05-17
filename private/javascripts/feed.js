@@ -130,6 +130,17 @@ function specialKeyPress(event) {
 	console.log("special", keyCode);
 
 	switch(keyCode) {
+		// Backspace
+		case 8:
+			// Remove character to the left of the marker
+			if(markerParentsChildren[markerLocation - 1] && markerParentsChildren[markerLocation - 1].textContent) {
+				console.log("Content to be removed: ", markerParentsChildren[markerLocation - 1].textContent);
+				console.log("Content in marker: ", marker.textContent);
+				console.log("Slice: ", markerParentsChildren[markerLocation - 1].textContent.slice(0, -1))
+				markerParentsChildren[markerLocation - 1].textContent = markerParentsChildren[markerLocation - 1].textContent.slice(0, -1);
+			}
+
+			break;
 		// Delete
 		case 46:
 			// Remove character from marker and move it right
@@ -191,7 +202,7 @@ function keyPress(event) {
 		}
 	}
 
-	console.log("keypress", keyCode);
+	console.log('keypress', keyCode);
 
 	switch(keyCode) {
 		// Enter
@@ -218,26 +229,21 @@ function keyPress(event) {
 			}
 
 			for(var i = 0; i < markerParentsChildren.length; i++) {
-				markerParentsChildren[i].textContent = "";
+				markerParentsChildren[i].textContent = '';
 			}
 
 			// Fix for blinking marker
-			marker.textContent = " ";
-
-			break;
-		// Backspace
-		case 8:
-			// Remove character to the left of the marker
-			if(markerParentsChildren[markerLocation - 1] && markerParentsChildren[markerLocation - 1].textContent) {
-				markerParentsChildren[markerLocation - 1].textContent = markerParentsChildren[markerLocation - 1].textContent.slice(0, -1);
-			}
+			marker.textContent = ' ';
 
 			break;
 		default:
 			var textChar = String.fromCharCode(keyCode);
-			var leftText = markerParentsChildren[markerLocation - 1].textContent;
 
-			markerParentsChildren[markerLocation - 1].textContent += textChar;
+			if(textChar) {
+				var leftText = markerParentsChildren[markerLocation - 1].textContent;
+
+				markerParentsChildren[markerLocation - 1].textContent += textChar;
+			}
 
 			break;
 	}
