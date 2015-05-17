@@ -13,6 +13,7 @@ var messageQueue = [];
 // Characters left to print during one call to printText().
 // It has to be zero before another group of messages can be printed.
 var charsInProgress = 0;
+var previousCommands = ['ls moo/blah', 'cd fake/dir'];
 var logo = {
 	speed : 2,
 	extraClass : 'logo',
@@ -70,21 +71,21 @@ var validCommands = {
 		func : function() {console.log('ls')},
 		help : ['Shows a list of files and directories in the diretory.'],
 		instructions : [
-			'Usage:',
-			' ls *directory*',
-			' ls',
-			'Example:',
-			' ls /usr/bin'
+			' Usage:',
+			'  ls *directory*',
+			'  ls',
+			' Example:',
+			'  ls /usr/bin'
 		]
 	},
 	cd : {
 		func : function() {console.log('cd')},
 		help : ['Move to sent directory.'],
 		instructions : [
-			'Usage:',
-			' cd *directory*',
-			'Example:',
-			' cd /usr/bin'
+			' Usage:',
+			'  cd *directory*',
+			' Example:',
+			'  cd /usr/bin'
 		]
 	},
 	help : {
@@ -104,6 +105,10 @@ var validCommands = {
 document.onmousedown = function() {
 	return false;
 };
+
+main.addEventListener('click', function() {
+	marker.focus();
+});
 
 addEventListener('keypress', keyPress, true);
 // Needed for arrow keys. They are not detected with keypress
@@ -192,12 +197,13 @@ function keyPress(event) {
 		// Enter
 		case 13:
 			var message = { text : [shellText.text + marker.parentElement.textContent] };
-			var phrases = marker.parentElement.textContent.trim().split(' ');
+			var phrases = marker.parentElement.textContent.toLowerCase().trim().split(' ');
 
 			console.log(phrases);
 
 			if(phrases[0] in validCommands) {
 				if(phrases[1] === '--help') {
+					message.text = message.text.concat(validCommands[phrases[0]].help);
 					message.text = message.text.concat(validCommands[phrases[0]].instructions);
 					console.log(message.text);
 				} else {
@@ -214,6 +220,9 @@ function keyPress(event) {
 			for(var i = 0; i < markerParentsChildren.length; i++) {
 				markerParentsChildren[i].textContent = "";
 			}
+
+			// Fix for blinking marker
+			marker.textContent = " ";
 
 			break;
 		// Backspace
@@ -232,13 +241,15 @@ function keyPress(event) {
 
 			break;
 	}
+
+	event.preventDefault();
 };
 
 messageQueue.push(logo);
 messageQueue.push(bootText);
 
 // Tries to print messages from the queue every second
-setInterval(printText, 1000, messageQueue);
+setInterval(printText, 600, messageQueue);
 
 // Prints messages from the queue
 // It will not continue if a print is already in progress,
