@@ -8,18 +8,6 @@ body {
     white-space: pre-wrap;
 }
 
-.logo {
-    font-size: 8px;
-    line-height: 10px;
-}
-
-#main {
-    width: 100%;
-    height: 100vh;
-    overflow: hidden;
-    cursor: none;
-}
-
 #input {
     /* Needed to hide caret. text-shadow allows the text to be visible */
     color: transparent;
@@ -30,6 +18,10 @@ body {
     -webkit-animation: blinking 1s step-end infinite;
 }
 
+#marker:focus {
+    outline: 0;
+}
+
 @-webkit-keyframes blinking {
     from    { background-color: transparent; }
     50% {
@@ -38,8 +30,11 @@ body {
     }
 }
 
-#marker:focus {
-    outline: 0;
+#main {
+    width: 100%;
+    height: 100vh;
+    overflow: hidden;
+    cursor: none;
 }
 
 #main:before {
@@ -50,7 +45,7 @@ body {
     left: 0;
     background-color: black;
     background: -webkit-linear-gradient(#A0E6A0 50%, black 50%);
-    background-size: 100% 4px;
+    background-size: 100% 5px;
     opacity: .15;
     -webkit-box-shadow: inset 0 0 60px 5px #000000;
     -webkit-animation: light 3s linear infinite;
@@ -94,44 +89,37 @@ pre {
     margin: 0;
 }
 
+.feed {
+    padding-left: 1em;
+    padding-right: 1em;
+}
+
 @media (min-width:1941px) {
     .feed {
-        padding-left: 30%;
-        padding-right: 30%;
     }
 }
 
 @media (max-width:1940px) {
     .feed {
-        padding-left: 26%;
-        padding-right: 26%;
     }
 }
 
 @media (max-width:1720px) {
     .feed {
-        padding-left: 22%;
-        padding-right: 22%;
     }
 }
 
 @media (max-width:1500px) {
     .feed {
-        padding-left: 18%;
-        padding-right: 18%;
     }
 }
 
 @media (max-width:1280px) {
     .feed {
-        padding-left: 14%;
-        padding-right: 14%;
     }
 }
 
 @media (max-width:1024px) {
     .feed {
-        padding-left: 1em;
-        padding-right: 1em;
     }
 }

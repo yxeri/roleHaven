@@ -2,7 +2,6 @@
 
 var main = document.getElementById('main');
 var mainFeed = document.getElementById('mainFeed');
-var input = document.getElementById('input');
 var marker = document.getElementById('marker');
 // Timeout for print of a character (milliseconds)
 var charTimeout = 20;
@@ -69,7 +68,7 @@ var shellText = { text : ['bush-3.2$ '] }
 var validCommands = {
 	ls : {
 		func : function() {console.log('ls')},
-		help : ['Shows a list of files and directories in the diretory.'],
+		help : ['Shows a list of files and directories in the directory.'],
 		instructions : [
 			' Usage:',
 			'  ls *directory*',
@@ -95,6 +94,13 @@ var validCommands = {
 	pwd : {
 		func : function() {console.log('pwd')},
 		help: 'Shows the current directory'
+	},
+	clear : {
+		func : function () {
+			while(mainFeed.childNodes.length > 1) {
+				mainFeed.removeChild(mainFeed.lastChild);
+			}
+		}
 	}
 };
 
@@ -110,9 +116,9 @@ main.addEventListener('click', function() {
 	marker.focus();
 });
 
-addEventListener('keypress', keyPress, true);
+addEventListener('keypress', keyPress);
 // Needed for arrow keys. They are not detected with keypress
-addEventListener('keydown', specialKeyPress, true);
+addEventListener('keydown', specialKeyPress);
 
 // Needed for arrow and delete keys. They are not detected with keypress
 function specialKeyPress(event) {
@@ -128,16 +134,16 @@ function specialKeyPress(event) {
 	}
 
 	console.log("special", keyCode);
+	console.log("This should be empty: ", leftText);
 
 	switch(keyCode) {
 		// Backspace
 		case 8:
 			// Remove character to the left of the marker
 			if(markerParentsChildren[markerLocation - 1] && markerParentsChildren[markerLocation - 1].textContent) {
-				console.log("Content to be removed: ", markerParentsChildren[markerLocation - 1].textContent);
-				console.log("Content in marker: ", marker.textContent);
-				console.log("Slice: ", markerParentsChildren[markerLocation - 1].textContent.slice(0, -1))
-				markerParentsChildren[markerLocation - 1].textContent = markerParentsChildren[markerLocation - 1].textContent.slice(0, -1);
+				var leftText = markerParentsChildren[markerLocation - 1].textContent;
+
+				markerParentsChildren[markerLocation - 1].textContent = leftText.slice(0, -1);
 			}
 
 			break;
@@ -158,10 +164,11 @@ function specialKeyPress(event) {
 		case 37:
 			if(markerParentsChildren[0].textContent) {
 				var leftText = markerParentsChildren[markerLocation - 1].textContent;
+				var rightText = markerParentsChildren[markerLocation + 1].textContent;
 				var textChar = leftText[leftText.length - 1];
 
 				console.log("Left: ", leftText, ". Char: ", textChar);
-				markerParentsChildren[markerLocation + 1].textContent = marker.textContent + markerParentsChildren[markerLocation + 1].textContent;
+				markerParentsChildren[markerLocation + 1].textContent = marker.textContent + rightText;
 				markerParentsChildren[markerLocation - 1].textContent = leftText.slice(0, -1);
 				marker.textContent = textChar;
 			}
@@ -171,9 +178,10 @@ function specialKeyPress(event) {
 		case 39:
 			if(markerParentsChildren[markerParentsChildren.length - 1].textContent) {
 				var rightText = markerParentsChildren[markerLocation + 1].textContent;
+				var leftText = markerParentsChildren[markerLocation - 1].textContent;
 				var textChar = rightText[0];
 				
-				markerParentsChildren[markerLocation - 1].textContent = markerParentsChildren[markerLocation - 1].textContent + marker.textContent;
+				markerParentsChildren[markerLocation - 1].textContent = leftText + marker.textContent;
 				markerParentsChildren[markerLocation + 1].textContent = rightText.slice(1);
 				marker.textContent = textChar;
 			}
@@ -220,13 +228,12 @@ function keyPress(event) {
 				} else {
 					console.log('Couldnt match help');
 					validCommands[phrases[0]].func();
-				}
-
-				messageQueue.push(message);				
-			} else {
+				}			
+			} else if(phrases[0].length > 0) {
 				message.text.push('- ' + phrases[0] + ': ' + commandFailText.text);
-				messageQueue.push(message);
 			}
+
+			messageQueue.push(message);
 
 			for(var i = 0; i < markerParentsChildren.length; i++) {
 				markerParentsChildren[i].textContent = '';
@@ -255,7 +262,7 @@ messageQueue.push(logo);
 messageQueue.push(bootText);
 
 // Tries to print messages from the queue every second
-setInterval(printText, 600, messageQueue);
+setInterval(printText, 100, messageQueue);
 
 // Prints messages from the queue
 // It will not continue if a print is already in progress,
@@ -315,7 +322,7 @@ function addRow(text, timeout, speed, extraClass) {
 	row.appendChild(span);
 	mainFeed.appendChild(row);
 	addLetters(span, text, speed);
-	setTimeout(scrollView, timeout - 20, row);
+	scrollView(row);
 }
 
 function addLetters(span, text, speed) {
