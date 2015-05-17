@@ -1,8 +1,9 @@
 "use strict";
 
-var main = document.getElementById('main');
 var mainFeed = document.getElementById('mainFeed');
 var marker = document.getElementById('marker');
+var inputText = document.getElementById('inputText');
+var input = document.getElementById('input');
 // Timeout for print of a character (milliseconds)
 var charTimeout = 20;
 // Timeout between print of rows (milliseconds)
@@ -104,15 +105,12 @@ var validCommands = {
 	}
 };
 
-// var interruptionSound = new Audio('sounds/interruption.mp3');
-// interruptionSound.play();
-
 // Disable left mouse clicks
 document.onmousedown = function() {
 	return false;
 };
 
-main.addEventListener('click', function() {
+document.getElementById('main').addEventListener('click', function() {
 	marker.focus();
 });
 
@@ -120,70 +118,87 @@ addEventListener('keypress', keyPress);
 // Needed for arrow keys. They are not detected with keypress
 addEventListener('keydown', specialKeyPress);
 
+function getLeftText(marker) {
+	return marker.parentElement.childNodes[0].textContent;
+}
+
+function getRightText(marker) {
+	return marker.parentElement.childNodes[2].textContent;
+}
+
+function getInputText() {
+	return inputText.textContent;
+}
+
+function setLeftText(text) {
+	marker.parentElement.childNodes[0].textContent = text;
+}
+
+function appendToLeftText(text) {
+	marker.parentElement.childNodes[0].textContent += text;
+}
+
+function setRightText(text) {
+	marker.parentElement.childNodes[2].textContent = text;
+}
+
+function prependToRightText(sentText) {
+	marker.parentElement.childNodes[2].textContent = sentText + marker.parentElement.childNodes[2].textContent;
+}
+
+function setMarkerText(text) {
+	marker.textContent = text;
+}
+
+function clearInput() {
+	setLeftText('');
+	setRightText('');
+	// Fix for blinking marker
+	setMarkerText(' ');
+}
+
 // Needed for arrow and delete keys. They are not detected with keypress
 function specialKeyPress(event) {
 	var keyCode = event.keyCode;
 	var markerParentsChildren = marker.parentElement.childNodes;
-	var markerLocation;
-
-	for(var i = 0; i < markerParentsChildren.length; i++) {
-		if(markerParentsChildren[i] === marker) {
-			markerLocation = i;
-			break;
-		}
-	}
 
 	console.log("special", keyCode);
-	console.log("This should be empty: ", leftText);
 
 	switch(keyCode) {
 		// Backspace
 		case 8:
 			// Remove character to the left of the marker
-			if(markerParentsChildren[markerLocation - 1] && markerParentsChildren[markerLocation - 1].textContent) {
-				var leftText = markerParentsChildren[markerLocation - 1].textContent;
-
-				markerParentsChildren[markerLocation - 1].textContent = leftText.slice(0, -1);
+			if(getLeftText(marker)) {
+				setLeftText(getLeftText(marker).slice(0, -1));
 			}
 
 			break;
 		// Delete
 		case 46:
 			// Remove character from marker and move it right
-			if(markerParentsChildren[markerLocation + 1].textContent) {
-				var rightText = markerParentsChildren[markerLocation + 1].textContent;
-				var textChar = rightText[0];
-				markerParentsChildren[markerLocation + 1].textContent = rightText.slice(1);
-				marker.textContent = textChar;
+			if(getRightText(marker)) {
+				setMarkerText(getRightText(marker)[0]);
+				setRightText(getRightText(marker).slice(1));
 			} else {
-				marker.textContent = " ";
+				setMarkerText(" ");
 			}
 
 			break;
 		// Left arrow
 		case 37:
-			if(markerParentsChildren[0].textContent) {
-				var leftText = markerParentsChildren[markerLocation - 1].textContent;
-				var rightText = markerParentsChildren[markerLocation + 1].textContent;
-				var textChar = leftText[leftText.length - 1];
-
-				console.log("Left: ", leftText, ". Char: ", textChar);
-				markerParentsChildren[markerLocation + 1].textContent = marker.textContent + rightText;
-				markerParentsChildren[markerLocation - 1].textContent = leftText.slice(0, -1);
-				marker.textContent = textChar;
+			if(getLeftText(marker)) {
+				prependToRightText(marker.textContent);
+				setMarkerText(getLeftText(marker).slice(-1));
+				setLeftText(getLeftText(marker).slice(0, -1));
 			}
 
 			break;
 		// Right arrow
 		case 39:
-			if(markerParentsChildren[markerParentsChildren.length - 1].textContent) {
-				var rightText = markerParentsChildren[markerLocation + 1].textContent;
-				var leftText = markerParentsChildren[markerLocation - 1].textContent;
-				var textChar = rightText[0];
-				
-				markerParentsChildren[markerLocation - 1].textContent = leftText + marker.textContent;
-				markerParentsChildren[markerLocation + 1].textContent = rightText.slice(1);
-				marker.textContent = textChar;
+			if(getRightText(marker)) {				
+				appendToLeftText(marker.textContent);
+				setMarkerText(getRightText(marker)[0]);
+				setRightText(getRightText(marker).slice(1));
 			}
 
 			break;
@@ -213,44 +228,53 @@ function keyPress(event) {
 	console.log('keypress', keyCode);
 
 	switch(keyCode) {
+		// Tab
+		case 9:
+			var phrases = getInputText().toLowerCase().trim().split(' ');
+
+			for(var i = 0; i < phrases.length; i++) {
+				var phrase = phrases[i];
+
+				for(var j = 0; j < phrase.length; j++) {
+					var phraseChar = phrase[j];
+					console.log(phraseChar);
+
+					for(var k = 0; k < validCommands.length; k++) {
+
+					}
+				}
+			}
+
+			break;
 		// Enter
 		case 13:
-			var message = { text : [shellText.text + marker.parentElement.textContent] };
-			var phrases = marker.parentElement.textContent.toLowerCase().trim().split(' ');
+			var message = { text : [shellText.text + getInputText()] };
+			var phrases = getInputText().toLowerCase().trim().split(' ');
+			var command = phrases[0];
 
 			console.log(phrases);
 
-			if(phrases[0] in validCommands) {
+			if(command in validCommands) {
 				if(phrases[1] === '--help') {
-					message.text = message.text.concat(validCommands[phrases[0]].help);
-					message.text = message.text.concat(validCommands[phrases[0]].instructions);
+					message.text = message.text.concat(validCommands[command].help);
+					message.text = message.text.concat(validCommands[command].instructions);
 					console.log(message.text);
 				} else {
 					console.log('Couldnt match help');
-					validCommands[phrases[0]].func();
+					validCommands[command].func();
 				}			
-			} else if(phrases[0].length > 0) {
-				message.text.push('- ' + phrases[0] + ': ' + commandFailText.text);
+			} else if(command.length > 0) {
+				message.text.push('- ' + command + ': ' + commandFailText.text);
 			}
 
 			messageQueue.push(message);
-
-			for(var i = 0; i < markerParentsChildren.length; i++) {
-				markerParentsChildren[i].textContent = '';
-			}
-
-			// Fix for blinking marker
-			marker.textContent = ' ';
+			clearInput();
 
 			break;
 		default:
 			var textChar = String.fromCharCode(keyCode);
 
-			if(textChar) {
-				var leftText = markerParentsChildren[markerLocation - 1].textContent;
-
-				markerParentsChildren[markerLocation - 1].textContent += textChar;
-			}
+			if(textChar) { appendToLeftText(textChar); }
 
 			break;
 	}
