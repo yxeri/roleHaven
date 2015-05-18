@@ -337,7 +337,8 @@ function addRow(text, timeout, speed, extraClass) {
 	var span = document.createElement('span');
 
 	if(extraClass) {
-		row.classList.add(extraClass);
+		// classList doesn't work on older devices, thus the usage of className
+		row.className += ' ' + extraClass;
 	}
 
 	row.appendChild(span);
