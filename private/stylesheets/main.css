@@ -8,19 +8,20 @@ body {
     white-space: pre-wrap;
 }
 
+.logo {
+    white-space: pre;
+}
+
 #input {
     /* Needed to hide caret. text-shadow allows the text to be visible */
     color: transparent;
-    text-shadow: 0px 0px .5px #00FF00;
+    text-shadow: 0px 0px .1px #00FF00;
+    margin-bottom: 1.5em;
 }
 
-#marker {
-    -webkit-animation: blinking 1s step-end infinite;
-}
+#marker { -webkit-animation: blinking 1s step-end infinite; }
 
-#marker:focus {
-    outline: 0;
-}
+#marker:focus { outline: 0; }
 
 @-webkit-keyframes blinking {
     from    { background-color: transparent; }
@@ -53,9 +54,9 @@ body {
 
 @-webkit-keyframes light {
     0%      { opacity: .15; }
-    25%     { opacity: .19; }
+    25%     { opacity: .17; }
     50%     { opacity: .14; }
-    75%     { opacity: .10; }
+    75%     { opacity: .09; }
     100%    { opacity: .15; }
 }
 
@@ -67,15 +68,23 @@ body {
     z-index : 10;
     overflow: hidden;
 
-    -webkit-animation: distort 1.5s linear infinite;
+    -webkit-animation: distort 4s linear infinite;
 }
 
 @-webkit-keyframes distort {
     0%      { -webkit-transform: scale(1); }
-    25%     { -webkit-transform: scale(1.004, 1.002); }
-    50%     { -webkit-transform: scale(1.002, 1.004); }
-    75%     { -webkit-transform: scale(1.005, 1.003); }
+    50%     { -webkit-transform: scale(1.004, 1.003); }
     100%    { -webkit-transform: scale(1); }
+}
+
+#mainFeed {
+    -webkit-animation: blur 2s linear infinite;
+}
+
+@-webkit-keyframes blur {
+    0% { -webkit-filter: blur(0px);}
+    50%; { -webkit-filter: blur(5px);}
+    100% { -webkit-filter: blur(0px);}
 }
 
 ul {
@@ -94,32 +103,31 @@ pre {
     padding-right: 1em;
 }
 
-@media (min-width:1941px) {
+@media (max-height: 768px) and (max-width: 1024px) {
     .feed {
+        padding-left: .5em;
+        padding-right: .5em;
     }
 }
 
-@media (max-width:1940px) {
-    .feed {
+@media (max-height: 736px) and (max-width: 414px) {
+    .logo { 
+        font-size: .1em; 
     }
 }
 
-@media (max-width:1720px) {
+/* PiTft */
+@media (max-height: 240px) {
     .feed {
+        padding-left: 0.1em;
+        padding-right: 0.1em;
     }
-}
 
-@media (max-width:1500px) {
-    .feed {
-    }
-}
+    .logo { font-size: .2em; }
 
-@media (max-width:1280px) {
-    .feed {
-    }
-}
+    #mainTop { -webkit-animation: none; }
 
-@media (max-width:1024px) {
-    .feed {
-    }
+    #main:before { -webkit-animation: none; }
+
+    #marker { -webkit-animation: none; }
 }

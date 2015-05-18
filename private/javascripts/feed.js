@@ -105,18 +105,20 @@ var validCommands = {
 	}
 };
 
-// Disable left mouse clicks
-document.onmousedown = function() {
-	return false;
-};
+function startBoot() {
+	// Disable left mouse clicks
+	document.onmousedown = function() { return false; };
+	document.getElementById('main').addEventListener('click', function() { marker.focus(); });
+	addEventListener('keypress', keyPress);
+	// Needed for arrow keys. They are not detected with keypress
+	addEventListener('keydown', specialKeyPress);
+	// Tries to print messages from the queue every second
+	setInterval(printText, 100, messageQueue);
+	messageQueue.push(logo);
+	messageQueue.push(bootText);
+}
 
-document.getElementById('main').addEventListener('click', function() {
-	marker.focus();
-});
-
-addEventListener('keypress', keyPress);
-// Needed for arrow keys. They are not detected with keypress
-addEventListener('keydown', specialKeyPress);
+startBoot();
 
 function getLeftText(marker) {
 	return marker.parentElement.childNodes[0].textContent;
@@ -186,6 +188,7 @@ function specialKeyPress(event) {
 			break;
 		// Left arrow
 		case 37:
+			// Moves the marker one step to the left
 			if(getLeftText(marker)) {
 				prependToRightText(marker.textContent);
 				setMarkerText(getLeftText(marker).slice(-1));
@@ -195,6 +198,7 @@ function specialKeyPress(event) {
 			break;
 		// Right arrow
 		case 39:
+			// Moves marker one step to the right
 			if(getRightText(marker)) {				
 				appendToLeftText(marker.textContent);
 				setMarkerText(getRightText(marker)[0]);
@@ -256,8 +260,7 @@ function keyPress(event) {
 
 			if(command in validCommands) {
 				if(phrases[1] === '--help') {
-					message.text = message.text.concat(validCommands[command].help);
-					message.text = message.text.concat(validCommands[command].instructions);
+					message.text = message.text.concat(validCommands[command].help, validCommands[command].instructions);
 					console.log(message.text);
 				} else {
 					console.log('Couldnt match help');
@@ -281,12 +284,6 @@ function keyPress(event) {
 
 	event.preventDefault();
 };
-
-messageQueue.push(logo);
-messageQueue.push(bootText);
-
-// Tries to print messages from the queue every second
-setInterval(printText, 100, messageQueue);
 
 // Prints messages from the queue
 // It will not continue if a print is already in progress,
