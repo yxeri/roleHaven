@@ -61,7 +61,17 @@ var bootText = {
 		'Have a productive day!',
 		'!_!',
 		'^_^',
-		':D'
+		':D',
+		':D',
+		':D',
+		':D',
+		'^_^',
+		':D',
+		':D',
+		':D',
+		':D',
+		':D',
+		'^_^'
 	]
 }
 var commandFailText = {	text : ['command not found'] }
@@ -107,10 +117,28 @@ var validCommands = {
 
 function startBoot() {
 	// Disable left mouse clicks
-	document.onmousedown = function() { return false; };
-	document.getElementById('main').addEventListener('click', function() { marker.focus(); });
+	document.onmousedown = function() {
+		marker.focus();
+		return false;
+	};
+
+	addEventListener('touchstart', function(event) {
+		event.preventDefault();
+		marker.focus();
+		marker.textContent = "touchstart";
+	});
+	addEventListener('touchmove', function(event) {
+		event.preventDefault();
+		marker.focus();
+		marker.textContent = "touchmove";
+	});
+	addEventListener('touchend', function(event) {
+		event.preventDefault();
+		marker.focus();
+		marker.textContent = "touchend";
+	});
 	addEventListener('keypress', keyPress);
-	// Needed for arrow keys. They are not detected with keypress
+	// Needed for some special keys. They are not detected with keypress
 	addEventListener('keydown', specialKeyPress);
 	// Tries to print messages from the queue every second
 	setInterval(printText, 100, messageQueue);
@@ -120,37 +148,21 @@ function startBoot() {
 
 startBoot();
 
-function getLeftText(marker) {
-	return marker.parentElement.childNodes[0].textContent;
-}
+function getLeftText(marker) { return marker.parentElement.childNodes[0].textContent; }
 
-function getRightText(marker) {
-	return marker.parentElement.childNodes[2].textContent;
-}
+function getRightText(marker) {	return marker.parentElement.childNodes[2].textContent; }
 
-function getInputText() {
-	return inputText.textContent;
-}
+function getInputText() { return inputText.textContent; }
 
-function setLeftText(text) {
-	marker.parentElement.childNodes[0].textContent = text;
-}
+function setLeftText(text) { marker.parentElement.childNodes[0].textContent = text; }
 
-function appendToLeftText(text) {
-	marker.parentElement.childNodes[0].textContent += text;
-}
+function appendToLeftText(text) { marker.parentElement.childNodes[0].textContent += text; }
 
-function setRightText(text) {
-	marker.parentElement.childNodes[2].textContent = text;
-}
+function setRightText(text) { marker.parentElement.childNodes[2].textContent = text; }
 
-function prependToRightText(sentText) {
-	marker.parentElement.childNodes[2].textContent = sentText + marker.parentElement.childNodes[2].textContent;
-}
+function prependToRightText(sentText) {	marker.parentElement.childNodes[2].textContent = sentText + marker.parentElement.childNodes[2].textContent; }
 
-function setMarkerText(text) {
-	marker.textContent = text;
-}
+function setMarkerText(text) { marker.textContent = text; }
 
 function clearInput() {
 	setLeftText('');
@@ -161,10 +173,8 @@ function clearInput() {
 
 // Needed for arrow and delete keys. They are not detected with keypress
 function specialKeyPress(event) {
-	var keyCode = event.keyCode;
+	var keyCode = (typeof event.which === 'number') ? event.which : event.keyCode;
 	var markerParentsChildren = marker.parentElement.childNodes;
-
-	console.log("special", keyCode);
 
 	switch(keyCode) {
 		// Backspace
@@ -173,6 +183,8 @@ function specialKeyPress(event) {
 			if(getLeftText(marker)) {
 				setLeftText(getLeftText(marker).slice(0, -1));
 			}
+
+			event.preventDefault();
 
 			break;
 		// Delete
@@ -185,6 +197,8 @@ function specialKeyPress(event) {
 				setMarkerText(" ");
 			}
 
+			event.preventDefault();
+
 			break;
 		// Left arrow
 		case 37:
@@ -193,7 +207,13 @@ function specialKeyPress(event) {
 				prependToRightText(marker.textContent);
 				setMarkerText(getLeftText(marker).slice(-1));
 				setLeftText(getLeftText(marker).slice(0, -1));
+
+				console.log("After. Marker: ", marker.textContent);
+				console.log("After. Right: ", getRightText(marker));
+				console.log(getLeftText(marker));
 			}
+
+			event.preventDefault();
 
 			break;
 		// Right arrow
@@ -204,6 +224,8 @@ function specialKeyPress(event) {
 				setMarkerText(getRightText(marker)[0]);
 				setRightText(getRightText(marker).slice(1));
 			}
+
+			event.preventDefault();
 
 			break;
 		// Up arrow
@@ -218,7 +240,7 @@ function specialKeyPress(event) {
 }
 
 function keyPress(event) {
-	var keyCode = event.keyCode;
+	var keyCode = (typeof event.which === 'number') ? event.which : event.keyCode;
 	var markerParentsChildren = marker.parentElement.childNodes;
 	var markerLocation;
 
@@ -228,8 +250,6 @@ function keyPress(event) {
 			break;
 		}
 	}
-
-	console.log('keypress', keyCode);
 
 	switch(keyCode) {
 		// Tab
@@ -276,6 +296,8 @@ function keyPress(event) {
 			break;
 		default:
 			var textChar = String.fromCharCode(keyCode);
+
+			console.log("Character: ", textChar);
 
 			if(textChar) { appendToLeftText(textChar); }
 
@@ -367,4 +389,6 @@ function printLetter(span, char) {
 
 function scrollView(element) {
 	element.scrollIntoView();
+	// Compatibility fix
+	window.scrollTo(0, document.body.scrollHeight);
 }
