@@ -4,6 +4,7 @@ var mainFeed = document.getElementById('mainFeed');
 var marker = document.getElementById('marker');
 var inputText = document.getElementById('inputText');
 var input = document.getElementById('input');
+var inputStart = document.getElementById('inputStart');
 // Timeout for print of a character (milliseconds)
 var charTimeout = 20;
 // Timeout between print of rows (milliseconds)
@@ -116,6 +117,8 @@ var validCommands = {
 };
 
 function startBoot() {
+	inputStart.textContent = shellText.text[0];
+
 	// Disable left mouse clicks
 	document.onmousedown = function() {
 		marker.focus();
@@ -142,6 +145,7 @@ function startBoot() {
 	addEventListener('keydown', specialKeyPress);
 	// Tries to print messages from the queue every second
 	setInterval(printText, 100, messageQueue);
+	setInterval(scrollView, 100, input);
 	messageQueue.push(logo);
 	messageQueue.push(bootText);
 }
@@ -366,7 +370,6 @@ function addRow(text, timeout, speed, extraClass) {
 	row.appendChild(span);
 	mainFeed.appendChild(row);
 	addLetters(span, text, speed);
-	scrollView(row);
 }
 
 function addLetters(span, text, speed) {

@@ -19,7 +19,7 @@ pre {
     margin: 0;
 }
 
-#input { margin-bottom: 1.5em; }
+#input { padding-bottom: 1em; }
 
 #inputText {
     /* Needed to hide caret. text-shadow allows the text to be visible */
@@ -36,11 +36,10 @@ pre {
 
 #main {
     cursor: none;
-
-    /* Scaling effects are not identical in appearance across browsers */
-    /* Smooth in Safari, choppy in Chrome and Firefox */
-    -webkit-animation: distort 3s linear infinite;
-    animation: distort 3s linear infinite;
+    width: 100%;
+    height: 100vh;
+    -webkit-animation: textLight 3s linear infinite;
+    animation: textLight 3s linear infinite;
 }
 
 #main:before {
@@ -56,11 +55,6 @@ pre {
     box-shadow: inset 0 0 60px 5px #000000;
     -webkit-animation: light 3s linear infinite;
     animation: light 3s linear infinite;
-}
-
-#mainFeed {
-    -webkit-animation: blur 2s linear infinite;
-    animation: blur 2s linear infinite;
 }
 
 .logo { white-space: pre; }
@@ -86,20 +80,6 @@ pre {
     }
 }
 
-@-webkit-keyframes distort {
-    30%     { -webkit-transform: scale(1); }
-    50%     { -webkit-transform: scale(1.004, 1.001); }
-    70%     { -webkit-transform: scale(1.001, 1.004); }
-    90%     { -webkit-transform: scale(1); }     
-}
-
-@keyframes distort {
-    30%     { transform: scale(1); }
-    50%     { transform: scale(1.004, 1.001); }
-    70%     { transform: scale(1.001, 1.004); }
-    90%     { transform: scale(1); }   
-}
-
 @-webkit-keyframes light {
     0%      { opacity: .15; }
     25%     { opacity: .21; }
@@ -116,12 +96,20 @@ pre {
     100%    { opacity: .15; }
 }
 
-@-webkit-keyframes blur {
-    50%;    { -webkit-filter: blur(6px); }
+@-webkit-keyframes textLight {
+    0%      { opacity: 1; }
+    25%     { opacity: 1; }
+    50%     { opacity: .85; }
+    75%     { opacity: .70; }
+    100%    { opacity: 1; }
 }
 
-@keyframes blur {
-    50%;    { filter: blur(6px);}
+@keyframes textLight {
+    0%      { opacity: 1; }
+    25%     { opacity: .90; }
+    50%     { opacity: .70; }
+    75%     { opacity: .85; }
+    100%    { opacity: 1; }
 }
 
 @media (max-height: 768px) and (max-width: 1024px) {
@@ -135,22 +123,6 @@ pre {
     .logo { 
         font-size: .1em; 
     }
-
-    /* Higher values for iOS screens */
-    /* Needed because too low values seem to be ignored */
-    @-webkit-keyframes distort {
-        30%     { -webkit-transform: scale(1); }
-        50%     { -webkit-transform: scale(1.01, 1); }
-        70%     { -webkit-transform: scale(1, 1.01); }
-        90%     { -webkit-transform: scale(1); }     
-    }
-
-    @keyframes distort {
-        30%     { transform: scale(1); }
-        50%     { transform: scale(1.01, 1); }
-        70%     { transform: scale(1, 1.01); }
-        90%     { transform: scale(1); }
-    }
 }
 
 /* PiTft */
@@ -161,19 +133,4 @@ pre {
     }
 
     .logo { font-size: .2em; }
-
-    #main { 
-        -webkit-animation: none;
-        animation: none;
-    }
-
-    #main:before { 
-        -webkit-animation: none; 
-        animation: none;
-    }
-
-    #marker {
-        -webkit-animation: none;
-        animation: none;
-    }
 }
