@@ -37,8 +37,10 @@ pre {
 #main {
     cursor: none;
 
-    -webkit-animation: distort 4s linear infinite;
-    animation: distort 4s linear infinite;
+    /* Scaling effects are not identical in appearance across browsers */
+    /* Smooth in Safari, choppy in Chrome and Firefox */
+    -webkit-animation: distort 3s linear infinite;
+    animation: distort 3s linear infinite;
 }
 
 #main:before {
@@ -69,7 +71,7 @@ pre {
 }
 
 @-webkit-keyframes blinking {
-    from    { background-color: transparent; }
+    from { background-color: transparent; }
     50% {
         background-color: #00FF00;
         color: black;
@@ -77,7 +79,7 @@ pre {
 }
 
 @keyframes blinking {
-    from    { background-color: transparent; }
+    from { background-color: transparent; }
     50% {
         background-color: #00FF00;
         color: black;
@@ -85,43 +87,41 @@ pre {
 }
 
 @-webkit-keyframes distort {
-    0%      { -webkit-transform: scale(1); }
-    50%     { -webkit-transform: scale(1.004, 1.003); }
-    100%    { -webkit-transform: scale(1); }
+    30%     { -webkit-transform: scale(1); }
+    50%     { -webkit-transform: scale(1.004, 1.001); }
+    70%     { -webkit-transform: scale(1.001, 1.004); }
+    90%     { -webkit-transform: scale(1); }     
 }
 
 @keyframes distort {
-    0%      { transform: scale(1); }
-    50%     { transform: scale(1.004, 1.003); }
-    100%    { transform: scale(1); }
+    30%     { transform: scale(1); }
+    50%     { transform: scale(1.004, 1.001); }
+    70%     { transform: scale(1.001, 1.004); }
+    90%     { transform: scale(1); }   
 }
 
 @-webkit-keyframes light {
     0%      { opacity: .15; }
-    25%     { opacity: .19; }
+    25%     { opacity: .21; }
     50%     { opacity: .14; }
-    75%     { opacity: .09; }
+    75%     { opacity: .07; }
     100%    { opacity: .15; }
 }
 
 @keyframes light {
     0%      { opacity: .15; }
-    25%     { opacity: .19; }
+    25%     { opacity: .21; }
     50%     { opacity: .14; }
-    75%     { opacity: .09; }
+    75%     { opacity: .07; }
     100%    { opacity: .15; }
 }
 
 @-webkit-keyframes blur {
-    0%      { -webkit-filter: blur(0px);}
-    50%;    { -webkit-filter: blur(5px);}
-    100%    { -webkit-filter: blur(0px);}
+    50%;    { -webkit-filter: blur(6px); }
 }
 
 @keyframes blur {
-    0%      { filter: blur(0px);}
-    50%;    { filter: blur(5px);}
-    100%    { filter: blur(0px);}
+    50%;    { filter: blur(6px);}
 }
 
 @media (max-height: 768px) and (max-width: 1024px) {
@@ -134,6 +134,22 @@ pre {
 @media (max-height: 736px) and (max-width: 414px) {
     .logo { 
         font-size: .1em; 
+    }
+
+    /* Higher values for iOS screens */
+    /* Needed because too low values seem to be ignored */
+    @-webkit-keyframes distort {
+        30%     { -webkit-transform: scale(1); }
+        50%     { -webkit-transform: scale(1.01, 1); }
+        70%     { -webkit-transform: scale(1, 1.01); }
+        90%     { -webkit-transform: scale(1); }     
+    }
+
+    @keyframes distort {
+        30%     { transform: scale(1); }
+        50%     { transform: scale(1.01, 1); }
+        70%     { transform: scale(1, 1.01); }
+        90%     { transform: scale(1); }
     }
 }
 
