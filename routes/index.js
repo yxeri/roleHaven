@@ -3,7 +3,7 @@ var router = express.Router();
 
 function handle(io) {
 	router.get('/', function(req, res) {
-		res.render('index', { title: 'Organica Oracle v2.1' });
+		res.render('index', { title: 'Organica Oracle v3.2' });
 	});
 
 	io.on('connection', function(socket) {

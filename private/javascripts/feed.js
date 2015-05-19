@@ -15,9 +15,10 @@ var messageQueue = [];
 // It has to be zero before another group of messages can be printed.
 var charsInProgress = 0;
 var previousCommands = [];
+var currentUser = 'Agent47';
 var logo = {
 	speed : 2,
-	extraClass : 'logo',
+	extraClass : 'logo', 
 	text : [
 	' ',
 	'                           ####',
@@ -32,10 +33,10 @@ var logo = {
 	'      ####                  ##      ##     #   ######',
 	'  #######                   ##########     ##    ########',
 	' ########                   ##       ########     ########',
-	'  ######                    ##       #      #############',
-	'    ####                    ##       #      ##     ####',
-	'    ####                    ##       #      ##    #####',
-	'    ####                    ##       #      ###########',
+	'  ######      ORGANICA      ##       #      #############',
+	'    ####     ORACLE         ##       #      ##     ####',
+	'    ####     OPERATIONS     ##       #      ##    #####',
+	'    ####      CENTER        ##       #      ###########',
 	' ########                   ##       #########    ########',
 	' ########                   ##########      #    #########',
 	'  ########                  ##      ##     ## ###########',
@@ -76,7 +77,7 @@ var bootText = {
 	]
 }
 var commandFailText = {	text : ['command not found'] }
-var shellText = { text : ['bush-3.2$ '] }
+var shellText = { text : ['3OC-3.2$ '] }
 var validCommands = {
 	ls : {
 		func : function() {console.log('ls')},
@@ -100,12 +101,39 @@ var validCommands = {
 		]
 	},
 	help : {
-		func : function() {console.log('help')},
-		help : 'Shows a list of available commands'
+		func : function() {
+			var keys = Object.keys(validCommands);
+			var messageObj = { text : [] };
+			var arrayIndex = 0;
+
+			keys.sort();
+
+			for(var i = 0; i < keys.length; i++) {
+				var msg = '';
+
+				if(i > 0) {
+					if(i % 3 === 0) {
+						arrayIndex++; 
+					} else {
+						msg += '\t';
+					}
+				}
+
+				if(!messageObj.text[arrayIndex]) { messageObj.text[arrayIndex] = '' }
+
+				msg += keys[i];
+				messageObj.text[arrayIndex] += msg;
+			}
+
+			messageQueue.push(messageObj);
+
+			console.log(messageObj);
+		},
+		help : ['Shows a list of available commands']
 	},
 	pwd : {
 		func : function() {console.log('pwd')},
-		help: 'Shows the current directory'
+		help : ['Shows the current directory']
 	},
 	clear : {
 		func : function () {
@@ -113,7 +141,14 @@ var validCommands = {
 				mainFeed.removeChild(mainFeed.lastChild);
 			}
 		},
+		help : ['Clears the terminal view'],
 		clearAfterUse : true
+	},
+	whoami : {
+		func : function () {
+			messageQueue.push({ text : [currentUser] })
+		},
+		help : ['Shows the current user']
 	}
 };
 
@@ -276,25 +311,32 @@ function keyPress(event) {
 			break;
 		// Enter
 		case 13:
-			var message = { text : [shellText.text + getInputText()] };
 			var phrases = getInputText().toLowerCase().trim().split(' ');
 			var command = validCommands[phrases[0]];
 
 			console.log(phrases);
 
 			if(command) {
+				// Print input if the command shouldn't clear after use
+				if(!command.clearAfterUse) {
+					messageQueue.push({ text : [shellText.text + getInputText()] });
+				}
+
+				// Print the help and instruction parts of the command
 				if(phrases[1] === '--help') {
-					message.text = message.text.concat(command.help, command.instructions);
-					console.log(message.text);
+					var message = { text : [] };
+
+					if(command.help) { message.text = message.text.concat(command.help); }
+
+					if(command.instructions) { message.text = message.text.concat(command.instructions); }
+
+					if(message.text.length > 0) { messageQueue.push(message); }
 				} else {
 					command.func();
-				}			
-			} else if(command.length > 0) {
-				message.text.push('- ' + command + ': ' + commandFailText.text);
-			}
-
-			if(!command.clearAfterUse) {
-				messageQueue.push(message);
+				}
+			// Sent command was not found. Print the failed input
+			} else if(phrases[0].length > 0) {
+				messageQueue.push({ text : ['- ' + phrases[0] + ': ' + commandFailText.text] });
 			}
 
 			clearInput();
