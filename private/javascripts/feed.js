@@ -14,7 +14,7 @@ var messageQueue = [];
 // Characters left to print during one call to printText().
 // It has to be zero before another group of messages can be printed.
 var charsInProgress = 0;
-var previousCommands = ['ls moo/blah', 'cd fake/dir'];
+var previousCommands = [];
 var logo = {
 	speed : 2,
 	extraClass : 'logo',
@@ -112,7 +112,8 @@ var validCommands = {
 			while(mainFeed.childNodes.length > 1) {
 				mainFeed.removeChild(mainFeed.lastChild);
 			}
-		}
+		},
+		clearAfterUse : true
 	}
 };
 
@@ -145,9 +146,8 @@ function startBoot() {
 	addEventListener('keydown', specialKeyPress);
 	// Tries to print messages from the queue every second
 	setInterval(printText, 100, messageQueue);
-	setInterval(scrollView, 100, input);
-	messageQueue.push(logo);
 	messageQueue.push(bootText);
+	messageQueue.push(logo);
 }
 
 startBoot();
@@ -278,23 +278,25 @@ function keyPress(event) {
 		case 13:
 			var message = { text : [shellText.text + getInputText()] };
 			var phrases = getInputText().toLowerCase().trim().split(' ');
-			var command = phrases[0];
+			var command = validCommands[phrases[0]];
 
 			console.log(phrases);
 
-			if(command in validCommands) {
+			if(command) {
 				if(phrases[1] === '--help') {
-					message.text = message.text.concat(validCommands[command].help, validCommands[command].instructions);
+					message.text = message.text.concat(command.help, command.instructions);
 					console.log(message.text);
 				} else {
-					console.log('Couldnt match help');
-					validCommands[command].func();
+					command.func();
 				}			
 			} else if(command.length > 0) {
 				message.text.push('- ' + command + ': ' + commandFailText.text);
 			}
 
-			messageQueue.push(message);
+			if(!command.clearAfterUse) {
+				messageQueue.push(message);
+			}
+
 			clearInput();
 
 			break;
@@ -315,6 +317,8 @@ function keyPress(event) {
 // It will not continue if a print is already in progress,
 // which is indicated by charsInProgress being > 0
 function printText(messageQueue) {
+	scrollView(input);
+
 	if(charsInProgress === 0) {
 		// Amount of time (milliseconds) for a row to finish printing
 		var nextTimeout = 0;

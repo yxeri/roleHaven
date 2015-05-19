@@ -97,18 +97,16 @@ pre {
 }
 
 @-webkit-keyframes textLight {
-    0%      { opacity: 1; }
     25%     { opacity: 1; }
     50%     { opacity: .85; }
-    75%     { opacity: .70; }
+    75%     { opacity: .72; }
     100%    { opacity: 1; }
 }
 
 @keyframes textLight {
-    0%      { opacity: 1; }
-    25%     { opacity: .90; }
-    50%     { opacity: .70; }
-    75%     { opacity: .85; }
+    25%     { opacity: 1; }
+    50%     { opacity: .85; }
+    75%     { opacity: .72; }
     100%    { opacity: 1; }
 }
 
@@ -133,4 +131,14 @@ pre {
     }
 
     .logo { font-size: .2em; }
+
+    #main {
+        -webkit-animation: none;
+        animation: none;
+    }
+
+    #main:before {
+        -webkit-animation: none;
+        animation: none;
+    }
 }
