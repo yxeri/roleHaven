@@ -15,7 +15,7 @@ var messageQueue = [];
 // It has to be zero before another group of messages can be printed.
 var charsInProgress = 0;
 var previousCommands = [];
-var currentUser = 'Agent47';
+var currentUser = 'user1117';
 var logo = {
 	speed : 2,
 	extraClass : 'logo', 
@@ -60,20 +60,7 @@ var bootText = {
 		'Welcome, esteemed employee #166584',
 		'WEATHER WARNING: High amount of acid rain predicted. Strong winds. Solar flares. Happy things',
 		'RECOMMENDATION: Stay indoors',
-		'Have a productive day!',
-		'!_!',
-		'^_^',
-		':D',
-		':D',
-		':D',
-		':D',
-		'^_^',
-		':D',
-		':D',
-		':D',
-		':D',
-		':D',
-		'^_^'
+		'Have a productive day!'
 	]
 }
 var commandFailText = {	text : ['command not found'] }
@@ -102,32 +89,7 @@ var validCommands = {
 	},
 	help : {
 		func : function() {
-			var keys = Object.keys(validCommands);
-			var messageObj = { text : [] };
-			var arrayIndex = 0;
-
-			keys.sort();
-
-			for(var i = 0; i < keys.length; i++) {
-				var msg = '';
-
-				if(i > 0) {
-					if(i % 3 === 0) {
-						arrayIndex++; 
-					} else {
-						msg += '\t';
-					}
-				}
-
-				if(!messageObj.text[arrayIndex]) { messageObj.text[arrayIndex] = '' }
-
-				msg += keys[i];
-				messageObj.text[arrayIndex] += msg;
-			}
-
-			messageQueue.push(messageObj);
-
-			console.log(messageObj);
+			messageQueue.push({ text : getAvailableCommands() });
 		},
 		help : ['Shows a list of available commands']
 	},
@@ -164,23 +126,22 @@ function startBoot() {
 	addEventListener('touchstart', function(event) {
 		event.preventDefault();
 		marker.focus();
-		marker.textContent = "touchstart";
 	});
 	addEventListener('touchmove', function(event) {
 		event.preventDefault();
 		marker.focus();
-		marker.textContent = "touchmove";
 	});
 	addEventListener('touchend', function(event) {
 		event.preventDefault();
 		marker.focus();
-		marker.textContent = "touchend";
 	});
 	addEventListener('keypress', keyPress);
 	// Needed for some special keys. They are not detected with keypress
 	addEventListener('keydown', specialKeyPress);
+	
 	// Tries to print messages from the queue every second
 	setInterval(printText, 100, messageQueue);
+
 	messageQueue.push(bootText);
 	messageQueue.push(logo);
 }
@@ -210,10 +171,39 @@ function clearInput() {
 	setMarkerText(' ');
 }
 
+function getAvailableCommands () {
+	var keys = Object.keys(validCommands);
+	var commands = [];
+	var arrayIndex = 0;
+
+	keys.sort();
+
+	for(var i = 0; i < keys.length; i++) {
+		var msg = '';
+
+		if(i > 0) {
+			if(i % 3 === 0) {
+				arrayIndex++; 
+			} else {
+				msg += '\t';
+			}
+		}
+
+		if(!commands[arrayIndex]) { commands[arrayIndex] = '' }
+
+		msg += keys[i];
+		commands[arrayIndex] += msg;
+	}
+
+	return commands;
+}
+
 // Needed for arrow and delete keys. They are not detected with keypress
 function specialKeyPress(event) {
 	var keyCode = (typeof event.which === 'number') ? event.which : event.keyCode;
 	var markerParentsChildren = marker.parentElement.childNodes;
+
+	console.log(keyCode);
 
 	switch(keyCode) {
 		// Backspace
@@ -221,6 +211,58 @@ function specialKeyPress(event) {
 			// Remove character to the left of the marker
 			if(getLeftText(marker)) {
 				setLeftText(getLeftText(marker).slice(0, -1));
+			}
+
+			event.preventDefault();
+
+			break;
+		// Tab
+		case 9:
+			var phrases = getInputText().toLowerCase().trim().split(' ');
+			var commands = Object.keys(validCommands);
+			var matched = [];
+
+			// Auto-complete should only trigger when one phrase is in the input
+			// It will not auto-complete flags
+			if(phrases.length === 1 && phrases[0].length > 0) {
+				for(var i = 0; i < commands.length; i++) {
+					var matches = false;
+
+					for(var j = 0; j < phrases[0].length; j++) {
+						console.log("Chars:", phrases[0], commands[i]);
+						if(phrases[0].charAt(j) === commands[i].charAt(j)) {
+							matches = true;
+						} else {
+							matches = false;
+
+							break;
+						}
+					}
+
+					if(matches) {
+						matched.push(commands[i]);
+					}
+				}
+
+				if(matched.length === 1) {
+					clearInput();
+					setLeftText(matched[0] + ' ');
+				} else if(matched.length > 0) {
+					var msg = '';
+
+					matched.sort();
+
+					for(var i = 0; i < matched.length; i++) {
+						msg += matched[i] + '\t';
+					}
+
+					messageQueue.push({ text : [msg] });
+				}
+
+				console.log(matched);
+			// No input? Show all available commands
+			} else {
+				messageQueue.push({ text : getAvailableCommands() });
 			}
 
 			event.preventDefault();
@@ -290,25 +332,9 @@ function keyPress(event) {
 		}
 	}
 
+	console.log(keyCode);
+
 	switch(keyCode) {
-		// Tab
-		case 9:
-			var phrases = getInputText().toLowerCase().trim().split(' ');
-
-			for(var i = 0; i < phrases.length; i++) {
-				var phrase = phrases[i];
-
-				for(var j = 0; j < phrase.length; j++) {
-					var phraseChar = phrase[j];
-					console.log(phraseChar);
-
-					for(var k = 0; k < validCommands.length; k++) {
-
-					}
-				}
-			}
-
-			break;
 		// Enter
 		case 13:
 			var phrases = getInputText().toLowerCase().trim().split(' ');
