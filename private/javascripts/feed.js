@@ -5,6 +5,7 @@ var marker = document.getElementById('marker');
 var inputText = document.getElementById('inputText');
 var input = document.getElementById('input');
 var inputStart = document.getElementById('inputStart');
+var socket = io();
 // Timeout for print of a character (milliseconds)
 var charTimeout = 20;
 // Timeout between print of rows (milliseconds)
@@ -100,7 +101,7 @@ var validCommands = {
         help : ['Shows the current directory']
     },
     clear : {
-        func : function () {
+        func : function() {
             while(mainFeed.childNodes.length > 1) {
                 mainFeed.removeChild(mainFeed.lastChild);
             }
@@ -109,12 +110,33 @@ var validCommands = {
         clearAfterUse : true
     },
     whoami : {
-        func : function () {
+        func : function() {
             messageQueue.push({ text : [currentUser] });
         },
         help : ['Shows the current user']
+    },
+    msg : {
+        func : function() {
+            var phrases = getInputText().toLowerCase().trim().split(' ');
+
+            socket.emit('chat message', getInputText());
+        },
+        help : ['Sends a message'],
+        instructions : [
+            ' Usage:',
+            '  msg *message*',
+            ' Example:',
+            '  msg Hello!'
+        ]
     }
 };
+
+socket.on('chat message', function(msg) {
+    messageQueue.push({ 
+        timestamp : true,
+        text : [msg],
+    });
+});
 
 function startBoot() {
     inputStart.textContent = shellText.text[0];
@@ -183,7 +205,7 @@ function getAvailableCommands () {
         var msg = '';
 
         if(i > 0) {
-            if(i % 3 === 0) {
+            if(i % 4 === 0) {
                 arrayIndex++; 
             } else {
                 msg += '\t';
