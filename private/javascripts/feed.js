@@ -18,7 +18,7 @@ var previousCommands = [];
 var currentUser = 'user1117';
 var logo = {
 	speed : 2,
-	extraClass : 'logo', 
+	extraClass : 'logo',
 	text : [
 	' ',
 	'                           ####',
@@ -54,6 +54,7 @@ var logo = {
 	]
 };
 var bootText = {
+	timestamp : true,
 	text : [
 		'Initiating connection to HQ',
 		'Syncing data',
@@ -67,7 +68,7 @@ var commandFailText = {	text : ['command not found'] }
 var shellText = { text : ['3OC-3.2$ '] }
 var validCommands = {
 	ls : {
-		func : function() {console.log('ls')},
+		func : function() { console.log('ls'); },
 		help : ['Shows a list of files and directories in the directory.'],
 		instructions : [
 			' Usage:',
@@ -78,7 +79,7 @@ var validCommands = {
 		]
 	},
 	cd : {
-		func : function() {console.log('cd')},
+		func : function() { console.log('cd'); },
 		help : ['Move to sent directory.'],
 		instructions : [
 			' Usage:',
@@ -203,8 +204,6 @@ function specialKeyPress(event) {
 	var keyCode = (typeof event.which === 'number') ? event.which : event.keyCode;
 	var markerParentsChildren = marker.parentElement.childNodes;
 
-	console.log(keyCode);
-
 	switch(keyCode) {
 		// Backspace
 		case 8:
@@ -229,7 +228,6 @@ function specialKeyPress(event) {
 					var matches = false;
 
 					for(var j = 0; j < phrases[0].length; j++) {
-						console.log("Chars:", phrases[0], commands[i]);
 						if(phrases[0].charAt(j) === commands[i].charAt(j)) {
 							matches = true;
 						} else {
@@ -258,8 +256,6 @@ function specialKeyPress(event) {
 
 					messageQueue.push({ text : [msg] });
 				}
-
-				console.log(matched);
 			// No input? Show all available commands
 			} else {
 				messageQueue.push({ text : getAvailableCommands() });
@@ -288,10 +284,6 @@ function specialKeyPress(event) {
 				prependToRightText(marker.textContent);
 				setMarkerText(getLeftText(marker).slice(-1));
 				setLeftText(getLeftText(marker).slice(0, -1));
-
-				console.log("After. Marker: ", marker.textContent);
-				console.log("After. Right: ", getRightText(marker));
-				console.log(getLeftText(marker));
 			}
 
 			event.preventDefault();
@@ -332,15 +324,11 @@ function keyPress(event) {
 		}
 	}
 
-	console.log(keyCode);
-
 	switch(keyCode) {
 		// Enter
 		case 13:
 			var phrases = getInputText().toLowerCase().trim().split(' ');
 			var command = validCommands[phrases[0]];
-
-			console.log(phrases);
 
 			if(command) {
 				// Print input if the command shouldn't clear after use
@@ -371,8 +359,6 @@ function keyPress(event) {
 		default:
 			var textChar = String.fromCharCode(keyCode);
 
-			console.log("Character: ", textChar);
-
 			if(textChar) { appendToLeftText(textChar); }
 
 			break;
@@ -399,7 +385,7 @@ function printText(messageQueue) {
 				var text = message.text.shift();
 				var speed = message.speed;
 
-				setTimeout(addRow, nextTimeout, text, nextTimeout, speed, message.extraClass);
+				setTimeout(addRow, nextTimeout, text, nextTimeout, speed, message.extraClass, message.timestamp);
 
 				nextTimeout += calculateTimer(text, speed);
 			}
@@ -423,6 +409,18 @@ function countTotalCharacters(messageQueue) {
 	return total;
 }
 
+// Gets the current date and time
+function calculateNow(day, month, year) {
+	var date = new Date();
+	date.setHours(date.getHours() + (date.getTimezoneOffset() / 60));
+	var year = year ? year : (date.getFullYear().toString().substr(2));
+	var month = (date.getMonth() < 10 ? '0' : '') + (month ? month : (date.getMonth() + 1));
+	var day = (date.getDate() < 10 ? '0' : '') + (day ? day : date.getDate());
+	var minutes = (date.getMinutes() < 10 ? '0' : '') + date.getMinutes();
+
+	return '[' + day + '-' + month + '-' + year + ' ' + date.getHours() + ':' + minutes + '] ';
+}
+
 // Calculates amount of time to print text (speed times amount of characters plus buffer)
 function calculateTimer(text, speed) {
 	var timeout = speed ? speed : charTimeout
@@ -430,7 +428,7 @@ function calculateTimer(text, speed) {
 	return (text.length * timeout) + timeoutBuffer;
 }
 
-function addRow(text, timeout, speed, extraClass) {
+function addRow(text, timeout, speed, extraClass, timestamp) {
 	var row = document.createElement('li');
 	var span = document.createElement('span');
 
@@ -441,6 +439,7 @@ function addRow(text, timeout, speed, extraClass) {
 
 	row.appendChild(span);
 	mainFeed.appendChild(row);
+	if(timestamp) { span.innerHTML += calculateNow(); }
 	addLetters(span, text, speed);
 }
 
