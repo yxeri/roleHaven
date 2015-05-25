@@ -313,6 +313,8 @@ function specialKeyPress(event) {
                 console.log("after", previousCommandPointer);
             }
 
+            event.preventDefault();
+
             break;
         // Down arrow
         case 40:
@@ -330,6 +332,8 @@ function specialKeyPress(event) {
             } else {
                 clearInput();
             }
+
+            event.preventDefault();
 
             break;
         default:
@@ -466,9 +470,14 @@ function addRow(text, timeout, speed, extraClass, timestamp) {
         row.className += ' ' + extraClass;
     }
 
+    if(timestamp) {
+        var timeSpan = document.createElement('span');
+        timeSpan.innerHTML = calculateNow();
+        row.appendChild(timeSpan);
+    }
+
     row.appendChild(span);
     mainFeed.appendChild(row);
-    if(timestamp) { span.innerHTML += calculateNow(); }
     addLetters(span, text, speed);
 }
 
