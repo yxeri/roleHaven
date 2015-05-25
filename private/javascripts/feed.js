@@ -15,6 +15,7 @@ var messageQueue = [];
 // It has to be zero before another group of messages can be printed.
 var charsInProgress = 0;
 var previousCommands = [];
+var previousCommandPointer = 0;
 var currentUser = 'user1117';
 var logo = {
 	speed : 2,
@@ -303,9 +304,21 @@ function specialKeyPress(event) {
 			break;
 		// Up arrow
 		case 38:
+			if(previousCommandPointer > 0) {
+				clearInput();
+				appendToLeftText(previousCommands[--previousCommandPointer]);
+			}
+
 			break;
 		// Down arrow
 		case 40:
+			if(previousCommandPointer < previousCommands.length - 1) {
+				clearInput();
+				appendToLeftText(previousCommands[++previousCommandPointer]);
+			} else {
+				clearInput();
+			}
+
 			break;
 		default:
 			break;
@@ -331,6 +344,10 @@ function keyPress(event) {
 			var command = validCommands[phrases[0]];
 
 			if(command) {
+				// Store the command for usage with up/down arrows
+				previousCommands.push(getInputText());
+				previousCommandPointer++;
+
 				// Print input if the command shouldn't clear after use
 				if(!command.clearAfterUse) {
 					messageQueue.push({ text : [shellText.text + getInputText()] });
@@ -412,7 +429,6 @@ function countTotalCharacters(messageQueue) {
 // Gets the current date and time
 function calculateNow(day, month, year) {
 	var date = new Date();
-	date.setHours(date.getHours() + (date.getTimezoneOffset() / 60));
 	var year = year ? year : (date.getFullYear().toString().substr(2));
 	var month = (date.getMonth() < 10 ? '0' : '') + (month ? month : (date.getMonth() + 1));
 	var day = (date.getDate() < 10 ? '0' : '') + (day ? day : date.getDate());
