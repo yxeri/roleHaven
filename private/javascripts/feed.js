@@ -118,8 +118,12 @@ var validCommands = {
     msg : {
         func : function() {
             var phrases = getInputText().toLowerCase().trim().split(' ');
+            var message = '';
 
-            socket.emit('chat message', getInputText());
+            // Removing command part from the message
+            phrases = phrases.slice(1);
+
+            socket.emit('chat message', message);
         },
         help : ['Sends a message'],
         instructions : [
@@ -466,14 +470,14 @@ function countTotalCharacters(messageQueue) {
 }
 
 // Gets the current date and time
-function calculateNow(day, month, year) {
+function calculateNow(day, month) {
     var date = new Date();
     var minutes = (date.getMinutes() < 10 ? '0' : '') + date.getMinutes();
-    year = year ? year : (date.getFullYear().toString().substr(2));
+    // year = year ? year : (date.getFullYear().toString().substr(2));
     month = (date.getMonth() < 10 ? '0' : '') + (month ? month : (date.getMonth() + 1));
     day = (date.getDate() < 10 ? '0' : '') + (day ? day : date.getDate());
 
-    return '[' + day + '-' + month + '-' + year + ' ' + date.getHours() + ':' + minutes + '] ';
+    return '[' + day + '-' + month + ' ' + date.getHours() + ':' + minutes + '] ';
 }
 
 // Calculates amount of time to print text (speed times amount of characters plus buffer)
