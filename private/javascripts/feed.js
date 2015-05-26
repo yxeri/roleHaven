@@ -92,6 +92,7 @@ var validCommands = {
     // },
     help : {
         func : function() {
+            messageQueue.push({ text : 'Add --help after a command (with whitespace in between) to get instructions on how to use it' });
             messageQueue.push({ text : getAvailableCommands() });
         },
         help : ['Shows a list of available commands']
@@ -119,12 +120,13 @@ var validCommands = {
         func : function() {
             var phrases = getInputText().toLowerCase().trim().split(' ');
             var message = '';
+            var user = '<' + socket.id.substr(0, 6) + '> ';
 
             // Removing command part from the message
             phrases = phrases.slice(1);
             message = phrases.join(' ');
 
-            socket.emit('chat message', message);
+            socket.emit('message', user + message);
         },
         help : ['Sends a message'],
         instructions : [
@@ -133,10 +135,22 @@ var validCommands = {
             ' Example:',
             '  msg Hello!'
         ]
+    },
+    join : {
+        func : function() {
+            
+        },
+        help : ['Joins a group chat room. You will know which room you are in by the text written out to the left of the marker'],
+        instructions : [
+            ' Usage:',
+            '  join *room name* *optionalPassword*',
+            ' Example:',
+            '  join sector5 5531'
+        ]
     }
 };
 
-socket.on('chat message', function(msg) {
+socket.on('message', function(msg) {
     messageQueue.push({ 
         timestamp : true,
         text : [msg],
@@ -460,15 +474,15 @@ function countTotalCharacters(messageQueue) {
 }
 
 // Gets the current date and time
-function calculateNow(day, month) {
+function calculateNow(day, month, year) {
     var date = new Date();
     var minutes = (date.getMinutes() < 10 ? '0' : '') + date.getMinutes();
     var hours = (date.getHours() < 10 ? '0' : '') + date.getHours();
     // year = year ? year : (date.getFullYear().toString().substr(2));
-    month = (date.getMonth() < 10 ? '0' : '') + (month ? month : (date.getMonth() + 1));
-    day = (date.getDate() < 10 ? '0' : '') + (day ? day : date.getDate());
+    // month = (date.getMonth() < 10 ? '0' : '') + (month ? month : (date.getMonth() + 1));
+    // day = (date.getDate() < 10 ? '0' : '') + (day ? day : date.getDate());
 
-    return '[' + day + '-' + month + ' ' + hours + ':' + minutes + '] ';
+    return '[' + hours + ':' + minutes + '] ';
 }
 
 // Calculates amount of time to print text (speed times amount of characters plus buffer)
