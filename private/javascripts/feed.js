@@ -214,6 +214,13 @@ socket.on('message', function(msg) {
     });
 });
 
+socket.on('roomMsg', function(msg) {
+    messageQueue.push({
+        timestamp : true,
+        text : ['[' + localStorage.getItem('room') + '] ' + msg]
+    });
+});
+
 function startBoot() {
     setInputStart(shellText.text[0]);
 
@@ -260,6 +267,8 @@ function prependToRightText(sentText) { marker.parentElement.childNodes[2].textC
 function setMarkerText(text) { marker.textContent = text; }
 
 function setInputStart(text) { inputStart.textContent = text; }
+
+function getInputStart() { return inputStart.textContent; }
 
 function clearInput() {
     setLeftText('');
@@ -454,7 +463,7 @@ function keyPress(event) {
 
                 // Print input if the command shouldn't clear after use
                 if(!command.clearAfterUse) {
-                    messageQueue.push({ text : [shellText.text + getInputText()] });
+                    messageQueue.push({ text : [getInputStart() + getInputText()] });
                 }
 
                 // Print the help and instruction parts of the command

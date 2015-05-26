@@ -14,7 +14,7 @@ function handle(io) {
         });
 
         socket.on('roomMsg', function(msg) {
-            socket.to(socket.rooms[1]).emit('message', msg);
+            socket.to(socket.rooms[1]).emit('roomMsg', msg);
         });
 
         socket.on('broadcastMsg', function(msg) {
