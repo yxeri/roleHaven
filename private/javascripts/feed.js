@@ -69,37 +69,37 @@ var bootText = {
 var commandFailText = { text : ['command not found'] };
 var shellText = { text : ['3OC-3.2$ '] };
 var validCommands = {
-    ls : {
-        func : function() { console.log('ls'); },
-        help : ['Shows a list of files and directories in the directory.'],
-        instructions : [
-            ' Usage:',
-            '  ls *directory*',
-            '  ls',
-            ' Example:',
-            '  ls /usr/bin'
-        ]
-    },
-    cd : {
-        func : function() { console.log('cd'); },
-        help : ['Move to sent directory.'],
-        instructions : [
-            ' Usage:',
-            '  cd *directory*',
-            ' Example:',
-            '  cd /usr/bin'
-        ]
-    },
+    // ls : {
+    //     func : function() { console.log('ls'); },
+    //     help : ['Shows a list of files and directories in the directory.'],
+    //     instructions : [
+    //         ' Usage:',
+    //         '  ls *directory*',
+    //         '  ls',
+    //         ' Example:',
+    //         '  ls /usr/bin'
+    //     ]
+    // },
+    // cd : {
+    //     func : function() { console.log('cd'); },
+    //     help : ['Move to sent directory.'],
+    //     instructions : [
+    //         ' Usage:',
+    //         '  cd *directory*',
+    //         ' Example:',
+    //         '  cd /usr/bin'
+    //     ]
+    // },
     help : {
         func : function() {
             messageQueue.push({ text : getAvailableCommands() });
         },
         help : ['Shows a list of available commands']
     },
-    pwd : {
-        func : function() { console.log('pwd'); },
-        help : ['Shows the current directory']
-    },
+    // pwd : {
+    //     func : function() { console.log('pwd'); },
+    //     help : ['Shows the current directory']
+    // },
     clear : {
         func : function() {
             while(mainFeed.childNodes.length > 1) {
@@ -122,6 +122,7 @@ var validCommands = {
 
             // Removing command part from the message
             phrases = phrases.slice(1);
+            message = phrases.join(' ');
 
             socket.emit('chat message', message);
         },
@@ -151,16 +152,7 @@ function startBoot() {
         return false;
     };
 
-    addEventListener('touchstart', function(event) {
-        event.preventDefault();
-        marker.focus();
-    });
-    addEventListener('touchmove', function(event) {
-        event.preventDefault();
-        marker.focus();
-    });
-    addEventListener('touchend', function(event) {
-        event.preventDefault();
+    document.getElementById('main').addEventListener('click', function(event) {
         marker.focus();
     });
     addEventListener('keypress', keyPress);
@@ -431,8 +423,6 @@ function keyPress(event) {
 // It will not continue if a print is already in progress,
 // which is indicated by charsInProgress being > 0
 function printText(messageQueue) {
-    scrollView(input);
-
     if(charsInProgress === 0) {
         // Amount of time (milliseconds) for a row to finish printing
         var nextTimeout = 0;
@@ -473,11 +463,12 @@ function countTotalCharacters(messageQueue) {
 function calculateNow(day, month) {
     var date = new Date();
     var minutes = (date.getMinutes() < 10 ? '0' : '') + date.getMinutes();
+    var hours = (date.getHours() < 10 ? '0' : '') + date.getHours();
     // year = year ? year : (date.getFullYear().toString().substr(2));
     month = (date.getMonth() < 10 ? '0' : '') + (month ? month : (date.getMonth() + 1));
     day = (date.getDate() < 10 ? '0' : '') + (day ? day : date.getDate());
 
-    return '[' + day + '-' + month + ' ' + date.getHours() + ':' + minutes + '] ';
+    return '[' + day + '-' + month + ' ' + hours + ':' + minutes + '] ';
 }
 
 // Calculates amount of time to print text (speed times amount of characters plus buffer)
@@ -505,6 +496,7 @@ function addRow(text, timeout, speed, extraClass, timestamp) {
     row.appendChild(span);
     mainFeed.appendChild(row);
     addLetters(span, text, speed);
+    scrollView(row);
 }
 
 function addLetters(span, text, speed) {
