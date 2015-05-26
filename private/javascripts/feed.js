@@ -126,7 +126,12 @@ var validCommands = {
             phrases = phrases.slice(1);
             message = phrases.join(' ');
 
-            socket.emit('message', user + message);
+            // Send message to the room
+            if(localStorage.getItem('room')) {
+                socket.emit('roomMsg', user + message);
+            } else {
+                socket.emit('message', user + message);
+            }
         },
         help : [
             'Sends a message to your current room',
@@ -160,17 +165,30 @@ var validCommands = {
         ]
     },
     joinroom : {
-        func : function() {
+        func : function(room) {
             var phrases = getInputText().toLowerCase().trim().split(' ');
+            var room = room ? room : phrases[1];
 
-            // This should really verify if it has joined the room
-            setInputStart(phrases[1] + '$ ');
-            socket.emit('joinRoom', phrases[1]);
+            if(room.length > 0 && room.length <= 6) {
+                socket.emit('joinRoom', room);
+                localStorage.setItem('room', room);   
+                // This should really verify if it has joined the room
+                setInputStart(room + '$ ');
+            } else {
+                messageQueue.push({
+                    text : [
+                        'The name ' + room + ' is not allowed',
+                        'The name of the room has to be 1 to 6 characters',
+                        'E.g. room1'
+                    ] 
+                });
+            }
         },
         help : [
             'Joins a group chat room.',
-            'You will be prompted for a password if needed',
-            'The room you are in is written out to the left of the marker'
+            'You will be prompted for a password if needed.',
+            'The room you are in is written out to the left of the marker.',
+            'The name of the chat room has a maximum of 6 letters.'
         ],
         instructions : [
             ' Usage:',
@@ -182,13 +200,9 @@ var validCommands = {
     exitroom : {
         func : function() {
             // This should really verify if it has exited the room
-            setInputStart();
+            setInputStart(shellText.text[0]);
             socket.emit('exitRoom');
-        }
-    },
-    createroom : {
-        func : function() {
-
+            localStorage.removeItem('room');
         }
     }
 };
@@ -221,6 +235,10 @@ function startBoot() {
 
     messageQueue.push(bootText);
     messageQueue.push(logo);
+
+    if(localStorage.getItem('room')) {
+        validCommands.joinroom.func(localStorage.getItem('room'));
+    }
 }
 
 startBoot();
@@ -260,7 +278,7 @@ function getAvailableCommands () {
         var msg = '';
 
         if(i > 0) {
-            if(i % 4 === 0) {
+            if(i % 3 === 0) {
                 arrayIndex++; 
             } else {
                 msg += '\t';
@@ -380,14 +398,10 @@ function specialKeyPress(event) {
             break;
         // Up arrow
         case 38:
-            console.log(previousCommands.length);
-
             if(previousCommandPointer > 0) {
                 clearInput();
                 previousCommandPointer--;
                 appendToLeftText(previousCommands[previousCommandPointer]);
-
-                console.log("after", previousCommandPointer);
             }
 
             event.preventDefault();
@@ -395,14 +409,10 @@ function specialKeyPress(event) {
             break;
         // Down arrow
         case 40:
-            console.log(previousCommands.length);
-
             if(previousCommandPointer < previousCommands.length - 1) {
                 clearInput();
                 previousCommandPointer++;
                 appendToLeftText(previousCommands[previousCommandPointer]);
-
-                console.log("after", previousCommandPointer);
             } else if(previousCommandPointer === previousCommands.length - 1) {
                 clearInput();
                 previousCommandPointer++
