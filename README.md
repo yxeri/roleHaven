@@ -1,5 +1,5 @@
 # roleHaven
-RoleHaven is an initiative to create a platform to be used in-game during LARPs. The first iteration and usage will be during a post-apocalyptic LARP played out in Sweden.
+RoleHaven is an initiative to create a platform to be used in-game during LARPs. The first iteration and first usage will be during a post-apocalyptic LARP played out in Sweden.
 
 ## Instructions for the terminal
 * Tab to show all available commands
