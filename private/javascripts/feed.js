@@ -112,7 +112,7 @@ var validCommands = {
     },
     whoami : {
         func : function() {
-            messageQueue.push({ text : [currentUser] });
+            messageQueue.push({ text : [socket.id.substr(0, 6)] });
         },
         help : ['Shows the current user']
     },
@@ -128,7 +128,10 @@ var validCommands = {
 
             socket.emit('message', user + message);
         },
-        help : ['Sends a message'],
+        help : [
+            'Sends a message to your current room',
+            'The room you are in is written out to the left of the marker'
+        ],
         instructions : [
             ' Usage:',
             '  msg *message*',
@@ -136,17 +139,57 @@ var validCommands = {
             '  msg Hello!'
         ]
     },
-    join : {
+    broadcast : {
         func : function() {
-            
+            var phrases = getInputText().toLowerCase().trim().split(' ');
+            var message = '';
+            var user = '<' + socket.id.substr(0, 6) + '> ';
+
+            // Removing command part from the message
+            phrases = phrases.slice(1);
+            message = phrases.join(' ');
+
+            socket.emit('broadcastMsg', user + message);
         },
-        help : ['Joins a group chat room. You will know which room you are in by the text written out to the left of the marker'],
+        help : ['Sends a message to everyone connected'],
+        instructions : [
+            ' Usage:',
+            '  broadcast *message*',
+            ' Example:',
+            '  broadcast Hello!'
+        ]
+    },
+    joinroom : {
+        func : function() {
+            var phrases = getInputText().toLowerCase().trim().split(' ');
+
+            // This should really verify if it has joined the room
+            setInputStart(phrases[1] + '$ ');
+            socket.emit('joinRoom', phrases[1]);
+        },
+        help : [
+            'Joins a group chat room.',
+            'You will be prompted for a password if needed',
+            'The room you are in is written out to the left of the marker'
+        ],
         instructions : [
             ' Usage:',
             '  join *room name* *optionalPassword*',
             ' Example:',
-            '  join sector5 5531'
+            '  join sector5'
         ]
+    },
+    exitroom : {
+        func : function() {
+            // This should really verify if it has exited the room
+            setInputStart();
+            socket.emit('exitRoom');
+        }
+    },
+    createroom : {
+        func : function() {
+
+        }
     }
 };
 
@@ -158,7 +201,7 @@ socket.on('message', function(msg) {
 });
 
 function startBoot() {
-    inputStart.textContent = shellText.text[0];
+    setInputStart(shellText.text[0]);
 
     // Disable left mouse clicks
     document.onmousedown = function() {
@@ -197,6 +240,8 @@ function setRightText(text) { marker.parentElement.childNodes[2].textContent = t
 function prependToRightText(sentText) { marker.parentElement.childNodes[2].textContent = sentText + marker.parentElement.childNodes[2].textContent; }
 
 function setMarkerText(text) { marker.textContent = text; }
+
+function setInputStart(text) { inputStart.textContent = text; }
 
 function clearInput() {
     setLeftText('');
