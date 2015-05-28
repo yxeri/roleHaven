@@ -125,14 +125,17 @@ var validCommands = {
         help : ['Shows the current user']
     },
     msg : {
-        func : function() {
-            var phrases = getInputText().toLowerCase().trim().split(' ');
-            var message = '';
+        func : function(message) {
             var user = '<' + currentUser + '> ';
 
-            // Removing command part from the message
-            phrases = phrases.slice(1);
-            message = phrases.join(' ');
+            if(typeof message === undefined) {
+                var phrases = getInputText().toLowerCase().trim().split(' ');
+                var message = '';
+
+                // Removing command part from the message
+                phrases = phrases.slice(1);
+                message = phrases.join(' ');
+            }
 
             socket.emit('chatMsg', {
                 msg : user + message,
@@ -170,6 +173,7 @@ var validCommands = {
             '  broadcast Hello!'
         ]
     },
+    // This should check if the room already exists
     joinroom : {
         func : function(room) {
             var phrases = getInputText().toLowerCase().trim().split(' ');
@@ -316,6 +320,17 @@ var validCommands = {
         func : function() {
             socket.emit('listUsers');
         }
+    },
+    createroom : {
+        func : function() {
+
+        },
+        help : [
+
+        ],
+        instructions : [
+
+        ]
     }
 };
 
@@ -585,7 +600,17 @@ function keyPress(event) {
         // Enter
         case 13:
             var phrases = getInputText().toLowerCase().trim().split(' ');
-            var command = localStorage.getItem('mode') === 'normal' ? validCommands[phrases[0]] : validCommands[phrases[0].slice(1)];
+            var command = null;
+
+            if(localStorage.getItem('mode') === 'normal') {
+                command = validCommands[phrases[0]];
+            } else {
+                var sign = phrases[0].charAt(0);
+
+                if(sign === '-') {
+                    command = validCommands[phrases[0].slice(1)];
+                }
+            }
 
             console.log('user',currentUser);
             console.log('command',command);
@@ -614,16 +639,21 @@ function keyPress(event) {
                 } else {
                     command.func(phrases[1]);
                 }
-            } else if(phrases[0] === 'register') {
+            } else if(command && phrases[0] === 'register') {
                 console.log('register command', phrases[1]);
                 messageQueue.push({ text : [getInputStart() + getInputText()] });
                 command.func(phrases[1]);
+            } else if(localStorage.getItem('mode') === 'chat') {
+                var combinedText = phrases.join(' ');
+
+                messageQueue.push({ text : [getInputStart() + getInputText()] });
+                validCommands.msg.func(combinedText);
             } else if(currentUser === null) {
                 messageQueue.push({ 
                     text : [
-                    'You must register', 
-                    'Use command "register"',
-                    'e.g. register myname'
+                        'You must register', 
+                        'Use command "register"',
+                        'e.g. register myname'
                     ] 
                 });
             // Sent command was not found. Print the failed input
