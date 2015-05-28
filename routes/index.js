@@ -6,33 +6,46 @@ function handle(io) {
         res.render('index', { title: 'Organica Oracle v3.2' });
     });
 
+    // A user is meant to only join one room outside of the automatically created one and 'public'
     io.on('connection', function(socket) {
-        socket.broadcast.emit('message', 'User ' + socket.id.substr(0, 6) + ' has connected');
+        socket.join('public');
 
-        socket.on('message', function(msg) {
-            socket.broadcast.emit('message', msg); 
-        });
-
-        socket.on('roomMsg', function(msg) {
-            socket.to(socket.rooms[1]).emit('roomMsg', msg);
+        socket.on('chatMsg', function(msg) {
+            socket.broadcast.to(msg.room).emit('chatMsg', msg); 
         });
 
         socket.on('broadcastMsg', function(msg) {
-            socket.broadcast.emit('message', msg);
+            socket.broadcast.emit('chatMsg', msg);
         });
 
-        socket.on('joinRoom', function(room) {
+        socket.on('importantMsg', function(msg) {
+            socket.broadcast.emit('importantMsg', msg);
+        });
+
+        socket.on('follow', function(room) {
+            socket.broadcast.to(room).emit('chatMsg', {
+                msg : socket.id.substr(0, 6) + ' is now following ' + room,
+                room : room
+            });
             socket.join(room);
-            console.log(socket.rooms);
         });
 
-        socket.on('exitRoom', function() {
-            socket.leave(socket.rooms[1]);
-            console.log(socket.rooms);
+        socket.on('unfollow', function(room) {
+            socket.broadcast.to(room).emit('chatMsg', {
+                msg : socket.id.substr(0, 6) + ' has stopped following ' + room,
+                room : room
+            });
+            socket.leave(room);
+        });
+
+        socket.on('listRooms', function() {
+            var rooms = socket.rooms.slice(1).join('\t');
+
+            socket.emit('message', { msg : rooms });
         });
 
         socket.on('disconnect', function() {
-            socket.broadcast.emit('message', 'User ' + socket.id.substr(0, 6) + ' has disconnected');
+            socket.broadcast.emit('chatMsg', { msg : socket.id.substr(0, 6) + ' has disconnected' });
         });
     });
 

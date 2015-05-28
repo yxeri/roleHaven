@@ -52,16 +52,30 @@ pre {
     background-size: 100% 5px;
     opacity: .15;
     -webkit-box-shadow: inset 0 0 60px 5px #000000;
-    box-shadow: inset 0 0 60px 5px #000000;
+    box-shadow: inset 0 0 40px 10px #000000;
     -webkit-animation: light 3s linear infinite;
     animation: light 3s linear infinite;
 }
 
-.logo { white-space: pre; }
+.logo {
+    white-space: pre;
+    line-height: 1.2;
+    text-transform: uppercase;
+}
+
+.important {
+    line-height: 1;
+    background-color: #00FF00;
+    color: black;
+    white-space: pre;
+    text-transform: uppercase;
+    text-indent: 1em;
+    font-size: 1.5em;
+}
 
 .feed {
-    padding-left: 1em;
-    padding-right: 1em;
+    padding-left: 0.5em;
+    padding-right: 0.5em;
 }
 
 @-webkit-keyframes blinking {
@@ -118,19 +132,17 @@ pre {
 }
 
 @media (max-height: 736px) and (max-width: 414px) {
-    .logo { 
-        font-size: .1em; 
-    }
+    .logo { font-size: .1em; }
 }
 
 /* PiTft */
 @media (max-height: 240px) {
     .feed {
-        padding-left: 0.1em;
-        padding-right: 0.1em;
+        padding-left: .1em;
+        padding-right: .1em;
     }
 
-    .logo { font-size: .2em; }
+    .logo { font-size: .1em; }
 
     #main {
         -webkit-animation: none;

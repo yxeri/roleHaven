@@ -35,10 +35,10 @@ var logo = {
     '      ####                  ##      ##     #   ######',
     '  #######                   ##########     ##    ########',
     ' ########                   ##       ########     ########',
-    '  ######      ORGANICA      ##       #      #############',
-    '    ####     ORACLE         ##       #      ##     ####',
-    '    ####     OPERATIONS     ##       #      ##    #####',
-    '    ####      CENTER        ##       #      ###########',
+    '  ######      Organica      ##       #      #############',
+    '    ####     Oracle         ##       #      ##     ####',
+    '    ####     Operations     ##       #      ##    #####',
+    '    ####      Center        ##       #      ###########',
     ' ########                   ##       #########    ########',
     ' ########                   ##########      #    #########',
     '  ########                  ##      ##     ## ###########',
@@ -50,22 +50,21 @@ var logo = {
     '             ################################',
     '               ############################',
     '               #######  ##########  #######',
-    '                 ###       ####       ###',
+    '                 ###      ######      ###',
     '                           ####',
     ' '
     ]
 };
-var bootText = {
-    timestamp : true,
+var blowout = {
+    extraClass : 'important',
+    speed: 2,
     text : [
-        'Initiating connection to HQ',
-        'Syncing data',
-        'Welcome, esteemed employee #166584',
-        'WEATHER WARNING: High amount of acid rain predicted. Strong winds. Solar flares. Happy things',
-        'RECOMMENDATION: Stay indoors',
-        'Have a productive day!'
+        ' ',
+        'Radiation warning',
+        'Sector A1',
+        ' '
     ]
-};
+}
 var commandFailText = { text : ['command not found'] };
 var shellText = { text : ['3OC-3.2$ '] };
 var validCommands = {
@@ -92,7 +91,7 @@ var validCommands = {
     // },
     help : {
         func : function() {
-            messageQueue.push({ text : 'Add --help after a command (with whitespace in between) to get instructions on how to use it' });
+            messageQueue.push({ text : ['Add --help after a command (with whitespace in between) to get instructions on how to use it'] });
             messageQueue.push({ text : getAvailableCommands() });
         },
         help : ['Shows a list of available commands']
@@ -126,12 +125,10 @@ var validCommands = {
             phrases = phrases.slice(1);
             message = phrases.join(' ');
 
-            // Send message to the room
-            if(localStorage.getItem('room')) {
-                socket.emit('roomMsg', user + message);
-            } else {
-                socket.emit('message', user + message);
-            }
+            socket.emit('chatMsg', {
+                msg : user + message,
+                room : localStorage.getItem('room')
+            });
         },
         help : [
             'Sends a message to your current room',
@@ -154,9 +151,9 @@ var validCommands = {
             phrases = phrases.slice(1);
             message = phrases.join(' ');
 
-            socket.emit('broadcastMsg', user + message);
+            socket.emit('broadcastMsg', { msg : user + message });
         },
-        help : ['Sends a message to everyone connected'],
+        help : ['Sends a message to everyone connected, even those outside of your room'],
         instructions : [
             ' Usage:',
             '  broadcast *message*',
@@ -169,8 +166,9 @@ var validCommands = {
             var phrases = getInputText().toLowerCase().trim().split(' ');
             var room = room ? room : phrases[1];
 
-            if(room.length > 0 && room.length <= 6) {
-                socket.emit('joinRoom', room);
+            if(room.length > 0 && room.length <= 6 && room !== 'broadcast' && room !== 'public') {
+                messageQueue.push({ text : ['Joining ' + room] });
+                socket.emit('follow', room);
                 localStorage.setItem('room', room);   
                 // This should really verify if it has joined the room
                 setInputStart(room + '$ ');
@@ -179,13 +177,13 @@ var validCommands = {
                     text : [
                         'The name ' + room + ' is not allowed',
                         'The name of the room has to be 1 to 6 characters',
-                        'E.g. room1'
+                        'It cannot be named "broadcast" or "public"'
                     ] 
                 });
             }
         },
         help : [
-            'Joins a group chat room.',
+            'Joins a chat room. The room will be created if it doesn\t exist.',
             'You will be prompted for a password if needed.',
             'The room you are in is written out to the left of the marker.',
             'The name of the chat room has a maximum of 6 letters.'
@@ -199,26 +197,61 @@ var validCommands = {
     },
     exitroom : {
         func : function() {
-            // This should really verify if it has exited the room
-            setInputStart(shellText.text[0]);
-            socket.emit('exitRoom');
-            localStorage.removeItem('room');
-        }
+            if(localStorage.getItem('room')) {
+                // This should really verify if it has exited the room
+                setInputStart(shellText.text[0]);
+                socket.emit('unfollow', localStorage.getItem('room'));
+                localStorage.removeItem('room');
+            }
+        },
+        help : ['Leaves the chat room you are in, if you are in one.']
+    },
+    follow : {
+        func : function(room) {
+            socket.emit('follow', room);
+        },
+        help : [
+            'Follows a room and shows you all messages posted in it.',
+            'You will get the messages from this room even if it isn\'t your currently selected one'
+        ]
+    },
+    unfollow : {
+        func : function(room) {
+            if(room === localStorage.getItem('room')) {
+                // This should really verify if it has exited the room
+                setInputStart(shellText.text[0]);
+                localStorage.removeItem('room');
+            }
+
+            socket.emit('unfollow', room);
+        },
+        help : ['Stops following a room.']
+    },
+    listrooms : {
+        func : function() {
+            socket.emit('listRooms');
+        },
+        help : [
+            'Shows all the rooms you are following.',
+            'public is the room that all users automatically join.'
+        ]
     }
 };
 
-socket.on('message', function(msg) {
+socket.on('chatMsg', function(msg) {
+    var roomTag = msg.room && msg.room !== localStorage.getItem('room') ? '[' + msg.room + '] ' : '';
     messageQueue.push({ 
         timestamp : true,
-        text : [msg],
+        text : [roomTag + msg.msg],
     });
 });
 
-socket.on('roomMsg', function(msg) {
-    messageQueue.push({
-        timestamp : true,
-        text : ['[' + localStorage.getItem('room') + '] ' + msg]
-    });
+socket.on('message', function(msg) {
+    messageQueue.push({ text : [msg.msg] });
+});
+
+socket.on('importantMsg', function() {
+
 });
 
 function startBoot() {
@@ -240,11 +273,13 @@ function startBoot() {
     // Tries to print messages from the queue every second
     setInterval(printText, 100, messageQueue);
 
-    messageQueue.push(bootText);
     messageQueue.push(logo);
+    messageQueue.push(blowout);
 
     if(localStorage.getItem('room')) {
         validCommands.joinroom.func(localStorage.getItem('room'));
+    } else {
+        validCommands.joinroom.func('public');
     }
 }
 
@@ -287,11 +322,7 @@ function getAvailableCommands () {
         var msg = '';
 
         if(i > 0) {
-            if(i % 3 === 0) {
-                arrayIndex++; 
-            } else {
-                msg += '\t';
-            }
+            msg += ' | ';
         }
 
         if(!commands[arrayIndex]) { commands[arrayIndex] = ''; }
@@ -362,7 +393,7 @@ function specialKeyPress(event) {
                 }
             // No input? Show all available commands
             } else {
-                messageQueue.push({ text : getAvailableCommands() });
+                validCommands.help.func();
             }
 
             event.preventDefault();
@@ -596,7 +627,7 @@ function printLetter(span, character) {
 }
 
 function scrollView(element) {
-    element.scrollIntoView();
+    element.scrollIntoView(element);
     // Compatibility fix
     window.scrollTo(0, document.body.scrollHeight);
 }
