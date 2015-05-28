@@ -1,6 +1,8 @@
 var express = require('express');
 var router = express.Router();
 
+var users = {};
+
 function handle(io) {
     router.get('/', function(req, res) {
         res.render('index', { title: 'Organica Oracle v3.2' });
@@ -10,7 +12,17 @@ function handle(io) {
     io.on('connection', function(socket) {
         socket.join('public');
 
+        socket.on('register', function(user) {
+            var userObj = {
+                name : user, 
+                socketId : socket.id
+            }
+
+            users[user] = userObj.socketId;
+        });
+
         socket.on('chatMsg', function(msg) {
+            console.log(msg);
             socket.broadcast.to(msg.room).emit('chatMsg', msg); 
         });
 
@@ -23,19 +35,24 @@ function handle(io) {
         });
 
         socket.on('follow', function(room) {
-            socket.broadcast.to(room).emit('chatMsg', {
-                msg : socket.id.substr(0, 6) + ' is now following ' + room,
-                room : room
-            });
-            socket.join(room);
+            if(socket.rooms.indexof(room) > -1) {
+                socket.broadcast.to(room).emit('chatMsg', {
+                    msg : socket.id.substr(0, 6) + ' joined ' + room,
+                    room : room
+                });
+                socket.join(room);
+            }
+
+            console.log(socket.rooms);
         });
 
         socket.on('unfollow', function(room) {
             socket.broadcast.to(room).emit('chatMsg', {
-                msg : socket.id.substr(0, 6) + ' has stopped following ' + room,
+                msg : socket.id.substr(0, 6) + ' left ' + room,
                 room : room
             });
             socket.leave(room);
+            console.log(socket.rooms);
         });
 
         socket.on('listRooms', function() {

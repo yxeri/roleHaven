@@ -17,7 +17,7 @@ var messageQueue = [];
 var charsInProgress = 0;
 var previousCommands = localStorage.getItem('previousCommands') ? JSON.parse(localStorage.getItem('previousCommands')) : [];
 var previousCommandPointer = previousCommands.length > 0 ? previousCommands.length : 0;
-var currentUser = localStorage.getItem('user') ? localStorage.getItem('user') : ('ano' + (Math.random() * 10000)).substring(0, 7);
+var currentUser = localStorage.getItem('user');
 var logo = {
     speed : 2,
     extraClass : 'logo',
@@ -57,7 +57,7 @@ var logo = {
 };
 var blowout = {
     extraClass : 'important',
-    speed: 100,
+    speed: 50,
     text : [
         'Radiation warning',
         'Sector A1',
@@ -66,19 +66,18 @@ var blowout = {
 }
 var moduleWarning = {
     extraClass : 'important',
-    speed: 100,
+    speed: 50,
     text : [
         'Seismic activity detected',
         'Module incoming',
         'Locate and destroy',
-        'Eliminate scavangers',
+        'Eliminate vagrants',
         'Report success to HQ',
         'Sector A1',
         ' '
     ]
 }
 var commandFailText = { text : ['command not found'] };
-var shellText = { text : ['3OC-3.2$ '] };
 var validCommands = {
     // ls : {
     //     func : function() { console.log('ls'); },
@@ -178,7 +177,7 @@ var validCommands = {
             var phrases = getInputText().toLowerCase().trim().split(' ');
             var room = room ? room : phrases[1];
 
-            if(room.length > 0 && room.length <= 6 && room !== 'broadcast' && room !== 'public') {
+            if(room.length > 0 && room.length <= 6) {
                 messageQueue.push({ text : ['Joining ' + room] });
                 socket.emit('follow', room);
                 localStorage.setItem('room', room);   
@@ -209,11 +208,12 @@ var validCommands = {
     },
     exitroom : {
         func : function() {
-            if(localStorage.getItem('room')) {
+            if(localStorage.getItem('room') !== 'public') {
                 // This should really verify if it has exited the room
-                setInputStart(shellText.text[0]);
+                setInputStart('public$ ');
                 socket.emit('unfollow', localStorage.getItem('room'));
-                localStorage.removeItem('room');
+                localStorage.setItem('room', 'public');
+                socket.emit('follow', 'public');
             }
         },
         help : ['Leaves the chat room you are in, if you are in one.']
@@ -221,6 +221,7 @@ var validCommands = {
     follow : {
         func : function(room) {
             socket.emit('follow', room);
+            messageQueue.push({ text : ['Following ' + room] });
         },
         help : [
             'Follows a room and shows you all messages posted in it.',
@@ -230,12 +231,14 @@ var validCommands = {
     unfollow : {
         func : function(room) {
             if(room === localStorage.getItem('room')) {
-                // This should really verify if it has exited the room
-                setInputStart(shellText.text[0]);
                 localStorage.removeItem('room');
+                setInputStart('public$ ');
+                socket.emit('follow', 'public');
             }
 
+            // This should really verify if it has exited the room
             socket.emit('unfollow', room);
+            messageQueue.push({ text : ['Stopped following ' + room] });
         },
         help : ['Stops following a room.']
     },
@@ -246,6 +249,69 @@ var validCommands = {
         help : [
             'Shows all the rooms you are following.',
             'public is the room that all users automatically join.'
+        ]
+    },
+    chatmode : {
+        func : function() {
+            localStorage.setItem('mode', 'chat');
+            messageQueue.push({ text : ['Chat mode activated'] });
+        },
+        help : [
+            'Sets mode to chat',
+            'Everything written will be intepreted as chat messages',
+            'You will not need to use "msg" command to write messages',
+            'Use command "normalmode" to exit out of chat mode'
+        ]
+    },
+    normalmode : {
+        func : function() {
+            localStorage.setItem('mode', 'normal');
+            messageQueue.push({ text : ['Normal mode activated'] });
+        },
+        help : [
+            'Sets mode to normal',
+            'This is the default mode',
+            'You have to use "msg" command to write messages'
+        ]
+    },
+    register : {
+        func : function(user) {
+            // This should verify that the user doesn't already exist
+
+            console.log('user', user);
+
+            var errorMsg = {
+                text : [
+                    'Name has to be 3 to 6 characters long',
+                    'e.g. register myname'
+                ]
+            };
+
+            if(user) {
+                user = user.trim();
+
+                if(user.length > 2 && user.length < 7) {
+                    localStorage.setItem('user', user);
+                    currentUser = user;
+                    socket.emit('register', currentUser);
+
+                    messageQueue.push({
+                        text : [
+                            'Thank you!',
+                            'Welcome ' + user,
+                            'May you have many productive days'
+                        ] 
+                    });
+                } else {
+                    messageQueue.push(errorMsg);
+                }
+            } else {
+                messageQueue.push(errorMsg);
+            }
+        },
+        help : [
+        ],
+        instructions : [
         ]
     }
 };
@@ -267,8 +333,6 @@ socket.on('importantMsg', function() {
 });
 
 function startBoot() {
-    setInputStart(shellText.text[0]);
-
     // Disable left mouse clicks
     document.onmousedown = function() {
         marker.focus();
@@ -289,9 +353,23 @@ function startBoot() {
     messageQueue.push(blowout);
     messageQueue.push(moduleWarning);
 
+    if(currentUser) {
+        socket.emit('updateUser', currentUser);
+
+        messageQueue.push({
+            text : [
+                'Welcome, employee ' + currentUser,
+                'May you have a productive day'
+            ] 
+        });
+    }
+
+    if(localStorage.getItem('mode') === null) { localStorage.setItem('mode', 'normal') }
+
     if(localStorage.getItem('room')) {
         validCommands.joinroom.func(localStorage.getItem('room'));
     } else {
+        localStorage.setItem('room', 'public');
         validCommands.joinroom.func('public');
     }
 }
@@ -364,6 +442,7 @@ function specialKeyPress(event) {
         // Tab
         case 9:
             var phrases = getInputText().toLowerCase().trim().split(' ');
+            if(localStorage.getItem('mode') === 'chat') {  }
             var commands = Object.keys(validCommands);
             var matched = [];
 
@@ -495,9 +574,13 @@ function keyPress(event) {
         // Enter
         case 13:
             var phrases = getInputText().toLowerCase().trim().split(' ');
-            var command = validCommands[phrases[0]];
+            var command = localStorage.getItem('mode') === 'normal' ? validCommands[phrases[0]] : validCommands[phrases[0].slice(1)];
 
-            if(command) {
+            console.log('user',currentUser);
+            console.log('command',command);
+            console.log('mode',localStorage.getItem('mode'));
+
+            if(currentUser !== null && command) {
                 // Store the command for usage with up/down arrows
                 previousCommands.push(getInputText());
                 previousCommandPointer++;
@@ -518,8 +601,20 @@ function keyPress(event) {
 
                     if(message.text.length > 0) { messageQueue.push(message); }
                 } else {
-                    command.func();
+                    command.func(phrases[1]);
                 }
+            } else if(phrases[0] === 'register') {
+                console.log('register command', phrases[1]);
+                messageQueue.push({ text : [getInputStart() + getInputText()] });
+                command.func(phrases[1]);
+            } else if(currentUser === null) {
+                messageQueue.push({ 
+                    text : [
+                    'You must register', 
+                    'Use command "register"',
+                    'e.g. register myname'
+                    ] 
+                });
             // Sent command was not found. Print the failed input
             } else if(phrases[0].length > 0) {
                 messageQueue.push({ text : ['- ' + phrases[0] + ': ' + commandFailText.text] });
