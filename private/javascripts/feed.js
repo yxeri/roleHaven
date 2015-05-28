@@ -7,7 +7,7 @@ var input = document.getElementById('input');
 var inputStart = document.getElementById('inputStart');
 var socket = io();
 // Timeout for print of a character (milliseconds)
-var charTimeout = 20;
+var charTimeout = 10;
 // Timeout between print of rows (milliseconds)
 var timeoutBuffer = 100;
 // Queue of all the message objects that will be handled and printed
@@ -17,7 +17,7 @@ var messageQueue = [];
 var charsInProgress = 0;
 var previousCommands = localStorage.getItem('previousCommands') ? JSON.parse(localStorage.getItem('previousCommands')) : [];
 var previousCommandPointer = previousCommands.length > 0 ? previousCommands.length : 0;
-var currentUser = 'user1117';
+var currentUser = localStorage.getItem('user') ? localStorage.getItem('user') : ('ano' + (Math.random() * 10000)).substring(0, 7);
 var logo = {
     speed : 2,
     extraClass : 'logo',
@@ -57,10 +57,22 @@ var logo = {
 };
 var blowout = {
     extraClass : 'important',
-    speed: 2,
+    speed: 100,
     text : [
-        ' ',
         'Radiation warning',
+        'Sector A1',
+        ' '
+    ]
+}
+var moduleWarning = {
+    extraClass : 'important',
+    speed: 100,
+    text : [
+        'Seismic activity detected',
+        'Module incoming',
+        'Locate and destroy',
+        'Eliminate scavangers',
+        'Report success to HQ',
         'Sector A1',
         ' '
     ]
@@ -111,7 +123,7 @@ var validCommands = {
     },
     whoami : {
         func : function() {
-            messageQueue.push({ text : [socket.id.substr(0, 6)] });
+            messageQueue.push({ text : [currentUser] });
         },
         help : ['Shows the current user']
     },
@@ -275,6 +287,7 @@ function startBoot() {
 
     messageQueue.push(logo);
     messageQueue.push(blowout);
+    messageQueue.push(moduleWarning);
 
     if(localStorage.getItem('room')) {
         validCommands.joinroom.func(localStorage.getItem('room'));
@@ -315,20 +328,18 @@ function clearInput() {
 function getAvailableCommands () {
     var keys = Object.keys(validCommands);
     keys.sort();
-    var commands = [];
-    var arrayIndex = 0;
+    var commands = [''];
 
     for(var i = 0; i < keys.length; i++) {
         var msg = '';
 
-        if(i > 0) {
+        msg += keys[i];
+
+        if(i !== keys.length - 1) {
             msg += ' | ';
         }
 
-        if(!commands[arrayIndex]) { commands[arrayIndex] = ''; }
-
-        msg += keys[i];
-        commands[arrayIndex] += msg;
+        commands[0] += msg;
     }
 
     return commands;

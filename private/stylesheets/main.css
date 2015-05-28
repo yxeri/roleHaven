@@ -6,6 +6,9 @@ body {
     overflow: hidden;
     font-size: 1em;
     white-space: pre-wrap;
+    /* Needed for font-smoothing: none to affect text outside of the specific class */
+    -webkit-font-smoothing: antialiased;
+    font-smoothing: antialiased;
 }
 
 ul {
@@ -71,6 +74,9 @@ pre {
     text-transform: uppercase;
     text-indent: 1em;
     font-size: 1.5em;
+    font-weight: bold;
+    -webkit-font-smoothing: none;
+    font-smoothing: none;
 }
 
 .feed {
@@ -143,6 +149,8 @@ pre {
     }
 
     .logo { font-size: .1em; }
+
+    .important { text-indent: .5em }
 
     #main {
         -webkit-animation: none;
