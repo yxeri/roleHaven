@@ -17,7 +17,6 @@ function handle(io) {
             }
 
             users[user] = userObj.socketId;
-            console.log('register', user, userObj.socketId);
         });
 
         socket.on('chatMsg', function(msg) {
@@ -70,8 +69,6 @@ function handle(io) {
 }
 
 function getUser(socketId) {
-    console.log(users, socketId);
-
     for(var user in users) {
         if(socketId === users[user]) {
             return user; 
