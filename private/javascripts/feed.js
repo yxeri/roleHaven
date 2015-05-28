@@ -323,7 +323,7 @@ socket.on('chatMsg', function(msg) {
     var roomTag = msg.room && msg.room !== localStorage.getItem('room') ? '[' + msg.room + '] ' : '';
     messageQueue.push({ 
         timestamp : true,
-        text : [roomTag + msg.msg],
+        text : [roomTag + msg.msg]
     });
 });
 

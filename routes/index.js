@@ -20,7 +20,7 @@ function handle(io) {
         });
 
         socket.on('chatMsg', function(msg) {
-            socket.broadcast.to(msg.room).emit('chatMsg', msg); 
+            socket.broadcast.to(msg.room).emit('chatMsg', msg);
         });
 
         socket.on('broadcastMsg', function(msg) {
@@ -32,12 +32,14 @@ function handle(io) {
         });
 
         socket.on('follow', function(room) {
-            if(socket.rooms.indexOf(room) > -1) {
+            if(socket.rooms.indexOf(room) === -1) {
                 socket.broadcast.to(room).emit('chatMsg', {
                     msg : getUser(socket.id) + ' joined ' + room,
                     room : room
                 });
                 socket.join(room);
+            } else {
+                socket.emit('message', { msg : 'Already following the room' });
             }
         });
 
