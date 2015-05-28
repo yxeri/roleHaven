@@ -60,8 +60,7 @@ var blowout = {
     speed: 50,
     text : [
         'Radiation warning',
-        'Sector A1',
-        ' '
+        'Sector A1'
     ]
 }
 var moduleWarning = {
@@ -73,8 +72,7 @@ var moduleWarning = {
         'Locate and destroy',
         'Eliminate vagrants',
         'Report success to HQ',
-        'Sector A1',
-        ' '
+        'Sector A1'
     ]
 }
 var commandFailText = { text : ['command not found'] };
@@ -130,7 +128,7 @@ var validCommands = {
         func : function() {
             var phrases = getInputText().toLowerCase().trim().split(' ');
             var message = '';
-            var user = '<' + socket.id.substr(0, 6) + '> ';
+            var user = '<' + currentUser + '> ';
 
             // Removing command part from the message
             phrases = phrases.slice(1);
@@ -156,7 +154,7 @@ var validCommands = {
         func : function() {
             var phrases = getInputText().toLowerCase().trim().split(' ');
             var message = '';
-            var user = '<' + socket.id.substr(0, 6) + '> ';
+            var user = '<' + currentUser + '> ';
 
             // Removing command part from the message
             phrases = phrases.slice(1);
@@ -313,6 +311,11 @@ var validCommands = {
         ],
         instructions : [
         ]
+    },
+    listusers : {
+        func : function() {
+            socket.emit('listUsers');
+        }
     }
 };
 
@@ -329,7 +332,15 @@ socket.on('message', function(msg) {
 });
 
 socket.on('importantMsg', function() {
+    messageQueue.push({
+        extraClass: 'important',
+        text : [msg.msg] 
+    });
+});
 
+// Triggers when the connection is lost and then re-established
+socket.on('reconnect', function() {
+    socket.emit('register', currentUser);
 });
 
 function startBoot() {
@@ -354,7 +365,7 @@ function startBoot() {
     messageQueue.push(moduleWarning);
 
     if(currentUser) {
-        socket.emit('updateUser', currentUser);
+        socket.emit('register', currentUser);
 
         messageQueue.push({
             text : [

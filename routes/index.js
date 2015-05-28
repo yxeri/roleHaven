@@ -10,8 +10,6 @@ function handle(io) {
 
     // A user is meant to only join one room outside of the automatically created one and 'public'
     io.on('connection', function(socket) {
-        socket.join('public');
-
         socket.on('register', function(user) {
             var userObj = {
                 name : user, 
@@ -19,10 +17,10 @@ function handle(io) {
             }
 
             users[user] = userObj.socketId;
+            console.log('register', user, userObj.socketId);
         });
 
         socket.on('chatMsg', function(msg) {
-            console.log(msg);
             socket.broadcast.to(msg.room).emit('chatMsg', msg); 
         });
 
@@ -35,24 +33,21 @@ function handle(io) {
         });
 
         socket.on('follow', function(room) {
-            if(socket.rooms.indexof(room) > -1) {
+            if(socket.rooms.indexOf(room) > -1) {
                 socket.broadcast.to(room).emit('chatMsg', {
-                    msg : socket.id.substr(0, 6) + ' joined ' + room,
+                    msg : getUser(socket.id) + ' joined ' + room,
                     room : room
                 });
                 socket.join(room);
             }
-
-            console.log(socket.rooms);
         });
 
         socket.on('unfollow', function(room) {
             socket.broadcast.to(room).emit('chatMsg', {
-                msg : socket.id.substr(0, 6) + ' left ' + room,
+                msg : getUser(socket.id) + ' left ' + room,
                 room : room
             });
             socket.leave(room);
-            console.log(socket.rooms);
         });
 
         socket.on('listRooms', function() {
@@ -62,11 +57,28 @@ function handle(io) {
         });
 
         socket.on('disconnect', function() {
-            socket.broadcast.emit('chatMsg', { msg : socket.id.substr(0, 6) + ' has disconnected' });
+            socket.broadcast.emit('chatMsg', { msg : getUser(socket.id) + ' has disconnected' });
+        });
+
+        socket.on('listUsers', function() {
+            var usersString = Object.keys(users).sort().join(' - ');
+            socket.emit('message', { msg : usersString });
         });
     });
 
     return router;
+}
+
+function getUser(socketId) {
+    console.log(users, socketId);
+
+    for(var user in users) {
+        if(socketId === users[user]) {
+            return user; 
+        }
+    }
+
+    return null;
 }
 
 module.exports = handle;
