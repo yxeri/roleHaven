@@ -55,26 +55,6 @@ var logo = {
     ' '
     ]
 };
-var blowout = {
-    extraClass : 'important',
-    speed: 50,
-    text : [
-        'Radiation warning',
-        'Sector A1'
-    ]
-}
-var moduleWarning = {
-    extraClass : 'important',
-    speed: 50,
-    text : [
-        'Seismic activity detected',
-        'Module incoming',
-        'Locate and destroy',
-        'Eliminate vagrants',
-        'Report success to HQ',
-        'Sector A1'
-    ]
-}
 var commandFailText = { text : ['command not found'] };
 var validCommands = {
     // ls : {
@@ -153,96 +133,99 @@ var validCommands = {
             '  msg Hello!'
         ]
     },
-    broadcast : {
-        func : function() {
-            var phrases = getInputText().toLowerCase().trim().split(' ');
-            var message = '';
-            var user = '<' + currentUser + '> ';
+    // broadcast : {
+    //     func : function() {
+    //         var phrases = getInputText().toLowerCase().trim().split(' ');
+    //         var message = '';
+    //         var user = '<' + currentUser + '> ';
 
-            // Removing command part from the message
-            phrases = phrases.slice(1);
-            message = phrases.join(' ');
+    //         // Removing command part from the message
+    //         phrases = phrases.slice(1);
+    //         message = phrases.join(' ');
 
-            socket.emit('broadcastMsg', { msg : user + message });
-        },
-        help : ['Sends a message to everyone connected, even those outside of your room'],
-        instructions : [
-            ' Usage:',
-            '  broadcast *message*',
-            ' Example:',
-            '  broadcast Hello!'
-        ]
-    },
+    //         socket.emit('broadcastMsg', { msg : user + message });
+    //     },
+    //     accessLevel : 7,
+    //     help : ['Sends a message to everyone connected, even those outside of your room'],
+    //     instructions : [
+    //         ' Usage:',
+    //         '  broadcast *message*',
+    //         ' Example:',
+    //         '  broadcast Hello!'
+    //     ]
+    // },
     // This should check if the room already exists
-    joinroom : {
-        func : function(room) {
-            var phrases = getInputText().toLowerCase().trim().split(' ');
-            var room = room ? room : phrases[1];
+    enterroom : {
+        func : function(roomName, password) {
+            var room = {};
 
-            if(room.length > 0 && room.length <= 6) {
-                messageQueue.push({ text : ['Joining ' + room] });
+            if(roomName) {
+                room.roomName = roomName;
+                // Flag that will be used in .on function locally to show user they have entered
+                room.entered = true;
                 socket.emit('follow', room);
-                localStorage.setItem('room', room);   
-                // This should really verify if it has joined the room
-                setInputStart(room + '$ ');
-            } else {
-                messageQueue.push({
-                    text : [
-                        'The name ' + room + ' is not allowed',
-                        'The name of the room has to be 1 to 6 characters',
-                        'It cannot be named "broadcast" or "public"'
-                    ] 
-                });
             }
         },
         help : [
-            'Joins a chat room. The room will be created if it doesn\t exist.',
-            'You will be prompted for a password if needed.',
-            'The room you are in is written out to the left of the marker.',
-            'The name of the chat room has a maximum of 6 letters.'
+            'Enters a chat room.',
+            'The room has to exist for you to enter it'
         ],
         instructions : [
             ' Usage:',
-            '  join *room name* *optionalPassword*',
+            '  enterroom *room name*',
             ' Example:',
-            '  join sector5'
+            '  enterroom sector5'
         ]
     },
     exitroom : {
         func : function() {
             if(localStorage.getItem('room') !== 'public') {
-                // This should really verify if it has exited the room
-                setInputStart('public$ ');
-                socket.emit('unfollow', localStorage.getItem('room'));
-                localStorage.setItem('room', 'public');
-                socket.emit('follow', 'public');
+                var room = {}
+
+                room.roomName = localStorage.getItem('room');
+                // Flag that will be used in .on function locally to show user they have exited
+                room.exited = true;
+                socket.emit('unfollow', room);
             }
         },
         help : ['Leaves the chat room you are in, if you are in one.']
     },
     follow : {
-        func : function(room) {
+        func : function(roomName, password) {
+            var room = {};
+            room.roomName = roomName;
+            room.password = password;
+
             socket.emit('follow', room);
-            messageQueue.push({ text : ['Following ' + room] });
         },
         help : [
             'Follows a room and shows you all messages posted in it.',
             'You will get the messages from this room even if it isn\'t your currently selected one'
+        ],
+        instructions : [
+            ' Usage:',
+            '  follow *room name*',
+            ' Example:',
+            '  follow roomname'
         ]
     },
     unfollow : {
-        func : function(room) {
-            if(room === localStorage.getItem('room')) {
-                localStorage.removeItem('room');
-                setInputStart('public$ ');
-                socket.emit('follow', 'public');
+        func : function(roomName) {
+            var room = {};
+
+            if(roomName === localStorage.getItem('room')) {
+                room.exited = true;
             }
 
-            // This should really verify if it has exited the room
-            socket.emit('unfollow', room);
-            messageQueue.push({ text : ['Stopped following ' + room] });
+            socket.emit('unfollow', roomName);
         },
-        help : ['Stops following a room.']
+        help : ['Stops following a room.'],
+        instructions : [
+            ' Usage:',
+            '  unfollow *room name*',
+            ' Example:',
+            '  unfollow roomname'
+        ]
     },
     listrooms : {
         func : function() {
@@ -263,6 +246,11 @@ var validCommands = {
             'Everything written will be intepreted as chat messages',
             'You will not need to use "msg" command to write messages',
             'Use command "normalmode" to exit out of chat mode'
+        ],
+        instructions : [
+            'If you want to use a command in chatmode it has to be prepended with "-"',
+            'Example: ',
+            ' -normalmode'
         ]
     },
     normalmode : {
@@ -277,10 +265,9 @@ var validCommands = {
         ]
     },
     register : {
-        func : function(user) {
-            // This should verify that the user doesn't already exist
-
-            console.log('user', user);
+        func : function(userName, password) {
+            var user = {};
+            var trimmedUserName = userName.trim();
 
             var errorMsg = {
                 text : [
@@ -289,31 +276,22 @@ var validCommands = {
                 ]
             };
 
-            if(user) {
-                user = user.trim();
-
-                if(user.length > 2 && user.length < 7) {
-                    localStorage.setItem('user', user);
-                    currentUser = user;
-                    socket.emit('register', currentUser);
-
-                    messageQueue.push({
-                        text : [
-                            'Thank you!',
-                            'Welcome ' + user,
-                            'May you have many productive days'
-                        ] 
-                    });
-                } else {
-                    messageQueue.push(errorMsg);
-                }
+            if(userName && trimmedUserName.length > 2 && trimmedUserName.length < 7) {
+                user.userName = userName;
+                socket.emit('register', user);
             } else {
                 messageQueue.push(errorMsg);
             }
         },
         help : [
+            'Registers your user name on the server and connects it to your device',
+            'This user name will be your identity in the system'
         ],
         instructions : [
+            ' Usage:',
+            '  register *user name*',
+            ' Example:',
+            '  register myname'
         ]
     },
     listusers : {
@@ -322,15 +300,39 @@ var validCommands = {
         }
     },
     createroom : {
-        func : function() {
+        func : function(roomName) {
+            if(roomName.length > 0 && roomName.length < 7) {
+                var room = {};
 
+                room.roomName = roomName;
+
+                socket.emit('createRoom', room);
+                socket.emit('follow', room);
+            } else {
+                messageQueue.push({ text : [
+                        'Failed to create room.',
+                        'Room name has to be 1 to 6 characters long',
+                        'e.g. createroom myroom'
+                    ] 
+                });
+            }
         },
         help : [
-
+            'Creates a chat room',
+            'The rooms name has to be 1 to 6 characters long'
         ],
         instructions : [
-
+            ' Usage:',
+            '  createroom *room name*',
+            ' Example:',
+            '  createroom myroom'
         ]
+    },
+    myrooms : {
+        func : function() {
+            socket.emit('myRooms');
+        },
+        help : [ 'Shows a list of all rooms you are following']
     }
 };
 
@@ -355,7 +357,32 @@ socket.on('importantMsg', function() {
 
 // Triggers when the connection is lost and then re-established
 socket.on('reconnect', function() {
-    socket.emit('register', currentUser);
+    console.log('reconnect');
+    if(currentUser) {
+        socket.emit('updateUser', currentUser);
+    }
+});
+
+socket.on('follow', function(room) {
+    if(room.entered) {
+        setCurrentRoom(room.roomName);
+    } else {
+        messageQueue.push({ text : ['Following ' + room.roomName] });
+    }
+});
+
+socket.on('unfollow', function(room) {
+    if(room.exited) {
+        messageQueue.push({ text : ['Stopped following ' + room.roomName] });
+        setInputStart('public$ ');
+        localStorage.setItem('room', 'public');
+        socket.emit('follow', { roomName : 'public', entered : true });
+    }
+});
+
+socket.on('register', function(userName) {
+    localStorage.setItem('user', userName);
+    currentUser = userName;
 });
 
 function startBoot() {
@@ -376,11 +403,9 @@ function startBoot() {
     setInterval(printText, 100, messageQueue);
 
     messageQueue.push(logo);
-    messageQueue.push(blowout);
-    messageQueue.push(moduleWarning);
 
     if(currentUser) {
-        socket.emit('register', currentUser);
+        socket.emit('updateUser', currentUser);
 
         messageQueue.push({
             text : [
@@ -393,10 +418,9 @@ function startBoot() {
     if(localStorage.getItem('mode') === null) { localStorage.setItem('mode', 'normal') }
 
     if(localStorage.getItem('room')) {
-        validCommands.joinroom.func(localStorage.getItem('room'));
+        validCommands.enterroom.func(localStorage.getItem('room'));
     } else {
-        localStorage.setItem('room', 'public');
-        validCommands.joinroom.func('public');
+        validCommands.enterroom.func('public');
     }
 }
 
@@ -421,6 +445,12 @@ function setMarkerText(text) { marker.textContent = text; }
 function setInputStart(text) { inputStart.textContent = text; }
 
 function getInputStart() { return inputStart.textContent; }
+
+function setCurrentRoom(roomName) {
+    localStorage.setItem('room', roomName);
+    setInputStart(roomName + '$ ');
+    messageQueue.push({ text : ['Entered ' + roomName] });
+}
 
 function clearInput() {
     setLeftText('');
@@ -612,10 +642,6 @@ function keyPress(event) {
                 }
             }
 
-            console.log('user',currentUser);
-            console.log('command',command);
-            console.log('mode',localStorage.getItem('mode'));
-
             if(currentUser !== null && command) {
                 // Store the command for usage with up/down arrows
                 previousCommands.push(getInputText());
@@ -640,7 +666,6 @@ function keyPress(event) {
                     command.func(phrases[1]);
                 }
             } else if(command && phrases[0] === 'register') {
-                console.log('register command', phrases[1]);
                 messageQueue.push({ text : [getInputStart() + getInputText()] });
                 command.func(phrases[1]);
             } else if(localStorage.getItem('mode') === 'chat') {
