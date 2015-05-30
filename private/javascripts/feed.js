@@ -538,7 +538,7 @@ function specialKeyPress(event) {
                     messageQueue.push({ text : [msg] });
                 }
             // No input? Show all available commands
-            } else {
+            } else if(phrases[1] === undefined) {
                 validCommands.help.func();
             }
 
