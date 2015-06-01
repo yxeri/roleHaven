@@ -22,7 +22,7 @@ function handle(socket) {
         }
     });
 
-    socket.on('updateUser', function(userName) {
+    socket.on('updateId', function(userName) {
         if(manager.getUserByName(userName)) {
             manager.updateUser(userName, 'socketId', socket.id);
         }

@@ -312,17 +312,28 @@ socket.on('message', function(msg) {
 
 socket.on('importantMsg', function() {
     messageQueue.push({
-        extraClass: 'important',
+        extraClass : 'important',
         text : [msg.msg] 
     });
 });
 
 // Triggers when the connection is lost and then re-established
 socket.on('reconnect', function() {
-    console.log('reconnect');
     if(currentUser) {
-        socket.emit('updateUser', currentUser);
+        socket.emit('updateId', currentUser);
     }
+
+    messageQueue.push({
+        text : ['Re-established connection to network'],
+        extraClass : 'important'
+    });
+});
+
+socket.on('disconnect', function() {
+    messageQueue.push({ 
+        text : ['Lost connection to network'],
+        extraClass : 'important'
+    });
 });
 
 socket.on('follow', function(room) {
