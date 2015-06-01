@@ -340,12 +340,12 @@ socket.on('chatMsg', function(msg) {
     var roomTag = msg.room && msg.room !== localStorage.getItem('room') ? '[' + msg.room + '] ' : '';
     messageQueue.push({ 
         timestamp : true,
-        text : [roomTag + msg.msg]
+        text : [roomTag + msg.text]
     });
 });
 
 socket.on('message', function(msg) {
-    messageQueue.push({ text : [msg.msg] });
+    messageQueue.push(msg);
 });
 
 socket.on('importantMsg', function() {

@@ -47,12 +47,12 @@ function handle(io) {
                 users[user.userName] = userObj;
 
                 socket.emit('register', user.userName);
-                socket.emit('message', { msg : user.userName + ' has been registered!' });
+                socket.emit('message', { text : [user.userName + ' has been registered!'] });
             // This might not be needed
             } else if(user === null) {
                 console.log('Error. User was empty during register');
             } else {
-                socket.emit('message', { msg : user.userName + ' already exists. Failed to register' });
+                socket.emit('message', { text : [user.userName + ' already exists. Failed to register'] });
             }
         });
 
@@ -81,7 +81,7 @@ function handle(io) {
 
                 rooms[room.roomName] = room;
             } else {
-                socket.emit('message', { msg : room.roomName + ' already exists.' });
+                socket.emit('message', { text : [room.roomName + ' already exists.'] });
             }
         });
 
@@ -102,7 +102,7 @@ function handle(io) {
                     (selectedRoom.password === undefined || room.password === selectedRoom.password)) {
                     if(getUser(socket.id) !== null) {
                         socket.broadcast.to(room.roomName).emit('chatMsg', {
-                            msg : getUser(socket.id).userName + ' is following ' + room.roomName,
+                            text : getUser(socket.id).userName + ' is following ' + room.roomName,
                             room : room.roomName
                         });
                     }
@@ -111,20 +111,20 @@ function handle(io) {
                     socket.emit('follow', room);
                 }
             } else {
-                socket.emit('message', { msg : room.roomName + ' doesn\'t exist' });
+                socket.emit('message', { text : [room.roomName + ' doesn\'t exist'] });
             }
         });
 
         socket.on('unfollow', function(room) {
             if(socket.rooms.indexOf(room.roomName) > -1) {
                 socket.broadcast.to(room.roomName).emit('chatMsg', {
-                    msg : getUser(socket.id).userName + ' left ' + room.roomName,
+                    text : getUser(socket.id).userName + ' left ' + room.roomName,
                     room : room.roomName
                 });
                 socket.leave(room.roomName);
                 socket.emit('unfollow', room);
             } else {
-                socket.emit('message', { msg : 'You are not following ' + room.roomName });
+                socket.emit('message', { text : ['You are not following ' + room.roomName] });
             }
         });
 
@@ -144,28 +144,28 @@ function handle(io) {
                 if(filteredRooms.length > 0) {
                     roomsString = filteredRooms.sort().join('\t');
 
-                    socket.emit('message', { msg : roomsString });
+                    socket.emit('message', { text : [roomsString] });
                 } else {
-                    socket.emit('message', { msg : 'There are no rooms available on your access level [' + userObj.accessLevel + ']' });
+                    socket.emit('message', { text : ['There are no rooms available on your access level [' + userObj.accessLevel + ']'] });
                 }
             }
         });
 
         socket.on('disconnect', function() {
             if(getUser(socket.id) !== null) {
-                socket.broadcast.emit('chatMsg', { msg : getUser(socket.id).userName + ' has disconnected' });
+                socket.broadcast.emit('chatMsg', { text : [getUser(socket.id).userName + ' has disconnected'] });
             }
         });
 
         socket.on('listUsers', function() {
             var usersString = Object.keys(users).sort().join('\t');
-            socket.emit('message', { msg : usersString });
+            socket.emit('message', { text : [usersString] });
         });
 
         socket.on('myRooms', function() {
             var roomsString = socket.rooms.slice(1).sort().join('\t');
 
-            socket.emit('message', { msg : roomsString });
+            socket.emit('message', { text : [roomsString] });
         });
     });
 
