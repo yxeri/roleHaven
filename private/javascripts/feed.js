@@ -15,9 +15,6 @@ var messageQueue = [];
 // Characters left to print during one call to printText().
 // It has to be zero before another group of messages can be printed.
 var charsInProgress = 0;
-var previousCommands = localStorage.getItem('previousCommands') ? JSON.parse(localStorage.getItem('previousCommands')) : [];
-var previousCommandPointer = previousCommands.length > 0 ? previousCommands.length : 0;
-var currentUser = localStorage.getItem('user');
 var logo = {
     speed : 2,
     extraClass : 'logo',
@@ -56,28 +53,18 @@ var logo = {
     ]
 };
 var commandFailText = { text : ['command not found'] };
+var platformCommands = {
+    setLocally : function(name, item) {
+        localStorage.setItem(name, item);
+    },
+    getLocally : function(name) {
+        return localStorage.getItem(name);
+    }
+};
+var previousCommands = platformCommands.getLocally('previousCommands') ? JSON.parse(platformCommands.getLocally('previousCommands')) : [];
+var previousCommandPointer = previousCommands.length > 0 ? previousCommands.length : 0;
+var currentUser = platformCommands.getLocally('user');
 var validCommands = {
-    // ls : {
-    //     func : function() { console.log('ls'); },
-    //     help : ['Shows a list of files and directories in the directory.'],
-    //     instructions : [
-    //         ' Usage:',
-    //         '  ls *directory*',
-    //         '  ls',
-    //         ' Example:',
-    //         '  ls /usr/bin'
-    //     ]
-    // },
-    // cd : {
-    //     func : function() { console.log('cd'); },
-    //     help : ['Move to sent directory.'],
-    //     instructions : [
-    //         ' Usage:',
-    //         '  cd *directory*',
-    //         ' Example:',
-    //         '  cd /usr/bin'
-    //     ]
-    // },
     help : {
         func : function() {
             messageQueue.push({ text : ['Add --help after a command (with whitespace in between) to get instructions on how to use it'] });
@@ -85,10 +72,6 @@ var validCommands = {
         },
         help : ['Shows a list of available commands']
     },
-    // pwd : {
-    //     func : function() { console.log('pwd'); },
-    //     help : ['Shows the current directory']
-    // },
     clear : {
         func : function() {
             while(mainFeed.childNodes.length > 1) {
@@ -119,7 +102,7 @@ var validCommands = {
 
             socket.emit('chatMsg', {
                 msg : user + message,
-                room : localStorage.getItem('room')
+                room : platformCommands.getLocally('room')
             });
         },
         help : [
@@ -133,27 +116,6 @@ var validCommands = {
             '  msg Hello!'
         ]
     },
-    // broadcast : {
-    //     func : function() {
-    //         var phrases = getInputText().toLowerCase().trim().split(' ');
-    //         var message = '';
-    //         var user = '<' + currentUser + '> ';
-
-    //         // Removing command part from the message
-    //         phrases = phrases.slice(1);
-    //         message = phrases.join(' ');
-
-    //         socket.emit('broadcastMsg', { msg : user + message });
-    //     },
-    //     accessLevel : 7,
-    //     help : ['Sends a message to everyone connected, even those outside of your room'],
-    //     instructions : [
-    //         ' Usage:',
-    //         '  broadcast *message*',
-    //         ' Example:',
-    //         '  broadcast Hello!'
-    //     ]
-    // },
     // This should check if the room already exists
     enterroom : {
         func : function(roomName, password) {
@@ -179,10 +141,10 @@ var validCommands = {
     },
     exitroom : {
         func : function() {
-            if(localStorage.getItem('room') !== 'public') {
+            if(platformCommands.getLocally('room') !== 'public') {
                 var room = {}
 
-                room.roomName = localStorage.getItem('room');
+                room.roomName = platformCommands.getLocally('room');
                 // Flag that will be used in .on function locally to show user they have exited
                 room.exited = true;
                 socket.emit('unfollow', room);
@@ -213,7 +175,7 @@ var validCommands = {
         func : function(roomName) {
             var room = {};
 
-            if(roomName === localStorage.getItem('room')) {
+            if(roomName === platformCommands.getLocally('room')) {
                 room.exited = true;
             }
 
@@ -238,7 +200,7 @@ var validCommands = {
     },
     chatmode : {
         func : function() {
-            localStorage.setItem('mode', 'chat');
+            platformCommands.setLocally('mode', 'chat');
             messageQueue.push({ text : ['Chat mode activated'] });
         },
         help : [
@@ -255,7 +217,7 @@ var validCommands = {
     },
     normalmode : {
         func : function() {
-            localStorage.setItem('mode', 'normal');
+            platformCommands.setLocally('mode', 'normal');
             messageQueue.push({ text : ['Normal mode activated'] });
         },
         help : [
@@ -337,7 +299,7 @@ var validCommands = {
 };
 
 socket.on('chatMsg', function(msg) {
-    var roomTag = msg.room && msg.room !== localStorage.getItem('room') ? '[' + msg.room + '] ' : '';
+    var roomTag = msg.room && msg.room !== platformCommands.getLocally('room') ? '[' + msg.room + '] ' : '';
     messageQueue.push({ 
         timestamp : true,
         text : [roomTag + msg.text]
@@ -375,13 +337,13 @@ socket.on('unfollow', function(room) {
     if(room.exited) {
         messageQueue.push({ text : ['Stopped following ' + room.roomName] });
         setInputStart('public$ ');
-        localStorage.setItem('room', 'public');
+        platformCommands.setLocally('room', 'public');
         socket.emit('follow', { roomName : 'public', entered : true });
     }
 });
 
 socket.on('register', function(userName) {
-    localStorage.setItem('user', userName);
+    platformCommands.setLocally('user', userName);
     currentUser = userName;
 });
 
@@ -415,10 +377,10 @@ function startBoot() {
         });
     }
 
-    if(localStorage.getItem('mode') === null) { localStorage.setItem('mode', 'normal') }
+    if(platformCommands.getLocally('mode') === null) { platformCommands.setLocally('mode', 'normal') }
 
-    if(localStorage.getItem('room')) {
-        validCommands.enterroom.func(localStorage.getItem('room'));
+    if(platformCommands.getLocally('room')) {
+        validCommands.enterroom.func(platformCommands.getLocally('room'));
     } else {
         validCommands.enterroom.func('public');
     }
@@ -447,7 +409,7 @@ function setInputStart(text) { inputStart.textContent = text; }
 function getInputStart() { return inputStart.textContent; }
 
 function setCurrentRoom(roomName) {
-    localStorage.setItem('room', roomName);
+    platformCommands.setLocally('room', roomName);
     setInputStart(roomName + '$ ');
     messageQueue.push({ text : ['Entered ' + roomName] });
 }
@@ -498,7 +460,7 @@ function specialKeyPress(event) {
         // Tab
         case 9:
             var phrases = getInputText().toLowerCase().trim().split(' ');
-            if(localStorage.getItem('mode') === 'chat') {  }
+            if(platformCommands.getLocally('mode') === 'chat') {  }
             var commands = Object.keys(validCommands);
             var matched = [];
 
@@ -632,7 +594,7 @@ function keyPress(event) {
             var phrases = getInputText().toLowerCase().trim().split(' ');
             var command = null;
 
-            if(localStorage.getItem('mode') === 'normal') {
+            if(platformCommands.getLocally('mode') === 'normal') {
                 command = validCommands[phrases[0]];
             } else {
                 var sign = phrases[0].charAt(0);
@@ -646,7 +608,7 @@ function keyPress(event) {
                 // Store the command for usage with up/down arrows
                 previousCommands.push(getInputText());
                 previousCommandPointer++;
-                localStorage.setItem('previousCommands', JSON.stringify(previousCommands));
+                platformCommands.setLocally('previousCommands', JSON.stringify(previousCommands));
 
                 // Print input if the command shouldn't clear after use
                 if(!command.clearAfterUse) {
@@ -668,7 +630,7 @@ function keyPress(event) {
             } else if(command && phrases[0] === 'register') {
                 messageQueue.push({ text : [getInputStart() + getInputText()] });
                 command.func(phrases[1]);
-            } else if(localStorage.getItem('mode') === 'chat') {
+            } else if(platformCommands.getLocally('mode') === 'chat') {
                 var combinedText = phrases.join(' ');
 
                 messageQueue.push({ text : [getInputStart() + getInputText()] });
