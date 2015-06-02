@@ -88,22 +88,18 @@ var validCommands = {
         help : ['Shows the current user']
     },
     msg : {
-        func : function(message) {
-            var user = '<' + currentUser + '> ';
+        func : function(phrases) {
+            if(phrases.length > 0) {
+                var message = phrases.join(' ');
+                var user = '<' + currentUser + '> ';
 
-            if(typeof message === undefined) {
-                var phrases = getInputText().toLowerCase().trim().split(' ');
-                var message = '';
-
-                // Removing command part from the message
-                phrases = phrases.slice(1);
-                message = phrases.join(' ');
+                socket.emit('chatMsg', {
+                    msg : user + message,
+                    room : platformCommands.getLocally('room')
+                });
+            } else {
+                messageQueue.push({ text : ['You forgot to write the message!'] });
             }
-
-            socket.emit('chatMsg', {
-                msg : user + message,
-                room : platformCommands.getLocally('room')
-            });
         },
         help : [
             'Sends a message to your current room',
@@ -116,16 +112,25 @@ var validCommands = {
             '  msg Hello!'
         ]
     },
-    // This should check if the room already exists
     enterroom : {
-        func : function(roomName, password) {
-            var room = {};
+        func : function(phrases) {
+            if(phrases.length > 0) {
+                var room = {};
+                var roomName = phrases[0];
+                var password = '';
 
-            if(roomName) {
-                room.roomName = roomName;
-                // Flag that will be used in .on function locally to show user they have entered
-                room.entered = true;
-                socket.emit('follow', room);
+                if(phrases.length > 1) {
+                    password = phrases[1];
+                }
+
+                if(roomName) {
+                    room.roomName = roomName;
+                    // Flag that will be used in .on function locally to show user they have entered
+                    room.entered = true;
+                    socket.emit('follow', room);
+                }
+            } else {
+                messageQueue.push({ text : ['You have to specify which room to follow'] });
             }
         },
         help : [
@@ -153,12 +158,16 @@ var validCommands = {
         help : ['Leaves the chat room you are in, if you are in one.']
     },
     follow : {
-        func : function(roomName, password) {
-            var room = {};
-            room.roomName = roomName;
-            room.password = password;
+        func : function(phrases) {
+            if(phrases.length > 1) {
+                var room = {};
+                room.roomName = phrases[0];
+                room.password = phrases[1];
 
-            socket.emit('follow', room);
+                socket.emit('follow', room);
+            } else {
+                messageQueue.push({ text : ['You have to specify which room to follow and a password (if it is protected)'] });
+            }
         },
         help : [
             'Follows a room and shows you all messages posted in it.',
@@ -172,14 +181,19 @@ var validCommands = {
         ]
     },
     unfollow : {
-        func : function(roomName) {
-            var room = {};
+        func : function(phrases) {
+            if(phrases.length > 0) {
+                var room = {};
+                var roomName = phrases[0];
 
-            if(roomName === platformCommands.getLocally('room')) {
-                room.exited = true;
+                if(roomName === platformCommands.getLocally('room')) {
+                    room.exited = true;
+                }
+
+                socket.emit('unfollow', roomName);
+            } else {
+                messageQueue.push({ text : ['You have to specify which room to unfollow '] });
             }
-
-            socket.emit('unfollow', roomName);
         },
         help : ['Stops following a room.'],
         instructions : [
@@ -227,33 +241,43 @@ var validCommands = {
         ]
     },
     register : {
-        func : function(userName, password) {
-            var user = {};
-            var trimmedUserName = userName.trim();
-
+        func : function(phrases) {
             var errorMsg = {
                 text : [
                     'Name has to be 3 to 6 characters long',
-                    'e.g. register myname'
+                    'Password has to be 4 to 10 characters',
+                    'e.g. register myname banana1'
                 ]
             };
 
-            if(userName && trimmedUserName.length > 2 && trimmedUserName.length < 7) {
-                user.userName = userName;
-                socket.emit('register', user);
+            if(phrases.length > 1) {
+                var user = {};
+                var userName = phrases[0];
+                var password = phrases[1];
+
+                if(userName.length >= 3 && userName.length <= 6 &&
+                    password.length >= 4 && password.length <= 10) {
+                    user.userName = userName;
+                    // Check for empty!
+                    user.password = password;
+                    socket.emit('register', user);
+                } else {
+                    messageQueue.push(errorMsg);
+                }
             } else {
                 messageQueue.push(errorMsg);
             }
         },
         help : [
             'Registers your user name on the server and connects it to your device',
-            'This user name will be your identity in the system'
+            'This user name will be your identity in the system',
+            'Whitespaces in the beginning and end of the user name and password will be removed'
         ],
         instructions : [
             ' Usage:',
-            '  register *user name*',
+            '  register *user name* *password*',
             ' Example:',
-            '  register myname'
+            '  register myname secure1'
         ]
     },
     listusers : {
@@ -262,21 +286,30 @@ var validCommands = {
         }
     },
     createroom : {
-        func : function(roomName) {
-            if(roomName.length > 0 && roomName.length < 7) {
-                var room = {};
+        func : function(phrases) {
+            if(phrases.length > 0) {
+                var roomName = phrases[0];
 
-                room.roomName = roomName;
-
-                socket.emit('createRoom', room);
-                socket.emit('follow', room);
-            } else {
-                messageQueue.push({ text : [
+                var errorMsg = {
+                    text : [
                         'Failed to create room.',
                         'Room name has to be 1 to 6 characters long',
                         'e.g. createroom myroom'
-                    ] 
-                });
+                    ]
+                }
+
+                if(roomName.length > 0 && roomName.length < 7) {
+                    var room = {};
+
+                    room.roomName = roomName;
+
+                    socket.emit('createRoom', room);
+                    socket.emit('follow', room);
+                } else {
+                    messageQueue.push(errorMsg);
+                }
+            } else {
+                messageQueue.push(errorMsg);
             }
         },
         help : [
@@ -294,7 +327,23 @@ var validCommands = {
         func : function() {
             socket.emit('myRooms');
         },
-        help : [ 'Shows a list of all rooms you are following']
+        help : ['Shows a list of all rooms you are following']
+    },
+    login : {
+        func : function(phrases) {
+            var user = {};
+            user.userName = phrases[0];
+            user.password = phrases[1];
+
+            socket.emit('login', user);
+        },
+        help : ['Logs in as a user on this device'],
+        instructions : [
+            ' Usage:',
+            '  login *user name* *password',
+            ' Example:',
+            '  login user11 banana'
+        ]
     }
 };
 
@@ -354,9 +403,10 @@ socket.on('unfollow', function(room) {
     }
 });
 
-socket.on('register', function(userName) {
+socket.on('login', function(userName) {
     platformCommands.setLocally('user', userName);
     currentUser = userName;
+    messageQueue.push({ text : ['Successfully logged in as ' + userName] });
 });
 
 function startBoot() {
@@ -393,9 +443,9 @@ function startBoot() {
     if(platformCommands.getLocally('mode') === null) { platformCommands.setLocally('mode', 'normal') }
 
     if(platformCommands.getLocally('room')) {
-        validCommands.enterroom.func(platformCommands.getLocally('room'));
+        validCommands.enterroom.func([platformCommands.getLocally('room')]);
     } else {
-        validCommands.enterroom.func('public');
+        validCommands.enterroom.func(['public']);
     }
 }
 
@@ -604,6 +654,7 @@ function keyPress(event) {
     switch(keyCode) {
         // Enter
         case 13:
+            // Index 0 is the command part
             var phrases = getInputText().toLowerCase().trim().split(' ');
             var command = null;
 
@@ -638,22 +689,23 @@ function keyPress(event) {
 
                     if(message.text.length > 0) { messageQueue.push(message); }
                 } else {
-                    command.func(phrases[1]);
+                    command.func(phrases.splice(1));
                 }
-            } else if(command && phrases[0] === 'register') {
+            } else if(command && (phrases[0] === 'register' || phrases[0] === 'login')) {
                 messageQueue.push({ text : [getInputStart() + getInputText()] });
-                command.func(phrases[1]);
+                command.func(phrases.splice(1));
             } else if(platformCommands.getLocally('mode') === 'chat') {
                 var combinedText = phrases.join(' ');
 
                 messageQueue.push({ text : [getInputStart() + getInputText()] });
-                validCommands.msg.func(combinedText);
+                validCommands.msg.func([combinedText]);
             } else if(currentUser === null) {
                 messageQueue.push({ 
                     text : [
-                        'You must register', 
-                        'Use command "register"',
-                        'e.g. register myname'
+                        'You must register a new user or login with an existing user', 
+                        'Use command "register" or "login"',
+                        'e.g. register myname 1135',
+                        'or login myname 1135'
                     ] 
                 });
             // Sent command was not found. Print the failed input
@@ -716,13 +768,10 @@ function countTotalCharacters(messageQueue) {
 }
 
 // Gets the current date and time
-function calculateNow(day, month, year) {
+function calculateNow() {
     var date = new Date();
     var minutes = (date.getMinutes() < 10 ? '0' : '') + date.getMinutes();
     var hours = (date.getHours() < 10 ? '0' : '') + date.getHours();
-    // year = year ? year : (date.getFullYear().toString().substr(2));
-    // month = (date.getMonth() < 10 ? '0' : '') + (month ? month : (date.getMonth() + 1));
-    // day = (date.getDate() < 10 ? '0' : '') + (day ? day : date.getDate());
 
     return '[' + hours + ':' + minutes + '] ';
 }

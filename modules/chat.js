@@ -11,8 +11,8 @@ function handle(socket) {
 
     socket.on('createRoom', function(room) {
         if(manager.getRoom(room.roomName) === undefined) {
-            if(room.accessLevel === undefined) { room.accessLevel = 1 }
-            if(room.visibility === undefined) { room.visibility = 1 }
+            room.visibility = room.visibility ? room.visibility : 1;
+            room.accessLevel = room.accessLevel ? room.accessLevel : 1;
 
             manager.addRoom(room);
         } else {
@@ -65,19 +65,13 @@ function handle(socket) {
 
     // Shows all available rooms
     socket.on('listRooms', function() {
-        var filteredRooms = [];
-        var roomsString;
         var userObj = manager.getUserById(socket.id);
 
         if(userObj) {
-            for(var room in rooms) {
-                if(userObj.accessLevel >= getRoom(room).visibility) {
-                    filteredRooms.push(room);
-                }
-            }
+            var rooms = manager.getAllRoomNames(userObj);
 
-            if(filteredRooms.length > 0) {
-                roomsString = filteredRooms.sort().join('\t');
+            if(rooms.length > 0) {
+                var roomsString = rooms.sort().join('\t');
 
                 socket.emit('message', { text : [roomsString] });
             } else {
@@ -87,8 +81,19 @@ function handle(socket) {
     });
 
     socket.on('listUsers', function() {
-        var usersString = Object.keys(users).sort().join('\t');
-        socket.emit('message', { text : [usersString] });
+        var userObj = manager.getUserById(socket.id);
+
+        if(userObj) {
+            var users = manager.getAllUserNames(userObj);
+
+            if(users.length > 0) {
+                var usersString = users.sort().join('\t');
+
+                socket.emit('message', { text : [usersString] });
+            } else {
+
+            }
+        }
     });
 
     socket.on('myRooms', function() {

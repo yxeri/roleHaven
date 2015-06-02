@@ -6,7 +6,8 @@ var users = {
         userName : 'god',
         socketId : 0,
         accessLevel : 11,
-        password: '0000'
+        password: '0000',
+        visibility : 11
     }
 };
 
@@ -44,9 +45,7 @@ function addUser(user) {
 }
 
 function updateUser(userName, property, value) {
-	console.log(users[userName].property);
 	users[userName].property = value;
-	console.log(users[userName].property);
 }
 
 function getRoom(roomName) {
@@ -57,9 +56,35 @@ function addRoom(room) {
 	rooms[room.roomName] = room;
 }
 
+function getAllUserNames(sentUser) {
+	var filteredUsers = [];
+
+	for(var user in users) {
+		if(sentUser.accessLevel >= users[user].visibility) {
+			filteredUsers.push(user);
+		}
+	}
+
+	return filteredUsers;
+}
+
+function getAllRoomNames(user) {
+	var filteredRooms = [];
+
+	for(var room in rooms) {
+		if(user.accessLevel >= rooms[room].visibility) {
+			filteredRooms.push(room);
+		}
+	}
+
+	return filteredRooms;
+}
+
 exports.getUserById = getUserById;
 exports.getUserByName = getUserByName;
 exports.addUser = addUser;
 exports.updateUser = updateUser;
 exports.getRoom = getRoom;
 exports.addRoom = addRoom;
+exports.getAllUserNames = getAllUserNames;
+exports.getAllRoomNames = getAllRoomNames;
