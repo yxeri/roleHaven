@@ -736,16 +736,18 @@ function printText(messageQueue) {
         var nextTimeout = 0;
         charsInProgress = countTotalCharacters(messageQueue);
 
-        while(messageQueue.length !== 0) {
-            var message = messageQueue.shift();
+        if(charsInProgress > 0) {
+            while(messageQueue.length > 0) {
+                var message = messageQueue.shift();
 
-            while(message.text.length !== 0) {
-                var text = message.text.shift();
-                var speed = message.speed;
+                while(message.text.length > 0) {
+                    var text = message.text.shift();
+                    var speed = message.speed;
 
-                setTimeout(addRow, nextTimeout, text, nextTimeout, speed, message.extraClass, message.timestamp);
+                    setTimeout(addRow, nextTimeout, text, nextTimeout, speed, message.extraClass, message.timestamp);
 
-                nextTimeout += calculateTimer(text, speed);
+                    nextTimeout += calculateTimer(text, speed);
+                }
             }
         }
     }
