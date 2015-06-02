@@ -215,7 +215,7 @@ var validCommands = {
     },
     chatmode : {
         func : function() {
-            platformCommands.setLocally('mode', 'chat');
+            platformCommands.setLocally('mode', 'chatmode');
             messageQueue.push({ text : ['Chat mode activated'] });
         },
         help : [
@@ -232,7 +232,7 @@ var validCommands = {
     },
     normalmode : {
         func : function() {
-            platformCommands.setLocally('mode', 'normal');
+            platformCommands.setLocally('mode', 'normalmode');
             messageQueue.push({ text : ['Normal mode activated'] });
         },
         help : [
@@ -441,7 +441,13 @@ function startBoot() {
         });
     }
 
-    if(platformCommands.getLocally('mode') === null) { platformCommands.setLocally('mode', 'normal') }
+    if(platformCommands.getLocally('mode') === null) {
+        validCommands.normalmode.func();
+    } else {
+        var mode = platformCommands.getLocally('mode');
+
+        validCommands[mode].func();
+    }
 
     if(platformCommands.getLocally('room')) {
         validCommands.enterroom.func([platformCommands.getLocally('room')]);
@@ -532,10 +538,10 @@ function specialKeyPress(event) {
             // It will not auto-complete flags
             // If chat mode and the command is prepended or normal mode
             if(phrases.length === 1 && partialCommand.length > 0 &&
-                ((platformCommands.getLocally('mode') === 'chat' && partialCommand.charAt(0) === '-') ||
-                    (platformCommands.getLocally('mode') === 'normal'))) {
+                ((platformCommands.getLocally('mode') === 'chatmode' && partialCommand.charAt(0) === '-') ||
+                    (platformCommands.getLocally('mode') === 'normalmode'))) {
                 // Removes prepend sign, which is required for commands in chat mode
-                if(platformCommands.getLocally('mode') === 'chat') {
+                if(platformCommands.getLocally('mode') === 'chatmode') {
                     partialCommand = partialCommand.slice(1);
                 }
 
@@ -560,7 +566,7 @@ function specialKeyPress(event) {
                 if(matched.length === 1) {
                     var newText = '';
 
-                    if(platformCommands.getLocally('mode') === 'chat') { newText += '-'; }
+                    if(platformCommands.getLocally('mode') === 'chatmode') { newText += '-'; }
 
                     newText += matched[0] + ' ';
 
@@ -673,7 +679,7 @@ function keyPress(event) {
             var phrases = getInputText().toLowerCase().trim().split(' ');
             var command = null;
 
-            if(platformCommands.getLocally('mode') === 'normal') {
+            if(platformCommands.getLocally('mode') === 'normalmode') {
                 command = validCommands[phrases[0]];
             } else {
                 var sign = phrases[0].charAt(0);
@@ -685,7 +691,7 @@ function keyPress(event) {
 
             if(currentUser !== null && command) {
                 // Store the command for usage with up/down arrows
-                previousCommands.push(getInputText());
+                previousCommands.push(phrases.join(' '));
                 previousCommandPointer++;
                 platformCommands.setLocally('previousCommands', JSON.stringify(previousCommands));
 
@@ -710,7 +716,7 @@ function keyPress(event) {
             } else if(command && (phrases[0] === 'register' || phrases[0] === 'login')) {
                 messageQueue.push({ text : [getInputStart() + getInputText()] });
                 command.func(phrases.splice(1));
-            } else if(platformCommands.getLocally('mode') === 'chat') {
+            } else if(platformCommands.getLocally('mode') === 'chatmode') {
                 var combinedText = phrases.join(' ');
 
                 messageQueue.push({ text : [getInputStart() + getInputText()] });
