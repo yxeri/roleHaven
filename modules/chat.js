@@ -14,7 +14,7 @@ function handle(socket) {
             if(room.accessLevel === undefined) { room.accessLevel = 1 }
             if(room.visibility === undefined) { room.visibility = 1 }
 
-            addRoom(room);
+            manager.addRoom(room);
         } else {
             socket.emit('message', { text : [room.roomName + ' already exists.'] });
         }
