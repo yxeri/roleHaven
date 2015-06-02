@@ -300,6 +300,7 @@ var validCommands = {
 
 socket.on('chatMsg', function(msg) {
     var roomTag = msg.room && msg.room !== platformCommands.getLocally('room') ? '[' + msg.room + '] ' : '';
+
     messageQueue.push({ 
         timestamp : true,
         text : [roomTag + msg.text]
@@ -367,6 +368,7 @@ function startBoot() {
 
     document.getElementById('main').addEventListener('click', function(event) {
         marker.focus();
+        event.preventDefault();
     });
     addEventListener('keypress', keyPress);
     // Needed for some special keys. They are not detected with keypress

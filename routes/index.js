@@ -2,6 +2,7 @@ var express = require('express');
 var router = express.Router();
 var chat = require('../modules/chat');
 var userManagement = require('../modules/userManagement');
+var manager = require('../manager');
 
 function handle(io) {
     router.get('/', function(req, res) {
@@ -18,9 +19,9 @@ function handle(io) {
         });
 
         socket.on('disconnect', function() {
-            // if(getUser(socket.id) !== null) {
-            //     socket.broadcast.emit('chatMsg', { text : [getUser(socket.id).userName + ' has disconnected'] });
-            // }
+            if(manager.getUserById(socket.id) !== null) {
+                socket.broadcast.emit('chatMsg', { text : [manager.getUserById(socket.id).userName + ' has disconnected'] });
+            }
         });
     });
 
