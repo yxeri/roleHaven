@@ -94,7 +94,7 @@ var validCommands = {
                 var user = '<' + currentUser + '> ';
 
                 socket.emit('chatMsg', {
-                    msg : user + message,
+                    text : user + message,
                     room : platformCommands.getLocally('room')
                 });
             } else {
@@ -125,6 +125,7 @@ var validCommands = {
 
                 if(roomName) {
                     room.roomName = roomName;
+                    room.password = password;
                     // Flag that will be used in .on function locally to show user they have entered
                     room.entered = true;
                     socket.emit('follow', room);
@@ -523,18 +524,26 @@ function specialKeyPress(event) {
         // Tab
         case 9:
             var phrases = getInputText().toLowerCase().trim().split(' ');
-            if(platformCommands.getLocally('mode') === 'chat') {  }
+            var partialCommand = phrases[0];
             var commands = Object.keys(validCommands);
             var matched = [];
 
             // Auto-complete should only trigger when one phrase is in the input
             // It will not auto-complete flags
-            if(phrases.length === 1 && phrases[0].length > 0) {
+            // If chat mode and the command is prepended or normal mode
+            if(phrases.length === 1 && partialCommand.length > 0 &&
+                ((platformCommands.getLocally('mode') === 'chat' && partialCommand.charAt(0) === '-') ||
+                    (platformCommands.getLocally('mode') === 'normal'))) {
+                // Removes prepend sign, which is required for commands in chat mode
+                if(platformCommands.getLocally('mode') === 'chat') {
+                    partialCommand = partialCommand.slice(1);
+                }
+
                 for(var i = 0; i < commands.length; i++) {
                     var matches = false;
 
-                    for(var j = 0; j < phrases[0].length; j++) {
-                        if(phrases[0].charAt(j) === commands[i].charAt(j)) {
+                    for(var j = 0; j < partialCommand.length; j++) {
+                        if(partialCommand.charAt(j) === commands[i].charAt(j)) {
                             matches = true;
                         } else {
                             matches = false;
@@ -549,8 +558,14 @@ function specialKeyPress(event) {
                 }
 
                 if(matched.length === 1) {
+                    var newText = '';
+
+                    if(platformCommands.getLocally('mode') === 'chat') { newText += '-'; }
+
+                    newText += matched[0] + ' ';
+
                     clearInput();
-                    setLeftText(matched[0] + ' ');
+                    setLeftText(newText);
                 } else if(matched.length > 0) {
                     var msg = '';
 
@@ -563,7 +578,7 @@ function specialKeyPress(event) {
                     messageQueue.push({ text : [msg] });
                 }
             // No input? Show all available commands
-            } else if(phrases[1] === undefined) {
+            } else if(partialCommand.length === 0) {
                 validCommands.help.func();
             }
 
@@ -691,6 +706,7 @@ function keyPress(event) {
                 } else {
                     command.func(phrases.splice(1));
                 }
+            // A user who is not logged in will have access to register and login commands
             } else if(command && (phrases[0] === 'register' || phrases[0] === 'login')) {
                 messageQueue.push({ text : [getInputStart() + getInputText()] });
                 command.func(phrases.splice(1));
