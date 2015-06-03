@@ -383,11 +383,11 @@ socket.on('message', function(msg) {
     messageQueue.push(msg);
 });
 
-socket.on('importantMsg', function() {
-    messageQueue.push({
-        extraClass : 'important',
-        text : [msg.msg] 
-    });
+socket.on('importantMsg', function(msg) {
+    var message = msg;
+    message.extraClass = 'important';
+
+    messageQueue.push(message);
 });
 
 // Triggers when the connection is lost and then re-established
@@ -395,11 +395,6 @@ socket.on('reconnect', function() {
     if(currentUser) {
         socket.emit('updateId', currentUser);
     }
-
-    messageQueue.push({
-        text : ['Re-established connection'],
-        extraClass : 'important'
-    });
 });
 
 socket.on('disconnect', function() {

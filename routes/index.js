@@ -19,9 +19,6 @@ function handle(io) {
         });
 
         socket.on('disconnect', function() {
-            if(manager.getUserById(socket.id) !== null) {
-                socket.broadcast.emit('chatMsg', { text : [manager.getUserById(socket.id).userName + ' has disconnected'] });
-            }
         });
     });
 

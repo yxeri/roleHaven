@@ -1,90 +1,137 @@
+var mongoose = require('mongoose');
+var db = mongoose.connect('mongodb://localhost/bbr2', function(err) {
+    if(err) {
+        console.log('Failed to connect to database', err);
+    } else {
+        console.log('Connection established to database');
+    }
+});
+
 // Access levels: Lowest / Lower / Middle / Higher / Highest / God
 // 1 / 3 / 5 / 7 / 9 / 11
 
-var users = {
-    god : {
-        userName : 'god',
-        socketId : 0,
-        accessLevel : 11,
-        password: '0000',
-        visibility : 11
-    }
-};
+var userSchema = new mongoose.Schema({
+    userName : { type : String, unique : true },
+    password : String,
+    socketId : String,
+    accessLevel : { type : Number, default : 1 },
+    visibility : { type : Number, default : 1 }
+});
+var roomSchema = new mongoose.Schema({
+    roomName : { type : String, unique : true },
+    password : { type : String, default : '' },
+    accessLevel : { type : Number, default : 1 },
+    visibility : { type : Number, default : 1 },
+    commands : [{
+        commandName : String,
+        accessLevel : Number
+    }],
+    isDefault : Boolean
+});
+// Should be moved
+var commandSchema = new mongoose.Schema({
+    commandName : String,
+    func : {},
+    help : [String],
+    instructions : [String],
+    clearAfterUse : Boolean,
+    usageTime : Boolean
+});
 
-var rooms = {
-    public : {
-        roomName : 'public',
-        accessLevel : 1,
-        visibility : 1,
-        commands : { msg : { accessLevel : 11 } },
-        isDefault : true
-    },
-    arrhome : {
-        roomName : 'arrhome',
-        accessLevel : 11,
-        visibility : 11
-    }
-};
+var User = mongoose.model('User', userSchema);
+var Room = mongoose.model('Room', roomSchema);
+// Should be moved
+var Command = mongoose.model('Command', commandSchema);
 
-function getUserById(socketId) {
-    for(var user in users) {
-        if(socketId === users[user].socketId) {
-            return users[user]; 
+function getUserById(sentSocketId, callback) {
+    User.findOne({ socketId : sentSocketId }).lean().exec(function(err, user) {
+        if(err) {
+            console.log('Failed to get user', err);
         }
-    }
 
-    return null;
+        callback(err, user)
+    });
 }
 
-function getUserByName(userName) {
-	return users[userName];
+function authUser(sentUserName, sentPassword, callback) {
+	User.findOne({ $and : [{ userName : sentUserName }, { password : sentPassword }] }).lean().exec(function(err, user) {
+        if(err) {
+            console.log('Failed to login', err);
+        }
+
+        callback(err, user);
+    });
 }
 
-function addUser(user) {
-	users[user.userName] = user;
+function addUser(user, callback) {
+    var newUser = new User(user);
+
+    newUser.save(function(err, newUser) {
+        if(err) {
+            console.log('Failed to save user', err);
+        }
+
+        callback(err, newUser);
+    });
 }
 
-function updateUser(userName, property, value) {
-	users[userName].property = value;
+function updateUserSocketId(sentUserName, value, callback) {
+    User.findOneAndUpdate({ userName : sentUserName }, { socketId : value }).lean().exec(function(err, user) {
+        if(err) {
+            console.log('Failed to update user', err);
+        }
+
+        callback(err);
+    });
 }
 
-function getRoom(roomName) {
-	return rooms[roomName];
+function authUserToRoom(sentRoomName, sentPassword, callback) {
+	Room.findOne({ $and : [{ roomName : sentRoomName }, { password : sentPassword }] }).lean().exec(function(err, room) {
+        if(err) {
+            console.log('Failed to check auth against room', err);
+        }
+
+        callback(err, room);
+    });
 }
 
-function addRoom(room) {
-	rooms[room.roomName] = room;
+function createRoom(room, callback) {
+    var newRoom = new Room(room);
+
+    newRoom.save(function(err, newRoom) {
+        if(err) {
+            console.log('Failed to save room', err);
+        }
+
+        callback(err, newRoom);
+    });
 }
 
-function getAllUserNames(sentUser) {
-	var filteredUsers = [];
+function getAllUsers(sentUser, callback) {
+    User.find({ accessLevel : { $lte : sentUser.accessLevel } }).sort({ userName : 1 }).lean().exec(function(err, users) {
+        if(err) {
+            console.log('Failed to list users', err);    
+        }
 
-	for(var user in users) {
-		if(sentUser.accessLevel >= users[user].visibility) {
-			filteredUsers.push(user);
-		}
-	}
-
-	return filteredUsers;
+        callback(err, users);
+    });
 }
 
-function getAllRoomNames(user) {
-	var filteredRooms = [];
+function getAllRooms(sentUser, callback) {
+    Room.find({ accessLevel : { $lte : sentUser.accessLevel } }).sort({ roomName : 1 }).lean().exec(function(err, rooms) {
+        if(err) {
+            console.log('Failed to list rooms', err);
+        }
 
-	for(var room in rooms) {
-		if(user.accessLevel >= rooms[room].visibility) {
-			filteredRooms.push(room);
-		}
-	}
-
-	return filteredRooms;
+        callback(err, rooms);
+    });
 }
 
 exports.getUserById = getUserById;
-exports.getUserByName = getUserByName;
+exports.authUser = authUser;
 exports.addUser = addUser;
-exports.updateUser = updateUser;
-exports.getRoom = getRoom;
-exports.addRoom = addRoom;
-exports.getAllUserNames = getAllUserNames;
-exports.getAllRoomNames = getAllRoomNames;
+exports.updateUserSocketId = updateUserSocketId;
+exports.authUserToRoom = authUserToRoom;
+exports.createRoom = createRoom;
+exports.getAllUsers = getAllUsers;
+exports.getAllRooms = getAllRooms;

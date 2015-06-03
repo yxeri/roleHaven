@@ -1,48 +1,44 @@
 var manager = require('../manager');
 
 function handle(socket) {
-    socket.on('register', function(user) {
-        if(user && manager.getUserByName(user.userName) === undefined) {
+    socket.on('register', function(sentUser) {
+        if(sentUser) {
             var userObj = {
-                userName : user.userName, 
+                userName : sentUser.userName, 
                 socketId : socket.id,
-                accessLevel : user.accessLevel ? user.accessLevel : 1,
-                password : user.password ? user.password : '0000',
-                visibility : user.visibility ? user.visibility : 1
+                password : sentUser.password
             }
 
-            manager.addUser(userObj);
-
-            socket.emit('login', user.userName);
-            socket.emit('message', { text : [user.userName + ' has been registered!'] });
-        // This might not be needed
-        } else if(user === null) {
-            console.log('Error. User was empty during register');
-        } else {
-            socket.emit('message', { text : [user.userName + ' already exists. Failed to register'] });
+            manager.addUser(userObj, function(err, user) {
+                if(err) {
+                    socket.emit('message', { text : ['Failed to register user'] });
+                } else {
+                    socket.emit('login', user.userName);
+                    socket.emit('message', { text : [user.userName + ' has been registered!'] });
+                }
+            });
         }
     });
 
     socket.on('updateId', function(userName) {
-        if(manager.getUserByName(userName)) {
-            manager.updateUser(userName, 'socketId', socket.id);
-        }
+        manager.updateUserSocketId(userName, socket.id, function(err) {
+            if(err) {
+                console.log('Failed to update Id', err);
+            } else {
+                socket.emit('importantMsg', { text : ['Re-established connection'] });
+            }
+        });
     });
 
     socket.on('login', function(sentUser) {
         if(sentUser.userName && sentUser.password) {
-            var user = manager.getUserByName(sentUser.userName);
-            var correctPassword = user ? (sentUser.password === user.password) : false;
-
-            if(user && correctPassword) {
-                socket.emit('login', user.userName);
-            } else {
-                if(user === null) {
-                    socket.emit('message', { text : ['User doesn\'t exist. Failed to login'] });
-                } else if(!correctPassword) {
-                    socket.emit('message', { text : ['Password is incorrect. Failed to login'] });
+            manager.authUser(sentUser.userName, sentUser.password, function(err, user) {
+                if(err) {
+                    socket.emit('message', { text : ['Failed to login'] });
+                } else {
+                   socket.emit('login', user.userName); 
                 }
-            }
+            });
         } else {
             socket.emit('message', { text : ['User name and password needed to login. Failed to login'] });
         }

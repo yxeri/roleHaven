@@ -9,51 +9,50 @@ function handle(socket) {
         socket.broadcast.emit('chatMsg', msg);
     });
 
-    socket.on('createRoom', function(room) {
-        if(manager.getRoom(room.roomName) === undefined) {
-            room.visibility = room.visibility ? room.visibility : 1;
-            room.accessLevel = room.accessLevel ? room.accessLevel : 1;
-
-            manager.addRoom(room);
-        } else {
-            socket.emit('message', { text : [room.roomName + ' already exists.'] });
-        }
+    socket.on('createRoom', function(sentRoom) {
+        manager.createRoom(sentRoom, function(err, room) {
+            if(err) {
+                socket.emit('message', { text : ['Failed to create the room'] });
+            } else {
+                socket.emit('message', { text : ['Room successfully created'] });
+            }
+        });
     });
 
-    socket.on('follow', function(room) {
-        var selectedRoom = manager.getRoom(room.roomName);
-        var currentUser = manager.getUserById(socket.id);
+    socket.on('follow', function(sentRoom) {
+        if(sentRoom.password === undefined) { sentRoom.password = '' }
 
-        // User won't have a user name when it connects for the first time
-        if(selectedRoom) {
-            // User is already in the room
-            if(socket.rooms.indexOf(room.roomName) > -1) {
-                socket.emit('follow', room);
-            } else if(selectedRoom.isDefault) {
-                socket.join(room.roomName);
-                socket.emit('follow', room);
-            // Check that the user is allowed to join the room
-            } else if(currentUser.accessLevel >= selectedRoom.accessLevel && 
-                (selectedRoom.password === undefined || room.password === selectedRoom.password)) {
-                if(manager.getUserById(socket.id) !== null) {
+        console.log('follow', sentRoom);
+
+        manager.authUserToRoom(sentRoom.roomName, sentRoom.password, function(err, room) {
+            console.log('follow found', room);
+
+            if(err) {
+                socket.emit('message', { text : ['Failed to follow room'] });
+            } else if(room !== null) {
+                if(sentRoom.entered) { room.entered = true }
+
+                if(socket.rooms.indexOf(room.roomName) < 0) {
                     socket.broadcast.to(room.roomName).emit('chatMsg', {
-                        text : manager.getUserById(socket.id).userName + ' is following ' + room.roomName,
+                        text : 'placeholderUserName' + ' is following ' + room.roomName,
                         room : room.roomName
                     });
                 }
 
                 socket.join(room.roomName);
                 socket.emit('follow', room);
+            } else {
+                socket.emit('message', { text : ['You were unable to follow ' + sentRoom.roomName] });
             }
-        } else {
-            socket.emit('message', { text : [room.roomName + ' doesn\'t exist'] });
-        }
+        });
     });
 
     socket.on('unfollow', function(room) {
+        console.log('unfollow', room)
+
         if(socket.rooms.indexOf(room.roomName) > -1) {
             socket.broadcast.to(room.roomName).emit('chatMsg', {
-                text : manager.getUserById(socket.id).userName + ' left ' + room.roomName,
+                text : 'placeholderUserName' + ' left ' + room.roomName,
                 room : room.roomName
             });
             socket.leave(room.roomName);
@@ -65,35 +64,47 @@ function handle(socket) {
 
     // Shows all available rooms
     socket.on('listRooms', function() {
-        var userObj = manager.getUserById(socket.id);
-
-        if(userObj) {
-            var rooms = manager.getAllRoomNames(userObj);
-
-            if(rooms.length > 0) {
-                var roomsString = rooms.sort().join('\t');
-
-                socket.emit('message', { text : [roomsString] });
+        manager.getUserById(socket.id, function(err, user) {
+            if(err) {
+                console.log('Failed to get user by id', err);
             } else {
-                socket.emit('message', { text : ['There are no rooms available on your access level [' + userObj.accessLevel + ']'] });
+                manager.getAllRooms(user, function(roomErr, rooms) {
+                    if(roomErr) {
+                        console.log('Failed to get all room names', roomErr);
+                    } else {
+                        if(rooms.length > 0) {
+                            var roomsString = '';
+
+                            for(var i = 0; i < rooms.length; i++) {
+                                roomsString += rooms[i].roomName + '\t';
+                            }
+
+                            socket.emit('message', { text : [roomsString] });
+                        }
+                    }
+                });
             }
-        }
+        });
     });
 
     socket.on('listUsers', function() {
-        var userObj = manager.getUserById(socket.id);
-
-        if(userObj) {
-            var users = manager.getAllUserNames(userObj);
-
-            if(users.length > 0) {
-                var usersString = users.sort().join('\t');
-
-                socket.emit('message', { text : [usersString] });
+        manager.getUserById(socket.id, function(err, user) {
+            if(err) {
+                console.log('Failed to get user by id', err);
             } else {
+                manager.getAllUsers(user, function(userErr, users) {
+                    if(users.length > 0) {
+                        var usersString = '';
 
+                        for(var i = 0; i < users.length; i++) {
+                            usersString += users[i].userName + '\t';
+                        }
+
+                        socket.emit('message', { text : [usersString] });
+                    }
+                });
             }
-        }
+        });
     });
 
     socket.on('myRooms', function() {
