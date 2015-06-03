@@ -243,30 +243,37 @@ var validCommands = {
     },
     register : {
         func : function(phrases) {
-            var errorMsg = {
-                text : [
-                    'Name has to be 3 to 6 characters long',
-                    'Password has to be 4 to 10 characters',
-                    'e.g. register myname banana1'
-                ]
-            };
+            if(platformCommands.getLocally('user') === null) {
+                var errorMsg = {
+                    text : [
+                        'Name has to be 3 to 6 characters long',
+                        'Password has to be 4 to 10 characters',
+                        'e.g. register myname banana1'
+                    ]
+                };
 
-            if(phrases.length > 1) {
-                var user = {};
-                var userName = phrases[0];
-                var password = phrases[1];
+                if(phrases.length > 1) {
+                    var user = {};
+                    var userName = phrases[0];
+                    var password = phrases[1];
 
-                if(userName.length >= 3 && userName.length <= 6 &&
-                    password.length >= 4 && password.length <= 10) {
-                    user.userName = userName;
-                    // Check for empty!
-                    user.password = password;
-                    socket.emit('register', user);
+                    if(userName.length >= 3 && userName.length <= 6 &&
+                        password.length >= 4 && password.length <= 10) {
+                        user.userName = userName;
+                        // Check for empty!
+                        user.password = password;
+                        socket.emit('register', user);
+                    } else {
+                        messageQueue.push(errorMsg);
+                    }
                 } else {
                     messageQueue.push(errorMsg);
                 }
             } else {
-                messageQueue.push(errorMsg);
+                messageQueue.push({ text : [
+                    'You have already registered a user',
+                    platformCommands.getLocally('user') + ' is registered to this device'
+                ] })
             }
         },
         help : [
@@ -279,7 +286,8 @@ var validCommands = {
             '  register *user name* *password*',
             ' Example:',
             '  register myname secure1'
-        ]
+        ],
+        clearAfterUse : true
     },
     listusers : {
         func : function() {
@@ -344,7 +352,19 @@ var validCommands = {
             '  login *user name* *password',
             ' Example:',
             '  login user11 banana'
-        ]
+        ],
+        clearAfterUse : true
+    },
+    time : {
+        func : function() {
+            var date = new Date();
+            var seconds = (date.getSeconds() < 10 ? '0' : '') + date.getSeconds();
+            var minutes = (date.getMinutes() < 10 ? '0' : '') + date.getMinutes();
+            var hours = (date.getHours() < 10 ? '0' : '') + date.getHours();
+
+            messageQueue.push({ text : ['Time: ' + hours + ':' + minutes + ':' + seconds] });
+        },
+        help : ['Shows the current time']
     }
 };
 
