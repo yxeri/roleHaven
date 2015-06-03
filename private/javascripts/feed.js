@@ -532,6 +532,68 @@ function getAvailableCommands () {
     return commands;
 }
 
+function autoComplete() {
+    var phrases = getInputText().toLowerCase().trim().split(' ');
+    var partialCommand = phrases[0];
+    var commands = Object.keys(validCommands);
+    var matched = [];
+
+    // Auto-complete should only trigger when one phrase is in the input
+    // It will not auto-complete flags
+    // If chat mode and the command is prepended or normal mode
+    if(phrases.length === 1 && partialCommand.length > 0 &&
+        ((platformCommands.getLocally('mode') === 'chatmode' && partialCommand.charAt(0) === '-') ||
+            (platformCommands.getLocally('mode') === 'normalmode'))) {
+        // Removes prepend sign, which is required for commands in chat mode
+        if(platformCommands.getLocally('mode') === 'chatmode') {
+            partialCommand = partialCommand.slice(1);
+        }
+
+        for(var i = 0; i < commands.length; i++) {
+            var matches = false;
+
+            for(var j = 0; j < partialCommand.length; j++) {
+                if(partialCommand.charAt(j) === commands[i].charAt(j)) {
+                    matches = true;
+                } else {
+                    matches = false;
+
+                    break;
+                }
+            }
+
+            if(matches) {
+                matched.push(commands[i]);
+            }
+        }
+
+        if(matched.length === 1) {
+            var newText = '';
+
+            if(platformCommands.getLocally('mode') === 'chatmode') { newText += '-'; }
+
+            newText += matched[0] + ' ';
+
+            clearInput();
+            setLeftText(newText);
+        } else if(matched.length > 0) {
+            var msg = '';
+
+            matched.sort();
+
+            for(var i = 0; i < matched.length; i++) {
+                msg += matched[i] + '\t';
+            }
+
+            messageQueue.push({ text : [msg] });
+        }
+    // No input? Show all available commands
+    } else if(partialCommand.length === 0) {
+        validCommands.help.func();
+    }
+
+}
+
 // Needed for arrow and delete keys. They are not detected with keypress
 function specialKeyPress(event) {
     var keyCode = (typeof event.which === 'number') ? event.which : event.keyCode;
@@ -550,64 +612,7 @@ function specialKeyPress(event) {
             break;
         // Tab
         case 9:
-            var phrases = getInputText().toLowerCase().trim().split(' ');
-            var partialCommand = phrases[0];
-            var commands = Object.keys(validCommands);
-            var matched = [];
-
-            // Auto-complete should only trigger when one phrase is in the input
-            // It will not auto-complete flags
-            // If chat mode and the command is prepended or normal mode
-            if(phrases.length === 1 && partialCommand.length > 0 &&
-                ((platformCommands.getLocally('mode') === 'chatmode' && partialCommand.charAt(0) === '-') ||
-                    (platformCommands.getLocally('mode') === 'normalmode'))) {
-                // Removes prepend sign, which is required for commands in chat mode
-                if(platformCommands.getLocally('mode') === 'chatmode') {
-                    partialCommand = partialCommand.slice(1);
-                }
-
-                for(var i = 0; i < commands.length; i++) {
-                    var matches = false;
-
-                    for(var j = 0; j < partialCommand.length; j++) {
-                        if(partialCommand.charAt(j) === commands[i].charAt(j)) {
-                            matches = true;
-                        } else {
-                            matches = false;
-
-                            break;
-                        }
-                    }
-
-                    if(matches) {
-                        matched.push(commands[i]);
-                    }
-                }
-
-                if(matched.length === 1) {
-                    var newText = '';
-
-                    if(platformCommands.getLocally('mode') === 'chatmode') { newText += '-'; }
-
-                    newText += matched[0] + ' ';
-
-                    clearInput();
-                    setLeftText(newText);
-                } else if(matched.length > 0) {
-                    var msg = '';
-
-                    matched.sort();
-
-                    for(var i = 0; i < matched.length; i++) {
-                        msg += matched[i] + '\t';
-                    }
-
-                    messageQueue.push({ text : [msg] });
-                }
-            // No input? Show all available commands
-            } else if(partialCommand.length === 0) {
-                validCommands.help.func();
-            }
+            autoComplete();
 
             event.preventDefault();
 
@@ -772,10 +777,24 @@ function keyPress(event) {
 
             if(textChar) { appendToLeftText(textChar); }
 
+            if(triggerAutoComplete(getLeftText(marker))) {
+                autoComplete();
+            }
+
             break;
     }
 
     event.preventDefault();
+}
+
+function triggerAutoComplete(text) {
+    if(text.charAt(text.length - 1) === ' ' && text.charAt(text.length - 2) === ' ') {
+        setLeftText(text.trim());  
+
+        return true;  
+    }
+
+    return false;
 }
 
 // Prints messages from the queue
