@@ -110,7 +110,8 @@ var validCommands = {
             '  msg *message*',
             ' Example:',
             '  msg Hello!'
-        ]
+        ],
+        usageTime : true
     },
     enterroom : {
         func : function(phrases) {
@@ -717,7 +718,11 @@ function keyPress(event) {
 
                 // Print input if the command shouldn't clear after use
                 if(!command.clearAfterUse) {
-                    messageQueue.push({ text : [getInputStart() + getInputText()] });
+                    var message = { text : [getInputStart() + getInputText()] };
+
+                    if(command.usageTime) { message.timestamp = true; }
+
+                    messageQueue.push(message);
                 }
 
                 // Print the help and instruction parts of the command
@@ -738,8 +743,12 @@ function keyPress(event) {
                 command.func(phrases.splice(1));
             } else if(platformCommands.getLocally('mode') === 'chatmode') {
                 var combinedText = phrases.join(' ');
+                var message = {
+                    text : [getInputStart() + getInputText()],
+                    timestamp : true
+                };
 
-                messageQueue.push({ text : [getInputStart() + getInputText()] });
+                messageQueue.push(message);
                 validCommands.msg.func([combinedText]);
             } else if(currentUser === null) {
                 messageQueue.push({ 
