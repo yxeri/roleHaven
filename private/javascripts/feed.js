@@ -248,6 +248,7 @@ var validCommands = {
                 var errorMsg = {
                     text : [
                         'Name has to be 3 to 6 characters long',
+                        'Don\'t use whitespace in your name or password!',
                         'Password has to be 4 to 10 characters',
                         'e.g. register myname banana1'
                     ]
@@ -280,7 +281,7 @@ var validCommands = {
         help : [
             'Registers your user name on the server and connects it to your device',
             'This user name will be your identity in the system',
-            'Whitespaces in the beginning and end of the user name and password will be removed'
+            'Don\'t use whitespaces in your name or password!'
         ],
         instructions : [
             ' Usage:',
