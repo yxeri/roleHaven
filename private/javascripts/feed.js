@@ -396,14 +396,14 @@ socket.on('reconnect', function() {
     }
 
     messageQueue.push({
-        text : ['Re-established connection to network'],
+        text : ['Re-established connection'],
         extraClass : 'important'
     });
 });
 
 socket.on('disconnect', function() {
     messageQueue.push({ 
-        text : ['Lost connection to network'],
+        text : ['Lost connection'],
         extraClass : 'important'
     });
 });
@@ -457,6 +457,8 @@ function startBoot() {
         messageQueue.push({
             text : [
                 'Welcome, employee ' + currentUser,
+                'Did you know that you can auto-complete commands by using the tab button or writing double spaces?',
+                'Learn this valuable skill to increase your productivity!',
                 'May you have a productive day'
             ] 
         });
