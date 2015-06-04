@@ -38,8 +38,8 @@ pre {
     cursor: none;
     width: 100%;
     height: 100vh;
-    -webkit-animation: textLight 6s linear infinite;
-    animation: textLight 6s linear infinite;
+    -webkit-animation: textLight 10s linear infinite;
+    animation: textLight 10s linear infinite;
 }
 
 #main:before {
@@ -53,8 +53,8 @@ pre {
     opacity: .11;
     -webkit-box-shadow: inset 0 0 60px 5px #000000;
     box-shadow: inset 0 0 40px 10px #000000;
-    -webkit-animation: light 6s linear infinite;
-    animation: light 6s linear infinite;
+    -webkit-animation: light 10s linear infinite;
+    animation: light 10s linear infinite;
 }
 
 .logo {
@@ -113,13 +113,13 @@ pre {
 
 @-webkit-keyframes textLight {
     25%     { opacity: .85; }
-    50%     { opacity: 1;   }
-    75%     { opacity: .72; }
+    50%     { opacity: .75; }
+    75%     { opacity: .65; }
 }
 
 @keyframes textLight {
-    25%     { opacity: .80; }
-    50%     { opacity: 1;   }
+    25%     { opacity: .85; }
+    50%     { opacity: .75; }
     75%     { opacity: .65; }
 }
 
