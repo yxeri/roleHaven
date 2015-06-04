@@ -273,7 +273,6 @@ var validCommands = {
                         // Check for empty!
                         user.password = password;
                         socket.emit('register', user);
-                        socket.emit('follow', { roomName : 'public', entered : true });
                     } else {
                         messageQueue.push(errorMsg);
                     }
@@ -455,6 +454,7 @@ socket.on('login', function(userName) {
     platformCommands.setLocally('user', userName);
     currentUser = userName;
     messageQueue.push({ text : ['Successfully logged in as ' + userName] });
+    socket.emit('follow', { roomName : 'public', entered : true });
 });
 
 socket.on('updateConnection', function() {

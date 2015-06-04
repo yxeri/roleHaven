@@ -26,15 +26,15 @@ function handle(socket) {
 
         manager.getUserById(socket.id, function(err, user) {
             if(err || user === null) {
-                socket.emit('message', { text : ['Failed to follow ' + sentRoom] });
+                socket.emit('message', { text : ['Failed to follow ' + sentRoom.roomName] });
             } else {
                 manager.authUserToRoom(user, sentRoom.roomName, sentRoom.password, function(err, room) {
                     if(err || room === null) {
-                        socket.emit('message', { text : ['Failed to follow ' + sentRoom] });
+                        socket.emit('message', { text : ['Failed to follow ' + sentRoom.roomName] });
                     } else {
                         manager.addRoomToUser(user.userName, room.roomName, function(err) {
                             if(err) {
-                                socket.emit('message', { text : ['Failed to follow ' + sentRoom] });
+                                socket.emit('message', { text : ['Failed to follow ' + sentRoom.roomName] });
                             } else {
                                 if(sentRoom.entered) { room.entered = true }
 
