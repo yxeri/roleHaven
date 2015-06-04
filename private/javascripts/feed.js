@@ -326,7 +326,6 @@ var validCommands = {
                     room.password = password;
 
                     socket.emit('createRoom', room);
-                    socket.emit('follow', room);
                 } else {
                     messageQueue.push(errorMsg);
                 }
@@ -422,8 +421,6 @@ socket.on('importantMsg', function(msg) {
 
 // Triggers when the connection is lost and then re-established
 socket.on('reconnect', function() {
-    console.log('currentuser', currentUser);
-
     if(currentUser) {
         socket.emit('updateId', { userName : currentUser });
     }
@@ -460,7 +457,7 @@ socket.on('login', function(userName) {
     messageQueue.push({ text : ['Successfully logged in as ' + userName] });
 });
 
-socket.on('connectProc', function() {
+socket.on('updateConnection', function() {
     socket.emit('fetchRooms');
 });
 
@@ -495,6 +492,8 @@ function startBoot() {
                 'May you have a productive day'
             ] 
         });
+
+        locationData();
     }
 
     if(platformCommands.getLocally('mode') === null) {
@@ -511,8 +510,6 @@ function startBoot() {
     } else {
         setInputStart('O3C-CMD$ ');
     }
-
-    locationData();
 }
 
 startBoot();

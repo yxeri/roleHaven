@@ -25,7 +25,7 @@ function handle(socket) {
             if(err || user === null) {
                 console.log('Failed to update Id', err);
             } else if(!sentObject.firstConnection) {
-                socket.emit('connectProc');
+                socket.emit('updateConnection');
                 socket.emit('importantMsg', { text : ['Re-established connection'] });
             }
         });
@@ -112,7 +112,8 @@ function handle(socket) {
                 if(err || user === null) {
                     socket.emit('message', { text : ['Failed to login'] });
                 } else {
-                   socket.emit('login', user.userName); 
+                   socket.emit('login', user.userName);
+                   socket.emit('reconnect');
                 }
             });
         } else {

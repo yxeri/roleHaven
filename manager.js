@@ -110,13 +110,23 @@ function authUserToRoom(sentUser, sentRoomName, sentPassword, callback) {
 function createRoom(room, callback) {
     var newRoom = new Room(room);
 
-    newRoom.save(function(err, newRoom) {
+    Room.findOne({ roomName : room.roomName }).lean().exec(function(err, room) {
         if(err) {
-            console.log('Failed to save room', err);
-        }
+            console.log('Failed to find room', err);
+        // Room doesn't exist in the collection, so let's add it!
+        } else if(room === null) {
+            newRoom.save(function(err, newRoom) {
+                if(err) {
+                    console.log('Failed to save room', err);
+                }
 
-        callback(err, newRoom);
+                callback(err, newRoom);
+            });
+        } else {
+            callback(err, null);
+        }
     });
+        
 }
 
 function getAllUsers(sentUser, callback) {

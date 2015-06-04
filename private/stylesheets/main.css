@@ -38,8 +38,8 @@ pre {
     cursor: none;
     width: 100%;
     height: 100vh;
-    -webkit-animation: textLight 10s linear infinite;
-    animation: textLight 10s linear infinite;
+    /*-webkit-animation: textLight 10s linear infinite;
+    animation: textLight 10s linear infinite;*/
 }
 
 #main:before {
@@ -53,8 +53,8 @@ pre {
     opacity: .11;
     -webkit-box-shadow: inset 0 0 60px 5px #000000;
     box-shadow: inset 0 0 40px 10px #000000;
-    -webkit-animation: light 10s linear infinite;
-    animation: light 10s linear infinite;
+    /*-webkit-animation: light 10s linear infinite;
+    animation: light 10s linear infinite;*/
 }
 
 .logo {
@@ -79,7 +79,7 @@ pre {
     padding-right: 0.5em;
 }
 
-@-webkit-keyframes blinking {
+/*@-webkit-keyframes blinking {
     from { background-color: transparent; }
     50% {
         background-color: #00FF00;
@@ -121,7 +121,7 @@ pre {
     25%     { opacity: .85; }
     50%     { opacity: .75; }
     75%     { opacity: .65; }
-}
+}*/
 
 @media (max-height: 768px) and (max-width: 1024px) {
     .feed {
@@ -143,7 +143,7 @@ pre {
 
     .logo { font-size: .1em; }
 
-    #main {
+    /*#main {
         -webkit-animation: none;
         animation: none;
     }
@@ -151,5 +151,5 @@ pre {
     #main:before {
         -webkit-animation: none;
         animation: none;
-    }
+    }*/
 }

@@ -13,8 +13,10 @@ function handle(socket) {
         manager.createRoom(sentRoom, function(err, room) {
             if(err) {
                 socket.emit('message', { text : ['Failed to create the room'] });
-            } else {
+            } else if(room !== null) {
                 socket.emit('message', { text : ['Room successfully created'] });
+            } else {
+                socket.emit('message', { text : [sentRoom.roomName + ' already exists'] });
             }
         });
     });
@@ -24,15 +26,15 @@ function handle(socket) {
 
         manager.getUserById(socket.id, function(err, user) {
             if(err || user === null) {
-                socket.emit('message', { text : ['Failed to follow room'] });
+                socket.emit('message', { text : ['Failed to follow ' + sentRoom] });
             } else {
                 manager.authUserToRoom(user, sentRoom.roomName, sentRoom.password, function(err, room) {
                     if(err || room === null) {
-                        socket.emit('message', { text : ['Failed to follow room'] });
+                        socket.emit('message', { text : ['Failed to follow ' + sentRoom] });
                     } else {
                         manager.addRoomToUser(user.userName, room.roomName, function(err) {
                             if(err) {
-                                socket.emit('message', { text : ['Failed to follow the room'] });
+                                socket.emit('message', { text : ['Failed to follow ' + sentRoom] });
                             } else {
                                 if(sentRoom.entered) { room.entered = true }
 
