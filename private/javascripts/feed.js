@@ -221,7 +221,7 @@ var validCommands = {
     chatmode : {
         func : function() {
             platformCommands.setLocally('mode', 'chatmode');
-            messageQueue.push({ text : ['Chat mode activated'] });
+            messageQueue.push({ text : ['Chat mode activated', 'Prepend commands with "-", e.g. "-normalmode"'] });
         },
         help : [
             'Sets mode to chat',
