@@ -30,17 +30,29 @@ function handle(socket) {
             if(err) {
                 socket.emit('message', { text : ['Failed to follow room'] });
             } else if(room !== null) {
-                if(sentRoom.entered) { room.entered = true }
+                manager.getUserById(socket.id, function(err, user) {
+                    if(err || user === null) {
+                        socket.emit('message', { text : ['Failed to follow room'] });
+                    } else {
+                        manager.addRoomToUser(user.userName, room.roomName, function(err) {
+                            if(err) {
+                                socket.emit('message', { text : ['Failed to follow the room'] });
+                            } else {
+                                if(sentRoom.entered) { room.entered = true }
 
-                if(socket.rooms.indexOf(room.roomName) < 0) {
-                    socket.broadcast.to(room.roomName).emit('chatMsg', {
-                        text : 'placeholderUserName' + ' is following ' + room.roomName,
-                        room : room.roomName
-                    });
-                }
+                                if(socket.rooms.indexOf(room.roomName) < 0) {
+                                    socket.broadcast.to(room.roomName).emit('chatMsg', {
+                                        text : 'placeholderUserName' + ' is following ' + room.roomName,
+                                        room : room.roomName
+                                    });
+                                }
 
-                socket.join(room.roomName);
-                socket.emit('follow', room);
+                                socket.join(room.roomName);
+                                socket.emit('follow', room);
+                            }
+                        });
+                    }
+                });
             } else {
                 socket.emit('message', { text : ['You were unable to follow ' + sentRoom.roomName] });
             }

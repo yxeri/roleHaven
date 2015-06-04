@@ -15,7 +15,8 @@ var userSchema = new mongoose.Schema({
     password : String,
     socketId : String,
     accessLevel : { type : Number, default : 1 },
-    visibility : { type : Number, default : 1 }
+    visibility : { type : Number, default : 1 },
+    rooms : [{ type : String, unique : true }]
 });
 var roomSchema = new mongoose.Schema({
     roomName : { type : String, unique : true },
@@ -127,6 +128,26 @@ function getAllRooms(sentUser, callback) {
     });
 }
 
+function addRoomToUser(sentUserName, sentRoomName, callback) {
+    User.findOneAndUpdate({ userName : sentUserName }, { $addToSet : { rooms : sentRoomName }}).lean().exec(function(err, user) {
+        if(err) {
+            console.log('Failed to add room to user', err);
+        }
+
+        callback(err);
+    });
+}
+
+function removeRoomFromUser(sentRoomName, callback) {
+    User.findOneAndUpdate().lean().exec(function(err, user) {
+        if(err) {
+            console.log('Failed to remove room from user', err);
+        }
+
+        callback(err);
+    });
+}
+
 exports.getUserById = getUserById;
 exports.authUser = authUser;
 exports.addUser = addUser;
@@ -135,3 +156,5 @@ exports.authUserToRoom = authUserToRoom;
 exports.createRoom = createRoom;
 exports.getAllUsers = getAllUsers;
 exports.getAllRooms = getAllRooms;
+exports.addRoomToUser = addRoomToUser;
+exports.removeRoomFromUser = removeRoomFromUser;

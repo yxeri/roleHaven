@@ -49,7 +49,11 @@ var logo = {
     '               #######  ##########  #######',
     '                 ###      ######      ###',
     '                           ####',
-    ' '
+    '####',
+    '####',
+    '[Developer\'s note:] NOTE! THIS IS A DEV SERVER! EVERYTHING MAY BE DELETED AT ANY TIME AND THERE WILL BE BUGS!',
+    '####',
+    '####',
     ]
 };
 var commandFailText = { text : ['command not found'] };
@@ -265,6 +269,7 @@ var validCommands = {
                         // Check for empty!
                         user.password = password;
                         socket.emit('register', user);
+                        socket.emit('follow', { roomName : 'public', entered : true });
                     } else {
                         messageQueue.push(errorMsg);
                     }
@@ -394,8 +399,10 @@ socket.on('importantMsg', function(msg) {
 
 // Triggers when the connection is lost and then re-established
 socket.on('reconnect', function() {
+    console.log('currentuser', currentUser);
+
     if(currentUser) {
-        socket.emit('updateId', currentUser);
+        socket.emit('updateId', { userName : currentUser });
     }
 });
 
@@ -429,6 +436,11 @@ socket.on('login', function(userName) {
     messageQueue.push({ text : ['Successfully logged in as ' + userName] });
 });
 
+socket.on('connectProc', function() {
+    console.log('connection process');
+    socket.emit('fetchRooms');
+});
+
 function startBoot() {
     // Disable left mouse clicks
     document.onmousedown = function() {
@@ -450,7 +462,7 @@ function startBoot() {
     messageQueue.push(logo);
 
     if(currentUser) {
-        socket.emit('updateUser', currentUser);
+        socket.emit('updateId', { userName : currentUser, firstConnection : true });
 
         messageQueue.push({
             text : [
@@ -473,7 +485,7 @@ function startBoot() {
     if(platformCommands.getLocally('room')) {
         validCommands.enterroom.func([platformCommands.getLocally('room')]);
     } else {
-        validCommands.enterroom.func(['public']);
+        setInputStart('O3C-CMD$ ');
     }
 
     if('geolocation' in navigator) {

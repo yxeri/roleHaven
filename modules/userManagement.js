@@ -20,12 +20,30 @@ function handle(socket) {
         }
     });
 
-    socket.on('updateId', function(userName) {
-        manager.updateUserSocketId(userName, socket.id, function(err, user) {
+    socket.on('updateId', function(sentObject) {
+        console.log('updateId', socket.id, sentObject.userName);
+
+        manager.updateUserSocketId(sentObject.userName, socket.id, function(err, user) {
             if(err || user === null) {
                 console.log('Failed to update Id', err);
-            } else {
+            } else if(!sentObject.firstConnection) {
+                socket.emit('connectProc');
                 socket.emit('importantMsg', { text : ['Re-established connection'] });
+            }
+        });
+    });
+
+    // Joins all rooms connected to the user to its current socket ID
+    socket.on('fetchRooms', function() {
+        manager.getUserById(socket.id, function(err, user) {
+            if(err || user === null) {
+                console.log('Failed to get user by id', err);
+            } else {
+                for(var i = 0; i < user.rooms.length; i++) {
+                    var room = user.rooms[i];
+
+                    socket.join(room);
+                }
             }
         });
     });

@@ -24,7 +24,7 @@ pre {
 #inputText {
     /* Needed to hide caret. text-shadow allows the text to be visible */
     color: transparent;
-    text-shadow: 0px 0px .1px #00FF00;
+    text-shadow: 0px 0px .001px #00FF00;
 }
 
 #marker { 
@@ -69,7 +69,7 @@ pre {
     color: black;
     white-space: pre;
     text-transform: uppercase;
-    font-size: 1.5em;
+    font-size: 1.2em;
     font-weight: bold;
     text-align: center;
 }
