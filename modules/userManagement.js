@@ -21,8 +21,6 @@ function handle(socket) {
     });
 
     socket.on('updateId', function(sentObject) {
-        console.log('updateId', socket.id, sentObject.userName);
-
         manager.updateUserSocketId(sentObject.userName, socket.id, function(err, user) {
             if(err || user === null) {
                 console.log('Failed to update Id', err);
@@ -33,11 +31,12 @@ function handle(socket) {
         });
     });
 
+    // Should this be moved?
     // Joins all rooms connected to the user to its current socket ID
     socket.on('fetchRooms', function() {
         manager.getUserById(socket.id, function(err, user) {
             if(err || user === null) {
-                console.log('Failed to get user by id', err);
+                socket.emit('message', { text : ['Failed to fetch all your rooms'] });
             } else {
                 for(var i = 0; i < user.rooms.length; i++) {
                     var room = user.rooms[i];
@@ -47,6 +46,65 @@ function handle(socket) {
             }
         });
     });
+
+    // This should be moved
+    socket.on('locate', function(sentUserName) {
+        manager.getUserById(socket.id, function(err, user) {
+            if(err || user === null) {
+                socket.emit('message', { text : ['Failed to get user location'] });
+            } else {
+                // Return all user locations
+                if(sentUserName === '*') {
+                    manager.getAllUserLocations(user, function(err, users) {
+                        if(err || users === null) {
+                            socket.emit('message', { text : ['Failed to get user location'] });
+                        } else {
+                            var userText = [];
+
+                            for(var i = 0; i < users.length; i++) {
+                                var msg = '';
+
+                                msg += 'User: ' + users[i].userName;
+                                msg += '.\tLast seen: ' + '[' + users[i].position.timestamp + ']';
+                                msg += '.\tLongitude: ' + users[i].position.longitude;
+                                msg += '.\tLatitude: ' + users[i].position.latitude;
+
+                                userText[i] = msg;
+                            }
+
+                            socket.emit('message', { text : userText });
+                        }
+                    });
+                } else {
+                    manager.getUserLocation(user, sentUserName, function(err, user) {
+                        if(err || user === null) {
+                            socket.emit('message', { text : ['Failed to get user location'] });
+                        } else {
+                            socket.emit('message', { text : [
+                                'User: ' + user.userName,
+                                'Last seen: ' + '[' + user.position.timestamp + ']',
+                                'Longitude: ' + user.position.longitude + '. Latitude: ' + user.position.latitude 
+                            ]})
+                        }
+                    });
+                }
+            }
+        });
+    });
+
+    socket.on('updateLocation', function(position) {
+        manager.getUserById(socket.id, function(err, user) {
+            if(err || user === null) {
+                socket.emit('message', { text : ['Failed to update location'] });
+            } else {
+                manager.updateUserLocation(user.userName, position, function(err, user) {
+                    if(err) {
+                        socket.emit('message', { text : ['Failed to update location'] });
+                    }
+                });
+            }
+        });
+    })
 
     socket.on('login', function(sentUser) {
         if(sentUser.userName && sentUser.password) {

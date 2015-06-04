@@ -16,7 +16,8 @@ var userSchema = new mongoose.Schema({
     socketId : String,
     accessLevel : { type : Number, default : 1 },
     visibility : { type : Number, default : 1 },
-    rooms : [{ type : String, unique : true }]
+    rooms : [{ type : String, unique : true }],
+    position : {}
 });
 var roomSchema = new mongoose.Schema({
     roomName : { type : String, unique : true },
@@ -86,6 +87,16 @@ function updateUserSocketId(sentUserName, value, callback) {
     });
 }
 
+function updateUserLocation(sentUserName, sentPosition, callback) {
+    User.findOneAndUpdate({ userName : sentUserName }, { position : sentPosition }).lean().exec(function(err, user) {
+        if(err) {
+            console.log('Failed to update user', err);
+        }
+
+        callback(err);
+    });
+}
+
 function authUserToRoom(sentRoomName, sentPassword, callback) {
 	Room.findOne({ $and : [{ roomName : sentRoomName }, { password : sentPassword }] }).lean().exec(function(err, room) {
         if(err) {
@@ -128,6 +139,26 @@ function getAllRooms(sentUser, callback) {
     });
 }
 
+function getAllUserLocations(sentUser, callback) {
+    User.find({ accessLevel : { $lte : sentUser.accessLevel } }).sort({ userName : 1 }).lean().exec(function(err, users) {
+        if(err) {
+            console.log('Failed to get all user locations', err);
+        }
+
+        callback(err, users);
+    });
+}
+
+function getUserLocation(sentUser, sentUserName, callback) {
+    User.findOne({ $and : [{ accessLevel : { $lte : sentUser.accessLevel }}, { userName : sentUserName }] }).lean().exec(function(err, user) {
+        if(err) {
+            console.log('Failed to get all user locations', err);
+        }
+
+        callback(err, user);
+    });
+}
+
 function addRoomToUser(sentUserName, sentRoomName, callback) {
     User.findOneAndUpdate({ userName : sentUserName }, { $addToSet : { rooms : sentRoomName }}).lean().exec(function(err, user) {
         if(err) {
@@ -152,9 +183,12 @@ exports.getUserById = getUserById;
 exports.authUser = authUser;
 exports.addUser = addUser;
 exports.updateUserSocketId = updateUserSocketId;
+exports.updateUserLocation = updateUserLocation;
 exports.authUserToRoom = authUserToRoom;
 exports.createRoom = createRoom;
 exports.getAllUsers = getAllUsers;
 exports.getAllRooms = getAllRooms;
+exports.getAllUserLocations = getAllUserLocations;
+exports.getUserLocation = getUserLocation;
 exports.addRoomToUser = addRoomToUser;
 exports.removeRoomFromUser = removeRoomFromUser;

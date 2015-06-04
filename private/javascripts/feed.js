@@ -68,6 +68,8 @@ var platformCommands = {
 var previousCommands = platformCommands.getLocally('previousCommands') ? JSON.parse(platformCommands.getLocally('previousCommands')) : [];
 var previousCommandPointer = previousCommands.length > 0 ? previousCommands.length : 0;
 var currentUser = platformCommands.getLocally('user');
+var oldPosition = {};
+var currentPosition = {};
 var validCommands = {
     help : {
         func : function() {
@@ -349,11 +351,13 @@ var validCommands = {
     },
     login : {
         func : function(phrases) {
-            var user = {};
-            user.userName = phrases[0];
-            user.password = phrases[1];
+            if(phrases.length > 1) {
+                var user = {};
+                user.userName = phrases[0];
+                user.password = phrases[1];
 
-            socket.emit('login', user);
+                socket.emit('login', user);
+            }
         },
         help : ['Logs in as a user on this device'],
         instructions : [
@@ -374,6 +378,23 @@ var validCommands = {
             messageQueue.push({ text : ['Time: ' + hours + ':' + minutes + ':' + seconds] });
         },
         help : ['Shows the current time']
+    },
+    locate : {
+        func : function(phrases) {
+            if(phrases.length > 0) {
+                var userName = phrases[0];
+
+                socket.emit('locate', userName)
+            }
+        },
+        help : ['Shows the last known location of the user', '* is a shortcut for all users'],
+        instructions : [
+            ' Usage:',
+            '  locate *user name OR "*"*',
+            ' Example:',
+            '  locate user1',
+            '  locate *'
+        ]
     }
 };
 
@@ -488,17 +509,7 @@ function startBoot() {
         setInputStart('O3C-CMD$ ');
     }
 
-    if('geolocation' in navigator) {
-        navigator.geolocation.getCurrentPosition(function(position) {
-            console.log(position.coords.latitude, position.coords.longitude);
-        });
-
-        navigator.geolocation.watchPosition(function(position) {
-            console.log('Better fix', position.coords.latitude, position.coords.longitude);
-        });
-    } else {
-        messageQueue.push({ text : ['Tracking satellites are unavailable'] });
-    }
+    locationData();
 }
 
 startBoot();
@@ -534,6 +545,51 @@ function clearInput() {
     setRightText('');
     // Fix for blinking marker
     setMarkerText(' ');
+}
+
+function locationData() {
+    if('geolocation' in navigator) {
+        navigator.geolocation.getCurrentPosition(function(position) {
+            // Geolocation object is empty when sent through Socket.IO
+            // This is a fix for that
+            var tempPosition = {};
+            tempPosition.latitude = position.coords.latitude;
+            tempPosition.longitude = position.coords.longitude;
+            tempPosition.speed = position.coords.speed;
+            tempPosition.accuracy = position.coords.accuracy;
+            tempPosition.heading = position.coords.heading;
+            tempPosition.timestamp = position.timestamp;
+
+            currentPosition = position;
+
+            socket.emit('updateLocation', tempPosition);
+        });
+
+        navigator.geolocation.watchPosition(function(position) {
+            oldPosition = currentPosition;
+            currentPosition = position;
+        });
+
+        setInterval(sendLocationData, 4000);
+    } else {
+        messageQueue.push({ text : ['Tracking satellites are unavailable'] });
+    }
+}
+
+function sendLocationData() {
+    if(currentPosition !== oldPosition) {
+        var tempPosition = {};
+        tempPosition.latitude = currentPosition.coords.latitude;
+        tempPosition.longitude = currentPosition.coords.longitude;
+        tempPosition.speed = currentPosition.coords.speed;
+        tempPosition.accuracy = currentPosition.coords.accuracy;
+        tempPosition.heading = currentPosition.coords.heading;
+        tempPosition.timestamp = currentPosition.timestamp;
+
+        oldPosition = currentPosition;
+
+        socket.emit('updateLocation', tempPosition);
+    }
 }
 
 function getAvailableCommands () {
