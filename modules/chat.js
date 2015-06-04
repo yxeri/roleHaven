@@ -65,7 +65,7 @@ function handle(socket) {
     // Shows all available rooms
     socket.on('listRooms', function() {
         manager.getUserById(socket.id, function(err, user) {
-            if(err) {
+            if(err || user === null) {
                 console.log('Failed to get user by id', err);
             } else {
                 manager.getAllRooms(user, function(roomErr, rooms) {
@@ -89,7 +89,7 @@ function handle(socket) {
 
     socket.on('listUsers', function() {
         manager.getUserById(socket.id, function(err, user) {
-            if(err) {
+            if(err || user === null) {
                 console.log('Failed to get user by id', err);
             } else {
                 manager.getAllUsers(user, function(userErr, users) {

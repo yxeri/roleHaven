@@ -21,8 +21,8 @@ function handle(socket) {
     });
 
     socket.on('updateId', function(userName) {
-        manager.updateUserSocketId(userName, socket.id, function(err) {
-            if(err) {
+        manager.updateUserSocketId(userName, socket.id, function(err, user) {
+            if(err || user === null) {
                 console.log('Failed to update Id', err);
             } else {
                 socket.emit('importantMsg', { text : ['Re-established connection'] });
@@ -33,7 +33,7 @@ function handle(socket) {
     socket.on('login', function(sentUser) {
         if(sentUser.userName && sentUser.password) {
             manager.authUser(sentUser.userName, sentUser.password, function(err, user) {
-                if(err) {
+                if(err || user === null) {
                     socket.emit('message', { text : ['Failed to login'] });
                 } else {
                    socket.emit('login', user.userName); 

@@ -141,9 +141,9 @@ var validCommands = {
         ],
         instructions : [
             ' Usage:',
-            '  enterroom *room name*',
+            '  enterroom *room name* *optional password*',
             ' Example:',
-            '  enterroom sector5'
+            '  enterroom sector5 banana'
         ]
     },
     exitroom : {
@@ -177,9 +177,9 @@ var validCommands = {
         ],
         instructions : [
             ' Usage:',
-            '  follow *room name*',
+            '  follow *room name* *optional password*',
             ' Example:',
-            '  follow roomname'
+            '  follow room1 banana'
         ]
     },
     unfollow : {
@@ -300,6 +300,7 @@ var validCommands = {
         func : function(phrases) {
             if(phrases.length > 0) {
                 var roomName = phrases[0];
+                var password = phrases[1];
 
                 var errorMsg = {
                     text : [
@@ -313,6 +314,7 @@ var validCommands = {
                     var room = {};
 
                     room.roomName = roomName;
+                    room.password = password;
 
                     socket.emit('createRoom', room);
                     socket.emit('follow', room);
@@ -329,9 +331,9 @@ var validCommands = {
         ],
         instructions : [
             ' Usage:',
-            '  createroom *room name*',
+            '  createroom *room name* *optional password*',
             ' Example:',
-            '  createroom myroom'
+            '  createroom myroom banana'
         ]
     },
     myrooms : {
@@ -472,6 +474,18 @@ function startBoot() {
         validCommands.enterroom.func([platformCommands.getLocally('room')]);
     } else {
         validCommands.enterroom.func(['public']);
+    }
+
+    if('geolocation' in navigator) {
+        navigator.geolocation.getCurrentPosition(function(position) {
+            console.log(position.coords.latitude, position.coords.longitude);
+        });
+
+        navigator.geolocation.watchPosition(function(position) {
+            console.log('Better fix', position.coords.latitude, position.coords.longitude);
+        });
+    } else {
+        messageQueue.push({ text : ['Tracking satellites are unavailable'] });
     }
 }
 

@@ -38,8 +38,8 @@ pre {
     cursor: none;
     width: 100%;
     height: 100vh;
-    -webkit-animation: textLight 3s linear infinite;
-    animation: textLight 3s linear infinite;
+    /*-webkit-animation: textLight 3s linear infinite;
+    animation: textLight 3s linear infinite;*/
 }
 
 #main:before {
@@ -50,11 +50,11 @@ pre {
     background: -webkit-linear-gradient(#A0E6A0 50%, black 50%);
     background: linear-gradient(#A0E6A0 50%, black 50%);
     background-size: 100% 5px;
-    opacity: .15;
+    opacity: .11;
     -webkit-box-shadow: inset 0 0 60px 5px #000000;
     box-shadow: inset 0 0 40px 10px #000000;
-    -webkit-animation: light 3s linear infinite;
-    animation: light 3s linear infinite;
+   /* -webkit-animation: light 3s linear infinite;
+    animation: light 3s linear infinite;*/
 }
 
 .logo {
@@ -96,19 +96,19 @@ pre {
 }
 
 @-webkit-keyframes light {
-    0%      { opacity: .15; }
-    25%     { opacity: .21; }
-    50%     { opacity: .14; }
-    75%     { opacity: .07; }
-    100%    { opacity: .15; }
+    0%      { opacity: .11; }
+    25%     { opacity: .17; }
+    50%     { opacity: .10; }
+    75%     { opacity: .03; }
+    100%    { opacity: .11; }
 }
 
 @keyframes light {
-    0%      { opacity: .15; }
-    25%     { opacity: .21; }
-    50%     { opacity: .14; }
-    75%     { opacity: .07; }
-    100%    { opacity: .15; }
+    0%      { opacity: .11; }
+    25%     { opacity: .17; }
+    50%     { opacity: .10; }
+    75%     { opacity: .03; }
+    100%    { opacity: .11; }
 }
 
 @-webkit-keyframes textLight {
