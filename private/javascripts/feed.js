@@ -167,7 +167,7 @@ var validCommands = {
     },
     follow : {
         func : function(phrases) {
-            if(phrases.length > 1) {
+            if(phrases.length > 0) {
                 var room = {};
                 room.roomName = phrases[0];
                 room.password = phrases[1];
@@ -198,7 +198,9 @@ var validCommands = {
                     room.exited = true;
                 }
 
-                socket.emit('unfollow', roomName);
+                room.roomName = roomName;
+
+                socket.emit('unfollow', room);
             } else {
                 messageQueue.push({ text : ['You have to specify which room to unfollow '] });
             }
@@ -443,8 +445,9 @@ socket.on('follow', function(room) {
 });
 
 socket.on('unfollow', function(room) {
+    messageQueue.push({ text : ['Stopped following ' + room.roomName] });
+    
     if(room.exited) {
-        messageQueue.push({ text : ['Stopped following ' + room.roomName] });
         setInputStart('public$ ');
         platformCommands.setLocally('room', 'public');
         socket.emit('follow', { roomName : 'public', entered : true });
@@ -458,7 +461,6 @@ socket.on('login', function(userName) {
 });
 
 socket.on('connectProc', function() {
-    console.log('connection process');
     socket.emit('fetchRooms');
 });
 
@@ -505,6 +507,7 @@ function startBoot() {
 
     if(platformCommands.getLocally('room')) {
         validCommands.enterroom.func([platformCommands.getLocally('room')]);
+        socket.emit('fetchRooms');
     } else {
         setInputStart('O3C-CMD$ ');
     }

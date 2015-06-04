@@ -22,16 +22,12 @@ function handle(socket) {
     socket.on('follow', function(sentRoom) {
         if(sentRoom.password === undefined) { sentRoom.password = '' }
 
-        console.log('follow', sentRoom);
-
-        manager.authUserToRoom(sentRoom.roomName, sentRoom.password, function(err, room) {
-            console.log('follow found', room);
-
-            if(err) {
+        manager.getUserById(socket.id, function(err, user) {
+            if(err || user === null) {
                 socket.emit('message', { text : ['Failed to follow room'] });
-            } else if(room !== null) {
-                manager.getUserById(socket.id, function(err, user) {
-                    if(err || user === null) {
+            } else {
+                manager.authUserToRoom(user, sentRoom.roomName, sentRoom.password, function(err, room) {
+                    if(err || room === null) {
                         socket.emit('message', { text : ['Failed to follow room'] });
                     } else {
                         manager.addRoomToUser(user.userName, room.roomName, function(err) {
@@ -42,7 +38,7 @@ function handle(socket) {
 
                                 if(socket.rooms.indexOf(room.roomName) < 0) {
                                     socket.broadcast.to(room.roomName).emit('chatMsg', {
-                                        text : 'placeholderUserName' + ' is following ' + room.roomName,
+                                        text : user.userName + ' is following ' + room.roomName,
                                         room : room.roomName
                                     });
                                 }
@@ -53,22 +49,30 @@ function handle(socket) {
                         });
                     }
                 });
-            } else {
-                socket.emit('message', { text : ['You were unable to follow ' + sentRoom.roomName] });
             }
         });
     });
 
     socket.on('unfollow', function(room) {
-        console.log('unfollow', room)
-
         if(socket.rooms.indexOf(room.roomName) > -1) {
-            socket.broadcast.to(room.roomName).emit('chatMsg', {
-                text : 'placeholderUserName' + ' left ' + room.roomName,
-                room : room.roomName
+            manager.getUserById(socket.id, function(err, user) {
+                if(err || user === null) {
+                    socket.emit('message', { text : ['Failed to unfollow room'] });
+                } else {
+                    manager.removeRoomFromUser(user.userName, room.roomName, function(err, user) {
+                        if(err || user === null) {
+                            socket.emit('message', { text : ['Failed to unfollow room'] });
+                        } else {
+                            socket.broadcast.to(room.roomName).emit('chatMsg', {
+                                text : user.userName + ' left ' + room.roomName,
+                                room : room.roomName
+                            });
+                            socket.leave(room.roomName);
+                            socket.emit('unfollow', room);
+                        }
+                    });
+                }
             });
-            socket.leave(room.roomName);
-            socket.emit('unfollow', room);
         } else {
             socket.emit('message', { text : ['You are not following ' + room.roomName] });
         }

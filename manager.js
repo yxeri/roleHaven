@@ -97,8 +97,8 @@ function updateUserLocation(sentUserName, sentPosition, callback) {
     });
 }
 
-function authUserToRoom(sentRoomName, sentPassword, callback) {
-	Room.findOne({ $and : [{ roomName : sentRoomName }, { password : sentPassword }] }).lean().exec(function(err, room) {
+function authUserToRoom(sentUser, sentRoomName, sentPassword, callback) {
+	Room.findOne({ $and : [{ accessLevel : { $lte : sentUser.accessLevel } }, { roomName : sentRoomName }, { password : sentPassword }] }).lean().exec(function(err, room) {
         if(err) {
             console.log('Failed to check auth against room', err);
         }
@@ -169,13 +169,13 @@ function addRoomToUser(sentUserName, sentRoomName, callback) {
     });
 }
 
-function removeRoomFromUser(sentRoomName, callback) {
-    User.findOneAndUpdate().lean().exec(function(err, user) {
+function removeRoomFromUser(sentUserName, sentRoomName, callback) {
+    User.findOneAndUpdate({ userName : sentUserName }, { $pull : { rooms : sentRoomName } }).lean().exec(function(err, user) {
         if(err) {
             console.log('Failed to remove room from user', err);
         }
 
-        callback(err);
+        callback(err, user);
     });
 }
 
