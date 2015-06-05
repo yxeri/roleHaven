@@ -63,14 +63,20 @@ function handle(socket) {
                             var userText = [];
 
                             for(var i = 0; i < users.length; i++) {
-                                var msg = '';
+                                
+                                    var msg = '';
 
-                                msg += 'User: ' + users[i].userName;
-                                msg += '.\tLast seen: ' + '[' + users[i].position.timestamp + ']';
-                                msg += '.\tLongitude: ' + users[i].position.longitude;
-                                msg += '.\tLatitude: ' + users[i].position.latitude;
+                                    msg += 'User: ' + users[i].userName;
 
-                                userText[i] = msg;
+                                    if(users[i].position) {
+                                        msg += '.\tLast seen: ' + '[' + users[i].position.timestamp + ']';
+                                        msg += '.\tLongitude: ' + users[i].position.longitude;
+                                        msg += '.\tLatitude: ' + users[i].position.latitude;
+                                    } else {
+                                        msg += '.\tUnable to locate user'
+                                    }
+
+                                    userText[i] = msg;
                             }
 
                             socket.emit('message', { text : userText });
@@ -80,12 +86,14 @@ function handle(socket) {
                     manager.getUserLocation(user, sentUserName, function(err, user) {
                         if(err || user === null) {
                             socket.emit('message', { text : ['Failed to get user location'] });
-                        } else {
+                        } else if(user.position) {
                             socket.emit('message', { text : [
                                 'User: ' + user.userName,
                                 'Last seen: ' + '[' + user.position.timestamp + ']',
                                 'Longitude: ' + user.position.longitude + '. Latitude: ' + user.position.latitude 
                             ]})
+                        } else {
+                            socket.emit('message', { text : ['Unable to locate ' + sentUserName] });
                         }
                     });
                 }
