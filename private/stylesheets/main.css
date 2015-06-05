@@ -63,7 +63,7 @@ pre {
     text-transform: uppercase;
 }
 
-.important {
+.importantMsg {
     line-height: 1;
     background-color: #00FF00;
     color: black;
@@ -77,6 +77,10 @@ pre {
 .feed {
     padding-left: 0.5em;
     padding-right: 0.5em;
+}
+
+.anon {
+    font-size: 0.2em;
 }
 
 /*@-webkit-keyframes blinking {

@@ -12,9 +12,11 @@ function handle(socket) {
             manager.addUser(userObj, function(err, user) {
                 if(err) {
                     socket.emit('message', { text : ['Failed to register user'] });
-                } else {
+                } else if(user !== null){
                     socket.emit('login', user.userName);
                     socket.emit('message', { text : [user.userName + ' has been registered!'] });
+                } else {
+                    socket.emit('message', { text : [sentUser.userName + ' already exists'] });
                 }
             });
         }
@@ -26,7 +28,6 @@ function handle(socket) {
                 console.log('Failed to update Id', err);
             } else if(!sentObject.firstConnection) {
                 socket.emit('updateConnection');
-                socket.emit('importantMsg', { text : ['Re-established connection'] });
             }
         });
     });
@@ -106,14 +107,22 @@ function handle(socket) {
         });
     })
 
+    // This has to set socket ID on new user
     socket.on('login', function(sentUser) {
         if(sentUser.userName && sentUser.password) {
             manager.authUser(sentUser.userName, sentUser.password, function(err, user) {
                 if(err || user === null) {
                     socket.emit('message', { text : ['Failed to login'] });
                 } else {
-                   socket.emit('login', user.userName);
-                   socket.emit('reconnect');
+                    var authUser = user;
+
+                    manager.updateUserSocketId(sentUser.userName, socket.id, function(err, user) {
+                        if(err || user === null) {
+                            socket.emit('message', { text : ['Failed to login'] });
+                        } else {
+                            socket.emit('login', authUser.userName);
+                        }
+                    });
                 }
             });
         } else {

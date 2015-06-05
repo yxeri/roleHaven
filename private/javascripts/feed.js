@@ -70,6 +70,10 @@ var previousCommandPointer = previousCommands.length > 0 ? previousCommands.leng
 var currentUser = platformCommands.getLocally('user');
 var oldPosition = {};
 var currentPosition = {};
+// The current step in the chain of functions for a command
+// -1 == not currently going through a chain of functions
+var commandStep = -1;
+var command = null;
 var validCommands = {
     help : {
         func : function() {
@@ -395,6 +399,44 @@ var validCommands = {
             '  locate user1',
             '  locate *'
         ]
+    },
+    decryptmodule : {
+        func : function() {
+            setCommand('decryptModule');
+            messageQueue.push({ text : [
+                'AAAB3NzaC1yc2EAAAADAQABAAABAQDHS//2ag4/Byp6GrdX/Fr',
+                'D6Rsc8OO/6wFUVDdpdAItvSCLCrc/dcJE/8iybEV595Xqw2qrv',
+                'w3OtlVFnfNkOVAvhObuW-Razor 1911-kr2/yYTaDEtVTVz0HI',
+                'i5mxEFD1zslvhObuWr6Q-presents-AHPFKLvfZVcz7Tdtve4q',
+                'dK2zXrxGOmOFllxiCbp-entity access!-cJy1/iCbp0mA4ca',
+                'MFvEEiKXrxGlxiCbp0miONA3EsqTcgY/yujOMJHa88/x1j5C+k',
+                'Q1uy6yEZOmOFl/yujOMJHa88/x1DVwWl6lsjHvSiwDDVwWl6el',
+                ' ',
+                'Please wait.......',
+                'Razor1911 command interception...........ACTIVATED',
+                'Organica Oracle defense systems...........DISABLED',
+                'Overriding locks..............................DONE',
+                'Connecting to entity database.................DONE'
+            ]});
+            // Print available entities
+        },
+        steps : [
+            function(phrase) {
+                messageQueue.push({ text : ['Please enter the encryption key: '] });
+            },
+            function(phrase) {
+                messageQueue.push({ text : ['Please choose the entity to unlock: '] });
+                
+            },
+            function() {
+                messageQueue.push({ text : ['Confirmed. Encryption key has been used on the entity'] });
+                setCommand(null);
+            }
+        ],
+        help : [],
+        instructions : [
+        ],
+        multipleSteps : true
     }
 };
 
@@ -413,13 +455,15 @@ socket.on('message', function(msg) {
 
 socket.on('importantMsg', function(msg) {
     var message = msg;
-    message.extraClass = 'important';
+    message.extraClass = 'importantMsg';
 
     messageQueue.push(message);
 });
 
 // Triggers when the connection is lost and then re-established
 socket.on('reconnect', function() {
+    messageQueue.push({ text : ['Re-established connection'], extraClass : 'importantMsg' });
+    
     if(currentUser) {
         socket.emit('updateId', { userName : currentUser });
     }
@@ -428,7 +472,7 @@ socket.on('reconnect', function() {
 socket.on('disconnect', function() {
     messageQueue.push({ 
         text : ['Lost connection'],
-        extraClass : 'important'
+        extraClass : 'importantMsg'
     });
 });
 
@@ -539,6 +583,8 @@ function setCurrentRoom(roomName) {
     setInputStart(roomName + '$ ');
     messageQueue.push({ text : ['Entered ' + roomName] });
 }
+
+function setCommand(sentCommand) { command = sentCommand; }
 
 function clearInput() {
     setLeftText('');
@@ -781,75 +827,79 @@ function keyPress(event) {
     switch(keyCode) {
         // Enter
         case 13:
-            // Index 0 is the command part
-            var phrases = getInputText().toLowerCase().trim().split(' ');
-            var command = null;
+            if(commandStep > -1) {
 
-            if(platformCommands.getLocally('mode') === 'normalmode') {
-                command = validCommands[phrases[0]];
             } else {
-                var sign = phrases[0].charAt(0);
+                // Index 0 is the command part
+                var phrases = getInputText().toLowerCase().trim().split(' ');
+                var command = null;
 
-                if(sign === '-') {
-                    command = validCommands[phrases[0].slice(1)];
+                if(platformCommands.getLocally('mode') === 'normalmode') {
+                    command = validCommands[phrases[0]];
+                } else {
+                    var sign = phrases[0].charAt(0);
+
+                    if(sign === '-') {
+                        command = validCommands[phrases[0].slice(1)];
+                    }
                 }
-            }
 
-            if(currentUser !== null && command) {
-                // Store the command for usage with up/down arrows
-                previousCommands.push(phrases.join(' '));
-                previousCommandPointer++;
-                platformCommands.setLocally('previousCommands', JSON.stringify(previousCommands));
+                if(currentUser !== null && command) {
+                    // Store the command for usage with up/down arrows
+                    previousCommands.push(phrases.join(' '));
+                    previousCommandPointer++;
+                    platformCommands.setLocally('previousCommands', JSON.stringify(previousCommands));
 
-                // Print input if the command shouldn't clear after use
-                if(!command.clearAfterUse) {
-                    var message = { text : [getInputStart() + getInputText()] };
+                    // Print input if the command shouldn't clear after use
+                    if(!command.clearAfterUse) {
+                        var message = { text : [getInputStart() + getInputText()] };
 
-                    if(command.usageTime) { message.timestamp = true; }
+                        if(command.usageTime) { message.timestamp = true; }
+
+                        messageQueue.push(message);
+                    }
+
+                    // Print the help and instruction parts of the command
+                    if(phrases[1] === '--help') {
+                        var message = { text : [] };
+
+                        if(command.help) { message.text = message.text.concat(command.help); }
+
+                        if(command.instructions) { message.text = message.text.concat(command.instructions); }
+
+                        if(message.text.length > 0) { messageQueue.push(message); }
+                    } else {
+                        command.func(phrases.splice(1));
+                    }
+                // A user who is not logged in will have access to register and login commands
+                } else if(command && (phrases[0] === 'register' || phrases[0] === 'login')) {
+                    messageQueue.push({ text : [getInputStart() + getInputText()] });
+                    command.func(phrases.splice(1));
+                } else if(platformCommands.getLocally('mode') === 'chatmode') {
+                    var combinedText = phrases.join(' ');
+                    var message = {
+                        text : [getInputStart() + getInputText()],
+                        timestamp : true
+                    };
 
                     messageQueue.push(message);
+                    validCommands.msg.func([combinedText]);
+                } else if(currentUser === null) {
+                    messageQueue.push({ 
+                        text : [
+                            'You must register a new user or login with an existing user', 
+                            'Use command "register" or "login"',
+                            'e.g. register myname 1135',
+                            'or login myname 1135'
+                        ] 
+                    });
+                // Sent command was not found. Print the failed input
+                } else if(phrases[0].length > 0) {
+                    messageQueue.push({ text : ['- ' + phrases[0] + ': ' + commandFailText.text] });
                 }
 
-                // Print the help and instruction parts of the command
-                if(phrases[1] === '--help') {
-                    var message = { text : [] };
-
-                    if(command.help) { message.text = message.text.concat(command.help); }
-
-                    if(command.instructions) { message.text = message.text.concat(command.instructions); }
-
-                    if(message.text.length > 0) { messageQueue.push(message); }
-                } else {
-                    command.func(phrases.splice(1));
-                }
-            // A user who is not logged in will have access to register and login commands
-            } else if(command && (phrases[0] === 'register' || phrases[0] === 'login')) {
-                messageQueue.push({ text : [getInputStart() + getInputText()] });
-                command.func(phrases.splice(1));
-            } else if(platformCommands.getLocally('mode') === 'chatmode') {
-                var combinedText = phrases.join(' ');
-                var message = {
-                    text : [getInputStart() + getInputText()],
-                    timestamp : true
-                };
-
-                messageQueue.push(message);
-                validCommands.msg.func([combinedText]);
-            } else if(currentUser === null) {
-                messageQueue.push({ 
-                    text : [
-                        'You must register a new user or login with an existing user', 
-                        'Use command "register" or "login"',
-                        'e.g. register myname 1135',
-                        'or login myname 1135'
-                    ] 
-                });
-            // Sent command was not found. Print the failed input
-            } else if(phrases[0].length > 0) {
-                messageQueue.push({ text : ['- ' + phrases[0] + ': ' + commandFailText.text] });
+                clearInput();
             }
-
-            clearInput();
 
             break;
         default:

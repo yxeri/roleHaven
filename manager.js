@@ -30,7 +30,6 @@ var roomSchema = new mongoose.Schema({
     }],
     isDefault : Boolean
 });
-// Should be moved
 var commandSchema = new mongoose.Schema({
     commandName : String,
     func : {},
@@ -39,11 +38,59 @@ var commandSchema = new mongoose.Schema({
     clearAfterUse : Boolean,
     usageTime : Boolean
 });
+// Blodsband specific schemas
+var entitySchema = new mongoose.Schema({
+    entityName : { type: String, unique : true },
+    keys : [Number]
+});
+var encryptionKeySchema = new mongoose.Schema({
+    key : String,
+    used : Boolean,
+    usedBy : String
+});
 
 var User = mongoose.model('User', userSchema);
 var Room = mongoose.model('Room', roomSchema);
-// Should be moved
 var Command = mongoose.model('Command', commandSchema);
+// Blodsband specific
+var Entity = mongoose.model('Entity', entitySchema);
+var EncryptionKey = mongoose.model('EncryptionKey', encryptionKeySchema);
+
+function addEncryptionKey() {
+
+}
+
+function addEntity(entity, callback) {
+    var newEntity = new Entity(entity);
+
+    Entity.findOne({ entityName : sentEntityName }).lean().exec(function(err, entity) {
+        if(err) {
+            console.log('Failed to find an entity', err);
+        } else if(entity === null) {
+            newEntity.save(function(err, newEntity) {
+                if(err) {
+                    console.log('Failed to save entity', err);
+                }
+
+                callback(err, newEntity);
+            })
+        } else {
+            callback(err, null);
+        }
+    });
+}
+
+function useEncryptionKey() {
+
+}
+
+function getAllEntities() {
+
+}
+
+function getEncryptionKeyUsed() {
+
+}
 
 function getUserById(sentSocketId, callback) {
     User.findOne({ socketId : sentSocketId }).lean().exec(function(err, user) {
@@ -68,13 +115,22 @@ function authUser(sentUserName, sentPassword, callback) {
 function addUser(user, callback) {
     var newUser = new User(user);
 
-    newUser.save(function(err, newUser) {
+    User.findOne({ userName : user.userName }).lean().exec(function(err, user) {
         if(err) {
-            console.log('Failed to save user', err);
-        }
+            console.log('Failed to find user');
+        } else if(user === null) {
+            newUser.save(function(err, newUser) {
+                if(err) {
+                    console.log('Failed to save user', err);
+                }
 
-        callback(err, newUser);
+                callback(err, newUser);
+            });
+        } else {
+            callback(err, null);
+        }
     });
+        
 }
 
 function updateUserSocketId(sentUserName, value, callback) {
@@ -202,3 +258,10 @@ exports.getAllUserLocations = getAllUserLocations;
 exports.getUserLocation = getUserLocation;
 exports.addRoomToUser = addRoomToUser;
 exports.removeRoomFromUser = removeRoomFromUser;
+
+//Blodsband specific
+exports.addEncryptionKey = addEncryptionKey;
+exports.addEntity = addEntity;
+exports.useEncryptionKey = useEncryptionKey;
+exports.getAllEntities = getAllEntities;
+exports.getEncryptionKeyUsed = getEncryptionKeyUsed;
