@@ -48,57 +48,6 @@ function handle(socket) {
         });
     });
 
-    // This should be moved
-    socket.on('locate', function(sentUserName) {
-        manager.getUserById(socket.id, function(err, user) {
-            if(err || user === null) {
-                socket.emit('message', { text : ['Failed to get user location'] });
-            } else {
-                // Return all user locations
-                if(sentUserName === '*') {
-                    manager.getAllUserLocations(user, function(err, users) {
-                        if(err || users === null) {
-                            socket.emit('message', { text : ['Failed to get user location'] });
-                        } else {
-                            var userText = [];
-
-                            for(var i = 0; i < users.length; i++) {
-                                    var msg = '';
-
-                                    msg += 'User: ' + users[i].userName;
-
-                                    if(users[i].position) {
-                                        msg += '\tLast seen: ' + '[' + users[i].position.timestamp + ']';
-                                        msg += '\tCoordinates: ' + users[i].position.latitude + ', ' + users[i].position.longitude;;
-                                    } else {
-                                        msg += '\tUnable to locate user'
-                                    }
-
-                                    userText[i] = msg;
-                            }
-
-                            socket.emit('message', { text : userText });
-                        }
-                    });
-                } else {
-                    manager.getUserLocation(user, sentUserName, function(err, user) {
-                        if(err || user === null) {
-                            socket.emit('message', { text : ['Failed to get user location'] });
-                        } else if(user.position) {
-                            socket.emit('message', { text : [
-                                'User: ' + user.userName,
-                                'Last seen: ' + '[' + user.position.timestamp + ']',
-                                'Coordinates: ' + user.position.latitude + ', ' + user.position.longitude 
-                            ]})
-                        } else {
-                            socket.emit('message', { text : ['Unable to locate ' + sentUserName] });
-                        }
-                    });
-                }
-            }
-        });
-    });
-
     socket.on('updateLocation', function(position) {
         manager.getUserById(socket.id, function(err, user) {
             if(err || user === null) {
@@ -112,7 +61,7 @@ function handle(socket) {
             }
         });
     })
-    
+
     socket.on('login', function(sentUser) {
         if(sentUser.userName && sentUser.password) {
             manager.authUser(sentUser.userName, sentUser.password, function(err, user) {

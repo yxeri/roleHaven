@@ -7,18 +7,20 @@
         <link rel="stylesheet" type="text/css" href="stylesheets/main.css" />
         <title>{{title}}</title>
     </head>
+    <body>
         <div id="background">    
             <div id="main">
                 <ul class="feed" id="mainFeed">
                     <!-- Required for Safari to render text -->
                     <li><pre> </pre></li>
                 </ul>
-                <div id="input" class="feed"><span id="inputStart"></span><span id="inputText"><span id="leftText"></span><span id="marker" contenteditable="true">&nbsp;</span><span id="rightText"></span></span></div>
+                <div id="input" class="feed"><span id="inputStart"></span><span id="inputText"><span id="leftText"></span><input id="marker" contenteditable="true">&nbsp;</input><span id="rightText"></span></span></div>
             </div>
         </div>
 
-        <!--<script src="/socket.io/socket.io.js"></script>-->
-        <script src="https://cdn.socket.io/socket.io-1.3.5.js"></script>
+        <script src="/socket.io/socket.io.js"></script>
+        <!--Android 2.2 fails when using cdn-->
+        <!--<script src="https://cdn.socket.io/socket.io-1.3.5.js"></script>-->
         <script src="javascripts/feed.js" charset="utf-8"></script>
     </body>
 </html>

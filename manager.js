@@ -213,7 +213,6 @@ function createRoom(room, callback) {
             callback(err, null);
         }
     });
-        
 }
 
 function getAllUsers(sentUser, callback) {

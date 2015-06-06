@@ -19,42 +19,40 @@ var logo = {
     speed : 0.5,
     extraClass : 'logo',
     text : [
-    ' ',
-    '                          ####',
-    '                ####    #########    ####',
-    '               ###########################',
-    '              #############################',
-    '            #######        ##   #  ##########',
-    '      ##########           ##    #  ###  ##########',
-    '     #########             #########   #   #########',
-    '       #####               ##     ########   #####',
-    '     #####                 ##     ##     ##########',
-    '     ####                  ##      ##     #   ######',
-    ' #######                   ##########     ##    ########',
-    '########                   ##       ########     ########',
-    ' ######      Organica      ##       #      #############',
-    '   ####     Oracle         ##       #      ##     ####',
-    '   ####     Operations     ##       #      ##    #####',
-    '   ####      Center        ##       #      ###########',
-    '########      Razor1911    ##       #########    ########',
-    '########       Edition     ##########      #    #########',
-    ' ########                  ##      ##     ## ###########',
-    '     #####                 ##      ##     ### #####',
-    '       #####               ##     ########   #####',
-    '      #######              ##########   #  ########',
-    '     ###########           ##    ##    # ###########',
-    '      #############        ##    #   #############',
-    '            ################################',
-    '              ############################',
-    '              #######  ##########  #######',
-    '                ###      ######      ###',
-    '                          ####',
-    '####',
-    '####',
+    // ' ',
+    // '                          ####',
+    // '                ####    #########    ####',
+    // '               ###########################',
+    // '              #############################',
+    // '            #######        ##   #  ##########',
+    // '      ##########           ##    #  ###  ##########',
+    // '     #########             #########   #   #########',
+    // '       #####               ##     ########   #####',
+    // '     #####                 ##     ##     ##########',
+    // '     ####                  ##      ##     #   ######',
+    // ' #######                   ##########     ##    ########',
+    // '########                   ##       ########     ########',
+    // ' ######      Organica      ##       #      #############',
+    // '   ####     Oracle         ##       #      ##     ####',
+    // '   ####     Operations     ##       #      ##    #####',
+    // '   ####      Center        ##       #      ###########',
+    // '########      Razor1911    ##       #########    ########',
+    // '########       Edition     ##########      #    #########',
+    // ' ########                  ##      ##     ## ###########',
+    // '     #####                 ##      ##     ### #####',
+    // '       #####               ##     ########   #####',
+    // '      #######              ##########   #  ########',
+    // '     ###########           ##    ##    # ###########',
+    // '      #############        ##    #   #############',
+    // '            ################################',
+    // '              ############################',
+    // '              #######  ##########  #######',
+    // '                ###      ######      ###',
+    // '                          ####',
+    // '####',
+    // '####',
     '[Developer\'s note:] NOTE! THIS IS A DEV SERVER!',
-    'EVERYTHING MAY BE DELETED AT ANY TIME. THERE WILL BE BUGS!',
-    '####',
-    '####',
+    'EVERYTHING MAY BE DELETED AT ANY TIME. THERE WILL BE BUGS!'
     ]
 };
 var commandFailText = { text : ['command not found'] };
@@ -520,15 +518,15 @@ var validCommands = {
 };
 
 //Upper left and right
-console.log(measureDistance(59.3879611, 18.0289599, 59.3851468, 18.0289599) / 20);
-//Bottom left and right
-console.log(measureDistance(59.3879611, 17.9508994, 59.3851468, 17.9508994) / 20);
+// console.log(measureDistance(59.3879611, 18.0289599, 59.3851468, 18.0289599) / 20);
+// //Bottom left and right
+// console.log(measureDistance(59.3879611, 17.9508994, 59.3851468, 17.9508994) / 20);
 
-//Upper left and bottom left
-console.log(measureDistance(59.3879611, 18.0289599, 59.3879611, 17.9508994) / 20);
+// //Upper left and bottom left
+// console.log(measureDistance(59.3879611, 18.0289599, 59.3879611, 17.9508994) / 20);
 
-//Upper right and bottom right
-console.log(measureDistance(59.3851468, 18.0289599, 59.3851468, 17.9508994) / 20);
+// //Upper right and bottom right
+// console.log(measureDistance(59.3851468, 18.0289599, 59.3851468, 17.9508994) / 20);
 
 // Taken from http://stackoverflow.com/questions/639695/how-to-convert-latitude-or-longitude-to-meters/11172685#11172685
 function measureDistance(lat1, lon1, lat2, lon2){  // generally used geo measurement function
@@ -639,14 +637,9 @@ function isScreenOff() {
 }
 
 function startBoot() {
-    // Disable left mouse clicks
-    document.onmousedown = function() {
-        marker.focus();
-        return false;
-    };
-
     document.getElementById('background').addEventListener('click', function(event) {
         marker.focus();
+
         event.preventDefault();
     });
     addEventListener('keypress', keyPress);
@@ -708,7 +701,7 @@ function setRightText(text) { marker.parentElement.childNodes[2].textContent = t
 
 function prependToRightText(sentText) { marker.parentElement.childNodes[2].textContent = sentText + marker.parentElement.childNodes[2].textContent; }
 
-function setMarkerText(text) { marker.textContent = text; }
+function setMarkerText(text) { marker.value = text; }
 
 function setInputStart(text) { inputStart.textContent = text; }
 
@@ -814,7 +807,7 @@ function getAvailableCommands () {
 }
 
 function autoComplete() {
-    var phrases = getInputText().toLowerCase().trim().split(' ');
+    var phrases = trimWhitespaces(getInputText().toLowerCase()).split(' ');
     var partialCommand = phrases[0];
     var commands = Object.keys(validCommands);
     var matched = [];
@@ -917,7 +910,7 @@ function specialKeyPress(event) {
         case 37:
             // Moves the marker one step to the left
             if(getLeftText(marker)) {
-                prependToRightText(marker.textContent);
+                prependToRightText(marker.value);
                 setMarkerText(getLeftText(marker).slice(-1));
                 setLeftText(getLeftText(marker).slice(0, -1));
             }
@@ -929,7 +922,7 @@ function specialKeyPress(event) {
         case 39:
             // Moves marker one step to the right
             if(getRightText(marker)) {              
-                appendToLeftText(marker.textContent);
+                appendToLeftText(marker.value);
                 setMarkerText(getRightText(marker)[0]);
                 setRightText(getRightText(marker).slice(1));
             }
@@ -990,9 +983,7 @@ function keyPress(event) {
         case 13:
             if(!keyboardBlocked) {
                 if(currentCommand !== null) {
-                    console.log('current command', currentCommand, maxCommandSteps, currentCommandStep);
-
-                    var phrase = getInputText().toLowerCase().trim();
+                    var phrase = trimWhitespaces(getInputText().toLowerCase());
 
                     if(phrase === 'exit' || phrase === 'abort') {
                         setCommand(null);
@@ -1002,11 +993,9 @@ function keyPress(event) {
 
                         validCommands[currentCommand].steps[currentCommandStep](phrase, socket);
                     }
-
-                    clearInput();
                 } else {
                     // Index 0 is the command part
-                    var phrases = getInputText().toLowerCase().trim().split(' ');
+                    var phrases = trimWhitespaces(getInputText().toLowerCase()).split(' ');
                     var command = null;
                     var commandName;
 
@@ -1104,9 +1093,20 @@ function keyPress(event) {
     event.preventDefault();
 }
 
+// Needed for Android 2.1. trim() is not supported
+function trimWhitespaces(sentText) {
+    if(sentText.charAt(0) === ' ') {
+        sentText = trimWhitespaces(sentText.slice(1));
+    } else if(sentText.charAt(sentText.length - 1) === ' ') {
+        sentText = trimWhitespaces(sentText.slice(0, -1));
+    }
+
+    return sentText;
+}
+
 function triggerAutoComplete(text) {
     if(text.charAt(text.length - 1) === ' ' && text.charAt(text.length - 2) === ' ') {
-        setLeftText(text.trim());  
+        setLeftText(trimWhitespaces(text));  
 
         return true;  
     }
@@ -1212,7 +1212,7 @@ function printLetter(span, character) {
 }
 
 function scrollView(element) {
-    element.scrollIntoView(element);
+    element.scrollIntoView({block: "end", behavior: "smooth"});
     // Compatibility fix
     window.scrollTo(0, document.body.scrollHeight);
 }

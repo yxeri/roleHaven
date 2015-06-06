@@ -19,19 +19,27 @@ pre {
     margin: 0;
 }
 
-#input { padding-bottom: 1em; }
+#input { 
+    padding-bottom: 1em;
+}
 
 #marker {
     /* Needed to hide caret. */
     color: transparent;
-}
-
-#marker { 
+    width: .8em;
+    margin: 0;
+    padding: 0;
+    border: 0;
+    border-radius: 0;
+    text-align: center;
+    background-color: #00FF00;
     -webkit-animation: blinking 1s step-end infinite;
     animation: blinking 1s step-end infinite;
 }
 
-#marker:focus { outline: 0; }
+#marker:focus {
+    outline: 0;
+}
 
 #background {
     cursor: none;
@@ -83,18 +91,24 @@ pre {
 }
 
 @-webkit-keyframes blinking {
-    from { background-color: transparent; }
+    from {
+        background-color: transparent;
+        font-size: .9em;
+        text-shadow: 0px 0px .0001px #00FF00;
+    }
     50% {
         background-color: #00FF00;
-        color: black;
     }
 }
 
 @keyframes blinking {
-    from { background-color: transparent; }
+    from {
+        background-color: transparent;
+        font-size: .9em;
+        text-shadow: 0px 0px .0001px #00FF00;
+    }
     50% {
         background-color: #00FF00;
-        color: black;
     }
 }
 
