@@ -18,7 +18,7 @@ var userSchema = new mongoose.Schema({
     visibility : { type : Number, default : 1 },
     rooms : [{ type : String, unique : true }],
     position : {}
-});
+}, { collection : 'users' });
 var roomSchema = new mongoose.Schema({
     roomName : { type : String, unique : true },
     password : { type : String, default : '' },
@@ -29,7 +29,7 @@ var roomSchema = new mongoose.Schema({
         accessLevel : Number
     }],
     isDefault : Boolean
-});
+}, { collection : 'rooms' });
 var commandSchema = new mongoose.Schema({
     commandName : String,
     func : {},
@@ -37,17 +37,18 @@ var commandSchema = new mongoose.Schema({
     instructions : [String],
     clearAfterUse : Boolean,
     usageTime : Boolean
-});
+}, { collection : 'commands' });
 // Blodsband specific schemas
 var entitySchema = new mongoose.Schema({
-    entityName : { type: String, unique : true },
-    keys : [String]
-});
+    entityName : { type : String, unique : true },
+    keys : [String],
+    verified : [Boolean]
+}, { collection : 'entities' });
 var encryptionKeySchema = new mongoose.Schema({
-    key : String,
+    key : { type : String, unique : true },
     used : Boolean,
     usedBy : String
-});
+}, { collection : 'encryptionKeys' });
 
 var User = mongoose.model('User', userSchema);
 var Room = mongoose.model('Room', roomSchema);
@@ -80,12 +81,30 @@ function addEntity(entity, callback) {
     });
 }
 
-function useEncryptionKey() {
+function unlockEntity(sentKey, sentEntityName, callback) {
+    EncryptionKey.findOneAndUpdate({ key : sentKey, used : false }, { used : true }).lean().exec(function(err, key) {
+        if(err || key === null) {
+            console.log('Failed to update key', sentKey, err);
+            callback(err, null);
+        } else {
+            Entity.findOneAndUpdate({ entityName : sentEntityName }, { $addToSet : { keys : key.key }}).lean().exec(function(err, entity) {
+                if(err || entity === null) {
+                    console.log('Failed to find and update entity', err);
 
+                    // Rollback
+                    EncryptionKey.findOneAndUpdate({ key : sentKey }, { used : false }).lean().exec(function(err, key) {
+                        if(err) { console.log('Failed to do a rollback on key', sentKey); }
+                    });
+                }
+
+                callback(err, entity);
+            });
+        }
+    });
 }
 
 function getAllEntities(callback) {
-    Entity.find().lean().exec(function(err, entities) {
+    Entity.find().sort({ entityName : 1 }).lean().exec(function(err, entities) {
         if(err || entities === null) {
             console.log('Failed to get all entities', err);
         }
@@ -94,8 +113,14 @@ function getAllEntities(callback) {
     });
 }
 
-function getEncryptionKeyUsed() {
+function getEncryptionKey(sentKey, callback) {
+    EncryptionKey.findOne({ key : sentKey }).lean().exec(function(err, key) {
+        if(err) {
+            console.log('Failed to get encryption key', err);
+        }
 
+        callback(err, key);
+    });
 }
 
 function getUserById(sentSocketId, callback) {
@@ -268,6 +293,6 @@ exports.removeRoomFromUser = removeRoomFromUser;
 //Blodsband specific
 exports.addEncryptionKey = addEncryptionKey;
 exports.addEntity = addEntity;
-exports.useEncryptionKey = useEncryptionKey;
+exports.unlockEntity = unlockEntity;
 exports.getAllEntities = getAllEntities;
-exports.getEncryptionKeyUsed = getEncryptionKeyUsed;
+exports.getEncryptionKey = getEncryptionKey;

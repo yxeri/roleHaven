@@ -20,38 +20,39 @@ var logo = {
     extraClass : 'logo',
     text : [
     ' ',
-    '                           ####',
-    '                 ####    #########    ####',
-    '                ###########################',
-    '               #############################',
-    '             #######        ##   #  ##########',
-    '       ##########           ##    #  ###  ##########',
-    '      #########             #########   #   #########',
-    '        #####               ##     ########   #####',
-    '      #####                 ##     ##     ##########',
-    '      ####                  ##      ##     #   ######',
-    '  #######                   ##########     ##    ########',
-    ' ########                   ##       ########     ########',
-    '  ######      Organica      ##       #      #############',
-    '    ####     Oracle         ##       #      ##     ####',
-    '    ####     Operations     ##       #      ##    #####',
-    '    ####      Center        ##       #      ###########',
-    ' ########                   ##       #########    ########',
-    ' ########                   ##########      #    #########',
-    '  ########                  ##      ##     ## ###########',
-    '      #####                 ##      ##     ### #####',
-    '        #####               ##     ########   #####',
-    '       #######              ##########   #  ########',
-    '      ###########           ##    ##    # ###########',
-    '       #############        ##    #   #############',
-    '             ################################',
-    '               ############################',
-    '               #######  ##########  #######',
-    '                 ###      ######      ###',
-    '                           ####',
+    '                          ####',
+    '                ####    #########    ####',
+    '               ###########################',
+    '              #############################',
+    '            #######        ##   #  ##########',
+    '      ##########           ##    #  ###  ##########',
+    '     #########             #########   #   #########',
+    '       #####               ##     ########   #####',
+    '     #####                 ##     ##     ##########',
+    '     ####                  ##      ##     #   ######',
+    ' #######                   ##########     ##    ########',
+    '########                   ##       ########     ########',
+    ' ######      Organica      ##       #      #############',
+    '   ####     Oracle         ##       #      ##     ####',
+    '   ####     Operations     ##       #      ##    #####',
+    '   ####      Center        ##       #      ###########',
+    '########      Razor1911    ##       #########    ########',
+    '########       Edition     ##########      #    #########',
+    ' ########                  ##      ##     ## ###########',
+    '     #####                 ##      ##     ### #####',
+    '       #####               ##     ########   #####',
+    '      #######              ##########   #  ########',
+    '     ###########           ##    ##    # ###########',
+    '      #############        ##    #   #############',
+    '            ################################',
+    '              ############################',
+    '              #######  ##########  #######',
+    '                ###      ######      ###',
+    '                          ####',
     '####',
     '####',
-    '[Developer\'s note:] NOTE! THIS IS A DEV SERVER! EVERYTHING MAY BE DELETED AT ANY TIME AND THERE WILL BE BUGS!',
+    '[Developer\'s note:] NOTE! THIS IS A DEV SERVER!',
+    'EVERYTHING MAY BE DELETED AT ANY TIME. THERE WILL BE BUGS!',
     '####',
     '####',
     ]
@@ -75,6 +76,14 @@ var currentPosition = {};
 var maxCommandSteps = 0;
 var currentCommandStep = 0;
 var currentCommand = null;
+var keyboardBlocked = false;
+var commandData;
+// Used by isScreenOff() to force reconnect when phone screen is off for a longer period of time
+var lastInterval = (new Date()).getTime();
+var trackingInterval;
+var printInterval;
+var pingInterval;
+var screenOffInterval;
 var validCommands = {
     help : {
         func : function() {
@@ -386,13 +395,18 @@ var validCommands = {
     },
     locate : {
         func : function(phrases) {
-            if(phrases.length > 0) {
+            if(localStorage.getItem('tracking') === 'false') {
+                messageQueue.push({ text : ['Tracking not available', 'You are not connected to the satellites'] });
+            } else if(phrases.length > 0) {
                 var userName = phrases[0];
 
                 socket.emit('locate', userName)
             }
         },
-        help : ['Shows the last known location of the user', '* is a shortcut for all users'],
+        help : [
+        'Shows the last known location of the user', '* is a shortcut for all users',
+        'You need to be connected to the satellites to access this command'
+        ],
         instructions : [
             ' Usage:',
             '  locate *user name OR "*"*',
@@ -403,41 +417,131 @@ var validCommands = {
     },
     decryptmodule : {
         func : function() {
-            setInputStart('Encryption key: ');
+            messageQueue.push( { text : [
+                '   ####',
+                '###############',
+                ' #####  #########                                           ####',
+                '  ####     #######  ########     ###########    ####     ###########',
+                '  ####    ######      #######   ####   #####  ########    ####   #####',
+                '  ####  ###         ####  ####        ####  ###    ###### ####   #####',
+                '  #########        ####    ####     ####   #####     ##############',
+                '  #### ######     ####     #####  ####     #######   ###  ########',
+                '  ####   ######  ##### #### #### ############  #######    ####   ###',
+                ' ######    #############    ################     ###      ####    #####',
+                '########     ########         ###                        ######      #####   ##',
+                '               ###########        ##                                    ###### ',
+                '                    ###############    Razor1911',
+                '                         #####   demos - warez - honey',
+                ' '
+            ], extraClass : 'logo' });
             messageQueue.push({ text : [
-                // 'AAAB3NzaC1yc2EAAAADAQABAAABAQDHS//2ag4/Byp6GrdX/Fr',
-                // 'D6Rsc8OO/6wFUVDdpdAItvSCLCrc/dcJE/8iybEV595Xqw2qrv',
-                // 'w3OtlVFnfNkOVAvhObuW-Razor 1911-kr2/yYTaDEtVTVz0HI',
-                // 'i5mxEFD1zslvhObuWr6Q-presents-AHPFKLvfZVcz7Tdtve4q',
-                // 'dK2zXrxGOmOFllxiCbp-entity access!-cJy1/iCbp0mA4ca',
-                // 'MFvEEiKXrxGlxiCbp0miONA3EsqTcgY/yujOMJHa88/x1j5C+k',
-                // 'Q1uy6yEZOmOFl/yujOMJHa88/x1DVwWl6lsjHvSiwDDVwWl6el',
-                // ' ',
-                // 'Please wait.......',
-                // 'Razor1911 command interception...........ACTIVATED',
-                // 'Organica Oracle defense systems...........DISABLED',
-                // 'Overriding locks..............................DONE',
-                // 'Connecting to entity database.................DONE',
-                'Please enter the encryption key '
-            ]});
+                'Razor1911 proudly presents:',
+                'Entity Hacking Access! (EHA)',
+                'AAAB3NzaC1yc2EAAAADAQABAAABAQDHS//2ag4/B',
+                'D6Rsc8OO/6wFUVDdpdAItvSCLCrc/dcJE/8iybEV',
+                'w3OtlVFnfNkOVAvhObuWO/6wFUVDdkr2/yYTaDEt',
+                'i5mxEFD1zslvhObuWr6QKLvfZVczAxAHPFKLvfZV',
+                'dK2zXrxGOmOFllxiCbpGOmOFlcJy1/iCbp0mA4ca',
+                'MFvEEiKXrxGlxiCbp0miONA3EsqTcgY/yujOMJHa',
+                'Q1uy6yEZOmOFl/yujOMJHa88/x1DVwWl6lsjHvSi',
+                'wDDVwWl6el88/x1j5C+k/aadtg1lcvcz7Tdtve4q',
+                'VTVz0HIhxv595Xqw2qrvyp6GrdX/FrhObuWr6QKL',
+                ' ',
+                'Please wait.......',
+                'Command interception...........ACTIVATED',
+                'Oracle defense systems......... DISABLED',
+                'Overriding locks....................DONE',
+                'Connecting to entity database.......DONE',
+                ' ']});
+            setInputStart('Enter encryption key: ');
+            socket.emit('entities');
         },
         steps : [
-            function(phrase) {
-                socket.emit('entities');
-                messageQueue.push({ text : ['Please enter the entity you want to unlock'] });
-                setInputStart('Entity: ');
+            function(phrase, socket) {
+                socket.emit('verifyKey', phrase);
+                messageQueue.push({ text : [
+                    'Verifying key. Please wait...'
+                ]});
+                keyboardBlocked = true;
+                setInputStart('Verifying...');
+            },
+            function(data, socket) {
+                if(data.keyData !== null) {
+                    if(!data.keyData.used) {
+                        messageQueue.push({ text : ['Key has been verified. Proceeding'] });
+                        currentCommandStep++;
+                        commandData = data;
+                        validCommands[currentCommand].steps[currentCommandStep](socket);
+                    } else {
+                        messageQueue.push({ text : ['Key has already been used. Aborting'] });
+                        setCommand(null);
+                    }
+                } else {
+                    messageQueue.push({ text : ['The key is invalid. Aborting'] });
+                    setCommand(null);
+                }
+            },
+            function(socket) {
+                setInputStart('Enter entity name: ');
+                keyboardBlocked = false;
                 currentCommandStep++;
             },
-            function() {
-                messageQueue.push({ text : ['Confirmed. Encryption key has been used on the entity'] });
-                setCommand(null);
+            function(phrase, socket) {
+                var data = commandData;
+
+                data.entityName = phrase;
+                socket.emit('unlockEntity', commandData);
+                messageQueue.push({ text : [
+                    'Unlocking entity. Please wait...'
+                ]});
+                keyboardBlocked = true;
+            },
+            function(entity) {
+                if(entity !== null) {
+                    messageQueue.push({ text : [
+                        'Confirmed. Encryption key has been used on the entity',
+                        entity.entityName + ' now has ' + (entity.keys.length + 1) + ' unlocks'
+                    ]});
+                    setCommand(null);
+                } else {
+                    messageQueue.push({ text : ['Failed. Encryption key could not be used on entity. Aborting'] });
+                    setCommand(null);
+                }
             }
         ],
-        help : [],
+        help : [
+            'ERROR. UNAUTHORIZED COMMAND...AUTHORIZATION OVERRIDDEN. PRINTING INSTRUCTIONS',
+            'Allows you to input an encryption key and use it to unlock an entity'
+        ],
         instructions : [
+            'Follow the on-screen instructions'
         ]
     }
 };
+
+//Upper left and right
+console.log(measureDistance(59.3879611, 18.0289599, 59.3851468, 18.0289599) / 20);
+//Bottom left and right
+console.log(measureDistance(59.3879611, 17.9508994, 59.3851468, 17.9508994) / 20);
+
+//Upper left and bottom left
+console.log(measureDistance(59.3879611, 18.0289599, 59.3879611, 17.9508994) / 20);
+
+//Upper right and bottom right
+console.log(measureDistance(59.3851468, 18.0289599, 59.3851468, 17.9508994) / 20);
+
+// Taken from http://stackoverflow.com/questions/639695/how-to-convert-latitude-or-longitude-to-meters/11172685#11172685
+function measureDistance(lat1, lon1, lat2, lon2){  // generally used geo measurement function
+    var R = 6378.137; // Radius of earth in KM
+    var dLat = (lat2 - lat1) * Math.PI / 180;
+    var dLon = (lon2 - lon1) * Math.PI / 180;
+    var a = Math.sin(dLat/2) * Math.sin(dLat/2) +
+    Math.cos(lat1 * Math.PI / 180) * Math.cos(lat2 * Math.PI / 180) *
+    Math.sin(dLon/2) * Math.sin(dLon/2);
+    var c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1-a));
+    var d = R * c;
+    return d * 1000; // meters
+}
 
 socket.on('chatMsg', function(msg) {
     var roomTag = msg.room && msg.room !== platformCommands.getLocally('room') ? '[' + msg.room + '] ' : '';
@@ -469,8 +573,6 @@ socket.on('reconnect', function() {
 });
 
 socket.on('disconnect', function() {
-    console.log('DISCONNECT');
-
     messageQueue.push({ 
         text : ['Lost connection'],
         extraClass : 'importantMsg'
@@ -506,32 +608,33 @@ socket.on('updateConnection', function() {
     socket.emit('fetchRooms');
 });
 
-socket.on('commandSuccess', function(succeeded) {
-    if(succeeded) {
-        currentCommandStep++;
-    }
+socket.on('commandSuccess', function(data) {
+    console.log('command success', currentCommandStep, currentCommand, currentCommand.steps);
+    currentCommandStep++;
+    validCommands[currentCommand].steps[currentCommandStep](data, socket);
+});
+
+socket.on('commandFail', function() {
+    setCommand(null);
 });
 
 socket.on('pong', function() {
-    console.log('pong', new Date(), socket.id, socket.disconnected);
 });
 
-function getTime() {
-    return (new Date()).getTime();
-}
-
-var lastInterval = getTime();
-
+// Some devices disable Javascript when screen is off (iOS)
+// They also fail to notice that they have been disconnected
+// We check the time between heartbeats and if the time is 
+// over 10 seconds (e.g. when screen is turned off and then on)
+// we force them to reconnect
 function isScreenOff() {
-    var now = getTime();
+    var now = (new Date()).getTime();
     var diff = now - lastInterval;
     var offBy = diff - 1000;
     lastInterval = now;
 
-    if(offBy > 3000) {
-        console.log('interval heartbeat - off by ' + offBy + 'ms');
+    if(offBy > 10000) {
         socket.disconnect();
-        socket.connect(socket.io.uri, { forceNew : true });
+        socket.connect({ forceNew : true });
     }
 }
 
@@ -542,7 +645,7 @@ function startBoot() {
         return false;
     };
 
-    document.getElementById('main').addEventListener('click', function(event) {
+    document.getElementById('background').addEventListener('click', function(event) {
         marker.focus();
         event.preventDefault();
     });
@@ -551,9 +654,9 @@ function startBoot() {
     addEventListener('keydown', specialKeyPress);
     
     // Tries to print messages from the queue
-    setInterval(printText, 200, messageQueue);
-    setInterval(keepAlive, 5000);
-    setInterval(isScreenOff, 1000);
+    printInterval = setInterval(printText, 200, messageQueue);
+    pingInterval = setInterval(keepAlive, 5000);
+    screenOffInterval = setInterval(isScreenOff, 1000);
 
     messageQueue.push(logo);
 
@@ -565,7 +668,8 @@ function startBoot() {
                 'Welcome, employee ' + currentUser,
                 'Did you know that you can auto-complete commands by using the tab button or writing double spaces?',
                 'Learn this valuable skill to increase your productivity!',
-                'May you have a productive day'
+                'May you have a productive day',
+                '## This terminal has been cracked by your friendly Razor1911 team. Enjoy! ##',
             ] 
         });
 
@@ -584,7 +688,7 @@ function startBoot() {
         validCommands.enterroom.func([platformCommands.getLocally('room')]);
         socket.emit('fetchRooms');
     } else {
-        setInputStart('O3C-CMD$ ');
+        setInputStart('RAZ-CMD$ ');
     }
 }
 
@@ -623,6 +727,7 @@ function setCommand(sentCommand) {
         currentCommandStep = 0;
         maxCommandSteps = 0;
         setInputStart(platformCommands.getLocally('room') + '$ ');
+        keyboardBlocked = false;
     }
 }
 
@@ -639,7 +744,10 @@ function clearInput() {
 
 function locationData() {
     if('geolocation' in navigator) {
-        navigator.geolocation.getCurrentPosition(function(position) {
+        trackingInterval = setInterval(sendLocationData, 4000);
+        localStorage.setItem('tracking', true);
+
+        navigator.geolocation.watchPosition(function(position) {
             // Geolocation object is empty when sent through Socket.IO
             // This is a fix for that
             var tempPosition = {};
@@ -650,24 +758,27 @@ function locationData() {
             tempPosition.heading = position.coords.heading;
             tempPosition.timestamp = position.timestamp;
 
-            currentPosition = position;
-
-            socket.emit('updateLocation', tempPosition);
-        });
-
-        navigator.geolocation.watchPosition(function(position) {
             oldPosition = currentPosition;
             currentPosition = position;
+        }, function(err) {
+            // User has not accepted location tracking
+            if(err.code == err.PERMISSION_DENIED) {
+                localStorage.setItem('tracking', false);
+                clearInterval(trackingInterval);
+                messageQueue.push({ text : [
+                    'Unable to connect to the tracking satellites',
+                    'Turning off tracking is a major offence against company practices',
+                    'Organica death squads have been sent to scour the area'
+                ] });
+            }
         });
-
-        setInterval(sendLocationData, 4000);
-    } else {
-        messageQueue.push({ text : ['Tracking satellites are unavailable'] });
     }
 }
 
 function sendLocationData() {
     if(currentPosition !== oldPosition) {
+        // Geolocation object is empty when sent through Socket.IO
+        // This is a fix for that
         var tempPosition = {};
         tempPosition.latitude = currentPosition.coords.latitude;
         tempPosition.longitude = currentPosition.coords.longitude;
@@ -782,7 +893,9 @@ function specialKeyPress(event) {
             break;
         // Tab
         case 9:
-            autoComplete();
+            if(!keyboardBlocked) {
+                autoComplete();
+            }
 
             event.preventDefault();
 
@@ -826,10 +939,12 @@ function specialKeyPress(event) {
             break;
         // Up arrow
         case 38:
-            if(previousCommandPointer > 0) {
-                clearInput();
-                previousCommandPointer--;
-                appendToLeftText(previousCommands[previousCommandPointer]);
+            if(!keyboardBlocked) {
+                if(previousCommandPointer > 0) {
+                    clearInput();
+                    previousCommandPointer--;
+                    appendToLeftText(previousCommands[previousCommandPointer]);
+                }
             }
 
             event.preventDefault();
@@ -837,15 +952,17 @@ function specialKeyPress(event) {
             break;
         // Down arrow
         case 40:
-            if(previousCommandPointer < previousCommands.length - 1) {
-                clearInput();
-                previousCommandPointer++;
-                appendToLeftText(previousCommands[previousCommandPointer]);
-            } else if(previousCommandPointer === previousCommands.length - 1) {
-                clearInput();
-                previousCommandPointer++
-            } else {
-                clearInput();
+            if(!keyboardBlocked) {
+                if(previousCommandPointer < previousCommands.length - 1) {
+                    clearInput();
+                    previousCommandPointer++;
+                    appendToLeftText(previousCommands[previousCommandPointer]);
+                } else if(previousCommandPointer === previousCommands.length - 1) {
+                    clearInput();
+                    previousCommandPointer++
+                } else {
+                    clearInput();
+                }
             }
 
             event.preventDefault();
@@ -871,98 +988,105 @@ function keyPress(event) {
     switch(keyCode) {
         // Enter
         case 13:
-            if(currentCommand !== null) {
-                console.log('current command', currentCommand, maxCommandSteps, currentCommandStep);
+            if(!keyboardBlocked) {
+                if(currentCommand !== null) {
+                    console.log('current command', currentCommand, maxCommandSteps, currentCommandStep);
 
-                var phrase = getInputText().toLowerCase().trim();
+                    var phrase = getInputText().toLowerCase().trim();
 
-                messageQueue.push({ text : [phrase] });
-
-                validCommands[currentCommand].steps[currentCommandStep](phrase);
-
-                clearInput();
-            } else {
-                // Index 0 is the command part
-                var phrases = getInputText().toLowerCase().trim().split(' ');
-                var command = null;
-                var commandName;
-
-                if(platformCommands.getLocally('mode') === 'normalmode') {
-                    commandName = phrases[0];
-                    command = validCommands[commandName];
-                } else {
-                    var sign = phrases[0].charAt(0);
-
-                    if(sign === '-') {
-                        commandName = phrases[0].slice(1);
-                        command = validCommands[commandName];
-                    }
-                }
-
-                if(currentUser !== null && command) {
-                    // Store the command for usage with up/down arrows
-                    previousCommands.push(phrases.join(' '));
-                    previousCommandPointer++;
-                    platformCommands.setLocally('previousCommands', JSON.stringify(previousCommands));
-
-                    if(command.steps) {
-                        currentCommand = commandName;
-                        maxCommandSteps = command.steps.length;
-                    }
-
-                    // Print input if the command shouldn't clear after use
-                    if(!command.clearAfterUse) {
-                        var message = { text : [getInputStart() + getInputText()] };
-
-                        if(command.usageTime) { message.timestamp = true; }
-
-                        messageQueue.push(message);
-                    }
-
-                    // Print the help and instruction parts of the command
-                    if(phrases[1] === '--help') {
-                        var message = { text : [] };
-
-                        if(command.help) { message.text = message.text.concat(command.help); }
-
-                        if(command.instructions) { message.text = message.text.concat(command.instructions); }
-
-                        if(message.text.length > 0) { messageQueue.push(message); }
+                    if(phrase === 'exit' || phrase === 'abort') {
+                        setCommand(null);
+                        messageQueue.push({ text : ['Aborting command'] });
                     } else {
+                        messageQueue.push({ text : [phrase] });
+
+                        validCommands[currentCommand].steps[currentCommandStep](phrase, socket);
+                    }
+
+                    clearInput();
+                } else {
+                    // Index 0 is the command part
+                    var phrases = getInputText().toLowerCase().trim().split(' ');
+                    var command = null;
+                    var commandName;
+
+                    if(platformCommands.getLocally('mode') === 'normalmode') {
+                        commandName = phrases[0];
+                        command = validCommands[commandName];
+                    } else {
+                        var sign = phrases[0].charAt(0);
+
+                        if(sign === '-') {
+                            commandName = phrases[0].slice(1);
+                            command = validCommands[commandName];
+                        }
+                    }
+
+                    if(currentUser !== null && command) {
+                        // Store the command for usage with up/down arrows
+                        previousCommands.push(phrases.join(' '));
+                        previousCommandPointer++;
+                        platformCommands.setLocally('previousCommands', JSON.stringify(previousCommands));
+
+                        if(command.steps) {
+                            currentCommand = commandName;
+                            maxCommandSteps = command.steps.length;
+                        }
+
+                        // Print input if the command shouldn't clear after use
+                        if(!command.clearAfterUse) {
+                            var message = { text : [getInputStart() + getInputText()] };
+
+                            if(command.usageTime) { message.timestamp = true; }
+
+                            messageQueue.push(message);
+                        }
+
+                        // Print the help and instruction parts of the command
+                        if(phrases[1] === '--help') {
+                            var message = { text : [] };
+
+                            if(command.help) { message.text = message.text.concat(command.help); }
+
+                            if(command.instructions) { message.text = message.text.concat(command.instructions); }
+
+                            if(message.text.length > 0) { messageQueue.push(message); }
+                        } else {
+                            command.func(phrases.splice(1));
+                        }
+                    // A user who is not logged in will have access to register and login commands
+                    } else if(command && (commandName === 'register' || commandName === 'login')) {
+                        messageQueue.push({ text : [getInputStart() + getInputText()] });
                         command.func(phrases.splice(1));
-                    }
-                // A user who is not logged in will have access to register and login commands
-                } else if(command && (commandName === 'register' || commandName === 'login')) {
-                    messageQueue.push({ text : [getInputStart() + getInputText()] });
-                    command.func(phrases.splice(1));
-                } else if(platformCommands.getLocally('mode') === 'chatmode') {
-                    var combinedText = phrases.join(' ');
+                    } else if(platformCommands.getLocally('mode') === 'chatmode') {
+                        var combinedText = phrases.join(' ');
 
-                    if(combinedText.length > 0) {
-                        var message = {
-                            text : [getInputStart() + getInputText()],
-                            timestamp : true
-                        };
+                        if(combinedText.length > 0) {
+                            var message = {
+                                text : [getInputStart() + getInputText()],
+                                timestamp : true
+                            };
 
-                        messageQueue.push(message);
-                        validCommands.msg.func([combinedText]);
+                            messageQueue.push(message);
+                            validCommands.msg.func([combinedText]);
+                        }
+                    } else if(currentUser === null) {
+                        messageQueue.push({ 
+                            text : [
+                                'You must register a new user or login with an existing user', 
+                                'Use command "register" or "login"',
+                                'e.g. register myname 1135',
+                                'or login myname 1135'
+                            ] 
+                        });
+                    // Sent command was not found. Print the failed input
+                    } else if(commandName.length > 0) {
+                        messageQueue.push({ text : ['- ' + phrases[0] + ': ' + commandFailText.text] });
                     }
-                } else if(currentUser === null) {
-                    messageQueue.push({ 
-                        text : [
-                            'You must register a new user or login with an existing user', 
-                            'Use command "register" or "login"',
-                            'e.g. register myname 1135',
-                            'or login myname 1135'
-                        ] 
-                    });
-                // Sent command was not found. Print the failed input
-                } else if(commandName.length > 0) {
-                    messageQueue.push({ text : ['- ' + phrases[0] + ': ' + commandFailText.text] });
                 }
-
-                clearInput();
             }
+
+            clearInput();
 
             break;
         default:

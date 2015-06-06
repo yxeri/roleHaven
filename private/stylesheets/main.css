@@ -33,7 +33,7 @@ pre {
 
 #marker:focus { outline: 0; }
 
-#main {
+#background {
     cursor: none;
     width: 100%;
     height: 100vh;
@@ -41,7 +41,7 @@ pre {
     animation: textLight 10s linear infinite;*/
 }
 
-#main:before {
+#background:before {
     content: '';
     width: 100%;
     height: 100vh;
