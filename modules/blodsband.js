@@ -26,9 +26,8 @@ function handle(socket) {
 				socket.emit('commandFail');
 			} else {
 				var data = {};
-				var keyData = key;
 
-				data['keyData'] = keyData;
+				data['keyData'] = key;
 				socket.emit('commandSuccess', data);
 			}
 		});
@@ -37,7 +36,7 @@ function handle(socket) {
 	socket.on('unlockEntity', function(data) {
 		manager.unlockEntity(data.keyData.key, data.entityName, function(err, entity) {
 			if(err) {
-				socket.emit('message', { text : ['Failed unlock entity. Aborting'] })
+				socket.emit('message', { text : ['Failed unlock entity. Aborting'] });
 				socket.emit('commandFail');
 			} else {
 				socket.emit('commandSuccess', entity);

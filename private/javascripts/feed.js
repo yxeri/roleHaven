@@ -3,7 +3,6 @@
 var mainFeed = document.getElementById('mainFeed');
 var marker = document.getElementById('marker');
 var inputText = document.getElementById('inputText');
-var input = document.getElementById('input');
 var inputStart = document.getElementById('inputStart');
 var socket = io();
 // Timeout for print of a character (milliseconds)
@@ -64,27 +63,36 @@ var platformCommands = {
         return localStorage.getItem(name);
     }
 };
-var previousCommands = platformCommands.getLocally('previousCommands') ? JSON.parse(platformCommands.getLocally('previousCommands')) : [];
+var previousCommands = platformCommands.getLocally('previousCommands') ?
+    JSON.parse(platformCommands.getLocally('previousCommands')) : [];
 var previousCommandPointer = previousCommands.length > 0 ? previousCommands.length : 0;
 var currentUser = platformCommands.getLocally('user');
 var oldPosition = {};
 var currentPosition = {};
-// The current step in the chain of functions for a command
-var maxCommandSteps = 0;
-var currentCommandStep = 0;
-var currentCommand = null;
-var keyboardBlocked = false;
-var commandData;
+// The current step in the chain of functions for a
+var commandHelper = {
+    maxSteps : 0,
+    currentStep : 0,
+    command : null,
+    keyboardBlocked : false,
+    data : null
+};
 // Used by isScreenOff() to force reconnect when phone screen is off for a longer period of time
 var lastInterval = (new Date()).getTime();
-var trackingInterval;
-var printInterval;
-var pingInterval;
-var screenOffInterval;
+
+// Object containing all running intervals
+var interval = {
+    tracking : null,
+    printText : null,
+    keepAlive : null,
+    isScreenOff : null
+};
 var validCommands = {
     help : {
         func : function() {
-            messageQueue.push({ text : ['Add --help after a command (with whitespace in between) to get instructions on how to use it'] });
+            messageQueue.push({ text : [
+                'Add --help after a command (with whitespace in between) to get instructions on how to use it'
+            ] });
             messageQueue.push({ text : getAvailableCommands() });
         },
         help : ['Shows a list of available commands']
@@ -166,7 +174,7 @@ var validCommands = {
     exitroom : {
         func : function() {
             if(platformCommands.getLocally('room') !== 'public') {
-                var room = {}
+                var room = {};
 
                 room.roomName = platformCommands.getLocally('room');
                 // Flag that will be used in .on function locally to show user they have exited
@@ -185,7 +193,9 @@ var validCommands = {
 
                 socket.emit('follow', room);
             } else {
-                messageQueue.push({ text : ['You have to specify which room to follow and a password (if it is protected)'] });
+                messageQueue.push({ text : [
+                    'You have to specify which room to follow and a password (if it is protected)'
+                ] });
             }
         },
         help : [
@@ -240,7 +250,7 @@ var validCommands = {
         },
         help : [
             'Sets mode to chat',
-            'Everything written will be intepreted as chat messages',
+            'Everything written will be interpreted as chat messages',
             'You will not need to use "msg" command to write messages',
             'Use command "normalmode" to exit out of chat mode'
         ],
@@ -317,17 +327,17 @@ var validCommands = {
     },
     createroom : {
         func : function(phrases) {
+            var errorMsg = {
+                text : [
+                    'Failed to create room.',
+                    'Room name has to be 1 to 6 characters long',
+                    'e.g. createroom myroom'
+                ]
+            };
+
             if(phrases.length > 0) {
                 var roomName = phrases[0];
                 var password = phrases[1];
-
-                var errorMsg = {
-                    text : [
-                        'Failed to create room.',
-                        'Room name has to be 1 to 6 characters long',
-                        'e.g. createroom myroom'
-                    ]
-                }
 
                 if(roomName.length > 0 && roomName.length < 7) {
                     var room = {};
@@ -461,16 +471,16 @@ var validCommands = {
                 messageQueue.push({ text : [
                     'Verifying key. Please wait...'
                 ]});
-                keyboardBlocked = true;
+                commandHelper.keyboardBlocked = true;
                 setInputStart('Verifying...');
             },
             function(data, socket) {
                 if(data.keyData !== null) {
                     if(!data.keyData.used) {
                         messageQueue.push({ text : ['Key has been verified. Proceeding'] });
-                        currentCommandStep++;
-                        commandData = data;
-                        validCommands[currentCommand].steps[currentCommandStep](socket);
+                        commandHelper.currentStep++;
+                        commandHelper.data = data;
+                        validCommands[commandHelper.command].steps[commandHelper.currentStep](socket);
                     } else {
                         messageQueue.push({ text : ['Key has already been used. Aborting'] });
                         setCommand(null);
@@ -480,20 +490,20 @@ var validCommands = {
                     setCommand(null);
                 }
             },
-            function(socket) {
+            function() {
                 setInputStart('Enter entity name: ');
-                keyboardBlocked = false;
-                currentCommandStep++;
+                commandHelper.keyboardBlocked = false;
+                commandHelper.currentStep++;
             },
             function(phrase, socket) {
-                var data = commandData;
+                var data = commandHelper.data;
 
                 data.entityName = phrase;
-                socket.emit('unlockEntity', commandData);
+                socket.emit('unlockEntity', data);
                 messageQueue.push({ text : [
                     'Unlocking entity. Please wait...'
                 ]});
-                keyboardBlocked = true;
+                commandHelper.keyboardBlocked = true;
             },
             function(entity) {
                 if(entity !== null) {
@@ -539,7 +549,7 @@ var validCommands = {
         ],
         usageTime : true,
         accessLevel : 11
-    },
+    }
 };
 
 //Upper left and right
@@ -632,8 +642,8 @@ socket.on('updateConnection', function() {
 });
 
 socket.on('commandSuccess', function(data) {
-    currentCommandStep++;
-    validCommands[currentCommand].steps[currentCommandStep](data, socket);
+    commandHelper.currentStep++;
+    validCommands[commandHelper.command].steps[commandHelper.currentStep](data, socket);
 });
 
 socket.on('commandFail', function() {
@@ -671,9 +681,9 @@ function startBoot() {
     addEventListener('keydown', specialKeyPress);
     
     // Tries to print messages from the queue
-    printInterval = setInterval(printText, 200, messageQueue);
-    pingInterval = setInterval(keepAlive, 5000);
-    screenOffInterval = setInterval(isScreenOff, 1000);
+    interval.printText = setInterval(printText, 200, messageQueue);
+    interval.keepAlive = setInterval(keepAlive, 5000);
+    interval.isScreenOff = setInterval(isScreenOff, 1000);
 
     messageQueue.push(logo);
 
@@ -686,7 +696,7 @@ function startBoot() {
                 'Did you know that you can auto-complete commands by using the tab button or writing double spaces?',
                 'Learn this valuable skill to increase your productivity!',
                 'May you have a productive day',
-                '## This terminal has been cracked by your friendly Razor1911 team. Enjoy! ##',
+                '## This terminal has been cracked by your friendly Razor1911 team. Enjoy! ##'
             ] 
         });
 
@@ -723,7 +733,9 @@ function appendToLeftText(text) { marker.parentElement.childNodes[0].textContent
 
 function setRightText(text) { marker.parentElement.childNodes[2].textContent = text; }
 
-function prependToRightText(sentText) { marker.parentElement.childNodes[2].textContent = sentText + marker.parentElement.childNodes[2].textContent; }
+function prependToRightText(sentText) {
+    marker.parentElement.childNodes[2].textContent = sentText + marker.parentElement.childNodes[2].textContent;
+}
 
 function setMarkerText(text) { marker.value = text; }
 
@@ -738,13 +750,13 @@ function setCurrentRoom(roomName) {
 }
 
 function setCommand(sentCommand) {
-    currentCommand = sentCommand;
+    commandHelper.command = sentCommand;
 
     if(sentCommand === null) {
-        currentCommandStep = 0;
-        maxCommandSteps = 0;
+        commandHelper.currentStep = 0;
+        commandHelper.maxSteps = 0;
         setInputStart(platformCommands.getLocally('room') + '$ ');
-        keyboardBlocked = false;
+        commandHelper.keyboardBlocked = false;
     }
 }
 
@@ -761,7 +773,7 @@ function clearInput() {
 
 function locationData() {
     if('geolocation' in navigator) {
-        trackingInterval = setInterval(sendLocationData, 4000);
+        interval.tracking = setInterval(sendLocationData, 4000);
         localStorage.setItem('tracking', true);
 
         navigator.geolocation.watchPosition(function(position) {
@@ -781,7 +793,7 @@ function locationData() {
             // User has not accepted location tracking
             if(err.code == err.PERMISSION_DENIED) {
                 localStorage.setItem('tracking', false);
-                clearInterval(trackingInterval);
+                clearInterval(interval.tracking);
                 messageQueue.push({ text : [
                     'Unable to connect to the tracking satellites',
                     'Turning off tracking is a major offence against company practices',
@@ -895,7 +907,6 @@ function autoComplete() {
 // Needed for arrow and delete keys. They are not detected with keypress
 function specialKeyPress(event) {
     var keyCode = (typeof event.which === 'number') ? event.which : event.keyCode;
-    var markerParentsChildren = marker.parentElement.childNodes;
 
     switch(keyCode) {
         // Backspace
@@ -910,7 +921,7 @@ function specialKeyPress(event) {
             break;
         // Tab
         case 9:
-            if(!keyboardBlocked) {
+            if(!commandHelper.keyboardBlocked) {
                 autoComplete();
             }
 
@@ -956,7 +967,7 @@ function specialKeyPress(event) {
             break;
         // Up arrow
         case 38:
-            if(!keyboardBlocked) {
+            if(!commandHelper.keyboardBlocked) {
                 if(previousCommandPointer > 0) {
                     clearInput();
                     previousCommandPointer--;
@@ -969,7 +980,7 @@ function specialKeyPress(event) {
             break;
         // Down arrow
         case 40:
-            if(!keyboardBlocked) {
+            if(!commandHelper.keyboardBlocked) {
                 if(previousCommandPointer < previousCommands.length - 1) {
                     clearInput();
                     previousCommandPointer++;
@@ -1005,8 +1016,8 @@ function keyPress(event) {
     switch(keyCode) {
         // Enter
         case 13:
-            if(!keyboardBlocked) {
-                if(currentCommand !== null) {
+            if(!commandHelper.keyboardBlocked) {
+                if(commandHelper.command !== null) {
                     var phrase = trimWhitespaces(getInputText().toLowerCase());
 
                     if(phrase === 'exit' || phrase === 'abort') {
@@ -1015,7 +1026,7 @@ function keyPress(event) {
                     } else {
                         messageQueue.push({ text : [phrase] });
 
-                        validCommands[currentCommand].steps[currentCommandStep](phrase, socket);
+                        validCommands[commandHelper.command].steps[commandHelper.currentStep](phrase, socket);
                     }
                 } else {
                     // Index 0 is the command part
@@ -1042,8 +1053,8 @@ function keyPress(event) {
                         platformCommands.setLocally('previousCommands', JSON.stringify(previousCommands));
 
                         if(command.steps) {
-                            currentCommand = commandName;
-                            maxCommandSteps = command.steps.length;
+                            commandHelper.command = commandName;
+                            commandHelper.maxSteps = command.steps.length;
                         }
 
                         // Print input if the command shouldn't clear after use
@@ -1149,7 +1160,7 @@ function printText(messageQueue) {
                     var text = message.text.shift();
                     var speed = message.speed;
 
-                    setTimeout(addRow, nextTimeout, text, nextTimeout, speed, message.extraClass, message.timestamp);
+                    setTimeout(addRow, nextTimeout, text, speed, message.extraClass, message.timestamp);
 
                     nextTimeout += calculateTimer(text, speed);
                 }
@@ -1190,7 +1201,7 @@ function calculateTimer(text, speed) {
     return (text.length * timeout) + timeoutBuffer;
 }
 
-function addRow(text, timeout, speed, extraClass, timestamp) {
+function addRow(text, speed, extraClass, timestamp) {
     var row = document.createElement('li');
     var span = document.createElement('span');
 
@@ -1230,7 +1241,7 @@ function printLetter(span, character) {
 }
 
 function scrollView(element) {
-    element.scrollIntoView({block: "end", behavior: "smooth"});
+    element.scrollIntoView();
     // Compatibility fix
     window.scrollTo(0, document.body.scrollHeight);
 }

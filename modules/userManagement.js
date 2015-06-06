@@ -7,7 +7,7 @@ function handle(socket) {
                 userName : sentUser.userName, 
                 socketId : socket.id,
                 password : sentUser.password
-            }
+            };
 
             manager.addUser(userObj, function(err, user) {
                 if(err) {
@@ -53,14 +53,14 @@ function handle(socket) {
             if(err || user === null) {
                 // socket.emit('message', { text : ['Failed to update location'] });
             } else {
-                manager.updateUserLocation(user.userName, position, function(err, user) {
+                manager.updateUserLocation(user.userName, position, function(err) {
                     if(err) {
                         // socket.emit('message', { text : ['Failed to update location'] });
                     }
                 });
             }
         });
-    })
+    });
 
     socket.on('login', function(sentUser) {
         if(sentUser.userName && sentUser.password) {

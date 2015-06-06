@@ -60,7 +60,7 @@ function watchPrivate() {
     fs.watch('private', {persistant : true, recursive : true}, function(triggeredEvent, filePath) {
         var fullPath = path.join('private', filePath);
 
-        if((triggeredEvent === 'rename' || triggeredEvent === 'change') && path.extname(fullPath) !== '.tmp') {
+        if((triggeredEvent === 'rename' || triggeredEvent === 'change') && path.extname(fullPath) !== '.tmp' && fullPath.indexOf('___') < 0) {
             fs.readFile(fullPath, function(err, data) {
                 if(err) {
                     throw err;
