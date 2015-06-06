@@ -70,7 +70,6 @@ var currentUser = platformCommands.getLocally('user');
 var oldPosition = {};
 var currentPosition = {};
 // The current step in the chain of functions for a command
-// -1 == not currently going through a chain of functions
 var maxCommandSteps = 0;
 var currentCommandStep = 0;
 var currentCommand = null;
@@ -109,7 +108,7 @@ var validCommands = {
         func : function(phrases) {
             if(phrases.length > 0) {
                 var message = phrases.join(' ');
-                var user = '<' + currentUser + '> ';
+                var user = currentUser + ': ';
 
                 socket.emit('chatMsg', {
                     text : user + message,
@@ -353,7 +352,8 @@ var validCommands = {
             '  createroom *room name* *optional password*',
             ' Example:',
             '  createroom myroom banana'
-        ]
+        ],
+        accessLevel : 3
     },
     myrooms : {
         func : function() {
@@ -411,7 +411,8 @@ var validCommands = {
             ' Example:',
             '  locate user1',
             '  locate *'
-        ]
+        ],
+        accessLevel : 3
     },
     decryptmodule : {
         func : function() {
@@ -514,7 +515,31 @@ var validCommands = {
         instructions : [
             'Follow the on-screen instructions'
         ]
-    }
+    },
+    broadcast : {
+        func : function(phrases) {
+            if(phrases.length > 0) {
+                var message = phrases.join(' ');
+                var user = currentUser + ': ';
+
+                socket.emit('broadcastMsg', { text : '[ALL] ' + user + message });
+            } else {
+                messageQueue.push({ text : ['You forgot to write the message!'] });
+            }
+        },
+        help : [
+            'Sends a message to all users in all rooms',
+            'It will prepend the message with "[ALL]"'
+        ],
+        instructions : [
+            ' Usage:',
+            '  broadcast *message*',
+            ' Example:',
+            '  broadcast Hello!'
+        ],
+        usageTime : true,
+        accessLevel : 11
+    },
 };
 
 //Upper left and right
@@ -1155,7 +1180,7 @@ function calculateNow() {
     var minutes = (date.getMinutes() < 10 ? '0' : '') + date.getMinutes();
     var hours = (date.getHours() < 10 ? '0' : '') + date.getHours();
 
-    return '[' + hours + ':' + minutes + '] ';
+    return hours + ':' + minutes + ' ';
 }
 
 // Calculates amount of time to print text (speed times amount of characters plus buffer)
