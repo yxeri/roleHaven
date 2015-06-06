@@ -21,10 +21,9 @@ pre {
 
 #input { padding-bottom: 1em; }
 
-#inputText {
-    /* Needed to hide caret. text-shadow allows the text to be visible */
+#marker {
+    /* Needed to hide caret. */
     color: transparent;
-    text-shadow: 0px 0px .001px #00FF00;
 }
 
 #marker { 
@@ -83,7 +82,7 @@ pre {
     font-size: 0.2em;
 }
 
-/*@-webkit-keyframes blinking {
+@-webkit-keyframes blinking {
     from { background-color: transparent; }
     50% {
         background-color: #00FF00;
@@ -99,7 +98,7 @@ pre {
     }
 }
 
-@-webkit-keyframes light {
+/*@-webkit-keyframes light {
     0%      { opacity: .11; }
     25%     { opacity: .17; }
     50%     { opacity: .10; }

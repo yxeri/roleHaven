@@ -63,17 +63,15 @@ function handle(socket) {
                             var userText = [];
 
                             for(var i = 0; i < users.length; i++) {
-                                
                                     var msg = '';
 
                                     msg += 'User: ' + users[i].userName;
 
                                     if(users[i].position) {
-                                        msg += '.\tLast seen: ' + '[' + users[i].position.timestamp + ']';
-                                        msg += '.\tLongitude: ' + users[i].position.longitude;
-                                        msg += '.\tLatitude: ' + users[i].position.latitude;
+                                        msg += '\tLast seen: ' + '[' + users[i].position.timestamp + ']';
+                                        msg += '\tCoordinates: ' + users[i].position.latitude + ', ' + users[i].position.longitude;;
                                     } else {
-                                        msg += '.\tUnable to locate user'
+                                        msg += '\tUnable to locate user'
                                     }
 
                                     userText[i] = msg;
@@ -90,7 +88,7 @@ function handle(socket) {
                             socket.emit('message', { text : [
                                 'User: ' + user.userName,
                                 'Last seen: ' + '[' + user.position.timestamp + ']',
-                                'Longitude: ' + user.position.longitude + '. Latitude: ' + user.position.latitude 
+                                'Coordinates: ' + user.position.latitude + ', ' + user.position.longitude 
                             ]})
                         } else {
                             socket.emit('message', { text : ['Unable to locate ' + sentUserName] });
@@ -104,18 +102,17 @@ function handle(socket) {
     socket.on('updateLocation', function(position) {
         manager.getUserById(socket.id, function(err, user) {
             if(err || user === null) {
-                socket.emit('message', { text : ['Failed to update location'] });
+                // socket.emit('message', { text : ['Failed to update location'] });
             } else {
                 manager.updateUserLocation(user.userName, position, function(err, user) {
                     if(err) {
-                        socket.emit('message', { text : ['Failed to update location'] });
+                        // socket.emit('message', { text : ['Failed to update location'] });
                     }
                 });
             }
         });
     })
-
-    // This has to set socket ID on new user
+    
     socket.on('login', function(sentUser) {
         if(sentUser.userName && sentUser.password) {
             manager.authUser(sentUser.userName, sentUser.password, function(err, user) {

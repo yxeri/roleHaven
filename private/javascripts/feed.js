@@ -7,7 +7,7 @@ var input = document.getElementById('input');
 var inputStart = document.getElementById('inputStart');
 var socket = io();
 // Timeout for print of a character (milliseconds)
-var charTimeout = 10;
+var charTimeout = 5;
 // Timeout between print of rows (milliseconds)
 var timeoutBuffer = 100;
 // Queue of all the message objects that will be handled and printed
@@ -16,7 +16,7 @@ var messageQueue = [];
 // It has to be zero before another group of messages can be printed.
 var charsInProgress = 0;
 var logo = {
-    speed : 2,
+    speed : 0.5,
     extraClass : 'logo',
     text : [
     ' ',
@@ -72,8 +72,9 @@ var oldPosition = {};
 var currentPosition = {};
 // The current step in the chain of functions for a command
 // -1 == not currently going through a chain of functions
-var commandStep = -1;
-var command = null;
+var maxCommandSteps = 0;
+var currentCommandStep = 0;
+var currentCommand = null;
 var validCommands = {
     help : {
         func : function() {
@@ -402,31 +403,30 @@ var validCommands = {
     },
     decryptmodule : {
         func : function() {
-            setCommand('decryptModule');
+            setInputStart('Encryption key: ');
             messageQueue.push({ text : [
-                'AAAB3NzaC1yc2EAAAADAQABAAABAQDHS//2ag4/Byp6GrdX/Fr',
-                'D6Rsc8OO/6wFUVDdpdAItvSCLCrc/dcJE/8iybEV595Xqw2qrv',
-                'w3OtlVFnfNkOVAvhObuW-Razor 1911-kr2/yYTaDEtVTVz0HI',
-                'i5mxEFD1zslvhObuWr6Q-presents-AHPFKLvfZVcz7Tdtve4q',
-                'dK2zXrxGOmOFllxiCbp-entity access!-cJy1/iCbp0mA4ca',
-                'MFvEEiKXrxGlxiCbp0miONA3EsqTcgY/yujOMJHa88/x1j5C+k',
-                'Q1uy6yEZOmOFl/yujOMJHa88/x1DVwWl6lsjHvSiwDDVwWl6el',
-                ' ',
-                'Please wait.......',
-                'Razor1911 command interception...........ACTIVATED',
-                'Organica Oracle defense systems...........DISABLED',
-                'Overriding locks..............................DONE',
-                'Connecting to entity database.................DONE'
+                // 'AAAB3NzaC1yc2EAAAADAQABAAABAQDHS//2ag4/Byp6GrdX/Fr',
+                // 'D6Rsc8OO/6wFUVDdpdAItvSCLCrc/dcJE/8iybEV595Xqw2qrv',
+                // 'w3OtlVFnfNkOVAvhObuW-Razor 1911-kr2/yYTaDEtVTVz0HI',
+                // 'i5mxEFD1zslvhObuWr6Q-presents-AHPFKLvfZVcz7Tdtve4q',
+                // 'dK2zXrxGOmOFllxiCbp-entity access!-cJy1/iCbp0mA4ca',
+                // 'MFvEEiKXrxGlxiCbp0miONA3EsqTcgY/yujOMJHa88/x1j5C+k',
+                // 'Q1uy6yEZOmOFl/yujOMJHa88/x1DVwWl6lsjHvSiwDDVwWl6el',
+                // ' ',
+                // 'Please wait.......',
+                // 'Razor1911 command interception...........ACTIVATED',
+                // 'Organica Oracle defense systems...........DISABLED',
+                // 'Overriding locks..............................DONE',
+                // 'Connecting to entity database.................DONE',
+                'Please enter the encryption key '
             ]});
-            // Print available entities
         },
         steps : [
             function(phrase) {
-                messageQueue.push({ text : ['Please enter the encryption key: '] });
-            },
-            function(phrase) {
-                messageQueue.push({ text : ['Please choose the entity to unlock: '] });
-                
+                socket.emit('entities');
+                messageQueue.push({ text : ['Please enter the entity you want to unlock'] });
+                setInputStart('Entity: ');
+                currentCommandStep++;
             },
             function() {
                 messageQueue.push({ text : ['Confirmed. Encryption key has been used on the entity'] });
@@ -435,8 +435,7 @@ var validCommands = {
         ],
         help : [],
         instructions : [
-        ],
-        multipleSteps : true
+        ]
     }
 };
 
@@ -463,13 +462,15 @@ socket.on('importantMsg', function(msg) {
 // Triggers when the connection is lost and then re-established
 socket.on('reconnect', function() {
     messageQueue.push({ text : ['Re-established connection'], extraClass : 'importantMsg' });
-    
+
     if(currentUser) {
         socket.emit('updateId', { userName : currentUser });
     }
 });
 
 socket.on('disconnect', function() {
+    console.log('DISCONNECT');
+
     messageQueue.push({ 
         text : ['Lost connection'],
         extraClass : 'importantMsg'
@@ -505,6 +506,35 @@ socket.on('updateConnection', function() {
     socket.emit('fetchRooms');
 });
 
+socket.on('commandSuccess', function(succeeded) {
+    if(succeeded) {
+        currentCommandStep++;
+    }
+});
+
+socket.on('pong', function() {
+    console.log('pong', new Date(), socket.id, socket.disconnected);
+});
+
+function getTime() {
+    return (new Date()).getTime();
+}
+
+var lastInterval = getTime();
+
+function isScreenOff() {
+    var now = getTime();
+    var diff = now - lastInterval;
+    var offBy = diff - 1000;
+    lastInterval = now;
+
+    if(offBy > 3000) {
+        console.log('interval heartbeat - off by ' + offBy + 'ms');
+        socket.disconnect();
+        socket.connect(socket.io.uri, { forceNew : true });
+    }
+}
+
 function startBoot() {
     // Disable left mouse clicks
     document.onmousedown = function() {
@@ -520,8 +550,10 @@ function startBoot() {
     // Needed for some special keys. They are not detected with keypress
     addEventListener('keydown', specialKeyPress);
     
-    // Tries to print messages from the queue every second
-    setInterval(printText, 100, messageQueue);
+    // Tries to print messages from the queue
+    setInterval(printText, 200, messageQueue);
+    setInterval(keepAlive, 5000);
+    setInterval(isScreenOff, 1000);
 
     messageQueue.push(logo);
 
@@ -584,7 +616,19 @@ function setCurrentRoom(roomName) {
     messageQueue.push({ text : ['Entered ' + roomName] });
 }
 
-function setCommand(sentCommand) { command = sentCommand; }
+function setCommand(sentCommand) {
+    currentCommand = sentCommand;
+
+    if(sentCommand === null) {
+        currentCommandStep = 0;
+        maxCommandSteps = 0;
+        setInputStart(platformCommands.getLocally('room') + '$ ');
+    }
+}
+
+function keepAlive() {
+    socket.emit('ping');
+}
 
 function clearInput() {
     setLeftText('');
@@ -827,20 +871,31 @@ function keyPress(event) {
     switch(keyCode) {
         // Enter
         case 13:
-            if(commandStep > -1) {
+            if(currentCommand !== null) {
+                console.log('current command', currentCommand, maxCommandSteps, currentCommandStep);
 
+                var phrase = getInputText().toLowerCase().trim();
+
+                messageQueue.push({ text : [phrase] });
+
+                validCommands[currentCommand].steps[currentCommandStep](phrase);
+
+                clearInput();
             } else {
                 // Index 0 is the command part
                 var phrases = getInputText().toLowerCase().trim().split(' ');
                 var command = null;
+                var commandName;
 
                 if(platformCommands.getLocally('mode') === 'normalmode') {
-                    command = validCommands[phrases[0]];
+                    commandName = phrases[0];
+                    command = validCommands[commandName];
                 } else {
                     var sign = phrases[0].charAt(0);
 
                     if(sign === '-') {
-                        command = validCommands[phrases[0].slice(1)];
+                        commandName = phrases[0].slice(1);
+                        command = validCommands[commandName];
                     }
                 }
 
@@ -849,6 +904,11 @@ function keyPress(event) {
                     previousCommands.push(phrases.join(' '));
                     previousCommandPointer++;
                     platformCommands.setLocally('previousCommands', JSON.stringify(previousCommands));
+
+                    if(command.steps) {
+                        currentCommand = commandName;
+                        maxCommandSteps = command.steps.length;
+                    }
 
                     // Print input if the command shouldn't clear after use
                     if(!command.clearAfterUse) {
@@ -872,18 +932,21 @@ function keyPress(event) {
                         command.func(phrases.splice(1));
                     }
                 // A user who is not logged in will have access to register and login commands
-                } else if(command && (phrases[0] === 'register' || phrases[0] === 'login')) {
+                } else if(command && (commandName === 'register' || commandName === 'login')) {
                     messageQueue.push({ text : [getInputStart() + getInputText()] });
                     command.func(phrases.splice(1));
                 } else if(platformCommands.getLocally('mode') === 'chatmode') {
                     var combinedText = phrases.join(' ');
-                    var message = {
-                        text : [getInputStart() + getInputText()],
-                        timestamp : true
-                    };
 
-                    messageQueue.push(message);
-                    validCommands.msg.func([combinedText]);
+                    if(combinedText.length > 0) {
+                        var message = {
+                            text : [getInputStart() + getInputText()],
+                            timestamp : true
+                        };
+
+                        messageQueue.push(message);
+                        validCommands.msg.func([combinedText]);
+                    }
                 } else if(currentUser === null) {
                     messageQueue.push({ 
                         text : [
@@ -894,7 +957,7 @@ function keyPress(event) {
                         ] 
                     });
                 // Sent command was not found. Print the failed input
-                } else if(phrases[0].length > 0) {
+                } else if(commandName.length > 0) {
                     messageQueue.push({ text : ['- ' + phrases[0] + ': ' + commandFailText.text] });
                 }
 

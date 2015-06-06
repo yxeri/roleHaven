@@ -3,6 +3,8 @@ var router = express.Router();
 var chat = require('../modules/chat');
 var userManagement = require('../modules/userManagement');
 var manager = require('../manager');
+//Blodsband specific
+var blodsband = require('../modules/blodsband');
 
 function handle(io) {
     router.get('/', function(req, res) {
@@ -13,10 +15,15 @@ function handle(io) {
         connection(socket);
         userManagement.handle(socket);
         chat.handle(socket);
+        blodsband.handle(socket);
 
         socket.on('importantMsg', function(msg) {
             socket.broadcast.emit('importantMsg', msg);
         });
+
+        socket.on('ping', function() {
+            socket.emit('pong');
+        })
 
         socket.on('disconnect', function() {
         });

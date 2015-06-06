@@ -41,7 +41,7 @@ var commandSchema = new mongoose.Schema({
 // Blodsband specific schemas
 var entitySchema = new mongoose.Schema({
     entityName : { type: String, unique : true },
-    keys : [Number]
+    keys : [String]
 });
 var encryptionKeySchema = new mongoose.Schema({
     key : String,
@@ -84,8 +84,14 @@ function useEncryptionKey() {
 
 }
 
-function getAllEntities() {
+function getAllEntities(callback) {
+    Entity.find().lean().exec(function(err, entities) {
+        if(err || entities === null) {
+            console.log('Failed to get all entities', err);
+        }
 
+        callback(err, entities);
+    });
 }
 
 function getEncryptionKeyUsed() {
