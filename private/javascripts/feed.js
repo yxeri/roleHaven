@@ -607,7 +607,6 @@ socket.on('updateConnection', function() {
 });
 
 socket.on('commandSuccess', function(data) {
-    console.log('command success', currentCommandStep, currentCommand, currentCommand.steps);
     currentCommandStep++;
     validCommands[currentCommand].steps[currentCommandStep](data, socket);
 });
@@ -1095,13 +1094,7 @@ function keyPress(event) {
 
 // Needed for Android 2.1. trim() is not supported
 function trimWhitespaces(sentText) {
-    if(sentText.charAt(0) === ' ') {
-        sentText = trimWhitespaces(sentText.slice(1));
-    } else if(sentText.charAt(sentText.length - 1) === ' ') {
-        sentText = trimWhitespaces(sentText.slice(0, -1));
-    }
-
-    return sentText;
+    return sentText.replace(/^\s+|\s+$/g, '');
 }
 
 function triggerAutoComplete(text) {
