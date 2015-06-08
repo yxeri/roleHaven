@@ -27,9 +27,16 @@ var roomSchema = new mongoose.Schema({
     commands : [{
         commandName : String,
         accessLevel : Number
-    }],
-    isDefault : Boolean
+    }]
 }, { collection : 'rooms' });
+var historySchema = new mongoose.Schema({
+    roomName : { type : String, unique : true },
+    messages : [{
+        text : [String],
+        time : Date,
+        user : String
+    }]
+}, { collection : 'histories' });
 var commandSchema = new mongoose.Schema({
     commandName : String,
     func : {},
@@ -38,6 +45,7 @@ var commandSchema = new mongoose.Schema({
     clearAfterUse : Boolean,
     usageTime : Boolean
 }, { collection : 'commands' });
+
 // Blodsband specific schemas
 var entitySchema = new mongoose.Schema({
     entityName : { type : String, unique : true },
@@ -53,6 +61,7 @@ var encryptionKeySchema = new mongoose.Schema({
 var User = mongoose.model('User', userSchema);
 var Room = mongoose.model('Room', roomSchema);
 var Command = mongoose.model('Command', commandSchema);
+var History = mongoose.model('History', historySchema);
 // Blodsband specific
 var Entity = mongoose.model('Entity', entitySchema);
 var EncryptionKey = mongoose.model('EncryptionKey', encryptionKeySchema);
@@ -161,11 +170,30 @@ function addUser(user, callback) {
             callback(err, null);
         }
     });
-        
+}
+
+function addMsgToHistory(sentRoomName, sentMessage, callback) {
+    History.findOneAndUpdate({ roomName : sentRoomName }, { $push : { messages : sentMessage }}).lean().exec(function(err, history) {
+        if(err) {
+            console.log('Failed to add message to history', err);
+        }
+
+        callback(err, history);
+    });
+}
+
+function getHistoryFromRoom(sentRoomName, length, callback) {
+    History.find({ roomName : sentRoomName }).lean().exec(function(err, history) {
+        if(err) {
+            console.log('Failed to get history', err);
+        }
+
+        callback(err, history);
+    });
 }
 
 function updateUserSocketId(sentUserName, value, callback) {
-    User.findOneAndUpdate({ userName : sentUserName }, { socketId : value }).lean().exec(function(err, user) {
+    User.findOneAndUpdate({ userName : sentUserName }, { socketId : value }).lean().exec(function(err) {
         if(err) {
             console.log('Failed to update user', err);
         }
@@ -175,7 +203,7 @@ function updateUserSocketId(sentUserName, value, callback) {
 }
 
 function updateUserLocation(sentUserName, sentPosition, callback) {
-    User.findOneAndUpdate({ userName : sentUserName }, { position : sentPosition }).lean().exec(function(err, user) {
+    User.findOneAndUpdate({ userName : sentUserName }, { position : sentPosition }).lean().exec(function(err) {
         if(err) {
             console.log('Failed to update user', err);
         }
@@ -194,20 +222,36 @@ function authUserToRoom(sentUser, sentRoomName, sentPassword, callback) {
     });
 }
 
-function createRoom(room, callback) {
-    var newRoom = new Room(room);
+function createRoom(sentRoom, callback) {
+    var newRoom = new Room(sentRoom);
+    var newHistory = new History({ roomName : sentRoom.roomName });
 
-    Room.findOne({ roomName : room.roomName }).lean().exec(function(err, room) {
+    // Checks if room already exists
+    Room.findOne({ roomName : sentRoom.roomName }).lean().exec(function(err, room) {
         if(err) {
-            console.log('Failed to find room', err);
+            console.log('Failed to find if room already exists', err);
         // Room doesn't exist in the collection, so let's add it!
         } else if(room === null) {
-            newRoom.save(function(err, newRoom) {
-                if(err) {
-                    console.log('Failed to save room', err);
-                }
+            // Checks if history for room already exists
+            History.findOne({ roomName : sentRoom.roomName }).lean().exec(function(err, history) {
+               if(err) {
+                    console.log('Failed to find if history already exists', err);
+               // History doesn't exist in the collection, so let's add it and the room!
+               } else if(history === null) {
+                   newHistory.save(function(err, newHistory) {
+                      if(err || newHistory === null) {
+                          console.log('Failed to save history', err);
+                      } else {
+                          newRoom.save(function(err, newRoom) {
+                              if(err) {
+                                  console.log('Failed to save room', err);
+                              }
 
-                callback(err, newRoom);
+                              callback(err, newRoom);
+                          });
+                      }
+                   });
+               }
             });
         } else {
             callback(err, null);
@@ -288,6 +332,8 @@ exports.getAllUserLocations = getAllUserLocations;
 exports.getUserLocation = getUserLocation;
 exports.addRoomToUser = addRoomToUser;
 exports.removeRoomFromUser = removeRoomFromUser;
+exports.addMsgToHistory = addMsgToHistory;
+exports.getHistoryFromRoom = getHistoryFromRoom;
 
 //Blodsband specific
 exports.addEncryptionKey = addEncryptionKey;

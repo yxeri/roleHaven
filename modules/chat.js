@@ -1,12 +1,36 @@
 var manager = require('../manager');
 
 function handle(socket) {
-    socket.on('chatMsg', function(msg) {
-        socket.broadcast.to(msg.room).emit('chatMsg', msg);
+    socket.on('chatMsg', function(data) {
+        var newData = data;
+
+        newData.message.time = new Date();
+
+        manager.addMsgToHistory(newData.roomName, newData.message, function(err, history) {
+            if(err || history === null) {
+                console.log('Failed to add message to history', err);
+            } else {
+                var newMessage = newData.message;
+
+                newMessage.roomName = newData.roomName;
+
+                socket.broadcast.to(newMessage.roomName).emit('chatMsg', newMessage);
+                socket.emit('message', newMessage);
+            }
+        });
+
     });
 
-    socket.on('broadcastMsg', function(msg) {
-        socket.broadcast.emit('chatMsg', msg);
+    socket.on('broadcastMsg', function(message) {
+        manager.addMsgToHistory('broadcast', message, function(err, history) {
+            if(err || history === null) {
+                console.log('Failed to add message to history', err);
+            } else {
+                socket.broadcast.emit('broadcastMsg', message);
+                socket.emit('message', message);
+            }
+        });
+
     });
 
     socket.on('createRoom', function(sentRoom) {

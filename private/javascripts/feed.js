@@ -115,12 +115,15 @@ var validCommands = {
     msg : {
         func : function(phrases) {
             if(phrases.length > 0) {
-                var message = phrases.join(' ');
-                var user = currentUser + ': ';
+                var writtenMsg = phrases.join(' ');
+                console.log('msg', writtenMsg);
 
                 socket.emit('chatMsg', {
-                    text : user + message,
-                    room : platformCommands.getLocally('room')
+                    message : {
+                        text : [writtenMsg],
+                        user : currentUser
+                    },
+                    roomName : platformCommands.getLocally('room')
                 });
             } else {
                 messageQueue.push({ text : ['You forgot to write the message!'] });
@@ -136,7 +139,7 @@ var validCommands = {
             ' Example:',
             '  msg Hello!'
         ],
-        usageTime : true
+        clearAfterUse : true
     },
     enterroom : {
         func : function(phrases) {
@@ -421,8 +424,7 @@ var validCommands = {
             ' Example:',
             '  locate user1',
             '  locate *'
-        ],
-        accessLevel : 3
+        ]
     },
     decryptmodule : {
         func : function() {
@@ -461,7 +463,9 @@ var validCommands = {
                 'Oracle defense systems......... DISABLED',
                 'Overriding locks....................DONE',
                 'Connecting to entity database.......DONE',
-                ' ']});
+                ' ',
+                'You can cancel out of the command by typing "exit" or "abort"'
+            ]});
             setInputStart('Enter encryption key: ');
             socket.emit('entities');
         },
@@ -520,7 +524,8 @@ var validCommands = {
         ],
         help : [
             'ERROR. UNAUTHORIZED COMMAND...AUTHORIZATION OVERRIDDEN. PRINTING INSTRUCTIONS',
-            'Allows you to input an encryption key and use it to unlock an entity'
+            'Allows you to input an encryption key and use it to unlock an entity',
+            'You can cancel out of the command by typing "exit" or "abort"'
         ],
         instructions : [
             'Follow the on-screen instructions'
@@ -547,8 +552,16 @@ var validCommands = {
             ' Example:',
             '  broadcast Hello!'
         ],
-        usageTime : true,
+        clearAfterUse : true,
         accessLevel : 11
+    },
+    history : {
+        func : function() {
+
+        },
+        help : [],
+        instructions : [],
+        clearAfterUse : true
     }
 };
 
@@ -576,17 +589,14 @@ function measureDistance(lat1, lon1, lat2, lon2){  // generally used geo measure
     return d * 1000; // meters
 }
 
-socket.on('chatMsg', function(msg) {
-    var roomTag = msg.room && msg.room !== platformCommands.getLocally('room') ? '[' + msg.room + '] ' : '';
-
-    messageQueue.push({ 
-        timestamp : true,
-        text : [roomTag + msg.text]
-    });
+socket.on('chatMsg', function(message) {
+    console.log('chatMsg', message);
+    messageQueue.push(message);
 });
 
-socket.on('message', function(msg) {
-    messageQueue.push(msg);
+socket.on('message', function(message) {
+    console.log('message', message);
+    messageQueue.push(message);
 });
 
 socket.on('importantMsg', function(msg) {
@@ -761,7 +771,7 @@ function setCommand(sentCommand) {
 }
 
 function keepAlive() {
-    socket.emit('ping');
+    socket.emit('ping', currentUser);
 }
 
 function clearInput() {
@@ -1016,6 +1026,7 @@ function keyPress(event) {
     switch(keyCode) {
         // Enter
         case 13:
+            console.log('enter');
             if(!commandHelper.keyboardBlocked) {
                 if(commandHelper.command !== null) {
                     var phrase = trimWhitespaces(getInputText().toLowerCase());
@@ -1082,18 +1093,8 @@ function keyPress(event) {
                     } else if(command && (commandName === 'register' || commandName === 'login')) {
                         messageQueue.push({ text : [getInputStart() + getInputText()] });
                         command.func(phrases.splice(1));
-                    } else if(platformCommands.getLocally('mode') === 'chatmode') {
-                        var combinedText = phrases.join(' ');
-
-                        if(combinedText.length > 0) {
-                            var message = {
-                                text : [getInputStart() + getInputText()],
-                                timestamp : true
-                            };
-
-                            messageQueue.push(message);
-                            validCommands.msg.func([combinedText]);
-                        }
+                    } else if(platformCommands.getLocally('mode') === 'chatmode' && phrases.length > 0) {
+                            validCommands.msg.func(phrases);
                     } else if(currentUser === null) {
                         messageQueue.push({ 
                             text : [
@@ -1150,23 +1151,37 @@ function printText(messageQueue) {
     if(charsInProgress === 0) {
         // Amount of time (milliseconds) for a row to finish printing
         var nextTimeout = 0;
+
         charsInProgress = countTotalCharacters(messageQueue);
 
         if(charsInProgress > 0) {
             while(messageQueue.length > 0) {
                 var message = messageQueue.shift();
+                var speed = message.speed;
 
                 while(message.text.length > 0) {
-                    var text = message.text.shift();
-                    var speed = message.speed;
+                    var text = generateFullText(message.text.shift(), message);
 
-                    setTimeout(addRow, nextTimeout, text, speed, message.extraClass, message.timestamp);
+                    setTimeout(addRow, nextTimeout, text, speed, message.extraClass);
 
                     nextTimeout += calculateTimer(text, speed);
                 }
             }
         }
     }
+}
+
+// Adds time stamp and room name to a string from a message if they are set
+function generateFullText(sentText, message) {
+    var text = '';
+
+    if(message.time) { text += generateShortTime(message.time) }
+    if(message.roomName) { text += message.roomName !== platformCommands.getLocally('room') ? '[' + message.roomName + '] ' : '' }
+    if(message.user) { text += message.user + ': ' }
+
+    text += sentText;
+
+    return text;
 }
 
 // Counts all characters in the message array and returns it
@@ -1177,21 +1192,12 @@ function countTotalCharacters(messageQueue) {
         var message = messageQueue[i];
 
         for(var j = 0; j < message.text.length; j++) {
-            var text = message.text[j];
+            var text = generateFullText(message.text[j], message);
             total += text.length;
         }
     }
 
     return total;
-}
-
-// Gets the current date and time
-function calculateNow() {
-    var date = new Date();
-    var minutes = (date.getMinutes() < 10 ? '0' : '') + date.getMinutes();
-    var hours = (date.getHours() < 10 ? '0' : '') + date.getHours();
-
-    return hours + ':' + minutes + ' ';
 }
 
 // Calculates amount of time to print text (speed times amount of characters plus buffer)
@@ -1201,19 +1207,13 @@ function calculateTimer(text, speed) {
     return (text.length * timeout) + timeoutBuffer;
 }
 
-function addRow(text, speed, extraClass, timestamp) {
+function addRow(text, speed, extraClass) {
     var row = document.createElement('li');
     var span = document.createElement('span');
 
     if(extraClass) {
         // classList doesn't work on older devices, thus the usage of className
         row.className += ' ' + extraClass;
-    }
-
-    if(timestamp) {
-        var timeSpan = document.createElement('span');
-        timeSpan.innerHTML = calculateNow();
-        row.appendChild(timeSpan);
     }
 
     row.appendChild(span);
@@ -1244,4 +1244,13 @@ function scrollView(element) {
     element.scrollIntoView();
     // Compatibility fix
     window.scrollTo(0, document.body.scrollHeight);
+}
+
+// Takes date and returns shorter readable time
+function generateShortTime(date) {
+    var newDate = new Date(date);
+    var minutes = (newDate.getMinutes() < 10 ? '0' : '') + newDate.getMinutes();
+    var hours = (newDate.getHours() < 10 ? '0' : '') + newDate.getHours();
+
+    return hours + ':' + minutes + ' ';
 }

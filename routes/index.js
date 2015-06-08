@@ -21,11 +21,22 @@ function handle(io) {
             socket.broadcast.emit('importantMsg', msg);
         });
 
-        socket.on('ping', function() {
+        socket.on('ping', function(userName) {
             socket.emit('pong');
         })
 
         socket.on('disconnect', function() {
+            manager.getUserById(socket.id, function(err, user) {
+               if(err) {
+
+               } else {
+                   var userName = '';
+
+                   if(user !== null) { userName = user.userName; }
+
+                   console.log(socket.id, userName, 'has disconnected');
+               }
+            });
         });
 
         // This should be moved
