@@ -26,23 +26,50 @@ function handle(socket) {
         manager.updateUserSocketId(sentObject.userName, socket.id, function(err, user) {
             if(err || user === null) {
                 console.log('Failed to update Id', err);
-            } else if(!sentObject.firstConnection) {
-                socket.emit('updateConnection');
-            }
-        });
-    });
-
-    // Should this be moved?
-    // Joins all rooms connected to the user to its current socket ID
-    socket.on('fetchRooms', function() {
-        manager.getUserById(socket.id, function(err, user) {
-            if(err || user === null) {
-                socket.emit('message', { text : ['Failed to fetch all your rooms'] });
             } else {
                 for(var i = 0; i < user.rooms.length; i++) {
                     var room = user.rooms[i];
 
                     socket.join(room);
+                }
+
+                if(sentObject.firstConnection) {
+                    manager.getAllUserHistory(user.rooms, user.lastOnline, function(err, history) {
+                        if(err || history === null) {
+
+                        } else {
+                            var missedMessages = [];
+
+                            for(var i = 0; i < history.length; i++) {
+                                var currentHistory = history[i];
+                                var messages = currentHistory.messages;
+
+                                for(var j = (messages.length - 1); j !== 0; j--) {
+                                    var message = messages[j];
+
+                                    // Pushes only the messages that the user hasn't already seen
+                                    if(user.lastOnline <= message.time) {
+                                        message.roomName = currentHistory.roomName;
+                                        missedMessages.push(message);
+                                    }
+                                }
+                            }
+
+                            // Above loop pushes in everything in the reverse order. Let's fix that
+                            missedMessages.reverse();
+                            missedMessages.sort(function (a, b) {
+                                if(a.time < b.time) {
+                                    return - 1;
+                                } else if(a.time > b.time) {
+                                    return 1;
+                                }
+
+                                return 0;
+                            });
+
+                            socket.emit('multiMsg', missedMessages);
+                        }
+                    });
                 }
             }
         });

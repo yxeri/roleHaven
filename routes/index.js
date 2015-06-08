@@ -12,7 +12,6 @@ function handle(io) {
     });
 
     io.on('connection', function(socket) {
-        connection(socket);
         userManagement.handle(socket);
         chat.handle(socket);
         blodsband.handle(socket);
@@ -21,20 +20,22 @@ function handle(io) {
             socket.broadcast.emit('importantMsg', msg);
         });
 
-        socket.on('ping', function(userName) {
+        socket.on('ping', function() {
             socket.emit('pong');
         })
 
         socket.on('disconnect', function() {
             manager.getUserById(socket.id, function(err, user) {
-               if(err) {
-
+               if(err || user === null) {
+                   console.log('User has disconnected. Couldn\'t retrieve user name');
                } else {
-                   var userName = '';
+                   manager.setUserLastOnline(user.userName, new Date(), function(err, user) {
+                       if(err || user === null) {
 
-                   if(user !== null) { userName = user.userName; }
+                       }
+                   });
 
-                   console.log(socket.id, userName, 'has disconnected');
+                   console.log(socket.id, user.userName, 'has disconnected');
                }
             });
         });
@@ -93,9 +94,6 @@ function handle(io) {
     });
 
     return router;
-}
-
-function connection(socket) {
 }
 
 module.exports = handle;

@@ -116,7 +116,6 @@ var validCommands = {
         func : function(phrases) {
             if(phrases.length > 0) {
                 var writtenMsg = phrases.join(' ');
-                console.log('msg', writtenMsg);
 
                 socket.emit('chatMsg', {
                     message : {
@@ -590,12 +589,10 @@ function measureDistance(lat1, lon1, lat2, lon2){  // generally used geo measure
 }
 
 socket.on('chatMsg', function(message) {
-    console.log('chatMsg', message);
     messageQueue.push(message);
 });
 
 socket.on('message', function(message) {
-    console.log('message', message);
     messageQueue.push(message);
 });
 
@@ -606,8 +603,15 @@ socket.on('importantMsg', function(msg) {
     messageQueue.push(message);
 });
 
+socket.on('multiMsg', function(messages) {
+    for(var i = 0; i < messages.length; i++) {
+        messageQueue.push(messages[i]);
+    }
+});
+
 // Triggers when the connection is lost and then re-established
 socket.on('reconnect', function() {
+    validCommands.clear.func();
     messageQueue.push({ text : ['Re-established connection'], extraClass : 'importantMsg' });
 
     if(currentUser) {
@@ -645,10 +649,6 @@ socket.on('login', function(userName) {
     currentUser = userName;
     messageQueue.push({ text : ['Successfully logged in as ' + userName] });
     socket.emit('follow', { roomName : 'public', entered : true });
-});
-
-socket.on('updateConnection', function() {
-    socket.emit('fetchRooms');
 });
 
 socket.on('commandSuccess', function(data) {
@@ -723,7 +723,6 @@ function startBoot() {
 
     if(platformCommands.getLocally('room')) {
         validCommands.enterroom.func([platformCommands.getLocally('room')]);
-        socket.emit('fetchRooms');
     } else {
         setInputStart('RAZ-CMD$ ');
     }
@@ -1026,7 +1025,6 @@ function keyPress(event) {
     switch(keyCode) {
         // Enter
         case 13:
-            console.log('enter');
             if(!commandHelper.keyboardBlocked) {
                 if(commandHelper.command !== null) {
                     var phrase = trimWhitespaces(getInputText().toLowerCase());

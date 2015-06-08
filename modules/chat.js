@@ -18,7 +18,6 @@ function handle(socket) {
                 socket.emit('message', newMessage);
             }
         });
-
     });
 
     socket.on('broadcastMsg', function(message) {
@@ -153,6 +152,15 @@ function handle(socket) {
         var roomsString = socket.rooms.slice(1).sort().join('\t');
 
         socket.emit('message', { text : [roomsString] });
+    });
+
+    socket.on('history', function() {
+        manager.getUserById(socket.id, function(err, user) {
+            if(err || user === null) {
+
+            } else{
+            }
+        })
     });
 }
 

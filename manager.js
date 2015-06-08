@@ -17,7 +17,8 @@ var userSchema = new mongoose.Schema({
     accessLevel : { type : Number, default : 1 },
     visibility : { type : Number, default : 1 },
     rooms : [{ type : String, unique : true }],
-    position : {}
+    position : {},
+    lastOnline : Date
 }, { collection : 'users' });
 var roomSchema = new mongoose.Schema({
     roomName : { type : String, unique : true },
@@ -42,8 +43,7 @@ var commandSchema = new mongoose.Schema({
     func : {},
     help : [String],
     instructions : [String],
-    clearAfterUse : Boolean,
-    usageTime : Boolean
+    clearAfterUse : Boolean
 }, { collection : 'commands' });
 
 // Blodsband specific schemas
@@ -192,13 +192,23 @@ function getHistoryFromRoom(sentRoomName, length, callback) {
     });
 }
 
+function getAllUserHistory(rooms, sentLastOnline, callback) {
+    History.find({ roomName : { $in : rooms }}).lean().exec(function(err, history) {
+        if(err) {
+            console.log('Failed to retrieve all history from', rooms);
+        }
+
+        callback(err, history);
+    });
+}
+
 function updateUserSocketId(sentUserName, value, callback) {
-    User.findOneAndUpdate({ userName : sentUserName }, { socketId : value }).lean().exec(function(err) {
+    User.findOneAndUpdate({ userName : sentUserName }, { socketId : value }).lean().exec(function(err, user) {
         if(err) {
             console.log('Failed to update user', err);
         }
 
-        callback(err);
+        callback(err, user);
     });
 }
 
@@ -319,6 +329,18 @@ function removeRoomFromUser(sentUserName, sentRoomName, callback) {
     });
 }
 
+function setUserLastOnline(sentUserName, sentDate, callback) {
+    User.findOneAndUpdate({ userName : sentUserName }, { lastOnline : sentDate }).lean().exec(function(err, user) {
+        if(err) {
+            console.log('Failed to update last online on', sentUserName, err);
+        }
+
+        console.log('Updated', sentUserName, 'with', sentDate);
+
+        callback(err, user);
+    });
+}
+
 exports.getUserById = getUserById;
 exports.authUser = authUser;
 exports.addUser = addUser;
@@ -334,6 +356,8 @@ exports.addRoomToUser = addRoomToUser;
 exports.removeRoomFromUser = removeRoomFromUser;
 exports.addMsgToHistory = addMsgToHistory;
 exports.getHistoryFromRoom = getHistoryFromRoom;
+exports.setUserLastOnline = setUserLastOnline;
+exports.getAllUserHistory = getAllUserHistory;
 
 //Blodsband specific
 exports.addEncryptionKey = addEncryptionKey;
