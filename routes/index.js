@@ -6,6 +6,15 @@ var manager = require('../manager');
 //Blodsband specific
 var blodsband = require('../modules/blodsband');
 
+function getTime(ms) {
+    var date = ms ? new Date(ms) : new Date();
+    var seconds = (date.getSeconds() < 10 ? '0' : '') + date.getSeconds();
+    var minutes = (date.getMinutes() < 10 ? '0' : '') + date.getMinutes();
+    var hours = (date.getHours() < 10 ? '0' : '') + date.getHours();
+
+    return hours + ':' + minutes + ':' + seconds;
+}
+
 function handle(io) {
     router.get('/', function(req, res) {
         res.render('index', { title: 'Organica Oracle v3.2' });
@@ -57,8 +66,8 @@ function handle(io) {
                                         msg += 'User: ' + currentUser.userName;
 
                                         if(users[i].position) {
-                                            msg += '\tLast seen: ' + '[' + currentUser.position.timestamp + ']';
-                                            msg += '\tCoordinates: ' + currentUser.position.latitude + ', ' + currentUser.position.longitude;;
+                                            msg += '\tLast seen: ' + getTime(currentUser.position.timestamp);
+                                            msg += '\tCoordinates: ' + currentUser.position.latitude + ', ' + currentUser.position.longitude;
                                         } else {
                                             msg += '\tUnable to locate user'
                                         }
@@ -76,8 +85,8 @@ function handle(io) {
                             } else if(user.position) {
                                 socket.emit('message', { text : [
                                     'User: ' + user.userName,
-                                    'Last seen: ' + '[' + user.position.timestamp + ']',
-                                    'Coordinates: ' + user.position.latitude + ', ' + user.position.longitude 
+                                    'Last seen: ' + getTime(user.position.timestamp),
+                                    'Coordinates: ' + user.position.latitude + ', ' + user.position.longitude
                                 ]})
                             } else {
                                 socket.emit('message', { text : ['Unable to locate ' + sentUserName] });
@@ -87,6 +96,10 @@ function handle(io) {
                 }
             });
         });
+
+        socket.on('time', function() {
+            socket.emit('time', getTime());
+        })
     });
 
     return router;

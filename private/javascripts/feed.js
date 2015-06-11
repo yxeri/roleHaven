@@ -480,12 +480,7 @@ var validCommands = {
     },
     time : {
         func : function() {
-            var date = new Date();
-            var seconds = (date.getSeconds() < 10 ? '0' : '') + date.getSeconds();
-            var minutes = (date.getMinutes() < 10 ? '0' : '') + date.getMinutes();
-            var hours = (date.getHours() < 10 ? '0' : '') + date.getHours();
-
-            messageQueue.push({ text : ['Time: ' + hours + ':' + minutes + ':' + seconds] });
+            socket.emit('time');
         },
         help : ['Shows the current time']
     },
@@ -800,6 +795,10 @@ socket.on('disconnectUser', function() {
 
 socket.on('morse', function(morseCode) {
     playMorseSignal(morseCode);
+});
+
+socket.on('time', function(time) {
+    messageQueue.push({ text : ['Time: ' + time] });
 });
 
 function playMorseSignal(morseCode) {
