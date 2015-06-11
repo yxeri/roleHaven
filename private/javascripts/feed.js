@@ -62,6 +62,9 @@ var platformCommands = {
     },
     getLocally : function(name) {
         return localStorage.getItem(name);
+    },
+    removeLocally : function(name) {
+        localStorage.removeItem(name);
     }
 };
 var previousCommands = platformCommands.getLocally('previousCommands') ?
@@ -675,10 +678,53 @@ socket.on('commandFail', function() {
 });
 
 socket.on('reconnectSuccess', function(firstConnection) {
+    console.log('reconnectSuccess');
+
     if(!firstConnection) {
         messageQueue.push({ text : ['Re-established connection'], extraClass : 'importantMsg' });
         messageQueue.push({ text : ['Retrieving missed messages (if any)']});
+    } else {
+        messageQueue.push({
+            text : [
+                'Welcome, employee ' + currentUser,
+                'Did you know that you can auto-complete commands by using the tab button or writing double spaces?',
+                'Learn this valuable skill to increase your productivity!',
+                'May you have a productive day',
+                '## This terminal has been cracked by your friendly Razor1911 team. Enjoy! ##'
+            ]
+        });
+
+        if(platformCommands.getLocally('room')) {
+            validCommands.enterroom.func([platformCommands.getLocally('room')]);
+        }
     }
+
+    if(platformCommands.getLocally('mode') === null) {
+        validCommands.normalmode.func();
+    } else {
+        var mode = platformCommands.getLocally('mode');
+
+        validCommands[mode].func();
+    }
+
+    locationData();
+});
+
+socket.on('disconnectUser', function() {
+    var currentUser = platformCommands.getLocally('user');
+
+    // There is no saved local user. We don't need to print this
+    if(currentUser !== null) {
+        messageQueue.push({ text : [
+            'Didn\'t find user ' + platformCommands.getLocally('user') + ' in database',
+            'Resetting local configuration'
+        ]});
+    }
+
+    platformCommands.removeLocally('user');
+    platformCommands.removeLocally('room');
+    platformCommands.setLocally('mode', 'normalmode');
+    setInputStart('RAZ-CMD$ ');
 });
 
 function reconnect() {
@@ -712,6 +758,13 @@ function isDisconnected() {
     }
 }
 
+function setPrintTextInterval() {
+    if(interval.printText !== undefined) { clearTimeout(interval.printText); }
+
+    // Tries to print messages from the queue
+    interval.printText = setInterval(printText, 200, messageQueue);
+}
+
 function startBoot() {
     document.getElementById('background').addEventListener('click', function(event) {
         marker.focus();
@@ -721,43 +774,15 @@ function startBoot() {
     addEventListener('keypress', keyPress);
     // Needed for some special keys. They are not detected with keypress
     addEventListener('keydown', specialKeyPress);
-    
-    // Tries to print messages from the queue
-    interval.printText = setInterval(printText, 200, messageQueue);
+
+    addEventListener('focus', setPrintTextInterval);
+
+    setPrintTextInterval();
     interval.isScreenOff = setInterval(isScreenOff, 1000);
-    //interval.isDisconnected = setInterval(isDisconnected, 2000);
 
     messageQueue.push(logo);
 
-    if(currentUser) {
-        socket.emit('updateId', { userName : currentUser, firstConnection : true });
-
-        messageQueue.push({
-            text : [
-                'Welcome, employee ' + currentUser,
-                'Did you know that you can auto-complete commands by using the tab button or writing double spaces?',
-                'Learn this valuable skill to increase your productivity!',
-                'May you have a productive day',
-                '## This terminal has been cracked by your friendly Razor1911 team. Enjoy! ##'
-            ] 
-        });
-
-        locationData();
-    }
-
-    if(platformCommands.getLocally('mode') === null) {
-        validCommands.normalmode.func();
-    } else {
-        var mode = platformCommands.getLocally('mode');
-
-        validCommands[mode].func();
-    }
-
-    if(platformCommands.getLocally('room')) {
-        validCommands.enterroom.func([platformCommands.getLocally('room')]);
-    } else {
-        setInputStart('RAZ-CMD$ ');
-    }
+    socket.emit('updateId', { userName : currentUser, firstConnection : true });
 }
 
 startBoot();

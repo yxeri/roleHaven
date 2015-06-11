@@ -26,6 +26,7 @@ function handle(socket) {
         manager.updateUserSocketId(sentObject.userName, socket.id, function(err, user) {
             if(err || user === null) {
                 console.log('Failed to update Id', err);
+                socket.emit('disconnectUser');
             } else {
                 for(var i = 0; i < user.rooms.length; i++) {
                     var room = user.rooms[i];
