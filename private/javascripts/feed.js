@@ -914,7 +914,7 @@ function startBoot() {
     // Needed for some special keys. They are not detected with keypress
     addEventListener('keydown', specialKeyPress);
 
-    addEventListener('focus', setPrintTextInterval);
+    addEventListener('focus', setIntervals);
 
     setIntervals();
     interval.isScreenOff = setInterval(isScreenOff, 1000);
