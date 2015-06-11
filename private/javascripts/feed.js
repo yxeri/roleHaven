@@ -14,7 +14,52 @@ var messageQueue = [];
 // Characters left to print during one call to printText().
 // It has to be zero before another group of messages can be printed.
 var charsInProgress = 0;
+var soundQueue = [];
+var audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+var oscillator;
+var gainNode;
+var soundTimeout = 0;
 
+var morseCodes = {
+    'a' : '.-',
+    'b' : '-...',
+    'c' : '-.-.',
+    'd' : '-..',
+    'e' : '.',
+    'f' : '..-.',
+    'g' : '--.',
+    'h' : '....',
+    'i' : '..',
+    'j' : '.---',
+    'k' : '-.-',
+    'l' : '.-..',
+    'm' : '--',
+    'n' : '-.',
+    'o' : '---',
+    'p' : '.--.',
+    'q' : '--.-',
+    'r' : '.-.',
+    's' : '...',
+    't' : '-',
+    'u' : '..-',
+    'v' : '...-',
+    'w' : '.--',
+    'x' : '-..-',
+    'y' : '-.--',
+    'z' : '--..',
+    '1' : '.----',
+    '2' : '..---',
+    '3' : '...--',
+    '4' : '....-',
+    '5' : '.....',
+    '6' : '-....',
+    '7' : '--...',
+    '8' : '---..',
+    '9' : '----.',
+    '0' : '-----',
+    // Symbolizes space betwen words
+    '#' : '#'
+};
 var logo = {
     speed : 0.5,
     extraClass : 'logo',
@@ -65,6 +110,9 @@ var platformCommands = {
     },
     removeLocally : function(name) {
         localStorage.removeItem(name);
+    },
+    isTextAllowed : function(text) {
+        return /^[a-zA-Z0-9]+$/g.test(text);
     }
 };
 var previousCommands = platformCommands.getLocally('previousCommands') ?
@@ -117,7 +165,7 @@ var validCommands = {
     },
     msg : {
         func : function(phrases) {
-            if(phrases.length > 0) {
+            if(phrases && phrases.length > 0) {
                 var writtenMsg = phrases.join(' ');
 
                 socket.emit('chatMsg', {
@@ -145,7 +193,7 @@ var validCommands = {
     },
     broadcast : {
         func : function(phrases) {
-            if(phrases.length > 0) {
+            if(phrases && phrases.length > 0) {
                 var writtenMsg = phrases.join(' ');
 
                 socket.emit('broadcastMsg', {
@@ -311,9 +359,10 @@ var validCommands = {
                 var errorMsg = {
                     text : [
                         'Name has to be 3 to 6 characters long',
-                        'Don\'t use whitespace in your name or password!',
+                        'The name can only contain letters and numbers (a-z, 0-9)',
                         'Password has to be 4 to 10 characters',
-                        'e.g. register myname banana1'
+                        'Don\'t use whitespace in your name or password!',
+                        'e.g. register myname apple1'
                     ]
                 };
 
@@ -323,7 +372,8 @@ var validCommands = {
                     var password = phrases[1];
 
                     if(userName.length >= 3 && userName.length <= 6 &&
-                        password.length >= 4 && password.length <= 10) {
+                        password.length >= 4 && password.length <= 10 &&
+                        platformCommands.isTextAllowed(userName)) {
                         user.userName = userName;
                         // Check for empty!
                         user.password = password;
@@ -344,7 +394,8 @@ var validCommands = {
         help : [
             'Registers your user name on the server and connects it to your device',
             'This user name will be your identity in the system',
-            'Don\'t use whitespaces in your name or password!'
+            'The name can only contain letters and numbers (a-z, 0-9)',
+            'Don\'t use whitespaces in your name or password!',
         ],
         instructions : [
             ' Usage:',
@@ -365,6 +416,7 @@ var validCommands = {
                 text : [
                     'Failed to create room.',
                     'Room name has to be 1 to 6 characters long',
+                    'The room name can only contain letters and numbers (a-z, 0-9)',
                     'e.g. createroom myroom'
                 ]
             };
@@ -373,7 +425,7 @@ var validCommands = {
                 var roomName = phrases[0];
                 var password = phrases[1];
 
-                if(roomName.length > 0 && roomName.length < 7) {
+                if(roomName.length > 0 && roomName.length < 7 && platformCommands.isTextAllowed(roomName)) {
                     var room = {};
 
                     room.roomName = roomName;
@@ -389,13 +441,15 @@ var validCommands = {
         },
         help : [
             'Creates a chat room',
-            'The rooms name has to be 1 to 6 characters long'
+            'The rooms name has to be 1 to 6 characters long',
+            'The password is optional, but if set it has to be 4 to 10 characters',
+            'The name can only contain letters and numbers (a-z, 0-9)',
         ],
         instructions : [
             ' Usage:',
             '  createroom *room name* *optional password*',
             ' Example:',
-            '  createroom myroom banana'
+            '  createroom myroom banana',
         ],
         accessLevel : 3
     },
@@ -581,6 +635,47 @@ var validCommands = {
             '  history 25'
         ],
         clearAfterUse : true
+    },
+    morse : {
+        func : function(phrases) {
+            if(phrases && phrases.length > 0) {
+                var text = phrases.join(' ').toLowerCase();
+                var filteredText = text;
+                var morseCodeText = '';
+
+                filteredText = filteredText.replace(/[åä]/g, 'a');
+                filteredText = filteredText.replace(/[ö]/g, 'o');
+                filteredText = filteredText.replace(/\s/g, '#');
+                filteredText = filteredText.replace(/[^a-z0-9#]/g, '');
+
+                for(var i = 0; i < filteredText.length; i++) {
+                    var morseCode = morseCodes[filteredText.charAt(i)];
+
+                    for(var j = 0; j < morseCode.length; j++) {
+                        morseCodeText += morseCode[j] + ' ';
+                    }
+
+                    morseCodeText += '   ';
+                }
+
+                console.log(morseCodeText);
+
+                if(morseCodeText.length > 0) {
+                    socket.emit('morse', {
+                        roomName : platformCommands.getLocally('room'),
+                        morseCode : morseCodeText
+                    });
+                }
+            }
+        },
+        help : ['Sends a morse encoded message (sound) to everyone in the room'],
+        instructions : [
+            ' Usage:',
+            '  morse *message*',
+            ' Example:',
+            '  morse sos'
+        ],
+        accessLevel : 11
     }
 };
 
@@ -622,7 +717,9 @@ socket.on('broadcastMsg', function(message) {
 
 socket.on('importantMsg', function(msg) {
     var message = msg;
+
     message.extraClass = 'importantMsg';
+    validCommands.morse.func(message.text);
 
     messageQueue.push(message);
 });
@@ -637,7 +734,7 @@ socket.on('multiMsg', function(messages) {
 socket.on('reconnect', reconnect);
 
 socket.on('disconnect', function() {
-    messageQueue.push({ 
+    messageQueue.push({
         text : ['Lost connection'],
         extraClass : 'importantMsg'
     });
@@ -653,7 +750,7 @@ socket.on('follow', function(room) {
 
 socket.on('unfollow', function(room) {
     messageQueue.push({ text : ['Stopped following ' + room.roomName] });
-    
+
     if(room.exited) {
         setInputStart('public$ ');
         platformCommands.setLocally('room', 'public');
@@ -678,8 +775,6 @@ socket.on('commandFail', function() {
 });
 
 socket.on('reconnectSuccess', function(firstConnection) {
-    console.log('reconnectSuccess');
-
     if(!firstConnection) {
         messageQueue.push({ text : ['Re-established connection'], extraClass : 'importantMsg' });
         messageQueue.push({ text : ['Retrieving missed messages (if any)']});
@@ -727,6 +822,51 @@ socket.on('disconnectUser', function() {
     setInputStart('RAZ-CMD$ ');
 });
 
+socket.on('morse', function(morseCode) {
+    playMorseSignal(morseCode);
+});
+
+function playMorseSignal(morseCode) {
+    function clearSoundQueue(timeouts) {
+        soundQueue.splice(0, timeouts);
+    }
+
+    var timeouts = 0;
+
+    if(soundQueue.length === 0) { soundTimeout = 0; }
+
+    for(var i = 0; i < morseCode.length; i++) {
+        var duration = 0;
+        var shouldPlay = false;
+
+        if(morseCode[i] === '.') {
+            duration = 100;
+            shouldPlay = true;
+        } else if(morseCode[i] === '-') {
+            duration = 300;
+            shouldPlay = true;
+        } else if(morseCode[i] === '#') {
+            duration = 100;
+        } else {
+            duration = 150;
+        }
+
+        if(shouldPlay) {
+            soundQueue.push(setTimeout(setGain, soundTimeout, 1));
+            soundQueue.push(setTimeout(setGain, soundTimeout + duration, 0));
+        }
+
+        soundTimeout += duration;
+    }
+
+    timeouts = 2 * morseCode.length;
+    setTimeout(clearSoundQueue, soundTimeout, timeouts);
+}
+
+function setGain(value) {
+    gainNode.gain.value = value;
+}
+
 function reconnect() {
     socket.disconnect();
     socket.connect({ forceNew : true });
@@ -738,7 +878,7 @@ function reconnect() {
 
 // Some devices disable Javascript when screen is off (iOS)
 // They also fail to notice that they have been disconnected
-// We check the time between heartbeats and if the time is 
+// We check the time between heartbeats and if the time is
 // over 10 seconds (e.g. when screen is turned off and then on)
 // we force them to reconnect
 function isScreenOff() {
@@ -758,11 +898,34 @@ function isDisconnected() {
     }
 }
 
-function setPrintTextInterval() {
+function setIntervals() {
     if(interval.printText !== undefined) { clearTimeout(interval.printText); }
+    if(interval.tracking !== undefined) { clearTimeout(interval.tracking); }
 
     // Tries to print messages from the queue
     interval.printText = setInterval(printText, 200, messageQueue);
+
+    if(platformCommands.getLocally('tracking')) {
+        interval.tracking = setInterval(sendLocationData, 4000);
+    }
+}
+
+function startAudio() {
+    // Not supported in Spartan nor IE11 or lower
+    if(window.AudioContext || window.webkitAudioContext) {
+        audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+        oscillator = audioCtx.createOscillator();
+        gainNode = audioCtx.createGain();
+
+        oscillator.connect(gainNode);
+        gainNode.connect(audioCtx.destination);
+
+        gainNode.gain.value = 0;
+        oscillator.type = 'sine';
+        oscillator.frequency.value = '440';
+
+        oscillator.start(0);
+    }
 }
 
 function startBoot() {
@@ -777,8 +940,10 @@ function startBoot() {
 
     addEventListener('focus', setPrintTextInterval);
 
-    setPrintTextInterval();
+    setIntervals();
     interval.isScreenOff = setInterval(isScreenOff, 1000);
+
+    startAudio();
 
     messageQueue.push(logo);
 
@@ -858,9 +1023,9 @@ function locationData() {
                 clearInterval(interval.tracking);
                 messageQueue.push({ text : [
                     'Unable to connect to the tracking satellites',
-                    'Turning off tracking is a major offence against company practices',
-                    'Organica death squads have been sent to scour the area'
-                ] });
+                    'Turning off tracking is a major offense',
+                    'Organica Death Squads have been sent to scour the area'
+                ], extraClass : 'importantMsg' });
             }
         });
     }
@@ -1033,7 +1198,7 @@ function specialKeyPress(event) {
         // Right arrow
         case 39:
             // Moves marker one step to the right
-            if(getRightText(marker)) {              
+            if(getRightText(marker)) {
                 appendToLeftText(marker.value);
                 setMarkerText(getRightText(marker)[0]);
                 setRightText(getRightText(marker).slice(1));
@@ -1200,10 +1365,7 @@ function keyPress(event) {
 }
 
 function isAllowedChar(text) {
-    console.log(text);
-
-    //return /^[a-öA-Ö0-9\*\-\/\s!"'#%&\,\.\?\=\+\;\:]+$/i.test(text);
-    return true;
+    return /^[a-zA-Z0-9åäöÅÄÖ/\s\-\_\.\,\;\:\!\"\*\'\?\+\=\/\&\)\(\^\[\]]+$/g.test(text);
 }
 
 // Needed for Android 2.1. trim() is not supported
@@ -1213,9 +1375,9 @@ function trimWhitespaces(sentText) {
 
 function triggerAutoComplete(text) {
     if(text.charAt(text.length - 1) === ' ' && text.charAt(text.length - 2) === ' ') {
-        setLeftText(trimWhitespaces(text));  
+        setLeftText(trimWhitespaces(text));
 
-        return true;  
+        return true;
     }
 
     return false;
@@ -1236,7 +1398,9 @@ function printText(messageQueue) {
                 var message = messageQueue.shift();
                 var speed = message.speed;
 
-                if(message.text !== undefined) {
+                if(message.text != null) {
+                    console.log('going to print', message.text.toString(), message.roomName, message.user);
+
                     while(message.text.length > 0) {
                         var text = message.text.shift();
                         var fullText = generateFullText(text, message);

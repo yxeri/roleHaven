@@ -217,6 +217,11 @@ function handle(socket) {
             }
         })
     });
+
+    socket.on('morse', function(data) {
+        socket.broadcast.to(data.roomName).emit('morse', data.morseCode);
+        socket.emit('morse', data.morseCode);
+    });
 }
 
 exports.handle = handle;
