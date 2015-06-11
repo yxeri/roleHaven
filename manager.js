@@ -192,7 +192,7 @@ function getHistoryFromRoom(sentRoomName, length, callback) {
     });
 }
 
-function getAllUserHistory(rooms, sentLastOnline, callback) {
+function getUserHistory(rooms, callback) {
     History.find({ roomName : { $in : rooms }}).lean().exec(function(err, history) {
         if(err) {
             console.log('Failed to retrieve all history from', rooms);
@@ -357,7 +357,7 @@ exports.removeRoomFromUser = removeRoomFromUser;
 exports.addMsgToHistory = addMsgToHistory;
 exports.getHistoryFromRoom = getHistoryFromRoom;
 exports.setUserLastOnline = setUserLastOnline;
-exports.getAllUserHistory = getAllUserHistory;
+exports.getUserHistory = getUserHistory;
 
 //Blodsband specific
 exports.addEncryptionKey = addEncryptionKey;

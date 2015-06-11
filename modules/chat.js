@@ -1,5 +1,15 @@
 var manager = require('../manager');
 
+var messageSort = function (a, b) {
+    if (a.time < b.time) {
+        return -1;
+    } else if (a.time > b.time) {
+        return 1;
+    }
+
+    return 0;
+};
+
 function handle(socket) {
     socket.on('chatMsg', function(data) {
         var newData = data;
@@ -20,16 +30,23 @@ function handle(socket) {
         });
     });
 
-    socket.on('broadcastMsg', function(message) {
-        manager.addMsgToHistory('broadcast', message, function(err, history) {
-            if(err || history === null) {
+    socket.on('broadcastMsg', function(data) {
+        var newData = data;
+
+        newData.message.time = new Date();
+
+        manager.addMsgToHistory('broadcast', newData.message, function (err, history) {
+            if (err || history === null) {
                 console.log('Failed to add message to history', err);
             } else {
-                socket.broadcast.emit('broadcastMsg', message);
-                socket.emit('message', message);
+                var newMessage = newData.message;
+
+                newMessage.roomName = newData.roomName;
+
+                socket.broadcast.emit('broadcastMsg', newMessage);
+                socket.emit('message', newMessage);
             }
         });
-
     });
 
     socket.on('createRoom', function(sentRoom) {
@@ -134,14 +151,18 @@ function handle(socket) {
                 console.log('Failed to get user by id', err);
             } else {
                 manager.getAllUsers(user, function(userErr, users) {
-                    if(users.length > 0) {
-                        var usersString = '';
+                    if(userErr || users === null) {
+                        console.log('Failed to get all users', usererr);
+                    } else {
+                        if(users.length > 0) {
+                            var usersString = '';
 
-                        for(var i = 0; i < users.length; i++) {
-                            usersString += users[i].userName + '\t';
+                            for(var i = 0; i < users.length; i++) {
+                                usersString += users[i].userName + '\t';
+                            }
+
+                            socket.emit('message', { text : [usersString] });
                         }
-
-                        socket.emit('message', { text : [usersString] });
                     }
                 });
             }
@@ -154,11 +175,45 @@ function handle(socket) {
         socket.emit('message', { text : [roomsString] });
     });
 
-    socket.on('history', function() {
+    socket.on('history', function(lines) {
+        console.log('history', lines);
+
         manager.getUserById(socket.id, function(err, user) {
             if(err || user === null) {
-
+                console.log('Failed to get history. Couldnt get user', err);
             } else{
+                manager.getUserHistory(socket.rooms.slice(1), function(err, history) {
+                    if(err || history === null) {
+                        console.log('Failed to get history', err);
+                    } else {
+                        var historyMessages = [];
+                        var maxLines = lines === null || isNaN(lines) ? 100 : lines;
+
+                        for (var i = 0; i < history.length; i++) {
+                            var currentHistory = history[i];
+                            var messages = currentHistory.messages;
+
+                            if(messages.length > 0) {
+                                messages = messages.slice(-maxLines);
+
+                                for (var j = (messages.length - 1); j !== 0; j--) {
+                                    var message = messages[j];
+
+                                    message.roomName = currentHistory.roomName;
+                                    // We want the messages to be printed out instantly on the client
+                                    message.speed = 0;
+                                    historyMessages.push(message);
+                                }
+                            }
+                        }
+
+                        // Above loop pushes in everything in the reverse order. Let's fix that
+                        historyMessages.reverse();
+                        historyMessages.sort(messageSort);
+
+                        socket.emit('multiMsg', historyMessages);
+                    }
+                });
             }
         })
     });

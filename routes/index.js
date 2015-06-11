@@ -20,10 +20,6 @@ function handle(io) {
             socket.broadcast.emit('importantMsg', msg);
         });
 
-        socket.on('ping', function() {
-            socket.emit('pong');
-        })
-
         socket.on('disconnect', function() {
             manager.getUserById(socket.id, function(err, user) {
                if(err || user === null) {

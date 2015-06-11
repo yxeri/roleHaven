@@ -8,12 +8,13 @@ var socket = io();
 // Timeout for print of a character (milliseconds)
 var charTimeout = 5;
 // Timeout between print of rows (milliseconds)
-var timeoutBuffer = 100;
+var timeoutBuffer = 5;
 // Queue of all the message objects that will be handled and printed
 var messageQueue = [];
 // Characters left to print during one call to printText().
 // It has to be zero before another group of messages can be printed.
 var charsInProgress = 0;
+
 var logo = {
     speed : 0.5,
     extraClass : 'logo',
@@ -84,7 +85,6 @@ var lastInterval = (new Date()).getTime();
 var interval = {
     tracking : null,
     printText : null,
-    keepAlive : null,
     isScreenOff : null
 };
 var validCommands = {
@@ -139,6 +139,35 @@ var validCommands = {
             '  msg Hello!'
         ],
         clearAfterUse : true
+    },
+    broadcast : {
+        func : function(phrases) {
+            if(phrases.length > 0) {
+                var writtenMsg = phrases.join(' ');
+
+                socket.emit('broadcastMsg', {
+                    message : {
+                        text : [writtenMsg],
+                        user : currentUser
+                    },
+                    roomName : 'ALL'
+                });
+            } else {
+                messageQueue.push({ text : ['You forgot to write the message!'] });
+            }
+        },
+        help : [
+            'Sends a message to all users in all rooms',
+            'It will prepend the message with "[ALL]"'
+        ],
+        instructions : [
+            ' Usage:',
+            '  broadcast *message*',
+            ' Example:',
+            '  broadcast Hello!'
+        ],
+        clearAfterUse : true,
+        accessLevel : 11
     },
     enterroom : {
         func : function(phrases) {
@@ -530,36 +559,24 @@ var validCommands = {
             'Follow the on-screen instructions'
         ]
     },
-    broadcast : {
+    history : {
         func : function(phrases) {
-            if(phrases.length > 0) {
-                var message = phrases.join(' ');
-                var user = currentUser + ': ';
+            var maxLines = phrases[0];
 
-                socket.emit('broadcastMsg', { text : '[ALL] ' + user + message });
-            } else {
-                messageQueue.push({ text : ['You forgot to write the message!'] });
-            }
+            validCommands.clear.func();
+            socket.emit('history', maxLines);
         },
         help : [
-            'Sends a message to all users in all rooms',
-            'It will prepend the message with "[ALL]"'
+            'Clears the screen and retrieves chat messages from server',
+            'The amount you send with the command is the amount of messages that will be returned from each room you follow'
         ],
         instructions : [
             ' Usage:',
-            '  broadcast *message*',
+            '  history *optional number*',
             ' Example:',
-            '  broadcast Hello!'
+            '  history',
+            '  history 25'
         ],
-        clearAfterUse : true,
-        accessLevel : 11
-    },
-    history : {
-        func : function() {
-
-        },
-        help : [],
-        instructions : [],
         clearAfterUse : true
     }
 };
@@ -596,6 +613,10 @@ socket.on('message', function(message) {
     messageQueue.push(message);
 });
 
+socket.on('broadcastMsg', function(message) {
+    messageQueue.push(message);
+});
+
 socket.on('importantMsg', function(msg) {
     var message = msg;
     message.extraClass = 'importantMsg';
@@ -610,14 +631,7 @@ socket.on('multiMsg', function(messages) {
 });
 
 // Triggers when the connection is lost and then re-established
-socket.on('reconnect', function() {
-    validCommands.clear.func();
-    messageQueue.push({ text : ['Re-established connection'], extraClass : 'importantMsg' });
-
-    if(currentUser) {
-        socket.emit('updateId', { userName : currentUser });
-    }
-});
+socket.on('reconnect', reconnect);
 
 socket.on('disconnect', function() {
     messageQueue.push({ 
@@ -660,8 +674,21 @@ socket.on('commandFail', function() {
     setCommand(null);
 });
 
-socket.on('pong', function() {
+socket.on('reconnectSuccess', function(firstConnection) {
+    if(!firstConnection) {
+        messageQueue.push({ text : ['Re-established connection'], extraClass : 'importantMsg' });
+        messageQueue.push({ text : ['Retrieving missed messages (if any)']});
+    }
 });
+
+function reconnect() {
+    socket.disconnect();
+    socket.connect({ forceNew : true });
+
+    if(currentUser) {
+        socket.emit('updateId', { userName : currentUser });
+    }
+}
 
 // Some devices disable Javascript when screen is off (iOS)
 // They also fail to notice that they have been disconnected
@@ -675,8 +702,13 @@ function isScreenOff() {
     lastInterval = now;
 
     if(offBy > 10000) {
-        socket.disconnect();
-        socket.connect({ forceNew : true });
+        reconnect();
+    }
+}
+
+function isDisconnected() {
+    if(socket.disconencted) {
+        //reconnect();
     }
 }
 
@@ -692,8 +724,8 @@ function startBoot() {
     
     // Tries to print messages from the queue
     interval.printText = setInterval(printText, 200, messageQueue);
-    interval.keepAlive = setInterval(keepAlive, 5000);
     interval.isScreenOff = setInterval(isScreenOff, 1000);
+    //interval.isDisconnected = setInterval(isDisconnected, 2000);
 
     messageQueue.push(logo);
 
@@ -767,10 +799,6 @@ function setCommand(sentCommand) {
         setInputStart(platformCommands.getLocally('room') + '$ ');
         commandHelper.keyboardBlocked = false;
     }
-}
-
-function keepAlive() {
-    socket.emit('ping', currentUser);
 }
 
 function clearInput() {
@@ -950,6 +978,21 @@ function specialKeyPress(event) {
             event.preventDefault();
 
             break;
+        // Page up
+        case 33:
+
+            window.scrollBy(0, -window.innerHeight);
+
+            event.preventDefault();
+
+            break;
+        //Page down
+        case 34:
+            window.scrollBy(0, window.innerHeight);
+
+            event.preventDefault();
+
+            break;
         // Left arrow
         case 37:
             // Moves the marker one step to the left
@@ -1043,68 +1086,70 @@ function keyPress(event) {
                     var command = null;
                     var commandName;
 
-                    if(platformCommands.getLocally('mode') === 'normalmode') {
-                        commandName = phrases[0];
-                        command = validCommands[commandName];
-                    } else {
-                        var sign = phrases[0].charAt(0);
-
-                        if(sign === '-') {
-                            commandName = phrases[0].slice(1);
+                    if(phrases[0].length > 0) {
+                        if(platformCommands.getLocally('mode') === 'normalmode') {
+                            commandName = phrases[0];
                             command = validCommands[commandName];
-                        }
-                    }
-
-                    if(currentUser !== null && command) {
-                        // Store the command for usage with up/down arrows
-                        previousCommands.push(phrases.join(' '));
-                        previousCommandPointer++;
-                        platformCommands.setLocally('previousCommands', JSON.stringify(previousCommands));
-
-                        if(command.steps) {
-                            commandHelper.command = commandName;
-                            commandHelper.maxSteps = command.steps.length;
-                        }
-
-                        // Print input if the command shouldn't clear after use
-                        if(!command.clearAfterUse) {
-                            var message = { text : [getInputStart() + getInputText()] };
-
-                            if(command.usageTime) { message.timestamp = true; }
-
-                            messageQueue.push(message);
-                        }
-
-                        // Print the help and instruction parts of the command
-                        if(phrases[1] === '--help') {
-                            var message = { text : [] };
-
-                            if(command.help) { message.text = message.text.concat(command.help); }
-
-                            if(command.instructions) { message.text = message.text.concat(command.instructions); }
-
-                            if(message.text.length > 0) { messageQueue.push(message); }
                         } else {
-                            command.func(phrases.splice(1));
+                            var sign = phrases[0].charAt(0);
+
+                            if(sign === '-') {
+                                commandName = phrases[0].slice(1);
+                                command = validCommands[commandName];
+                            }
                         }
-                    // A user who is not logged in will have access to register and login commands
-                    } else if(command && (commandName === 'register' || commandName === 'login')) {
-                        messageQueue.push({ text : [getInputStart() + getInputText()] });
-                        command.func(phrases.splice(1));
-                    } else if(platformCommands.getLocally('mode') === 'chatmode' && phrases.length > 0) {
-                            validCommands.msg.func(phrases);
-                    } else if(currentUser === null) {
-                        messageQueue.push({ 
-                            text : [
-                                'You must register a new user or login with an existing user', 
-                                'Use command "register" or "login"',
-                                'e.g. register myname 1135',
-                                'or login myname 1135'
-                            ] 
-                        });
-                    // Sent command was not found. Print the failed input
-                    } else if(commandName.length > 0) {
-                        messageQueue.push({ text : ['- ' + phrases[0] + ': ' + commandFailText.text] });
+
+                        if(currentUser !== null && command) {
+                            // Store the command for usage with up/down arrows
+                            previousCommands.push(phrases.join(' '));
+                            previousCommandPointer++;
+                            platformCommands.setLocally('previousCommands', JSON.stringify(previousCommands));
+
+                            if(command.steps) {
+                                commandHelper.command = commandName;
+                                commandHelper.maxSteps = command.steps.length;
+                            }
+
+                            // Print input if the command shouldn't clear after use
+                            if(!command.clearAfterUse) {
+                                var message = { text : [getInputStart() + getInputText()] };
+
+                                if(command.usageTime) { message.timestamp = true; }
+
+                                messageQueue.push(message);
+                            }
+
+                            // Print the help and instruction parts of the command
+                            if(phrases[1] === '--help') {
+                                var message = { text : [] };
+
+                                if(command.help) { message.text = message.text.concat(command.help); }
+
+                                if(command.instructions) { message.text = message.text.concat(command.instructions); }
+
+                                if(message.text.length > 0) { messageQueue.push(message); }
+                            } else {
+                                command.func(phrases.splice(1));
+                            }
+                        // A user who is not logged in will have access to register and login commands
+                        } else if(command && (commandName === 'register' || commandName === 'login')) {
+                            messageQueue.push({ text : [getInputStart() + getInputText()] });
+                            command.func(phrases.splice(1));
+                        } else if(platformCommands.getLocally('mode') === 'chatmode' && phrases[0].length > 0) {
+                                validCommands.msg.func(phrases);
+                        } else if(currentUser === null) {
+                            messageQueue.push({
+                                text : [
+                                    'You must register a new user or login with an existing user',
+                                    'Use command "register" or "login"',
+                                    'e.g. register myname 1135',
+                                    'or login myname 1135'
+                                ]
+                            });
+                        // Sent command was not found. Print the failed input
+                        } else if(commandName.length > 0) {
+                            messageQueue.push({ text : ['- ' + phrases[0] + ': ' + commandFailText.text] });
+                        }
                     }
                 }
             }
@@ -1115,16 +1160,25 @@ function keyPress(event) {
         default:
             var textChar = String.fromCharCode(keyCode);
 
-            if(textChar) { appendToLeftText(textChar); }
+            if(isAllowedChar(textChar)) {
+                if(textChar) { appendToLeftText(textChar); }
 
-            if(triggerAutoComplete(getLeftText(marker))) {
-                autoComplete();
+                if(triggerAutoComplete(getLeftText(marker))) {
+                    autoComplete();
+                }
             }
 
             break;
     }
 
     event.preventDefault();
+}
+
+function isAllowedChar(text) {
+    console.log(text);
+
+    //return /^[a-öA-Ö0-9\*\-\/\s!"'#%&\,\.\?\=\+\;\:]+$/i.test(text);
+    return true;
 }
 
 // Needed for Android 2.1. trim() is not supported
@@ -1157,12 +1211,15 @@ function printText(messageQueue) {
                 var message = messageQueue.shift();
                 var speed = message.speed;
 
-                while(message.text.length > 0) {
-                    var text = generateFullText(message.text.shift(), message);
+                if(message.text !== undefined) {
+                    while(message.text.length > 0) {
+                        var text = message.text.shift();
+                        var fullText = generateFullText(text, message);
 
-                    setTimeout(addRow, nextTimeout, text, speed, message.extraClass);
+                        setTimeout(addRow, nextTimeout, fullText, speed, message.extraClass);
 
-                    nextTimeout += calculateTimer(text, speed);
+                        nextTimeout += calculateTimer(fullText, speed);
+                    }
                 }
             }
         }
@@ -1200,7 +1257,7 @@ function countTotalCharacters(messageQueue) {
 
 // Calculates amount of time to print text (speed times amount of characters plus buffer)
 function calculateTimer(text, speed) {
-    var timeout = speed ? speed : charTimeout;
+    var timeout = isNaN(speed) ? charTimeout : speed;
 
     return (text.length * timeout) + timeoutBuffer;
 }
@@ -1222,7 +1279,7 @@ function addRow(text, speed, extraClass) {
 
 function addLetters(span, text, speed) {
     var lastTimeout = 0;
-    var timeout = speed ? speed : charTimeout;
+    var timeout = isNaN(speed) ? charTimeout : speed;
 
     for(var i = 0; i < text.length; i++) {
         setTimeout(printLetter, timeout + lastTimeout, span, text.charAt(i));
@@ -1241,7 +1298,7 @@ function printLetter(span, character) {
 function scrollView(element) {
     element.scrollIntoView();
     // Compatibility fix
-    window.scrollTo(0, document.body.scrollHeight);
+    //window.scrollTo(0, document.body.scrollHeight);
 }
 
 // Takes date and returns shorter readable time

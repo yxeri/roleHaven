@@ -2,21 +2,21 @@ var manager = require('../manager');
 
 function handle(socket) {
     socket.on('register', function(sentUser) {
-        if(sentUser) {
+        if (sentUser) {
             var userObj = {
-                userName : sentUser.userName, 
-                socketId : socket.id,
-                password : sentUser.password
+                userName: sentUser.userName,
+                socketId: socket.id,
+                password: sentUser.password
             };
 
-            manager.addUser(userObj, function(err, user) {
-                if(err) {
-                    socket.emit('message', { text : ['Failed to register user'] });
-                } else if(user !== null){
+            manager.addUser(userObj, function (err, user) {
+                if (err) {
+                    socket.emit('message', {text: ['Failed to register user']});
+                } else if (user !== null) {
                     socket.emit('login', user.userName);
-                    socket.emit('message', { text : [user.userName + ' has been registered!'] });
+                    socket.emit('message', {text: [user.userName + ' has been registered!']});
                 } else {
-                    socket.emit('message', { text : [sentUser.userName + ' already exists'] });
+                    socket.emit('message', {text: [sentUser.userName + ' already exists']});
                 }
             });
         }
@@ -33,10 +33,12 @@ function handle(socket) {
                     socket.join(room);
                 }
 
-                if(sentObject.firstConnection) {
-                    manager.getAllUserHistory(user.rooms, user.lastOnline, function(err, history) {
-                        if(err || history === null) {
+                socket.emit('reconnectSuccess', sentObject.firstConnection);
 
+                if(sentObject.firstConnection) {
+                    manager.getUserHistory(user.rooms, function(err, history) {
+                        if(err || history === null) {
+                            socket.emit('message', { text : ['Unable to retrieve missed chat history'] });
                         } else {
                             var missedMessages = [];
 
@@ -44,30 +46,39 @@ function handle(socket) {
                                 var currentHistory = history[i];
                                 var messages = currentHistory.messages;
 
-                                for(var j = (messages.length - 1); j !== 0; j--) {
-                                    var message = messages[j];
+                                // Does the history document actually contain any messages?
+                                if(messages.length > 0) {
+                                    for (var j = (messages.length - 1); j !== 0; j--) {
+                                        var message = messages[j];
 
-                                    // Pushes only the messages that the user hasn't already seen
-                                    if(user.lastOnline <= message.time) {
-                                        message.roomName = currentHistory.roomName;
-                                        missedMessages.push(message);
+                                        if (message !== undefined) {
+                                            // Pushes only the messages that the user hasn't already seen
+                                            if (user.lastOnline <= message.time) {
+                                                message.roomName = currentHistory.roomName;
+                                                // We want the messages to be printed out instantly on the client
+                                                message.speed = 0;
+                                                missedMessages.push(message);
+                                            }
+                                        }
                                     }
                                 }
                             }
 
-                            // Above loop pushes in everything in the reverse order. Let's fix that
-                            missedMessages.reverse();
-                            missedMessages.sort(function (a, b) {
-                                if(a.time < b.time) {
-                                    return - 1;
-                                } else if(a.time > b.time) {
-                                    return 1;
-                                }
+                            if(missedMessages.length > 0) {
+                                // Above loop pushes in everything in the reverse order. Let's fix that
+                                missedMessages.reverse();
+                                missedMessages.sort(function (a, b) {
+                                    if(a.time < b.time) {
+                                        return - 1;
+                                    } else if(a.time > b.time) {
+                                        return 1;
+                                    }
 
-                                return 0;
-                            });
+                                    return 0;
+                                });
 
-                            socket.emit('multiMsg', missedMessages);
+                                socket.emit('multiMsg', missedMessages);
+                            }
                         }
                     });
                 }
