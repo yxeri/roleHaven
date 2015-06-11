@@ -10,6 +10,10 @@ var messageSort = function (a, b) {
     return 0;
 };
 
+function isTextAllowed(text) {
+    return /^[a-zA-Z0-9]+$/g.test(text)
+}
+
 function handle(socket) {
     socket.on('chatMsg', function(data) {
         var newData = data;
@@ -50,15 +54,17 @@ function handle(socket) {
     });
 
     socket.on('createRoom', function(sentRoom) {
-        manager.createRoom(sentRoom, function(err, room) {
-            if(err) {
-                socket.emit('message', { text : ['Failed to create the room'] });
-            } else if(room !== null) {
-                socket.emit('message', { text : ['Room successfully created'] });
-            } else {
-                socket.emit('message', { text : [sentRoom.roomName + ' already exists'] });
-            }
-        });
+        if(sentRoom && isTextAllowed(sentRoom.roomName)) {
+            manager.createRoom(sentRoom, function(err, room) {
+                if(err) {
+                    socket.emit('message', { text : [ 'Failed to create the room' ] });
+                } else if(room !== null) {
+                    socket.emit('message', { text : [ 'Room successfully created' ] });
+                } else {
+                    socket.emit('message', { text : [ sentRoom.roomName + ' already exists' ] });
+                }
+            });
+        }
     });
 
     socket.on('follow', function(sentRoom) {

@@ -679,30 +679,6 @@ var validCommands = {
     }
 };
 
-//Upper left and right
-// console.log(measureDistance(59.3879611, 18.0289599, 59.3851468, 18.0289599) / 20);
-// //Bottom left and right
-// console.log(measureDistance(59.3879611, 17.9508994, 59.3851468, 17.9508994) / 20);
-
-// //Upper left and bottom left
-// console.log(measureDistance(59.3879611, 18.0289599, 59.3879611, 17.9508994) / 20);
-
-// //Upper right and bottom right
-// console.log(measureDistance(59.3851468, 18.0289599, 59.3851468, 17.9508994) / 20);
-
-// Taken from http://stackoverflow.com/questions/639695/how-to-convert-latitude-or-longitude-to-meters/11172685#11172685
-function measureDistance(lat1, lon1, lat2, lon2){  // generally used geo measurement function
-    var R = 6378.137; // Radius of earth in KM
-    var dLat = (lat2 - lat1) * Math.PI / 180;
-    var dLon = (lon2 - lon1) * Math.PI / 180;
-    var a = Math.sin(dLat/2) * Math.sin(dLat/2) +
-    Math.cos(lat1 * Math.PI / 180) * Math.cos(lat2 * Math.PI / 180) *
-    Math.sin(dLon/2) * Math.sin(dLon/2);
-    var c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1-a));
-    var d = R * c;
-    return d * 1000; // meters
-}
-
 socket.on('chatMsg', function(message) {
     messageQueue.push(message);
 });
@@ -1497,4 +1473,28 @@ function generateShortTime(date) {
     var hours = (newDate.getHours() < 10 ? '0' : '') + newDate.getHours();
 
     return hours + ':' + minutes + ' ';
+}
+
+// Upper left and right
+// console.log(measureDistance(59.3879611, 18.0289599, 59.3851468, 18.0289599) / 20);
+// Bottom left and right
+// console.log(measureDistance(59.3879611, 17.9508994, 59.3851468, 17.9508994) / 20);
+
+// Upper left and bottom left
+// console.log(measureDistance(59.3879611, 18.0289599, 59.3879611, 17.9508994) / 20);
+
+// Upper right and bottom right
+// console.log(measureDistance(59.3851468, 18.0289599, 59.3851468, 17.9508994) / 20);
+
+// Taken from http://stackoverflow.com/questions/639695/how-to-convert-latitude-or-longitude-to-meters/11172685#11172685
+function measureDistance(lat1, lon1, lat2, lon2){  // generally used geo measurement function
+    var R = 6378.137; // Radius of earth in KM
+    var dLat = (lat2 - lat1) * Math.PI / 180;
+    var dLon = (lon2 - lon1) * Math.PI / 180;
+    var a = Math.sin(dLat/2) * Math.sin(dLat/2) +
+        Math.cos(lat1 * Math.PI / 180) * Math.cos(lat2 * Math.PI / 180) *
+        Math.sin(dLon/2) * Math.sin(dLon/2);
+    var c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1-a));
+    var d = R * c;
+    return d * 1000; // meters
 }
