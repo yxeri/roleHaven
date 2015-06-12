@@ -86,7 +86,7 @@ function handle(socket) {
 
                                 if(socket.rooms.indexOf(room.roomName) < 0) {
                                     socket.broadcast.to(room.roomName).emit('chatMsg', {
-                                        text : user.userName + ' is following ' + room.roomName,
+                                        text : [user.userName + ' is following ' + room.roomName],
                                         room : room.roomName
                                     });
                                 }

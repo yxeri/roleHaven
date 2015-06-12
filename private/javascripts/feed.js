@@ -6,16 +6,17 @@ var inputText = document.getElementById('inputText');
 var inputStart = document.getElementById('inputStart');
 var socket = io();
 // Timeout for print of a character (milliseconds)
-var charTimeout = 5;
+var charTimeout = 2;
 // Timeout between print of rows (milliseconds)
-var timeoutBuffer = 5;
+var rowTimeout = 5;
 // Queue of all the message objects that will be handled and printed
 var messageQueue = [];
 // Characters left to print during one call to printText().
 // It has to be zero before another group of messages can be printed.
 var charsInProgress = 0;
+
 var soundQueue = [];
-var audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+var audioCtx;
 var oscillator;
 var gainNode;
 var soundTimeout = 0;
@@ -867,12 +868,6 @@ function isScreenOff() {
     }
 }
 
-function isDisconnected() {
-    if(socket.disconencted) {
-        //reconnect();
-    }
-}
-
 function setIntervals() {
     if(interval.printText !== undefined) { clearTimeout(interval.printText); }
     if(interval.tracking !== undefined) { clearTimeout(interval.tracking); }
@@ -1424,7 +1419,7 @@ function countTotalCharacters(messageQueue) {
 function calculateTimer(text, speed) {
     var timeout = isNaN(speed) ? charTimeout : speed;
 
-    return (text.length * timeout) + timeoutBuffer;
+    return (text.length * timeout) + rowTimeout;
 }
 
 function addRow(text, speed, extraClass) {
@@ -1456,14 +1451,13 @@ function addLetters(span, text, speed) {
 
 // Prints one letter and decreases in progress tracker
 function printLetter(span, character) {
-    span.innerHTML += character;
+    var textNode = document.createTextNode(character);
+    span.appendChild(textNode);
     charsInProgress--;
 }
 
 function scrollView(element) {
     element.scrollIntoView();
-    // Compatibility fix
-    //window.scrollTo(0, document.body.scrollHeight);
 }
 
 // Takes date and returns shorter readable time
