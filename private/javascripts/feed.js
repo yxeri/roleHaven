@@ -116,6 +116,9 @@ var platformCommands = {
     },
     isTextAllowed : function(text) {
         return /^[a-zA-Z0-9]+$/g.test(text);
+    },
+    queueMessage : function(message) {
+        messageQueue.push(message);
     }
 };
 var previousCommands = platformCommands.getLocally('previousCommands') ?
@@ -144,12 +147,12 @@ var interval = {
 var validCommands = {
     help : {
         func : function() {
-            messageQueue.push({
+            platformCommands.queueMessage({
                 text : [
                     'Add --help after a command (with whitespace in between) to get instructions on how to use it'
                 ]
             });
-            messageQueue.push({ text : getAvailableCommands() });
+            platformCommands.queueMessage({ text : getAvailableCommands() });
         },
         help : ['Shows a list of available commands']
     },
@@ -164,7 +167,7 @@ var validCommands = {
     },
     whoami : {
         func : function() {
-            messageQueue.push({ text : [currentUser] });
+            platformCommands.queueMessage({ text : [currentUser] });
         },
         help : ['Shows the current user']
     },
@@ -181,7 +184,7 @@ var validCommands = {
                     roomName : platformCommands.getLocally('room')
                 });
             } else {
-                messageQueue.push({ text : ['You forgot to write the message!'] });
+                platformCommands.queueMessage({ text : ['You forgot to write the message!'] });
             }
         },
         help : [
@@ -209,7 +212,7 @@ var validCommands = {
                     roomName : 'ALL'
                 });
             } else {
-                messageQueue.push({ text : ['You forgot to write the message!'] });
+                platformCommands.queueMessage({ text : ['You forgot to write the message!'] });
             }
         },
         help : [
@@ -244,7 +247,7 @@ var validCommands = {
                     socket.emit('follow', room);
                 }
             } else {
-                messageQueue.push({ text : ['You have to specify which room to follow'] });
+                platformCommands.queueMessage({ text : ['You have to specify which room to follow'] });
             }
         },
         help : [
@@ -280,7 +283,7 @@ var validCommands = {
 
                 socket.emit('follow', room);
             } else {
-                messageQueue.push({
+                platformCommands.queueMessage({
                     text : [
                         'You have to specify which room to follow and a password (if it is protected)'
                     ]
@@ -312,7 +315,7 @@ var validCommands = {
 
                 socket.emit('unfollow', room);
             } else {
-                messageQueue.push({ text : ['You have to specify which room to unfollow '] });
+                platformCommands.queueMessage({ text : ['You have to specify which room to unfollow '] });
             }
         },
         help : ['Stops following a room.'],
@@ -335,7 +338,7 @@ var validCommands = {
     chatmode : {
         func : function() {
             platformCommands.setLocally('mode', 'chatmode');
-            messageQueue.push({ text : ['Chat mode activated', 'Prepend commands with "-", e.g. "-normalmode"'] });
+            platformCommands.queueMessage({ text : ['Chat mode activated', 'Prepend commands with "-", e.g. "-normalmode"'] });
         },
         help : [
             'Sets mode to chat',
@@ -352,7 +355,7 @@ var validCommands = {
     normalmode : {
         func : function() {
             platformCommands.setLocally('mode', 'normalmode');
-            messageQueue.push({ text : ['Normal mode activated'] });
+            platformCommands.queueMessage({ text : ['Normal mode activated'] });
         },
         help : [
             'Sets mode to normal',
@@ -386,13 +389,13 @@ var validCommands = {
                         user.password = password;
                         socket.emit('register', user);
                     } else {
-                        messageQueue.push(errorMsg);
+                        platformCommands.queueMessage(errorMsg);
                     }
                 } else {
-                    messageQueue.push(errorMsg);
+                    platformCommands.queueMessage(errorMsg);
                 }
             } else {
-                messageQueue.push({
+                platformCommands.queueMessage({
                     text : [
                         'You have already registered a user',
                         platformCommands.getLocally('user') + ' is registered to this device'
@@ -442,10 +445,10 @@ var validCommands = {
 
                     socket.emit('createRoom', room);
                 } else {
-                    messageQueue.push(errorMsg);
+                    platformCommands.queueMessage(errorMsg);
                 }
             } else {
-                messageQueue.push(errorMsg);
+                platformCommands.queueMessage(errorMsg);
             }
         },
         help : [
@@ -496,7 +499,7 @@ var validCommands = {
     locate : {
         func : function(phrases) {
             if(!tracking) {
-                messageQueue.push({ text : ['Tracking not available', 'You are not connected to the satellites'] });
+                platformCommands.queueMessage({ text : ['Tracking not available', 'You are not connected to the satellites'] });
             } else if(phrases.length > 0) {
                 var userName = phrases[0];
 
@@ -517,7 +520,7 @@ var validCommands = {
     },
     decryptmodule : {
         func : function() {
-            messageQueue.push({
+            platformCommands.queueMessage({
                 text : [
                     '   ####',
                     '###############',
@@ -536,7 +539,7 @@ var validCommands = {
                     ' '
                 ], extraClass : 'logo'
             });
-            messageQueue.push({
+            platformCommands.queueMessage({
                 text : [
                     'Razor1911 proudly presents:',
                     'Entity Hacking Access! (EHA)',
@@ -565,7 +568,7 @@ var validCommands = {
         steps : [
             function(phrase, socket) {
                 socket.emit('verifyKey', phrase);
-                messageQueue.push({
+                platformCommands.queueMessage({
                     text : [
                         'Verifying key. Please wait...'
                     ]
@@ -576,16 +579,16 @@ var validCommands = {
             function(data, socket) {
                 if(data.keyData !== null) {
                     if(!data.keyData.used) {
-                        messageQueue.push({ text : ['Key has been verified. Proceeding'] });
+                        platformCommands.queueMessage({ text : ['Key has been verified. Proceeding'] });
                         commandHelper.currentStep++;
                         commandHelper.data = data;
                         validCommands[commandHelper.command].steps[commandHelper.currentStep](socket);
                     } else {
-                        messageQueue.push({ text : ['Key has already been used. Aborting'] });
+                        platformCommands.queueMessage({ text : ['Key has already been used. Aborting'] });
                         setCommand(null);
                     }
                 } else {
-                    messageQueue.push({ text : ['The key is invalid. Aborting'] });
+                    platformCommands.queueMessage({ text : ['The key is invalid. Aborting'] });
                     setCommand(null);
                 }
             },
@@ -599,7 +602,7 @@ var validCommands = {
 
                 data.entityName = phrase;
                 socket.emit('unlockEntity', data);
-                messageQueue.push({
+                platformCommands.queueMessage({
                     text : [
                         'Unlocking entity. Please wait...'
                     ]
@@ -608,7 +611,7 @@ var validCommands = {
             },
             function(entity) {
                 if(entity !== null) {
-                    messageQueue.push({
+                    platformCommands.queueMessage({
                         text : [
                             'Confirmed. Encryption key has been used on the entity',
                             entity.entityName + ' now has ' + (entity.keys.length + 1) + ' unlocks'
@@ -616,7 +619,7 @@ var validCommands = {
                     });
                     setCommand(null);
                 } else {
-                    messageQueue.push({ text : ['Failed. Encryption key could not be used on entity. Aborting'] });
+                    platformCommands.queueMessage({ text : ['Failed. Encryption key could not be used on entity. Aborting'] });
                     setCommand(null);
                 }
             }
@@ -700,7 +703,7 @@ var validCommands = {
                 if(data.newPassword.length >= 4 && data.newPassword.length <= 10) {
                     socket.emit('changePassword', data);
                 } else {
-                    messageQueue.push({
+                    platformCommands.queueMessage({
                         text : [
                             'You have to input the old and new password of the user',
                             'Example: password old1 new1'
@@ -708,7 +711,7 @@ var validCommands = {
                     });
                 }
             } else {
-                messageQueue.push({
+                platformCommands.queueMessage({
                     text : [
                         'You have to input the old and new password of the user',
                         'Example: password old1 new1'
@@ -731,15 +734,15 @@ var validCommands = {
 };
 
 socket.on('chatMsg', function(message) {
-    messageQueue.push(message);
+    platformCommands.queueMessage(message);
 });
 
 socket.on('message', function(message) {
-    messageQueue.push(message);
+    platformCommands.queueMessage(message);
 });
 
 socket.on('broadcastMsg', function(message) {
-    messageQueue.push(message);
+    platformCommands.queueMessage(message);
 });
 
 socket.on('importantMsg', function(msg) {
@@ -748,12 +751,12 @@ socket.on('importantMsg', function(msg) {
     message.extraClass = 'importantMsg';
     validCommands.morse.func(message.text);
 
-    messageQueue.push(message);
+    platformCommands.queueMessage(message);
 });
 
 socket.on('multiMsg', function(messages) {
     for(var i = 0; i < messages.length; i++) {
-        messageQueue.push(messages[i]);
+        platformCommands.queueMessage(messages[i]);
     }
 });
 
@@ -761,7 +764,7 @@ socket.on('multiMsg', function(messages) {
 socket.on('reconnect', reconnect);
 
 socket.on('disconnect', function() {
-    messageQueue.push({
+    platformCommands.queueMessage({
         text : ['Lost connection'],
         extraClass : 'importantMsg'
     });
@@ -771,12 +774,12 @@ socket.on('follow', function(room) {
     if(room.entered) {
         setCurrentRoom(room.roomName);
     } else {
-        messageQueue.push({ text : ['Following ' + room.roomName] });
+        platformCommands.queueMessage({ text : ['Following ' + room.roomName] });
     }
 });
 
 socket.on('unfollow', function(room) {
-    messageQueue.push({ text : ['Stopped following ' + room.roomName] });
+    platformCommands.queueMessage({ text : ['Stopped following ' + room.roomName] });
 
     if(room.exited) {
         setInputStart('public$ ');
@@ -788,7 +791,7 @@ socket.on('unfollow', function(room) {
 socket.on('login', function(userName) {
     platformCommands.setLocally('user', userName);
     currentUser = userName;
-    messageQueue.push({ text : ['Successfully logged in as ' + userName] });
+    platformCommands.queueMessage({ text : ['Successfully logged in as ' + userName] });
     socket.emit('follow', { roomName : 'public', entered : true });
 });
 
@@ -803,10 +806,10 @@ socket.on('commandFail', function() {
 
 socket.on('reconnectSuccess', function(firstConnection) {
     if(!firstConnection) {
-        messageQueue.push({ text : ['Re-established connection'], extraClass : 'importantMsg' });
-        messageQueue.push({ text : ['Retrieving missed messages (if any)'] });
+        platformCommands.queueMessage({ text : ['Re-established connection'], extraClass : 'importantMsg' });
+        platformCommands.queueMessage({ text : ['Retrieving missed messages (if any)'] });
     } else {
-        messageQueue.push({
+        platformCommands.queueMessage({
             text : [
                 'Welcome, employee ' + currentUser,
                 'Did you know that you can auto-complete commands by using the tab button or writing double spaces?',
@@ -837,7 +840,7 @@ socket.on('disconnectUser', function() {
 
     // There is no saved local user. We don't need to print this
     if(currentUser !== null) {
-        messageQueue.push({
+        platformCommands.queueMessage({
             text : [
                 'Didn\'t find user ' + platformCommands.getLocally('user') + ' in database',
                 'Resetting local configuration'
@@ -856,7 +859,7 @@ socket.on('morse', function(morseCode) {
 });
 
 socket.on('time', function(time) {
-    messageQueue.push({ text : ['Time: ' + time] });
+    platformCommands.queueMessage({ text : ['Time: ' + time] });
 });
 
 function playMorseSignal(morseCode) {
@@ -978,7 +981,7 @@ function startBoot() {
 
     startAudio();
 
-    messageQueue.push(logo);
+    platformCommands.queueMessage(logo);
 
     socket.emit('updateId', { userName : currentUser, firstConnection : true });
 }
@@ -1028,7 +1031,7 @@ function getInputStart() {
 function setCurrentRoom(roomName) {
     platformCommands.setLocally('room', roomName);
     setInputStart(roomName + '$ ');
-    messageQueue.push({ text : ['Entered ' + roomName] });
+    platformCommands.queueMessage({ text : ['Entered ' + roomName] });
 }
 
 function setCommand(sentCommand) {
@@ -1073,7 +1076,7 @@ function locationData() {
         }, function(err) {
             tracking = false;
             clearInterval(interval.tracking);
-            messageQueue.push({
+            platformCommands.queueMessage({
                 text : [
                     'Unable to connect to the tracking satellites',
                     'Turning off tracking is a major offense',
@@ -1177,7 +1180,7 @@ function autoComplete() {
                 msg += matched[i] + '\t';
             }
 
-            messageQueue.push({ text : [msg] });
+            platformCommands.queueMessage({ text : [msg] });
         }
         // No input? Show all available commands
     } else if(partialCommand.length === 0) {
@@ -1319,9 +1322,9 @@ function keyPress(event) {
 
                     if(phrase === 'exit' || phrase === 'abort') {
                         setCommand(null);
-                        messageQueue.push({ text : ['Aborting command'] });
+                        platformCommands.queueMessage({ text : ['Aborting command'] });
                     } else {
-                        messageQueue.push({ text : [phrase] });
+                        platformCommands.queueMessage({ text : [phrase] });
 
                         validCommands[commandHelper.command].steps[commandHelper.currentStep](phrase, socket);
                     }
@@ -1363,7 +1366,7 @@ function keyPress(event) {
                                     message.timestamp = true;
                                 }
 
-                                messageQueue.push(message);
+                                platformCommands.queueMessage(message);
                             }
 
                             // Print the help and instruction parts of the command
@@ -1379,19 +1382,19 @@ function keyPress(event) {
                                 }
 
                                 if(message.text.length > 0) {
-                                    messageQueue.push(message);
+                                    platformCommands.queueMessage(message);
                                 }
                             } else {
                                 command.func(phrases.splice(1));
                             }
                             // A user who is not logged in will have access to register and login commands
                         } else if(command && (commandName === 'register' || commandName === 'login')) {
-                            messageQueue.push({ text : [getInputStart() + getInputText()] });
+                            platformCommands.queueMessage({ text : [getInputStart() + getInputText()] });
                             command.func(phrases.splice(1));
                         } else if(platformCommands.getLocally('mode') === 'chatmode' && phrases[0].length > 0) {
                             validCommands.msg.func(phrases);
                         } else if(currentUser === null) {
-                            messageQueue.push({
+                            platformCommands.queueMessage({
                                 text : [
                                     'You must register a new user or login with an existing user',
                                     'Use command "register" or "login"',
@@ -1401,7 +1404,7 @@ function keyPress(event) {
                             });
                             // Sent command was not found. Print the failed input
                         } else if(commandName.length > 0) {
-                            messageQueue.push({ text : ['- ' + phrases[0] + ': ' + commandFailText.text] });
+                            platformCommands.queueMessage({ text : ['- ' + phrases[0] + ': ' + commandFailText.text] });
                         }
                     }
                 }
