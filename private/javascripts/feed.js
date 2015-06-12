@@ -1365,12 +1365,13 @@ function printText(messageQueue) {
     if(charsInProgress === 0) {
         // Amount of time (milliseconds) for a row to finish printing
         var nextTimeout = 0;
+        var shortQueue = messageQueue.splice(0, 3);
 
-        charsInProgress = countTotalCharacters(messageQueue);
+        charsInProgress = countTotalCharacters(shortQueue);
 
         if(charsInProgress > 0) {
-            while(messageQueue.length > 0) {
-                var message = messageQueue.shift();
+            while(shortQueue.length > 0) {
+                var message = shortQueue.shift();
                 var speed = message.speed;
 
                 if(message.text != null) {
