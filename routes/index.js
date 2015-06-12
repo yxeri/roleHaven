@@ -12,9 +12,9 @@ function handle(io) {
     });
 
     io.on('connection', function(socket) {
-        userManagement.handle(socket);
-        chat.handle(socket);
-        blodsband.handle(socket);
+        userManagement.handle(socket, io);
+        chat.handle(socket, io);
+        blodsband.handle(socket, io);
 
         socket.on('importantMsg', function(msg) {
             socket.broadcast.emit('importantMsg', msg);

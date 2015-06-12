@@ -4,7 +4,7 @@ function isTextAllowed(text) {
     return /^[a-zA-Z0-9]+$/g.test(text)
 }
 
-function handle(socket) {
+function handle(socket, io) {
     socket.on('register', function(sentUser) {
         if(sentUser && isTextAllowed(sentUser.userName)) {
             var userObj = {
@@ -111,15 +111,47 @@ function handle(socket) {
                 if(err || user === null) {
                     socket.emit('message', { text : [ 'Failed to login' ] });
                 } else {
-                    var authUser = user;
+                    var userSocketId = user.socketId;
+                    var allSockets = Object.keys(io.sockets.connected);
+                    var userIsOnline = false;
 
-                    manager.updateUserSocketId(sentUser.userName, socket.id, function(err, user) {
-                        if(err || user === null) {
-                            socket.emit('message', { text : [ 'Failed to login' ] });
-                        } else {
-                            socket.emit('login', authUser.userName);
+                    for(var i = 0; i < allSockets.length; i++) {
+                        if(userSocketId === allSockets[i]) {
+                            userIsOnline = true;
+
+                            break;
                         }
-                    });
+                    }
+
+                    if(!userIsOnline) {
+                        var authUser = user;
+
+                        manager.updateUserSocketId(sentUser.userName, socket.id, function(err, user) {
+                            if(err || user === null) {
+                                socket.emit('message', { text : [ 'Failed to login' ] });
+                            } else {
+                                socket.emit('login', authUser.userName);
+                            }
+                        });
+                    } else {
+                        manager.getUserById(socket.id, function(err, user) {
+                            if(err || user == null) {
+                                socket.emit('message', { text : [ 'Failed to login' ] });
+                            } else {
+                                socket.to(userSocketId).emit('message', { text : [
+                                    '-------------------',
+                                    'Intrusion attempt detected by user ' + user.userName,
+                                    'User tried to log in to your account',
+                                    'Coordinates: ' + (user.position ? (user.position.longitude + ', ' + user.position.latitude) : 'Unable to locate user'),
+                                    '-------------------',
+                                ]});
+                                socket.emit('message', { text : [
+                                    'User is already logged in and has been notified about your intrusion attempt',
+                                    'Your user name and coordinates have been sent to the user'
+                                ]});
+                            }
+                        });
+                    }
                 }
             });
         } else {
