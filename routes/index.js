@@ -27,7 +27,7 @@ function handle(io) {
                } else {
                    manager.setUserLastOnline(user.userName, new Date(), function(err, user) {
                        if(err || user === null) {
-
+                            console.log('Failed to set last online');
                        }
                    });
 

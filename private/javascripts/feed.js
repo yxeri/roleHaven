@@ -1433,7 +1433,16 @@ function addRow(text, speed, extraClass) {
 
     row.appendChild(span);
     mainFeed.appendChild(row);
-    addLetters(span, text, speed);
+
+    if(isNaN(speed) || speed > 0) {
+        addLetters(span, text, speed);
+    } else {
+        var textNode = document.createTextNode(text);
+        
+        span.appendChild(textNode);
+        charsInProgress -= text.length;
+    }
+
     scrollView(row);
 }
 
@@ -1446,7 +1455,6 @@ function addLetters(span, text, speed) {
 
         lastTimeout += timeout;
     }
-
 }
 
 // Prints one letter and decreases in progress tracker

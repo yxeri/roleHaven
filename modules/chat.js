@@ -186,14 +186,14 @@ function handle(socket) {
 
         manager.getUserById(socket.id, function(err, user) {
             if(err || user === null) {
-                console.log('Failed to get history. Couldnt get user', err);
+                console.log('Failed to get history. Couldn\'t get user', err);
             } else{
                 manager.getUserHistory(socket.rooms.slice(1), function(err, history) {
                     if(err || history === null) {
                         console.log('Failed to get history', err);
                     } else {
                         var historyMessages = [];
-                        var maxLines = lines === null || isNaN(lines) ? 100 : lines;
+                        var maxLines = lines === null || isNaN(lines) ? 60 : lines;
 
                         for (var i = 0; i < history.length; i++) {
                             var currentHistory = history[i];
