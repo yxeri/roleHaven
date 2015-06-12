@@ -30,3 +30,7 @@ Note! This system is meant to be used as a game within a game. Passwords are not
 * createroom - Creates a room
 * myrooms - Shows all rooms you are following
 * time - Shows current time
+* morse - Sends a morse coded message (audio) to everyone in the room
+* password - Change current users password
+* history - Gets message history from the rooms you are following
+* locate - Gets the geoposition of users
