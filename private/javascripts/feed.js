@@ -932,10 +932,10 @@ function isScreenOff() {
 
 function setIntervals() {
     if(interval.printText !== undefined) {
-        clearTimeout(interval.printText);
+        clearInterval(interval.printText);
     }
     if(interval.tracking !== undefined) {
-        clearTimeout(interval.tracking);
+        clearInterval(interval.tracking);
     }
 
     // Tries to print messages from the queue
@@ -1054,10 +1054,8 @@ function clearInput() {
 
 function locationData() {
     if('geolocation' in navigator) {
-        interval.tracking = setInterval(sendLocationData, 4000);
-
         navigator.geolocation.watchPosition(function(position) {
-            if(position != null) {
+            if(position !== undefined) {
                 // Geolocation object is empty when sent through Socket.IO
                 // This is a fix for that
                 var tempPosition = {};
@@ -1267,6 +1265,7 @@ function specialKeyPress(event) {
             break;
         // Up arrow
         case 38:
+            console.log('before', previousCommandPointer);
             if(!commandHelper.keyboardBlocked) {
                 if(previousCommandPointer > 0) {
                     clearInput();
@@ -1274,12 +1273,14 @@ function specialKeyPress(event) {
                     appendToLeftText(previousCommands[previousCommandPointer]);
                 }
             }
+            console.log('after', previousCommandPointer);
 
             event.preventDefault();
 
             break;
         // Down arrow
         case 40:
+            console.log('before', previousCommandPointer);
             if(!commandHelper.keyboardBlocked) {
                 if(previousCommandPointer < previousCommands.length - 1) {
                     clearInput();
@@ -1292,6 +1293,7 @@ function specialKeyPress(event) {
                     clearInput();
                 }
             }
+            console.log('after', previousCommandPointer);
 
             event.preventDefault();
 
