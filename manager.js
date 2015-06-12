@@ -222,6 +222,16 @@ function updateUserLocation(sentUserName, sentPosition, callback) {
     });
 }
 
+function updateUserPassword(sentUserName, newPassword, callback) {
+    User.findOneAndUpdate({ userName : sentUserName }, { password : newPassword }).lean().exec(function(err, user) {
+       if(err) {
+           console.log('Failed to update password', err);
+       }
+
+        callback(err, user);
+    });
+}
+
 function authUserToRoom(sentUser, sentRoomName, sentPassword, callback) {
 	Room.findOne({ $and : [{ accessLevel : { $lte : sentUser.accessLevel } }, { roomName : sentRoomName }, { password : sentPassword }] }).lean().exec(function(err, room) {
         if(err) {
@@ -272,7 +282,7 @@ function createRoom(sentRoom, callback) {
 function getAllUsers(sentUser, callback) {
     User.find({ accessLevel : { $lte : sentUser.accessLevel } }).sort({ userName : 1 }).lean().exec(function(err, users) {
         if(err) {
-            console.log('Failed to list users', err);    
+            console.log('Failed to list users', err);
         }
 
         callback(err, users);
@@ -358,6 +368,7 @@ exports.addMsgToHistory = addMsgToHistory;
 exports.getHistoryFromRoom = getHistoryFromRoom;
 exports.setUserLastOnline = setUserLastOnline;
 exports.getUserHistory = getUserHistory;
+exports.updateUserPassword = updateUserPassword;
 
 //Blodsband specific
 exports.addEncryptionKey = addEncryptionKey;

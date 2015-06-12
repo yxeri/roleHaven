@@ -158,6 +158,24 @@ function handle(socket, io) {
             socket.emit('message', { text : [ 'User name and password needed to login. Failed to login' ] });
         }
     });
+
+    socket.on('changePassword', function(data) {
+        if(data.oldPassword && data.newPassword && data.userName) {
+            manager.authUser(data.userName, data.oldPassword, function(err, user) {
+                if(err || user === null) {
+                    socket.emit('message', { text : ['Failed to update password'] });
+                } else {
+                    manager.updateUserPassword(user.userName, data.newPassword, function(err, user) {
+                        if(err || user === null) {
+                            socket.emit('message', { text : ['Failed to update password'] });
+                        } else {
+                            socket.emit('message', { text : ['Password has been successfully changed!'] });
+                        }
+                    });
+                }
+            });
+        }
+    });
 }
 
 exports.handle = handle;
