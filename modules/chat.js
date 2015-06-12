@@ -112,7 +112,7 @@ function handle(socket) {
                             socket.emit('message', { text : ['Failed to unfollow room'] });
                         } else {
                             socket.broadcast.to(room.roomName).emit('chatMsg', {
-                                text : user.userName + ' left ' + room.roomName,
+                                text : [user.userName + ' left ' + room.roomName],
                                 room : room.roomName
                             });
                             socket.leave(room.roomName);
