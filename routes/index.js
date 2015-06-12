@@ -51,19 +51,19 @@ function handle(io) {
                                 var userText = [];
 
                                 for(var i = 0; i < users.length; i++) {
-                                        var msg = '';
-                                        var currentUser = users[i];
+                                    var msg = '';
+                                    var currentUser = users[i];
 
-                                        msg += 'User: ' + currentUser.userName;
+                                    msg += 'User: ' + currentUser.userName;
 
-                                        if(users[i].position) {
-                                            msg += '\tLast seen: ' + new Date(currentUser.position.timestamp);
-                                            msg += '\tCoordinates: ' + currentUser.position.latitude + ', ' + currentUser.position.longitude;
-                                        } else {
-                                            msg += '\tUnable to locate user'
-                                        }
+                                    if(users[i].position) {
+                                        msg += '\tLast seen: ' + new Date(currentUser.position.timestamp);
+                                        msg += '\tCoordinates: ' + currentUser.position.latitude + ', ' + currentUser.position.longitude;
+                                    } else {
+                                        msg += '\tUnable to locate user'
+                                    }
 
-                                        userText[i] = msg;
+                                    userText[i] = msg;
                                 }
 
                                 socket.emit('message', { text : userText });

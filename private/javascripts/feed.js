@@ -15,6 +15,8 @@ var messageQueue = [];
 // It has to be zero before another group of messages can be printed.
 var charsInProgress = 0;
 
+var tracking = true;
+
 var soundQueue = [];
 var audioCtx;
 var oscillator;
@@ -487,7 +489,7 @@ var validCommands = {
     },
     locate : {
         func : function(phrases) {
-            if(localStorage.getItem('tracking') === 'false') {
+            if(!tracking) {
                 messageQueue.push({ text : ['Tracking not available', 'You are not connected to the satellites'] });
             } else if(phrases.length > 0) {
                 var userName = phrases[0];
@@ -654,8 +656,6 @@ var validCommands = {
                     morseCodeText += '   ';
                 }
 
-                console.log(morseCodeText);
-
                 if(morseCodeText.length > 0) {
                     socket.emit('morse', {
                         roomName : platformCommands.getLocally('room'),
@@ -807,7 +807,7 @@ function playMorseSignal(morseCode) {
         soundQueue.splice(0, timeouts);
     }
 
-    var timeouts = 0;
+    var timeouts;
 
     if(soundQueue.length === 0) { soundTimeout = 0; }
 
@@ -875,7 +875,7 @@ function setIntervals() {
     // Tries to print messages from the queue
     interval.printText = setInterval(printText, 200, messageQueue);
 
-    if(platformCommands.getLocally('tracking')) {
+    if(tracking) {
         interval.tracking = setInterval(sendLocationData, 4000);
     }
 }
@@ -971,32 +971,32 @@ function clearInput() {
 function locationData() {
     if('geolocation' in navigator) {
         interval.tracking = setInterval(sendLocationData, 4000);
-        localStorage.setItem('tracking', true);
 
         navigator.geolocation.watchPosition(function(position) {
-            // Geolocation object is empty when sent through Socket.IO
-            // This is a fix for that
-            var tempPosition = {};
-            tempPosition.latitude = position.coords.latitude;
-            tempPosition.longitude = position.coords.longitude;
-            tempPosition.speed = position.coords.speed;
-            tempPosition.accuracy = position.coords.accuracy;
-            tempPosition.heading = position.coords.heading;
-            tempPosition.timestamp = position.timestamp;
+            if(position != null) {
+                // Geolocation object is empty when sent through Socket.IO
+                // This is a fix for that
+                var tempPosition = {};
+                tempPosition.latitude = position.coords.latitude;
+                tempPosition.longitude = position.coords.longitude;
+                tempPosition.speed = position.coords.speed;
+                tempPosition.accuracy = position.coords.accuracy;
+                tempPosition.heading = position.coords.heading;
+                tempPosition.timestamp = position.timestamp;
 
-            oldPosition = currentPosition;
-            currentPosition = position;
-        }, function(err) {
-            // User has not accepted location tracking
-            if(err.code == err.PERMISSION_DENIED) {
-                localStorage.setItem('tracking', false);
-                clearInterval(interval.tracking);
-                messageQueue.push({ text : [
-                    'Unable to connect to the tracking satellites',
-                    'Turning off tracking is a major offense',
-                    'Organica Death Squads have been sent to scour the area'
-                ], extraClass : 'importantMsg' });
+                oldPosition = currentPosition;
+                currentPosition = position;
+            } else {
+                throw new Error();
             }
+        }, function(err) {
+            tracking = false;
+            clearInterval(interval.tracking);
+            messageQueue.push({ text : [
+                'Unable to connect to the tracking satellites',
+                'Turning off tracking is a major offense',
+                'Organica Death Squads have been sent to scour the area'
+            ], extraClass : 'importantMsg' });
         });
     }
 }
@@ -1370,8 +1370,6 @@ function printText(messageQueue) {
                 var speed = message.speed;
 
                 if(message.text != null) {
-                    console.log('going to print', message.text.toString(), message.roomName, message.user);
-
                     while(message.text.length > 0) {
                         var text = message.text.shift();
                         var fullText = generateFullText(text, message);
@@ -1438,7 +1436,7 @@ function addRow(text, speed, extraClass) {
         addLetters(span, text, speed);
     } else {
         var textNode = document.createTextNode(text);
-        
+
         span.appendChild(textNode);
         charsInProgress -= text.length;
     }
