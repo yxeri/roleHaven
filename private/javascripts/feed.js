@@ -1319,7 +1319,7 @@ function specialKeyPress(event) {
             break;
         // Tab
         case 9:
-            if(!commandHelper.keyboardBlocked) {
+            if(!commandHelper.keyboardBlocked && commandHelper.command === null) {
                 autoComplete();
             }
 
@@ -1341,7 +1341,6 @@ function specialKeyPress(event) {
             break;
         // Page up
         case 33:
-
             window.scrollBy(0, -window.innerHeight);
 
             event.preventDefault();
@@ -1381,7 +1380,7 @@ function specialKeyPress(event) {
         // Up arrow
         case 38:
             console.log('before', previousCommandPointer);
-            if(!commandHelper.keyboardBlocked) {
+            if(!commandHelper.keyboardBlocked && commandHelper.command === null) {
                 if(previousCommandPointer > 0) {
                     clearInput();
                     previousCommandPointer--;
@@ -1396,7 +1395,7 @@ function specialKeyPress(event) {
         // Down arrow
         case 40:
             console.log('before', previousCommandPointer);
-            if(!commandHelper.keyboardBlocked) {
+            if(!commandHelper.keyboardBlocked && commandHelper.command === null) {
                 if(previousCommandPointer < previousCommands.length - 1) {
                     clearInput();
                     previousCommandPointer++;
@@ -1538,7 +1537,7 @@ function keyPress(event) {
                     appendToLeftText(textChar);
                 }
 
-                if(triggerAutoComplete(getLeftText(marker))) {
+                if(triggerAutoComplete(getLeftText(marker)) && commandHelper.command === null) {
                     autoComplete();
                 }
             }
