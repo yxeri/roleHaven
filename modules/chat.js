@@ -1,9 +1,9 @@
 var manager = require('../manager');
 
-var messageSort = function (a, b) {
-    if (a.time < b.time) {
+var messageSort = function(a, b) {
+    if(a.time < b.time) {
         return -1;
-    } else if (a.time > b.time) {
+    } else if(a.time > b.time) {
         return 1;
     }
 
@@ -39,8 +39,8 @@ function handle(socket) {
 
         newData.message.time = new Date();
 
-        manager.addMsgToHistory('broadcast', newData.message, function (err, history) {
-            if (err || history === null) {
+        manager.addMsgToHistory('broadcast', newData.message, function(err, history) {
+            if(err || history === null) {
                 console.log('Failed to add message to history', err);
             } else {
                 var newMessage = newData.message;
@@ -57,18 +57,20 @@ function handle(socket) {
         if(sentRoom && isTextAllowed(sentRoom.roomName)) {
             manager.createRoom(sentRoom, function(err, room) {
                 if(err) {
-                    socket.emit('message', { text : [ 'Failed to create the room' ] });
+                    socket.emit('message', { text : ['Failed to create the room'] });
                 } else if(room !== null) {
-                    socket.emit('message', { text : [ 'Room successfully created' ] });
+                    socket.emit('message', { text : ['Room successfully created'] });
                 } else {
-                    socket.emit('message', { text : [ sentRoom.roomName + ' already exists' ] });
+                    socket.emit('message', { text : [sentRoom.roomName + ' already exists'] });
                 }
             });
         }
     });
 
     socket.on('follow', function(sentRoom) {
-        if(sentRoom.password === undefined) { sentRoom.password = '' }
+        if(sentRoom.password === undefined) {
+            sentRoom.password = ''
+        }
 
         manager.getUserById(socket.id, function(err, user) {
             if(err || user === null) {
@@ -82,7 +84,9 @@ function handle(socket) {
                             if(err) {
                                 socket.emit('message', { text : ['Failed to follow ' + sentRoom.roomName] });
                             } else {
-                                if(sentRoom.entered) { room.entered = true }
+                                if(sentRoom.entered) {
+                                    room.entered = true
+                                }
 
                                 if(socket.rooms.indexOf(room.roomName) < 0) {
                                     socket.broadcast.to(room.roomName).emit('chatMsg', {
@@ -187,7 +191,7 @@ function handle(socket) {
         manager.getUserById(socket.id, function(err, user) {
             if(err || user === null) {
                 console.log('Failed to get history. Couldn\'t get user', err);
-            } else{
+            } else {
                 manager.getUserHistory(socket.rooms.slice(1), function(err, history) {
                     if(err || history === null) {
                         console.log('Failed to get history', err);
@@ -195,14 +199,14 @@ function handle(socket) {
                         var historyMessages = [];
                         var maxLines = lines === null || isNaN(lines) ? 60 : lines;
 
-                        for (var i = 0; i < history.length; i++) {
+                        for(var i = 0; i < history.length; i++) {
                             var currentHistory = history[i];
                             var messages = currentHistory.messages;
 
                             if(messages.length > 0) {
                                 messages = messages.slice(-maxLines);
 
-                                for (var j = (messages.length - 1); j !== 0; j--) {
+                                for(var j = (messages.length - 1); j !== 0; j--) {
                                     var message = messages[j];
 
                                     message.roomName = currentHistory.roomName;

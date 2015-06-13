@@ -4,7 +4,7 @@ var htmlMinifier = require('html-minifier');
 var minifier = require('node-minify');
 
 function htmlMinify(inPath, outPath) {
-	fs.readFile(inPath, 'utf8', function(readError, readFile) {
+    fs.readFile(inPath, 'utf8', function(readError, readFile) {
         if(readError) {
             //TODO Change to proper logging
             console.log('ReadError', readError)
@@ -29,11 +29,11 @@ function htmlMinify(inPath, outPath) {
 }
 
 function nodeMinify(inPath, outPath, minifierType) {
-	new minifier.minify({
+    new minifier.minify({
         type : minifierType,
         fileIn : inPath,
         fileOut : outPath,
-        callback : function (err) {
+        callback : function(err) {
             if(err) {
                 console.log("Minify error", err);
             }
@@ -45,7 +45,7 @@ function nodeMinify(inPath, outPath, minifierType) {
 
 //TODO: Proper logging
 function minifyDir(inPath, outPath, extension) {
-	fs.readdir(inPath, function(err, files) {
+    fs.readdir(inPath, function(err, files) {
         if(err) {
             console.log(err);
         } else {
@@ -53,15 +53,15 @@ function minifyDir(inPath, outPath, extension) {
                 var fullInPath = path.join(inPath, file);
                 var fullOutPath = path.join(outPath, file);
 
-            	if(path.extname(file).substr(1) === extension) {
+                if(path.extname(file).substr(1) === extension) {
                     if(extension === 'html') {
-		                htmlMinify(fullInPath, fullOutPath);
-					} else if(extension === 'js') {
-						nodeMinify(fullInPath, fullOutPath, "uglifyjs");
-					} else if(extension === 'css') {
-						nodeMinify(fullInPath, fullOutPath, "sqwish")
-					}
-				}
+                        htmlMinify(fullInPath, fullOutPath);
+                    } else if(extension === 'js') {
+                        nodeMinify(fullInPath, fullOutPath, "uglifyjs");
+                    } else if(extension === 'css') {
+                        nodeMinify(fullInPath, fullOutPath, "sqwish")
+                    }
+                }
             });
         }
     });

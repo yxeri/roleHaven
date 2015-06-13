@@ -15,12 +15,12 @@ function handle(socket, io) {
 
             manager.addUser(userObj, function(err, user) {
                 if(err) {
-                    socket.emit('message', { text : [ 'Failed to register user' ] });
+                    socket.emit('message', { text : ['Failed to register user'] });
                 } else if(user !== null) {
                     socket.emit('login', user.userName);
-                    socket.emit('message', { text : [ user.userName + ' has been registered!' ] });
+                    socket.emit('message', { text : [user.userName + ' has been registered!'] });
                 } else {
-                    socket.emit('message', { text : [ sentUser.userName + ' already exists' ] });
+                    socket.emit('message', { text : [sentUser.userName + ' already exists'] });
                 }
             });
         }
@@ -33,7 +33,7 @@ function handle(socket, io) {
                 socket.emit('disconnectUser');
             } else {
                 for(var i = 0; i < user.rooms.length; i++) {
-                    var room = user.rooms[ i ];
+                    var room = user.rooms[i];
 
                     socket.join(room);
                 }
@@ -43,18 +43,18 @@ function handle(socket, io) {
                 if(sentObject.firstConnection) {
                     manager.getUserHistory(user.rooms, function(err, history) {
                         if(err || history === null) {
-                            socket.emit('message', { text : [ 'Unable to retrieve missed chat history' ] });
+                            socket.emit('message', { text : ['Unable to retrieve missed chat history'] });
                         } else {
                             var missedMessages = [];
 
                             for(var i = 0; i < history.length; i++) {
-                                var currentHistory = history[ i ];
+                                var currentHistory = history[i];
                                 var messages = currentHistory.messages;
 
                                 // Does the history document actually contain any messages?
                                 if(messages.length > 0) {
                                     for(var j = (messages.length - 1); j !== 0; j--) {
-                                        var message = messages[ j ];
+                                        var message = messages[j];
 
                                         if(message !== undefined) {
                                             // Pushes only the messages that the user hasn't already seen
@@ -109,7 +109,7 @@ function handle(socket, io) {
         if(sentUser.userName && sentUser.password) {
             manager.authUser(sentUser.userName, sentUser.password, function(err, user) {
                 if(err || user === null) {
-                    socket.emit('message', { text : [ 'Failed to login' ] });
+                    socket.emit('message', { text : ['Failed to login'] });
                 } else {
                     var userSocketId = user.socketId;
                     var allSockets = Object.keys(io.sockets.connected);
@@ -128,7 +128,7 @@ function handle(socket, io) {
 
                         manager.updateUserSocketId(sentUser.userName, socket.id, function(err, user) {
                             if(err || user === null) {
-                                socket.emit('message', { text : [ 'Failed to login' ] });
+                                socket.emit('message', { text : ['Failed to login'] });
                             } else {
                                 socket.emit('login', authUser.userName);
                             }
@@ -136,26 +136,30 @@ function handle(socket, io) {
                     } else {
                         manager.getUserById(socket.id, function(err, user) {
                             if(err || user == null) {
-                                socket.emit('message', { text : [ 'Failed to login' ] });
+                                socket.emit('message', { text : ['Failed to login'] });
                             } else {
-                                socket.to(userSocketId).emit('message', { text : [
-                                    '-------------------',
-                                    'Intrusion attempt detected by user ' + user.userName,
-                                    'User tried to log in to your account',
-                                    'Coordinates: ' + (user.position ? (user.position.longitude + ', ' + user.position.latitude) : 'Unable to locate user'),
-                                    '-------------------',
-                                ]});
-                                socket.emit('message', { text : [
-                                    'User is already logged in and has been notified about your intrusion attempt',
-                                    'Your user name and coordinates have been sent to the user'
-                                ]});
+                                socket.to(userSocketId).emit('message', {
+                                    text : [
+                                        '-------------------',
+                                        'Intrusion attempt detected by user ' + user.userName,
+                                        'User tried to log in to your account',
+                                        'Coordinates: ' + (user.position ? (user.position.longitude + ', ' + user.position.latitude) : 'Unable to locate user'),
+                                        '-------------------',
+                                    ]
+                                });
+                                socket.emit('message', {
+                                    text : [
+                                        'User is already logged in and has been notified about your intrusion attempt',
+                                        'Your user name and coordinates have been sent to the user'
+                                    ]
+                                });
                             }
                         });
                     }
                 }
             });
         } else {
-            socket.emit('message', { text : [ 'User name and password needed to login. Failed to login' ] });
+            socket.emit('message', { text : ['User name and password needed to login. Failed to login'] });
         }
     });
 
@@ -180,9 +184,9 @@ function handle(socket, io) {
     socket.on('logout', function(sentUserName) {
         if(sentUserName) {
             manager.updateUserSocketId(sentUserName, ' ', function(err, user) {
-               if(err || user === null) {
-                   console.log('Failed to reset socket id', err);
-               }
+                if(err || user === null) {
+                    console.log('Failed to reset socket id', err);
+                }
 
                 socket.emit('message', { text : ['You have been logged out'] });
             });

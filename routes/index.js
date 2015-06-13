@@ -8,7 +8,7 @@ var blodsband = require('../modules/blodsband');
 
 function handle(io) {
     router.get('/', function(req, res) {
-        res.render('index', { title: 'Organica Oracle v3.2' });
+        res.render('index', { title : 'Organica Oracle v3.2' });
     });
 
     io.on('connection', function(socket) {
@@ -22,17 +22,17 @@ function handle(io) {
 
         socket.on('disconnect', function() {
             manager.getUserById(socket.id, function(err, user) {
-               if(err || user === null) {
-                   console.log('User has disconnected. Couldn\'t retrieve user name');
-               } else {
-                   manager.setUserLastOnline(user.userName, new Date(), function(err, user) {
-                       if(err || user === null) {
+                if(err || user === null) {
+                    console.log('User has disconnected. Couldn\'t retrieve user name');
+                } else {
+                    manager.setUserLastOnline(user.userName, new Date(), function(err, user) {
+                        if(err || user === null) {
                             console.log('Failed to set last online');
-                       }
-                   });
+                        }
+                    });
 
-                   console.log(socket.id, user.userName, 'has disconnected');
-               }
+                    console.log(socket.id, user.userName, 'has disconnected');
+                }
             });
         });
 

@@ -32,12 +32,12 @@ app.use(function(req, res, next) {
 
 // development error handler
 // will print stacktrace
-if (app.get('env') === 'development') {
+if(app.get('env') === 'development') {
     app.use(function(err, req, res, next) {
         res.status(err.status || 500);
         res.render('error', {
-            message: err.message,
-            error: err
+            message : err.message,
+            error : err
         });
     });
 }
@@ -47,8 +47,8 @@ if (app.get('env') === 'development') {
 app.use(function(err, req, res, next) {
     res.status(err.status || 500);
     res.render('error', {
-        message: err.message,
-        error: {}
+        message : err.message,
+        error : {}
     });
 });
 
@@ -57,20 +57,20 @@ watchPrivate();
 //TODO remove hardcoded paths
 function watchPrivate() {
     // fs.watch is unstable. Recursive only works in OS X.
-    fs.watch('private', {persistant : true, recursive : true}, function(triggeredEvent, filePath) {
+    fs.watch('private', { persistant : true, recursive : true }, function(triggeredEvent, filePath) {
         var fullPath = path.join('private', filePath);
 
         if((triggeredEvent === 'rename' || triggeredEvent === 'change') && path.extname(fullPath) !== '.tmp' && fullPath.indexOf('___') < 0) {
             fs.readFile(fullPath, function(err, data) {
                 if(err) {
                     throw err;
-                } 
+                }
 
                 minifier.minifyFile(fullPath, path.join('public', filePath));
                 console.log('Event:', triggeredEvent, '. File:', fullPath);
             });
         }
-    }); 
+    });
 }
 
 module.exports = app;

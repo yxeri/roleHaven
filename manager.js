@@ -96,13 +96,15 @@ function unlockEntity(sentKey, sentEntityName, callback) {
             console.log('Failed to update key', sentKey, err);
             callback(err, null);
         } else {
-            Entity.findOneAndUpdate({ entityName : sentEntityName }, { $addToSet : { keys : key.key }}).lean().exec(function(err, entity) {
+            Entity.findOneAndUpdate({ entityName : sentEntityName }, { $addToSet : { keys : key.key } }).lean().exec(function(err, entity) {
                 if(err || entity === null) {
                     console.log('Failed to find and update entity', err);
 
                     // Rollback
                     EncryptionKey.findOneAndUpdate({ key : sentKey }, { used : false }).lean().exec(function(err, key) {
-                        if(err) { console.log('Failed to do a rollback on key', sentKey); }
+                        if(err) {
+                            console.log('Failed to do a rollback on key', sentKey);
+                        }
                     });
                 }
 
@@ -143,7 +145,7 @@ function getUserById(sentSocketId, callback) {
 }
 
 function authUser(sentUserName, sentPassword, callback) {
-	User.findOne({ $and : [{ userName : sentUserName }, { password : sentPassword }] }).lean().exec(function(err, user) {
+    User.findOne({ $and : [{ userName : sentUserName }, { password : sentPassword }] }).lean().exec(function(err, user) {
         if(err) {
             console.log('Failed to login', err);
         }
@@ -173,7 +175,7 @@ function addUser(user, callback) {
 }
 
 function addMsgToHistory(sentRoomName, sentMessage, callback) {
-    History.findOneAndUpdate({ roomName : sentRoomName }, { $push : { messages : sentMessage }}).lean().exec(function(err, history) {
+    History.findOneAndUpdate({ roomName : sentRoomName }, { $push : { messages : sentMessage } }).lean().exec(function(err, history) {
         if(err) {
             console.log('Failed to add message to history', err);
         }
@@ -193,7 +195,7 @@ function getHistoryFromRoom(sentRoomName, length, callback) {
 }
 
 function getUserHistory(rooms, callback) {
-    History.find({ roomName : { $in : rooms }}).lean().exec(function(err, history) {
+    History.find({ roomName : { $in : rooms } }).lean().exec(function(err, history) {
         if(err) {
             console.log('Failed to retrieve all history from', rooms);
         }
@@ -224,16 +226,16 @@ function updateUserLocation(sentUserName, sentPosition, callback) {
 
 function updateUserPassword(sentUserName, newPassword, callback) {
     User.findOneAndUpdate({ userName : sentUserName }, { password : newPassword }).lean().exec(function(err, user) {
-       if(err) {
-           console.log('Failed to update password', err);
-       }
+        if(err) {
+            console.log('Failed to update password', err);
+        }
 
         callback(err, user);
     });
 }
 
 function authUserToRoom(sentUser, sentRoomName, sentPassword, callback) {
-	Room.findOne({ $and : [{ accessLevel : { $lte : sentUser.accessLevel } }, { roomName : sentRoomName }, { password : sentPassword }] }).lean().exec(function(err, room) {
+    Room.findOne({ $and : [{ accessLevel : { $lte : sentUser.accessLevel } }, { roomName : sentRoomName }, { password : sentPassword }] }).lean().exec(function(err, room) {
         if(err) {
             console.log('Failed to check auth against room', err);
         }
@@ -250,28 +252,28 @@ function createRoom(sentRoom, callback) {
     Room.findOne({ roomName : sentRoom.roomName }).lean().exec(function(err, room) {
         if(err) {
             console.log('Failed to find if room already exists', err);
-        // Room doesn't exist in the collection, so let's add it!
+            // Room doesn't exist in the collection, so let's add it!
         } else if(room === null) {
             // Checks if history for room already exists
             History.findOne({ roomName : sentRoom.roomName }).lean().exec(function(err, history) {
-               if(err) {
+                if(err) {
                     console.log('Failed to find if history already exists', err);
-               // History doesn't exist in the collection, so let's add it and the room!
-               } else if(history === null) {
-                   newHistory.save(function(err, newHistory) {
-                      if(err || newHistory === null) {
-                          console.log('Failed to save history', err);
-                      } else {
-                          newRoom.save(function(err, newRoom) {
-                              if(err) {
-                                  console.log('Failed to save room', err);
-                              }
+                    // History doesn't exist in the collection, so let's add it and the room!
+                } else if(history === null) {
+                    newHistory.save(function(err, newHistory) {
+                        if(err || newHistory === null) {
+                            console.log('Failed to save history', err);
+                        } else {
+                            newRoom.save(function(err, newRoom) {
+                                if(err) {
+                                    console.log('Failed to save room', err);
+                                }
 
-                              callback(err, newRoom);
-                          });
-                      }
-                   });
-               }
+                                callback(err, newRoom);
+                            });
+                        }
+                    });
+                }
             });
         } else {
             callback(err, null);
@@ -310,7 +312,7 @@ function getAllUserLocations(sentUser, callback) {
 }
 
 function getUserLocation(sentUser, sentUserName, callback) {
-    User.findOne({ $and : [{ accessLevel : { $lte : sentUser.accessLevel }}, { userName : sentUserName }] }).lean().exec(function(err, user) {
+    User.findOne({ $and : [{ accessLevel : { $lte : sentUser.accessLevel } }, { userName : sentUserName }] }).lean().exec(function(err, user) {
         if(err) {
             console.log('Failed to get all user locations', err);
         }
@@ -320,7 +322,7 @@ function getUserLocation(sentUser, sentUserName, callback) {
 }
 
 function addRoomToUser(sentUserName, sentRoomName, callback) {
-    User.findOneAndUpdate({ userName : sentUserName }, { $addToSet : { rooms : sentRoomName }}).lean().exec(function(err, user) {
+    User.findOneAndUpdate({ userName : sentUserName }, { $addToSet : { rooms : sentRoomName } }).lean().exec(function(err, user) {
         if(err) {
             console.log('Failed to add room to user', err);
         }

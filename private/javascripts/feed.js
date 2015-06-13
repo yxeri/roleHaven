@@ -913,7 +913,9 @@ socket.on('locationMsg', function(locationData) {
             text += 'User: ' + user + ' - ';
             text += 'Last seen: ' + generateShortTime(locationData[user].lastSeen) + '- ';
             text += 'Location: ' + locateOnMap(latitude, longitude) + ' - ';
-            if(heading !== null) { text += 'Heading: ' + heading + ' deg. - ' }
+            if(heading !== null) {
+                text += 'Heading: ' + heading + ' deg. - '
+            }
             text += 'Coordinates: ' + latitude + ', ' + longitude;
 
             platformCommands.queueMessage({ text : [text] });
@@ -1603,13 +1605,13 @@ function generateFullText(sentText, message) {
     var text = '';
 
     if(message.time) {
-        text += generateShortTime(message.time)
+        text += generateShortTime(message.time);
     }
     if(message.roomName) {
-        text += message.roomName !== platformCommands.getLocally('room') ? '[' + message.roomName + '] ' : ''
+        text += message.roomName !== platformCommands.getLocally('room') ? '[' + message.roomName + '] ' : '';
     }
     if(message.user) {
-        text += message.user + ': '
+        text += message.user + ': ';
     }
 
     text += sentText;

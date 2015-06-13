@@ -152,7 +152,9 @@ pre {
 }
 
 @media (max-height: 736px) and (max-width: 414px) {
-    .logo { font-size: .1em; }
+    .logo {
+        font-size: .1em;
+    }
 }
 
 /* PiTft */
@@ -162,7 +164,9 @@ pre {
         padding-right: .1em;
     }
 
-    .logo { font-size: .1em; }
+    .logo {
+        font-size: .1em;
+    }
 
     /*#main {
         -webkit-animation: none;
