@@ -563,7 +563,9 @@ var validCommands = {
                     '                    ###############    Razor1911',
                     '                         #####   demos - warez - honey',
                     ' '
-                ], extraClass : 'logo'
+                ],
+                extraClass : 'logo',
+                speed : 10
             });
             platformCommands.queueMessage({
                 text : [
@@ -586,9 +588,10 @@ var validCommands = {
                     'Connecting to entity database.......DONE',
                     ' ',
                     'You can cancel out of the command by typing "exit" or "abort"'
-                ]
+                ],
+                speed : 10
             });
-            setInputStart('Enter encryption key: ');
+            setInputStart('Enter encryption key:');
             socket.emit('entities');
         },
         steps : [
@@ -619,7 +622,7 @@ var validCommands = {
                 }
             },
             function() {
-                setInputStart('Enter entity name: ');
+                setInputStart('Enter entity name:');
                 commandHelper.keyboardBlocked = false;
                 commandHelper.currentStep++;
             },
@@ -1217,8 +1220,7 @@ function sendLocationData() {
 }
 
 function getAvailableCommands() {
-    var keys = Object.keys(validCommands);
-    keys.sort();
+    var keys = Object.keys(validCommands).sort();
     var commands = [''];
 
     for(var i = 0; i < keys.length; i++) {
