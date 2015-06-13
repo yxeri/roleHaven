@@ -61,6 +61,7 @@ function handle(io) {
                                         locationData[userName].lastSeen = new Date(currentUser.position.timestamp);
                                         locationData[userName].coords.latitude = currentUser.position.latitude;
                                         locationData[userName].coords.longitude = currentUser.position.longitude;
+                                        locationData[userName].coords.heading = currentUser.position.heading;
                                     }
                                 }
 
@@ -81,6 +82,7 @@ function handle(io) {
                                 locationData[userName].lastSeen = new Date(user.position.timestamp);
                                 locationData[userName].coords.latitude = user.position.latitude;
                                 locationData[userName].coords.longitude = user.position.longitude;
+                                locationData[userName].coords.heading = user.position.heading;
 
                                 socket.emit('locationMsg', locationData);
                             } else {

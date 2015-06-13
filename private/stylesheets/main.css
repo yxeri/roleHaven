@@ -19,7 +19,7 @@ pre {
     margin: 0;
 }
 
-#input { 
+#input {
     padding-bottom: 1em;
 }
 
@@ -64,6 +64,10 @@ pre {
     box-shadow: inset 0 0 40px 10px #000000;
     /*-webkit-animation: light 10s linear infinite;
     animation: light 10s linear infinite;*/
+}
+
+#mode {
+    margin-right: .7em;
 }
 
 .logo {

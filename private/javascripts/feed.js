@@ -4,6 +4,7 @@ var mainFeed = document.getElementById('mainFeed');
 var marker = document.getElementById('marker');
 var inputText = document.getElementById('inputText');
 var inputStart = document.getElementById('inputStart');
+var modeField = document.getElementById('mode');
 var socket = io();
 // Timeout for print of a character (milliseconds)
 var charTimeout = 2;
@@ -97,8 +98,7 @@ var logo = {
         // '              #######  ##########  #######',
         // '                ###      ######      ###',
         // '                          ####',
-        // '####',
-        // '####',
+        ' ',
         '[Developer\'s note:] NOTE! THIS IS A DEV SERVER!',
         'EVERYTHING MAY BE DELETED AT ANY TIME. THERE WILL BE BUGS!'
     ]
@@ -142,7 +142,7 @@ var platformCommands = {
         currentUser = null;
         localStorage.removeItem('room');
         localStorage.setItem('mode', 'normalmode');
-        setInputStart('RAZ-CMD$ ');
+        setInputStart('RAZ-CMD');
     }
 };
 var previousCommands = platformCommands.getLocally('previousCommands') ?
@@ -362,6 +362,7 @@ var validCommands = {
     chatmode : {
         func : function() {
             platformCommands.setLocally('mode', 'chatmode');
+            setMode('[CHAT]');
             platformCommands.queueMessage({ text : ['Chat mode activated', 'Prepend commands with "-", e.g. "-normalmode"'] });
         },
         help : [
@@ -379,6 +380,7 @@ var validCommands = {
     normalmode : {
         func : function() {
             platformCommands.setLocally('mode', 'normalmode');
+            setMode('');
             platformCommands.queueMessage({ text : ['Normal mode activated'] });
         },
         help : [
@@ -813,7 +815,7 @@ socket.on('unfollow', function(room) {
     platformCommands.queueMessage({ text : ['Stopped following ' + room.roomName] });
 
     if(room.exited) {
-        setInputStart('public$ ');
+        setInputStart('public');
         platformCommands.setLocally('room', 'public');
         socket.emit('follow', { roomName : 'public', entered : true });
     }
@@ -882,7 +884,7 @@ socket.on('disconnectUser', function() {
     platformCommands.removeLocally('user');
     platformCommands.removeLocally('room');
     platformCommands.setLocally('mode', 'normalmode');
-    setInputStart('RAZ-CMD$ ');
+    setInputStart('RAZ-CMD');
 });
 
 socket.on('morse', function(morseCode) {
@@ -902,11 +904,16 @@ socket.on('locationMsg', function(locationData) {
         if(locationData[user].coords) {
             var latitude = locationData[user].coords.latitude;
             var longitude = locationData[user].coords.longitude;
+            var heading = locationData[user].coords.heading !== null ? Math.round(locationData[user].coords.heading) : null;
+            var text = '';
 
-            platformCommands.queueMessage({ text : [
-                'User: ' + user + '\tLast seen: ' + generateShortTime(locationData[user].lastSeen) + '\tLocation: ' + locateOnMap(latitude, longitude) +
-                    '\tCoordinates: ' + latitude + ', ' + longitude
-            ] });
+            text += 'User: ' + user + ' - ';
+            text += 'Last seen: ' + generateShortTime(locationData[user].lastSeen) + '- ';
+            text += 'Location: ' + locateOnMap(latitude, longitude) + ' - ';
+            if(heading !== null) { text += 'Heading: ' + heading + ' deg. - ' }
+            text += 'Coordinates: ' + latitude + ', ' + longitude;
+
+            platformCommands.queueMessage({ text : [text] });
         }
     }
 });
@@ -996,7 +1003,11 @@ function locateOnMap(latitude, longitude) {
         }
     }
 
-    return x + '' + y;
+    if(x !== undefined && y !== undefined) {
+        return x + '' + y;
+    } else {
+        return 'Out of area';
+    }
 }
 
 function setGain(value) {
@@ -1130,7 +1141,7 @@ function getInputStart() {
 
 function setCurrentRoom(roomName) {
     platformCommands.setLocally('room', roomName);
-    setInputStart(roomName + '$ ');
+    setInputStart(roomName);
     platformCommands.queueMessage({ text : ['Entered ' + roomName] });
 }
 
@@ -1140,9 +1151,13 @@ function setCommand(sentCommand) {
     if(sentCommand === null) {
         commandHelper.currentStep = 0;
         commandHelper.maxSteps = 0;
-        setInputStart(platformCommands.getLocally('room') + '$ ');
+        setInputStart(platformCommands.getLocally('room'));
         commandHelper.keyboardBlocked = false;
     }
+}
+
+function setMode(text) {
+    modeField.textContent = text;
 }
 
 function clearInput() {
@@ -1168,8 +1183,6 @@ function locationData() {
 
                 oldPosition = currentPosition;
                 currentPosition = position;
-            } else {
-                throw new Error();
             }
         }, function(err) {
             tracking = false;
