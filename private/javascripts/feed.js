@@ -119,6 +119,15 @@ var platformCommands = {
     },
     queueMessage : function(message) {
         messageQueue.push(message);
+    },
+    resetAllLocally : function() {
+        localStorage.removeItem('previousCommands');
+        previousCommands = [];
+        localStorage.removeItem('user');
+        currentUser = null;
+        localStorage.removeItem('room');
+        localStorage.setItem('mode', 'normalmode');
+        setInputStart('RAZ-CMD$ ');
     }
 };
 var previousCommands = platformCommands.getLocally('previousCommands') ?
@@ -730,6 +739,13 @@ var validCommands = {
             ' Example:',
             '  password old1 new1'
         ]
+    },
+    logout : {
+        func : function() {
+            socket.emit('logout', currentUser);
+            platformCommands.resetAllLocally();
+        },
+        help : ['Logs out from the current user']
     }
 };
 

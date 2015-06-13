@@ -176,6 +176,18 @@ function handle(socket, io) {
             });
         }
     });
+
+    socket.on('logout', function(sentUserName) {
+        if(sentUserName) {
+            manager.updateUserSocketId(sentUserName, ' ', function(err, user) {
+               if(err || user === null) {
+                   console.log('Failed to reset socket id', err);
+               }
+
+                socket.emit('message', { text : ['You have been logged out'] });
+            });
+        }
+    });
 }
 
 exports.handle = handle;
