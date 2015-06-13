@@ -18,6 +18,7 @@ var charsInProgress = 0;
 
 var tracking = true;
 
+// Queue of all the sounds that will be handled and played
 var soundQueue = [];
 var audioCtx;
 var oscillator;
@@ -151,7 +152,7 @@ var previousCommandPointer = previousCommands.length > 0 ? previousCommands.leng
 var currentUser = platformCommands.getLocally('user');
 var oldPosition = {};
 var currentPosition = {};
-// The current step in the chain of functions for a
+
 var commandHelper = {
     maxSteps : 0,
     currentStep : 0,
@@ -766,6 +767,12 @@ var validCommands = {
             platformCommands.resetAllLocally();
         },
         help : ['Logs out from the current user']
+    },
+    reboot : {
+        func : function() {
+            window.location.reload();
+        },
+        help : ['Reboots terminal']
     }
 };
 
@@ -928,8 +935,6 @@ function playMorseSignal(morseCode) {
         soundQueue.splice(0, timeouts);
     }
 
-    var timeouts;
-
     if(soundQueue.length === 0) {
         soundTimeout = 0;
     }
@@ -958,8 +963,7 @@ function playMorseSignal(morseCode) {
         soundTimeout += duration;
     }
 
-    timeouts = 2 * morseCode.length;
-    setTimeout(clearSoundQueue, soundTimeout, timeouts);
+    setTimeout(clearSoundQueue, soundTimeout, (2 * morseCode.length));
 }
 
 function generateMap() {
@@ -1058,6 +1062,11 @@ function setIntervals() {
     if(tracking) {
         interval.tracking = setInterval(sendLocationData, 4000);
     }
+
+    // Should not be recreated on focus
+    if(interval.isScreenOff === undefined) {
+        interval.isScreenOff = setInterval(isScreenOff, 1000);
+    }
 }
 
 function startAudio() {
@@ -1093,7 +1102,6 @@ function startBoot() {
     generateMap();
 
     setIntervals();
-    interval.isScreenOff = setInterval(isScreenOff, 1000);
 
     startAudio();
 
@@ -1189,7 +1197,7 @@ function locationData() {
                 oldPosition = currentPosition;
                 currentPosition = position;
             }
-        }, function(err) {
+        }, function() {
             tracking = false;
             clearInterval(interval.tracking);
             platformCommands.queueMessage({
@@ -1696,17 +1704,6 @@ function generateShortTime(date) {
 
     return hours + ':' + minutes + ' ';
 }
-
-// Upper left and right
-// console.log(measureDistance(59.3879611, 18.0289599, 59.3851468, 18.0289599) / 20);
-// Bottom left and right
-// console.log(measureDistance(59.3879611, 17.9508994, 59.3851468, 17.9508994) / 20);
-
-// Upper left and bottom left
-// console.log(measureDistance(59.3879611, 18.0289599, 59.3879611, 17.9508994) / 20);
-
-// Upper right and bottom right
-// console.log(measureDistance(59.3851468, 18.0289599, 59.3851468, 17.9508994) / 20);
 
 // Taken from http://stackoverflow.com/questions/639695/how-to-convert-latitude-or-longitude-to-meters/11172685#11172685
 function measureDistance(lat1, lon1, lat2, lon2) {  // generally used geo measurement function
