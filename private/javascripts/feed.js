@@ -103,6 +103,20 @@ var logo = {
         'EVERYTHING MAY BE DELETED AT ANY TIME. THERE WILL BE BUGS!'
     ]
 };
+
+var mapHelper = {
+    leftLong : 17.7992307,
+    rightLong : 18.1828902,
+    topLat : 59.4463469,
+    bottomLat : 59.2818812,
+    xGridsMax : 23,
+    yGridsMax : 36,
+    xSize : 0,
+    ySize : 0,
+    xGrids : {},
+    yGrids : {}
+};
+
 var commandFailText = { text : ['command not found'] };
 var platformCommands = {
     setLocally : function(name, item) {
@@ -123,6 +137,7 @@ var platformCommands = {
     resetAllLocally : function() {
         localStorage.removeItem('previousCommands');
         previousCommands = [];
+        previousCommandPointer = 0;
         localStorage.removeItem('user');
         currentUser = null;
         localStorage.removeItem('room');
@@ -878,6 +893,24 @@ socket.on('time', function(time) {
     platformCommands.queueMessage({ text : ['Time: ' + time] });
 });
 
+socket.on('locationMsg', function(locationData) {
+    var locationKeys = Object.keys(locationData);
+
+    for(var i = 0; i < locationKeys.length; i++) {
+        var user = locationKeys[i];
+
+        if(locationData[user].coords) {
+            var latitude = locationData[user].coords.latitude;
+            var longitude = locationData[user].coords.longitude;
+
+            platformCommands.queueMessage({ text : [
+                'User: ' + user + '\tLast seen: ' + generateShortTime(locationData[user].lastSeen) + '\tLocation: ' + locateOnMap(latitude, longitude) +
+                    '\tCoordinates: ' + latitude + ', ' + longitude
+            ] });
+        }
+    }
+});
+
 function playMorseSignal(morseCode) {
     function clearSoundQueue(timeouts) {
         soundQueue.splice(0, timeouts);
@@ -915,6 +948,55 @@ function playMorseSignal(morseCode) {
 
     timeouts = 2 * morseCode.length;
     setTimeout(clearSoundQueue, soundTimeout, timeouts);
+}
+
+function generateMap() {
+    var letter = 'B';
+
+    mapHelper.xSize = (mapHelper.rightLong - mapHelper.leftLong) / parseFloat(mapHelper.xGridsMax);
+    mapHelper.ySize = (mapHelper.topLat - mapHelper.bottomLat) / parseFloat(mapHelper.yGridsMax);
+
+    for(var i = 0; i < mapHelper.xGridsMax; i++) {
+        var char = String.fromCharCode(letter.charCodeAt(0) + i);
+        mapHelper.xGrids[char] = mapHelper.leftLong + parseFloat(mapHelper.xSize * i);
+    }
+
+    for(var i = 0; i < mapHelper.yGridsMax; i++) {
+        mapHelper.yGrids[i] = mapHelper.topLat - parseFloat(mapHelper.ySize * i);
+    }
+}
+
+function locateOnMap(latitude, longitude) {
+    var xKeys = Object.keys(mapHelper.xGrids);
+    var yKeys = Object.keys(mapHelper.yGrids);
+    var x;
+    var y;
+
+    for(var i = 0; i < xKeys.length; i++) {
+        var nextGrid = mapHelper.xGrids[xKeys[i + 1]];
+
+        if(longitude < nextGrid) {
+            x = xKeys[i];
+            break;
+        } else if(longitude === (nextGrid + parseFloat(mapHelper.xSize))) {
+            x = xKeys[i + 1];
+            break;
+        }
+    }
+
+    for(var i = 0; i < yKeys.length; i++) {
+        var nextGrid = mapHelper.yGrids[yKeys[i + 1]];
+
+        if(latitude > nextGrid) {
+            y = yKeys[i];
+            break;
+        } else if(latitude === (nextGrid - parseFloat(mapHelper.ySize))) {
+            y = yKeys[i + 1];
+            break;
+        }
+    }
+
+    return x + '' + y;
 }
 
 function setGain(value) {
@@ -991,6 +1073,8 @@ function startBoot() {
     addEventListener('keydown', specialKeyPress);
 
     addEventListener('focus', setIntervals);
+
+    generateMap();
 
     setIntervals();
     interval.isScreenOff = setInterval(isScreenOff, 1000);
