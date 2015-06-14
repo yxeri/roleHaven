@@ -41,13 +41,18 @@ function handle(socket, io) {
                 console.log('Failed to update Id', err);
                 socket.emit('disconnectUser');
             } else {
+                var data = {};
+
+                data.firstConnection = sentObject.firstConnection;
+                data.user = user;
+
                 for(var i = 0; i < user.rooms.length; i++) {
                     var room = user.rooms[i];
 
                     socket.join(room);
                 }
 
-                socket.emit('reconnectSuccess', sentObject.firstConnection);
+                socket.emit('reconnectSuccess', data);
 
                 if(sentObject.firstConnection) {
                     manager.getUserHistory(user.rooms, function(err, history) {
@@ -140,7 +145,7 @@ function handle(socket, io) {
                                 if(err || user === null) {
                                     socket.emit('message', { text : ['Failed to login'] });
                                 } else {
-                                    socket.emit('login', authUser.userName);
+                                    socket.emit('login', authUser);
                                 }
                             });
                         } else {

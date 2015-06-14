@@ -144,12 +144,35 @@ var platformCommands = {
         localStorage.removeItem('room');
         localStorage.setItem('mode', 'normalmode');
         setInputStart('RAZ-CMD');
+    },
+    getAvailableCommands : function() {
+        var keys = Object.keys(validCommands).sort();
+        var commands = [''];
+
+        for(var i = 0; i < keys.length; i++) {
+            var commandAccessLevel = validCommands[keys[i]].accessLevel;
+
+            if(isNaN(commandAccessLevel) || currentAccessLevel >= commandAccessLevel) {
+                var msg = '';
+
+                msg += keys[i];
+
+                if(i !== keys.length - 1) {
+                    msg += ' | ';
+                }
+
+                commands[0] += msg;
+            }
+        }
+
+        return commands;
     }
 };
 var previousCommands = platformCommands.getLocally('previousCommands') ?
     JSON.parse(platformCommands.getLocally('previousCommands')) : [];
 var previousCommandPointer;
 var currentUser = platformCommands.getLocally('user');
+var currentAccessLevel = 1;
 var oldPosition = {};
 var currentPosition = {};
 
@@ -177,7 +200,7 @@ var validCommands = {
                     'Add --help after a command (with whitespace in between) to get instructions on how to use it'
                 ]
             });
-            platformCommands.queueMessage({ text : getAvailableCommands() });
+            platformCommands.queueMessage({ text : platformCommands.getAvailableCommands() });
         },
         help : ['Shows a list of available commands']
     },
@@ -912,10 +935,12 @@ socket.on('unfollow', function(room) {
     }
 });
 
-socket.on('login', function(userName) {
-    platformCommands.setLocally('user', userName);
-    currentUser = userName;
-    platformCommands.queueMessage({ text : ['Successfully logged in as ' + userName] });
+socket.on('login', function(user) {
+    console.log(user);
+    platformCommands.setLocally('user', user.userName);
+    currentUser = user.userName;
+    currentAccessLevel = user.accessLevel;
+    platformCommands.queueMessage({ text : ['Successfully logged in as ' + user.userName] });
     socket.emit('follow', { roomName : 'public', entered : true });
 });
 
@@ -928,11 +953,13 @@ socket.on('commandFail', function() {
     setCommand(null);
 });
 
-socket.on('reconnectSuccess', function(firstConnection) {
-    if(!firstConnection) {
+socket.on('reconnectSuccess', function(data) {
+    if(!data.firstConnection) {
         platformCommands.queueMessage({ text : ['Re-established connection'], extraClass : 'importantMsg' });
         platformCommands.queueMessage({ text : ['Retrieving missed messages (if any)'] });
     } else {
+        currentAccessLevel = data.user.accessLevel;
+
         platformCommands.queueMessage({
             text : [
                 'Welcome, employee ' + currentUser,
@@ -972,10 +999,7 @@ socket.on('disconnectUser', function() {
         });
     }
 
-    platformCommands.removeLocally('user');
-    platformCommands.removeLocally('room');
-    platformCommands.setLocally('mode', 'normalmode');
-    setInputStart('RAZ-CMD');
+    platformCommands.resetAllLocally();
 });
 
 socket.on('morse', function(morseCode) {
@@ -1329,25 +1353,6 @@ function sendLocationData() {
     }
 }
 
-function getAvailableCommands() {
-    var keys = Object.keys(validCommands).sort();
-    var commands = [''];
-
-    for(var i = 0; i < keys.length; i++) {
-        var msg = '';
-
-        msg += keys[i];
-
-        if(i !== keys.length - 1) {
-            msg += ' | ';
-        }
-
-        commands[0] += msg;
-    }
-
-    return commands;
-}
-
 function autoComplete() {
     var phrases = trimWhitespaces(getInputText().toLowerCase()).split(' ');
     var partialCommand = phrases[0];
@@ -1369,7 +1374,9 @@ function autoComplete() {
             var matches = false;
 
             for(var j = 0; j < partialCommand.length; j++) {
-                if(partialCommand.charAt(j) === commands[i].charAt(j)) {
+                var commandAccessLevel = validCommands[commands[i]].accessLevel;
+
+                if((isNaN(commandAccessLevel) || currentAccessLevel >= commandAccessLevel) && partialCommand.charAt(j) === commands[i].charAt(j)) {
                     matches = true;
                 } else {
                     matches = false;
@@ -1573,7 +1580,7 @@ function keyPress(event) {
                             }
                         }
 
-                        if(currentUser !== null && command) {
+                        if(currentUser !== null && command && (isNaN(command.accessLevel) || currentAccessLevel >= command.accessLevel)) {
                             // Store the command for usage with up/down arrows
                             previousCommands.push(phrases.join(' '));
                             platformCommands.setLocally('previousCommands', JSON.stringify(previousCommands));
@@ -1613,7 +1620,7 @@ function keyPress(event) {
                                 command.func(phrases.splice(1));
                             }
                             // A user who is not logged in will have access to register and login commands
-                        } else if(command && (commandName === 'register' || commandName === 'login')) {
+                        } else if(currentUser === null && command && (commandName === 'register' || commandName === 'login')) {
                             platformCommands.queueMessage({ text : [getInputStart() + getInputText()] });
                             command.func(phrases.splice(1));
                         } else if(platformCommands.getLocally('mode') === 'chatmode' && phrases[0].length > 0) {
