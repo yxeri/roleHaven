@@ -148,7 +148,7 @@ var platformCommands = {
 };
 var previousCommands = platformCommands.getLocally('previousCommands') ?
     JSON.parse(platformCommands.getLocally('previousCommands')) : [];
-var previousCommandPointer = previousCommands.length > 0 ? previousCommands.length : 0;
+var previousCommandPointer;
 var currentUser = platformCommands.getLocally('user');
 var oldPosition = {};
 var currentPosition = {};
@@ -1129,10 +1129,9 @@ function startBoot() {
 
     addEventListener('focus', setIntervals);
 
+    resetPreviousCommandPointer();
     generateMap();
-
     setIntervals();
-
     startAudio();
 
     platformCommands.queueMessage(logo);
@@ -1141,6 +1140,10 @@ function startBoot() {
 }
 
 startBoot();
+
+function resetPreviousCommandPointer() {
+    previousCommandPointer = previousCommands.length > 0 ? previousCommands.length : 0;
+}
 
 function getLeftText(marker) {
     return marker.parentElement.childNodes[0].textContent;
@@ -1510,7 +1513,6 @@ function keyPress(event) {
                         if(currentUser !== null && command) {
                             // Store the command for usage with up/down arrows
                             previousCommands.push(phrases.join(' '));
-                            previousCommandPointer++;
                             platformCommands.setLocally('previousCommands', JSON.stringify(previousCommands));
 
                             if(command.steps) {
@@ -1570,6 +1572,7 @@ function keyPress(event) {
                 }
             }
 
+            resetPreviousCommandPointer();
             clearInput();
 
             break;
