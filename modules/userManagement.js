@@ -17,8 +17,17 @@ function handle(socket, io) {
                 if(err) {
                     socket.emit('message', { text : ['Failed to register user'] });
                 } else if(user !== null) {
-                    socket.emit('login', user.userName);
-                    socket.emit('message', { text : [user.userName + ' has been registered!'] });
+                    var message = {};
+
+                    message.text = ['User ' + user.userName + ' needs to be verified'];
+                    message.time = new Date();
+                    message.roomName = 'hqroom';
+
+                    socket.emit('message', { text : [
+                        user.userName + ' has been registered!',
+                        'You need to be verified by another user before you can log in'
+                    ] });
+                    socket.broadcast.to('hqroom').emit('message', message);
                 } else {
                     socket.emit('message', { text : [sentUser.userName + ' already exists'] });
                 }
@@ -111,50 +120,54 @@ function handle(socket, io) {
                 if(err || user === null) {
                     socket.emit('message', { text : ['Failed to login'] });
                 } else {
-                    var userSocketId = user.socketId;
-                    var allSockets = Object.keys(io.sockets.connected);
-                    var userIsOnline = false;
+                    if(user.verified) {
+                        var userSocketId = user.socketId;
+                        var allSockets = Object.keys(io.sockets.connected);
+                        var userIsOnline = false;
 
-                    for(var i = 0; i < allSockets.length; i++) {
-                        if(userSocketId === allSockets[i]) {
-                            userIsOnline = true;
+                        for(var i = 0; i < allSockets.length; i++) {
+                            if(userSocketId === allSockets[i]) {
+                                userIsOnline = true;
 
-                            break;
+                                break;
+                            }
                         }
-                    }
 
-                    if(!userIsOnline) {
-                        var authUser = user;
+                        if(!userIsOnline) {
+                            var authUser = user;
 
-                        manager.updateUserSocketId(sentUser.userName, socket.id, function(err, user) {
-                            if(err || user === null) {
-                                socket.emit('message', { text : ['Failed to login'] });
-                            } else {
-                                socket.emit('login', authUser.userName);
-                            }
-                        });
+                            manager.updateUserSocketId(sentUser.userName, socket.id, function(err, user) {
+                                if(err || user === null) {
+                                    socket.emit('message', { text : ['Failed to login'] });
+                                } else {
+                                    socket.emit('login', authUser.userName);
+                                }
+                            });
+                        } else {
+                            manager.getUserById(socket.id, function(err, user) {
+                                if(err || user == null) {
+                                    socket.emit('message', { text : ['Failed to login'] });
+                                } else {
+                                    socket.to(userSocketId).emit('message', {
+                                        text : [
+                                            '-------------------',
+                                            'Intrusion attempt detected by user ' + user.userName,
+                                            'User tried to log in to your account',
+                                            'Coordinates: ' + (user.position ? (user.position.longitude + ', ' + user.position.latitude) : 'Unable to locate user'),
+                                            '-------------------',
+                                        ]
+                                    });
+                                    socket.emit('message', {
+                                        text : [
+                                            'User is already logged in and has been notified about your intrusion attempt',
+                                            'Your user name and coordinates have been sent to the user'
+                                        ]
+                                    });
+                                }
+                            });
+                        }
                     } else {
-                        manager.getUserById(socket.id, function(err, user) {
-                            if(err || user == null) {
-                                socket.emit('message', { text : ['Failed to login'] });
-                            } else {
-                                socket.to(userSocketId).emit('message', {
-                                    text : [
-                                        '-------------------',
-                                        'Intrusion attempt detected by user ' + user.userName,
-                                        'User tried to log in to your account',
-                                        'Coordinates: ' + (user.position ? (user.position.longitude + ', ' + user.position.latitude) : 'Unable to locate user'),
-                                        '-------------------',
-                                    ]
-                                });
-                                socket.emit('message', {
-                                    text : [
-                                        'User is already logged in and has been notified about your intrusion attempt',
-                                        'Your user name and coordinates have been sent to the user'
-                                    ]
-                                });
-                            }
-                        });
+                        socket.emit('message', { text : ['The user has not yet been verified. Failed to login'] });
                     }
                 }
             });
@@ -192,6 +205,48 @@ function handle(socket, io) {
             });
         }
     });
+
+    socket.on('verifyUser', function(sentUserName) {
+       if(sentUserName !== undefined) {
+            manager.verifyUser(sentUserName, function(err, user) {
+                if(err || user === null) {
+                    socket.emit('message', { text : ['Failed to verify user'] });
+                } else {
+                    socket.emit('message', { text : ['User ' + user.userName + ' has been verified']})
+                }
+            });
+       }
+    });
+
+    socket.on('verifyAllUsers', function() {
+        manager.verifyAllUsers(function(err, user) {
+            if(err || user === null) {
+                socket.emit('message', { text : ['Failed to verify all users'] });
+            } else {
+                socket.emit('message', { text : ['Users have been verified']})
+            }
+        });
+    });
+
+    socket.on('unverifiedUsers', function() {
+        manager.getUnverifiedUsers(function(err, users) {
+            if(err || users === null) {
+                socket.emit('message', { text : ['Failed to get unverified users'] });
+            } else{
+                var usersString = '';
+
+                for(var i = 0; i < users.length; i++) {
+                    usersString += users[i].userName;
+
+                    if(i !== users.length - 1) {
+                        usersString += ' | ';
+                    }
+                }
+
+                socket.emit('message', { text : [usersString] });
+            }
+        });
+    })
 }
 
 exports.handle = handle;

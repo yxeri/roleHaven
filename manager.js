@@ -18,7 +18,8 @@ var userSchema = new mongoose.Schema({
     visibility : { type : Number, default : 1 },
     rooms : [{ type : String, unique : true }],
     position : {},
-    lastOnline : Date
+    lastOnline : Date,
+    verified : { type : Boolean, default : false }
 }, { collection : 'users' });
 var roomSchema = new mongoose.Schema({
     roomName : { type : String, unique : true },
@@ -234,6 +235,26 @@ function updateUserPassword(sentUserName, newPassword, callback) {
     });
 }
 
+function verifyUser(sentUserName, callback) {
+    User.findOneAndUpdate({ userName : sentUserName }, { verified : true }).lean().exec(function(err, user) {
+        if(err) {
+            console.log('Failed to verify user', err);
+        }
+
+        callback(err, user);
+    });
+}
+
+function verifyAllUsers(callback) {
+    User.update({ verified : false }, { $set : { verified : true } }, { multi : true }).lean().exec(function(err) {
+        if(err) {
+            console.log('Failed to verify all user', err);
+        }
+
+        callback(err);
+    });
+}
+
 function authUserToRoom(sentUser, sentRoomName, sentPassword, callback) {
     Room.findOne({ $and : [{ accessLevel : { $lte : sentUser.accessLevel } }, { roomName : sentRoomName }, { password : sentPassword }] }).lean().exec(function(err, room) {
         if(err) {
@@ -353,6 +374,16 @@ function setUserLastOnline(sentUserName, sentDate, callback) {
     });
 }
 
+function getUnverifiedUsers(callback) {
+    User.find({ verified : false }, { userName : 1, _id : 0 }).sort({ userName : 1 }).lean().exec(function(err, users) {
+        if(err) {
+            console.log('Failed to get unverified users', err);
+        }
+
+        callback(err, users);
+    });
+}
+
 exports.getUserById = getUserById;
 exports.authUser = authUser;
 exports.addUser = addUser;
@@ -371,6 +402,9 @@ exports.getHistoryFromRoom = getHistoryFromRoom;
 exports.setUserLastOnline = setUserLastOnline;
 exports.getUserHistory = getUserHistory;
 exports.updateUserPassword = updateUserPassword;
+exports.verifyUser = verifyUser;
+exports.getUnverifiedUsers = getUnverifiedUsers;
+exports.verifyAllUsers = verifyAllUsers;
 
 //Blodsband specific
 exports.addEncryptionKey = addEncryptionKey;

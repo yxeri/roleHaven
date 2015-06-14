@@ -70,6 +70,10 @@ pre {
     margin-right: .7em;
 }
 
+#mode:after {
+    content: '$'
+}
+
 .logo {
     white-space: pre;
     line-height: 1.2;

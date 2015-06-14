@@ -34,3 +34,6 @@ Note! This system is meant to be used as a game within a game. Passwords are not
 * password - Change current users password
 * history - Gets message history from the rooms you are following
 * locate - Gets the geoposition of users
+* logout - Logs you out of the current user
+* reboot - Refreshes the page
+* verifyuser - Verifies a user and allows it to log in

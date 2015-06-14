@@ -773,6 +773,36 @@ var validCommands = {
             window.location.reload();
         },
         help : ['Reboots terminal']
+    },
+    verifyuser : {
+        func : function(phrases) {
+            if(phrases.length > 0) {
+                var userName = phrases[0];
+
+                if(userName === '*') {
+                    socket.emit('verifyAllUsers');
+                } else {
+                    socket.emit('verifyUser', userName);
+                }
+            } else {
+                socket.emit('unverifiedUsers');
+            }
+        },
+        help : [
+            'Verifies a user and allows it to connect to the system',
+            'verifyuser without any addition will show a list of all unverified users',
+            'Use "*" to verify everyone in the list'
+        ],
+        instructions : [
+            ' Usage:',
+            '  verifyuser',
+            '  verifyuser *username*',
+            '  verifyuser *',
+            ' Example:',
+            '  verifyuser',
+            '  verifyuser appl1',
+            '  verifyuser *'
+        ]
     }
 };
 
@@ -1173,6 +1203,10 @@ function setMode(text) {
     modeField.textContent = text;
 }
 
+function getMode() {
+    return modeField.textContent;
+}
+
 function clearInput() {
     setLeftText('');
     setRightText('');
@@ -1486,7 +1520,7 @@ function keyPress(event) {
 
                             // Print input if the command shouldn't clear after use
                             if(!command.clearAfterUse) {
-                                var message = { text : [getInputStart() + getInputText()] };
+                                var message = { text : [getInputStart() + getMode() + '$ ' + getInputText()] };
 
                                 if(command.usageTime) {
                                     message.timestamp = true;
