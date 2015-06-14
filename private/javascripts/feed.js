@@ -274,7 +274,7 @@ var validCommands = {
             '  broadcast Hello!'
         ],
         clearAfterUse : true,
-        accessLevel : 11
+        accessLevel : 7
     },
     enterroom : {
         func : function(phrases) {
@@ -744,7 +744,7 @@ var validCommands = {
             ' Example:',
             '  morse sos'
         ],
-        accessLevel : 11
+        accessLevel : 9
     },
     password : {
         func : function(phrases) {
@@ -887,6 +887,7 @@ var validCommands = {
                 data.roomName = phrases[0];
                 data.message.text = [phrases.slice(1).join(' ')];
                 data.message.user = currentUser
+                data.message.whisper = true;
 
                 socket.emit('chatMsg', data);
             } else {

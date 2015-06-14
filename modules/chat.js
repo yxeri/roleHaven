@@ -30,6 +30,15 @@ function handle(socket) {
 
                 socket.broadcast.to(newMessage.roomName).emit('chatMsg', newMessage);
                 socket.emit('message', newMessage);
+
+                // Save the sent message in the sender's room history too if it is a whisper
+                if(newMessage.whisper) {
+                    manager.addMsgToHistory(newData.message.user, newData.message, function(err, history) {
+                        if(err || history === null) {
+                            console.log('Failed to save whisper in senders history', err);
+                        }
+                    });
+                }
             }
         });
     });
@@ -203,7 +212,7 @@ function handle(socket) {
             if(err || user === null) {
                 console.log('Failed to get history. Couldn\'t get user', err);
             } else {
-                manager.getUserHistory(socket.rooms.slice(1), function(err, history) {
+                manager.getUserHistory(socket.rooms, function(err, history) {
                     if(err || history === null) {
                         console.log('Failed to get history', err);
                     } else {
