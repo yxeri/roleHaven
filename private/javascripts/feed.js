@@ -791,7 +791,7 @@ var validCommands = {
         },
         help : [
             'Verifies a user and allows it to connect to the system',
-            'verifyuser without any addition will show a list of all unverified users',
+            'verifyuser without any additional input will show a list of all unverified users',
             'Use "*" to verify everyone in the list'
         ],
         instructions : [
@@ -804,6 +804,56 @@ var validCommands = {
             '  verifyuser appl1',
             '  verifyuser *'
         ]
+    },
+    banuser : {
+        func : function(phrases) {
+            if(phrases.length > 0) {
+                var userName = phrases[0];
+
+                socket.emit('ban', userName);
+            } else {
+                socket.emit('bannedUsers');
+            }
+        },
+        help : [
+            'Bans a user and disconnects it from the system',
+            'The user will not be able to log on again',
+            'banuser without any additional input will show a list of all banned users'
+        ],
+        instructions : [
+            ' Usage:',
+            '  banuser',
+            '  banuser *username*',
+            ' Example:',
+            '  banuser',
+            '  banuser evil1'
+        ],
+        accessLevel : 11
+    },
+    unbanuser : {
+        func : function(phrases) {
+            if(phrases.length > 0) {
+                var userName = phrases[0];
+
+                socket.emit('unban', userName);
+            } else {
+                socket.emit('bannedUsers');
+            }
+        },
+        help : [
+            'Removes ban on user',
+            'The user will be able to log on again',
+            'ubanuser without any additional input will show a list of all banned users'
+        ],
+        instructions : [
+            ' Usage:',
+            '  unbanuser',
+            '  unbanuser *username*',
+            ' Example:',
+            '  unbanuser',
+            '  unbanuser evil1'
+        ],
+        accessLevel : 11
     }
 };
 
@@ -959,6 +1009,18 @@ socket.on('locationMsg', function(locationData) {
             platformCommands.queueMessage({ text : [text] });
         }
     }
+});
+
+socket.on('ban', function() {
+    platformCommands.queueMessage({
+        text : [
+            'You have been banned from the system',
+            'Contact your nearest Organica IT Support Center for re-education',
+            '## or your nearest friendly Razor1911 member. Bring a huge bribe ##'
+        ],
+        extraClass : 'importantMsg'
+    });
+    platformCommands.resetAllLocally();
 });
 
 function playMorseSignal(morseCode) {

@@ -120,7 +120,7 @@ function handle(socket, io) {
                 if(err || user === null) {
                     socket.emit('message', { text : ['Failed to login'] });
                 } else {
-                    if(user.verified) {
+                    if(user.verified && !user.banned) {
                         var userSocketId = user.socketId;
                         var allSockets = Object.keys(io.sockets.connected);
                         var userIsOnline = false;
@@ -167,7 +167,11 @@ function handle(socket, io) {
                             });
                         }
                     } else {
-                        socket.emit('message', { text : ['The user has not yet been verified. Failed to login'] });
+                        if(!user.verified) {
+                            socket.emit('message', { text : ['The user has not yet been verified. Failed to login'] });
+                        } else {
+                            socket.emit('message', { text : ['The user has been banned. Failed to login'] });
+                        }
                     }
                 }
             });
@@ -246,7 +250,58 @@ function handle(socket, io) {
                 socket.emit('message', { text : [usersString] });
             }
         });
-    })
+    });
+
+    socket.on('ban', function(sentUserName) {
+        manager.banUser(sentUserName, function(err, user) {
+           if(err || user === null) {
+               socket.emit('message', { text : ['Failed to ban user'] });
+           } else {
+               var bannedSocketId = user.socketId;
+
+               socket.emit('message', { text : ['User' + sentUserName + ' has been banned'] });
+
+               manager.updateUserSocketId(sentUserName, '', function(err, user) {
+                   if(err || user === null) {
+                       socket.emit('message', { text : ['Failed to disconnect user ' + sentUserName] });
+                   } else {
+                       socket.to(bannedSocketId).emit('ban');
+                       socket.emit('message', { text : ['User ' + sentUserName + ' has been disconnected'] });
+                   }
+               });
+           }
+        });
+    });
+
+    socket.on('unban', function(sentUserName) {
+        manager.unbanUser(sentUserName, function(err, user) {
+            if(err || user === null) {
+                socket.emit('message', { text : ['Failed to unban user'] });
+            } else {
+                socket.emit('message', { text : ['Ban on user ' + sentUserName + ' has been removed'] });
+            }
+        });
+    });
+
+    socket.on('bannedUsers', function() {
+        manager.getBannedUsers(function(err, users) {
+            if(err || users === null) {
+                socket.emit('message', { text : ['Failed to get all banned users'] });
+            } else {
+                var usersString = '';
+
+                for(var i = 0; i < users.length; i++) {
+                    usersString += users[i].userName;
+
+                    if(i !== users.length - 1) {
+                        usersString += ' | ';
+                    }
+                }
+
+                socket.emit('message', { text : [usersString] });
+            }
+        });
+    });
 }
 
 exports.handle = handle;

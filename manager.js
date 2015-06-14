@@ -19,7 +19,8 @@ var userSchema = new mongoose.Schema({
     rooms : [{ type : String, unique : true }],
     position : {},
     lastOnline : Date,
-    verified : { type : Boolean, default : false }
+    verified : { type : Boolean, default : false },
+    banned : { type : Boolean, default : false }
 }, { collection : 'users' });
 var roomSchema = new mongoose.Schema({
     roomName : { type : String, unique : true },
@@ -384,6 +385,36 @@ function getUnverifiedUsers(callback) {
     });
 }
 
+function banUser(sentUserName, callback) {
+    User.findOneAndUpdate({ userName : sentUserName }, { banned : true, socketId : '' }).lean().exec(function(err, user) {
+        if(err) {
+            console.log('Failed to ban user', err);
+        }
+
+        callback(err, user);
+    });
+}
+
+function unbanUser(sentUserName, callback) {
+    User.findOneAndUpdate({ userName : sentUserName }, { banned : false }).lean().exec(function(err, user) {
+        if(err) {
+            console.log('Failed to unban user', err);
+        }
+
+        callback(err, user);
+    });
+}
+
+function getBannedUsers(callback) {
+    User.find({ banned : true }, { userName : 1, _id : 0 }).sort({ userName : 1 }).lean().exec(function(err, users) {
+        if(err) {
+            console.log('Failed to get banned users', err);
+        }
+
+        callback(err, users);
+    });
+}
+
 exports.getUserById = getUserById;
 exports.authUser = authUser;
 exports.addUser = addUser;
@@ -405,6 +436,9 @@ exports.updateUserPassword = updateUserPassword;
 exports.verifyUser = verifyUser;
 exports.getUnverifiedUsers = getUnverifiedUsers;
 exports.verifyAllUsers = verifyAllUsers;
+exports.banUser = banUser;
+exports.unbanUser = unbanUser;
+exports.getBannedUsers = getBannedUsers;
 
 //Blodsband specific
 exports.addEncryptionKey = addEncryptionKey;

@@ -168,7 +168,11 @@ function handle(socket) {
                             var usersString = '';
 
                             for(var i = 0; i < users.length; i++) {
-                                usersString += users[i].userName + '\t';
+                                var currentUser = users[i];
+
+                                if(currentUser.verified && !currentUser.banned) {
+                                    usersString += currentUser.userName + '\t';
+                                }
                             }
 
                             socket.emit('message', { text : [usersString] });
