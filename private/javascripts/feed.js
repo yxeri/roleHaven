@@ -1007,7 +1007,7 @@ socket.on('morse', function(morseCode) {
 });
 
 socket.on('time', function(time) {
-    platformCommands.queueMessage({ text : ['Time: ' + time] });
+    platformCommands.queueMessage({ text : ['Time: ' + generateShortTime(time)] });
 });
 
 socket.on('locationMsg', function(locationData) {
