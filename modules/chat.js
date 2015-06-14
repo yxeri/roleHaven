@@ -111,18 +111,22 @@ function handle(socket) {
                 if(err || user === null) {
                     socket.emit('message', { text : ['Failed to unfollow room'] });
                 } else {
-                    manager.removeRoomFromUser(user.userName, room.roomName, function(err, user) {
-                        if(err || user === null) {
-                            socket.emit('message', { text : ['Failed to unfollow room'] });
-                        } else {
-                            socket.broadcast.to(room.roomName).emit('chatMsg', {
-                                text : [user.userName + ' left ' + room.roomName],
-                                room : room.roomName
-                            });
-                            socket.leave(room.roomName);
-                            socket.emit('unfollow', room);
-                        }
-                    });
+                    // User should not be able to unfollow its own room
+                    // That room is for private messaging between users
+                    if(room.roomName !== user.userName) {
+                        manager.removeRoomFromUser(user.userName, room.roomName, function(err, user) {
+                            if(err || user === null) {
+                                socket.emit('message', { text : ['Failed to unfollow room'] });
+                            } else {
+                                socket.broadcast.to(room.roomName).emit('chatMsg', {
+                                    text : [user.userName + ' left ' + room.roomName],
+                                    room : room.roomName
+                                });
+                                socket.leave(room.roomName);
+                                socket.emit('unfollow', room);
+                            }
+                        });
+                    }
                 }
             });
         } else {
@@ -184,7 +188,10 @@ function handle(socket) {
     });
 
     socket.on('myRooms', function() {
-        var roomsString = socket.rooms.slice(1).sort().join('\t');
+        // The first room is auto-created by socket.io (has name of socket.id)
+        // The second room is used for whispering between user (has same name as user)
+        // They should not be visible to the user
+        var roomsString = socket.rooms.slice(2).sort().join('\t');
 
         socket.emit('message', { text : [roomsString] });
     });
@@ -201,7 +208,7 @@ function handle(socket) {
                         console.log('Failed to get history', err);
                     } else {
                         var historyMessages = [];
-                        var maxLines = lines === null || isNaN(lines) ? 60 : lines;
+                        var maxLines = lines === null || isNaN(lines) ? 80 : lines;
 
                         for(var i = 0; i < history.length; i++) {
                             var currentHistory = history[i];

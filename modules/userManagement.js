@@ -9,7 +9,7 @@ function handle(socket, io) {
         if(sentUser && isTextAllowed(sentUser.userName)) {
             var userObj = {
                 userName : sentUser.userName,
-                socketId : socket.id,
+                socketId : '',
                 password : sentUser.password
             };
 
@@ -18,16 +18,35 @@ function handle(socket, io) {
                     socket.emit('message', { text : ['Failed to register user'] });
                 } else if(user !== null) {
                     var message = {};
+                    var newRoom = {};
 
                     message.text = ['User ' + user.userName + ' needs to be verified'];
                     message.time = new Date();
                     message.roomName = 'hqroom';
 
+                    newRoom.roomName = user.userName;
+                    newRoom.visibility = 12;
+                    newRoom.accessLevel = 12;
+
+                    socket.broadcast.to('hqroom').emit('message', message);
                     socket.emit('message', { text : [
                         user.userName + ' has been registered!',
                         'You need to be verified by another user before you can log in'
                     ] });
-                    socket.broadcast.to('hqroom').emit('message', message);
+
+                    manager.createRoom(newRoom, function(err, room) {
+                        if(err || room === null) {
+                            console.log('Failed to create room for user ' + user.userName);
+                        } else {
+                            manager.addRoomToUser(user.userName, room.roomName, function(err) {
+                                if(err) {
+                                    console.log('Failed to add user ' + user.userName + ' to its room');
+                                } else {
+                                    socket.join(room.roomName);
+                                }
+                            });
+                        }
+                    });
                 } else {
                     socket.emit('message', { text : [sentUser.userName + ' already exists'] });
                 }

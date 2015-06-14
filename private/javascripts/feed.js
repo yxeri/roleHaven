@@ -877,6 +877,35 @@ var validCommands = {
             '  unbanuser evil1'
         ],
         accessLevel : 11
+    },
+    whisper : {
+        func : function(phrases) {
+            if(phrases.length > 1) {
+                var data = {};
+
+                data.message = {};
+                data.roomName = phrases[0];
+                data.message.text = [phrases.slice(1).join(' ')];
+                data.message.user = currentUser
+
+                socket.emit('chatMsg', data);
+            } else {
+                platformCommands.queueMessage({ text : ['You forgot to write the message!'] });
+            }
+        },
+        help : [
+            'Send a private message to a specific user',
+            'The first word that you write will be interpreted as a user name',
+            'The rest of the input will be sent to only that user'
+        ],
+        instructions : [
+            ' Usage:',
+            '  whisper *user name* *message*',
+            ' Example:',
+            '  whisper adam hello, adam!',
+            '  whisper user1 sounds good!'
+        ],
+        clearAfterUse : true
     }
 };
 
