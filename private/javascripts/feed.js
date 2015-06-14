@@ -592,7 +592,7 @@ var validCommands = {
                 ],
                 speed : 10
             });
-            setInputStart('Enter encryption key:');
+            setInputStart('Enter encryption key');
             socket.emit('entities');
         },
         steps : [
@@ -623,7 +623,7 @@ var validCommands = {
                 }
             },
             function() {
-                setInputStart('Enter entity name:');
+                setInputStart('Enter entity name');
                 commandHelper.keyboardBlocked = false;
                 commandHelper.currentStep++;
             },
@@ -631,6 +631,7 @@ var validCommands = {
                 var data = commandHelper.data;
 
                 data.entityName = phrase;
+                data.userName = currentUser;
                 socket.emit('unlockEntity', data);
                 platformCommands.queueMessage({
                     text : [

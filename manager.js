@@ -91,8 +91,8 @@ function addEntity(entity, callback) {
     });
 }
 
-function unlockEntity(sentKey, sentEntityName, callback) {
-    EncryptionKey.findOneAndUpdate({ key : sentKey, used : false }, { used : true }).lean().exec(function(err, key) {
+function unlockEntity(sentKey, sentEntityName, sentUserName, callback) {
+    EncryptionKey.findOneAndUpdate({ key : sentKey, used : false }, { used : true, usedBy : sentUserName }).lean().exec(function(err, key) {
         if(err || key === null) {
             console.log('Failed to update key', sentKey, err);
             callback(err, null);
@@ -102,7 +102,7 @@ function unlockEntity(sentKey, sentEntityName, callback) {
                     console.log('Failed to find and update entity', err);
 
                     // Rollback
-                    EncryptionKey.findOneAndUpdate({ key : sentKey }, { used : false }).lean().exec(function(err, key) {
+                    EncryptionKey.findOneAndUpdate({ key : sentKey }, { used : false, usedBy : '' }).lean().exec(function(err, key) {
                         if(err) {
                             console.log('Failed to do a rollback on key', sentKey);
                         }

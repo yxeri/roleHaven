@@ -34,12 +34,19 @@ function handle(socket) {
     });
 
     socket.on('unlockEntity', function(data) {
-        manager.unlockEntity(data.keyData.key, data.entityName, function(err, entity) {
+        manager.unlockEntity(data.keyData.key, data.entityName, data.userName, function(err, entity) {
             if(err) {
                 socket.emit('message', { text : ['Failed unlock entity. Aborting'] });
                 socket.emit('commandFail');
             } else {
+                var text = [
+                    'Warning! User ' + data.userName + ' has used a key on entity ' + data.entityName,
+                    'Organica death squads have been sent to apprehend the culprit'
+                ];
+
                 socket.emit('commandSuccess', entity);
+                socket.broadcast.emit('importantMsg', { text : text });
+                socket.emit('importantMsg', { text : text });
             }
         });
     });
