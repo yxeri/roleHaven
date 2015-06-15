@@ -41,7 +41,7 @@ function handle(socket) {
             } else {
                 var text = [
                     'Warning! User ' + data.userName + ' has used a key on entity ' + data.entityName,
-                    'Organica death squads have been sent to apprehend the culprit'
+                    'Organica death squads have been deployed'
                 ];
 
                 socket.emit('commandSuccess', entity);

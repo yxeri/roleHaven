@@ -457,7 +457,7 @@ var validCommands = {
             'Registers your user name on the server and connects it to your device',
             'This user name will be your identity in the system',
             'The name can only contain letters and numbers (a-z, 0-9)',
-            'Don\'t use whitespaces in your name or password!',
+            'Don\'t use whitespaces in your name or password!'
         ],
         instructions : [
             ' Usage:',
@@ -505,13 +505,13 @@ var validCommands = {
             'Creates a chat room',
             'The rooms name has to be 1 to 6 characters long',
             'The password is optional, but if set it has to be 4 to 10 characters',
-            'The name can only contain letters and numbers (a-z, 0-9)',
+            'The name can only contain letters and numbers (a-z, 0-9)'
         ],
         instructions : [
             ' Usage:',
             '  createroom *room name* *optional password*',
             ' Example:',
-            '  createroom myroom banana',
+            '  createroom myroom banana'
         ],
         accessLevel : 3
     },
@@ -1144,8 +1144,8 @@ function generateMap() {
     mapHelper.ySize = (mapHelper.topLat - mapHelper.bottomLat) / parseFloat(mapHelper.yGridsMax);
 
     for(var i = 0; i < mapHelper.xGridsMax; i++) {
-        var char = String.fromCharCode(letter.charCodeAt(0) + i);
-        mapHelper.xGrids[char] = mapHelper.leftLong + parseFloat(mapHelper.xSize * i);
+        var currentChar = String.fromCharCode(letter.charCodeAt(0) + i);
+        mapHelper.xGrids[currentChar] = mapHelper.leftLong + parseFloat(mapHelper.xSize * i);
     }
 
     for(var i = 0; i < mapHelper.yGridsMax; i++) {
