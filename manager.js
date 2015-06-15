@@ -257,7 +257,7 @@ function verifyAllUsers(callback) {
 }
 
 function authUserToRoom(sentUser, sentRoomName, sentPassword, callback) {
-    Room.findOne({ $and : [{ accessLevel : { $lte : sentUser.visibility } }, { roomName : sentRoomName }, { password : sentPassword }] }).lean().exec(function(err, room) {
+    Room.findOne({ $and : [{ accessLevel : { $lte : sentUser.accessLevel } }, { roomName : sentRoomName }, { password : sentPassword }] }).lean().exec(function(err, room) {
         if(err) {
             console.log('Failed to check auth against room', err);
         }
@@ -304,7 +304,7 @@ function createRoom(sentRoom, callback) {
 }
 
 function getAllUsers(sentUser, callback) {
-    User.find({ accessLevel : { $lte : sentUser.visibility } }).sort({ userName : 1 }).lean().exec(function(err, users) {
+    User.find({ visibility : { $lte : sentUser.accessLevel } }).sort({ userName : 1 }).lean().exec(function(err, users) {
         if(err) {
             console.log('Failed to list users', err);
         }
@@ -314,7 +314,7 @@ function getAllUsers(sentUser, callback) {
 }
 
 function getAllRooms(sentUser, callback) {
-    Room.find({ accessLevel : { $lte : sentUser.visibility } }).sort({ roomName : 1 }).lean().exec(function(err, rooms) {
+    Room.find({ visibility : { $lte : sentUser.accessLevel } }).sort({ roomName : 1 }).lean().exec(function(err, rooms) {
         if(err) {
             console.log('Failed to list rooms', err);
         }
@@ -324,7 +324,7 @@ function getAllRooms(sentUser, callback) {
 }
 
 function getAllUserLocations(sentUser, callback) {
-    User.find({ accessLevel : { $lte : sentUser.visibility } }).sort({ userName : 1 }).lean().exec(function(err, users) {
+    User.find({ visibility : { $lte : sentUser.accessLevel } }).sort({ userName : 1 }).lean().exec(function(err, users) {
         if(err) {
             console.log('Failed to get all user locations', err);
         }
@@ -334,7 +334,7 @@ function getAllUserLocations(sentUser, callback) {
 }
 
 function getUserLocation(sentUser, sentUserName, callback) {
-    User.findOne({ $and : [{ accessLevel : { $lte : sentUser.visibility } }, { userName : sentUserName }] }).lean().exec(function(err, user) {
+    User.findOne({ $and : [{ visibility : { $lte : sentUser.accessLevel } }, { userName : sentUserName }] }).lean().exec(function(err, user) {
         if(err) {
             console.log('Failed to get all user locations', err);
         }
