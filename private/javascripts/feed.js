@@ -886,7 +886,7 @@ var validCommands = {
                 data.message = {};
                 data.roomName = phrases[0];
                 data.message.text = [phrases.slice(1).join(' ')];
-                data.message.user = currentUser
+                data.message.user = currentUser;
                 data.message.whisper = true;
 
                 socket.emit('chatMsg', data);
@@ -907,6 +907,30 @@ var validCommands = {
             '  whisper user1 sounds good!'
         ],
         clearAfterUse : true
+    },
+    hqmsg : {
+        func : function(phrases) {
+            if(phrases !== undefined && phrases.length > 0) {
+                var writtenMsg = phrases.join(' ');
+
+                socket.emit('chatMsg', {
+                    message : {
+                        text : [writtenMsg],
+                        user : currentUser
+                    },
+                    roomName : 'hqroom'
+                });
+            } else {
+                platformCommands.queueMessage({ text : ['You forgot to write the message!'] });
+            }
+        },
+        help : ['Sends a message directly to HQ'],
+        instructions : [
+            ' Usage:',
+            '  hqmsg *message*',
+            ' Example:',
+            '  hqmsg is anyone out there?'
+        ]
     }
 };
 
@@ -1195,6 +1219,8 @@ function isScreenOff() {
     }
 }
 
+// Set intervals at boot and recreate them when the window is focused
+// This is to make sure that nothing has been killed in the background
 function setIntervals() {
     if(interval.printText !== undefined) {
         clearInterval(interval.printText);
@@ -1203,15 +1229,19 @@ function setIntervals() {
         clearInterval(interval.tracking);
     }
 
-    // Tries to print messages from the queue
+    // Prints messages from the queue
     interval.printText = setInterval(printText, 200, messageQueue);
 
     if(tracking) {
+        // Gets new geolocation data
         interval.tracking = setInterval(sendLocationData, 4000);
     }
 
     // Should not be recreated on focus
     if(interval.isScreenOff === undefined) {
+        // Checks time between when JS stopped and started working again
+        // This will be most frequently triggered when a user turns off the
+        // screen on their phone and turns it back on
         interval.isScreenOff = setInterval(isScreenOff, 1000);
     }
 }
@@ -1234,6 +1264,7 @@ function startAudio() {
     }
 }
 
+// Sets everything relevant when a user enters the site
 function startBoot() {
     document.getElementById('background').addEventListener('click', function(event) {
         marker.focus();

@@ -31,7 +31,7 @@ function handle(socket) {
                 socket.broadcast.to(newMessage.roomName).emit('chatMsg', newMessage);
                 socket.emit('message', newMessage);
 
-                // Save the sent message in the sender's room history too if it is a whisper
+                // Save the sent message in the sender's room history too, if it is a whisper
                 if(newMessage.whisper) {
                     manager.addMsgToHistory(newData.message.user, newData.message, function(err, history) {
                         if(err || history === null) {
@@ -87,7 +87,7 @@ function handle(socket) {
             } else {
                 manager.authUserToRoom(user, sentRoom.roomName, sentRoom.password, function(err, room) {
                     if(err || room === null) {
-                        socket.emit('message', { text : ['Failed to follow ' + sentRoom.roomName] });
+                        socket.emit('message', { text : ['You are not authorized to join ' + sentRoom.roomName] });
                     } else {
                         manager.addRoomToUser(user.userName, room.roomName, function(err) {
                             if(err) {
