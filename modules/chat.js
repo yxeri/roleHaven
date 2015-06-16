@@ -76,28 +76,28 @@ function handle(socket) {
         }
     });
 
-    socket.on('follow', function(sentRoom) {
-        if(sentRoom.password === undefined) {
-            sentRoom.password = ''
+    socket.on('follow', function(data) {
+        if(data.password === undefined) {
+            data.password = ''
         }
 
         manager.getUserById(socket.id, function(err, user) {
             if(err || user === null) {
-                socket.emit('message', { text : ['Failed to follow ' + sentRoom.roomName] });
+                socket.emit('message', { text : ['Failed to follow ' + data.roomName] });
             } else {
-                manager.authUserToRoom(user, sentRoom.roomName, sentRoom.password, function(err, room) {
+                manager.authUserToRoom(user, data.roomName, data.password, function(err, room) {
                     if(err || room === null) {
-                        socket.emit('message', { text : ['You are not authorized to join ' + sentRoom.roomName] });
+                        socket.emit('message', { text : ['You are not authorized to join ' + data.roomName] });
                     } else {
                         manager.addRoomToUser(user.userName, room.roomName, function(err) {
                             if(err) {
-                                socket.emit('message', { text : ['Failed to follow ' + sentRoom.roomName] });
+                                socket.emit('message', { text : ['Failed to follow ' + data.roomName] });
                             } else {
-                                if(sentRoom.entered) {
+                                if(data.entered) {
                                     room.entered = true
                                 }
 
-                                if(socket.rooms.indexOf(room.roomName) < 0) {
+                                if(!data.suppressNotice && socket.rooms.indexOf(room.roomName) < 0) {
                                     socket.broadcast.to(room.roomName).emit('chatMsg', {
                                         text : [user.userName + ' is following ' + room.roomName],
                                         room : room.roomName

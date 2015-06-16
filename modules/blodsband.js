@@ -39,14 +39,17 @@ function handle(socket) {
                 socket.emit('message', { text : ['Failed unlock entity. Aborting'] });
                 socket.emit('commandFail');
             } else {
-                var text = [
-                    'Warning! User ' + data.userName + ' has used a key on entity ' + data.entityName,
-                    'Organica death squads have been deployed'
-                ];
+                var warningMessage = { text : ['Warning!'], morse : true };
+                var message = { text : [
+                    'User ' + data.userName + ' has used a key on entity ' + data.entityName,
+                    'Organica Re-Education Squads have been deployed'
+                ] };
 
                 socket.emit('commandSuccess', entity);
-                socket.broadcast.emit('importantMsg', { text : text });
-                socket.emit('importantMsg', { text : text });
+                socket.broadcast.emit('importantMsg', warningMessage);
+                socket.emit('importantMsg', warningMessage);
+                socket.broadcast.emit('importantMsg', message);
+                socket.emit('importantMsg', message);
             }
         });
     });

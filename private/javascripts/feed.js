@@ -197,7 +197,7 @@ var validCommands = {
         func : function() {
             platformCommands.queueMessage({
                 text : [
-                    'Add --help after a command (with whitespace in between) to get instructions on how to use it'
+                    'Add -help after a command (with whitespace in between) to get instructions on how to use it'
                 ]
             });
             platformCommands.queueMessage({ text : platformCommands.getAvailableCommands() });
@@ -393,7 +393,7 @@ var validCommands = {
             'Sets mode to chat',
             'Everything written will be interpreted as chat messages',
             'You will not need to use "msg" command to write messages',
-            'Use command "normalmode" to exit out of chat mode'
+            'Use "-normalmode" to exit out of chat mode'
         ],
         instructions : [
             'If you want to use a command in chatmode it has to be prepended with "-"',
@@ -570,47 +570,47 @@ var validCommands = {
     },
     decryptmodule : {
         func : function() {
+            //platformCommands.queueMessage({
+            //    text : [
+            //        '   ####',
+            //        '###############',
+            //        ' #####  #########                                           ####',
+            //        '  ####     #######  ########     ###########    ####     ###########',
+            //        '  ####    ######      #######   ####   #####  ########    ####   #####',
+            //        '  ####  ###         ####  ####        ####  ###    ###### ####   #####',
+            //        '  #########        ####    ####     ####   #####     ##############',
+            //        '  #### ######     ####     #####  ####     #######   ###  ########',
+            //        '  ####   ######  ##### #### #### ############  #######    ####   ###',
+            //        ' ######    #############    ################     ###      ####    #####',
+            //        '########     ########         ###                        ######      #####   ##',
+            //        '               ###########        ##                                    ###### ',
+            //        '                    ###############    Razor1911',
+            //        '                         #####   demos - warez - honey',
+            //        ' '
+            //    ],
+            //    extraClass : 'logo',
+            //    speed : 10
+            //});
             platformCommands.queueMessage({
                 text : [
-                    '   ####',
-                    '###############',
-                    ' #####  #########                                           ####',
-                    '  ####     #######  ########     ###########    ####     ###########',
-                    '  ####    ######      #######   ####   #####  ########    ####   #####',
-                    '  ####  ###         ####  ####        ####  ###    ###### ####   #####',
-                    '  #########        ####    ####     ####   #####     ##############',
-                    '  #### ######     ####     #####  ####     #######   ###  ########',
-                    '  ####   ######  ##### #### #### ############  #######    ####   ###',
-                    ' ######    #############    ################     ###      ####    #####',
-                    '########     ########         ###                        ######      #####   ##',
-                    '               ###########        ##                                    ###### ',
-                    '                    ###############    Razor1911',
-                    '                         #####   demos - warez - honey',
-                    ' '
-                ],
-                extraClass : 'logo',
-                speed : 10
-            });
-            platformCommands.queueMessage({
-                text : [
-                    'Razor1911 proudly presents:',
-                    'Entity Hacking Access! (EHA)',
-                    'AAAB3NzaC1yc2EAAAADAQABAAABAQDHS//2ag4/B',
-                    'D6Rsc8OO/6wFUVDdpdAItvSCLCrc/dcJE/8iybEV',
-                    'w3OtlVFnfNkOVAvhObuWO/6wFUVDdkr2/yYTaDEt',
-                    'i5mxEFD1zslvhObuWr6QKLvfZVczAxAHPFKLvfZV',
-                    'dK2zXrxGOmOFllxiCbpGOmOFlcJy1/iCbp0mA4ca',
-                    'MFvEEiKXrxGlxiCbp0miONA3EsqTcgY/yujOMJHa',
-                    'Q1uy6yEZOmOFl/yujOMJHa88/x1DVwWl6lsjHvSi',
-                    'wDDVwWl6el88/x1j5C+k/aadtg1lcvcz7Tdtve4q',
-                    'VTVz0HIhxv595Xqw2qrvyp6GrdX/FrhObuWr6QKL',
-                    ' ',
-                    'Please wait.......',
-                    'Command interception...........ACTIVATED',
-                    'Oracle defense systems......... DISABLED',
-                    'Overriding locks....................DONE',
-                    'Connecting to entity database.......DONE',
-                    ' ',
+                    //'Razor1911 proudly presents:',
+                    //'Entity Hacking Access! (EHA)',
+                    //'AAAB3NzaC1yc2EAAAADAQABAAABAQDHS//2a/B',
+                    //'D6Rsc8OO/6wFUVDdpdAItvSCLCrc/dcJE/ybEV',
+                    //'w3OtlVFnfNkOVAvhObuWO/6wFUVDdkr2YTaDEt',
+                    //'i5mxEFD1zslvhObuWr6QKLvfZVczAxPFKLvfZV',
+                    //'dK2zXrxGOmOFllxiCbpGOmOFlcJyiCbp0mA4ca',
+                    //'MFvEEiKXrxGlxiCbp0miONA3EscgY/yujOMJHa',
+                    //'Q1uy6yEZOmOFl/yujOMJHa881DVwWl6lsjHvSi',
+                    //'wDDVwWl6el88/x1j5C+k/atg1lcvcz7Tdtve4q',
+                    //'VTVz0HIhxv595Xqw2qrv6GrdX/FrhObuWr6QKL',
+                    //' ',
+                    //'Please wait.......',
+                    //'Command interception.........ACTIVATED',
+                    //'Oracle defense systems........DISABLED',
+                    //'Overriding locks..................DONE',
+                    //'Connecting to entity database.....DONE',
+                    //' ',
                     'You can cancel out of the command by typing "exit" or "abort"'
                 ],
                 speed : 10
@@ -668,7 +668,8 @@ var validCommands = {
                     platformCommands.queueMessage({
                         text : [
                             'Confirmed. Encryption key has been used on the entity',
-                            entity.entityName + ' now has ' + (entity.keys.length + 1) + ' unlocks'
+                            entity.entityName + ' now has ' + (entity.keys.length + 1) + ' unlocks',
+                            'Thank you for using EHA'
                         ]
                     });
                     setCommand(null);
@@ -730,6 +731,7 @@ var validCommands = {
                 }
 
                 if(morseCodeText.length > 0) {
+                    console.log(morseCodeText);
                     socket.emit('morse', {
                         roomName : platformCommands.getLocally('room'),
                         morseCode : morseCodeText
@@ -931,6 +933,101 @@ var validCommands = {
             ' Example:',
             '  hqmsg is anyone out there?'
         ]
+    },
+    hackroom : {
+        func : function(phrases) {
+            var data = {};
+
+            data.timesCracked = 0;
+            data.timesRequired = 5;
+            data.randomizer = function(length) {
+                var randomString = '0123456789abcdefghijklmnopqrstuvwxyz'
+                var code = '';
+
+                for(var i = 0; i < length; i++) {
+                    code += randomString[Math.round(Math.random() * (randomString.length - 1))];
+                }
+
+                return code;
+            };
+            commandHelper.data = data;
+
+            platformCommands.queueMessage({
+                text : [
+                    //'Razor1911 proudly presents:',
+                    //'Room Access Hacking! (RAH)',
+                    //'/8iybEVaC1yc2EAAAADAQABAAABAQDS//2ag4/',
+                    //'D6Rsc8OO/6wFUVDdpdAItvSCLCrc/dcE/8iybE',
+                    //'w3OtlVFnfNkOVAvhObuWO/6wFUVDdkr2yYTaDE',
+                    //'i5mB3Nz1aC1yc2buWr6QKLvfZVczAxAHPKLvfZ',
+                    //'dK2zXrxGOmOFllxiCbpGOmOFlcJy1/iCbpmA4c',
+                    //'MFvEEiKXrxGlxiCbp0miONAAvhObuWO/6ujMJH',
+                    //'JHa88/x1DVOFl/yujOMJHa88/x1DVwWl6lsjvS',
+                    //'wDDVwWl6el88/x1j5C+k/aadtg1lcvcz7Tdtve',
+                    //'k/aadtghxv595Xqw2qrvyp6GrdX/FrhObuWr6Q',
+                    //' ',
+                    //'Please wait.......',
+                    //'Command interception.........ACTIVATED',
+                    //'Oracle defense systems.......DISABLED',
+                    //'Overriding locks.............DONE',
+                    //'Connecting to database ......DONE',
+                    //' ',
+                    'You can cancel out of the command by typing "exit" or "abort"',
+                    'Press enter to continue'
+                ],
+                speed : 10
+            });
+
+            setInputStart('Start');
+        },
+        steps : [
+            function() {
+                platformCommands.queueMessage({
+                    text : [
+                        'Activating cracking bot....',
+                        'Warning. Intrusion defense system activated',
+                        'Time until detection: ' + '0'
+                    ],
+                    speed : 1
+                });
+                setInputStart('Verify seq');
+                commandHelper.data.code = commandHelper.data.randomizer(10);
+                commandHelper.currentStep++;
+                platformCommands.queueMessage({ text : ['Sequence: ' + commandHelper.data.code] });
+            },
+            function(phrase, socket) {
+                if(phrase === commandHelper.data.code) {
+                    platformCommands.queueMessage({ text : ['Sequence accepted'] });
+                    commandHelper.data.timesCracked++;
+                } else {
+                    platformCommands.queueMessage({ text : [
+                        'Incorrect sequence. Counter measures have been released'
+                    ] });
+                }
+
+                if(commandHelper.data.timesCracked < commandHelper.data.timesRequired) {
+                    commandHelper.data.code = commandHelper.data.randomizer(10);
+                    platformCommands.queueMessage({ text : ['Sequence: ' + commandHelper.data.code] });
+                } else {
+                    platformCommands.queueMessage(({ text : [
+                        'Cracking complete',
+                        'Intrusion defense system disabled',
+                        'Suppressing notification and following room',
+                        'Thank you for using RAH'
+                    ] }));
+                }
+            },
+            function(success) {
+
+            }
+        ],
+        help : [
+            'ERROR. UNAUTHORIZED COMMAND...AUTHORIZATION OVERRIDDEN. PRINTING INSTRUCTIONS',
+            ''
+        ],
+        instructions : [
+
+        ]
     }
 };
 
@@ -950,9 +1047,12 @@ socket.on('importantMsg', function(msg) {
     var message = msg;
 
     message.extraClass = 'importantMsg';
-    validCommands.morse.func(message.text);
 
     platformCommands.queueMessage(message);
+
+    if(message.morse) {
+        validCommands.morse.func(message.text);
+    }
 });
 
 socket.on('multiMsg', function(messages) {
@@ -990,7 +1090,6 @@ socket.on('unfollow', function(room) {
 });
 
 socket.on('login', function(user) {
-    console.log(user);
     platformCommands.setLocally('user', user.userName);
     currentUser = user.userName;
     currentAccessLevel = user.accessLevel;
@@ -1159,27 +1258,31 @@ function locateOnMap(latitude, longitude) {
     var x;
     var y;
 
-    for(var i = 0; i < xKeys.length; i++) {
-        var nextGrid = mapHelper.xGrids[xKeys[i + 1]];
+    if(longitude >= mapHelper.leftLong && longitude <= mapHelper.rightLong &&
+        latitude <= mapHelper.topLat && latitude >= mapHelper.bottomLat) {
 
-        if(longitude < nextGrid) {
-            x = xKeys[i];
-            break;
-        } else if(longitude === (nextGrid + parseFloat(mapHelper.xSize))) {
-            x = xKeys[i + 1];
-            break;
+        for(var i = 0; i < xKeys.length; i++) {
+            var nextGrid = mapHelper.xGrids[xKeys[i + 1]];
+
+            if(longitude < nextGrid) {
+                x = xKeys[i];
+                break;
+            } else if(longitude === (nextGrid + parseFloat(mapHelper.xSize))) {
+                x = xKeys[i + 1];
+                break;
+            }
         }
-    }
 
-    for(var i = 0; i < yKeys.length; i++) {
-        var nextGrid = mapHelper.yGrids[yKeys[i + 1]];
+        for(var i = 0; i < yKeys.length; i++) {
+            var nextGrid = mapHelper.yGrids[yKeys[i + 1]];
 
-        if(latitude > nextGrid) {
-            y = yKeys[i];
-            break;
-        } else if(latitude === (nextGrid - parseFloat(mapHelper.ySize))) {
-            y = yKeys[i + 1];
-            break;
+                if(latitude > nextGrid) {
+                    y = yKeys[i];
+                    break;
+                } else if(latitude === (nextGrid - parseFloat(mapHelper.ySize))) {
+                    y = yKeys[i + 1];
+                    break;
+                }
         }
     }
 
@@ -1557,7 +1660,6 @@ function specialKeyPress(event) {
             break;
         // Up arrow
         case 38:
-            console.log('before', previousCommandPointer);
             if(!commandHelper.keyboardBlocked && commandHelper.command === null) {
                 if(previousCommandPointer > 0) {
                     clearInput();
@@ -1565,14 +1667,12 @@ function specialKeyPress(event) {
                     appendToLeftText(previousCommands[previousCommandPointer]);
                 }
             }
-            console.log('after', previousCommandPointer);
 
             event.preventDefault();
 
             break;
         // Down arrow
         case 40:
-            console.log('before', previousCommandPointer);
             if(!commandHelper.keyboardBlocked && commandHelper.command === null) {
                 if(previousCommandPointer < previousCommands.length - 1) {
                     clearInput();
@@ -1585,7 +1685,6 @@ function specialKeyPress(event) {
                     clearInput();
                 }
             }
-            console.log('after', previousCommandPointer);
 
             event.preventDefault();
 
@@ -1663,7 +1762,7 @@ function keyPress(event) {
                             }
 
                             // Print the help and instruction parts of the command
-                            if(phrases[1] === '--help') {
+                            if(phrases[1] === '-help') {
                                 var message = { text : [] };
 
                                 if(command.help) {
