@@ -1,10 +1,10 @@
-var express = require('express');
-var router = express.Router();
-var chat = require('../modules/chat');
-var userManagement = require('../modules/userManagement');
-var manager = require('../manager');
+const express = require('express');
+const router = express.Router();
+const chat = require('../modules/chat');
+const userManagement = require('../modules/userManagement');
+const manager = require('../manager');
 //Blodsband specific
-var blodsband = require('../modules/blodsband');
+const blodsband = require('../modules/blodsband');
 
 function handle(io) {
     router.get('/', function(req, res) {
@@ -48,11 +48,11 @@ function handle(io) {
                             if(err || users === null) {
                                 socket.emit('message', { text : ['Failed to get user location'] });
                             } else {
-                                var locationData = {};
+                                const locationData = {};
 
-                                for(var i = 0; i < users.length; i++) {
-                                    var currentUser = users[i];
-                                    var userName = currentUser.userName;
+                                for(let i = 0; i < users.length; i++) {
+                                    const currentUser = users[i];
+                                    const userName = currentUser.userName;
 
                                     locationData[userName] = {};
 
@@ -73,8 +73,8 @@ function handle(io) {
                             if(err || user === null) {
                                 socket.emit('message', { text : ['Failed to get user location'] });
                             } else if(user.position !== undefined) {
-                                var locationData = {};
-                                var userName = user.userName;
+                                const locationData = {};
+                                const userName = user.userName;
 
                                 locationData[userName] = {};
                                 locationData[userName].coords = {};

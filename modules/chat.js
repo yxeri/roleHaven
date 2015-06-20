@@ -1,6 +1,6 @@
-var manager = require('../manager');
+const manager = require('../manager');
 
-var messageSort = function(a, b) {
+const messageSort = function(a, b) {
     if(a.time < b.time) {
         return -1;
     } else if(a.time > b.time) {
@@ -16,7 +16,7 @@ function isTextAllowed(text) {
 
 function handle(socket) {
     socket.on('chatMsg', function(data) {
-        var newData = data;
+        const newData = data;
 
         newData.message.time = new Date();
 
@@ -24,7 +24,7 @@ function handle(socket) {
             if(err || history === null) {
                 console.log('Failed to add message to history', err);
             } else {
-                var newMessage = newData.message;
+                const newMessage = newData.message;
 
                 newMessage.roomName = newData.roomName;
 
@@ -44,7 +44,7 @@ function handle(socket) {
     });
 
     socket.on('broadcastMsg', function(data) {
-        var newData = data;
+        const newData = data;
 
         newData.message.time = new Date();
 
@@ -52,7 +52,7 @@ function handle(socket) {
             if(err || history === null) {
                 console.log('Failed to add message to history', err);
             } else {
-                var newMessage = newData.message;
+                const newMessage = newData.message;
 
                 newMessage.roomName = newData.roomName;
 
@@ -154,9 +154,9 @@ function handle(socket) {
                         console.log('Failed to get all room names', roomErr);
                     } else {
                         if(rooms.length > 0) {
-                            var roomsString = '';
+                            let roomsString = '';
 
-                            for(var i = 0; i < rooms.length; i++) {
+                            for(let i = 0; i < rooms.length; i++) {
                                 roomsString += rooms[i].roomName + '\t';
                             }
 
@@ -178,10 +178,10 @@ function handle(socket) {
                         console.log('Failed to get all users', usererr);
                     } else {
                         if(users.length > 0) {
-                            var usersString = '';
+                            let usersString = '';
 
-                            for(var i = 0; i < users.length; i++) {
-                                var currentUser = users[i];
+                            for(let i = 0; i < users.length; i++) {
+                                const currentUser = users[i];
 
                                 if(currentUser.verified && !currentUser.banned) {
                                     usersString += currentUser.userName + '\t';
@@ -200,7 +200,7 @@ function handle(socket) {
         // The first room is auto-created by socket.io (has name of socket.id)
         // The second room is used for whispering between user (has same name as user)
         // They should not be visible to the user
-        var roomsString = socket.rooms.slice(2).sort().join('\t');
+        const roomsString = socket.rooms.slice(2).sort().join('\t');
 
         socket.emit('message', { text : [roomsString] });
     });
@@ -216,18 +216,17 @@ function handle(socket) {
                     if(err || history === null) {
                         console.log('Failed to get history', err);
                     } else {
-                        var historyMessages = [];
-                        var maxLines = lines === null || isNaN(lines) ? 80 : lines;
+                        const historyMessages = [];
+                        const maxLines = lines === null || isNaN(lines) ? 80 : lines;
 
-                        for(var i = 0; i < history.length; i++) {
-                            var currentHistory = history[i];
-                            var messages = currentHistory.messages;
+                        for(let i = 0; i < history.length; i++) {
+                            const currentHistory = history[i];
 
-                            if(messages.length > 0) {
-                                messages = messages.slice(-maxLines);
+                            if(currentHistory.messages.length > 0) {
+                                const messages = currentHistory.messages.slice(-maxLines);
 
-                                for(var j = (messages.length - 1); j !== 0; j--) {
-                                    var message = messages[j];
+                                for(let j = (messages.length - 1); j !== 0; j--) {
+                                    const message = messages[j];
 
                                     message.roomName = currentHistory.roomName;
                                     // We want the messages to be printed out instantly on the client

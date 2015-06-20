@@ -1,4 +1,4 @@
-var config = {};
+const config = {};
 
 config.publicPaths = {
     views : 'public/views',

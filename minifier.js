@@ -1,7 +1,7 @@
-var fs = require('fs');
-var path = require('path');
-var htmlMinifier = require('html-minifier');
-var minifier = require('node-minify');
+const fs = require('fs');
+const path = require('path');
+const htmlMinifier = require('html-minifier');
+const minifier = require('node-minify');
 
 function htmlMinify(inPath, outPath) {
     fs.readFile(inPath, 'utf8', function(readError, readFile) {
@@ -9,7 +9,7 @@ function htmlMinify(inPath, outPath) {
             //TODO Change to proper logging
             console.log('ReadError', readError)
         } else {
-            var minifyConfig = {
+            const minifyConfig = {
                 removeComments : true,
                 removeCommentsFromCDATA : true,
                 removeCDATASectionsFromCDATA : true,
@@ -50,8 +50,8 @@ function minifyDir(inPath, outPath, extension) {
             console.log(err);
         } else {
             files.forEach(function(file) {
-                var fullInPath = path.join(inPath, file);
-                var fullOutPath = path.join(outPath, file);
+                const fullInPath = path.join(inPath, file);
+                const fullOutPath = path.join(outPath, file);
 
                 if(path.extname(file).substr(1) === extension) {
                     if(extension === 'html') {
@@ -68,7 +68,7 @@ function minifyDir(inPath, outPath, extension) {
 }
 
 function minifyFile(filePath, outPath) {
-    var extension = path.extname(filePath).substr(1);
+    const extension = path.extname(filePath).substr(1);
 
     if(extension === 'html') {
         htmlMinify(filePath, outPath);

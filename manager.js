@@ -1,5 +1,5 @@
-var mongoose = require('mongoose');
-var db = mongoose.connect('mongodb://localhost/bbr2', function(err) {
+const mongoose = require('mongoose');
+const db = mongoose.connect('mongodb://localhost/bbr2', function(err) {
     if(err) {
         console.log('Failed to connect to database', err);
     } else {
@@ -10,7 +10,7 @@ var db = mongoose.connect('mongodb://localhost/bbr2', function(err) {
 // Access levels: Lowest / Lower / Middle / Higher / Highest / God
 // 1 / 3 / 5 / 7 / 9 / 11
 
-var userSchema = new mongoose.Schema({
+const userSchema = new mongoose.Schema({
     userName : { type : String, unique : true },
     password : String,
     socketId : String,
@@ -22,7 +22,7 @@ var userSchema = new mongoose.Schema({
     verified : { type : Boolean, default : false },
     banned : { type : Boolean, default : false }
 }, { collection : 'users' });
-var roomSchema = new mongoose.Schema({
+const roomSchema = new mongoose.Schema({
     roomName : { type : String, unique : true },
     password : { type : String, default : '' },
     accessLevel : { type : Number, default : 1 },
@@ -32,7 +32,7 @@ var roomSchema = new mongoose.Schema({
         accessLevel : Number
     }]
 }, { collection : 'rooms' });
-var historySchema = new mongoose.Schema({
+const historySchema = new mongoose.Schema({
     roomName : { type : String, unique : true },
     messages : [{
         text : [String],
@@ -40,7 +40,7 @@ var historySchema = new mongoose.Schema({
         user : String
     }]
 }, { collection : 'histories' });
-var commandSchema = new mongoose.Schema({
+const commandSchema = new mongoose.Schema({
     commandName : String,
     func : {},
     help : [String],
@@ -49,31 +49,31 @@ var commandSchema = new mongoose.Schema({
 }, { collection : 'commands' });
 
 // Blodsband specific schemas
-var entitySchema = new mongoose.Schema({
+const entitySchema = new mongoose.Schema({
     entityName : { type : String, unique : true },
     keys : [String],
     verified : [Boolean]
 }, { collection : 'entities' });
-var encryptionKeySchema = new mongoose.Schema({
+const encryptionKeySchema = new mongoose.Schema({
     key : { type : String, unique : true },
     used : Boolean,
     usedBy : String
 }, { collection : 'encryptionKeys' });
 
-var User = mongoose.model('User', userSchema);
-var Room = mongoose.model('Room', roomSchema);
-var Command = mongoose.model('Command', commandSchema);
-var History = mongoose.model('History', historySchema);
+const User = mongoose.model('User', userSchema);
+const Room = mongoose.model('Room', roomSchema);
+const Command = mongoose.model('Command', commandSchema);
+const History = mongoose.model('History', historySchema);
 // Blodsband specific
-var Entity = mongoose.model('Entity', entitySchema);
-var EncryptionKey = mongoose.model('EncryptionKey', encryptionKeySchema);
+const Entity = mongoose.model('Entity', entitySchema);
+const EncryptionKey = mongoose.model('EncryptionKey', encryptionKeySchema);
 
 function addEncryptionKey() {
 
 }
 
 function addEntity(entity, callback) {
-    var newEntity = new Entity(entity);
+    const newEntity = new Entity(entity);
 
     Entity.findOne({ entityName : sentEntityName }).lean().exec(function(err, entity) {
         if(err) {
@@ -157,7 +157,7 @@ function authUser(sentUserName, sentPassword, callback) {
 }
 
 function addUser(user, callback) {
-    var newUser = new User(user);
+    const newUser = new User(user);
 
     User.findOne({ userName : user.userName }).lean().exec(function(err, user) {
         if(err) {
@@ -267,8 +267,8 @@ function authUserToRoom(sentUser, sentRoomName, sentPassword, callback) {
 }
 
 function createRoom(sentRoom, callback) {
-    var newRoom = new Room(sentRoom);
-    var newHistory = new History({ roomName : sentRoom.roomName });
+    const newRoom = new Room(sentRoom);
+    const newHistory = new History({ roomName : sentRoom.roomName });
 
     // Checks if room already exists
     Room.findOne({ roomName : sentRoom.roomName }).lean().exec(function(err, room) {

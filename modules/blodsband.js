@@ -1,4 +1,4 @@
-var manager = require('../manager');
+const manager = require('../manager');
 
 function handle(socket) {
     socket.on('entities', function() {
@@ -6,10 +6,10 @@ function handle(socket) {
             if(err || entities === null) {
                 socket.emit('message', { text : ['Could not retrieve entities'] })
             } else {
-                var entityArray = ['Available entities:'];
+                const entityArray = ['Available entities:'];
 
-                for(var i = 0; i < entities.length; i++) {
-                    var keyAmount = entities[i].keys.length;
+                for(let i = 0; i < entities.length; i++) {
+                    const keyAmount = entities[i].keys.length;
 
                     entityArray.push(entities[i].entityName + ' [' + keyAmount + ' unlocked]');
                 }
@@ -25,7 +25,7 @@ function handle(socket) {
                 socket.emit('message', { text : ['Failed to get key. Aborting'] });
                 socket.emit('commandFail');
             } else {
-                var data = {};
+                const data = {};
 
                 data['keyData'] = key;
                 socket.emit('commandSuccess', data);
@@ -39,8 +39,8 @@ function handle(socket) {
                 socket.emit('message', { text : ['Failed unlock entity. Aborting'] });
                 socket.emit('commandFail');
             } else {
-                var warningMessage = { text : ['Warning!'], morse : true };
-                var message = { text : [
+                const warningMessage = { text : ['Warning!'], morse : true };
+                const message = { text : [
                     'User ' + data.userName + ' has used a key on entity ' + data.entityName,
                     'Organica Re-Education Squads have been deployed'
                 ] };

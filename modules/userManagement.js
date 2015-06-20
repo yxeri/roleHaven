@@ -1,4 +1,4 @@
-var manager = require('../manager');
+const manager = require('../manager');
 
 function isTextAllowed(text) {
     return /^[a-zA-Z0-9]+$/g.test(text)
@@ -7,7 +7,7 @@ function isTextAllowed(text) {
 function handle(socket, io) {
     socket.on('register', function(sentUser) {
         if(sentUser && isTextAllowed(sentUser.userName)) {
-            var userObj = {
+            const userObj = {
                 userName : sentUser.userName,
                 socketId : '',
                 password : sentUser.password
@@ -17,8 +17,8 @@ function handle(socket, io) {
                 if(err) {
                     socket.emit('message', { text : ['Failed to register user'] });
                 } else if(user !== null) {
-                    var message = {};
-                    var newRoom = {};
+                    const message = {};
+                    const newRoom = {};
 
                     message.text = ['User ' + user.userName + ' needs to be verified'];
                     message.time = new Date();
@@ -60,13 +60,13 @@ function handle(socket, io) {
                 console.log('Failed to update Id', err);
                 socket.emit('disconnectUser');
             } else {
-                var data = {};
+                const data = {};
 
                 data.firstConnection = sentObject.firstConnection;
                 data.user = user;
 
-                for(var i = 0; i < user.rooms.length; i++) {
-                    var room = user.rooms[i];
+                for(let i = 0; i < user.rooms.length; i++) {
+                    const room = user.rooms[i];
 
                     socket.join(room);
                 }
@@ -78,16 +78,16 @@ function handle(socket, io) {
                         if(err || history === null) {
                             socket.emit('message', { text : ['Unable to retrieve missed chat history'] });
                         } else {
-                            var missedMessages = [];
+                            const missedMessages = [];
 
-                            for(var i = 0; i < history.length; i++) {
-                                var currentHistory = history[i];
-                                var messages = currentHistory.messages;
+                            for(let i = 0; i < history.length; i++) {
+                                const currentHistory = history[i];
+                                const messages = currentHistory.messages;
 
                                 // Does the history document actually contain any messages?
                                 if(messages.length > 0) {
-                                    for(var j = (messages.length - 1); j !== 0; j--) {
-                                        var message = messages[j];
+                                    for(let j = (messages.length - 1); j !== 0; j--) {
+                                        const message = messages[j];
 
                                         if(message !== undefined) {
                                             // Pushes only the messages that the user hasn't already seen
@@ -145,11 +145,11 @@ function handle(socket, io) {
                     socket.emit('message', { text : ['Failed to login'] });
                 } else {
                     if(user.verified && !user.banned) {
-                        var userSocketId = user.socketId;
-                        var allSockets = Object.keys(io.sockets.connected);
-                        var userIsOnline = false;
+                        const userSocketId = user.socketId;
+                        const allSockets = Object.keys(io.sockets.connected);
+                        let userIsOnline = false;
 
-                        for(var i = 0; i < allSockets.length; i++) {
+                        for(let i = 0; i < allSockets.length; i++) {
                             if(userSocketId === allSockets[i]) {
                                 userIsOnline = true;
 
@@ -158,7 +158,7 @@ function handle(socket, io) {
                         }
 
                         if(!userIsOnline) {
-                            var authUser = user;
+                            const authUser = user;
 
                             manager.updateUserSocketId(sentUser.userName, socket.id, function(err, user) {
                                 if(err || user === null) {
@@ -261,9 +261,9 @@ function handle(socket, io) {
             if(err || users === null) {
                 socket.emit('message', { text : ['Failed to get unverified users'] });
             } else{
-                var usersString = '';
+                let usersString = '';
 
-                for(var i = 0; i < users.length; i++) {
+                for(let i = 0; i < users.length; i++) {
                     usersString += users[i].userName;
 
                     if(i !== users.length - 1) {
@@ -281,7 +281,7 @@ function handle(socket, io) {
            if(err || user === null) {
                socket.emit('message', { text : ['Failed to ban user'] });
            } else {
-               var bannedSocketId = user.socketId;
+               const bannedSocketId = user.socketId;
 
                socket.emit('message', { text : ['User' + sentUserName + ' has been banned'] });
 
@@ -312,9 +312,9 @@ function handle(socket, io) {
             if(err || users === null) {
                 socket.emit('message', { text : ['Failed to get all banned users'] });
             } else {
-                var usersString = '';
+                let usersString = '';
 
-                for(var i = 0; i < users.length; i++) {
+                for(let i = 0; i < users.length; i++) {
                     usersString += users[i].userName;
 
                     if(i !== users.length - 1) {
