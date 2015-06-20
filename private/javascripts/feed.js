@@ -387,7 +387,10 @@ var validCommands = {
         func : function() {
             platformCommands.setLocally('mode', 'chatmode');
             setMode('[CHAT]');
-            platformCommands.queueMessage({ text : ['Chat mode activated', 'Prepend commands with "-", e.g. "-normalmode"'] });
+            platformCommands.queueMessage({
+                text : ['Chat mode activated',
+                    'Prepend commands with "-", e.g. "-normalmode"']
+            });
         },
         help : [
             'Sets mode to chat',
@@ -549,7 +552,10 @@ var validCommands = {
     locate : {
         func : function(phrases) {
             if(!tracking) {
-                platformCommands.queueMessage({ text : ['Tracking not available', 'You are not connected to the satellites'] });
+                platformCommands.queueMessage({
+                    text : ['Tracking not available',
+                        'You are not connected to the satellites']
+                });
             } else if(phrases.length > 0) {
                 var userName = phrases[0];
 
@@ -1000,21 +1006,25 @@ var validCommands = {
                     platformCommands.queueMessage({ text : ['Sequence accepted'] });
                     commandHelper.data.timesCracked++;
                 } else {
-                    platformCommands.queueMessage({ text : [
-                        'Incorrect sequence. Counter measures have been released'
-                    ] });
+                    platformCommands.queueMessage({
+                        text : [
+                            'Incorrect sequence. Counter measures have been released'
+                        ]
+                    });
                 }
 
                 if(commandHelper.data.timesCracked < commandHelper.data.timesRequired) {
                     commandHelper.data.code = commandHelper.data.randomizer(10);
                     platformCommands.queueMessage({ text : ['Sequence: ' + commandHelper.data.code] });
                 } else {
-                    platformCommands.queueMessage(({ text : [
-                        'Cracking complete',
-                        'Intrusion defense system disabled',
-                        'Suppressing notification and following room',
-                        'Thank you for using RAH'
-                    ] }));
+                    platformCommands.queueMessage(({
+                        text : [
+                            'Cracking complete',
+                            'Intrusion defense system disabled',
+                            'Suppressing notification and following room',
+                            'Thank you for using RAH'
+                        ]
+                    }));
                 }
             },
             function(success) {
@@ -1025,9 +1035,7 @@ var validCommands = {
             'ERROR. UNAUTHORIZED COMMAND...AUTHORIZATION OVERRIDDEN. PRINTING INSTRUCTIONS',
             ''
         ],
-        instructions : [
-
-        ]
+        instructions : []
     }
 };
 
@@ -1172,7 +1180,10 @@ socket.on('locationMsg', function(locationData) {
         if(locationData[user].coords) {
             var latitude = locationData[user].coords.latitude;
             var longitude = locationData[user].coords.longitude;
-            var heading = locationData[user].coords.heading !== null ? Math.round(locationData[user].coords.heading) : null;
+            var heading = locationData[user].coords.heading !==
+            null ?
+                Math.round(locationData[user].coords.heading) :
+                null;
             var text = '';
 
             text += 'User: ' + user + ' - ';
@@ -1276,13 +1287,13 @@ function locateOnMap(latitude, longitude) {
         for(var i = 0; i < yKeys.length; i++) {
             var nextGrid = mapHelper.yGrids[yKeys[i + 1]];
 
-                if(latitude > nextGrid) {
-                    y = yKeys[i];
-                    break;
-                } else if(latitude === (nextGrid - parseFloat(mapHelper.ySize))) {
-                    y = yKeys[i + 1];
-                    break;
-                }
+            if(latitude > nextGrid) {
+                y = yKeys[i];
+                break;
+            } else if(latitude === (nextGrid - parseFloat(mapHelper.ySize))) {
+                y = yKeys[i + 1];
+                break;
+            }
         }
     }
 
@@ -1540,7 +1551,9 @@ function autoComplete() {
             for(var j = 0; j < partialCommand.length; j++) {
                 var commandAccessLevel = validCommands[commands[i]].accessLevel;
 
-                if((isNaN(commandAccessLevel) || currentAccessLevel >= commandAccessLevel) && partialCommand.charAt(j) === commands[i].charAt(j)) {
+                if((isNaN(commandAccessLevel) || currentAccessLevel >= commandAccessLevel) &&
+                    partialCommand.charAt(j) ===
+                    commands[i].charAt(j)) {
                     matches = true;
                 } else {
                     matches = false;
@@ -1740,7 +1753,10 @@ function keyPress(event) {
                             }
                         }
 
-                        if(currentUser !== null && command && (isNaN(command.accessLevel) || currentAccessLevel >= command.accessLevel)) {
+                        if(currentUser !==
+                            null &&
+                            command &&
+                            (isNaN(command.accessLevel) || currentAccessLevel >= command.accessLevel)) {
                             // Store the command for usage with up/down arrows
                             previousCommands.push(phrases.join(' '));
                             platformCommands.setLocally('previousCommands', JSON.stringify(previousCommands));
@@ -1780,7 +1796,10 @@ function keyPress(event) {
                                 command.func(phrases.splice(1));
                             }
                             // A user who is not logged in will have access to register and login commands
-                        } else if(currentUser === null && command && (commandName === 'register' || commandName === 'login')) {
+                        } else if(currentUser ===
+                            null &&
+                            command &&
+                            (commandName === 'register' || commandName === 'login')) {
                             platformCommands.queueMessage({ text : [getInputStart() + getInputText()] });
                             command.func(phrases.splice(1));
                         } else if(platformCommands.getLocally('mode') === 'chatmode' && phrases[0].length > 0) {
