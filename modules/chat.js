@@ -13,7 +13,7 @@ const messageSort = function(a, b) {
 };
 
 function isTextAllowed(text) {
-    return /^[a-zA-Z0-9]+$/g.test(text)
+    return /^[a-zA-Z0-9]+$/g.test(text);
 }
 
 function handle(socket) {
@@ -22,22 +22,30 @@ function handle(socket) {
 
         newData.message.time = new Date();
 
-        manager.addMsgToHistory(newData.roomName, newData.message, function(err, history) {
+        manager.addMsgToHistory(newData.roomName, newData.message,
+                                function(err, history) {
             if(err || history === null) {
                 console.log('Failed to add message to history', err);
             } else {
                 const newMessage = newData.message;
+                const roomName = newData.roomName;
 
-                newMessage.roomName = newData.roomName;
+                newMessage.roomName = roomName;
 
-                socket.broadcast.to(newMessage.roomName).emit('chatMsg', newMessage);
+                socket.broadcast.to(roomName).emit('chatMsg', newMessage);
                 socket.emit('message', newMessage);
 
-                // Save the sent message in the sender's room history too, if it is a whisper
+                // Save the sent message in the sender's room history too,
+                // if it is a whisper
                 if(newMessage.whisper) {
-                    manager.addMsgToHistory(newData.message.user, newData.message, function(err, history) {
+                    manager.addMsgToHistory(newData.message.user,
+                                            newData.message,
+                                            function(err, history) {
                         if(err || history === null) {
-                            console.log('Failed to save whisper in senders history', err);
+                            console.log(
+                                'Failed to save whisper in senders history',
+                                err
+                            );
                         }
                     });
                 }
@@ -50,7 +58,8 @@ function handle(socket) {
 
         newData.message.time = new Date();
 
-        manager.addMsgToHistory('broadcast', newData.message, function(err, history) {
+        manager.addMsgToHistory('broadcast', newData.message,
+                                function(err, history) {
             if(err || history === null) {
                 console.log('Failed to add message to history', err);
             } else {
@@ -68,11 +77,17 @@ function handle(socket) {
         if(sentRoom && isTextAllowed(sentRoom.roomName)) {
             manager.createRoom(sentRoom, function(err, room) {
                 if(err) {
-                    socket.emit('message', { text : ['Failed to create the room'] });
+                    socket.emit('message',
+                        { text : ['Failed to create the room'] }
+                    );
                 } else if(room !== null) {
-                    socket.emit('message', { text : ['Room successfully created'] });
+                    socket.emit('message',
+                        { text : ['Room successfully created'] }
+                    );
                 } else {
-                    socket.emit('message', { text : [sentRoom.roomName + ' already exists'] });
+                    socket.emit('message',
+                        { text : [sentRoom.roomName + ' already exists'] }
+                    );
                 }
             });
         }
@@ -80,33 +95,53 @@ function handle(socket) {
 
     socket.on('follow', function(data) {
         if(data.password === undefined) {
-            data.password = ''
+            data.password = '';
         }
 
         manager.getUserById(socket.id, function(err, user) {
             if(err || user === null) {
-                socket.emit('message', { text : ['Failed to follow ' + data.roomName] });
+                socket.emit('message',
+                    { text : ['Failed to follow ' + data.roomName] });
             } else {
-                manager.authUserToRoom(user, data.roomName, data.password, function(err, room) {
+                manager.authUserToRoom(user, data.roomName, data.password,
+                                       function(err, room) {
                     if(err || room === null) {
-                        socket.emit('message', { text : ['You are not authorized to join ' + data.roomName] });
+                        socket.emit('message', {
+                            text : [
+                                'You are not authorized to join ' +
+                                data.roomName
+                            ]
+                        });
                     } else {
-                        manager.addRoomToUser(user.userName, room.roomName, function(err) {
+                        const roomName = room.roomName;
+
+                        manager.addRoomToUser(user.userName, roomName,
+                                              function(err) {
                             if(err) {
-                                socket.emit('message', { text : ['Failed to follow ' + data.roomName] });
+                                socket.emit('message', {
+                                    text : [
+                                        'Failed to follow ' +
+                                        data.roomName
+                                    ]
+                                });
                             } else {
                                 if(data.entered) {
-                                    room.entered = true
+                                    room.entered = true;
                                 }
 
-                                if(!data.suppressNotice && socket.rooms.indexOf(room.roomName) < 0) {
-                                    socket.broadcast.to(room.roomName).emit('chatMsg', {
-                                        text : [user.userName + ' is following ' + room.roomName],
-                                        room : room.roomName
+                                if(!data.suppressNotice &&
+                                   socket.rooms.indexOf(roomName) < 0) {
+                                    socket.broadcast.to(roomName).emit(
+                                        'chatMsg', {
+                                        text : [
+                                            user.userName + ' is following ' +
+                                            roomName
+                                        ],
+                                        room : roomName
                                     });
                                 }
 
-                                socket.join(room.roomName);
+                                socket.join(roomName);
                                 socket.emit('follow', room);
                             }
                         });
@@ -117,23 +152,31 @@ function handle(socket) {
     });
 
     socket.on('unfollow', function(room) {
-        if(socket.rooms.indexOf(room.roomName) > -1) {
+        const roomName = room.roomName;
+
+        if(socket.rooms.indexOf(roomName) > -1) {
             manager.getUserById(socket.id, function(err, user) {
                 if(err || user === null) {
-                    socket.emit('message', { text : ['Failed to unfollow room'] });
+                    socket.emit('message',
+                        { text : ['Failed to unfollow room'] });
                 } else {
+                    const userName = user.userName;
+
                     // User should not be able to unfollow its own room
                     // That room is for private messaging between users
-                    if(room.roomName !== user.userName) {
-                        manager.removeRoomFromUser(user.userName, room.roomName, function(err, user) {
+                    if(roomName !== userName) {
+                        manager.removeRoomFromUser(userName, roomName,
+                                                   function(err, user) {
                             if(err || user === null) {
-                                socket.emit('message', { text : ['Failed to unfollow room'] });
-                            } else {
-                                socket.broadcast.to(room.roomName).emit('chatMsg', {
-                                    text : [user.userName + ' left ' + room.roomName],
-                                    room : room.roomName
+                                socket.emit('message', {
+                                    text : ['Failed to unfollow room']
                                 });
-                                socket.leave(room.roomName);
+                            } else {
+                                socket.broadcast.to(roomName).emit('chatMsg', {
+                                    text : [userName + ' left ' + roomName],
+                                    room : roomName
+                                });
+                                socket.leave(roomName);
                                 socket.emit('unfollow', room);
                             }
                         });
@@ -141,7 +184,8 @@ function handle(socket) {
                 }
             });
         } else {
-            socket.emit('message', { text : ['You are not following ' + room.roomName] });
+            socket.emit('message',
+                { text : ['You are not following ' + roomName] });
         }
     });
 
@@ -177,7 +221,7 @@ function handle(socket) {
             } else {
                 manager.getAllUsers(user, function(userErr, users) {
                     if(userErr || users === null) {
-                        console.log('Failed to get all users', usererr);
+                        console.log('Failed to get all users', userErr);
                     } else {
                         if(users.length > 0) {
                             let usersString = '';
@@ -185,7 +229,8 @@ function handle(socket) {
                             for(let i = 0; i < users.length; i++) {
                                 const currentUser = users[i];
 
-                                if(currentUser.verified && !currentUser.banned) {
+                                if(currentUser.verified &&
+                                   !currentUser.banned) {
                                     usersString += currentUser.userName + '\t';
                                 }
                             }
@@ -200,8 +245,8 @@ function handle(socket) {
 
     socket.on('myRooms', function() {
         // The first room is auto-created by socket.io (has name of socket.id)
-        // The second room is used for whispering between user (has same name as user)
-        // They should not be visible to the user
+        // The second room is used for whispering between user
+        // (has same name as user). They should not be visible to the user
         const roomsString = socket.rooms.slice(2).sort().join('\t');
 
         socket.emit('message', { text : [roomsString] });
@@ -219,26 +264,31 @@ function handle(socket) {
                         console.log('Failed to get history', err);
                     } else {
                         const historyMessages = [];
-                        const maxLines = lines === null || isNaN(lines) ? 80 : lines;
+                        const maxLines = lines === null || isNaN(lines) ?
+                                         80 : lines;
 
                         for(let i = 0; i < history.length; i++) {
                             const currentHistory = history[i];
 
                             if(currentHistory.messages.length > 0) {
-                                const messages = currentHistory.messages.slice(-maxLines);
+                                const messages =
+                                    currentHistory.messages.slice(-maxLines);
+                                const messageLength = messages.length - 1;
 
-                                for(let j = (messages.length - 1); j !== 0; j--) {
+                                for(let j = messageLength; j !== 0; j--) {
                                     const message = messages[j];
 
                                     message.roomName = currentHistory.roomName;
-                                    // We want the messages to be printed out instantly on the client
+                                    // We want the messages to be printed out
+                                    // instantly on the client
                                     message.speed = 0;
                                     historyMessages.push(message);
                                 }
                             }
                         }
 
-                        // Above loop pushes in everything in the reverse order. Let's fix that
+                        // Above loop pushes in everything in the reverse order.
+                        // Let's fix that
                         historyMessages.reverse();
                         historyMessages.sort(messageSort);
 
@@ -246,7 +296,7 @@ function handle(socket) {
                     }
                 });
             }
-        })
+        });
     });
 
     socket.on('morse', function(data) {

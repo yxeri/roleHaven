@@ -3,7 +3,7 @@
 const manager = require('../manager');
 
 function isTextAllowed(text) {
-    return /^[a-zA-Z0-9]+$/g.test(text)
+    return /^[a-zA-Z0-9]+$/g.test(text);
 }
 
 function handle(socket, io) {
@@ -17,12 +17,15 @@ function handle(socket, io) {
 
             manager.addUser(userObj, function(err, user) {
                 if(err) {
-                    socket.emit('message', { text : ['Failed to register user'] });
+                    socket.emit('message',
+                        { text : ['Failed to register user'] });
                 } else if(user !== null) {
                     const message = {};
                     const newRoom = {};
 
-                    message.text = ['User ' + user.userName + ' needs to be verified'];
+                    message.text = [
+                        'User ' + user.userName + ' needs to be verified'
+                    ];
                     message.time = new Date();
                     message.roomName = 'hqroom';
 
@@ -33,16 +36,20 @@ function handle(socket, io) {
                     socket.broadcast.to('hqroom').emit('message', message);
                     socket.emit('message', { text : [
                         user.userName + ' has been registered!',
-                        'You need to be verified by another user before you can log in'
+                        'You need to be verified by another user before ' +
+                        'you can log in'
                     ] });
 
                     manager.createRoom(newRoom, function(err, room) {
                         if(err || room === null) {
-                            console.log('Failed to create room for user ' + user.userName);
+                            console.log('Failed to create room for user ' +
+                                        user.userName);
                         } else {
-                            manager.addRoomToUser(user.userName, room.roomName, function(err) {
+                            manager.addRoomToUser(user.userName, room.roomName,
+                                                  function(err) {
                                 if(err) {
-                                    console.log('Failed to add user ' + user.userName + ' to its room');
+                                    console.log('Failed to add user ' +
+                                                user.userName + ' to its room');
                                 } else {
                                     socket.join(room.roomName);
                                 }
@@ -50,14 +57,16 @@ function handle(socket, io) {
                         }
                     });
                 } else {
-                    socket.emit('message', { text : [sentUser.userName + ' already exists'] });
+                    socket.emit('message',
+                        { text : [sentUser.userName + ' already exists'] });
                 }
             });
         }
     });
 
     socket.on('updateId', function(sentObject) {
-        manager.updateUserSocketId(sentObject.userName, socket.id, function(err, user) {
+        manager.updateUserSocketId(sentObject.userName, socket.id,
+                                   function(err, user) {
             if(err || user === null) {
                 console.log('Failed to update Id', err);
                 socket.emit('disconnectUser');
@@ -78,7 +87,11 @@ function handle(socket, io) {
                 if(sentObject.firstConnection) {
                     manager.getUserHistory(user.rooms, function(err, history) {
                         if(err || history === null) {
-                            socket.emit('message', { text : ['Unable to retrieve missed chat history'] });
+                            socket.emit('message', {
+                                text : [
+                                    'Unable to retrieve missed chat history'
+                                ]
+                            });
                         } else {
                             const missedMessages = [];
 
@@ -86,26 +99,32 @@ function handle(socket, io) {
                                 const currentHistory = history[i];
                                 const messages = currentHistory.messages;
 
-                                // Does the history document actually contain any messages?
+                                // Does the history document actually contain
+                                // any messages?
                                 if(messages.length > 0) {
-                                    for(let j = (messages.length - 1); j !== 0; j--) {
+                                    const messagesLength = messages.length - 1;
+                                    for(let j = messagesLength; j !== 0; j--) {
                                         const message = messages[j];
 
-                                        if(message !== undefined) {
-                                            // Pushes only the messages that the user hasn't already seen
-                                            if(user.lastOnline <= message.time) {
-                                                message.roomName = currentHistory.roomName;
-                                                // We want the messages to be printed out instantly on the client
-                                                message.speed = 0;
-                                                missedMessages.push(message);
-                                            }
+                                        // Pushes only the messages that
+                                        // the user hasn't already seen
+                                        if(message !== undefined &&
+                                           user.lastOnline <= message.time) {
+                                            message.roomName =
+                                                currentHistory.roomName;
+                                            // We want the messages to be
+                                            // printed out instantly
+                                            // on the client
+                                            message.speed = 0;
+                                            missedMessages.push(message);
                                         }
                                     }
                                 }
                             }
 
                             if(missedMessages.length > 0) {
-                                // Above loop pushes in everything in the reverse order. Let's fix that
+                                // Above loop pushes in everything in the
+                                // reverse order. Let's fix that
                                 missedMessages.reverse();
                                 missedMessages.sort(function(a, b) {
                                     if(a.time < b.time) {
@@ -129,11 +148,12 @@ function handle(socket, io) {
     socket.on('updateLocation', function(position) {
         manager.getUserById(socket.id, function(err, user) {
             if(err || user === null) {
-                // socket.emit('message', { text : ['Failed to update location'] });
+                console.log('Failed to update location');
             } else {
-                manager.updateUserLocation(user.userName, position, function(err) {
+                manager.updateUserLocation(user.userName, position,
+                                           function(err) {
                     if(err) {
-                        // socket.emit('message', { text : ['Failed to update location'] });
+                        console.log('Failed to update location');
                     }
                 });
             }
@@ -142,7 +162,8 @@ function handle(socket, io) {
 
     socket.on('login', function(sentUser) {
         if(sentUser.userName && sentUser.password) {
-            manager.authUser(sentUser.userName, sentUser.password, function(err, user) {
+            manager.authUser(sentUser.userName, sentUser.password,
+                             function(err, user) {
                 if(err || user === null) {
                     socket.emit('message', { text : ['Failed to login'] });
                 } else {
@@ -162,9 +183,12 @@ function handle(socket, io) {
                         if(!userIsOnline) {
                             const authUser = user;
 
-                            manager.updateUserSocketId(sentUser.userName, socket.id, function(err, user) {
+                            manager.updateUserSocketId(sentUser.userName,
+                                                       socket.id,
+                                                       function(err, user) {
                                 if(err || user === null) {
-                                    socket.emit('message', { text : ['Failed to login'] });
+                                    socket.emit('message',
+                                        { text : ['Failed to login'] });
                                 } else {
                                     socket.emit('login', authUser);
                                 }
@@ -172,21 +196,31 @@ function handle(socket, io) {
                         } else {
                             manager.getUserById(socket.id, function(err, user) {
                                 if(err || user == null) {
-                                    socket.emit('message', { text : ['Failed to login'] });
+                                    socket.emit('message',
+                                        { text : ['Failed to login'] });
                                 } else {
                                     socket.to(userSocketId).emit('message', {
                                         text : [
                                             '-------------------',
-                                            'Intrusion attempt detected by user ' + user.userName,
-                                            'User tried to log in to your account',
-                                            'Coordinates: ' + (user.position ? (user.position.longitude + ', ' + user.position.latitude) : 'Unable to locate user'),
-                                            '-------------------',
+                                            'Intrusion attempt detected ' +
+                                            'by user ' + user.userName,
+                                            'User tried to log in ' +
+                                            'to your account',
+                                            'Coordinates: ' +
+                                            (user.position ?
+                                             (user.position.longitude +
+                                            ', ' + user.position.latitude) :
+                                             'Unable to locate user'),
+                                            '-------------------'
                                         ]
                                     });
                                     socket.emit('message', {
                                         text : [
-                                            'User is already logged in and has been notified about your intrusion attempt',
-                                            'Your user name and coordinates have been sent to the user'
+                                            'User is already logged in and ' +
+                                            'has been notified about ' +
+                                            'your intrusion attempt',
+                                            'Your user name and coordinates ' +
+                                            'have been sent to the user'
                                         ]
                                     });
                                 }
@@ -194,29 +228,50 @@ function handle(socket, io) {
                         }
                     } else {
                         if(!user.verified) {
-                            socket.emit('message', { text : ['The user has not yet been verified. Failed to login'] });
+                            socket.emit('message', {
+                                text : [
+                                    'The user has not yet been verified. ' +
+                                    'Failed to login'
+                                ]
+                            });
                         } else {
-                            socket.emit('message', { text : ['The user has been banned. Failed to login'] });
+                            socket.emit('message', {
+                                text : [
+                                    'The user has been banned. Failed to login'
+                                ]
+                            });
                         }
                     }
                 }
             });
         } else {
-            socket.emit('message', { text : ['User name and password needed to login. Failed to login'] });
+            socket.emit('message', {
+                text : [
+                    'User name and password needed to login. Failed to login'
+                ]
+            });
         }
     });
 
     socket.on('changePassword', function(data) {
         if(data.oldPassword && data.newPassword && data.userName) {
-            manager.authUser(data.userName, data.oldPassword, function(err, user) {
+            manager.authUser(data.userName, data.oldPassword,
+                             function(err, user) {
                 if(err || user === null) {
-                    socket.emit('message', { text : ['Failed to update password'] });
+                    socket.emit('message',
+                        { text : ['Failed to update password'] });
                 } else {
-                    manager.updateUserPassword(user.userName, data.newPassword, function(err, user) {
+                    manager.updateUserPassword(user.userName, data.newPassword,
+                                               function(err, user) {
                         if(err || user === null) {
-                            socket.emit('message', { text : ['Failed to update password'] });
+                            socket.emit('message',
+                                { text : ['Failed to update password'] });
                         } else {
-                            socket.emit('message', { text : ['Password has been successfully changed!'] });
+                            socket.emit('message', {
+                                text : [
+                                    'Password has been successfully changed!'
+                                ]
+                            });
                         }
                     });
                 }
@@ -240,9 +295,12 @@ function handle(socket, io) {
        if(sentUserName !== undefined) {
             manager.verifyUser(sentUserName, function(err, user) {
                 if(err || user === null) {
-                    socket.emit('message', { text : ['Failed to verify user'] });
+                    socket.emit('message',
+                        { text : ['Failed to verify user'] });
                 } else {
-                    socket.emit('message', { text : ['User ' + user.userName + ' has been verified']})
+                    socket.emit('message', {
+                        text : ['User ' + user.userName + ' has been verified']
+                    });
                 }
             });
        }
@@ -251,9 +309,11 @@ function handle(socket, io) {
     socket.on('verifyAllUsers', function() {
         manager.verifyAllUsers(function(err, user) {
             if(err || user === null) {
-                socket.emit('message', { text : ['Failed to verify all users'] });
+                socket.emit('message',
+                    { text : ['Failed to verify all users'] });
             } else {
-                socket.emit('message', { text : ['Users have been verified']})
+                socket.emit('message',
+                    { text : ['Users have been verified']});
             }
         });
     });
@@ -261,7 +321,8 @@ function handle(socket, io) {
     socket.on('unverifiedUsers', function() {
         manager.getUnverifiedUsers(function(err, users) {
             if(err || users === null) {
-                socket.emit('message', { text : ['Failed to get unverified users'] });
+                socket.emit('message',
+                    { text : ['Failed to get unverified users'] });
             } else{
                 let usersString = '';
 
@@ -285,14 +346,23 @@ function handle(socket, io) {
            } else {
                const bannedSocketId = user.socketId;
 
-               socket.emit('message', { text : ['User' + sentUserName + ' has been banned'] });
+               socket.emit('message', {
+                   text : ['User' + sentUserName + ' has been banned']
+               });
 
-               manager.updateUserSocketId(sentUserName, '', function(err, user) {
+               manager.updateUserSocketId(sentUserName, '',
+                                          function(err, user) {
                    if(err || user === null) {
-                       socket.emit('message', { text : ['Failed to disconnect user ' + sentUserName] });
+                       socket.emit('message', {
+                           text : ['Failed to disconnect user ' + sentUserName]
+                       });
                    } else {
                        socket.to(bannedSocketId).emit('ban');
-                       socket.emit('message', { text : ['User ' + sentUserName + ' has been disconnected'] });
+                       socket.emit('message', {
+                           text : [
+                               'User ' + sentUserName + ' has been disconnected'
+                           ]
+                       });
                    }
                });
            }
@@ -304,7 +374,9 @@ function handle(socket, io) {
             if(err || user === null) {
                 socket.emit('message', { text : ['Failed to unban user'] });
             } else {
-                socket.emit('message', { text : ['Ban on user ' + sentUserName + ' has been removed'] });
+                socket.emit('message', {
+                    text : ['Ban on user ' + sentUserName + ' has been removed']
+                });
             }
         });
     });
@@ -312,7 +384,9 @@ function handle(socket, io) {
     socket.on('bannedUsers', function() {
         manager.getBannedUsers(function(err, users) {
             if(err || users === null) {
-                socket.emit('message', { text : ['Failed to get all banned users'] });
+                socket.emit('message', {
+                    text : ['Failed to get all banned users']
+                });
             } else {
                 let usersString = '';
 

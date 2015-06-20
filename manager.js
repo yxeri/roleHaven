@@ -1,7 +1,7 @@
 'use strict';
 
 const mongoose = require('mongoose');
-const db = mongoose.connect('mongodb://localhost/bbr2', function(err) {
+mongoose.connect('mongodb://localhost/bbr2', function(err) {
     if(err) {
         console.log('Failed to connect to database', err);
     } else {
@@ -42,13 +42,13 @@ const historySchema = new mongoose.Schema({
         user : String
     }]
 }, { collection : 'histories' });
-const commandSchema = new mongoose.Schema({
-    commandName : String,
-    func : {},
-    help : [String],
-    instructions : [String],
-    clearAfterUse : Boolean
-}, { collection : 'commands' });
+//const commandSchema = new mongoose.Schema({
+//    commandName : String,
+//    func : {},
+//    help : [String],
+//    instructions : [String],
+//    clearAfterUse : Boolean
+//}, { collection : 'commands' });
 
 // Blodsband specific schemas
 const entitySchema = new mongoose.Schema({
@@ -64,7 +64,6 @@ const encryptionKeySchema = new mongoose.Schema({
 
 const User = mongoose.model('User', userSchema);
 const Room = mongoose.model('Room', roomSchema);
-const Command = mongoose.model('Command', commandSchema);
 const History = mongoose.model('History', historySchema);
 // Blodsband specific
 const Entity = mongoose.model('Entity', entitySchema);
@@ -76,8 +75,9 @@ function addEncryptionKey() {
 
 function addEntity(entity, callback) {
     const newEntity = new Entity(entity);
+    const query = { entityName : entity.entityName };
 
-    Entity.findOne({ entityName : sentEntityName }).lean().exec(function(err, entity) {
+    Entity.findOne(query).lean().exec(function(err, entity) {
         if(err) {
             console.log('Failed to find an entity', err);
         } else if(entity === null) {
@@ -87,7 +87,7 @@ function addEntity(entity, callback) {
                 }
 
                 callback(err, newEntity);
-            })
+            });
         } else {
             callback(err, null);
         }
@@ -95,19 +95,36 @@ function addEntity(entity, callback) {
 }
 
 function unlockEntity(sentKey, sentEntityName, sentUserName, callback) {
-    EncryptionKey.findOneAndUpdate({ key : sentKey, used : false }, { used : true, usedBy : sentUserName }).lean().exec(function(err, key) {
+    const keyQuery = { key : sentKey, used : false };
+    const keyUpdate = { used : true, usedBy : sentUserName };
+
+    EncryptionKey.findOneAndUpdate(keyQuery, keyUpdate).lean().
+        exec(function(err, key) {
         if(err || key === null) {
             console.log('Failed to update key', sentKey, err);
             callback(err, null);
         } else {
-            Entity.findOneAndUpdate({ entityName : sentEntityName }, { $addToSet : { keys : key.key } }).lean().exec(function(err, entity) {
+            const entityQuery = { entityName : sentEntityName };
+            const entityUpdate = { $addToSet : { keys : key.key } };
+
+            Entity.findOneAndUpdate(
+                entityQuery, entityUpdate
+            ).lean().exec(function(err, entity) {
                 if(err || entity === null) {
+                    const rollbackQuery = { key : sentKey };
+                    const rollbackUpdate = { used : false, usedBy : '' };
+
                     console.log('Failed to find and update entity', err);
 
                     // Rollback
-                    EncryptionKey.findOneAndUpdate({ key : sentKey }, { used : false, usedBy : '' }).lean().exec(function(err, key) {
+                    EncryptionKey.findOneAndUpdate(
+                        rollbackQuery, rollbackUpdate
+                    ).lean().exec(function(err) {
                         if(err) {
-                            console.log('Failed to do a rollback on key', sentKey);
+                            console.log(
+                                'Failed to do a rollback on key',
+                                sentKey
+                            );
                         }
                     });
                 }
@@ -119,7 +136,9 @@ function unlockEntity(sentKey, sentEntityName, sentUserName, callback) {
 }
 
 function getAllEntities(callback) {
-    Entity.find().sort({ entityName : 1 }).lean().exec(function(err, entities) {
+    const sort = { entityName : 1 };
+
+    Entity.find().sort(sort).lean().exec(function(err, entities) {
         if(err || entities === null) {
             console.log('Failed to get all entities', err);
         }
@@ -129,7 +148,9 @@ function getAllEntities(callback) {
 }
 
 function getEncryptionKey(sentKey, callback) {
-    EncryptionKey.findOne({ key : sentKey }).lean().exec(function(err, key) {
+    const query = { key : sentKey };
+
+    EncryptionKey.findOne(query).lean().exec(function(err, key) {
         if(err) {
             console.log('Failed to get encryption key', err);
         }
@@ -139,17 +160,23 @@ function getEncryptionKey(sentKey, callback) {
 }
 
 function getUserById(sentSocketId, callback) {
-    User.findOne({ socketId : sentSocketId }).lean().exec(function(err, user) {
+    const query = { socketId : sentSocketId };
+
+    User.findOne(query).lean().exec(function(err, user) {
         if(err) {
             console.log('Failed to get user', err);
         }
 
-        callback(err, user)
+        callback(err, user);
     });
 }
 
 function authUser(sentUserName, sentPassword, callback) {
-    User.findOne({ $and : [{ userName : sentUserName }, { password : sentPassword }] }).lean().exec(function(err, user) {
+    const query = {
+        $and : [{ userName : sentUserName }, { password : sentPassword }]
+    };
+
+    User.findOne(query).lean().exec(function(err, user) {
         if(err) {
             console.log('Failed to login', err);
         }
@@ -160,8 +187,9 @@ function authUser(sentUserName, sentPassword, callback) {
 
 function addUser(user, callback) {
     const newUser = new User(user);
+    const query = { userName : user.userName };
 
-    User.findOne({ userName : user.userName }).lean().exec(function(err, user) {
+    User.findOne(query).lean().exec(function(err, user) {
         if(err) {
             console.log('Failed to find user');
         } else if(user === null) {
@@ -179,7 +207,10 @@ function addUser(user, callback) {
 }
 
 function addMsgToHistory(sentRoomName, sentMessage, callback) {
-    History.findOneAndUpdate({ roomName : sentRoomName }, { $push : { messages : sentMessage } }).lean().exec(function(err, history) {
+    const query = { roomName : sentRoomName };
+    const update = { $push : { messages : sentMessage } };
+
+    History.findOneAndUpdate(query, update).lean().exec(function(err, history) {
         if(err) {
             console.log('Failed to add message to history', err);
         }
@@ -188,8 +219,10 @@ function addMsgToHistory(sentRoomName, sentMessage, callback) {
     });
 }
 
-function getHistoryFromRoom(sentRoomName, length, callback) {
-    History.find({ roomName : sentRoomName }).lean().exec(function(err, history) {
+function getHistoryFromRoom(sentRoomName, callback) {
+    const query = { roomName : sentRoomName };
+
+    History.find(query).lean().exec(function(err, history) {
         if(err) {
             console.log('Failed to get history', err);
         }
@@ -199,7 +232,9 @@ function getHistoryFromRoom(sentRoomName, length, callback) {
 }
 
 function getUserHistory(rooms, callback) {
-    History.find({ roomName : { $in : rooms } }).lean().exec(function(err, history) {
+    const query = { roomName : { $in : rooms } };
+
+    History.find(query).lean().exec(function(err, history) {
         if(err) {
             console.log('Failed to retrieve all history from', rooms);
         }
@@ -209,7 +244,10 @@ function getUserHistory(rooms, callback) {
 }
 
 function updateUserSocketId(sentUserName, value, callback) {
-    User.findOneAndUpdate({ userName : sentUserName }, { socketId : value }).lean().exec(function(err, user) {
+    const query = { userName : sentUserName };
+    const update = { socketId : value };
+
+    User.findOneAndUpdate(query, update).lean().exec(function(err, user) {
         if(err) {
             console.log('Failed to update user', err);
         }
@@ -219,7 +257,10 @@ function updateUserSocketId(sentUserName, value, callback) {
 }
 
 function updateUserLocation(sentUserName, sentPosition, callback) {
-    User.findOneAndUpdate({ userName : sentUserName }, { position : sentPosition }).lean().exec(function(err) {
+    const query = { userName : sentUserName };
+    const update = { position : sentPosition };
+
+    User.findOneAndUpdate(query, update).lean().exec(function(err) {
         if(err) {
             console.log('Failed to update user', err);
         }
@@ -229,7 +270,10 @@ function updateUserLocation(sentUserName, sentPosition, callback) {
 }
 
 function updateUserPassword(sentUserName, newPassword, callback) {
-    User.findOneAndUpdate({ userName : sentUserName }, { password : newPassword }).lean().exec(function(err, user) {
+    const query = { userName : sentUserName };
+    var update = { password : newPassword };
+
+    User.findOneAndUpdate(query, update).lean().exec(function(err, user) {
         if(err) {
             console.log('Failed to update password', err);
         }
@@ -239,7 +283,10 @@ function updateUserPassword(sentUserName, newPassword, callback) {
 }
 
 function verifyUser(sentUserName, callback) {
-    User.findOneAndUpdate({ userName : sentUserName }, { verified : true }).lean().exec(function(err, user) {
+    const query = { userName : sentUserName };
+    const newVarupdate = { verified : true };
+
+    User.findOneAndUpdate(query, newVarupdate).lean().exec(function(err, user) {
         if(err) {
             console.log('Failed to verify user', err);
         }
@@ -249,7 +296,11 @@ function verifyUser(sentUserName, callback) {
 }
 
 function verifyAllUsers(callback) {
-    User.update({ verified : false }, { $set : { verified : true } }, { multi : true }).lean().exec(function(err) {
+    const query = { verified : false };
+    const update = { $set : { verified : true } };
+    const options = { multi : true };
+
+    User.update(query, update, options).lean().exec(function(err) {
         if(err) {
             console.log('Failed to verify all user', err);
         }
@@ -259,7 +310,14 @@ function verifyAllUsers(callback) {
 }
 
 function authUserToRoom(sentUser, sentRoomName, sentPassword, callback) {
-    Room.findOne({ $and : [{ accessLevel : { $lte : sentUser.accessLevel } }, { roomName : sentRoomName }, { password : sentPassword }] }).lean().exec(function(err, room) {
+    const query = {
+        $and : [
+            { accessLevel : { $lte : sentUser.accessLevel } },
+            { roomName : sentRoomName }, { password : sentPassword }
+        ]
+    };
+
+    Room.findOne(query).lean().exec(function(err, room) {
         if(err) {
             console.log('Failed to check auth against room', err);
         }
@@ -270,19 +328,24 @@ function authUserToRoom(sentUser, sentRoomName, sentPassword, callback) {
 
 function createRoom(sentRoom, callback) {
     const newRoom = new Room(sentRoom);
-    const newHistory = new History({ roomName : sentRoom.roomName });
+    const query = { roomName : sentRoom.roomName };
+    const newHistory = new History(query);
 
     // Checks if room already exists
-    Room.findOne({ roomName : sentRoom.roomName }).lean().exec(function(err, room) {
+    Room.findOne(query).lean().exec(function(err, room) {
         if(err) {
             console.log('Failed to find if room already exists', err);
             // Room doesn't exist in the collection, so let's add it!
         } else if(room === null) {
             // Checks if history for room already exists
-            History.findOne({ roomName : sentRoom.roomName }).lean().exec(function(err, history) {
+            History.findOne(query).lean().exec(function(err, history) {
                 if(err) {
-                    console.log('Failed to find if history already exists', err);
-                    // History doesn't exist in the collection, so let's add it and the room!
+                    console.log(
+                        'Failed to find if history already exists',
+                        err
+                    );
+                    // History doesn't exist in the collection, so let's
+                    // add it and the room!
                 } else if(history === null) {
                     newHistory.save(function(err, newHistory) {
                         if(err || newHistory === null) {
@@ -306,7 +369,10 @@ function createRoom(sentRoom, callback) {
 }
 
 function getAllUsers(sentUser, callback) {
-    User.find({ visibility : { $lte : sentUser.accessLevel } }).sort({ userName : 1 }).lean().exec(function(err, users) {
+    const query = { visibility : { $lte : sentUser.accessLevel } };
+    const sort = { userName : 1 };
+
+    User.find(query).sort(sort).lean().exec(function(err, users) {
         if(err) {
             console.log('Failed to list users', err);
         }
@@ -316,7 +382,10 @@ function getAllUsers(sentUser, callback) {
 }
 
 function getAllRooms(sentUser, callback) {
-    Room.find({ visibility : { $lte : sentUser.accessLevel } }).sort({ roomName : 1 }).lean().exec(function(err, rooms) {
+    const query = { visibility : { $lte : sentUser.accessLevel } };
+    const sort = { roomName : 1 };
+
+    Room.find(query).sort(sort).lean().exec(function(err, rooms) {
         if(err) {
             console.log('Failed to list rooms', err);
         }
@@ -326,7 +395,10 @@ function getAllRooms(sentUser, callback) {
 }
 
 function getAllUserLocations(sentUser, callback) {
-    User.find({ visibility : { $lte : sentUser.accessLevel } }).sort({ userName : 1 }).lean().exec(function(err, users) {
+    const query = { visibility : { $lte : sentUser.accessLevel } };
+    const sort = { userName : 1 };
+
+    User.find(query).sort(sort).lean().exec(function(err, users) {
         if(err) {
             console.log('Failed to get all user locations', err);
         }
@@ -336,7 +408,12 @@ function getAllUserLocations(sentUser, callback) {
 }
 
 function getUserLocation(sentUser, sentUserName, callback) {
-    User.findOne({ $and : [{ visibility : { $lte : sentUser.accessLevel } }, { userName : sentUserName }] }).lean().exec(function(err, user) {
+    const query = {
+        $and : [{ visibility : { $lte : sentUser.accessLevel } },
+            { userName : sentUserName }]
+    };
+
+    User.findOne(query).lean().exec(function(err, user) {
         if(err) {
             console.log('Failed to get all user locations', err);
         }
@@ -346,7 +423,10 @@ function getUserLocation(sentUser, sentUserName, callback) {
 }
 
 function addRoomToUser(sentUserName, sentRoomName, callback) {
-    User.findOneAndUpdate({ userName : sentUserName }, { $addToSet : { rooms : sentRoomName } }).lean().exec(function(err, user) {
+    const query = { userName : sentUserName };
+    const update = { $addToSet : { rooms : sentRoomName } };
+
+    User.findOneAndUpdate(query, update).lean().exec(function(err) {
         if(err) {
             console.log('Failed to add room to user', err);
         }
@@ -356,7 +436,10 @@ function addRoomToUser(sentUserName, sentRoomName, callback) {
 }
 
 function removeRoomFromUser(sentUserName, sentRoomName, callback) {
-    User.findOneAndUpdate({ userName : sentUserName }, { $pull : { rooms : sentRoomName } }).lean().exec(function(err, user) {
+    const query = { userName : sentUserName };
+    const update = { $pull : { rooms : sentRoomName } };
+
+    User.findOneAndUpdate(query, update).lean().exec(function(err, user) {
         if(err) {
             console.log('Failed to remove room from user', err);
         }
@@ -366,7 +449,10 @@ function removeRoomFromUser(sentUserName, sentRoomName, callback) {
 }
 
 function setUserLastOnline(sentUserName, sentDate, callback) {
-    User.findOneAndUpdate({ userName : sentUserName }, { lastOnline : sentDate }).lean().exec(function(err, user) {
+    const query = { userName : sentUserName };
+    const update = { lastOnline : sentDate };
+
+    User.findOneAndUpdate(query, update).lean().exec(function(err, user) {
         if(err) {
             console.log('Failed to update last online on', sentUserName, err);
         }
@@ -378,7 +464,11 @@ function setUserLastOnline(sentUserName, sentDate, callback) {
 }
 
 function getUnverifiedUsers(callback) {
-    User.find({ verified : false }, { userName : 1, _id : 0 }).sort({ userName : 1 }).lean().exec(function(err, users) {
+    const query = { verified : false };
+    const filter = { userName : 1, _id : 0 };
+    const sort = { userName : 1 };
+
+    User.find(query, filter).sort(sort).lean().exec(function(err, users) {
         if(err) {
             console.log('Failed to get unverified users', err);
         }
@@ -388,7 +478,10 @@ function getUnverifiedUsers(callback) {
 }
 
 function banUser(sentUserName, callback) {
-    User.findOneAndUpdate({ userName : sentUserName }, { banned : true, socketId : '' }).lean().exec(function(err, user) {
+    const query = { userName : sentUserName };
+    const update = { banned : true, socketId : '' };
+
+    User.findOneAndUpdate(query, update).lean().exec(function(err, user) {
         if(err) {
             console.log('Failed to ban user', err);
         }
@@ -398,7 +491,10 @@ function banUser(sentUserName, callback) {
 }
 
 function unbanUser(sentUserName, callback) {
-    User.findOneAndUpdate({ userName : sentUserName }, { banned : false }).lean().exec(function(err, user) {
+    const query = { userName : sentUserName };
+    const update = { banned : false };
+
+    User.findOneAndUpdate(query, update).lean().exec(function(err, user) {
         if(err) {
             console.log('Failed to unban user', err);
         }
@@ -408,7 +504,11 @@ function unbanUser(sentUserName, callback) {
 }
 
 function getBannedUsers(callback) {
-    User.find({ banned : true }, { userName : 1, _id : 0 }).sort({ userName : 1 }).lean().exec(function(err, users) {
+    const query = { banned : true };
+    const filter = { userName : 1, _id : 0 };
+    const sort = { userName : 1 };
+
+    User.find(query, filter).sort(sort).lean().exec(function(err, users) {
         if(err) {
             console.log('Failed to get banned users', err);
         }

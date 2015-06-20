@@ -9,7 +9,7 @@ function htmlMinify(inPath, outPath) {
     fs.readFile(inPath, 'utf8', function(readError, readFile) {
         if(readError) {
             //TODO Change to proper logging
-            console.log('ReadError', readError)
+            console.log('ReadError', readError);
         } else {
             const minifyConfig = {
                 removeComments : true,
@@ -18,9 +18,10 @@ function htmlMinify(inPath, outPath) {
                 collapseWhitespace : true,
                 minifyJS : true,
                 minifyCSS : true
-            }
+            };
 
-            fs.writeFile(outPath, htmlMinifier.minify(readFile, minifyConfig), function(writeError) {
+            fs.writeFile(outPath, htmlMinifier.minify(readFile, minifyConfig),
+                         function(writeError) {
                 if(writeError) {
                     //TODO Change to proper logging
                     console.log('WriteError', writeError);
@@ -37,10 +38,10 @@ function nodeMinify(inPath, outPath, minifierType) {
         fileOut : outPath,
         callback : function(err) {
             if(err) {
-                console.log("Minify error", err);
+                console.log('Minify error', err);
             }
 
-            console.log("Minified " + inPath);
+            console.log('Minified ' + inPath);
         }
     });
 }
@@ -59,9 +60,9 @@ function minifyDir(inPath, outPath, extension) {
                     if(extension === 'html') {
                         htmlMinify(fullInPath, fullOutPath);
                     } else if(extension === 'js') {
-                        nodeMinify(fullInPath, fullOutPath, "uglifyjs");
+                        nodeMinify(fullInPath, fullOutPath, 'uglifyjs');
                     } else if(extension === 'css') {
-                        nodeMinify(fullInPath, fullOutPath, "sqwish")
+                        nodeMinify(fullInPath, fullOutPath, 'sqwish');
                     }
                 }
             });
@@ -75,9 +76,9 @@ function minifyFile(filePath, outPath) {
     if(extension === 'html') {
         htmlMinify(filePath, outPath);
     } else if(extension === 'js') {
-        nodeMinify(filePath, outPath, "uglifyjs");
+        nodeMinify(filePath, outPath, 'uglifyjs');
     } else if(extension === 'css') {
-        nodeMinify(filePath, outPath, "sqwish")
+        nodeMinify(filePath, outPath, 'sqwish');
     }
 }
 

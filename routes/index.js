@@ -25,9 +25,12 @@ function handle(io) {
         socket.on('disconnect', function() {
             manager.getUserById(socket.id, function(err, user) {
                 if(err || user === null) {
-                    console.log('User has disconnected. Couldn\'t retrieve user name');
+                    console.log(
+                        'User has disconnected. Couldn\'t retrieve user name'
+                    );
                 } else {
-                    manager.setUserLastOnline(user.userName, new Date(), function(err, user) {
+                    manager.setUserLastOnline(user.userName, new Date(),
+                                              function(err, user) {
                         if(err || user === null) {
                             console.log('Failed to set last online');
                         }
@@ -42,28 +45,39 @@ function handle(io) {
         socket.on('locate', function(sentUserName) {
             manager.getUserById(socket.id, function(err, user) {
                 if(err || user === null) {
-                    socket.emit('message', { text : ['Failed to get user location'] });
+                    socket.emit('message', {
+                        text : ['Failed to get user location']
+                    });
                 } else {
                     // Return all user locations
                     if(sentUserName === '*') {
                         manager.getAllUserLocations(user, function(err, users) {
                             if(err || users === null) {
-                                socket.emit('message', { text : ['Failed to get user location'] });
+                                socket.emit('message', {
+                                    text : ['Failed to get user location']
+                                });
                             } else {
                                 const locationData = {};
 
                                 for(let i = 0; i < users.length; i++) {
                                     const currentUser = users[i];
+                                    const position = currentUser.position;
                                     const userName = currentUser.userName;
-
-                                    locationData[userName] = {};
+                                    const locObj = {};
 
                                     if(users[i].position !== undefined) {
-                                        locationData[userName].coords = {};
-                                        locationData[userName].lastSeen = new Date(currentUser.position.timestamp);
-                                        locationData[userName].coords.latitude = currentUser.position.latitude;
-                                        locationData[userName].coords.longitude = currentUser.position.longitude;
-                                        locationData[userName].coords.heading = currentUser.position.heading;
+                                        const coords = {};
+                                        const lastSeen =
+                                            new Date(position.timestamp);
+
+                                        coords.latitude = position.latitude;
+                                        coords.longitude = position.longitude;
+                                        coords.heading = position.heading;
+
+                                        locObj.lastSeen = lastSeen;
+                                        locObj.coords = coords;
+
+                                        locationData[userName] = locObj;
                                     }
                                 }
 
@@ -71,24 +85,34 @@ function handle(io) {
                             }
                         });
                     } else {
-                        manager.getUserLocation(user, sentUserName, function(err, user) {
+                        manager.getUserLocation(user, sentUserName,
+                                                function(err, user) {
                             if(err || user === null) {
-                                socket.emit('message', { text : ['Failed to get user location'] });
+                                socket.emit('message', {
+                                    text : ['Failed to get user location']
+                                });
                             } else if(user.position !== undefined) {
-                                const locationData = {};
                                 const userName = user.userName;
+                                const position = user.position;
+                                const lastSeen = new Date(position.timestamp);
+                                const locationData = {};
+                                const locObj = {};
+                                const coords = {};
 
-                                locationData[userName] = {};
-                                locationData[userName].coords = {};
+                                coords.latitude = position.latitude;
+                                coords.longitude = position.longitude;
+                                coords.heading = position.heading;
 
-                                locationData[userName].lastSeen = new Date(user.position.timestamp);
-                                locationData[userName].coords.latitude = user.position.latitude;
-                                locationData[userName].coords.longitude = user.position.longitude;
-                                locationData[userName].coords.heading = user.position.heading;
+                                locObj.lastSeen = lastSeen;
+                                locObj.coords = coords;
+
+                                locationData[userName] = locObj;
 
                                 socket.emit('locationMsg', locationData);
                             } else {
-                                socket.emit('message', { text : ['Unable to locate ' + sentUserName] });
+                                socket.emit('message', {
+                                    text : ['Unable to locate ' + sentUserName]
+                                });
                             }
                         });
                     }
@@ -98,7 +122,7 @@ function handle(io) {
 
         socket.on('time', function() {
             socket.emit('time', new Date());
-        })
+        });
     });
 
     return router;

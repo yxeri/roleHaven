@@ -7,9 +7,21 @@ const path = require('path');
 const minifier = require('../minifier.js');
 const config = require('../config/config.js');
 
-minifier.minifyDir(path.resolve(config.privatePaths.views), path.resolve(config.publicPaths.views), 'html');
-minifier.minifyDir(path.resolve(config.privatePaths.styles), path.resolve(config.publicPaths.styles), 'css');
-minifier.minifyDir(path.resolve(config.privatePaths.scripts), path.resolve(config.publicPaths.scripts), 'js');
+minifier.minifyDir(
+    path.resolve(config.privatePaths.views),
+    path.resolve(config.publicPaths.views),
+    'html'
+);
+minifier.minifyDir(
+    path.resolve(config.privatePaths.styles),
+    path.resolve(config.publicPaths.styles),
+    'css'
+);
+minifier.minifyDir(
+    path.resolve(config.privatePaths.scripts),
+    path.resolve(config.publicPaths.scripts),
+    'js'
+);
 
 app.set('port', process.env.PORT || 8888);
 
