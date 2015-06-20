@@ -1,3 +1,5 @@
+'use strict';
+
 const mongoose = require('mongoose');
 const db = mongoose.connect('mongodb://localhost/bbr2', function(err) {
     if(err) {

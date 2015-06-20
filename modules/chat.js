@@ -1,3 +1,5 @@
+'use strict';
+
 const manager = require('../manager');
 
 const messageSort = function(a, b) {

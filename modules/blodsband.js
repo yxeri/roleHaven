@@ -1,3 +1,5 @@
+'use strict';
+
 const manager = require('../manager');
 
 function handle(socket) {

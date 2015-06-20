@@ -1,4 +1,6 @@
 #!/usr/bin/env node
+'use strict';
+
 const debug = require('debug')('roleHaven');
 const app = require('../app');
 const path = require('path');
