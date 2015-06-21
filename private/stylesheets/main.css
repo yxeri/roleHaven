@@ -47,8 +47,6 @@ pre {
     cursor: none;
     width: 100%;
     height: 100vh;
-    /*-webkit-animation: textLight 10s linear infinite;
-    animation: textLight 10s linear infinite;*/
 }
 
 #background:before {
@@ -60,10 +58,8 @@ pre {
     background: linear-gradient(#A0E6A0 50%, black 50%);
     background-size: 100% 5px;
     opacity: .11;
-    -webkit-box-shadow: inset 0 0 60px 5px #000000;
+    -webkit-box-shadow: inset 0 0 40px 10px #000000;
     box-shadow: inset 0 0 40px 10px #000000;
-    /*-webkit-animation: light 10s linear infinite;
-    animation: light 10s linear infinite;*/
 }
 
 #mode {
@@ -119,34 +115,6 @@ pre {
     }
 }
 
-/*@-webkit-keyframes light {
-    0%      { opacity: .11; }
-    25%     { opacity: .17; }
-    50%     { opacity: .10; }
-    75%     { opacity: .03; }
-    100%    { opacity: .11; }
-}
-
-@keyframes light {
-    0%      { opacity: .11; }
-    25%     { opacity: .17; }
-    50%     { opacity: .10; }
-    75%     { opacity: .03; }
-    100%    { opacity: .11; }
-}
-
-@-webkit-keyframes textLight {
-    25%     { opacity: .85; }
-    50%     { opacity: .75; }
-    75%     { opacity: .65; }
-}
-
-@keyframes textLight {
-    25%     { opacity: .85; }
-    50%     { opacity: .75; }
-    75%     { opacity: .65; }
-}*/
-
 @media (max-height: 768px) and (max-width: 1024px) {
     .feed {
         padding-left: .5em;
@@ -170,14 +138,4 @@ pre {
     .logo {
         font-size: .1em;
     }
-
-    /*#main {
-        -webkit-animation: none;
-        animation: none;
-    }
-
-    #main:before {
-        -webkit-animation: none;
-        animation: none;
-    }*/
 }
