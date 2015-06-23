@@ -689,13 +689,13 @@ var validCmds = {
                         platformCmds.queueMessage({
                             text : ['Key has already been used. Aborting']
                         });
-                        setCommand(null);
+                        resetCommand();
                     }
                 } else {
                     platformCmds.queueMessage({
                         text : ['The key is invalid. Aborting']
                     });
-                    setCommand(null);
+                    resetCommand();
                 }
             },
             function() {
@@ -727,7 +727,7 @@ var validCmds = {
                             'Thank you for using EHA'
                         ]
                     });
-                    setCommand(null);
+                    resetCommand();
                 } else {
                     platformCmds.queueMessage({
                         text : [
@@ -736,7 +736,7 @@ var validCmds = {
                             'Aborting'
                         ]
                     });
-                    setCommand(null);
+                    resetCommand();
                 }
             }
         ],
@@ -1059,6 +1059,11 @@ var validCmds = {
         },
         steps : [
             function() {
+                var timeout = 10000;
+                var timerEnded = function() {
+                    resetCommand();
+                };
+
                 platformCmds.queueMessage({
                     text : [
                         'Activating cracking bot....',
@@ -1069,6 +1074,7 @@ var validCmds = {
                 });
                 setInputStart('Verify seq');
                 cmdHelper.data.code = cmdHelper.data.randomizer(10);
+                cmdHelper.data.timer = setTimeout(timerEnded, 10000);
                 cmdHelper.onStep++;
                 platformCmds.queueMessage({
                     text : ['Sequence: ' + cmdHelper.data.code]
@@ -1103,9 +1109,6 @@ var validCmds = {
                         ]
                     }));
                 }
-            },
-            function() {
-
             }
         ],
         help : [
@@ -1479,10 +1482,7 @@ function keyPress(event) {
                     var phrase = trimSpace(getInputText().toLowerCase());
 
                     if(phrase === 'exit' || phrase === 'abort') {
-                        setCommand(null);
-                        platformCmds.queueMessage({
-                            text : ['Aborting command']
-                        });
+                        resetCommand();
                     } else {
                         platformCmds.queueMessage({
                             text : [phrase]
@@ -1531,8 +1531,10 @@ function keyPress(event) {
                             // after use
                             if(!command.clearAfterUse) {
                                 var cmdUsedMsg = {
-                                    text : [getInputStart() + getMode() + '$ ' +
-                                            getInputText()]
+                                    text : [
+                                        getInputStart() + getMode() + '$ ' +
+                                            getInputText()
+                                    ]
                                 };
 
                                 platformCmds.queueMessage(cmdUsedMsg);
@@ -1627,13 +1629,18 @@ function setRoom(roomName) {
 
 function setCommand(sentCommand) {
     cmdHelper.command = sentCommand;
+}
 
-    if(sentCommand === null) {
-        cmdHelper.onStep = 0;
-        cmdHelper.maxSteps = 0;
-        setInputStart(platformCmds.getLocalVal('room'));
-        cmdHelper.keyboardBlocked = false;
-    }
+function resetCommand() {
+    cmdHelper.command = null;
+    cmdHelper.onStep = 0;
+    cmdHelper.maxSteps = 0;
+    setInputStart(platformCmds.getLocalVal('room'));
+    cmdHelper.keyboardBlocked = false;
+
+    platformCmds.queueMessage({
+        text : ['Aborting command']
+    });
 }
 
 function setMode(text) {
@@ -2010,7 +2017,7 @@ function startSocketListeners() {
         });
 
         socket.on('commandFail', function() {
-            setCommand(null);
+            resetCommand();
         });
 
         socket.on('reconnectSuccess', function(data) {
