@@ -1066,6 +1066,12 @@ var validCmds = {
         },
         steps : [
             function() {
+                platformCmds.queueMessage({
+                    text : ['Checking room access...']
+                });
+                socket.emit('roomHackable', cmdHelper.data.roomName);
+            },
+            function() {
                 var timeout = 15000;
                 var timerEnded = function() {
                     platformCmds.queueMessage({

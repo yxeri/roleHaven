@@ -402,6 +402,18 @@ function getAllUsers(sentUser, callback) {
     });
 }
 
+function getRoom(sentRoomName, callback) {
+    const query = { roomName : sentRoomName };
+
+    Room.findOne(query).lean().exec(function(err, room) {
+        if(err) {
+            console.log('Failed to get room ', sentRoomName, err);
+        }
+
+        callback(err, room);
+    });
+}
+
 function getAllRooms(sentUser, callback) {
     const query = { visibility : { $lte : sentUser.accessLevel } };
     const sort = { roomName : 1 };
@@ -594,6 +606,7 @@ exports.unbanUser = unbanUser;
 exports.getBannedUsers = getBannedUsers;
 exports.addEvent = addEvent;
 exports.getPassedEvents = getPassedEvents;
+exports.getRoom = getRoom;
 
 //Blodsband specific
 exports.addEncryptionKey = addEncryptionKey;

@@ -306,6 +306,21 @@ function handle(socket) {
         socket.emit('morse', data.morseCode);
     });
 
+    socket.on('roomHackable', function(roomName) {
+        manager.getRoom(roomName, function(err, room) {
+            if(err || room === null) {
+                socket.emit('message', {
+                   text : [
+                       'The room is not hackable or doesn\'t exist'
+                   ]
+                });
+                socket.emit('commandFail');
+            } else {
+                socket.emit('commandSuccess');
+            }
+        });
+    });
+
     socket.on('hackRoom', function(data) {
         const roomName = data.roomName;
 
