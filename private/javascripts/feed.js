@@ -2156,7 +2156,7 @@ function startBoot() {
     currentPosition = {};
 
     charTimeout = 2;
-    rowTimeout = 5;
+    rowTimeout = 50;
     messageQueue = [];
     charsInProgress = 0;
 

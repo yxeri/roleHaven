@@ -57,9 +57,7 @@ pre {
     background: -webkit-linear-gradient(#A0E6A0 50%, black 50%);
     background: linear-gradient(#A0E6A0 50%, black 50%);
     background-size: 100% 5px;
-    opacity: .11;
-    -webkit-box-shadow: inset 0 0 40px 10px #000000;
-    box-shadow: inset 0 0 40px 10px #000000;
+    opacity: .13;
 }
 
 #mode {
@@ -67,7 +65,16 @@ pre {
 }
 
 #mode:after {
-    content: '$'
+    content: '$';
+}
+
+#main:before {
+    content : '';
+    width: 100%;
+    height: 100vh;
+    position: fixed;
+    -webkit-box-shadow: inset 0 0 40px 2px #000000;
+    box-shadow: inset 0 0 40px 2px #000000;
 }
 
 .logo {
