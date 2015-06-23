@@ -689,13 +689,13 @@ var validCmds = {
                         platformCmds.queueMessage({
                             text : ['Key has already been used. Aborting']
                         });
-                        resetCommand();
+                        resetCommand(true);
                     }
                 } else {
                     platformCmds.queueMessage({
                         text : ['The key is invalid. Aborting']
                     });
-                    resetCommand();
+                    resetCommand(true);
                 }
             },
             function() {
@@ -727,7 +727,6 @@ var validCmds = {
                             'Thank you for using EHA'
                         ]
                     });
-                    resetCommand();
                 } else {
                     platformCmds.queueMessage({
                         text : [
@@ -736,7 +735,7 @@ var validCmds = {
                             'Aborting'
                         ]
                     });
-                    resetCommand();
+                    resetCommand(true);
                 }
             }
         ],
@@ -1010,58 +1009,83 @@ var validCmds = {
         ]
     },
     hackroom : {
-        func : function() {
+        func : function(phrases) {
             var data = {};
 
-            data.timesCracked = 0;
-            data.timesRequired = 5;
-            data.randomizer = function(length) {
-                var randomString = '0123456789abcdefghijklmnopqrstuvwxyz';
-                var code = '';
+            if(phrases.length > 0) {
+                data.roomName = phrases[0];
+                data.timesCracked = 0;
+                data.timesRequired = 3;
+                data.randomizer = function(length) {
+                    var randomString = '023456789abcdefghijkmnopqrstuvwxyz';
+                    var code = '';
 
-                for(var i = 0; i < length; i++) {
-                    code += randomString[Math.round(Math.random() *
-                                                    (randomString.length - 1))];
-                }
+                    for(var i = 0; i < length; i++) {
+                        code += randomString[Math.round(Math.random() *
+                                                        (randomString.length - 1))];
+                    }
 
-                return code;
-            };
-            cmdHelper.data = data;
+                    return code;
+                };
+                cmdHelper.data = data;
 
-            platformCmds.queueMessage({
-                text : [
-                    //'Razor1911 proudly presents:',
-                    //'Room Access Hacking! (RAH)',
-                    //'/8iybEVaC1yc2EAAAADAQABAAABAQDS//2ag4/',
-                    //'D6Rsc8OO/6wFUVDdpdAItvSCLCrc/dcE/8iybE',
-                    //'w3OtlVFnfNkOVAvhObuWO/6wFUVDdkr2yYTaDE',
-                    //'i5mB3Nz1aC1yc2buWr6QKLvfZVczAxAHPKLvfZ',
-                    //'dK2zXrxGOmOFllxiCbpGOmOFlcJy1/iCbpmA4c',
-                    //'MFvEEiKXrxGlxiCbp0miONAAvhObuWO/6ujMJH',
-                    //'JHa88/x1DVOFl/yujOMJHa88/x1DVwWl6lsjvS',
-                    //'wDDVwWl6el88/x1j5C+k/aadtg1lcvcz7Tdtve',
-                    //'k/aadtghxv595Xqw2qrvyp6GrdX/FrhObuWr6Q',
-                    //' ',
-                    //'Please wait.......',
-                    //'Command interception.........ACTIVATED',
-                    //'Oracle defense systems.......DISABLED',
-                    //'Overriding locks.............DONE',
-                    //'Connecting to database ......DONE',
-                    //' ',
-                    'You can cancel out of the command by typing "exit" or ' +
-                    '"abort"',
-                    'Press enter to continue'
-                ],
-                speed : 10
-            });
+                platformCmds.queueMessage({
+                    text : [
+                        //'Razor1911 proudly presents:',
+                        //'Room Access Hacking! (RAH)',
+                        //'/8iybEVaC1yc2EAAAADAQABAAABAQDS//2ag4/',
+                        //'D6Rsc8OO/6wFUVDdpdAItvSCLCrc/dcE/8iybE',
+                        //'w3OtlVFnfNkOVAvhObuWO/6wFUVDdkr2yYTaDE',
+                        //'i5mB3Nz1aC1yc2buWr6QKLvfZVczAxAHPKLvfZ',
+                        //'dK2zXrxGOmOFllxiCbpGOmOFlcJy1/iCbpmA4c',
+                        //'MFvEEiKXrxGlxiCbp0miONAAvhObuWO/6ujMJH',
+                        //'JHa88/x1DVOFl/yujOMJHa88/x1DVwWl6lsjvS',
+                        //'wDDVwWl6el88/x1j5C+k/aadtg1lcvcz7Tdtve',
+                        //'k/aadtghxv595Xqw2qrvyp6GrdX/FrhObuWr6Q',
+                        //' ',
+                        //'Please wait.......',
+                        //'Command interception.........ACTIVATED',
+                        //'Oracle defense systems.......DISABLED',
+                        //'Overriding locks.............DONE',
+                        //'Connecting to database ......DONE',
+                        //' ',
+                        'You can cancel out of the command by typing "exit" or ' +
+                        '"abort"',
+                        'Press enter to continue'
+                    ],
+                    speed : 10
+                });
 
-            setInputStart('Start');
+                setInputStart('Start');
+            } else {
+                platformCmds.queueMessage({
+                    text : ['You forgot to input the room name!']
+                });
+                resetCommand(true);
+            }
         },
         steps : [
             function() {
-                var timeout = 10000;
+                var timeout = 15000;
                 var timerEnded = function() {
-                    resetCommand();
+                    platformCmds.queueMessage({
+                        text : [
+                            'Your hacking attempt has been detected',
+                            'Users of the room has been sent your user name'
+                        ]
+                    });
+                    socket.emit('chatMsg', {
+                        message : {
+                            text : [
+                                'WARNING! Intrustion attempt detected!',
+                                'User ' + currentUser + ' tried breaking in'
+                            ],
+                            user : 'SYSTEM'
+                        },
+                        roomName : cmdHelper.data.roomName,
+                        skipSelfMsg : true
+                    });
+                    resetCommand(true);
                 };
 
                 platformCmds.queueMessage({
@@ -1074,7 +1098,7 @@ var validCmds = {
                 });
                 setInputStart('Verify seq');
                 cmdHelper.data.code = cmdHelper.data.randomizer(10);
-                cmdHelper.data.timer = setTimeout(timerEnded, 10000);
+                cmdHelper.data.timer = setTimeout(timerEnded, timeout);
                 cmdHelper.onStep++;
                 platformCmds.queueMessage({
                     text : ['Sequence: ' + cmdHelper.data.code]
@@ -1100,6 +1124,13 @@ var validCmds = {
                         text : ['Sequence: ' + cmdHelper.data.code]
                     });
                 } else {
+                    var data = {
+                        userName : currentUser,
+                        roomName : cmdHelper.data.roomName
+                    };
+
+                    clearTimeout(cmdHelper.data.timer);
+                    socket.emit('hackRoom', data);
                     platformCmds.queueMessage(({
                         text : [
                             'Cracking complete',
@@ -1108,14 +1139,23 @@ var validCmds = {
                             'Thank you for using RAH'
                         ]
                     }));
+                    resetCommand();
                 }
             }
         ],
         help : [
             'ERROR. UNAUTHORIZED COMMAND...AUTHORIZATION OVERRIDDEN. ' +
-            'PRINTING INSTRUCTIONS'
+            'PRINTING INSTRUCTIONS',
+            'This command lets you follow a room without knowing the password',
+            'It will also supress the following notification',
+            'Failing the hack will warn everyone in the room'
         ],
-        instructions : []
+        instructions : [
+            ' Usage:',
+            '  hackroom *room name*',
+            ' Example:',
+            '  hackroom secret'
+        ]
     }
 };
 
@@ -1482,7 +1522,7 @@ function keyPress(event) {
                     var phrase = trimSpace(getInputText().toLowerCase());
 
                     if(phrase === 'exit' || phrase === 'abort') {
-                        resetCommand();
+                        resetCommand(true);
                     } else {
                         platformCmds.queueMessage({
                             text : [phrase]
@@ -1522,11 +1562,6 @@ function keyPress(event) {
                                 JSON.stringify(cmdHistory)
                             );
 
-                            if(command.steps) {
-                                cmdHelper.command = commandName;
-                                cmdHelper.maxSteps = command.steps.length;
-                            }
-
                             // Print input if the command shouldn't clear
                             // after use
                             if(!command.clearAfterUse) {
@@ -1561,6 +1596,11 @@ function keyPress(event) {
                                     platformCmds.queueMessage(helpMsg);
                                 }
                             } else {
+                                if(command.steps) {
+                                    cmdHelper.command = commandName;
+                                    cmdHelper.maxSteps = command.steps.length;
+                                }
+
                                 command.func(phrases.splice(1));
                             }
                             // A user who is not logged in will have access
@@ -1631,16 +1671,18 @@ function setCommand(sentCommand) {
     cmdHelper.command = sentCommand;
 }
 
-function resetCommand() {
+function resetCommand(aborted) {
     cmdHelper.command = null;
     cmdHelper.onStep = 0;
     cmdHelper.maxSteps = 0;
     setInputStart(platformCmds.getLocalVal('room'));
     cmdHelper.keyboardBlocked = false;
 
-    platformCmds.queueMessage({
-        text : ['Aborting command']
-    });
+    if(aborted) {
+        platformCmds.queueMessage({
+            text : ['Aborting command']
+        });
+    }
 }
 
 function setMode(text) {
@@ -2017,7 +2059,7 @@ function startSocketListeners() {
         });
 
         socket.on('commandFail', function() {
-            resetCommand();
+            resetCommand(true);
         });
 
         socket.on('reconnectSuccess', function(data) {

@@ -7,8 +7,21 @@ const logger = require('morgan');
 const compression = require('compression');
 const fs = require('fs');
 const minifier = require('./minifier.js');
-
+const manager = require('./manager.js');
 const app = express();
+// TODO: This should be moved
+const eventsFunc = function(io) {
+    manager.getPassedEvents(function(err, events) {
+        if(err) {
+            console.log('Failed to get events', err);
+        } else if(events.length > 1) {
+            for(let i = 0; i < events.length; i++) {
+
+            }
+        }
+    });
+};
+
 app.io = socketIo();
 
 // view engine setup
@@ -52,6 +65,8 @@ app.use(function(err, req, res) {
         error : {}
     });
 });
+
+setInterval(eventsFunc, 1000, app.io);
 
 //TODO remove hardcoded paths
 function watchPrivate() {

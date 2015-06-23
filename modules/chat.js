@@ -33,7 +33,10 @@ function handle(socket) {
                 newMessage.roomName = roomName;
 
                 socket.broadcast.to(roomName).emit('chatMsg', newMessage);
-                socket.emit('message', newMessage);
+
+                if(!data.skipSelfMsg) {
+                    socket.emit('message', newMessage);
+                }
 
                 // Save the sent message in the sender's room history too,
                 // if it is a whisper
@@ -129,8 +132,7 @@ function handle(socket) {
                                     room.entered = true;
                                 }
 
-                                if(!data.suppressNotice &&
-                                   socket.rooms.indexOf(roomName) < 0) {
+                                if(socket.rooms.indexOf(roomName) < 0) {
                                     socket.broadcast.to(roomName).emit(
                                         'chatMsg', {
                                         text : [
@@ -302,6 +304,23 @@ function handle(socket) {
     socket.on('morse', function(data) {
         socket.broadcast.to(data.roomName).emit('morse', data.morseCode);
         socket.emit('morse', data.morseCode);
+    });
+
+    socket.on('hackRoom', function(data) {
+        const roomName = data.roomName;
+
+        manager.addRoomToUser(data.userName, roomName, function(err) {
+            if(err) {
+                socket.emit('message', {
+                    text : ['Failed to follow the room']
+                });
+            } else {
+                const room = { roomName : roomName };
+
+                socket.join(roomName);
+                socket.emit('follow', room);
+            }
+        });
     });
 }
 

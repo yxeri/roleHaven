@@ -49,6 +49,12 @@ const historySchema = new mongoose.Schema({
 //    instructions : [String],
 //    clearAfterUse : Boolean
 //}, { collection : 'commands' });
+const eventSchema = new mongoose.Schema({
+    receiverName : String,
+    func : {},
+    createdAt : Date,
+    endAt : Date
+}, { collection : 'events' });
 
 // Blodsband specific schemas
 const entitySchema = new mongoose.Schema({
@@ -65,6 +71,8 @@ const encryptionKeySchema = new mongoose.Schema({
 const User = mongoose.model('User', userSchema);
 const Room = mongoose.model('Room', roomSchema);
 const History = mongoose.model('History', historySchema);
+//const Command = mongoose.model('Command', commandSchema);
+const Event = mongoose.model('Event', eventSchema);
 // Blodsband specific
 const Entity = mongoose.model('Entity', entitySchema);
 const EncryptionKey = mongoose.model('EncryptionKey', encryptionKeySchema);
@@ -240,6 +248,19 @@ function getUserHistory(rooms, callback) {
         }
 
         callback(err, history);
+    });
+}
+
+function getUserByUserName(sentUserName, callback) {
+    const query = { userName : sentUserName };
+    const filter = { _id : 0, password : 0 };
+
+    User.findOne(query, filter).lean().exec(function(err, user) {
+        if(err) {
+            console.log('Failed to get user by user name ' + sentUserName, user);
+        }
+
+        callback(err, user);
     });
 }
 
@@ -517,6 +538,36 @@ function getBannedUsers(callback) {
     });
 }
 
+function addEvent(sentReceiverName, sentEndAt, callback) {
+    const now = new Date();
+    const query = {
+        receiverName : sentReceiverName,
+        createdAt : now,
+        endAt : sentEndAt
+    };
+    const newEvent = new Event(query);
+
+    newEvent.save(function(err, newEvent) {
+        if(err) {
+            console.log('Failed to save event', err);
+        }
+
+        callback(err, newEvent);
+    });
+}
+
+function getPassedEvents(callback) {
+    const now = new Date();
+
+    Event.find({ endAt : { $lte : now } }).lean().exec(function(err, events) {
+        if(err) {
+            console.log('Failed to trigger events', err);
+        }
+
+        callback(err, events);
+    });
+}
+
 exports.getUserById = getUserById;
 exports.authUser = authUser;
 exports.addUser = addUser;
@@ -541,6 +592,8 @@ exports.verifyAllUsers = verifyAllUsers;
 exports.banUser = banUser;
 exports.unbanUser = unbanUser;
 exports.getBannedUsers = getBannedUsers;
+exports.addEvent = addEvent;
+exports.getPassedEvents = getPassedEvents;
 
 //Blodsband specific
 exports.addEncryptionKey = addEncryptionKey;
