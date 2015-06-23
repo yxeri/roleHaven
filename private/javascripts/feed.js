@@ -80,7 +80,6 @@ var logo = {
     speed : 0.5,
     extraClass : 'logo',
     text : [
-        // ' ',
         // '                          ####',
         // '                ####    #########    ####',
         // '               ###########################',
@@ -154,7 +153,7 @@ var platformCmds = {
         currentUser = null;
         localStorage.removeItem('room');
         localStorage.setItem('mode', 'normalmode');
-        setInputStart('RAZ-CMD');
+        setInputStart('RAZCMD');
     },
     getCommands : function() {
         var keys = Object.keys(validCmds).sort();
@@ -1786,7 +1785,7 @@ function autoComplete() {
 }
 
 function isAllowedChar(text) {
-    return /^[a-zA-Z0-9åäöÅÄÖ/\s\-_\.,;:!"\*'\?\+=\/&\)\(]+$/g.test(text);
+    return /^[a-zA-Z0-9åäöÅÄÖ/\s\-_\.,;:!"\*'\?\+=&\)\(]+$/g.test(text);
 }
 
 function triggerAutoComplete(text) {
