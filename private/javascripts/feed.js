@@ -408,8 +408,10 @@ var validCmds = {
             platformCmds.setLocalVal('mode', 'chatmode');
             setMode('[CHAT]');
             platformCmds.queueMessage({
-                text : ['Chat mode activated',
-                        'Prepend commands with "-", e.g. "-normalmode"']
+                text : [
+                    'Chat mode activated',
+                    'Prepend commands with "-", e.g. "-normalmode"'
+                ]
             });
         },
         help : [
@@ -580,8 +582,10 @@ var validCmds = {
         func : function(phrases) {
             if(!tracking) {
                 platformCmds.queueMessage({
-                    text : ['Tracking not available',
-                            'You are not connected to the satellites']
+                    text : [
+                        'Tracking not available',
+                        'You are not connected to the satellites'
+                    ]
                 });
             } else if(phrases.length > 0) {
                 var userName = phrases[0];
