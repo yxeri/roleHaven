@@ -14,13 +14,13 @@ ul {
     padding: 0;
 }
 
+li {
+    word-wrap: break-word;
+}
+
 pre {
     padding: 0;
     margin: 0;
-}
-
-#input {
-    padding-bottom: 1em;
 }
 
 #marker {

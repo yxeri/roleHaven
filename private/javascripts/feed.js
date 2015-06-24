@@ -9,6 +9,8 @@ var marker;
 var inputText;
 var inputStart;
 var modeField;
+var spacer;
+
 var socket;
 // Timeout for print of a character (milliseconds)
 var charTimeout;
@@ -1959,7 +1961,7 @@ function addRow(text, speed, extraClass) {
         charsInProgress -= text.length;
     }
 
-    scrollView(row);
+    scrollView();
 }
 
 function addLetters(span, text, speed) {
@@ -1976,12 +1978,18 @@ function addLetters(span, text, speed) {
 // Prints one letter and decreases in progress tracker
 function printLetter(span, character) {
     var textNode = document.createTextNode(character);
+    var spanHeight = span.offsetHeight;
+
     span.appendChild(textNode);
     charsInProgress--;
+
+    if(span.offsetHeight > spanHeight) {
+        scrollView();
+    }
 }
 
-function scrollView(element) {
-    element.scrollIntoView();
+function scrollView() {
+    spacer.scrollIntoView();
 }
 
 // Takes date and returns shorter readable time
@@ -2209,6 +2217,7 @@ function startBoot() {
     inputText = document.getElementById('inputText');
     inputStart = document.getElementById('inputStart');
     modeField = document.getElementById('mode');
+    spacer = document.getElementById('spacer');
 
     cmdHistory = platformCmds.getLocalVal('cmdHistory') ?
                      JSON.parse(platformCmds.getLocalVal('cmdHistory')) : [];

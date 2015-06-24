@@ -43,7 +43,7 @@ function handle(socket, io) {
                     manager.createRoom(newRoom, function(err, room) {
                         if(err || room === null) {
                             console.log('Failed to create room for user ' +
-                                        user.userName);
+                                        user.userName, err);
                         } else {
                             manager.addRoomToUser(user.userName, room.roomName,
                                                   function(err) {
