@@ -1,7 +1,7 @@
 'use strict';
 
 const mongoose = require('mongoose');
-const dbPath = 'mongodb://localhost/bbr2:' + (process.env.DBPORT || 27017);
+const dbPath = 'mongodb://localhost:' + (process.env.DBPORT || 27017) + '/bbr2';
 mongoose.connect(dbPath, function(err) {
     if(err) {
         console.log('Failed to connect to database', err);
@@ -323,7 +323,8 @@ function authUserToRoom(sentUser, sentRoomName, sentPassword, callback) {
     const query = {
         $and : [
             { accessLevel : { $lte : sentUser.accessLevel } },
-            { roomName : sentRoomName }, { password : sentPassword }
+            { roomName : sentRoomName },
+            { password : sentPassword }
         ]
     };
 
@@ -431,8 +432,10 @@ function getAllUserLocations(sentUser, callback) {
 
 function getUserLocation(sentUser, sentUserName, callback) {
     const query = {
-        $and : [{ visibility : { $lte : sentUser.accessLevel } },
-            { userName : sentUserName }]
+        $and : [
+            { visibility : { $lte : sentUser.accessLevel } },
+            { userName : sentUserName }
+        ]
     };
 
     User.findOne(query).lean().exec(function(err, user) {
