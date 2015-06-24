@@ -1,8 +1,8 @@
 'use strict';
 
 const mongoose = require('mongoose');
-console.log(process.env.DBPORT || 27017);
-mongoose.connect('mongodb://localhost/bbr2:' + (process.env.DBPORT || 27017), function(err) {
+const dbPath = 'mongodb://localhost/bbr2:' + (process.env.DBPORT || 27017);
+mongoose.connect(dbPath, function(err) {
     if(err) {
         console.log('Failed to connect to database', err);
     } else {
@@ -33,7 +33,8 @@ const roomSchema = new mongoose.Schema({
     commands : [{
         commandName : String,
         accessLevel : Number
-    }]
+    }],
+    bannedUsers : [{ type : String, unique : true }]
 }, { collection : 'rooms' });
 const historySchema = new mongoose.Schema({
     roomName : { type : String, unique : true },
@@ -50,7 +51,7 @@ const historySchema = new mongoose.Schema({
 //    instructions : [String],
 //    clearAfterUse : Boolean
 //}, { collection : 'commands' });
-const eventSchema = new mongoose.Schema({
+const schedEventSchema = new mongoose.Schema({
     receiverName : String,
     func : {},
     createdAt : Date,
@@ -73,7 +74,7 @@ const User = mongoose.model('User', userSchema);
 const Room = mongoose.model('Room', roomSchema);
 const History = mongoose.model('History', historySchema);
 //const Command = mongoose.model('Command', commandSchema);
-const Event = mongoose.model('Event', eventSchema);
+const SchedEvent = mongoose.model('SchedEvent', schedEventSchema);
 // Blodsband specific
 const Entity = mongoose.model('Entity', entitySchema);
 const EncryptionKey = mongoose.model('EncryptionKey', encryptionKeySchema);
@@ -249,19 +250,6 @@ function getUserHistory(rooms, callback) {
         }
 
         callback(err, history);
-    });
-}
-
-function getUserByUserName(sentUserName, callback) {
-    const query = { userName : sentUserName };
-    const filter = { _id : 0, password : 0 };
-
-    User.findOne(query, filter).lean().exec(function(err, user) {
-        if(err) {
-            console.log('Failed to get user by user name ' + sentUserName, user);
-        }
-
-        callback(err, user);
     });
 }
 
@@ -524,6 +512,38 @@ function banUser(sentUserName, callback) {
     });
 }
 
+function banUserFromRoom(sentUserName, sentRoomName, callback) {
+    const query = { roomName : sentRoomName };
+    const update = { $addToSet : { bannedUsers : sentUserName } };
+
+    Room.findOneAndUpdate(query, update).lean().exec(function(err, room) {
+        if(err) {
+            console.log(
+                'Failed to ban user', sentUserName,
+                ' from room ', sentRoomName, err
+            );
+        }
+
+        callback(err, room);
+    });
+}
+
+function unbanUserFromRoom(sentUserName, sentRoomName, callback) {
+    const query = { roomName : sentRoomName };
+    const update = { $pull : { bannedUsers : sentUserName } };
+
+    Room.findOneAndUpdate(query, update).lean().exec(function(err, room) {
+        if(err) {
+            console.log(
+                'Failed to unban user', sentUserName,
+                ' from room ', sentRoomName, err
+            );
+        }
+
+        callback(err, room);
+    });
+}
+
 function unbanUser(sentUserName, callback) {
     const query = { userName : sentUserName };
     const update = { banned : false };
@@ -558,7 +578,7 @@ function addEvent(sentReceiverName, sentEndAt, callback) {
         createdAt : now,
         endAt : sentEndAt
     };
-    const newEvent = new Event(query);
+    const newEvent = new SchedEvent(query);
 
     newEvent.save(function(err, newEvent) {
         if(err) {
@@ -571,8 +591,9 @@ function addEvent(sentReceiverName, sentEndAt, callback) {
 
 function getPassedEvents(callback) {
     const now = new Date();
+    const query = { endAt : { $lte : now } };
 
-    Event.find({ endAt : { $lte : now } }).lean().exec(function(err, events) {
+    SchedEvent.find(query).lean().exec(function(err, events) {
         if(err) {
             console.log('Failed to trigger events', err);
         }
@@ -608,6 +629,8 @@ exports.getBannedUsers = getBannedUsers;
 exports.addEvent = addEvent;
 exports.getPassedEvents = getPassedEvents;
 exports.getRoom = getRoom;
+exports.banUserFromRoom = banUserFromRoom;
+exports.unbanUserFromRoom = unbanUserFromRoom;
 
 //Blodsband specific
 exports.addEncryptionKey = addEncryptionKey;
