@@ -593,6 +593,10 @@ var validCmds = {
                 var userName = phrases[0];
 
                 socket.emit('locate', userName);
+            } else {
+                platformCmds.queueMessage({
+                    text : ['You forgot to specify user!']
+                })
             }
         },
         help : [
@@ -1763,7 +1767,7 @@ function locationData() {
                     'Organica Death Squads have been sent to scour the area'
                 ], extraClass : 'importantMsg'
             });
-        });
+        }, { enableHighAccuracy : true });
     }
 }
 
