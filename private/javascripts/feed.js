@@ -1188,8 +1188,13 @@ function setGain(value) {
 }
 
 function playMorse(morseCode) {
-    function clearSoundQueue(timeouts) {
+    function finishSoundQueue(timeouts, morseCode) {
+        var cleanMorse = morseCode.replace(/#/g, '');
+
         soundQueue.splice(0, timeouts);
+        platformCmds.queueMessage({
+            text : [ 'Morse code message received:  ' + cleanMorse ]
+        });
     }
 
     if(soundQueue.length === 0) {
@@ -1220,7 +1225,8 @@ function playMorse(morseCode) {
         soundTimeout += duration;
     }
 
-    setTimeout(clearSoundQueue, soundTimeout, (2 * morseCode.length));
+    setTimeout(finishSoundQueue, soundTimeout, (2 * morseCode.length),
+        morseCode);
 }
 
 function generateMap() {
