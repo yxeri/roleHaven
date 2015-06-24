@@ -1018,11 +1018,13 @@ var validCmds = {
                 data.timesRequired = 3;
                 data.randomizer = function(length) {
                     var randomString = '023456789abcdefghijkmnopqrstuvwxyz';
+                    var randomLength = randomString.length;
                     var code = '';
 
                     for(var i = 0; i < length; i++) {
-                        code += randomString[Math.round(Math.random() *
-                                                        (randomString.length - 1))];
+                        var randomVal = Math.random() * (randomLength - 1);
+
+                        code += randomString[Math.round(randomVal)];
                     }
 
                     return code;
@@ -1049,8 +1051,8 @@ var validCmds = {
                         //'Overriding locks.............DONE',
                         //'Connecting to database ......DONE',
                         //' ',
-                        'You can cancel out of the command by typing "exit" or ' +
-                        '"abort"',
+                        'You can cancel out of the command by typing ' +
+                        '"exit" or "abort"',
                         'Press enter to continue'
                     ],
                     speed : 10
@@ -1727,6 +1729,7 @@ function locationData() {
             if(position !== undefined) {
                 // Geolocation object is empty when sent through Socket.IO
                 // This is a fix for that
+                // TODO: Duplicate code
                 var tempPosition = {};
                 tempPosition.latitude = position.coords.latitude;
                 tempPosition.longitude = position.coords.longitude;
@@ -1753,9 +1756,10 @@ function locationData() {
 }
 
 function sendLocationData() {
-    if(currentPosition !== oldPosition) {
+    if(currentUser !== null && currentPosition !== oldPosition) {
         // Geolocation object is empty when sent through Socket.IO
         // This is a fix for that
+        // TODO: Duplicate code
         var tempPosition = {};
         tempPosition.latitude = currentPosition.coords.latitude;
         tempPosition.longitude = currentPosition.coords.longitude;

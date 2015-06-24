@@ -1,7 +1,8 @@
 'use strict';
 
 const mongoose = require('mongoose');
-mongoose.connect('mongodb://localhost/bbr2', function(err) {
+console.log(process.env.DBPORT || 27017);
+mongoose.connect('mongodb://localhost/bbr2:' + (process.env.DBPORT || 27017), function(err) {
     if(err) {
         console.log('Failed to connect to database', err);
     } else {
