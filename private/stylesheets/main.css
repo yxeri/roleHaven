@@ -94,8 +94,8 @@ pre {
 }
 
 .feed {
-    padding-left: 0.5em;
-    padding-right: 0.5em;
+    padding-left: .5em;
+    padding-right: .5em;
 }
 
 .anon {
@@ -123,15 +123,15 @@ pre {
 }
 
 @media (max-height: 768px) and (max-width: 1024px) {
-    .feed {
-        padding-left: .5em;
-        padding-right: .5em;
-    }
 }
 
 @media (max-height: 736px) and (max-width: 414px) {
     .logo {
         font-size: .1em;
+    }
+
+    .map {
+        font-size: .8em;
     }
 }
 
@@ -144,5 +144,9 @@ pre {
 
     .logo {
         font-size: .1em;
+    }
+
+    .map {
+        font-size: .8em;
     }
 }

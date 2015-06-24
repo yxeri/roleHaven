@@ -596,7 +596,7 @@ var validCmds = {
             } else {
                 platformCmds.queueMessage({
                     text : ['You forgot to specify user!']
-                })
+                });
             }
         },
         help : [
@@ -1161,6 +1161,9 @@ var validCmds = {
                 }
             }
         ],
+        abortFunc : function() {
+            clearTimeout(cmdHelper.data.timer);
+        },
         help : [
             'ERROR. UNAUTHORIZED COMMAND...AUTHORIZATION OVERRIDDEN. ' +
             'PRINTING INSTRUCTIONS',
@@ -1334,7 +1337,7 @@ function setIntervals() {
 
     if(tracking) {
         // Gets new geolocation data
-        interval.tracking = setInterval(sendLocationData, 4000);
+        interval.tracking = setInterval(sendLocationData, 1000);
     }
 
     // Should not be recreated on focus
@@ -1546,6 +1549,10 @@ function keyPress(event) {
                     var phrase = trimSpace(getInputText().toLowerCase());
 
                     if(phrase === 'exit' || phrase === 'abort') {
+                        if(validCmds[cmdHelper.command].abortFunc) {
+                            validCmds[cmdHelper.command].abortFunc();
+                        }
+
                         resetCommand(true);
                     } else {
                         platformCmds.queueMessage({
@@ -1701,6 +1708,7 @@ function resetCommand(aborted) {
     cmdHelper.maxSteps = 0;
     setInputStart(platformCmds.getLocalVal('room'));
     cmdHelper.keyboardBlocked = false;
+    cmdHelper.data = null;
 
     if(aborted) {
         platformCmds.queueMessage({
@@ -1757,16 +1765,20 @@ function locationData() {
                 oldPosition = currentPosition;
                 currentPosition = position;
             }
-        }, function() {
-            tracking = false;
-            clearInterval(interval.tracking);
-            platformCmds.queueMessage({
-                text : [
-                    'Unable to connect to the tracking satellites',
-                    'Turning off tracking is a major offense',
-                    'Organica Death Squads have been sent to scour the area'
-                ], extraClass : 'importantMsg'
-            });
+        }, function(err) {
+            if(err.code === err.PERMISSION_DENIED) {
+                tracking = false;
+                clearInterval(interval.tracking);
+                platformCmds.queueMessage({
+                    text : [
+                        'Unable to connect to the tracking satellites',
+                        'Turning off tracking is a major offense',
+                        'Organica Death Squads have been sent to scour the area'
+                    ], extraClass : 'importantMsg'
+                });
+            } else {
+                console.log(err);
+            }
         }, { enableHighAccuracy : true });
     }
 }
@@ -1874,36 +1886,64 @@ function triggerAutoComplete(text) {
     return false;
 }
 
-// Prints messages from the queue
-// It will not continue if a print is already in progress,
-// which is indicated by charsInProgress being > 0
-function printText(messageQueue) {
-    if(charsInProgress === 0) {
-        // Amount of time (milliseconds) for a row to finish printing
-        var nextTimeout = 0;
-        var shortQueue = messageQueue.splice(0, 3);
+function scrollView() {
+    spacer.scrollIntoView();
+}
 
-        charsInProgress = countTotalCharacters(shortQueue);
+// Calculates amount of time to print text (speed times amount of
+// characters plus buffer)
+function calculateTimer(text, speed) {
+    var timeout = isNaN(speed) ? charTimeout : speed;
 
-        if(charsInProgress > 0) {
-            while(shortQueue.length > 0) {
-                var message = shortQueue.shift();
-                var speed = message.speed;
+    return (text.length * timeout) + rowTimeout;
+}
 
-                if(message.text != null) {
-                    while(message.text.length > 0) {
-                        var text = message.text.shift();
-                        var fullText = generateFullText(text, message);
+// Prints one letter and decreases in progress tracker
+function printLetter(span, character) {
+    var textNode = document.createTextNode(character);
+    var spanHeight = span.offsetHeight;
 
-                        setTimeout(addRow, nextTimeout, fullText, speed,
-                                   message.extraClass);
+    span.appendChild(textNode);
+    charsInProgress--;
 
-                        nextTimeout += calculateTimer(fullText, speed);
-                    }
-                }
-            }
-        }
+    if(span.offsetHeight > spanHeight) {
+        scrollView();
     }
+}
+
+function addLetters(span, text, speed) {
+    var lastTimeout = 0;
+    var timeout = isNaN(speed) ? charTimeout : speed;
+
+    for(var i = 0; i < text.length; i++) {
+        setTimeout(printLetter, timeout + lastTimeout, span, text.charAt(i));
+
+        lastTimeout += timeout;
+    }
+}
+
+function addRow(text, speed, extraClass) {
+    var row = document.createElement('li');
+    var span = document.createElement('span');
+
+    if(extraClass) {
+        // classList doesn't work on older devices, thus the usage of className
+        row.className += ' ' + extraClass;
+    }
+
+    row.appendChild(span);
+    mainFeed.appendChild(row);
+
+    if(isNaN(speed) || speed > 0) {
+        addLetters(span, text, speed);
+    } else {
+        var textNode = document.createTextNode(text);
+
+        span.appendChild(textNode);
+        charsInProgress -= text.length;
+    }
+
+    scrollView();
 }
 
 // Adds time stamp and room name to a string from a message if they are set
@@ -1942,64 +1982,36 @@ function countTotalCharacters(messageQueue) {
     return total;
 }
 
-// Calculates amount of time to print text (speed times amount of
-// characters plus buffer)
-function calculateTimer(text, speed) {
-    var timeout = isNaN(speed) ? charTimeout : speed;
+// Prints messages from the queue
+// It will not continue if a print is already in progress,
+// which is indicated by charsInProgress being > 0
+function printText(messageQueue) {
+    if(charsInProgress === 0) {
+        // Amount of time (milliseconds) for a row to finish printing
+        var nextTimeout = 0;
+        var shortQueue = messageQueue.splice(0, 3);
 
-    return (text.length * timeout) + rowTimeout;
-}
+        charsInProgress = countTotalCharacters(shortQueue);
 
-function addRow(text, speed, extraClass) {
-    var row = document.createElement('li');
-    var span = document.createElement('span');
+        if(charsInProgress > 0) {
+            while(shortQueue.length > 0) {
+                var message = shortQueue.shift();
+                var speed = message.speed;
 
-    if(extraClass) {
-        // classList doesn't work on older devices, thus the usage of className
-        row.className += ' ' + extraClass;
+                if(message.text != null) {
+                    while(message.text.length > 0) {
+                        var text = message.text.shift();
+                        var fullText = generateFullText(text, message);
+
+                        setTimeout(addRow, nextTimeout, fullText, speed,
+                                   message.extraClass);
+
+                        nextTimeout += calculateTimer(fullText, speed);
+                    }
+                }
+            }
+        }
     }
-
-    row.appendChild(span);
-    mainFeed.appendChild(row);
-
-    if(isNaN(speed) || speed > 0) {
-        addLetters(span, text, speed);
-    } else {
-        var textNode = document.createTextNode(text);
-
-        span.appendChild(textNode);
-        charsInProgress -= text.length;
-    }
-
-    scrollView();
-}
-
-function addLetters(span, text, speed) {
-    var lastTimeout = 0;
-    var timeout = isNaN(speed) ? charTimeout : speed;
-
-    for(var i = 0; i < text.length; i++) {
-        setTimeout(printLetter, timeout + lastTimeout, span, text.charAt(i));
-
-        lastTimeout += timeout;
-    }
-}
-
-// Prints one letter and decreases in progress tracker
-function printLetter(span, character) {
-    var textNode = document.createTextNode(character);
-    var spanHeight = span.offsetHeight;
-
-    span.appendChild(textNode);
-    charsInProgress--;
-
-    if(span.offsetHeight > spanHeight) {
-        scrollView();
-    }
-}
-
-function scrollView() {
-    spacer.scrollIntoView();
 }
 
 // Takes date and returns shorter readable time
