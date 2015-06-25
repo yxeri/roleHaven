@@ -2258,6 +2258,7 @@ function startBoot() {
 
     resetPrevCmdPointer();
     generateMap();
+    locationData();
     setIntervals();
     startAudio();
 
