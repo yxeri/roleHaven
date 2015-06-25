@@ -53,16 +53,13 @@ function handle(socket) {
                 );
                 socket.emit('commandFail');
             } else {
-                const warningMessage = { text : ['Warning!'], morse : true };
-                const message = { text : [
+                const message = { text : ['Warning!',
                     'User ' + data.userName + ' has used a key on entity ' +
                     data.entityName,
                     'Organica Re-Education Squads have been deployed'
-                ] };
+                ], morse : true };
 
                 socket.emit('commandSuccess', entity);
-                socket.broadcast.emit('importantMsg', warningMessage);
-                socket.emit('importantMsg', warningMessage);
                 socket.broadcast.emit('importantMsg', message);
                 socket.emit('importantMsg', message);
             }

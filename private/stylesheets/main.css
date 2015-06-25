@@ -77,6 +77,16 @@ pre {
     box-shadow: inset 0 0 40px 2px #000000;
 }
 
+#map {
+    border: dotted 1px;
+}
+
+#map td {
+    margin: 0;
+    padding: .5em;
+    border: dotted 1px;
+}
+
 .logo {
     white-space: pre;
     line-height: 1.2;
@@ -127,11 +137,16 @@ pre {
 
 @media (max-height: 736px) and (max-width: 414px) {
     .logo {
-        font-size: .1em;
+        font-size: .6em;
     }
 
-    .map {
-        font-size: .8em;
+    #map {
+        background-color: red;
+        font-size: .6em;
+    }
+
+    #map td {
+        padding: .1em;
     }
 }
 
@@ -143,10 +158,7 @@ pre {
     }
 
     .logo {
-        font-size: .1em;
+        font-size: .6em;
     }
 
-    .map {
-        font-size: .8em;
-    }
 }

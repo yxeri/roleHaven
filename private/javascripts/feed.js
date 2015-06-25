@@ -790,7 +790,9 @@ var validCmds = {
     morse : {
         func : function(phrases) {
             if(phrases && phrases.length > 0) {
+                console.log('phrases to morse', phrases);
                 var filteredText = phrases.join(' ').toLowerCase();
+                console.log('filtered text', filteredText);
                 var morseCodeText = '';
 
                 filteredText = filteredText.replace(/[åä]/g, 'a');
@@ -1183,6 +1185,55 @@ var validCmds = {
             ' Example:',
             '  hackroom secret'
         ]
+    },
+    showmap : {
+        func : function() {
+            var li = document.createElement('li');
+            var table = document.createElement('table');
+            var thead = document.createElement('thead');
+            var tbody = document.createElement('tbody');
+            var yKeys = Object.keys(mapHelper.yGrids);
+            var xKeys = Object.keys(mapHelper.xGrids);
+
+            // First blank td in header
+            thead.appendChild(document.createElement('td'));
+
+            for(var i = 0; i < mapHelper.yGridsMax; i++) {
+                var row = document.createElement('tr');
+
+                for(var j = 0; j < mapHelper.xGridsMax; j++) {
+                    var td = document.createElement('td');
+
+                    if(j === 0) {
+                        var leftTd = document.createElement('td');
+                        var yVal = document.createTextNode(yKeys[i]);
+
+                        leftTd.appendChild(yVal);
+                        row.appendChild(leftTd);
+                    }
+
+                    if(i === 0) {
+                        var headTd = document.createElement('td');
+
+                        headTd.appendChild(document.createTextNode(xKeys[j]))
+                        thead.appendChild(headTd);
+                    }
+
+                    row.appendChild(td);
+                }
+
+                tbody.appendChild(row);
+            }
+
+            table.id = 'map';
+            table.appendChild(thead);
+            table.appendChild(tbody);
+            li.appendChild(table);
+            mainFeed.appendChild(li);
+        },
+        help : [],
+        instructions : [],
+        clearAfterUse : true
     }
 };
 
@@ -2046,6 +2097,7 @@ function startSocketListeners() {
             platformCmds.queueMessage(message);
 
             if(message.morse) {
+                console.log('morse message!', message);
                 validCmds.morse.func(message.text);
             }
         });
