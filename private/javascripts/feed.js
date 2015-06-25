@@ -465,9 +465,9 @@ var validCmds = {
                 var errorMsg = {
                     text : [
                         'Name has to be 3 to 6 characters long',
-                        'The name can only contain letters and numbers ' +
-                        '(a-z, 0-9)',
                         'Password has to be 4 to 10 characters',
+                        'The name and password can only contain letters ' +
+                        'and numbers (a-z, 0-9, upper or lowercase)',
                         'Don\'t use whitespace in your name or password!',
                         'e.g. register myname apple1'
                     ]
@@ -478,9 +478,10 @@ var validCmds = {
                     var userName = phrases[0];
                     var password = phrases[1];
 
-                    if(userName.length >= 3 && userName.length <= 6 &&
+                    if(userName.length >= 3 && userName.length <= 10 &&
                        password.length >= 4 && password.length <= 10 &&
-                       platformCmds.isTextAllowed(userName)) {
+                       platformCmds.isTextAllowed(userName) &&
+                       platformCmds.isTextAllowed(password)) {
                         user.userName = userName;
                         // Check for empty!
                         user.password = password;
