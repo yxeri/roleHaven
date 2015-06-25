@@ -154,7 +154,7 @@ var platformCmds = {
         localStorage.removeItem('user');
         currentUser = null;
         localStorage.removeItem('room');
-        localStorage.setItem('mode', 'normalmode');
+        localStorage.setItem('mode', 'chatmode');
         setInputStart('RAZCMD');
     },
     getCommands : function() {
@@ -295,6 +295,7 @@ var validCmds = {
             if(phrases.length > 0) {
                 var room = {};
                 var roomName = phrases[0];
+                var oldRoomName = platformCmds.getLocalVal('room');
                 var password = '';
 
                 if(phrases.length > 1) {
@@ -302,11 +303,18 @@ var validCmds = {
                 }
 
                 if(roomName) {
+                    var oldRoom = { roomName : oldRoomName };
+
                     room.roomName = roomName;
                     room.password = password;
                     // Flag that will be used in .on function locally to
                     // show user they have entered
                     room.entered = true;
+
+                    if(oldRoomName !== roomName) {
+                        socket.emit('unfollow', oldRoom);
+                    }
+
                     socket.emit('follow', room);
                 }
             } else {
@@ -326,20 +334,20 @@ var validCmds = {
             '  enterroom sector5 banana'
         ]
     },
-    exitroom : {
-        func : function() {
-            if(platformCmds.getLocalVal('room') !== 'public') {
-                var room = {};
-
-                room.roomName = platformCmds.getLocalVal('room');
-                // Flag that will be used in .on function locally to
-                // show user they have exited
-                room.exited = true;
-                socket.emit('unfollow', room);
-            }
-        },
-        help : ['Leaves the chat room you are in, if you are in one.']
-    },
+    //exitroom : {
+    //    func : function() {
+    //        if(platformCmds.getLocalVal('room') !== 'public') {
+    //            var room = {};
+    //
+    //            room.roomName = platformCmds.getLocalVal('room');
+    //            // Flag that will be used in .on function locally to
+    //            // show user they have exited
+    //            room.exited = true;
+    //            socket.emit('unfollow', room);
+    //        }
+    //    },
+    //    help : ['Leaves the chat room you are in, if you are in one.']
+    //},
     follow : {
         func : function(phrases) {
             if(phrases.length > 0) {
@@ -407,14 +415,15 @@ var validCmds = {
     },
     chatmode : {
         func : function(verbose) {
-            platformCmds.setLocalVal('mode', 'chatmode');
-            setMode('[CHAT]');
+            platformCmds.setLocalVal('mode', 'chat');
+            setMode('');
 
             if(verbose === undefined || verbose) {
                 platformCmds.queueMessage({
                     text : [
                         'Chat mode activated',
-                        'Prepend commands with "-", e.g. "-normalmode"'
+                        'Prepend commands with "-" (dash), e.g. ' +
+                        '"-decryptmodule"'
                     ]
                 });
             }
@@ -422,28 +431,31 @@ var validCmds = {
         help : [
             'Sets mode to chat',
             'Everything written will be interpreted as chat messages',
-            'You will not need to use "msg" command to write messages',
-            'Use "-normalmode" to exit out of chat mode'
+            'You will not need to use "msg" command to write messages'
         ],
         instructions : [
             'If you want to use a command in chatmode it has to be ' +
-            'prepended with "-"',
+            'prepended with "-" (dash) or whitespace',
             'Example: ',
-            ' -normalmode'
+            ' -decryptmodule',
+            '  decryptmodule'
         ]
     },
-    normalmode : {
+    cmdmode : {
         func : function(verbose) {
-            platformCmds.setLocalVal('mode', 'normalmode');
-            setMode('');
+            platformCmds.setLocalVal('mode', 'cmd');
+            setMode('[CMD]');
 
             if(verbose === undefined || verbose) {
-                platformCmds.queueMessage({ text : ['Normal mode activated'] });
+                platformCmds.queueMessage({
+                    text : ['Command mode activated']
+                });
             }
         },
         help : [
-            'Sets mode to normal',
-            'This is the default mode',
+            'Sets mode to command',
+            'Text written will no longer be automatically be intepreted as' +
+            'chat messages',
             'You have to use "msg" command to write messages'
         ]
     },
@@ -569,6 +581,13 @@ var validCmds = {
                 user.password = phrases[1];
 
                 socket.emit('login', user);
+            } else {
+                platformCmds.queueMessage({
+                    text : [
+                        'You need to input a user name and password',
+                        'Example: login bestname secretpassword'
+                    ]
+                });
             }
         },
         help : ['Logs in as a user on this device'],
@@ -1000,32 +1019,32 @@ var validCmds = {
         ],
         clearAfterUse : true
     },
-    hqmsg : {
-        func : function(phrases) {
-            if(phrases !== undefined && phrases.length > 0) {
-                var writtenMsg = phrases.join(' ');
-
-                socket.emit('chatMsg', {
-                    message : {
-                        text : [writtenMsg],
-                        user : currentUser
-                    },
-                    roomName : 'hqroom'
-                });
-            } else {
-                platformCmds.queueMessage({
-                    text : ['You forgot to write the message!']
-                });
-            }
-        },
-        help : ['Sends a message directly to HQ'],
-        instructions : [
-            ' Usage:',
-            '  hqmsg *message*',
-            ' Example:',
-            '  hqmsg is anyone out there?'
-        ]
-    },
+    //hqmsg : {
+    //    func : function(phrases) {
+    //        if(phrases !== undefined && phrases.length > 0) {
+    //            var writtenMsg = phrases.join(' ');
+    //
+    //            socket.emit('chatMsg', {
+    //                message : {
+    //                    text : [writtenMsg],
+    //                    user : currentUser
+    //                },
+    //                roomName : 'hqroom'
+    //            });
+    //        } else {
+    //            platformCmds.queueMessage({
+    //                text : ['You forgot to write the message!']
+    //            });
+    //        }
+    //    },
+    //    help : ['Sends a message directly to HQ'],
+    //    instructions : [
+    //        ' Usage:',
+    //        '  hqmsg *message*',
+    //        ' Example:',
+    //        '  hqmsg is anyone out there?'
+    //    ]
+    //},
     hackroom : {
         func : function(phrases) {
             var data = {};
@@ -1644,8 +1663,8 @@ function keyPress(event) {
                     var commandName;
 
                     if(phrases[0].length > 0) {
-                        if(platformCmds.getLocalVal('mode') ===
-                           'normalmode') {
+                        if(platformCmds.getLocalVal('mode') === 'cmd' ||
+                           currentUser === null) {
                             commandName = phrases[0].toLowerCase();
                             command = validCmds[commandName];
                         } else {
@@ -1718,7 +1737,7 @@ function keyPress(event) {
                             });
                             command.func(phrases.splice(1));
                         } else if(platformCmds.getLocalVal('mode') ===
-                                  'chatmode' && phrases[0].length > 0) {
+                                  'chat' && phrases[0].length > 0) {
                             validCmds.msg.func(phrases);
                         } else if(currentUser === null) {
                             platformCmds.queueMessage({
@@ -1879,11 +1898,13 @@ function autoComplete() {
     // It will not auto-complete flags
     // If chat mode and the command is prepended or normal mode
     if(phrases.length === 1 && partialCommand.length > 0 &&
-       ((platformCmds.getLocalVal('mode') === 'chatmode' &&
+       ((platformCmds.getLocalVal('mode') === 'chat' &&
          partialCommand.charAt(0) === '-') ||
-        (platformCmds.getLocalVal('mode') === 'normalmode'))) {
+        (platformCmds.getLocalVal('mode') === 'cmd') ||
+        currentUser === null)) {
         // Removes prepend sign, which is required for commands in chat mode
-        if(platformCmds.getLocalVal('mode') === 'chatmode') {
+        if(platformCmds.getLocalVal('mode') === 'chat' &&
+           currentUser !== null) {
             partialCommand = partialCommand.slice(1);
         }
 
@@ -1912,7 +1933,7 @@ function autoComplete() {
         if(matched.length === 1) {
             var newText = '';
 
-            if(platformCmds.getLocalVal('mode') === 'chatmode') {
+            if(platformCmds.getLocalVal('mode') === 'chat') {
                 newText += '-';
             }
 
@@ -2144,6 +2165,7 @@ function startSocketListeners() {
             platformCmds.setLocalVal('user', user.userName);
             currentUser = user.userName;
             currentAccessLevel = user.accessLevel;
+            validCmds.chatmode.func();
             platformCmds.queueMessage({
                 text : ['Successfully logged in as ' + user.userName]
             });
@@ -2192,11 +2214,15 @@ function startSocketListeners() {
             }
 
             if(platformCmds.getLocalVal('mode') === null) {
-                validCmds.normalmode.func(false);
+                validCmds.chatmode.func(false);
             } else {
                 var mode = platformCmds.getLocalVal('mode');
 
-                validCmds[mode].func(false);
+                if(validCmds[mode]) {
+                    validCmds[mode].func(false);
+                } else {
+                    validCmds.chatmode.func(false);
+                }
             }
         });
 
