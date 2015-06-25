@@ -1587,7 +1587,7 @@ function keyPress(event) {
                         );
                     }
                 } else {
-                    var inputText = getInputText().toLowerCase();
+                    var inputText = getInputText();
                     var phrases = trimSpace(inputText).split(' ');
                     var command = null;
                     var commandName;
@@ -1595,13 +1595,13 @@ function keyPress(event) {
                     if(phrases[0].length > 0) {
                         if(platformCmds.getLocalVal('mode') ===
                            'normalmode') {
-                            commandName = phrases[0];
+                            commandName = phrases[0].toLowerCase();
                             command = validCmds[commandName];
                         } else {
                             var sign = phrases[0].charAt(0);
 
                             if(sign === '-') {
-                                commandName = phrases[0].slice(1);
+                                commandName = phrases[0].slice(1).toLowerCase();
                                 command = validCmds[commandName];
                             }
                         }
