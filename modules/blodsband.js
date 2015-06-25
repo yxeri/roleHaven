@@ -53,11 +53,13 @@ function handle(socket) {
                 );
                 socket.emit('commandFail');
             } else {
-                const message = { text : ['Warning!',
-                    'User ' + data.userName + ' has used a key on entity ' +
-                    data.entityName,
-                    'Organica Re-Education Squads have been deployed'
-                ], morse : true };
+                const message = {
+                    text : [
+                        'User ' + data.userName + ' has used a key on entity ' +
+                        data.entityName,
+                        'Organica Re-Education Squads have been deployed'
+                    ], morse : true
+                };
 
                 socket.emit('commandSuccess', entity);
                 socket.broadcast.emit('importantMsg', message);

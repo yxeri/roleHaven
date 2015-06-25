@@ -771,8 +771,9 @@ var validCmds = {
                             'Aborting'
                         ]
                     });
-                    resetCommand(true);
                 }
+
+                resetCommand(true);
             }
         ],
         help : [
@@ -1871,7 +1872,8 @@ function locationData() {
                     text : [
                         'Unable to connect to the tracking satellites',
                         'Turning off tracking is a major offense',
-                        'Organica Death Squads have been sent to scour the area'
+                        'Organica Re-Education Squads have been ' +
+                        'sent to scour the area'
                     ], extraClass : 'importantMsg'
                 });
             } else {
