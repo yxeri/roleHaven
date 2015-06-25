@@ -406,15 +406,18 @@ var validCmds = {
         ]
     },
     chatmode : {
-        func : function() {
+        func : function(verbose) {
             platformCmds.setLocalVal('mode', 'chatmode');
             setMode('[CHAT]');
-            platformCmds.queueMessage({
-                text : [
-                    'Chat mode activated',
-                    'Prepend commands with "-", e.g. "-normalmode"'
-                ]
-            });
+
+            if(verbose === undefined || verbose) {
+                platformCmds.queueMessage({
+                    text : [
+                        'Chat mode activated',
+                        'Prepend commands with "-", e.g. "-normalmode"'
+                    ]
+                });
+            }
         },
         help : [
             'Sets mode to chat',
@@ -430,10 +433,13 @@ var validCmds = {
         ]
     },
     normalmode : {
-        func : function() {
+        func : function(verbose) {
             platformCmds.setLocalVal('mode', 'normalmode');
             setMode('');
-            platformCmds.queueMessage({ text : ['Normal mode activated'] });
+
+            if(verbose === undefined || verbose) {
+                platformCmds.queueMessage({ text : ['Normal mode activated'] });
+            }
         },
         help : [
             'Sets mode to normal',
@@ -1657,7 +1663,7 @@ function keyPress(event) {
                                   (commandName === 'register' ||
                                    commandName === 'login')) {
                             platformCmds.queueMessage({
-                                text : [getInputStart() + getInputText()]
+                                text : [getInputStart() + ' ' + getInputText()]
                             });
                             command.func(phrases.splice(1));
                         } else if(platformCmds.getLocalVal('mode') ===
@@ -2134,11 +2140,11 @@ function startSocketListeners() {
             }
 
             if(platformCmds.getLocalVal('mode') === null) {
-                validCmds.normalmode.func();
+                validCmds.normalmode.func(false);
             } else {
                 var mode = platformCmds.getLocalVal('mode');
 
-                validCmds[mode].func();
+                validCmds[mode].func(false);
             }
         });
 
