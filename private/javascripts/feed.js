@@ -1328,6 +1328,7 @@ function setIntervals() {
     if(interval.printText !== undefined) {
         clearInterval(interval.printText);
     }
+
     if(interval.tracking !== undefined) {
         clearInterval(interval.tracking);
     }
@@ -1357,6 +1358,7 @@ function startAudio() {
         } else if(window.webkitAudioContext) {
             audioCtx = new window.webkitAudioContext();
         }
+
         oscillator = audioCtx.createOscillator();
         gainNode = audioCtx.createGain();
 
@@ -1410,6 +1412,21 @@ function setInputStart(text) {
 
 function getInputStart() {
     return inputStart.textContent;
+}
+
+function triggerAutoComplete(text) {
+    if(text.charAt(text.length - 1) === ' ' &&
+       text.charAt(text.length - 2) === ' ') {
+        setLeftText(trimSpace(text));
+
+        return true;
+    }
+
+    return false;
+}
+
+function isAllowedChar(text) {
+    return /^[a-zA-Z0-9åäöÅÄÖ/\s\-_\.,;:!"\*'\?\+=&\)\(]+$/g.test(text);
 }
 
 // Needed for arrow and delete keys. They are not detected with keypress
@@ -1747,21 +1764,25 @@ function measureDistance(lat1, lon1, lat2, lon2) {
     return d * 1000; // meters
 }
 
+// Geolocation object is empty when sent through Socket.IO
+// This is a fix for that
+function preparePositionData(position) {
+    var preparedPosition = {};
+
+    preparedPosition.latitude = position.coords.latitude;
+    preparedPosition.longitude = position.coords.longitude;
+    preparedPosition.speed = position.coords.speed;
+    preparedPosition.accuracy = position.coords.accuracy;
+    preparedPosition.heading = position.coords.heading;
+    preparedPosition.timestamp = position.timestamp;
+
+    return preparedPosition;
+}
+
 function locationData() {
     if('geolocation' in navigator) {
         navigator.geolocation.watchPosition(function(position) {
             if(position !== undefined) {
-                // Geolocation object is empty when sent through Socket.IO
-                // This is a fix for that
-                // TODO: Duplicate code
-                var tempPosition = {};
-                tempPosition.latitude = position.coords.latitude;
-                tempPosition.longitude = position.coords.longitude;
-                tempPosition.speed = position.coords.speed;
-                tempPosition.accuracy = position.coords.accuracy;
-                tempPosition.heading = position.coords.heading;
-                tempPosition.timestamp = position.timestamp;
-
                 oldPosition = currentPosition;
                 currentPosition = position;
             }
@@ -1785,20 +1806,9 @@ function locationData() {
 
 function sendLocationData() {
     if(currentUser !== null && currentPosition !== oldPosition) {
-        // Geolocation object is empty when sent through Socket.IO
-        // This is a fix for that
-        // TODO: Duplicate code
-        var tempPosition = {};
-        tempPosition.latitude = currentPosition.coords.latitude;
-        tempPosition.longitude = currentPosition.coords.longitude;
-        tempPosition.speed = currentPosition.coords.speed;
-        tempPosition.accuracy = currentPosition.coords.accuracy;
-        tempPosition.heading = currentPosition.coords.heading;
-        tempPosition.timestamp = currentPosition.timestamp;
-
         oldPosition = currentPosition;
 
-        socket.emit('updateLocation', tempPosition);
+        socket.emit('updateLocation', preparePositionData(currentPosition));
     }
 }
 
@@ -1869,21 +1879,6 @@ function autoComplete() {
         validCmds.help.func();
     }
 
-}
-
-function isAllowedChar(text) {
-    return /^[a-zA-Z0-9åäöÅÄÖ/\s\-_\.,;:!"\*'\?\+=&\)\(]+$/g.test(text);
-}
-
-function triggerAutoComplete(text) {
-    if(text.charAt(text.length - 1) === ' ' &&
-       text.charAt(text.length - 2) === ' ') {
-        setLeftText(trimSpace(text));
-
-        return true;
-    }
-
-    return false;
 }
 
 function scrollView() {
