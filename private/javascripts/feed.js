@@ -2140,8 +2140,6 @@ function startSocketListeners() {
 
                 validCmds[mode].func();
             }
-
-            locationData();
         });
 
         socket.on('disconnectUser', function() {
