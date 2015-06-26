@@ -204,6 +204,8 @@ var validCmds = {
         func : function() {
             platformCmds.queueMessage({
                 text : [
+                    'You have to prepend commands with "-" (dash) in chat mode',
+                    'Example: -help',
                     'Add -help after a command (with whitespace in between) ' +
                     'to get instructions on how to use it'
                 ]
@@ -478,7 +480,7 @@ var validCmds = {
                     var userName = phrases[0];
                     var password = phrases[1];
 
-                    if(userName.length >= 3 && userName.length <= 10 &&
+                    if(userName.length >= 3 && userName.length <= 6 &&
                        password.length >= 4 && password.length <= 10 &&
                        platformCmds.isTextAllowed(userName) &&
                        platformCmds.isTextAllowed(password)) {
@@ -1070,6 +1072,8 @@ var validCmds = {
                 };
                 cmdHelper.data = data;
 
+                // TODO: Message about abort should be sent from a common
+                // function for all commands
                 platformCmds.queueMessage({
                     text : [
                         //'Razor1911 proudly presents:',
@@ -1255,6 +1259,18 @@ var validCmds = {
         help : [],
         instructions : [],
         clearAfterUse : true
+    },
+    importantMsg : {
+        func : function() {
+
+        },
+        steps : [
+            function() {
+
+            }
+        ],
+        help : [],
+        instructions : []
     }
 };
 
@@ -1740,7 +1756,18 @@ function keyPress(event) {
                             command.func(phrases.splice(1));
                         } else if(platformCmds.getLocalVal('mode') ===
                                   'chat' && phrases[0].length > 0) {
-                            validCmds.msg.func(phrases);
+                            // If the first character is isn't a dash
+                            // If it is it probably means that the user
+                            // tried to input a command but made a mistake
+                            if(phrases[0].charAt(0) !== '-') {
+                                validCmds.msg.func(phrases);
+                            } else {
+                                platformCmds.queueMessage({
+                                    text : [
+                                        phrases[0] + ': ' + commandFailText.text
+                                    ]
+                                });
+                            }
                         } else if(currentUser === null) {
                             platformCmds.queueMessage({
                                 text : [
