@@ -4,12 +4,15 @@
 // const and let support is still kind of shaky on client side, thus the
 // usage of var
 
-var mainFeed;
-var marker;
-var inputText;
-var inputStart;
-var modeField;
-var spacer;
+// DOM element init
+// Initiation of DOM elements has to be done here.
+// Android 4.1.* would otherwise give JS errors
+var mainFeed = document.getElementById('mainFeed');
+var marker = document.getElementById('marker');
+var inputText = document.getElementById('inputText');
+var inputStart = document.getElementById('inputStart');
+var modeField = document.getElementById('mode');
+var spacer = document.getElementById('spacer');
 
 var socket;
 // Timeout for print of a character (milliseconds)
@@ -336,20 +339,6 @@ var validCmds = {
             '  enterroom sector5 banana'
         ]
     },
-    //exitroom : {
-    //    func : function() {
-    //        if(platformCmds.getLocalVal('room') !== 'public') {
-    //            var room = {};
-    //
-    //            room.roomName = platformCmds.getLocalVal('room');
-    //            // Flag that will be used in .on function locally to
-    //            // show user they have exited
-    //            room.exited = true;
-    //            socket.emit('unfollow', room);
-    //        }
-    //    },
-    //    help : ['Leaves the chat room you are in, if you are in one.']
-    //},
     follow : {
         func : function(phrases) {
             if(phrases.length > 0) {
@@ -1023,32 +1012,6 @@ var validCmds = {
         ],
         clearAfterUse : true
     },
-    //hqmsg : {
-    //    func : function(phrases) {
-    //        if(phrases !== undefined && phrases.length > 0) {
-    //            var writtenMsg = phrases.join(' ');
-    //
-    //            socket.emit('chatMsg', {
-    //                message : {
-    //                    text : [writtenMsg],
-    //                    user : currentUser
-    //                },
-    //                roomName : 'hqroom'
-    //            });
-    //        } else {
-    //            platformCmds.queueMessage({
-    //                text : ['You forgot to write the message!']
-    //            });
-    //        }
-    //    },
-    //    help : ['Sends a message directly to HQ'],
-    //    instructions : [
-    //        ' Usage:',
-    //        '  hqmsg *message*',
-    //        ' Example:',
-    //        '  hqmsg is anyone out there?'
-    //    ]
-    //},
     hackroom : {
         func : function(phrases) {
             var data = {};
@@ -1991,6 +1954,9 @@ function autoComplete() {
 
 function scrollView() {
     spacer.scrollIntoView();
+
+    // Compatibility fix for Android 2.*
+    window.scrollTo(0, document.body.scrollHeight);
 }
 
 // Calculates amount of time to print text (speed times amount of
@@ -2119,7 +2085,13 @@ function printText(messageQueue) {
 
 // Takes date and returns shorter readable time
 function generateShortTime(date) {
-    var newDate = new Date(date);
+    // Splitting of date is a fix for NaN on Android 2.*
+    var splitDate = date.split(/[-T:\.]+/);
+    var newDate = new Date(
+        Date.UTC(splitDate[0],
+            splitDate[1], splitDate[2], splitDate[3],
+            splitDate[4], splitDate[5])
+    );
     var minutes = (newDate.getMinutes() < 10 ? '0' : '') + newDate.getMinutes();
     var hours = (newDate.getHours() < 10 ? '0' : '') + newDate.getHours();
 
@@ -2339,14 +2311,6 @@ function startBoot() {
         marker.focus();
         event.preventDefault();
     });
-
-    // DOM element init
-    mainFeed = document.getElementById('mainFeed');
-    marker = document.getElementById('marker');
-    inputText = document.getElementById('inputText');
-    inputStart = document.getElementById('inputStart');
-    modeField = document.getElementById('mode');
-    spacer = document.getElementById('spacer');
 
     cmdHistory = platformCmds.getLocalVal('cmdHistory') ?
                      JSON.parse(platformCmds.getLocalVal('cmdHistory')) : [];
