@@ -4,6 +4,13 @@
 // const and let support is still kind of shaky on client side, thus the
 // usage of var
 
+// Timeout for print of a character (milliseconds)
+var charTimeout = 2;
+// Timeout between print of rows (milliseconds)
+var rowTimeout = 50;
+// Char that is prepended on commands in chat mode
+var commandChar = '/';
+
 // DOM element init
 // Initiation of DOM elements has to be done here.
 // Android 4.1.* would otherwise give JS errors
@@ -15,16 +22,12 @@ var modeField = document.getElementById('mode');
 var spacer = document.getElementById('spacer');
 
 var socket;
-// Timeout for print of a character (milliseconds)
-var charTimeout;
-// Timeout between print of rows (milliseconds)
-var rowTimeout;
 // Queue of all the message objects that will be handled and printed
 var messageQueue;
 // Characters left to print during one call to printText().
 // It has to be zero before another group of messages can be printed.
 var charsInProgress;
-
+var focused = false;
 var tracking = true;
 
 // Queue of all the sounds that will be handled and played
@@ -157,7 +160,6 @@ var platformCmds = {
         localStorage.removeItem('user');
         currentUser = null;
         localStorage.removeItem('room');
-        localStorage.setItem('mode', 'chatmode');
         setInputStart('RAZCMD');
     },
     getCommands : function() {
@@ -207,8 +209,8 @@ var validCmds = {
         func : function() {
             platformCmds.queueMessage({
                 text : [
-                    'You have to prepend commands with "-" (dash) in chat mode',
-                    'Example: -help',
+                    'You have to prepend commands with "/" in chat mode',
+                    'Example: /help',
                     'Add -help after a command (with whitespace in between) ' +
                     'to get instructions on how to use it'
                 ]
@@ -412,9 +414,13 @@ var validCmds = {
             if(verbose === undefined || verbose) {
                 platformCmds.queueMessage({
                     text : [
+                        '-------------------',
                         'Chat mode activated',
-                        'Prepend commands with "-" (dash), e.g. ' +
-                        '"-decryptmodule"'
+                        'Prepend commands with "/", e.g. ' +
+                        '"/decryptmodule"',
+                        'Everything else written and sent will be intepreted' +
+                        'as a chat message',
+                        '-------------------'
                     ]
                 });
             }
@@ -426,10 +432,9 @@ var validCmds = {
         ],
         instructions : [
             'If you want to use a command in chatmode it has to be ' +
-            'prepended with "-" (dash) or whitespace',
+            'prepended with "/"',
             'Example: ',
-            ' -decryptmodule',
-            '  decryptmodule'
+            ' /decryptmodule'
         ]
     },
     cmdmode : {
@@ -439,7 +444,13 @@ var validCmds = {
 
             if(verbose === undefined || verbose) {
                 platformCmds.queueMessage({
-                    text : ['Command mode activated']
+                    text : [
+                        '-------------------',
+                        'Command mode activated',
+                        'Commands can be used without "/"',
+                        'You have to use command "msg" to send messages',
+                        '-------------------'
+                    ]
                 });
             }
         },
@@ -1106,7 +1117,7 @@ var validCmds = {
                     text : [
                         'Activating cracking bot....',
                         'Warning. Intrusion defense system activated',
-                        'Time until detection: ' + '0'
+                        'Time until detection: ' + (timeout / 1000) + ' seconds'
                     ],
                     speed : 1
                 });
@@ -1371,7 +1382,7 @@ function reconnect() {
 function isScreenOff() {
     var now = (new Date()).getTime();
     var diff = now - lastInterval;
-    var offBy = diff - 1000;
+    var offBy = diff - 2000;
     lastInterval = now;
 
     if(offBy > 10000) {
@@ -1391,11 +1402,11 @@ function setIntervals() {
     }
 
     // Prints messages from the queue
-    interval.printText = setInterval(printText, 200, messageQueue);
+    interval.printText = setInterval(printText, 300, messageQueue);
 
     if(tracking) {
         // Gets new geolocation data
-        interval.tracking = setInterval(sendLocationData, 1000);
+        interval.tracking = setInterval(sendLocationData, 4000);
     }
 
     // Should not be recreated on focus
@@ -1403,7 +1414,7 @@ function setIntervals() {
         // Checks time between when JS stopped and started working again
         // This will be most frequently triggered when a user turns off the
         // screen on their phone and turns it back on
-        interval.isScreenOff = setInterval(isScreenOff, 1000);
+        interval.isScreenOff = setInterval(isScreenOff, 2000);
     }
 }
 
@@ -1651,7 +1662,7 @@ function keyPress(event) {
                         } else {
                             var sign = phrases[0].charAt(0);
 
-                            if(sign === '-') {
+                            if(sign === commandChar) {
                                 commandName = phrases[0].slice(1).toLowerCase();
                                 command = validCmds[commandName];
                             }
@@ -1719,10 +1730,10 @@ function keyPress(event) {
                             command.func(phrases.splice(1));
                         } else if(platformCmds.getLocalVal('mode') ===
                                   'chat' && phrases[0].length > 0) {
-                            // If the first character is isn't a dash
+                            // If the first character is isn't a slash
                             // If it is it probably means that the user
                             // tried to input a command but made a mistake
-                            if(phrases[0].charAt(0) !== '-') {
+                            if(phrases[0].charAt(0) !== commandChar) {
                                 validCmds.msg.func(phrases);
                             } else {
                                 platformCmds.queueMessage({
@@ -1892,7 +1903,7 @@ function autoComplete() {
     // If chat mode and the command is prepended or normal mode
     if(phrases.length === 1 && partialCommand.length > 0 &&
        ((platformCmds.getLocalVal('mode') === 'chat' &&
-         partialCommand.charAt(0) === '-') ||
+         partialCommand.charAt(0) === commandChar) ||
         (platformCmds.getLocalVal('mode') === 'cmd') ||
         currentUser === null)) {
         // Removes prepend sign, which is required for commands in chat mode
@@ -1927,7 +1938,7 @@ function autoComplete() {
             var newText = '';
 
             if(platformCmds.getLocalVal('mode') === 'chat') {
-                newText += '-';
+                newText += commandChar;
             }
 
             newText += matched[0] + ' ';
@@ -2120,7 +2131,6 @@ function startSocketListeners() {
             platformCmds.queueMessage(message);
 
             if(message.morse) {
-                console.log('morse message!', message);
                 validCmds.morse.func(message.text);
             }
         });
@@ -2167,7 +2177,6 @@ function startSocketListeners() {
             platformCmds.setLocalVal('user', user.userName);
             currentUser = user.userName;
             currentAccessLevel = user.accessLevel;
-            validCmds.chatmode.func();
             platformCmds.queueMessage({
                 text : ['Successfully logged in as ' + user.userName]
             });
@@ -2220,8 +2229,8 @@ function startSocketListeners() {
             } else {
                 var mode = platformCmds.getLocalVal('mode');
 
-                if(validCmds[mode]) {
-                    validCmds[mode].func(false);
+                if(validCmds[mode + 'mode']) {
+                    validCmds[mode + 'mode'].func(false);
                 } else {
                     validCmds.chatmode.func(false);
                 }
@@ -2308,7 +2317,13 @@ function startSocketListeners() {
 function startBoot() {
     var background = document.getElementById('background');
     background.addEventListener('click', function(event) {
-        marker.focus();
+        if(!focused) {
+            marker.focus();
+            focused = true;
+        } else {
+            marker.blur();
+            focused = false;
+        }
         event.preventDefault();
     });
 
@@ -2319,8 +2334,6 @@ function startBoot() {
     oldPosition = {};
     currentPosition = {};
 
-    charTimeout = 2;
-    rowTimeout = 50;
     messageQueue = [];
     charsInProgress = 0;
 

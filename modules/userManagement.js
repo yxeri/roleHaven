@@ -190,6 +190,12 @@ function handle(socket, io) {
                                     socket.emit('message',
                                         { text : ['Failed to login'] });
                                 } else {
+                                    const rooms = authUser.rooms;
+
+                                    for(let i = 0; i < rooms.length; i++) {
+                                        socket.join(rooms[i]);
+                                    }
+
                                     socket.emit('login', authUser);
                                 }
                             });
@@ -284,9 +290,17 @@ function handle(socket, io) {
             manager.updateUserSocketId(sentUserName, ' ', function(err, user) {
                 if(err || user === null) {
                     console.log('Failed to reset socket id', err);
-                }
+                } else {
+                    const rooms = socket.rooms;
 
-                socket.emit('message', { text : ['You have been logged out'] });
+                    for(let i = 1; i < rooms.length; i++) {
+                        socket.leave(rooms[i]);
+                    }
+
+                    socket.emit('message', {
+                        text : ['You have been logged out']
+                    });
+                }
             });
         }
     });
@@ -357,7 +371,14 @@ function handle(socket, io) {
                            text : ['Failed to disconnect user ' + sentUserName]
                        });
                    } else {
+                       var rooms = socket.rooms;
+
                        socket.to(bannedSocketId).emit('ban');
+
+                       for(let i = 1; i < rooms.length; i++) {
+                           socket.leave(rooms[i]);
+                       }
+
                        socket.emit('message', {
                            text : [
                                'User ' + sentUserName + ' has been disconnected'
