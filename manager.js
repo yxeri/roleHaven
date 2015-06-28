@@ -49,7 +49,8 @@ const historySchema = new mongoose.Schema({
 //    func : {},
 //    help : [String],
 //    instructions : [String],
-//    clearAfterUse : Boolean
+//    clearAfterUse : Boolean,
+//    group : String
 //}, { collection : 'commands' });
 const schedEventSchema = new mongoose.Schema({
     receiverName : String,

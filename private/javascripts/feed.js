@@ -23,7 +23,7 @@ var commandChar = '/';
 // Interval times in milliseconds
 var printIntervalTime = 200;
 var trackIntervalTime = 4000;
-var screenOffIntervallTime = 1000;
+var screenOffIntervalTime = 1000;
 
 // DOM element init
 // Initiation of DOM elements has to be done here.
@@ -231,17 +231,19 @@ var validCmds = {
         func : function() {
             platformCmds.queueMessage({
                 text : [
-                    'You have to prepend commands with "/" in chat mode',
+                    'You have to prepend commands with "/" in chat mode. ' +
                     'Example: /help',
-                    'Add -help after a command (with whitespace in between) ' +
-                    'to get instructions on how to use it'
+                    'Add -help after a command to get instructions' +
+                    ' on how to use it. Example: /decryptmodule -help'
                 ]
             });
             platformCmds.queueMessage({
                 text : platformCmds.getCommands()
             });
         },
-        help : ['Shows a list of available commands']
+        help : ['Shows a list of available commands'],
+        accessLevel : 1,
+        cmdGroup : 'info'
     },
     clear : {
         func : function() {
@@ -250,13 +252,17 @@ var validCmds = {
             }
         },
         help : ['Clears the terminal view'],
-        clearAfterUse : true
+        clearAfterUse : true,
+        accessLevel : 1,
+        cmdGroup : 'misc'
     },
     whoami : {
         func : function() {
             platformCmds.queueMessage({ text : [currentUser] });
         },
-        help : ['Shows the current user']
+        help : ['Shows the current user'],
+        accessLevel : 1,
+        cmdGroup : 'info'
     },
     msg : {
         func : function(phrases) {
@@ -286,7 +292,9 @@ var validCmds = {
             ' Example:',
             '  msg Hello!'
         ],
-        clearAfterUse : true
+        clearAfterUse : true,
+        accessLevel : 1,
+        cmdGroup : 'chat'
     },
     broadcast : {
         func : function(phrases) {
@@ -317,7 +325,8 @@ var validCmds = {
             '  broadcast Hello!'
         ],
         clearAfterUse : true,
-        accessLevel : 7
+        accessLevel : 7,
+        cmdGroup : 'chat'
     },
     enterroom : {
         func : function(phrases) {
@@ -361,7 +370,9 @@ var validCmds = {
             '  enterroom *room name* *optional password*',
             ' Example:',
             '  enterroom sector5 banana'
-        ]
+        ],
+        accessLevel : 1,
+        cmdGroup : 'chat'
     },
     follow : {
         func : function(phrases) {
@@ -390,7 +401,9 @@ var validCmds = {
             '  follow *room name* *optional password*',
             ' Example:',
             '  follow room1 banana'
-        ]
+        ],
+        accessLevel : 1,
+        cmdGroup : 'chat'
     },
     unfollow : {
         func : function(phrases) {
@@ -417,7 +430,9 @@ var validCmds = {
             '  unfollow *room name*',
             ' Example:',
             '  unfollow roomname'
-        ]
+        ],
+        accessLevel : 1,
+        cmdGroup : 'chat'
     },
     list : {
         func : function(phrases) {
@@ -449,7 +464,9 @@ var validCmds = {
             ' Example',
             '  list rooms',
             '  list users'
-        ]
+        ],
+        accessLevel : 1,
+        cmdGroup : 'info'
     },
     mode : {
         func : function(phrases, verbose) {
@@ -521,7 +538,9 @@ var validCmds = {
             ' Example:',
             '  mode chat',
             '  mode cmd'
-        ]
+        ],
+        accessLevel : 1,
+        cmdGroup : 'misc'
     },
     register : {
         func : function(phrases) {
@@ -579,7 +598,9 @@ var validCmds = {
             ' Example:',
             '  register myname secure1'
         ],
-        clearAfterUse : true
+        clearAfterUse : true,
+        accessLevel : 0,
+        cmdGroup : 'system'
     },
     createroom : {
         func : function(phrases) {
@@ -625,13 +646,16 @@ var validCmds = {
             ' Example:',
             '  createroom myroom banana'
         ],
-        accessLevel : 3
+        accessLevel : 3,
+        cmdGroup : 'chat'
     },
     myrooms : {
         func : function() {
             socket.emit('myRooms');
         },
-        help : ['Shows a list of all rooms you are following']
+        help : ['Shows a list of all rooms you are following'],
+        accessLevel : 1,
+        cmdGroup : 'info'
     },
     login : {
         func : function(phrases) {
@@ -657,13 +681,17 @@ var validCmds = {
             ' Example:',
             '  login user11 banana'
         ],
-        clearAfterUse : true
+        clearAfterUse : true,
+        accessLevel : 0,
+        cmdGroup : 'system'
     },
     time : {
         func : function() {
             socket.emit('time');
         },
-        help : ['Shows the current time']
+        help : ['Shows the current time'],
+        accessLevel : '1',
+        cmdGroup : 'misc'
     },
     locate : {
         func : function(phrases) {
@@ -696,7 +724,9 @@ var validCmds = {
             '  locate user1',
             '  locate *',
             '  locate'
-        ]
+        ],
+        accessLevel : 1,
+        cmdGroup : 'locate'
     },
     decryptmodule : {
         func : function() {
@@ -845,7 +875,9 @@ var validCmds = {
         ],
         instructions : [
             'Follow the on-screen instructions'
-        ]
+        ],
+        accessLevel : 1,
+        cmdGroup : 'unique'
     },
     history : {
         func : function(phrases) {
@@ -866,7 +898,9 @@ var validCmds = {
             '  history',
             '  history 25'
         ],
-        clearAfterUse : true
+        clearAfterUse : true,
+        accessLevel : 1,
+        cmdGroup : 'chat'
     },
     morse : {
         func : function(phrases) {
@@ -909,7 +943,8 @@ var validCmds = {
             ' Example:',
             '  morse sos'
         ],
-        accessLevel : 9
+        accessLevel : 9,
+        cmdGroup : 'chat'
     },
     password : {
         func : function(phrases) {
@@ -951,20 +986,26 @@ var validCmds = {
             '  password *oldpassword* *newpassword*',
             ' Example:',
             '  password old1 new1'
-        ]
+        ],
+        accessLevel : 1,
+        cmdGroup : 'system'
     },
     logout : {
         func : function() {
             socket.emit('logout', currentUser);
             platformCmds.resetAllLocalVals();
         },
-        help : ['Logs out from the current user']
+        help : ['Logs out from the current user'],
+        accessLevel : 1,
+        cmdGroup : 'system'
     },
     reboot : {
         func : function() {
             window.location.reload();
         },
-        help : ['Reboots terminal']
+        help : ['Reboots terminal'],
+        accessLevel : 0,
+        cmdGroup : 'system'
     },
     verifyuser : {
         func : function(phrases) {
@@ -995,7 +1036,9 @@ var validCmds = {
             '  verifyuser',
             '  verifyuser appl1',
             '  verifyuser *'
-        ]
+        ],
+        accessLevel : 11,
+        cmdGroup : 'admin'
     },
     banuser : {
         func : function(phrases) {
@@ -1021,7 +1064,8 @@ var validCmds = {
             '  banuser',
             '  banuser evil1'
         ],
-        accessLevel : 11
+        accessLevel : 11,
+        cmdGroup : 'admin'
     },
     unbanuser : {
         func : function(phrases) {
@@ -1047,7 +1091,8 @@ var validCmds = {
             '  unbanuser',
             '  unbanuser evil1'
         ],
-        accessLevel : 11
+        accessLevel : 11,
+        cmdGroup : 'admin'
     },
     whisper : {
         func : function(phrases) {
@@ -1079,7 +1124,9 @@ var validCmds = {
             '  whisper adam hello, adam!',
             '  whisper user1 sounds good!'
         ],
-        clearAfterUse : true
+        clearAfterUse : true,
+        accessLevel : 1,
+        cmdGroup : 'chat'
     },
     hackroom : {
         func : function(phrases) {
@@ -1241,7 +1288,9 @@ var validCmds = {
             '  hackroom *room name*',
             ' Example:',
             '  hackroom secret'
-        ]
+        ],
+        accessLevel : 3,
+        cmdGroup : 'hack'
     },
     showmap : {
         func : function() {
@@ -1290,7 +1339,9 @@ var validCmds = {
         },
         help : [],
         instructions : [],
-        clearAfterUse : true
+        clearAfterUse : true,
+        accessLevel : 1,
+        cmdGroup : 'locate'
     },
     importantMsg : {
         func : function() {
@@ -1302,7 +1353,9 @@ var validCmds = {
             }
         ],
         help : [],
-        instructions : []
+        instructions : [],
+        accessLevel : 9,
+        cmdGroup : 'chat'
     }
 };
 
@@ -1473,7 +1526,7 @@ function setIntervals() {
         // Checks time between when JS stopped and started working again
         // This will be most frequently triggered when a user turns off the
         // screen on their phone and turns it back on
-        interval.isScreenOff = setInterval(isScreenOff, screenOffIntervallTime);
+        interval.isScreenOff = setInterval(isScreenOff, screenOffIntervalTime);
     }
 }
 
