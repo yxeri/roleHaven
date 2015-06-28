@@ -1394,12 +1394,25 @@ var validCmds = {
                 ],
                 extraClass : 'importantMsg'
             });
-            setInputStart('CHIPPER: PRESS ENTER');
+            platformCmds.queueMessage({
+                text : [
+                    'CONTROL WORD SENT',
+                    'AWAITING CONFIRMATION'
+                ],
+                extraClass : 'importantMsg'
+            });
+            platformCmds.queueMessage({
+                text : [
+                    'You can cancel out of the command by typing ' +
+                    '"exit" or "abort"',
+                    'Press enter to continue'
+                ]
+            });
+            setInputStart('Chipper');
         },
         steps : [
             function() {
                 cmdHelper.onStep++;
-                setInputStart('CHIPPER');
                 platformCmds.queueMessage({
                     text : [
                         'Chipper has been activated',
@@ -1451,6 +1464,39 @@ var validCmds = {
         ],
         accessLevel : 3,
         cmdGroup : 'hack'
+    },
+    switchroom : {
+        func : function(phrases) {
+            if(phrases.length > 0) {
+                var room = {};
+                var roomName = phrases[0].toLowerCase();
+
+                if(roomName) {
+                    room.roomName = roomName;
+                    // Flag that will be used in .on function locally to
+                    // show user they have entered
+                    room.entered = true;
+
+                    socket.emit('switchRoom', room);
+                }
+            } else {
+                platformCmds.queueMessage({
+                    text : ['You have to specify which room to switch to']
+                });
+            }
+        },
+        help : [
+            'Switches your current room to another',
+            'You have to already be following the room to switch to it'
+        ],
+        instructions : [
+            ' Usage:',
+            '  switchroom *room you are following*',
+            ' Example:',
+            '  switchroom room1'
+        ],
+        accessLevel : 1,
+        cmdGroup : 'chat'
     }
 };
 
@@ -2025,7 +2071,7 @@ function setMode(text) {
 }
 
 function getMode() {
-    return modeField.textContent;
+    return modeField.textContent; // string
 }
 
 function clearInput() {
@@ -2062,7 +2108,7 @@ function preparePositionData(position) {
     preparedPosition.heading = position.coords.heading;
     preparedPosition.timestamp = position.timestamp;
 
-    return preparedPosition;
+    return preparedPosition; // geolocation
 }
 
 function locationData() {

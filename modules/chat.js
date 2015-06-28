@@ -157,6 +157,26 @@ function handle(socket) {
         });
     });
 
+    socket.on('switchRoom', function(room) {
+        room.roomName = room.roomName.toLowerCase();
+
+        manager.getUserById(socket.id, function(err, user) {
+            if(err || user === null) {
+                socket.emit('message', {
+                    text : ['Failed to switch to room ' + room.roomName]
+                });
+            } else {
+                if(socket.rooms.indexOf(room.roomName) > 0) {
+                    socket.emit('follow', room);
+                } else {
+                    socket.emit('message', {
+                        text : ['You are not following room ' + room.roomName]
+                    });
+                }
+            }
+        });
+    })
+
     socket.on('unfollow', function(room) {
         const roomName = room.roomName.toLowerCase;
 
