@@ -433,6 +433,10 @@ var validCmds = {
                 socket.emit('listRooms');
             } else if(phrases[0] === 'users') {
                 socket.emit('listUsers');
+            } else {
+                platformCmds.queueMessage({
+                    text : [phrases[0] + 'is not a valid option']
+                });
             }
         },
         help : [
@@ -447,59 +451,76 @@ var validCmds = {
             '  list users'
         ]
     },
-    chatmode : {
-        func : function(verbose) {
-            platformCmds.setLocalVal('mode', 'chat');
-            setMode('');
+    mode : {
+        func : function(phrases, verbose) {
+            if(phrases.length > 0) {
+                var newMode = phrases[0];
 
-            if(verbose === undefined || verbose) {
+                if(newMode === 'chat') {
+                    platformCmds.setLocalVal('mode', 'chat');
+                    setMode('');
+
+                    if(verbose === undefined || verbose) {
+                        platformCmds.queueMessage({
+                            text : [
+                                '-------------------',
+                                'Chat mode activated',
+                                'Prepend commands with "/", e.g. ' +
+                                '"/decryptmodule"',
+                                'Everything else written and sent ' +
+                                'will be intepreted' +
+                                'as a chat message',
+                                '-------------------'
+                            ]
+                        });
+                    }
+                } else if(newMode === 'cmd') {
+                    platformCmds.setLocalVal('mode', 'cmd');
+                    setMode('[CMD]');
+
+                    if(verbose === undefined || verbose) {
+                        platformCmds.queueMessage({
+                            text : [
+                                '-------------------',
+                                'Command mode activated',
+                                'Commands can be used without "/"',
+                                'You have to use command "msg" ' +
+                                'to send messages',
+                                '-------------------'
+                            ]
+                        });
+                    }
+                } else {
+                    platformCmds.queueMessage({
+                        text : [newMode + 'is not a valid mode']
+                    });
+                }
+            } else {
                 platformCmds.queueMessage({
-                    text : [
-                        '-------------------',
-                        'Chat mode activated',
-                        'Prepend commands with "/", e.g. ' +
-                        '"/decryptmodule"',
-                        'Everything else written and sent will be intepreted' +
-                        'as a chat message',
-                        '-------------------'
-                    ]
+                    text : ['You forgot to input mode']
                 });
             }
         },
         help : [
-            'Sets mode to chat',
+            'Change the input mode. The options are chat or cmd',
+            '--Chat mode--',
             'Everything written will be interpreted as chat messages',
-            'You will not need to use "msg" command to write messages'
+            'All commands have to be prepended with "/" ' +
+            'Example: /decryptmodule',
+            '--Cmd mode--',
+            'Text written will not be automatically be intepreted as' +
+            'chat messages',
+            'You have to use "msg" command to write messages' +
+            'Example: msg hello',
+            'Commands do not have to be prepended with anything.' +
+            'Example: decryptmodule'
         ],
         instructions : [
-            'If you want to use a command in chatmode it has to be ' +
-            'prepended with "/"',
-            'Example: ',
-            ' /decryptmodule'
-        ]
-    },
-    cmdmode : {
-        func : function(verbose) {
-            platformCmds.setLocalVal('mode', 'cmd');
-            setMode('[CMD]');
-
-            if(verbose === undefined || verbose) {
-                platformCmds.queueMessage({
-                    text : [
-                        '-------------------',
-                        'Command mode activated',
-                        'Commands can be used without "/"',
-                        'You have to use command "msg" to send messages',
-                        '-------------------'
-                    ]
-                });
-            }
-        },
-        help : [
-            'Sets mode to command',
-            'Text written will no longer be automatically be intepreted as' +
-            'chat messages',
-            'You have to use "msg" command to write messages'
+            ' Usage:',
+            '  mode *mode*',
+            ' Example:',
+            '  mode chat',
+            '  mode cmd'
         ]
     },
     register : {
@@ -2210,15 +2231,11 @@ function startSocketListeners() {
             }
 
             if(platformCmds.getLocalVal('mode') === null) {
-                validCmds.chatmode.func(false);
+                validCmds.mode.func(['chat'], false);
             } else {
                 var mode = platformCmds.getLocalVal('mode');
 
-                if(validCmds[mode + 'mode']) {
-                    validCmds[mode + 'mode'].func(false);
-                } else {
-                    validCmds.chatmode.func(false);
-                }
+                validCmds.mode.func([mode], false);
             }
         });
 
