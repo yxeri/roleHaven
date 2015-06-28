@@ -325,7 +325,7 @@ var validCmds = {
             '  broadcast Hello!'
         ],
         clearAfterUse : true,
-        accessLevel : 7,
+        accessLevel : 1,
         cmdGroup : 'chat'
     },
     enterroom : {
@@ -662,7 +662,7 @@ var validCmds = {
     },
     login : {
         func : function(phrases) {
-            if(phrases.length > 1) {
+            if(phrases.length > 1 && currentUser === null) {
                 var user = {};
                 user.userName = phrases[0].toLowerCase();
                 user.password = phrases[1];
@@ -671,13 +671,16 @@ var validCmds = {
             } else {
                 platformCmds.queueMessage({
                     text : [
-                        'You need to input a user name and password',
+                        'You need to input a user name and password and you',
                         'Example: login bestname secretpassword'
                     ]
                 });
             }
         },
-        help : ['Logs in as a user on this device'],
+        help : [
+            'Logs in as a user on this device',
+            'You have to be logged out to login as another user'
+        ],
         instructions : [
             ' Usage:',
             '  login *user name* *password',
@@ -693,7 +696,7 @@ var validCmds = {
             socket.emit('time');
         },
         help : ['Shows the current time'],
-        accessLevel : '1',
+        accessLevel : 1,
         cmdGroup : 'misc'
     },
     locate : {
@@ -946,7 +949,7 @@ var validCmds = {
             ' Example:',
             '  morse sos'
         ],
-        accessLevel : 9,
+        accessLevel : 1,
         cmdGroup : 'chat'
     },
     password : {
@@ -1292,11 +1295,12 @@ var validCmds = {
             ' Example:',
             '  hackroom secret'
         ],
-        accessLevel : 3,
+        accessLevel : 1,
         cmdGroup : 'hack'
     },
     showmap : {
         func : function() {
+            platformCmds.queueMessage({text:['WORK IN PROGRESS']});
             var li = document.createElement('li');
             var table = document.createElement('table');
             var thead = document.createElement('thead');
@@ -1348,7 +1352,7 @@ var validCmds = {
     },
     importantMsg : {
         func : function() {
-
+            platformCmds.queueMessage({text:['WORK IN PROGRESS']});
         },
         steps : [
             function() {
@@ -1357,7 +1361,7 @@ var validCmds = {
         ],
         help : [],
         instructions : [],
-        accessLevel : 9,
+        accessLevel : 11,
         cmdGroup : 'chat'
     },
     chipper : {
@@ -1462,7 +1466,7 @@ var validCmds = {
             'Activate chipper function',
             'Press enter when you have retrieved confirmation from the ECU'
         ],
-        accessLevel : 3,
+        accessLevel : 1,
         cmdGroup : 'hack'
     },
     switchroom : {
@@ -2309,9 +2313,17 @@ function printRow(message) {
     }
 }
 
+function convertWhisperRoom(roomName) {
+    var convertedRoom = roomName.indexOf('-whisper') > 0 ? 'WHISPR' : roomName;
+
+    return convertedRoom;
+}
+
 function startSocketListeners() {
     if(socket) {
         socket.on('chatMsg', function(message) {
+            message.roomName = convertWhisperRoom(message.roomName);
+
             platformCmds.queueMessage(message);
         });
 
@@ -2337,7 +2349,11 @@ function startSocketListeners() {
 
         socket.on('multiMsg', function(messages) {
             for(var i = 0; i < messages.length; i++) {
-                platformCmds.queueMessage(messages[i]);
+                var message = messages[i];
+
+                message.roomName = convertWhisperRoom(message.roomName);
+
+                platformCmds.queueMessage(message);
             }
         });
 

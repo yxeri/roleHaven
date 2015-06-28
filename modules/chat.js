@@ -19,18 +19,19 @@ function isTextAllowed(text) {
 function handle(socket) {
     socket.on('chatMsg', function(data) {
         const newData = data;
+        let roomName = newData.message.whisper ?
+                       newData.roomName + '-whisper' : newData.roomName
 
         newData.message.time = new Date();
-
-        manager.addMsgToHistory(newData.roomName, newData.message,
+        
+        manager.addMsgToHistory(roomName, newData.message,
                                 function(err, history) {
             if(err || history === null) {
                 console.log('Failed to add message to history', err);
             } else {
                 const newMessage = newData.message;
-                const roomName = newData.roomName;
 
-                newMessage.roomName = roomName;
+                newMessage.roomName = newData.roomName;
 
                 socket.broadcast.to(roomName).emit('chatMsg', newMessage);
 
@@ -40,8 +41,9 @@ function handle(socket) {
 
                 // Save the sent message in the sender's room history too,
                 // if it is a whisper
-                if(newMessage.whisper) {
-                    manager.addMsgToHistory(newData.message.user,
+                if(newData.message.whisper) {
+                    const whisperRoom = newData.message.user + '-whisper';
+                    manager.addMsgToHistory(whisperRoom,
                                             newData.message,
                                             function(err, history) {
                         if(err || history === null) {

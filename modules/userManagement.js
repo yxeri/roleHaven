@@ -31,7 +31,7 @@ function handle(socket, io) {
                     message.time = new Date();
                     message.roomName = 'hqroom';
 
-                    newRoom.roomName = user.userName;
+                    newRoom.roomName = user.userName + '-whisper';
                     newRoom.visibility = 12;
                     newRoom.accessLevel = 12;
 
@@ -114,10 +114,6 @@ function handle(socket, io) {
                                            user.lastOnline <= message.time) {
                                             message.roomName =
                                                 currentHistory.roomName;
-                                            // We want the messages to be
-                                            // printed out instantly
-                                            // on the client
-                                            message.speed = 0;
                                             missedMessages.push(message);
                                         }
                                     }
