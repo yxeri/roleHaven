@@ -4,12 +4,26 @@
 // const and let support is still kind of shaky on client side, thus the
 // usage of var
 
-// Timeout for print of a character (milliseconds)
-var charTimeout = 2;
 // Timeout between print of rows (milliseconds)
 var rowTimeout = 50;
+// Number of messages that will be processed and printed
+// per loop in consomeQueue
+var msgsPerQueue = 3;
+// Queue of all the message objects that will be handled and printed
+var messageQueue;
+// Shorter queue of messages that will be processed this loop. Length is
+// based on msgsPerQueue variable
+var shortQueue;
+// True if messages are being processed and printed right now
+var printing = false;
+
 // Char that is prepended on commands in chat mode
 var commandChar = '/';
+
+// Interval times in milliseconds
+var printIntervalTime = 200;
+var trackIntervalTime = 4000;
+var screenOffIntervallTime = 1000;
 
 // DOM element init
 // Initiation of DOM elements has to be done here.
@@ -21,14 +35,16 @@ var inputStart = document.getElementById('inputStart');
 var modeField = document.getElementById('mode');
 var spacer = document.getElementById('spacer');
 
+// Socket.io
 var socket;
-// Queue of all the message objects that will be handled and printed
-var messageQueue;
-// Characters left to print during one call to printText().
-// It has to be zero before another group of messages can be printed.
-var charsInProgress;
+
+// Did user focus the screen?
 var focused = false;
+
+// Is geolocation tracking on?
 var tracking = true;
+var oldPosition;
+var currentPosition;
 
 // Queue of all the sounds that will be handled and played
 var soundQueue = [];
@@ -37,12 +53,14 @@ var oscillator;
 var gainNode;
 var soundTimeout = 0;
 
+// Array with all previous command used by the user
 var cmdHistory;
 var previousCommandPointer;
+
+// Logged in user name
 var currentUser;
+// Logged in user access level
 var currentAccessLevel;
-var oldPosition;
-var currentPosition;
 
 var morseCodes = {
     'a' : '.-',
@@ -123,6 +141,10 @@ var logo = {
     ]
 };
 
+// Stores everything related to the map area
+// The map area will be separated into grids
+// The size of each grid is dependent of the map size
+// (which is set with coordinates) and max amount of X and Y grids
 var mapHelper = {
     leftLong : 17.7992307,
     rightLong : 18.1828902,
@@ -1382,7 +1404,7 @@ function reconnect() {
 function isScreenOff() {
     var now = (new Date()).getTime();
     var diff = now - lastInterval;
-    var offBy = diff - 2000;
+    var offBy = diff - 1000;
     lastInterval = now;
 
     if(offBy > 10000) {
@@ -1402,11 +1424,12 @@ function setIntervals() {
     }
 
     // Prints messages from the queue
-    interval.printText = setInterval(printText, 300, messageQueue);
+    interval.printText = setInterval(
+        consumeQueue, printIntervalTime, messageQueue);
 
     if(tracking) {
         // Gets new geolocation data
-        interval.tracking = setInterval(sendLocationData, 4000);
+        interval.tracking = setInterval(sendLocationData, trackIntervalTime);
     }
 
     // Should not be recreated on focus
@@ -1414,7 +1437,7 @@ function setIntervals() {
         // Checks time between when JS stopped and started working again
         // This will be most frequently triggered when a user turns off the
         // screen on their phone and turns it back on
-        interval.isScreenOff = setInterval(isScreenOff, 2000);
+        interval.isScreenOff = setInterval(isScreenOff, screenOffIntervallTime);
     }
 }
 
@@ -1960,70 +1983,28 @@ function autoComplete() {
     } else if(partialCommand.length === 0) {
         validCmds.help.func();
     }
-
 }
 
 function scrollView() {
-    spacer.scrollIntoView();
+    spacer.scrollIntoView(false);
 
     // Compatibility fix for Android 2.*
-    window.scrollTo(0, document.body.scrollHeight);
+    //window.scrollTo(0, document.body.scrollHeight);
 }
 
-// Calculates amount of time to print text (speed times amount of
-// characters plus buffer)
-function calculateTimer(text, speed) {
-    var timeout = isNaN(speed) ? charTimeout : speed;
+// Takes date and returns shorter readable time
+function generateShortTime(date) {
+    // Splitting of date is a fix for NaN on Android 2.*
+    var splitDate = date.split(/[-T:\.]+/);
+    var newDate = new Date(
+        Date.UTC(splitDate[0],
+            splitDate[1], splitDate[2], splitDate[3],
+            splitDate[4], splitDate[5])
+    );
+    var minutes = (newDate.getMinutes() < 10 ? '0' : '') + newDate.getMinutes();
+    var hours = (newDate.getHours() < 10 ? '0' : '') + newDate.getHours();
 
-    return (text.length * timeout) + rowTimeout;
-}
-
-// Prints one letter and decreases in progress tracker
-function printLetter(span, character) {
-    var textNode = document.createTextNode(character);
-    var spanHeight = span.offsetHeight;
-
-    span.appendChild(textNode);
-    charsInProgress--;
-
-    if(span.offsetHeight > spanHeight) {
-        scrollView();
-    }
-}
-
-function addLetters(span, text, speed) {
-    var lastTimeout = 0;
-    var timeout = isNaN(speed) ? charTimeout : speed;
-
-    for(var i = 0; i < text.length; i++) {
-        setTimeout(printLetter, timeout + lastTimeout, span, text.charAt(i));
-
-        lastTimeout += timeout;
-    }
-}
-
-function addRow(text, speed, extraClass) {
-    var row = document.createElement('li');
-    var span = document.createElement('span');
-
-    if(extraClass) {
-        // classList doesn't work on older devices, thus the usage of className
-        row.className += ' ' + extraClass;
-    }
-
-    row.appendChild(span);
-    mainFeed.appendChild(row);
-
-    if(isNaN(speed) || speed > 0) {
-        addLetters(span, text, speed);
-    } else {
-        var textNode = document.createTextNode(text);
-
-        span.appendChild(textNode);
-        charsInProgress -= text.length;
-    }
-
-    scrollView();
+    return hours + ':' + minutes + ' ';
 }
 
 // Adds time stamp and room name to a string from a message if they are set
@@ -2046,67 +2027,51 @@ function generateFullText(sentText, message) {
     return text;
 }
 
-// Counts all characters in the message array and returns it
-function countTotalCharacters(messageQueue) {
-    var total = 0;
+function consumeShortQueue() {
+    if(shortQueue.length > 0) {
+        var message = shortQueue.shift();
 
-    for(var i = 0; i < messageQueue.length; i++) {
-        var message = messageQueue[i];
-
-        for(var j = 0; j < message.text.length; j++) {
-            var text = generateFullText(message.text[j], message);
-            total += text.length;
-        }
+        printRow(message);
+    } else {
+        printing = false;
     }
-
-    return total;
 }
 
 // Prints messages from the queue
-// It will not continue if a print is already in progress,
-// which is indicated by charsInProgress being > 0
-function printText(messageQueue) {
-    if(charsInProgress === 0) {
-        // Amount of time (milliseconds) for a row to finish printing
-        var nextTimeout = 0;
-        var shortQueue = messageQueue.splice(0, 3);
+function consumeQueue(messageQueue) {
+    if(!printing && messageQueue.length > 0) {
+        shortQueue = messageQueue.splice(0, msgsPerQueue);
 
-        charsInProgress = countTotalCharacters(shortQueue);
-
-        if(charsInProgress > 0) {
-            while(shortQueue.length > 0) {
-                var message = shortQueue.shift();
-                var speed = message.speed;
-
-                if(message.text != null) {
-                    while(message.text.length > 0) {
-                        var text = message.text.shift();
-                        var fullText = generateFullText(text, message);
-
-                        setTimeout(addRow, nextTimeout, fullText, speed,
-                                   message.extraClass);
-
-                        nextTimeout += calculateTimer(fullText, speed);
-                    }
-                }
-            }
-        }
+        printing = true;
+        consumeShortQueue();
     }
 }
 
-// Takes date and returns shorter readable time
-function generateShortTime(date) {
-    // Splitting of date is a fix for NaN on Android 2.*
-    var splitDate = date.split(/[-T:\.]+/);
-    var newDate = new Date(
-        Date.UTC(splitDate[0],
-            splitDate[1], splitDate[2], splitDate[3],
-            splitDate[4], splitDate[5])
-    );
-    var minutes = (newDate.getMinutes() < 10 ? '0' : '') + newDate.getMinutes();
-    var hours = (newDate.getHours() < 10 ? '0' : '') + newDate.getHours();
+function printRow(message) {
+    if(message.text.length > 0) {
+        var text = message.text.shift();
+        var fullText = generateFullText(text, message);
 
-    return hours + ':' + minutes + ' ';
+        var row = document.createElement('li');
+        var span = document.createElement('span');
+        var textNode = document.createTextNode(fullText);
+
+        if(message.extraClass) {
+            // classList doesn't work on older devices,
+            // thus the usage of className
+            row.className += ' ' + message.extraClass;
+        }
+
+        span.appendChild(textNode);
+        row.appendChild(span);
+        mainFeed.appendChild(row);
+
+        scrollView();
+
+        setTimeout(printRow, rowTimeout, message);
+    } else {
+        consumeShortQueue();
+    }
 }
 
 function startSocketListeners() {
