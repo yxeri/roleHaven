@@ -2300,7 +2300,6 @@ function startBoot() {
     currentPosition = {};
 
     messageQueue = [];
-    charsInProgress = 0;
 
     socket = io();
 
