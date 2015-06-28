@@ -147,8 +147,9 @@ function unlockEntity(sentKey, sentEntityName, sentUserName, callback) {
 
 function getAllEntities(callback) {
     const sort = { entityName : 1 };
+    const filter = { _id : 0 };
 
-    Entity.find().sort(sort).lean().exec(function(err, entities) {
+    Entity.find({}, filter).sort(sort).lean().exec(function(err, entities) {
         if(err || entities === null) {
             console.log('Failed to get all entities', err);
         }
@@ -159,8 +160,9 @@ function getAllEntities(callback) {
 
 function getEncryptionKey(sentKey, callback) {
     const query = { key : sentKey };
+    const filter = { _id : 0 };
 
-    EncryptionKey.findOne(query).lean().exec(function(err, key) {
+    EncryptionKey.findOne(query, filter).lean().exec(function(err, key) {
         if(err) {
             console.log('Failed to get encryption key', err);
         }
@@ -171,8 +173,9 @@ function getEncryptionKey(sentKey, callback) {
 
 function getUserById(sentSocketId, callback) {
     const query = { socketId : sentSocketId };
+    const filter = { _id : 0 };
 
-    User.findOne(query).lean().exec(function(err, user) {
+    User.findOne(query, filter).lean().exec(function(err, user) {
         if(err) {
             console.log('Failed to get user', err);
         }
@@ -231,8 +234,9 @@ function addMsgToHistory(sentRoomName, sentMessage, callback) {
 
 function getHistoryFromRoom(sentRoomName, callback) {
     const query = { roomName : sentRoomName };
+    const filter = { 'messages._id' : 0, _id : 0 };
 
-    History.find(query).lean().exec(function(err, history) {
+    History.find(query, filter).lean().exec(function(err, history) {
         if(err) {
             console.log('Failed to get history', err);
         }
@@ -243,8 +247,9 @@ function getHistoryFromRoom(sentRoomName, callback) {
 
 function getUserHistory(rooms, callback) {
     const query = { roomName : { $in : rooms } };
+    const filter = { 'messages._id' : 0, _id : 0 };
 
-    History.find(query).lean().exec(function(err, history) {
+    History.find(query, filter).lean().exec(function(err, history) {
         if(err) {
             console.log('Failed to retrieve all history from', rooms);
         }
@@ -382,8 +387,9 @@ function createRoom(sentRoom, callback) {
 function getAllUsers(sentUser, callback) {
     const query = { visibility : { $lte : sentUser.accessLevel } };
     const sort = { userName : 1 };
+    const filter = { _id : 0 };
 
-    User.find(query).sort(sort).lean().exec(function(err, users) {
+    User.find(query, filter).sort(sort).lean().exec(function(err, users) {
         if(err) {
             console.log('Failed to list users', err);
         }
@@ -394,8 +400,9 @@ function getAllUsers(sentUser, callback) {
 
 function getRoom(sentRoomName, callback) {
     const query = { roomName : sentRoomName };
+    const filter = { _id : 0 };
 
-    Room.findOne(query).lean().exec(function(err, room) {
+    Room.findOne(query, filter).lean().exec(function(err, room) {
         if(err) {
             console.log('Failed to get room ', sentRoomName, err);
         }
@@ -407,8 +414,9 @@ function getRoom(sentRoomName, callback) {
 function getAllRooms(sentUser, callback) {
     const query = { visibility : { $lte : sentUser.accessLevel } };
     const sort = { roomName : 1 };
+    const filter = { _id : 0 };
 
-    Room.find(query).sort(sort).lean().exec(function(err, rooms) {
+    Room.find(query, filter).sort(sort).lean().exec(function(err, rooms) {
         if(err) {
             console.log('Failed to list rooms', err);
         }
@@ -420,8 +428,9 @@ function getAllRooms(sentUser, callback) {
 function getAllUserLocations(sentUser, callback) {
     const query = { visibility : { $lte : sentUser.accessLevel } };
     const sort = { userName : 1 };
+    const filter = { _id : 0 };
 
-    User.find(query).sort(sort).lean().exec(function(err, users) {
+    User.find(query, filter).sort(sort).lean().exec(function(err, users) {
         if(err) {
             console.log('Failed to get all user locations', err);
         }
@@ -437,8 +446,9 @@ function getUserLocation(sentUser, sentUserName, callback) {
             { userName : sentUserName }
         ]
     };
+    const filter = { _id : 0 };
 
-    User.findOne(query).lean().exec(function(err, user) {
+    User.findOne(query, filter).lean().exec(function(err, user) {
         if(err) {
             console.log('Failed to get all user locations', err);
         }
@@ -595,8 +605,9 @@ function addEvent(sentReceiverName, sentEndAt, callback) {
 function getPassedEvents(callback) {
     const now = new Date();
     const query = { endAt : { $lte : now } };
+    const filter = { _id : 0 };
 
-    SchedEvent.find(query).lean().exec(function(err, events) {
+    SchedEvent.find(query, filter).lean().exec(function(err, events) {
         if(err) {
             console.log('Failed to trigger events', err);
         }
