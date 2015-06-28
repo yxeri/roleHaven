@@ -877,7 +877,7 @@ var validCmds = {
             'Follow the on-screen instructions'
         ],
         accessLevel : 1,
-        cmdGroup : 'unique'
+        cmdGroup : 'hack'
     },
     history : {
         func : function(phrases) {
@@ -1321,7 +1321,7 @@ var validCmds = {
                     if(i === 0) {
                         var headTd = document.createElement('td');
 
-                        headTd.appendChild(document.createTextNode(xKeys[j]))
+                        headTd.appendChild(document.createTextNode(xKeys[j]));
                         thead.appendChild(headTd);
                     }
 
@@ -1356,6 +1356,98 @@ var validCmds = {
         instructions : [],
         accessLevel : 9,
         cmdGroup : 'chat'
+    },
+    chipper : {
+        func : function() {
+            var data = {};
+
+            data.randomizer = function(length) {
+                var randomString = '01';
+                var randomLength = randomString.length;
+                var code = '';
+
+                for(var i = 0; i < length; i++) {
+                    var randomVal = Math.random() * (randomLength - 1);
+
+                    code += randomString[Math.round(randomVal)];
+                }
+
+                return code;
+            };
+            cmdHelper.data = data;
+
+            platformCmds.queueMessage({
+                text : [
+                    '----------',
+                    'DEACTIVATE',
+                    '----------'
+                ],
+                extraClass : 'importantMsg large'
+            });
+            platformCmds.queueMessage({
+                text : [
+                    'CONTROL WORD SENT',
+                    'AWAITING CONFIRMATION'
+                ],
+                extraClass : 'importantMsg'
+            });
+            setInputStart('CHIPPER: PRESS ENTER');
+        },
+        steps : [
+            function() {
+                cmdHelper.onStep++;
+                setInputStart('CHIPPER');
+                platformCmds.queueMessage({
+                    text : [
+                        'Chipper has been activated',
+                        'Connecting to ECU.........'
+                    ]
+                });
+                setTimeout(
+                    validCmds[cmdHelper.command].steps[cmdHelper.onStep], 2000);
+            },
+            function() {
+                var stopFunc = function() {
+                    platformCmds.queueMessage({
+                        text : [
+                            'WARNING',
+                            'CONTROL IS BEING RELEASED',
+                            'CHIPPER POWERING DOWN'
+                        ],
+                        extraClass : 'importantMsg'
+                    });
+                };
+
+                if(cmdHelper.data.timer === undefined) {
+                    cmdHelper.data.timer =
+                        setTimeout(stopFunc, 180000, false);
+                }
+
+                platformCmds.queueMessage({
+                    text : [cmdHelper.data.randomizer(39)]
+                });
+
+                cmdHelper.data.printTimer = setTimeout(
+                    validCmds[cmdHelper.command].steps[cmdHelper.onStep], 150);
+            }
+        ],
+        abortFunc : function() {
+            clearTimeout(cmdHelper.data.printTimer);
+            clearTimeout(cmdHelper.data.timer);
+            validCmds.clear.func();
+            platformCmds.queueMessage({
+                text : [
+                    'Chipper has powered down',
+                    'Control has been released'
+                ]
+            });
+        },
+        help : [
+            'Activate chipper function',
+            'Press enter when you have retrieved confirmation from the ECU'
+        ],
+        accessLevel : 3,
+        cmdGroup : 'hack'
     }
 };
 
@@ -1504,11 +1596,11 @@ function isScreenOff() {
 // Set intervals at boot and recreate them when the window is focused
 // This is to make sure that nothing has been killed in the background
 function setIntervals() {
-    if(interval.printText !== undefined) {
+    if(interval.printText !== null) {
         clearInterval(interval.printText);
     }
 
-    if(interval.tracking !== undefined) {
+    if(interval.tracking !== null) {
         clearInterval(interval.tracking);
     }
 
@@ -1522,7 +1614,7 @@ function setIntervals() {
     }
 
     // Should not be recreated on focus
-    if(interval.isScreenOff === undefined) {
+    if(interval.isScreenOff === null) {
         // Checks time between when JS stopped and started working again
         // This will be most frequently triggered when a user turns off the
         // screen on their phone and turns it back on
@@ -2372,13 +2464,8 @@ function startSocketListeners() {
 function startBoot() {
     var background = document.getElementById('background');
     background.addEventListener('click', function(event) {
-        if(!focused) {
-            marker.focus();
-            focused = true;
-        } else {
-            marker.blur();
-            focused = false;
-        }
+        marker.focus();
+
         event.preventDefault();
     });
 

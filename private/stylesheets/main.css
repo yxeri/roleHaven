@@ -103,6 +103,10 @@ pre {
     text-align: center;
 }
 
+.large {
+    font-size: 2em;
+}
+
 .feed {
     padding-left: .5em;
     padding-right: .5em;
@@ -136,22 +140,31 @@ pre {
 }
 
 @media (max-height: 736px) and (max-width: 414px) {
-    .logo {
-        font-size: .6em;
-    }
-
     #map {
-        background-color: red;
         font-size: .6em;
     }
 
     #map td {
         padding: .1em;
     }
+
+    #background:before {
+        -webkit-box-shadow: inset 0 0 20px 2px red;
+        box-shadow: inset 0 0 20px 2px red;
+    }
+
+    .logo {
+        font-size: .6em;
+    }
 }
 
 /* PiTft */
 @media (max-height: 240px) {
+    #background:before {
+        -webkit-box-shadow: inset 0 0 20px 2px #000000;
+        box-shadow: inset 0 0 20px 2px #000000;
+    }
+
     .feed {
         padding-left: .1em;
         padding-right: .1em;
@@ -160,5 +173,4 @@ pre {
     .logo {
         font-size: .6em;
     }
-
 }
