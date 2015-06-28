@@ -644,22 +644,23 @@ var validCmds = {
 
                 socket.emit('locate', userName);
             } else {
-                platformCmds.queueMessage({
-                    text : ['You forgot to specify user!']
-                });
+                socket.emit('locate', currentUser);
             }
         },
         help : [
             'Shows the last known location of the user',
-            '* is a shortcut for all users',
+            '* is a shortcut for all users. Example: locate *',
+            'Just writing the command without a user name will show your ' +
+            'current location. Example: locate',
             'You need to be connected to the satellites to access this command'
         ],
         instructions : [
             ' Usage:',
-            '  locate *user name OR "*"*',
+            '  locate *optional user name OR "*"*',
             ' Example:',
             '  locate user1',
-            '  locate *'
+            '  locate *',
+            '  locate'
         ]
     },
     decryptmodule : {
