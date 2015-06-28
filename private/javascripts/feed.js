@@ -419,13 +419,32 @@ var validCmds = {
             '  unfollow roomname'
         ]
     },
-    listrooms : {
-        func : function() {
-            socket.emit('listRooms');
+    list : {
+        func : function(phrases) {
+            if(phrases.length === 0) {
+                platformCmds.queueMessage({
+                    text : [
+                        'You have to input which option you want to list',
+                        'Available options: users  rooms',
+                        'Example: list rooms'
+                    ]
+                });
+            } else if(phrases[0] === 'rooms') {
+                socket.emit('listRooms');
+            } else if(phrases[0] === 'users') {
+                socket.emit('listUsers');
+            }
         },
         help : [
-            'Shows all the rooms you are following.',
-            'public is the room that all users automatically join.'
+            'Shows a list of users or rooms which you are allowed to see',
+            'You have to input which option you want to list'
+        ],
+        instructions : [
+            ' Usage:',
+            '  list *option*',
+            ' Example',
+            '  list rooms',
+            '  list users'
         ]
     },
     chatmode : {
@@ -540,11 +559,6 @@ var validCmds = {
             '  register myname secure1'
         ],
         clearAfterUse : true
-    },
-    listusers : {
-        func : function() {
-            socket.emit('listUsers');
-        }
     },
     createroom : {
         func : function(phrases) {
