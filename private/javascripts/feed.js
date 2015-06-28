@@ -1994,13 +1994,18 @@ function scrollView() {
 
 // Takes date and returns shorter readable time
 function generateShortTime(date) {
+    var newDate = new Date(date);
+
     // Splitting of date is a fix for NaN on Android 2.*
-    var splitDate = date.split(/[-T:\.]+/);
-    var newDate = new Date(
-        Date.UTC(splitDate[0],
-            splitDate[1], splitDate[2], splitDate[3],
-            splitDate[4], splitDate[5])
-    );
+    if(isNaN(newDate.getMinutes)) {
+        var splitDate = date.split(/[-T:\.]+/);
+        newDate = new Date(
+            Date.UTC(splitDate[0],
+                splitDate[1], splitDate[2], splitDate[3],
+                splitDate[4], splitDate[5])
+        );
+    }
+
     var minutes = (newDate.getMinutes() < 10 ? '0' : '') + newDate.getMinutes();
     var hours = (newDate.getHours() < 10 ? '0' : '') + newDate.getHours();
 
