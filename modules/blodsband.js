@@ -28,7 +28,9 @@ function handle(socket) {
     });
 
     socket.on('verifyKey', function(sentKey) {
-        manager.getEncryptionKey(sentKey, function(err, key) {
+        const keyLower = sentKey.toLowerCase();
+
+        manager.getEncryptionKey(keyLower, function(err, key) {
             if(err) {
                 socket.emit(
                     'message',
@@ -45,6 +47,9 @@ function handle(socket) {
     });
 
     socket.on('unlockEntity', function(data) {
+        data.entityName = data.entityName.toLowerCase();
+        data.keyData.key = data.keyData.key.toLowerCase();
+
         manager.unlockEntity(data.keyData.key, data.entityName, data.userName,
                              function(err, entity) {
             if(err) {

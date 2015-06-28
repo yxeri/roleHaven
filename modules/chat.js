@@ -77,6 +77,8 @@ function handle(socket) {
     });
 
     socket.on('createRoom', function(sentRoom) {
+        sentRoom.roomName = sentRoom.roomName.toLowerCase();
+
         if(sentRoom && isTextAllowed(sentRoom.roomName)) {
             manager.createRoom(sentRoom, function(err, room) {
                 if(err) {
@@ -97,6 +99,8 @@ function handle(socket) {
     });
 
     socket.on('follow', function(data) {
+        data.roomName = data.roomName.toLowerCase();
+
         if(data.password === undefined) {
             data.password = '';
         }
@@ -154,7 +158,7 @@ function handle(socket) {
     });
 
     socket.on('unfollow', function(room) {
-        const roomName = room.roomName;
+        const roomName = room.roomName.toLowerCase;
 
         if(socket.rooms.indexOf(roomName) > -1) {
             manager.getUserById(socket.id, function(err, user) {
@@ -296,12 +300,16 @@ function handle(socket) {
     });
 
     socket.on('morse', function(data) {
+        data.roomName.toLowerCase();
+
         socket.broadcast.to(data.roomName).emit('morse', data.morseCode);
         socket.emit('morse', data.morseCode);
     });
 
     socket.on('roomHackable', function(roomName) {
-        manager.getRoom(roomName, function(err, room) {
+        const roomNameLower = roomName.toLowerCase();
+
+        manager.getRoom(roomNameLower, function(err, room) {
             if(err || room === null) {
                 socket.emit('message', {
                    text : [
@@ -316,9 +324,10 @@ function handle(socket) {
     });
 
     socket.on('hackRoom', function(data) {
-        const roomName = data.roomName;
+        const roomName = data.roomName.toLowerCase();
+        const userName = data.userName.toLowerCase();
 
-        manager.addRoomToUser(data.userName, roomName, function(err) {
+        manager.addRoomToUser(userName, roomName, function(err) {
             if(err) {
                 socket.emit('message', {
                     text : ['Failed to follow the room']

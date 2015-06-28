@@ -332,7 +332,7 @@ var validCmds = {
         func : function(phrases) {
             if(phrases.length > 0) {
                 var room = {};
-                var roomName = phrases[0];
+                var roomName = phrases[0].toLowerCase();
                 var oldRoomName = platformCmds.getLocalVal('room');
                 var password = '';
 
@@ -378,7 +378,7 @@ var validCmds = {
         func : function(phrases) {
             if(phrases.length > 0) {
                 var room = {};
-                room.roomName = phrases[0];
+                room.roomName = phrases[0].toLowerCase();
                 room.password = phrases[1];
 
                 socket.emit('follow', room);
@@ -409,7 +409,7 @@ var validCmds = {
         func : function(phrases) {
             if(phrases.length > 0) {
                 var room = {};
-                var roomName = phrases[0];
+                var roomName = phrases[0].toLowerCase();
 
                 if(roomName === platformCmds.getLocalVal('room')) {
                     room.exited = true;
@@ -436,21 +436,24 @@ var validCmds = {
     },
     list : {
         func : function(phrases) {
-            if(phrases.length === 0) {
+            if(phrases.length > 0) {
+                var listOption = phrases[0].toLowerCase();
+                if(listOption === 'rooms') {
+                    socket.emit('listRooms');
+                } else if(listOption === 'users') {
+                    socket.emit('listUsers');
+                } else {
+                    platformCmds.queueMessage({
+                        text : [listOption + 'is not a valid option']
+                    });
+                }
+            } else {
                 platformCmds.queueMessage({
                     text : [
                         'You have to input which option you want to list',
                         'Available options: users  rooms',
                         'Example: list rooms'
                     ]
-                });
-            } else if(phrases[0] === 'rooms') {
-                socket.emit('listRooms');
-            } else if(phrases[0] === 'users') {
-                socket.emit('listUsers');
-            } else {
-                platformCmds.queueMessage({
-                    text : [phrases[0] + 'is not a valid option']
                 });
             }
         },
@@ -471,7 +474,7 @@ var validCmds = {
     mode : {
         func : function(phrases, verbose) {
             if(phrases.length > 0) {
-                var newMode = phrases[0];
+                var newMode = phrases[0].toLowerCase();
 
                 if(newMode === 'chat') {
                     platformCmds.setLocalVal('mode', 'chat');
@@ -558,7 +561,7 @@ var validCmds = {
 
                 if(phrases.length > 1) {
                     var user = {};
-                    var userName = phrases[0];
+                    var userName = phrases[0].toLowerCase();
                     var password = phrases[1];
 
                     if(userName.length >= 3 && userName.length <= 6 &&
@@ -615,7 +618,7 @@ var validCmds = {
             };
 
             if(phrases.length > 0) {
-                var roomName = phrases[0];
+                var roomName = phrases[0].toLowerCase();
                 var password = phrases[1];
 
                 if(roomName.length > 0 && roomName.length < 7 &&
@@ -661,7 +664,7 @@ var validCmds = {
         func : function(phrases) {
             if(phrases.length > 1) {
                 var user = {};
-                user.userName = phrases[0];
+                user.userName = phrases[0].toLowerCase();
                 user.password = phrases[1];
 
                 socket.emit('login', user);
@@ -703,7 +706,7 @@ var validCmds = {
                     ]
                 });
             } else if(phrases.length > 0) {
-                var userName = phrases[0];
+                var userName = phrases[0].toLowerCase();
 
                 socket.emit('locate', userName);
             } else {
@@ -791,7 +794,7 @@ var validCmds = {
         },
         steps : [
             function(phrase, socket) {
-                socket.emit('verifyKey', phrase);
+                socket.emit('verifyKey', phrase.toLowerCase());
                 platformCmds.queueMessage({
                     text : [
                         'Verifying key. Please wait...'
@@ -832,7 +835,7 @@ var validCmds = {
             function(phrase, socket) {
                 var data = cmdHelper.data;
 
-                data.entityName = phrase;
+                data.entityName = phrase.toLowerCase();
                 data.userName = currentUser;
                 socket.emit('unlockEntity', data);
                 platformCmds.queueMessage({
@@ -1010,7 +1013,7 @@ var validCmds = {
     verifyuser : {
         func : function(phrases) {
             if(phrases.length > 0) {
-                var userName = phrases[0];
+                var userName = phrases[0].toLowerCase();
 
                 if(userName === '*') {
                     socket.emit('verifyAllUsers');
@@ -1043,7 +1046,7 @@ var validCmds = {
     banuser : {
         func : function(phrases) {
             if(phrases.length > 0) {
-                var userName = phrases[0];
+                var userName = phrases[0].toLowerCase();
 
                 socket.emit('ban', userName);
             } else {
@@ -1070,7 +1073,7 @@ var validCmds = {
     unbanuser : {
         func : function(phrases) {
             if(phrases.length > 0) {
-                var userName = phrases[0];
+                var userName = phrases[0].toLowerCase();
 
                 socket.emit('unban', userName);
             } else {
@@ -1100,7 +1103,7 @@ var validCmds = {
                 var data = {};
 
                 data.message = {};
-                data.roomName = phrases[0];
+                data.roomName = phrases[0].toLowerCase();
                 data.message.text = [phrases.slice(1).join(' ')];
                 data.message.user = currentUser;
                 data.message.whisper = true;
@@ -1133,7 +1136,7 @@ var validCmds = {
             var data = {};
 
             if(phrases.length > 0) {
-                data.roomName = phrases[0];
+                data.roomName = phrases[0].toLowerCase();
                 data.timesCracked = 0;
                 data.timesRequired = 3;
                 data.randomizer = function(length) {
@@ -1235,7 +1238,7 @@ var validCmds = {
                 });
             },
             function(phrase) {
-                if(phrase === cmdHelper.data.code) {
+                if(phrase.toLowerCase() === cmdHelper.data.code) {
                     platformCmds.queueMessage({ text : ['Sequence accepted'] });
                     cmdHelper.data.timesCracked++;
                 } else {

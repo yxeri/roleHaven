@@ -8,6 +8,8 @@ function isTextAllowed(text) {
 
 function handle(socket, io) {
     socket.on('register', function(sentUser) {
+        sentUser.userName = sentUser.userName.toLowerCase();
+
         if(sentUser && isTextAllowed(sentUser.userName)) {
             const userObj = {
                 userName : sentUser.userName,
@@ -161,6 +163,8 @@ function handle(socket, io) {
     });
 
     socket.on('login', function(sentUser) {
+        sentUser.userName = sentUser.userName.toLowerCase();
+
         if(sentUser.userName && sentUser.password) {
             manager.authUser(sentUser.userName, sentUser.password,
                              function(err, user) {
@@ -306,8 +310,10 @@ function handle(socket, io) {
     });
 
     socket.on('verifyUser', function(sentUserName) {
-       if(sentUserName !== undefined) {
-            manager.verifyUser(sentUserName, function(err, user) {
+        const userNameLower = sentUserName.toLowerCase();
+
+        if(userNameLower !== undefined) {
+            manager.verifyUser(userNameLower, function(err, user) {
                 if(err || user === null) {
                     socket.emit('message',
                         { text : ['Failed to verify user'] });
@@ -317,7 +323,7 @@ function handle(socket, io) {
                     });
                 }
             });
-       }
+        }
     });
 
     socket.on('verifyAllUsers', function() {
@@ -354,21 +360,23 @@ function handle(socket, io) {
     });
 
     socket.on('ban', function(sentUserName) {
-        manager.banUser(sentUserName, function(err, user) {
+        const userNameLower = sentUserName.toLowerCase();
+
+        manager.banUser(userNameLower, function(err, user) {
            if(err || user === null) {
                socket.emit('message', { text : ['Failed to ban user'] });
            } else {
                const bannedSocketId = user.socketId;
 
                socket.emit('message', {
-                   text : ['User' + sentUserName + ' has been banned']
+                   text : ['User' + userNameLower + ' has been banned']
                });
 
-               manager.updateUserSocketId(sentUserName, '',
+               manager.updateUserSocketId(userNameLower, '',
                                           function(err, user) {
                    if(err || user === null) {
                        socket.emit('message', {
-                           text : ['Failed to disconnect user ' + sentUserName]
+                           text : ['Failed to disconnect user ' + userNameLower]
                        });
                    } else {
                        var rooms = socket.rooms;
@@ -381,7 +389,7 @@ function handle(socket, io) {
 
                        socket.emit('message', {
                            text : [
-                               'User ' + sentUserName + ' has been disconnected'
+                               'User ' + userNameLower + ' has been disconnected'
                            ]
                        });
                    }
@@ -391,12 +399,14 @@ function handle(socket, io) {
     });
 
     socket.on('unban', function(sentUserName) {
-        manager.unbanUser(sentUserName, function(err, user) {
+        const userNameLower = sentUserName.toLowerCase();
+
+        manager.unbanUser(userNameLower, function(err, user) {
             if(err || user === null) {
                 socket.emit('message', { text : ['Failed to unban user'] });
             } else {
                 socket.emit('message', {
-                    text : ['Ban on user ' + sentUserName + ' has been removed']
+                    text : ['Ban on user ' + userNameLower + ' has been removed']
                 });
             }
         });
