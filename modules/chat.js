@@ -255,8 +255,6 @@ function handle(socket) {
     });
 
     socket.on('history', function(lines) {
-        console.log('history', lines);
-
         manager.getUserById(socket.id, function(err, user) {
             if(err || user === null) {
                 console.log('Failed to get history. Couldn\'t get user', err);
@@ -267,7 +265,7 @@ function handle(socket) {
                     } else {
                         const historyMessages = [];
                         const maxLines = lines === null || isNaN(lines) ?
-                                         80 : lines;
+                                         60 : lines;
 
                         for(let i = 0; i < history.length; i++) {
                             const currentHistory = history[i];
@@ -281,16 +279,12 @@ function handle(socket) {
                                     const message = messages[j];
 
                                     message.roomName = currentHistory.roomName;
-                                    // We want the messages to be printed out
-                                    // instantly on the client
-                                    message.speed = 0;
                                     historyMessages.push(message);
                                 }
                             }
                         }
 
                         // Above loop pushes in everything in the reverse order.
-                        // Let's fix that
                         historyMessages.reverse();
                         historyMessages.sort(messageSort);
 
