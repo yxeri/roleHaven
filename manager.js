@@ -348,59 +348,50 @@ function authUserToRoom(sentUser, sentRoomName, sentPassword, callback) {
     });
 }
 
-function createRoom(sentRoom, callback) {
+// TODO Move findOne for user to outside of the database function
+function createRoom(sentRoom, sentUser, callback) {
     const newRoom = new Room(sentRoom);
-    const userQuery = { userName : sentRoom.owner };
     const newHistory = new History({ roomName : sentRoom.roomName });
+    let query;
 
-    User.findOne(userQuery).lean().exec(function(err, user) {
+    if(sentUser && sentUser.accessLevel < 11) {
+        query = { $or : [
+            { roomName : sentRoom.roomName },
+            { owner : sentRoom.owner },
+        ] };
+    } else {
+        query = { roomName : sentRoom.roomName };
+    }
+
+    // Checks if room already exists
+    Room.findOne(query).lean().exec(function(err, room) {
         if(err) {
-            console.log('Failed to find user and create room', err);
-        } else if(user !== null) {
-            let query;
-
-            if(user.accessLevel < 11) {
-                query = { $or : [
-                    { roomName : sentRoom.roomName },
-                    { owner : sentRoom.owner },
-                ] };
-            } else {
-                query = { roomName : sentRoom.roomName };
-            }
-
-            // Checks if room already exists
-            Room.findOne(query).lean().exec(function(err, room) {
+            console.log('Failed to find if room already exists', err);
+            // Room doesn't exist in the collection, so let's add it!
+        } else if(room === null) {
+            // Checks if history for room already exists
+            History.findOne(query).lean().exec(function(err, history) {
                 if(err) {
-                    console.log('Failed to find if room already exists', err);
-                    // Room doesn't exist in the collection, so let's add it!
-                } else if(room === null) {
-                    // Checks if history for room already exists
-                    History.findOne(query).lean().exec(function(err, history) {
-                        if(err) {
-                            console.log(
-                                'Failed to find if history already exists', err
-                            );
-                            // History doesn't exist in the collection, so let's
-                            // add it and the room!
-                        } else if(history === null) {
-                            newHistory.save(function(err, newHistory) {
-                                if(err || newHistory === null) {
-                                    console.log('Failed to save history', err);
-                                } else {
-                                    newRoom.save(function(err, newRoom) {
-                                        if(err) {
-                                            console.log(
-                                                'Failed to save room', err);
-                                        }
-
-                                        callback(err, newRoom);
-                                    });
+                    console.log(
+                        'Failed to find if history already exists', err
+                    );
+                    // History doesn't exist in the collection, so let's
+                    // add it and the room!
+                } else if(history === null) {
+                    newHistory.save(function(err, newHistory) {
+                        if(err || newHistory === null) {
+                            console.log('Failed to save history', err);
+                        } else {
+                            newRoom.save(function(err, newRoom) {
+                                if(err) {
+                                    console.log(
+                                        'Failed to save room', err);
                                 }
+
+                                callback(err, newRoom);
                             });
                         }
                     });
-                } else {
-                    callback(err, null);
                 }
             });
         } else {
@@ -655,6 +646,38 @@ function getPassedEvents(callback) {
     });
 }
 
+function removeRoom(sentRoomName, sentUser, callback) {
+    let query;
+
+    if(sentUser.accessLevel >= 11) {
+        query = { roomName : sentRoomName };
+    } else {
+        query = { $and : [
+            { owner : sentUser.userName },
+            { roomName : sentRoomName }
+        ] };
+    }
+
+    Room.findOneAndRemove(query).lean().exec(function(err, room) {
+        if(err) {
+            console.log('Failed to remove room', err);
+        } else if(room !== null) {
+            History.findOneAndRemove({ roomName : sentRoomName }).lean().exec(
+                function(err, history) {
+                    if(err) {
+                        console.log('Failed to remove history', err);
+                    } else if(history !== null) {
+                        callback(err, history);
+                    } else {
+                        callback(err, null);
+                    }
+                });
+        } else {
+            callback(err, null);
+        }
+    });
+}
+
 exports.getUserById = getUserById;
 exports.authUser = authUser;
 exports.addUser = addUser;
@@ -685,6 +708,7 @@ exports.getRoom = getRoom;
 exports.banUserFromRoom = banUserFromRoom;
 exports.unbanUserFromRoom = unbanUserFromRoom;
 exports.getOwnedRooms = getOwnedRooms;
+exports.removeRoom = removeRoom;
 
 //Blodsband specific
 exports.addEncryptionKey = addEncryptionKey;
