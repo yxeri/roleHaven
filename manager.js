@@ -32,9 +32,12 @@ const roomSchema = new mongoose.Schema({
     visibility : { type : Number, default : 1 },
     commands : [{
         commandName : String,
-        accessLevel : Number
+        accessLevel : Number,
+        requireAdmin : Boolean
     }],
-    bannedUsers : [{ type : String, unique : true }]
+    admins : [{ type : String, unique : true }],
+    bannedUsers : [{ type : String, unique : true }],
+    owner : String
 }, { collection : 'rooms' });
 const historySchema = new mongoose.Schema({
     roomName : { type : String, unique : true },
@@ -44,14 +47,16 @@ const historySchema = new mongoose.Schema({
         user : String
     }]
 }, { collection : 'histories' });
-//const commandSchema = new mongoose.Schema({
-//    commandName : String,
-//    func : {},
-//    help : [String],
-//    instructions : [String],
-//    clearAfterUse : Boolean,
-//    group : String
-//}, { collection : 'commands' });
+const commandSchema = new mongoose.Schema({
+    commandName : String,
+    func : {},
+    steps : [{}],
+    abortFunc : {},
+    help : [String],
+    instructions : [String],
+    clearAfterUse : Boolean,
+    cmdGroup : String
+}, { collection : 'commands' });
 const schedEventSchema = new mongoose.Schema({
     receiverName : String,
     func : {},
@@ -74,7 +79,7 @@ const encryptionKeySchema = new mongoose.Schema({
 const User = mongoose.model('User', userSchema);
 const Room = mongoose.model('Room', roomSchema);
 const History = mongoose.model('History', historySchema);
-//const Command = mongoose.model('Command', commandSchema);
+const Command = mongoose.model('Command', commandSchema);
 const SchedEvent = mongoose.model('SchedEvent', schedEventSchema);
 // Blodsband specific
 const Entity = mongoose.model('Entity', entitySchema);
