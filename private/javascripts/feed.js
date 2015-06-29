@@ -18,12 +18,13 @@ var shortQueue;
 var printing = false;
 
 // Char that is prepended on commands in chat mode
-var commandChar = '/';
+var commandChar = '-';
 
-// Interval times in milliseconds
+// Interval/timeout times in milliseconds
 var printIntervalTime = 200;
-var trackIntervalTime = 4000;
 var screenOffIntervalTime = 1000;
+var watchPositionTime = 15000;
+var pausePositionTime = 40000;
 
 // DOM element init
 // Initiation of DOM elements has to be done here.
@@ -38,13 +39,10 @@ var spacer = document.getElementById('spacer');
 // Socket.io
 var socket;
 
-// Did user focus the screen?
-var focused = false;
-
 // Is geolocation tracking on?
 var tracking = true;
-var oldPosition;
-var currentPosition;
+var positions = [];
+var watchId = null;
 
 // Queue of all the sounds that will be handled and played
 var soundQueue = [];
@@ -231,10 +229,12 @@ var validCmds = {
         func : function() {
             platformCmds.queueMessage({
                 text : [
-                    'You have to prepend commands with "/" in chat mode. ' +
-                    'Example: /help',
+                    'You have to prepend commands with "' + commandChar +
+                    '" in chat mode. ' + 'Example: ' + commandChar +
+                    'enterroom',
                     'Add -help after a command to get instructions' +
-                    ' on how to use it. Example: /decryptmodule -help'
+                    ' on how to use it. Example: ' + commandChar +
+                    'decryptmodule -help'
                 ]
             });
             platformCmds.queueMessage({
@@ -348,6 +348,8 @@ var validCmds = {
                     // Flag that will be used in .on function locally to
                     // show user they have entered
                     room.entered = true;
+
+                    validCmds.clear.func();
 
                     if(oldRoomName !== roomName) {
                         socket.emit('unfollow', oldRoom);
@@ -485,8 +487,9 @@ var validCmds = {
                             text : [
                                 '-------------------',
                                 'Chat mode activated',
-                                'Prepend commands with "/", e.g. ' +
-                                '"/decryptmodule"',
+                                'Prepend commands with "' + commandChar +
+                                '", e.g. ' + '"' + commandChar +
+                                'decryptmodule"',
                                 'Everything else written and sent ' +
                                 'will be intepreted' +
                                 'as a chat message',
@@ -503,7 +506,8 @@ var validCmds = {
                             text : [
                                 '-------------------',
                                 'Command mode activated',
-                                'Commands can be used without "/"',
+                                'Commands can be used without "' +
+                                commandChar + '"',
                                 'You have to use command "msg" ' +
                                 'to send messages',
                                 '-------------------'
@@ -517,7 +521,9 @@ var validCmds = {
                 }
             } else {
                 platformCmds.queueMessage({
-                    text : ['You forgot to input mode']
+                    text : [
+                        'Current mode: ' + platformCmds.getLocalVal('mode')
+                    ]
                 });
             }
         },
@@ -525,14 +531,14 @@ var validCmds = {
             'Change the input mode. The options are chat or cmd',
             '--Chat mode--',
             'Everything written will be interpreted as chat messages',
-            'All commands have to be prepended with "/" ' +
-            'Example: /decryptmodule',
+            'All commands have to be prepended with "' + commandChar + '" ' +
+            'Example: ' + commandChar + 'decryptmodule',
             '--Cmd mode--',
             'Text written will not be automatically be intepreted as' +
             'chat messages',
             'You have to use "msg" command to write messages' +
             'Example: msg hello',
-            'Commands do not have to be prepended with anything.' +
+            'Commands do not have to be prepended with anything. ' +
             'Example: decryptmodule'
         ],
         instructions : [
@@ -627,6 +633,7 @@ var validCmds = {
 
                     room.roomName = roomName;
                     room.password = password;
+                    room.owner = currentUser;
 
                     socket.emit('createRoom', room);
                 } else {
@@ -998,12 +1005,14 @@ var validCmds = {
     },
     logout : {
         func : function() {
+            validCmds.clear.func();
             socket.emit('logout', currentUser);
             platformCmds.resetAllLocalVals();
         },
         help : ['Logs out from the current user'],
         accessLevel : 1,
-        cmdGroup : 'system'
+        cmdGroup : 'system',
+        clearAfterUse : true
     },
     reboot : {
         func : function() {
@@ -1654,7 +1663,11 @@ function setIntervals() {
     }
 
     if(interval.tracking !== null) {
-        clearInterval(interval.tracking);
+        clearTimeout(interval.tracking);
+    }
+
+    if(watchId !== null) {
+        navigator.geolocation.clearWatch(watchId);
     }
 
     // Prints messages from the queue
@@ -1663,7 +1676,7 @@ function setIntervals() {
 
     if(tracking) {
         // Gets new geolocation data
-        interval.tracking = setInterval(sendLocationData, trackIntervalTime);
+        sendLocationData();
     }
 
     // Should not be recreated on focus
@@ -1912,17 +1925,15 @@ function keyPress(event) {
                     var commandName;
 
                     if(phrases[0].length > 0) {
-                        if(platformCmds.getLocalVal('mode') === 'cmd' ||
-                           currentUser === null) {
+                        var sign = phrases[0].charAt(0);
+
+                        if(sign === commandChar) {
+                            commandName = phrases[0].slice(1).toLowerCase();
+                            command = validCmds[commandName];
+                        } else if(platformCmds.getLocalVal('mode') === 'cmd' ||
+                                  currentUser === null) {
                             commandName = phrases[0].toLowerCase();
                             command = validCmds[commandName];
-                        } else {
-                            var sign = phrases[0].charAt(0);
-
-                            if(sign === commandChar) {
-                                commandName = phrases[0].slice(1).toLowerCase();
-                                command = validCmds[commandName];
-                            }
                         }
 
                         if(currentUser !== null && command &&
@@ -2115,38 +2126,59 @@ function preparePositionData(position) {
     return preparedPosition; // geolocation
 }
 
-function locationData() {
-    if('geolocation' in navigator) {
-        navigator.geolocation.watchPosition(function(position) {
-            if(position !== undefined) {
-                oldPosition = currentPosition;
-                currentPosition = position;
-            }
-        }, function(err) {
-            if(err.code === err.PERMISSION_DENIED) {
-                tracking = false;
-                clearInterval(interval.tracking);
-                platformCmds.queueMessage({
-                    text : [
-                        'Unable to connect to the tracking satellites',
-                        'Turning off tracking is a major offense',
-                        'Organica Re-Education Squads have been ' +
-                        'sent to scour the area'
-                    ], extraClass : 'importantMsg'
-                });
-            } else {
-                console.log(err);
-            }
-        }, { enableHighAccuracy : true });
+function retrievePosition() {
+    var clearingWatch = function() {
+        navigator.geolocation.clearWatch(watchId);
+        watchId = null;
+        interval.tracking = setTimeout(sendLocationData, pausePositionTime);
+    };
+
+    watchId = navigator.geolocation.watchPosition(function(position) {
+        if(position !== undefined) {
+            positions.push(position);
+        }
+    }, function(err) {
+        if(err.code === err.PERMISSION_DENIED) {
+            tracking = false;
+            clearTimeout(interval.tracking);
+            platformCmds.queueMessage({
+                text : [
+                    'Unable to connect to the tracking satellites',
+                    'Turning off tracking is a major offense',
+                    'Organica Re-Education Squads have been ' +
+                    'sent to scour the area'
+                ], extraClass : 'importantMsg'
+            });
+        } else {
+            console.log(err);
+        }
+    }, { enableHighAccuracy : true });
+
+    if(tracking) {
+        interval.tracking = setTimeout(clearingWatch, watchPositionTime);
     }
 }
 
 function sendLocationData() {
-    if(currentUser !== null && currentPosition !== oldPosition) {
-        oldPosition = currentPosition;
+    if(currentUser !== null && positions.length > 0) {
+        var mostAccuratePos;
 
-        socket.emit('updateLocation', preparePositionData(currentPosition));
+        for(var i = positions.length - 1; i >= 0; i--) {
+            var position = positions[i];
+            var accuracy = positions[i].coords.accuracy;
+
+            if(mostAccuratePos === undefined) {
+                mostAccuratePos = positions[i];
+            } else if(mostAccuratePos.coords.accuracy > accuracy) {
+                mostAccuratePos = position;
+            }
+        }
+
+        positions = [];
+        socket.emit('updateLocation', preparePositionData(mostAccuratePos));
     }
+
+    retrievePosition();
 }
 
 function autoComplete() {
@@ -2154,18 +2186,16 @@ function autoComplete() {
     var partialCommand = phrases[0];
     var commands = Object.keys(validCmds);
     var matched = [];
+    var sign = partialCommand.charAt(0);
 
     // Auto-complete should only trigger when one phrase is in the input
     // It will not auto-complete flags
     // If chat mode and the command is prepended or normal mode
     if(phrases.length === 1 && partialCommand.length > 0 &&
-       ((platformCmds.getLocalVal('mode') === 'chat' &&
-         partialCommand.charAt(0) === commandChar) ||
-        (platformCmds.getLocalVal('mode') === 'cmd') ||
-        currentUser === null)) {
-        // Removes prepend sign, which is required for commands in chat mode
-        if(platformCmds.getLocalVal('mode') === 'chat' &&
-           currentUser !== null) {
+       (sign === commandChar || (platformCmds.getLocalVal('mode') === 'cmd') ||
+       currentUser === null)) {
+        // Removes prepend sign
+        if(sign === commandChar) {
             partialCommand = partialCommand.slice(1);
         }
 
@@ -2194,7 +2224,7 @@ function autoComplete() {
         if(matched.length === 1) {
             var newText = '';
 
-            if(platformCmds.getLocalVal('mode') === 'chat') {
+            if(sign === commandChar) {
                 newText += commandChar;
             }
 
@@ -2322,7 +2352,9 @@ function convertWhisperRoom(roomName) {
 function startSocketListeners() {
     if(socket) {
         socket.on('chatMsg', function(message) {
-            message.roomName = convertWhisperRoom(message.roomName);
+            if(message.roomName) {
+                message.roomName = convertWhisperRoom(message.roomName);
+            }
 
             platformCmds.queueMessage(message);
         });
@@ -2390,6 +2422,7 @@ function startSocketListeners() {
         });
 
         socket.on('login', function(user) {
+            validCmds.clear.func();
             platformCmds.setLocalVal('user', user.userName);
             currentUser = user.userName;
             currentAccessLevel = user.accessLevel;
@@ -2489,14 +2522,17 @@ function startSocketListeners() {
                     var longitude = userLoc.coords.longitude;
                     var heading = userLoc.coords.heading !== null ?
                                   Math.round(userLoc.coords.heading) : null;
+                    var accuracy = userLoc.accuracy;
                     var text = '';
 
                     text += 'User: ' + user + ' - ';
                     text +=
-                        'Last seen: ' + generateShortTime(userLoc.lastSeen) +
+                        'Time: ' + generateShortTime(userLoc.locTime) +
                         '- ';
                     text += 'Location: ' +
                             locateOnMap(latitude, longitude) + ' - ';
+
+                    text += 'Accuracy: ' + accuracy + ' meters - ';
 
                     if(heading !== null) {
                         text += 'Heading: ' + heading + ' deg. - ';
@@ -2538,8 +2574,6 @@ function startBoot() {
                      JSON.parse(platformCmds.getLocalVal('cmdHistory')) : [];
     currentUser = platformCmds.getLocalVal('user');
     currentAccessLevel = 1;
-    oldPosition = {};
-    currentPosition = {};
 
     messageQueue = [];
 
@@ -2553,7 +2587,6 @@ function startBoot() {
 
     resetPrevCmdPointer();
     generateMap();
-    locationData();
     setIntervals();
     startAudio();
 

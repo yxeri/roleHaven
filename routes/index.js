@@ -67,15 +67,16 @@ function handle(io) {
 
                                     if(users[i].position !== undefined) {
                                         const coords = {};
-                                        const lastSeen =
+                                        const locTime =
                                             new Date(position.timestamp);
 
                                         coords.latitude = position.latitude;
                                         coords.longitude = position.longitude;
                                         coords.heading = position.heading;
-
-                                        locObj.lastSeen = lastSeen;
                                         locObj.coords = coords;
+
+                                        locObj.locTime = locTime;
+                                        locObj.accuracy = position.accuracy;
 
                                         locationData[userName] = locObj;
                                     }
@@ -94,7 +95,7 @@ function handle(io) {
                             } else if(user.position !== undefined) {
                                 const userName = user.userName;
                                 const position = user.position;
-                                const lastSeen = new Date(position.timestamp);
+                                const locTime = new Date(position.timestamp);
                                 const locationData = {};
                                 const locObj = {};
                                 const coords = {};
@@ -102,9 +103,10 @@ function handle(io) {
                                 coords.latitude = position.latitude;
                                 coords.longitude = position.longitude;
                                 coords.heading = position.heading;
-
-                                locObj.lastSeen = lastSeen;
                                 locObj.coords = coords;
+
+                                locObj.locTime = locTime;
+                                locObj.accuracy = position.accuracy;
 
                                 locationData[userName] = locObj;
 

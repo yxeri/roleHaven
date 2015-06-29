@@ -20,10 +20,10 @@ function handle(socket) {
     socket.on('chatMsg', function(data) {
         const newData = data;
         let roomName = newData.message.whisper ?
-                       newData.roomName + '-whisper' : newData.roomName
+                       newData.roomName + '-whisper' : newData.roomName;
 
         newData.message.time = new Date();
-        
+
         manager.addMsgToHistory(roomName, newData.message,
                                 function(err, history) {
             if(err || history === null) {
@@ -81,7 +81,7 @@ function handle(socket) {
     socket.on('createRoom', function(sentRoom) {
         sentRoom.roomName = sentRoom.roomName.toLowerCase();
 
-        if(sentRoom && isTextAllowed(sentRoom.roomName)) {
+        if(sentRoom && sentRoom.owner && isTextAllowed(sentRoom.roomName)) {
             manager.createRoom(sentRoom, function(err, room) {
                 if(err) {
                     socket.emit('message',
@@ -92,11 +92,18 @@ function handle(socket) {
                         { text : ['Room successfully created'] }
                     );
                 } else {
-                    socket.emit('message',
-                        { text : [sentRoom.roomName + ' already exists'] }
+                    socket.emit('message', {
+                            text : [
+                                sentRoom.roomName + ' either already exists ' +
+                                'or you\'ve already created a room',
+                                'You can only be the owner of one room'
+                            ]
+                        }
                     );
                 }
             });
+        } else {
+            socket.emit('message', { text : ['Failed to create the room'] });
         }
     });
 
@@ -177,10 +184,10 @@ function handle(socket) {
                 }
             }
         });
-    })
+    });
 
     socket.on('unfollow', function(room) {
-        const roomName = room.roomName.toLowerCase;
+        const roomName = room.roomName.toLowerCase();
 
         if(socket.rooms.indexOf(roomName) > -1) {
             manager.getUserById(socket.id, function(err, user) {
@@ -277,7 +284,37 @@ function handle(socket) {
         // (has same name as user). They should not be visible to the user
         const roomsString = socket.rooms.slice(2).sort().join('\t');
 
-        socket.emit('message', { text : [roomsString] });
+        socket.emit('message', {
+            text : [
+                'You are following rooms:',
+                roomsString
+            ]
+        });
+
+        manager.getUserById(socket.id, function(err, user) {
+            if(err || user === null) {
+                console.log('Failed to get user for owned rooms', err);
+            } else {
+                manager.getOwnedRooms(user, function(err, rooms) {
+                    if(err || rooms === null) {
+                        console.log('Failed to get owned rooms', err);
+                    } else {
+                        let ownedRoomsString = '';
+
+                        for(let i = 0; i < rooms.length; i++) {
+                            ownedRoomsString += rooms[i].roomName + '\t';
+                        }
+
+                        socket.emit('message', {
+                            text : [
+                                'You are owner of the rooms:',
+                                ownedRoomsString
+                            ]
+                        });
+                    }
+                });
+            }
+        });
     });
 
     socket.on('history', function(lines) {

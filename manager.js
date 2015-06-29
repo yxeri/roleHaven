@@ -350,38 +350,57 @@ function authUserToRoom(sentUser, sentRoomName, sentPassword, callback) {
 
 function createRoom(sentRoom, callback) {
     const newRoom = new Room(sentRoom);
-    const query = { roomName : sentRoom.roomName };
-    const newHistory = new History(query);
+    const userQuery = { userName : sentRoom.owner };
+    const newHistory = new History({ roomName : sentRoom.roomName });
 
-    // Checks if room already exists
-    Room.findOne(query).lean().exec(function(err, room) {
+    User.findOne(userQuery).lean().exec(function(err, user) {
         if(err) {
-            console.log('Failed to find if room already exists', err);
-            // Room doesn't exist in the collection, so let's add it!
-        } else if(room === null) {
-            // Checks if history for room already exists
-            History.findOne(query).lean().exec(function(err, history) {
-                if(err) {
-                    console.log(
-                        'Failed to find if history already exists',
-                        err
-                    );
-                    // History doesn't exist in the collection, so let's
-                    // add it and the room!
-                } else if(history === null) {
-                    newHistory.save(function(err, newHistory) {
-                        if(err || newHistory === null) {
-                            console.log('Failed to save history', err);
-                        } else {
-                            newRoom.save(function(err, newRoom) {
-                                if(err) {
-                                    console.log('Failed to save room', err);
-                                }
+            console.log('Failed to find user and create room', err);
+        } else if(user !== null) {
+            let query;
 
-                                callback(err, newRoom);
+            if(user.accessLevel < 11) {
+                query = { $or : [
+                    { roomName : sentRoom.roomName },
+                    { owner : sentRoom.owner },
+                ] };
+            } else {
+                query = { roomName : sentRoom.roomName };
+            }
+
+            // Checks if room already exists
+            Room.findOne(query).lean().exec(function(err, room) {
+                if(err) {
+                    console.log('Failed to find if room already exists', err);
+                    // Room doesn't exist in the collection, so let's add it!
+                } else if(room === null) {
+                    // Checks if history for room already exists
+                    History.findOne(query).lean().exec(function(err, history) {
+                        if(err) {
+                            console.log(
+                                'Failed to find if history already exists', err
+                            );
+                            // History doesn't exist in the collection, so let's
+                            // add it and the room!
+                        } else if(history === null) {
+                            newHistory.save(function(err, newHistory) {
+                                if(err || newHistory === null) {
+                                    console.log('Failed to save history', err);
+                                } else {
+                                    newRoom.save(function(err, newRoom) {
+                                        if(err) {
+                                            console.log(
+                                                'Failed to save room', err);
+                                        }
+
+                                        callback(err, newRoom);
+                                    });
+                                }
                             });
                         }
                     });
+                } else {
+                    callback(err, null);
                 }
             });
         } else {
@@ -414,6 +433,20 @@ function getRoom(sentRoomName, callback) {
         }
 
         callback(err, room);
+    });
+}
+
+function getOwnedRooms(sentUser, callback) {
+    const query = { owner : sentUser.userName };
+    const sort = { roomName : 1 };
+    const filter = { _id : 0 }
+
+    Room.find(query, filter).sort(sort).lean().exec(function(err, rooms) {
+        if(err) {
+            console.log('Failed to get owned rooms', err);
+        }
+
+        callback(err, rooms);
     });
 }
 
@@ -651,6 +684,7 @@ exports.getPassedEvents = getPassedEvents;
 exports.getRoom = getRoom;
 exports.banUserFromRoom = banUserFromRoom;
 exports.unbanUserFromRoom = unbanUserFromRoom;
+exports.getOwnedRooms = getOwnedRooms;
 
 //Blodsband specific
 exports.addEncryptionKey = addEncryptionKey;
