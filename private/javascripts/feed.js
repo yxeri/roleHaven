@@ -656,7 +656,7 @@ var validCmds = {
             ' Example:',
             '  createroom myroom banana'
         ],
-        accessLevel : 3,
+        accessLevel : 1,
         cmdGroup : 'chat'
     },
     myrooms : {
@@ -1508,6 +1508,44 @@ var validCmds = {
             ' Example:',
             '  switchroom room1'
         ],
+        accessLevel : 1,
+        cmdGroup : 'chat'
+    },
+    removeroom : {
+        func : function(phrases) {
+            if(phrases.length > 0) {
+                var data = {};
+
+                data.roomName = phrases[0].toLowerCase();
+                cmdHelper.data = data;
+
+                platformCmds.queueMessage({
+                    text : [
+                        'Do you really want to remove the room?',
+                        'Confirm by writing "yes"'
+                    ]
+                });
+
+                setInputStart('removeroom');
+            } else {
+                resetCommand(true);
+
+                platformCmds.queueMessage({
+                    text : ['You forgot to input the room name']
+                });
+            }
+        },
+        steps : [
+            function(phrase) {
+                if(phrase.toLowerCase() === 'yes') {
+                    socket.emit('removeRoom', cmdHelper.data.roomName);
+                }
+
+                resetCommand();
+            }
+        ],
+        help : [],
+        instructions : [],
         accessLevel : 1,
         cmdGroup : 'chat'
     }

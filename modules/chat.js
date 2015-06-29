@@ -82,24 +82,33 @@ function handle(socket) {
         sentRoom.roomName = sentRoom.roomName.toLowerCase();
 
         if(sentRoom && sentRoom.owner && isTextAllowed(sentRoom.roomName)) {
-            manager.createRoom(sentRoom, function(err, room) {
-                if(err) {
+            manager.getUserById(socket.id, function(err, user) {
+                if(err || user === null) {
                     socket.emit('message',
                         { text : ['Failed to create the room'] }
                     );
-                } else if(room !== null) {
-                    socket.emit('message',
-                        { text : ['Room successfully created'] }
-                    );
                 } else {
-                    socket.emit('message', {
-                            text : [
-                                sentRoom.roomName + ' either already exists ' +
-                                'or you\'ve already created a room',
-                                'You can only be the owner of one room'
-                            ]
+                    manager.createRoom(sentRoom, user, function(err, room) {
+                        if(err) {
+                            socket.emit('message',
+                                { text : ['Failed to create the room'] }
+                            );
+                        } else if(room !== null) {
+                            socket.emit('message',
+                                { text : ['Room successfully created'] }
+                            );
+                        } else {
+                            socket.emit('message', {
+                                    text : [
+                                        sentRoom.roomName + ' either ' +
+                                        'already exists ' +
+                                        'or you\'ve already created a room',
+                                        'You can only be the owner of one room'
+                                    ]
+                                }
+                            );
                         }
-                    );
+                    });
                 }
             });
         } else {
@@ -396,6 +405,30 @@ function handle(socket) {
 
                 socket.join(roomName);
                 socket.emit('follow', room);
+            }
+        });
+    });
+
+    socket.on('removeRoom', function(roomName) {
+        const roomNameLower = roomName.toLowerCase();
+
+        manager.getUserById(socket.id, function(err, user) {
+            if(err || user == null) {
+                socket.emit('message', {
+                    text : ['Failed to remove the room']
+                });
+            } else {
+                manager.removeRoom(roomNameLower, user, function(err, room) {
+                    if(err || room == null) {
+                        socket.emit('message', {
+                            text : ['Failed to remove the room']
+                        });
+                    } else {
+                        socket.emit('message', {
+                            text : ['Removed the room']
+                        });
+                    }
+                });
             }
         });
     });

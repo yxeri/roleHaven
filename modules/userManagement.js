@@ -42,7 +42,7 @@ function handle(socket, io) {
                         'you can log in'
                     ] });
 
-                    manager.createRoom(newRoom, function(err, room) {
+                    manager.createRoom(newRoom, null, function(err, room) {
                         if(err || room === null) {
                             console.log('Failed to create room for user ' +
                                         user.userName, err);
