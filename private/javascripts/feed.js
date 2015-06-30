@@ -262,7 +262,16 @@ var validCmds = {
                 }
             }
 
-            if(phrases === undefined || phrases.length === 0) {
+            if(currentUser === null) {
+                platformCmds.queueMessage({
+                    text : [
+                        'You have to log in to access all other commands'
+                    ]
+                });
+                platformCmds.queueMessage({
+                    text : platformCmds.getCommands('login')
+                });
+            } else if(phrases === undefined || phrases.length === 0) {
                 platformCmds.queueMessage({
                     text : [
                         'You have to prepend commands with "' + commandChar +
