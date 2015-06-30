@@ -265,7 +265,9 @@ var validCmds = {
             if(currentUser === null) {
                 platformCmds.queueMessage({
                     text : [
-                        'You have to log in to access all other commands'
+                        'You have to log in to access all other commands',
+                        'Use register to register a new user',
+                        'Use login to log in to an existing user'
                     ]
                 });
                 platformCmds.queueMessage({
