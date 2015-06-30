@@ -107,6 +107,10 @@ pre {
     font-size: 2em;
 }
 
+.bold {
+    font-weight: bold;
+}
+
 .feed {
     padding-left: .5em;
     padding-right: .5em;

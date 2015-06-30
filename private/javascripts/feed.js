@@ -17,6 +17,8 @@ var shortQueue;
 // True if messages are being processed and printed right now
 var printing = false;
 
+var keyPressed = false;
+
 // Char that is prepended on commands in chat mode
 var commandChar = '-';
 
@@ -182,24 +184,26 @@ var platformCmds = {
         localStorage.removeItem('room');
         setInputStart('RAZCMD');
     },
-    getCommands : function() {
+    getCommands : function(group) {
         var keys = Object.keys(validCmds).sort();
-        var commands = [''];
+        var commands = [];
+
+        if(group !== undefined) {
+            commands.push(group + ' commands:');
+        }
 
         for(var i = 0; i < keys.length; i++) {
-            var commandAccessLevel = validCmds[keys[i]].accessLevel;
+            var command = validCmds[keys[i]];
+            var commandAccessLevel = command.accessLevel;
 
-            if(isNaN(commandAccessLevel) ||
-               currentAccessLevel >= commandAccessLevel) {
-                var msg = '';
+            if((isNaN(commandAccessLevel) ||
+               currentAccessLevel >= commandAccessLevel) &&
+               (group === undefined || command.cmdGroup === group)) {
+                var msg = ' ';
 
                 msg += keys[i];
 
-                if(i !== keys.length - 1) {
-                    msg += ' | ';
-                }
-
-                commands[0] += msg;
+                commands.push(msg);
             }
         }
 
@@ -226,24 +230,83 @@ var interval = {
 };
 var validCmds = {
     help : {
-        func : function() {
-            platformCmds.queueMessage({
-                text : [
-                    'You have to prepend commands with "' + commandChar +
-                    '" in chat mode. ' + 'Example: ' + commandChar +
-                    'enterroom',
-                    'Add -help after a command to get instructions' +
-                    ' on how to use it. Example: ' + commandChar +
-                    'decryptmodule -help'
-                ]
-            });
-            platformCmds.queueMessage({
-                text : platformCmds.getCommands()
-            });
+        func : function(phrases) {
+            var getAll = function() {
+                var basicCmds = platformCmds.getCommands('basic');
+                var advancedCmds = platformCmds.getCommands('advanced');
+                var hackingCmds = platformCmds.getCommands('hacking');
+                var adminCmds = platformCmds.getCommands('admin');
+
+                if(basicCmds.length > 1){
+                    platformCmds.queueMessage({
+                        text : basicCmds
+                    });
+                }
+
+                if(advancedCmds.length > 1) {
+                    platformCmds.queueMessage({
+                        text : advancedCmds
+                    });
+                }
+
+                if(hackingCmds.length > 1) {
+                    platformCmds.queueMessage({
+                        text : hackingCmds
+                    });
+                }
+
+                if(adminCmds.length > 1) {
+                    platformCmds.queueMessage({
+                        text : adminCmds
+                    });
+                }
+            }
+
+            if(phrases === undefined || phrases.length === 0) {
+                platformCmds.queueMessage({
+                    text : [
+                        'You have to prepend commands with "' + commandChar +
+                        '" in chat mode. ' + 'Example: ' + commandChar +
+                        'enterroom',
+                        'Add -help after a command to get instructions' +
+                        ' on how to use it. Example: ' + commandChar +
+                        'decryptmodule -help'
+                    ]
+                });
+
+                if(currentAccessLevel === 1) {
+                    platformCmds.queueMessage({
+                       text : [
+                           'This is a list of basic commands. ' +
+                           'Use "help all" to ' +
+                           'see all your available commands'
+                       ]
+                    });
+                    platformCmds.queueMessage({
+                        text : platformCmds.getCommands('basic')
+                    });
+                } else {
+                    getAll();
+                }
+            } else {
+                getAll();
+            }
         },
-        help : ['Shows a list of available commands'],
+        help : [
+            'Shows a list of available commands',
+            'The set of commands shown is the basic set',
+            'Add "all" to show all commands available to you. Example: ' +
+            'help all'
+        ],
+        instructions : [
+            ' Usage:',
+            '  help *optional all*',
+            ' Example:',
+            '  help',
+            '  help all'
+        ],
         accessLevel : 1,
-        cmdGroup : 'info'
+        cmdGroup : 'basic'
     },
     clear : {
         func : function() {
@@ -254,7 +317,7 @@ var validCmds = {
         help : ['Clears the terminal view'],
         clearAfterUse : true,
         accessLevel : 1,
-        cmdGroup : 'misc'
+        cmdGroup : 'basic'
     },
     whoami : {
         func : function() {
@@ -262,7 +325,7 @@ var validCmds = {
         },
         help : ['Shows the current user'],
         accessLevel : 1,
-        cmdGroup : 'info'
+        cmdGroup : 'basic'
     },
     msg : {
         func : function(phrases) {
@@ -294,7 +357,7 @@ var validCmds = {
         ],
         clearAfterUse : true,
         accessLevel : 1,
-        cmdGroup : 'chat'
+        cmdGroup : 'advanced'
     },
     broadcast : {
         func : function(phrases) {
@@ -326,7 +389,7 @@ var validCmds = {
         ],
         clearAfterUse : true,
         accessLevel : 1,
-        cmdGroup : 'chat'
+        cmdGroup : 'admin'
     },
     enterroom : {
         func : function(phrases) {
@@ -374,7 +437,7 @@ var validCmds = {
             '  enterroom sector5 banana'
         ],
         accessLevel : 1,
-        cmdGroup : 'chat'
+        cmdGroup : 'basic'
     },
     follow : {
         func : function(phrases) {
@@ -405,7 +468,7 @@ var validCmds = {
             '  follow room1 banana'
         ],
         accessLevel : 1,
-        cmdGroup : 'chat'
+        cmdGroup : 'advanced'
     },
     unfollow : {
         func : function(phrases) {
@@ -434,7 +497,7 @@ var validCmds = {
             '  unfollow roomname'
         ],
         accessLevel : 1,
-        cmdGroup : 'chat'
+        cmdGroup : 'advanced'
     },
     list : {
         func : function(phrases) {
@@ -471,7 +534,7 @@ var validCmds = {
             '  list users'
         ],
         accessLevel : 1,
-        cmdGroup : 'info'
+        cmdGroup : 'basic'
     },
     mode : {
         func : function(phrases, verbose) {
@@ -549,7 +612,7 @@ var validCmds = {
             '  mode cmd'
         ],
         accessLevel : 1,
-        cmdGroup : 'misc'
+        cmdGroup : 'advanced'
     },
     register : {
         func : function(phrases) {
@@ -609,7 +672,7 @@ var validCmds = {
         ],
         clearAfterUse : true,
         accessLevel : 0,
-        cmdGroup : 'system'
+        cmdGroup : 'login'
     },
     createroom : {
         func : function(phrases) {
@@ -657,7 +720,7 @@ var validCmds = {
             '  createroom myroom banana'
         ],
         accessLevel : 1,
-        cmdGroup : 'chat'
+        cmdGroup : 'advanced'
     },
     myrooms : {
         func : function() {
@@ -665,7 +728,7 @@ var validCmds = {
         },
         help : ['Shows a list of all rooms you are following'],
         accessLevel : 1,
-        cmdGroup : 'info'
+        cmdGroup : 'advanced'
     },
     login : {
         func : function(phrases) {
@@ -696,7 +759,7 @@ var validCmds = {
         ],
         clearAfterUse : true,
         accessLevel : 0,
-        cmdGroup : 'system'
+        cmdGroup : 'login'
     },
     time : {
         func : function() {
@@ -704,7 +767,7 @@ var validCmds = {
         },
         help : ['Shows the current time'],
         accessLevel : 1,
-        cmdGroup : 'misc'
+        cmdGroup : 'basic'
     },
     locate : {
         func : function(phrases) {
@@ -739,7 +802,7 @@ var validCmds = {
             '  locate'
         ],
         accessLevel : 1,
-        cmdGroup : 'locate'
+        cmdGroup : 'advanced'
     },
     decryptmodule : {
         func : function() {
@@ -890,7 +953,7 @@ var validCmds = {
             'Follow the on-screen instructions'
         ],
         accessLevel : 1,
-        cmdGroup : 'hack'
+        cmdGroup : 'advanced'
     },
     history : {
         func : function(phrases) {
@@ -913,7 +976,7 @@ var validCmds = {
         ],
         clearAfterUse : true,
         accessLevel : 1,
-        cmdGroup : 'chat'
+        cmdGroup : 'advanced'
     },
     morse : {
         func : function(phrases) {
@@ -957,7 +1020,7 @@ var validCmds = {
             '  morse sos'
         ],
         accessLevel : 1,
-        cmdGroup : 'chat'
+        cmdGroup : 'admin'
     },
     password : {
         func : function(phrases) {
@@ -1001,7 +1064,7 @@ var validCmds = {
             '  password old1 new1'
         ],
         accessLevel : 1,
-        cmdGroup : 'system'
+        cmdGroup : 'basic'
     },
     logout : {
         func : function() {
@@ -1011,7 +1074,7 @@ var validCmds = {
         },
         help : ['Logs out from the current user'],
         accessLevel : 1,
-        cmdGroup : 'system',
+        cmdGroup : 'basic',
         clearAfterUse : true
     },
     reboot : {
@@ -1020,7 +1083,7 @@ var validCmds = {
         },
         help : ['Reboots terminal'],
         accessLevel : 0,
-        cmdGroup : 'system'
+        cmdGroup : 'basic'
     },
     verifyuser : {
         func : function(phrases) {
@@ -1141,7 +1204,7 @@ var validCmds = {
         ],
         clearAfterUse : true,
         accessLevel : 1,
-        cmdGroup : 'chat'
+        cmdGroup : 'basic'
     },
     hackroom : {
         func : function(phrases) {
@@ -1305,7 +1368,7 @@ var validCmds = {
             '  hackroom secret'
         ],
         accessLevel : 1,
-        cmdGroup : 'hack'
+        cmdGroup : 'hacking'
     },
     showmap : {
         func : function() {
@@ -1357,7 +1420,7 @@ var validCmds = {
         instructions : [],
         clearAfterUse : true,
         accessLevel : 1,
-        cmdGroup : 'locate'
+        cmdGroup : 'advanced'
     },
     importantMsg : {
         func : function() {
@@ -1370,8 +1433,8 @@ var validCmds = {
         ],
         help : [],
         instructions : [],
-        accessLevel : 11,
-        cmdGroup : 'chat'
+        accessLevel : 1,
+        cmdGroup : 'admin'
     },
     chipper : {
         func : function() {
@@ -1476,7 +1539,7 @@ var validCmds = {
             'Press enter when you have retrieved confirmation from the ECU'
         ],
         accessLevel : 1,
-        cmdGroup : 'hack'
+        cmdGroup : 'hacking'
     },
     switchroom : {
         func : function(phrases) {
@@ -1509,7 +1572,7 @@ var validCmds = {
             '  switchroom room1'
         ],
         accessLevel : 1,
-        cmdGroup : 'chat'
+        cmdGroup : 'advanced'
     },
     removeroom : {
         func : function(phrases) {
@@ -1547,7 +1610,7 @@ var validCmds = {
         help : [],
         instructions : [],
         accessLevel : 1,
-        cmdGroup : 'chat'
+        cmdGroup : 'advanced'
     }
 };
 
@@ -1686,6 +1749,7 @@ function isScreenOff() {
     var now = (new Date()).getTime();
     var diff = now - lastInterval;
     var offBy = diff - 1000;
+
     lastInterval = now;
 
     if(offBy > 10000) {
@@ -1810,7 +1874,8 @@ function specialKeyPress(event) {
     var keyCode = (typeof event.which === 'number') ? event.which :
                   event.keyCode;
 
-    switch(keyCode) {
+    if(!keyPressed) {
+        switch(keyCode) {
         // Backspace
         case 8:
             // Remove character to the left of the marker
@@ -1823,6 +1888,8 @@ function specialKeyPress(event) {
             break;
         // Tab
         case 9:
+            keyPressed = true;
+
             if(!cmdHelper.keyboardBlocked &&
                cmdHelper.command === null) {
                 autoComplete();
@@ -1884,6 +1951,8 @@ function specialKeyPress(event) {
             break;
         // Up arrow
         case 38:
+            keyPressed = true;
+
             if(!cmdHelper.keyboardBlocked &&
                cmdHelper.command === null) {
                 if(previousCommandPointer > 0) {
@@ -1898,6 +1967,8 @@ function specialKeyPress(event) {
             break;
         // Down arrow
         case 40:
+            keyPressed = true;
+
             if(!cmdHelper.keyboardBlocked &&
                cmdHelper.command === null) {
                 if(previousCommandPointer < cmdHistory.length - 1) {
@@ -1919,6 +1990,9 @@ function specialKeyPress(event) {
         default:
             break;
     }
+    } else {
+        event.preventDefault();
+    }
 }
 
 function keyPress(event) {
@@ -1927,14 +2001,17 @@ function keyPress(event) {
     var markerParentsChildren = marker.parentElement.childNodes;
     var markerLocation;
 
-    for(var i = 0; i < markerParentsChildren.length; i++) {
-        if(markerParentsChildren[i] === marker) {
-            markerLocation = i;
-            break;
-        }
-    }
+    if(!keyPressed) {
+        keyPressed = true;
 
-    switch(keyCode) {
+        for(var i = 0; i < markerParentsChildren.length; i++) {
+            if(markerParentsChildren[i] === marker) {
+                markerLocation = i;
+                break;
+            }
+        }
+
+        switch(keyCode) {
         // Enter
         case 13:
             if(!cmdHelper.keyboardBlocked) {
@@ -2090,6 +2167,7 @@ function keyPress(event) {
 
             break;
     }
+    }
 
     event.preventDefault();
 }
@@ -2108,9 +2186,9 @@ function resetCommand(aborted) {
     cmdHelper.command = null;
     cmdHelper.onStep = 0;
     cmdHelper.maxSteps = 0;
-    setInputStart(platformCmds.getLocalVal('room'));
     cmdHelper.keyboardBlocked = false;
     cmdHelper.data = null;
+    setInputStart(platformCmds.getLocalVal('room'));
 
     if(aborted) {
         platformCmds.queueMessage({
@@ -2402,6 +2480,8 @@ function startSocketListeners() {
         });
 
         socket.on('broadcastMsg', function(message) {
+            message.extraClass = 'bold';
+
             platformCmds.queueMessage(message);
         });
 
@@ -2563,17 +2643,16 @@ function startSocketListeners() {
                     var accuracy = userLoc.accuracy;
                     var text = '';
 
-                    text += 'User: ' + user + ' - ';
+                    text += 'User: ' + user + '\t';
                     text +=
-                        'Time: ' + generateShortTime(userLoc.locTime) +
-                        '- ';
+                        'Time: ' + generateShortTime(userLoc.locTime) + '\t';
                     text += 'Location: ' +
-                            locateOnMap(latitude, longitude) + ' - ';
+                            locateOnMap(latitude, longitude) + '\t';
 
-                    text += 'Accuracy: ' + accuracy + ' meters - ';
+                    text += 'Accuracy: ' + accuracy + ' meters\t';
 
                     if(heading !== null) {
-                        text += 'Heading: ' + heading + ' deg. - ';
+                        text += 'Heading: ' + heading + ' deg.\t';
                     }
 
                     text += 'Coordinates: ' + latitude + ', ' + longitude;
@@ -2599,6 +2678,10 @@ function startSocketListeners() {
     }
 }
 
+function keyReleased() {
+    keyPressed = false;
+}
+
 // Sets everything relevant when a user enters the site
 function startBoot() {
     var background = document.getElementById('background');
@@ -2621,6 +2704,7 @@ function startBoot() {
     addEventListener('keypress', keyPress);
     // Needed for some special keys. They are not detected with keypress
     addEventListener('keydown', specialKeyPress);
+    addEventListener('keyup', keyReleased);
     addEventListener('focus', setIntervals);
 
     resetPrevCmdPointer();

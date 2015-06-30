@@ -314,12 +314,14 @@ function handle(socket) {
                             ownedRoomsString += rooms[i].roomName + '\t';
                         }
 
-                        socket.emit('message', {
-                            text : [
-                                'You are owner of the rooms:',
-                                ownedRoomsString
-                            ]
-                        });
+                        if(ownedRoomsString.length > 0) {
+                            socket.emit('message', {
+                                text : [
+                                    'You are owner of the rooms:',
+                                    ownedRoomsString
+                                ]
+                            });
+                        }
                     }
                 });
             }
@@ -431,6 +433,12 @@ function handle(socket) {
                 });
             }
         });
+    });
+
+    socket.on('importantMsg', function(message) {
+        //add to history important
+        socket.broadcast.emit('importantMsg', message);
+        socket.emit('importantMsg', message);
     });
 }
 
