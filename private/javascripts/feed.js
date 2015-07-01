@@ -5,7 +5,7 @@
 // usage of var
 
 // Timeout between print of rows (milliseconds)
-var rowTimeout = 50;
+var rowTimeout = 40;
 // Number of messages that will be processed and printed
 // per loop in consomeQueue
 var msgsPerQueue = 3;
@@ -17,7 +17,13 @@ var shortQueue;
 // True if messages are being processed and printed right now
 var printing = false;
 
+// Used to block repeat of some key presses
 var keyPressed = false;
+
+// Will be set to false after command usage and timeout will set it to true
+// after a certain amount of seconds. This is to block command spam
+var allowCommand = true;
+var commandTimeout = 2000;
 
 // Char that is prepended on commands in chat mode
 var commandChar = '-';
@@ -106,38 +112,36 @@ var logo = {
     speed : 0.5,
     extraClass : 'logo',
     text : [
-        // '                          ####',
-        // '                ####    #########    ####',
-        // '               ###########################',
-        // '              #############################',
-        // '            #######        ##   #  ##########',
-        // '      ##########           ##    #  ###  ##########',
-        // '     #########             #########   #   #########',
-        // '       #####               ##     ########   #####',
-        // '     #####                 ##     ##     ##########',
-        // '     ####                  ##      ##     #   ######',
-        // ' #######                   ##########     ##    ########',
-        // '########                   ##       ########     ########',
-        // ' ######      Organica      ##       #      #############',
-        // '   ####     Oracle         ##       #      ##     ####',
-        // '   ####     Operations     ##       #      ##    #####',
-        // '   ####      Center        ##       #      ###########',
-        // '########      Razor1911    ##       #########    ########',
-        // '########       Edition     ##########      #    #########',
-        // ' ########                  ##      ##     ## ###########',
-        // '     #####                 ##      ##     ### #####',
-        // '       #####               ##     ########   #####',
-        // '      #######              ##########   #  ########',
-        // '     ###########           ##    ##    # ###########',
-        // '      #############        ##    #   #############',
-        // '            ################################',
-        // '              ############################',
-        // '              #######  ##########  #######',
-        // '                ###      ######      ###',
-        // '                          ####',
-        ' ',
-        '[Developer\'s note:] NOTE! THIS IS A DEV SERVER!',
-        'EVERYTHING MAY BE DELETED AT ANY TIME. THERE WILL BE BUGS!'
+        '                          ####',
+        '                ####    #########    ####',
+        '               ###########################',
+        '              #############################',
+        '            #######        ##   #  ##########',
+        '      ##########           ##    #  ###  ##########',
+        '     #########             #########   #   #########',
+        '       #####               ##     ########   #####',
+        '     #####                 ##     ##     ##########',
+        '     ####                  ##      ##     #   ######',
+        ' #######                   ##########     ##    ########',
+        '########      Organica     ##       ########     ########',
+        ' ######      Oracle        ##       #      #############',
+        '   ####     Operations     ##       #      ##     ####',
+        '   ####     Center         ##       #      ##    #####',
+        '   ####      Razor1911     ##       #      ###########',
+        '########      Edition      ##       #########    ########',
+        '########                   ##########      #    #########',
+        ' ########                  ##      ##     ## ###########',
+        '     #####                 ##      ##     ### #####',
+        '       #####               ##     ########   #####',
+        '      #######              ##########   #  ########',
+        '     ###########           ##    ##    # ###########',
+        '      #############        ##    #   #############',
+        '            ################################',
+        '              ############################',
+        '              #######  ##########  #######',
+        '                ###      ######      ###',
+        '                          ####',
+        ' '
     ]
 };
 
@@ -260,14 +264,14 @@ var validCmds = {
                         text : adminCmds
                     });
                 }
-            }
+            };
 
             if(currentUser === null) {
                 platformCmds.queueMessage({
                     text : [
-                        'You have to log in to access all other commands',
                         'Use register to register a new user',
-                        'Use login to log in to an existing user'
+                        'Use login to log in to an existing user',
+                        'You have to log in to access the rest of the system'
                     ]
                 });
                 platformCmds.queueMessage({
@@ -1880,6 +1884,10 @@ function isAllowedChar(text) {
     return /^[a-zA-Z0-9åäöÅÄÖ/\s\-_\.,;:!"\*'\?\+=&\)\(]+$/g.test(text);
 }
 
+function allowCommand() {
+    allowCommand = true;
+}
+
 // Needed for arrow and delete keys. They are not detected with keypress
 function specialKeyPress(event) {
     var keyCode = (typeof event.which === 'number') ? event.which :
@@ -2013,8 +2021,6 @@ function keyPress(event) {
     var markerLocation;
 
     if(!keyPressed) {
-        keyPressed = true;
-
         for(var i = 0; i < markerParentsChildren.length; i++) {
             if(markerParentsChildren[i] === marker) {
                 markerLocation = i;
@@ -2025,6 +2031,8 @@ function keyPress(event) {
         switch(keyCode) {
         // Enter
         case 13:
+            keyPressed = true;
+
             if(!cmdHelper.keyboardBlocked) {
                 if(cmdHelper.command !== null) {
                     var phrase = trimSpace(getInputText().toLowerCase());
@@ -2078,7 +2086,7 @@ function keyPress(event) {
                                 var cmdUsedMsg = {
                                     text : [
                                         getInputStart() + getMode() + '$ ' +
-                                            getInputText()
+                                        inputText
                                     ]
                                 };
 
@@ -2118,17 +2126,14 @@ function keyPress(event) {
                         } else if(currentUser === null && command &&
                                   (commandName === 'register' ||
                                    commandName === 'login')) {
-                            platformCmds.queueMessage({
-                                text : [getInputStart() + ' ' + getInputText()]
-                            });
                             command.func(phrases.splice(1));
                         } else if(platformCmds.getLocalVal('mode') ===
                                   'chat' && phrases[0].length > 0) {
-                            // If the first character is isn't a slash
-                            // If it is it probably means that the user
-                            // tried to input a command but made a mistake
                             if(phrases[0].charAt(0) !== commandChar) {
                                 validCmds.msg.func(phrases);
+
+                                // User input commandChar but didn\'t write
+                                // a proper command
                             } else {
                                 platformCmds.queueMessage({
                                     text : [
@@ -2476,6 +2481,23 @@ function convertWhisperRoom(roomName) {
     return convertedRoom;
 }
 
+function printWelcomeMsg() {
+    platformCmds.queueMessage(logo);
+    platformCmds.queueMessage({
+        text : [
+            'Welcome, employee ' + currentUser,
+            'Did you know that you can auto-complete ' +
+            'commands by using ' +
+            'the tab button or writing double spaces?',
+            'Learn this valuable skill to increase ' +
+            'your productivity!',
+            'May you have a productive day',
+            '## This terminal has been cracked by your friendly ' +
+            'Razor1911 team. Enjoy! ##'
+        ]
+    });
+}
+
 function startSocketListeners() {
     if(socket) {
         socket.on('chatMsg', function(message) {
@@ -2558,6 +2580,7 @@ function startSocketListeners() {
             platformCmds.queueMessage({
                 text : ['Successfully logged in as ' + user.userName]
             });
+            printWelcomeMsg();
             socket.emit('follow', { roomName : 'public', entered : true });
         });
 
@@ -2581,20 +2604,7 @@ function startSocketListeners() {
                 });
             } else {
                 currentAccessLevel = data.user.accessLevel;
-
-                platformCmds.queueMessage({
-                    text : [
-                        'Welcome, employee ' + currentUser,
-                        'Did you know that you can auto-complete ' +
-                        'commands by using ' +
-                        'the tab button or writing double spaces?',
-                        'Learn this valuable skill to increase ' +
-                        'your productivity!',
-                        'May you have a productive day',
-                        '## This terminal has been cracked by your friendly ' +
-                        'Razor1911 team. Enjoy! ##'
-                    ]
-                });
+                printWelcomeMsg();
 
                 if(platformCmds.getLocalVal('room')) {
                     var room = platformCmds.getLocalVal('room');
@@ -2693,13 +2703,43 @@ function keyReleased() {
     keyPressed = false;
 }
 
+// Goes into full screen with sent element
+// This is not supported in iOS Safari
+function goFullScreen(element) {
+    if(element.requestFullscreen) {
+        element.requestFullscreen();
+    } else if(element.webkitRequestFullscreen) {
+        element.webkitRequestFullscreen();
+    } else if(element.mozRequestFullScreen) {
+        element.mozRequestFullScreen();
+    } else if(element.msRequestFullscreen) {
+        element.msRequestFullscreen();
+    }
+}
+
+function setCssRules() {
+    var css = document.styleSheets[0];
+
+    // iPhone 4 has trouble with the background effect
+    // It is removed here to increase performance
+    if(navigator.userAgent.match(/(iPhone|iPod touch);.*CPU.*OS (6|7)_\d/i)) {
+        css.addRule('#background:before', 'background: none');
+        css.addRule('#background:before', 'background-color: #A0E6A0');
+    }
+}
+
 // Sets everything relevant when a user enters the site
 function startBoot() {
     var background = document.getElementById('background');
+
+    setCssRules();
     background.addEventListener('click', function(event) {
         marker.focus();
 
-        event.preventDefault();
+        // Set whole document to full screen
+        goFullScreen(document.documentElement);
+
+        //event.preventDefault();
     });
 
     cmdHistory = platformCmds.getLocalVal('cmdHistory') ?
@@ -2722,8 +2762,6 @@ function startBoot() {
     generateMap();
     setIntervals();
     startAudio();
-
-    platformCmds.queueMessage(logo);
 
     socket.emit('updateId', { userName : currentUser, firstConnection : true });
 }
