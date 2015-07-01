@@ -3,9 +3,9 @@ body {
     color: #00FF00;
     background-color: #001400;
     font-family: monospace;
-    overflow: hidden;
     font-size: 1em;
     white-space: pre-wrap;
+    overflow: hidden;
 }
 
 ul {
@@ -46,17 +46,17 @@ pre {
 #background {
     cursor: none;
     width: 100%;
-    height: 100vh;
+    height: 100%;
 }
 
 #background:before {
     content: '';
     width: 100%;
-    height: 100vh;
+    height: 100%;
     position: fixed;
     background: -webkit-linear-gradient(#A0E6A0 50%, black 50%);
     background: linear-gradient(#A0E6A0 50%, black 50%);
-    background-size: 100% 5px;
+    background-size: 100vh 5px;
     opacity: .13;
 }
 
@@ -66,15 +66,6 @@ pre {
 
 #mode:after {
     content: '$';
-}
-
-#main:before {
-    content : '';
-    width: 100%;
-    height: 100vh;
-    position: fixed;
-    -webkit-box-shadow: inset 0 0 40px 2px #000000;
-    box-shadow: inset 0 0 40px 2px #000000;
 }
 
 #map {
@@ -141,6 +132,9 @@ pre {
 }
 
 @media (max-height: 768px) and (max-width: 1024px) {
+    body {
+        overflow: scroll;
+    }
 }
 
 @media (max-height: 736px) and (max-width: 414px) {
@@ -152,11 +146,6 @@ pre {
         padding: .1em;
     }
 
-    #background:before {
-        -webkit-box-shadow: inset 0 0 20px 2px red;
-        box-shadow: inset 0 0 20px 2px red;
-    }
-
     .logo {
         font-size: .6em;
     }
@@ -164,10 +153,6 @@ pre {
 
 /* PiTft */
 @media (max-height: 240px) {
-    #background:before {
-        -webkit-box-shadow: inset 0 0 20px 2px #000000;
-        box-shadow: inset 0 0 20px 2px #000000;
-    }
 
     .feed {
         padding-left: .1em;
