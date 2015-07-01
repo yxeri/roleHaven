@@ -6,6 +6,9 @@ body {
     font-size: 1em;
     white-space: pre-wrap;
     overflow: hidden;
+    background: -webkit-linear-gradient(#212e21 50%, black 50%);
+    background: linear-gradient(#212e21 50%, black 50%);
+    background-size: 100% 5px;
 }
 
 ul {
@@ -21,6 +24,12 @@ li {
 pre {
     padding: 0;
     margin: 0;
+}
+
+:-webkit-full-screen {
+    background: -webkit-linear-gradient(#212e21 50%, black 50%);
+    background: linear-gradient(#212e21 50%, black 50%);
+    background-size: 100% 5px;
 }
 
 #marker {
@@ -45,19 +54,6 @@ pre {
 
 #background {
     cursor: none;
-    width: 100%;
-    height: 100%;
-}
-
-#background:before {
-    content: '';
-    width: 100%;
-    height: 100%;
-    position: fixed;
-    background: -webkit-linear-gradient(#A0E6A0 50%, black 50%);
-    background: linear-gradient(#A0E6A0 50%, black 50%);
-    background-size: 100vh 5px;
-    opacity: .13;
 }
 
 #mode {
