@@ -31,6 +31,11 @@ var commandTimeout = 2000;
 // Char that is prepended on commands in chat mode
 var commandChar = '-';
 
+// Focus can sometimes trigger twice, which is used to check if a reconnection
+// is needed. This flag will be set to true while it is reconnecting to
+// block the second attempt
+var reconnecting = false;
+
 // Interval/timeout times in milliseconds
 var printIntervalTime = 200;
 var screenOffIntervalTime = 1000;
@@ -1750,11 +1755,15 @@ function locateOnMap(latitude, longitude) {
 }
 
 function reconnect() {
-    socket.disconnect();
-    socket.connect({ forceNew : true });
+    if(!reconnecting) {
+        reconnecting = true;
 
-    if(currentUser) {
-        socket.emit('updateId', { userName : currentUser });
+        socket.disconnect();
+        socket.connect({ forceNew : true });
+
+        if(currentUser) {
+            socket.emit('updateId', { userName : currentUser });
+        }
     }
 }
 
@@ -2622,6 +2631,8 @@ function startSocketListeners() {
 
                 validCmds.mode.func([mode], false);
             }
+
+            reconnecting = false;
         });
 
         socket.on('disconnectUser', function() {

@@ -86,7 +86,7 @@ function handle(socket, io) {
 
                 socket.emit('reconnectSuccess', data);
 
-                if(sentObject.firstConnection) {
+                if(!sentObject.firstConnection) {
                     manager.getUserHistory(user.rooms, function(err, history) {
                         if(err || history === null) {
                             socket.emit('message', {
