@@ -1,7 +1,10 @@
 'use strict';
 
 const mongoose = require('mongoose');
-const dbPath = 'mongodb://' + (process.env.DBHOST || 'localhost') + ':' + (process.env.DBPORT || 27017) + '/' + (process.env.DBNAME || 'bbr2');
+const dbPath = 'mongodb://' +
+               (process.env.DBHOST || 'localhost') + ':' +
+               (process.env.DBPORT || 27017) + '/' +
+               (process.env.DBNAME || 'bbr2');
 mongoose.connect(dbPath, function(err) {
     if(err) {
         console.log('Failed to connect to database', err);
