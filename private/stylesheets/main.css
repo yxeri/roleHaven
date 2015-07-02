@@ -110,8 +110,8 @@ pre {
 /* For Android in full screen when the keyboard is shown */
 .fullscreenFix {
     position: fixed;
-    overflow: hidden;
-    max-height: 50vh;
+    overflow: scroll;
+    max-height: 55vh;
 }
 
 @-webkit-keyframes blinking {
