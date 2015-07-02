@@ -1,0 +1,11 @@
+db:
+    image: mongo:3.1
+
+rolehaven:
+    build: .
+    environment:
+        - DBHOST=db
+    links:
+        - db
+    ports:
+        - "8888:8888"
