@@ -20,6 +20,9 @@ var printing = false;
 // Used to block repeat of some key presses
 var keyPressed = false;
 
+// Used for Android full screen to change CSS layout
+var clicked = false;
+
 // Will be set to false after command usage and timeout will set it to true
 // after a certain amount of seconds. This is to block command spam
 var allowCommand = true;
@@ -2703,6 +2706,14 @@ function keyReleased() {
     keyPressed = false;
 }
 
+function isFullscreen() {
+    if (!window.screenTop && !window.screenY) {
+        return true;
+    }
+
+    return false;
+}
+
 // Goes into full screen with sent element
 // This is not supported in iOS Safari
 function goFullScreen(element) {
@@ -2712,19 +2723,33 @@ function goFullScreen(element) {
         element.webkitRequestFullscreen();
     } else if(element.mozRequestFullScreen) {
         element.mozRequestFullScreen();
-    } else if(element.msRequestFullscreen) {
-        element.msRequestFullscreen();
     }
 }
 
-function setCssRules() {
+function setStartingCssRules(element) {
     var css = document.styleSheets[0];
-    
+
     // iPhone 4 has trouble with the background effect
-    // It is removed here to increase performance
+    // It is removed to increase performance
     if(navigator.userAgent.match(/(iPhone|iPod touch);.*CPU.*OS (6|7)_\d/i)) {
-        css.addRule('body', 'background: none');
-        css.addRule('body', 'background-color: #212e21');
+        css.addRule(element, 'background: none');
+        css.addRule(element, 'background-color: #212e21');
+    }
+}
+
+function fullscreenResize(keyboardShown) {
+    // Used for Android when it shows/hides the keyboard
+    // The soft keyboard will block part of the site without this fix
+    if(isFullscreen() && navigator.userAgent.match(/Android/i)) {
+        var background = document.getElementById('background');
+
+        if(keyboardShown) {
+            background.classList.add('fullscreenFix');
+        } else {
+            background.classList.remove('fullscreenFix');
+        }
+
+        scrollView();
     }
 }
 
@@ -2732,31 +2757,36 @@ function setCssRules() {
 function startBoot() {
     var background = document.getElementById('background');
 
-    background.addEventListener('click', function(event) {
-        marker.focus();
+    messageQueue = [];
+    cmdHistory = platformCmds.getLocalVal('cmdHistory') ?
+                 JSON.parse(platformCmds.getLocalVal('cmdHistory')) : [];
+    currentUser = platformCmds.getLocalVal('user');
+    currentAccessLevel = 1;
+    socket = io();
+
+    document.documentElement.addEventListener('click', function(event) {
+        clicked = !clicked;
+
+        if(clicked) {
+            marker.focus();
+        } else {
+            marker.blur();
+        }
 
         // Set whole document to full screen
         goFullScreen(document.documentElement);
+        fullscreenResize(clicked);
 
         event.preventDefault();
     });
 
-    cmdHistory = platformCmds.getLocalVal('cmdHistory') ?
-                     JSON.parse(platformCmds.getLocalVal('cmdHistory')) : [];
-    currentUser = platformCmds.getLocalVal('user');
-    currentAccessLevel = 1;
-
-    messageQueue = [];
-
-    socket = io();
-
-    setCssRules();
+    setStartingCssRules('body');
     startSocketListeners();
     addEventListener('keypress', keyPress);
     // Needed for some special keys. They are not detected with keypress
     addEventListener('keydown', specialKeyPress);
     addEventListener('keyup', keyReleased);
-    addEventListener('focus', setIntervals);
+    window.addEventListener('focus', setIntervals);
 
     resetPrevCmdPointer();
     generateMap();

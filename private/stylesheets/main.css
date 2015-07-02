@@ -1,3 +1,7 @@
+html {
+    cursor: none;
+}
+
 body {
     margin: 0;
     color: #00FF00;
@@ -52,10 +56,6 @@ pre {
     outline: 0;
 }
 
-#background {
-    cursor: none;
-}
-
 #mode {
     margin-right: .7em;
 }
@@ -105,6 +105,13 @@ pre {
 
 .anon {
     font-size: 0.2em;
+}
+
+/* For Android in full screen when the keyboard is shown */
+.fullscreenFix {
+    position: fixed;
+    overflow: hidden;
+    max-height: 50vh;
 }
 
 @-webkit-keyframes blinking {
