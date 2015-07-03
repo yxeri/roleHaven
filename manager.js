@@ -681,7 +681,7 @@ function removeRoom(sentRoomName, sentUser, callback) {
     });
 }
 
-function isPopulated() {
+function areRoomsPopulated() {
     const populateDbBroke = function() {
         console.log('Aborting server start');
         process.exit();
@@ -696,83 +696,95 @@ function isPopulated() {
 
     Room.find(query).lean().exec(function(err, rooms) {
         if(err) {
-            console.log('PopulateDb: Failed to find rooms', err);
+            console.log('PopulateDb: [failure] Failed to find rooms', err);
             populateDbBroke();
         } else if(rooms === null || rooms.length < 3) {
-            console.log('PopulateDb: One of the main rooms are missing');
-        }
-
-        User.count({}).exec(function(err, userCount) {
-            if(err) {
-                console.log('PopulateDb: Failed to count users', err);
-                populateDbBroke();
-            } else if(userCount < 1) {
-                console.log('PopulateDb: There are no users');
-            }
-
-            console.log('PopulateDb: DB is already populated');
-
+            console.log(
+              'PopulateDb: [failure] One of the main rooms are missing');
+        } else {
+            console.log('PopulateDb: [success] DB has all the main rooms')
             populated = true;
-        });
+        }
+    });
+
+    return populated;
+}
+
+function areUsersPopulated() {
+    let populated = false;
+
+    User.count({}).exec(function(err, userCount) {
+        if(err) {
+            console.log('PopulateDb: [failure] Failed to count users', err);
+            populateDbBroke();
+        } else if(userCount < 1) {
+            console.log('PopulateDb: [failure] There are no users');
+        }  else {
+            console.log('PopulateDb: [success] DB has at least one user');
+            populated = true;
+        }
     });
 
     return populated;
 }
 
 function populateDb() {
-    if(!isPopulated()) {
-        const generatePass = function() {
-            const randomString = '023456789abcdefghijkmnopqrstuvwxyz';
-            const randomLength = randomString.length;
-            let code = '';
+    const generatePass = function() {
+        const randomString = '023456789abcdefghijkmnopqrstuvwxyz';
+        const randomLength = randomString.length;
+        let code = '';
 
-            for (var i = 0; i < 10; i++) {
-                const randomVal = Math.random() * (randomLength - 1);
+        for (var i = 0; i < 10; i++) {
+            const randomVal = Math.random() * (randomLength - 1);
 
-                code += randomString[Math.round(randomVal)];
-            }
+            code += randomString[Math.round(randomVal)];
+        }
 
-            return code;
-        };
-        const roomCallback = function(err, room) {
-            if(err || room === null) {
-                console.log('PopulateDb: Failed to create room', err);
-            } else {
-                console.log('PopulateDb: Created room', room.roomName);
-            }
-        };
-        const user = {
-            userName : 'superuser',
-            password : generatePass(),
-            verified : true,
-            accessLevel : 12,
-            visibility : 12,
-            rooms : ['public']
-        };
-        const rooms = [{
-            roomName : 'public',
-            owner : user.userName
-        }, {
-            roomName : 'important',
-            owner : user.userName,
-            visibility : 12,
-            accessLevel : 12
-        }, {
-            roomName : 'broadcast',
-            owner : user.userName,
-            visibility : 12,
-            accessLevel : 12
-        }];
+        return code;
+    };
+    const roomCallback = function(err, room) {
+        if(err || room === null) {
+            console.log('PopulateDb: [failure] Failed to create room', err);
+        } else {
+            console.log('PopulateDb: [success] Created room', room.roomName);
+        }
+    };
+    const user = {
+        userName : 'superuser',
+        password : generatePass(),
+        verified : true,
+        accessLevel : 12,
+        visibility : 12,
+        rooms : ['public']
+    };
+    const rooms = [{
+        roomName : 'public',
+        owner : user.userName
+    }, {
+        roomName : 'important',
+        owner : user.userName,
+        visibility : 12,
+        accessLevel : 12
+    }, {
+        roomName : 'broadcast',
+        owner : user.userName,
+        visibility : 12,
+        accessLevel : 12
+    }];
 
+    if(!areUsersPopulated()) {
         addUser(user, function(err, user) {
             if(err || user === null) {
-                console.log('PopulateDb: Failed to create user', err);
+                console.log('PopulateDb: [failure] Failed to create user', err);
             } else{
                 console.log(
-                  'PopulateDb: Created user', user.userName, user.password);
+                  'PopulateDb: [success] Created user',
+                  user.userName, user.password);
             }
         });
+    }
 
+    if(!areRoomsPopulated()) {
         for(let i = 0; i < rooms.length; i++) {
             createRoom(rooms[i], user, roomCallback);
         }
