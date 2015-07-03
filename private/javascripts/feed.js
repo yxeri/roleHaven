@@ -131,9 +131,38 @@ var morseCodes = {
   // Symbolizes space betwen words
   '#' : '#'
 };
+var razLogo = {
+    text : [
+      ' ',
+      '   ####',
+      '###############',
+      ' #####  #########                                     ' +
+      '      ####',
+      '  ####     #######  ########     ###########    ####  ' +
+      '   ###########',
+      '  ####    ######      #######   ####   #####  ########' +
+      '    ####   #####',
+      '  ####  ###         ####  ####        ####  ###    ###' +
+      '### ####   #####',
+      '  #########        ####    ####     ####   #####     #' +
+      '#############',
+      '  #### ######     ####     #####  ####     #######   #' +
+      '##  ########',
+      '  ####   ######  ##### #### #### ############  #######' +
+      '    ####   ###',
+      ' ######    #############    ################     ###  ' +
+      '    ####    #####',
+      '########     ########         ###                     ' +
+      '   ######      #####   ##',
+      '               ###########        ##                  ' +
+      '                  ###### ',
+      '                    ###############    Razor1911',
+      '                         #####   demos - warez - honey',
+      ' '
+    ],
+    extraClass : 'logo'
+};
 var logo = {
-  speed : 0.5,
-  extraClass : 'logo',
   text : [
     '                          ####',
     '                ####    #########    ####',
@@ -163,9 +192,9 @@ var logo = {
     '              ############################',
     '              #######  ##########  #######',
     '                ###      ######      ###',
-    '                          ####',
-    ' '
-  ]
+    '                          ####'
+  ],
+  extraClass : 'logo'
 };
 
 /**
@@ -218,7 +247,7 @@ var platformCmds = {
     var commands = [];
 
     if (group !== undefined) {
-      commands.push(group + ' commands:');
+      commands.push(capitalizeString(group) + ' commands:');
     }
 
     for (var i = 0; i < keys.length; i++) {
@@ -228,7 +257,7 @@ var platformCmds = {
       if ((isNaN(commandAccessLevel) ||
            currentAccessLevel >= commandAccessLevel) &&
           (group === undefined || command.cmdGroup === group)) {
-        var msg = ' ';
+        var msg = '  ';
 
         msg += keys[i];
 
@@ -849,61 +878,30 @@ var validCmds = {
   },
   decryptmodule : {
     func : function() {
-      //platformCmds.queueMessage({
-      //    text : [
-      //        '   ####',
-      //        '###############',
-      //        ' #####  #########                                     ' +
-      //        '      ####',
-      //        '  ####     #######  ########     ###########    ####  ' +
-      //        '   ###########',
-      //        '  ####    ######      #######   ####   #####  ########' +
-      //        '    ####   #####',
-      //        '  ####  ###         ####  ####        ####  ###    ###' +
-      //        '### ####   #####',
-      //        '  #########        ####    ####     ####   #####     #' +
-      //        '#############',
-      //        '  #### ######     ####     #####  ####     #######   #' +
-      //        '##  ########',
-      //        '  ####   ######  ##### #### #### ############  #######' +
-      //        '    ####   ###',
-      //        ' ######    #############    ################     ###  ' +
-      //        '    ####    #####',
-      //        '########     ########         ###                     ' +
-      //        '   ######      #####   ##',
-      //        '               ###########        ##                  ' +
-      //        '                  ###### ',
-      //        '                    ###############    Razor1911',
-      //        '                         #####   demos - warez - honey',
-      //        ' '
-      //    ],
-      //    extraClass : 'logo',
-      //    speed : 10
-      //});
+      platformCmds.queueMessage(JSON.parse(JSON.stringify(razLogo)));
       platformCmds.queueMessage({
         text : [
-          //'Razor1911 proudly presents:',
-          //'Entity Hacking Access! (EHA)',
-          //'AAAB3NzaC1yc2EAAAADAQABAAABAQDHS//2a/B',
-          //'D6Rsc8OO/6wFUVDdpdAItvSCLCrc/dcJE/ybEV',
-          //'w3OtlVFnfNkOVAvhObuWO/6wFUVDdkr2YTaDEt',
-          //'i5mxEFD1zslvhObuWr6QKLvfZVczAxPFKLvfZV',
-          //'dK2zXrxGOmOFllxiCbpGOmOFlcJyiCbp0mA4ca',
-          //'MFvEEiKXrxGlxiCbp0miONA3EscgY/yujOMJHa',
-          //'Q1uy6yEZOmOFl/yujOMJHa881DVwWl6lsjHvSi',
-          //'wDDVwWl6el88/x1j5C+k/atg1lcvcz7Tdtve4q',
-          //'VTVz0HIhxv595Xqw2qrv6GrdX/FrhObuWr6QKL',
-          //' ',
-          //'Please wait.......',
-          //'Command interception.........ACTIVATED',
-          //'Oracle defense systems........DISABLED',
-          //'Overriding locks..................DONE',
-          //'Connecting to entity database.....DONE',
-          //' ',
+          'Razor1911 proudly presents:',
+          'Entity Hacking Access! (EHA)',
+          'AAAB3NzaC1yc2EAAAADAQABAAABAQDHS//2a/B',
+          'D6Rsc8OO/6wFUVDdpdAItvSCLCrc/dcJE/ybEV',
+          'w3OtlVFnfNkOVAvhObuWO/6wFUVDdkr2YTaDEt',
+          'i5mxEFD1zslvhObuWr6QKLvfZVczAxPFKLvfZV',
+          'dK2zXrxGOmOFllxiCbpGOmOFlcJyiCbp0mA4ca',
+          'MFvEEiKXrxGlxiCbp0miONA3EscgY/yujOMJHa',
+          'Q1uy6yEZOmOFl/yujOMJHa881DVwWl6lsjHvSi',
+          'wDDVwWl6el88/x1j5C+k/atg1lcvcz7Tdtve4q',
+          'VTVz0HIhxv595Xqw2qrv6GrdX/FrhObuWr6QKL',
+          ' ',
+          'Please wait.......',
+          'Command interception.........ACTIVATED',
+          'Oracle defense systems........DISABLED',
+          'Overriding locks..................DONE',
+          'Connecting to entity database.....DONE',
+          ' ',
           'You can cancel out of the command by typing "exit" ' +
           'or "abort"'
-        ],
-        speed : 10
+        ]
       });
       setInputStart('Enter encryption key');
       socket.emit('entities');
@@ -1272,28 +1270,29 @@ var validCmds = {
         };
         cmdHelper.data = data;
 
+        platformCmds.queueMessage(JSON.parse(JSON.stringify(razLogo)));
         // TODO: Message about abort should be sent from a common
         // function for all commands
         platformCmds.queueMessage({
           text : [
-            //'Razor1911 proudly presents:',
-            //'Room Access Hacking! (RAH)',
-            //'/8iybEVaC1yc2EAAAADAQABAAABAQDS//2ag4/',
-            //'D6Rsc8OO/6wFUVDdpdAItvSCLCrc/dcE/8iybE',
-            //'w3OtlVFnfNkOVAvhObuWO/6wFUVDdkr2yYTaDE',
-            //'i5mB3Nz1aC1yc2buWr6QKLvfZVczAxAHPKLvfZ',
-            //'dK2zXrxGOmOFllxiCbpGOmOFlcJy1/iCbpmA4c',
-            //'MFvEEiKXrxGlxiCbp0miONAAvhObuWO/6ujMJH',
-            //'JHa88/x1DVOFl/yujOMJHa88/x1DVwWl6lsjvS',
-            //'wDDVwWl6el88/x1j5C+k/aadtg1lcvcz7Tdtve',
-            //'k/aadtghxv595Xqw2qrvyp6GrdX/FrhObuWr6Q',
-            //' ',
-            //'Please wait.......',
-            //'Command interception.........ACTIVATED',
-            //'Oracle defense systems.......DISABLED',
-            //'Overriding locks.............DONE',
-            //'Connecting to database ......DONE',
-            //' ',
+            'Razor1911 proudly presents:',
+            'Room Access Hacking! (RAH)',
+            '/8iybEVaC1yc2EAAAADAQABAAABAQDS//2ag4/',
+            'D6Rsc8OO/6wFUVDdpdAItvSCLCrc/dcE/8iybE',
+            'w3OtlVFnfNkOVAvhObuWO/6wFUVDdkr2yYTaDE',
+            'i5mB3Nz1aC1yc2buWr6QKLvfZVczAxAHPKLvfZ',
+            'dK2zXrxGOmOFllxiCbpGOmOFlcJy1/iCbpmA4c',
+            'MFvEEiKXrxGlxiCbp0miONAAvhObuWO/6ujMJH',
+            'JHa88/x1DVOFl/yujOMJHa88/x1DVwWl6lsjvS',
+            'wDDVwWl6el88/x1j5C+k/aadtg1lcvcz7Tdtve',
+            'k/aadtghxv595Xqw2qrvyp6GrdX/FrhObuWr6Q',
+            ' ',
+            'Please wait.......',
+            'Command interception.........ACTIVATED',
+            'Oracle defense systems.......DISABLED',
+            'Overriding locks.............DONE',
+            'Connecting to database ......DONE',
+            ' ',
             'You can cancel out of the command by typing ' +
             '"exit" or "abort"',
             'Press enter to continue'
@@ -1660,6 +1659,10 @@ var validCmds = {
 function resetPrevCmdPointer() {
   previousCommandPointer =
     cmdHistory.length > 0 ? cmdHistory.length : 0;
+}
+
+function capitalizeString(text) {
+  return text.charAt(0).toUpperCase() + text.slice(1);
 }
 
 // Needed for Android 2.1. trim() is not supported
@@ -2564,7 +2567,7 @@ function convertWhisperRoom(roomName) {
 }
 
 function printWelcomeMsg() {
-  platformCmds.queueMessage(logo);
+  platformCmds.queueMessage(JSON.parse(JSON.stringify(logo)));
   platformCmds.queueMessage({
     text : [
       'Welcome, employee ' + currentUser,
@@ -2574,6 +2577,13 @@ function printWelcomeMsg() {
       'Learn this valuable skill to increase ' +
       'your productivity!',
       'May you have a productive day',
+      '## This terminal has been cracked by your friendly ' +
+      'Razor1911 team. Enjoy! ##'
+    ]
+  });
+  platformCmds.queueMessage(JSON.parse(JSON.stringify(razLogo)));
+  platformCmds.queueMessage({
+    text : [
       '## This terminal has been cracked by your friendly ' +
       'Razor1911 team. Enjoy! ##'
     ]
@@ -2840,6 +2850,8 @@ function fullscreenResize(keyboardShown) {
 
 // Sets everything relevant when a user enters the site
 function startBoot() {
+  var background = document.getElementById('background');
+
   messageQueue = [];
   cmdHistory = platformCmds.getLocalVal('cmdHistory') ?
                JSON.parse(platformCmds.getLocalVal('cmdHistory')) : [];
@@ -2847,7 +2859,7 @@ function startBoot() {
   currentAccessLevel = 1;
   socket = io();
 
-  document.documentElement.addEventListener('click', function(event) {
+  background.addEventListener('click', function(event) {
     clicked = !clicked;
 
     if (clicked) {
