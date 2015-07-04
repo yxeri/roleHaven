@@ -8,25 +8,26 @@ const minifier = require('../minifier.js');
 const config = require('../config/config.js');
 
 minifier.minifyDir(
-    path.resolve(config.privatePaths.views),
-    path.resolve(config.publicPaths.views),
-    'html'
+  path.resolve(path.join(config.privateBase, config.paths.views)),
+  path.resolve(path.join(config.publicBase, config.paths.views)),
+  'html'
 );
 minifier.minifyDir(
-    path.resolve(config.privatePaths.styles),
-    path.resolve(config.publicPaths.styles),
-    'css'
+  path.resolve(path.join(config.privateBase, config.paths.styles)),
+  path.resolve(path.join(config.publicBase, config.paths.styles)),
+  'css'
 );
 minifier.minifyDir(
-    path.resolve(config.privatePaths.scripts),
-    path.resolve(config.publicPaths.scripts),
-    'js'
+  path.resolve(
+    path.join(config.privateBase, config.paths.scripts)),
+  path.resolve(path.join(config.publicBase, config.paths.scripts)),
+  'js'
 );
 
 app.set('port', process.env.PORT || 8888);
 
 const server = app.listen(app.get('port'), function() {
-    debug('Express server listening on port ' + server.address().port);
+  debug('Express server listening on port ' + server.address().port);
 });
 
 const io = app.io;

@@ -16,7 +16,10 @@ const generatePass = function() {
   return code;
 };
 
-// Users to be created on first run
+/**
+ * Users to be created on first run
+ * superuser should always be created. The rest are optional
+ */
 config.users = {
 
   // Admin users to be used to create the first rooms and verify first users
@@ -30,7 +33,10 @@ config.users = {
   }
 };
 
-// Rooms to be created on first run
+/**
+ * Rooms to be created on first run
+ * important, broadcast, admin should always be created. The rest are optional
+ */
 config.rooms = {
 
   // General chat room, available for every user

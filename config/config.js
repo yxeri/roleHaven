@@ -7,9 +7,9 @@ config.privateBase = 'private';
 
 // Will be appended to the public/private base path
 config.paths = {
-    views : 'views',
-    styles : 'styles',
-    scripts : 'scripts'
+  views : 'views',
+  styles : 'styles',
+  scripts : 'scripts'
 };
 
 config.logLevel = 'tiny';
