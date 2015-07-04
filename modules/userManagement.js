@@ -1,6 +1,7 @@
 'use strict';
 
 const manager = require('../manager');
+const dbDefaults = require('../config/dbPopDefaults.js');
 
 function isTextAllowed(text) {
     return /^[a-zA-Z0-9]+$/g.test(text);
@@ -29,13 +30,14 @@ function handle(socket, io) {
                         'User ' + user.userName + ' needs to be verified'
                     ];
                     message.time = new Date();
-                    message.roomName = 'hqroom';
+                    message.roomName = dbDefaults.rooms.admin.roomName;
 
                     newRoom.roomName = user.userName + '-whisper';
                     newRoom.visibility = 12;
                     newRoom.accessLevel = 12;
 
-                    socket.broadcast.to('hqroom').emit('message', message);
+                    socket.broadcast.to(dbDefaults.rooms.admin.roomName).emit(
+                      'message', message);
                     socket.emit('message', { text : [
                         user.userName + ' has been registered!',
                         'You need to be verified by another user before ' +

@@ -1,10 +1,11 @@
 'use strict';
 
 const mongoose = require('mongoose');
+const config = require('./config/config.js');
 const dbPath = 'mongodb://' +
-               (process.env.DBHOST || 'localhost') + ':' +
-               (process.env.DBPORT || 27017) + '/' +
-               (process.env.DBNAME || 'bbr2');
+               (process.env.DBHOST || config.dbHost) + ':' +
+               (process.env.DBPORT || config.dbPort) + '/' +
+               (process.env.DBNAME || config.dbName);
 mongoose.connect(dbPath, function(err) {
     if(err) {
         console.log('Failed to connect to database', err);
@@ -681,114 +682,65 @@ function removeRoom(sentRoomName, sentUser, callback) {
     });
 }
 
-function areRoomsPopulated() {
-    const populateDbBroke = function() {
-        console.log('Aborting server start');
-        process.exit();
+function populateDbRooms(sentRooms, user) {
+    const roomCallback = function(err, room) {
+        if(err || room === null) {
+            console.log(
+              'PopulateDb: [failure] Failed to create room', err);
+        } else {
+            console.log('PopulateDb: [success] Created room');
+        }
     };
-    const query = { $or : [
-            { roomName : 'public' },
-            { roomName : 'important' },
-            { roomName : 'broadcast' }
-        ]
-    };
-    let populated = false;
 
-    Room.find(query).lean().exec(function(err, rooms) {
+    Room.find().lean().exec(function(err, rooms) {
         if(err) {
             console.log('PopulateDb: [failure] Failed to find rooms', err);
-            populateDbBroke();
         } else if(rooms === null || rooms.length < 3) {
+            const roomKeys = Object.keys(sentRooms);
+
             console.log(
               'PopulateDb: [failure] One of the main rooms are missing');
+            console.log('PopulateDb: Creating rooms from defaults');
+
+            for(let i = 0; i < roomKeys.length; i++) {
+                const room = rooms[roomKeys[i]];
+
+                createRoom(room, user, roomCallback);
+            }
         } else {
             console.log('PopulateDb: [success] DB has all the main rooms')
-            populated = true;
         }
     });
-
-    return populated;
 }
 
-function areUsersPopulated() {
-    let populated = false;
-
+function populateDbUsers(sentUsers) {
     User.count({}).exec(function(err, userCount) {
         if(err) {
             console.log('PopulateDb: [failure] Failed to count users', err);
-            populateDbBroke();
         } else if(userCount < 1) {
+            const userKeys = Object.keys(sentUsers);
+
             console.log('PopulateDb: [failure] There are no users');
+            console.log('PopulateDb: Creating users from defaults');
+
+            for(let i = 0; i < userKeys.length; i++) {
+                const user = sentUsers[userKeys[i]];
+
+                addUser(user, function(err, user) {
+                    if(err || user === null) {
+                        console.log(
+                          'PopulateDb: [failure] Failed to create user', err);
+                    } else{
+                        console.log(
+                          'PopulateDb: [success] Created user',
+                          user.userName, user.password);
+                    }
+                });
+            }
         }  else {
             console.log('PopulateDb: [success] DB has at least one user');
-            populated = true;
         }
     });
-
-    return populated;
-}
-
-function populateDb() {
-    const generatePass = function() {
-        const randomString = '023456789abcdefghijkmnopqrstuvwxyz';
-        const randomLength = randomString.length;
-        let code = '';
-
-        for (var i = 0; i < 10; i++) {
-            const randomVal = Math.random() * (randomLength - 1);
-
-            code += randomString[Math.round(randomVal)];
-        }
-
-        return code;
-    };
-    const roomCallback = function(err, room) {
-        if(err || room === null) {
-            console.log('PopulateDb: [failure] Failed to create room', err);
-        } else {
-            console.log('PopulateDb: [success] Created room', room.roomName);
-        }
-    };
-    const user = {
-        userName : 'superuser',
-        password : generatePass(),
-        verified : true,
-        accessLevel : 12,
-        visibility : 12,
-        rooms : ['public']
-    };
-    const rooms = [{
-        roomName : 'public',
-        owner : user.userName
-    }, {
-        roomName : 'important',
-        owner : user.userName,
-        visibility : 12,
-        accessLevel : 12
-    }, {
-        roomName : 'broadcast',
-        owner : user.userName,
-        visibility : 12,
-        accessLevel : 12
-    }];
-
-    if(!areUsersPopulated()) {
-        addUser(user, function(err, user) {
-            if(err || user === null) {
-                console.log('PopulateDb: [failure] Failed to create user', err);
-            } else{
-                console.log(
-                  'PopulateDb: [success] Created user',
-                  user.userName, user.password);
-            }
-        });
-    }
-
-    if(!areRoomsPopulated()) {
-        for(let i = 0; i < rooms.length; i++) {
-            createRoom(rooms[i], user, roomCallback);
-        }
-    }
 }
 
 exports.getUserById = getUserById;
@@ -822,7 +774,8 @@ exports.banUserFromRoom = banUserFromRoom;
 exports.unbanUserFromRoom = unbanUserFromRoom;
 exports.getOwnedRooms = getOwnedRooms;
 exports.removeRoom = removeRoom;
-exports.populateDb = populateDb;
+exports.populateDbUsers = populateDbUsers;
+exports.populateDbRooms = populateDbRooms;
 
 //Blodsband specific
 exports.addEncryptionKey = addEncryptionKey;
