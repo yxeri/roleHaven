@@ -7,6 +7,7 @@
 
 // Timeout between print of rows (milliseconds)
 var rowTimeout = 40;
+
 /**
  * Number of messages that will be processed and printed
  * per loop in consomeQueue
@@ -15,6 +16,7 @@ var msgsPerQueue = 3;
 
 // Queue of all the message objects that will be handled and printed
 var messageQueue;
+
 /**
  * Shorter queue of messages that will be processed this loop. Length is
  * based on msgsPerQueue variable

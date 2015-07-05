@@ -33,13 +33,13 @@ app.set('view engine', 'html');
 app.engine('html', require('hbs').__express);
 
 app.use(compression());
-app.use(logger(process.env.LOGLEVEL || config.logLevel));
+app.use(logger(config.logLevel));
 app.use(express.static(path.join(__dirname, config.publicBase)));
 
 app.use('/', require('./routes/index')(app.io));
 
 manager.populateDbUsers(confDefaults.users);
-manager.populateDbRooms(confDefaults.rooms, confDefaults.users.superuser)
+manager.populateDbRooms(confDefaults.rooms, confDefaults.users.superuser);
 
 /// catch 404 and forward to error handler
 app.use(function(req, res, next) {
@@ -74,7 +74,6 @@ app.use(function(err, req, res) {
 
 setInterval(eventsFunc, 1000, app.io);
 
-//TODO remove hardcoded paths
 function watchPrivate() {
   // fs.watch is unstable. Recursive only works in OS X.
   fs.watch(config.privateBase, { persistant : true, recursive : true },

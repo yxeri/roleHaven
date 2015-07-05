@@ -3,9 +3,9 @@
 const mongoose = require('mongoose');
 const config = require('./config/config.js');
 const dbPath = 'mongodb://' +
-               (process.env.DBHOST || config.dbHost) + ':' +
-               (process.env.DBPORT || config.dbPort) + '/' +
-               (process.env.DBNAME || config.dbName);
+               config.dbHost + ':' +
+               config.dbPort + '/' +
+               config.dbName;
 mongoose.connect(dbPath, function(err) {
   if (err) {
     console.log('Failed to connect to database', err);

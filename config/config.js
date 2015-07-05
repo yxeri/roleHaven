@@ -2,6 +2,7 @@
 
 const config = {};
 
+// Relative to Node application dir
 config.publicBase = 'public';
 config.privateBase = 'private';
 
@@ -12,10 +13,19 @@ config.paths = {
   scripts : 'scripts'
 };
 
-config.logLevel = 'tiny';
+// Morgan log level
+config.logLevel = process.env.LOGLEVEL || 'tiny';
 
-config.dbHost = 'localhost';
-config.dbPort = 27017;
-config.dbName = 'bbr2';
+// MongoDB host name
+config.dbHost = process.env.DBHOST || 'localhost';
+
+// MongoDB port
+config.dbPort = process.env.DBPORT || 27017;
+
+// MongoDB database name
+config.dbName = process.env.DBNAME || 'bbr2';
+
+// Node server port number
+config.port = process.env.PORT || 8888;
 
 module.exports = config;
