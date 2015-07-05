@@ -53,7 +53,8 @@ config.rooms = {
   important : {
     roomName : 'important',
     visibility : 12,
-    accessLevel : 12
+    accessLevel : 12,
+    password : generatePass()
   },
 
   /**
@@ -63,7 +64,8 @@ config.rooms = {
   broadcast : {
     roomName : 'broadcast',
     visibility : 12,
-    accessLevel : 12
+    accessLevel : 12,
+    password : generatePass()
   },
 
   /**
