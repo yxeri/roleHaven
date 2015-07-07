@@ -28,4 +28,6 @@ config.dbName = process.env.DBNAME || 'bbr2';
 // Node server port number
 config.port = process.env.PORT || 8888;
 
+config.mode = process.env.MODE || 'dev';
+
 module.exports = config;

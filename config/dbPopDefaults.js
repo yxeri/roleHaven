@@ -79,4 +79,8 @@ config.rooms = {
   }
 };
 
+// Appended to the user name to create a room which is used to store private
+// messages sent to a user (e.g user1-whisper)
+config.whisper = '-whisper';
+
 module.exports = config;

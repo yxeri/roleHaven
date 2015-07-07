@@ -32,7 +32,7 @@ function handle(socket, io) {
           message.time = new Date();
           message.roomName = dbDefaults.rooms.admin.roomName;
 
-          newRoom.roomName = user.userName + '-whisper';
+          newRoom.roomName = user.userName + dbDefaults.whisper;
           newRoom.visibility = 12;
           newRoom.accessLevel = 12;
 

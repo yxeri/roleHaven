@@ -1466,13 +1466,71 @@ var validCmds = {
     accessLevel : 1,
     cmdGroup : 'advanced'
   },
-  importantMsg : {
+  importantmsg : {
     func : function() {
-      platformCmds.queueMessage({ text : ['WORK IN PROGRESS'] });
+      var data = {};
+
+      data.text = [];
+      cmdHelper.data = data;
+
+      platformCmds.queueMessage({
+        text : [
+          'You can cancel out of the command by typing ' +
+          '"exit" or "abort"'
+        ]
+      });
+      platformCmds.queueMessage({
+        text : [
+          'Write a line and press enter',
+          'Press enter without any input when you are done with the message'
+        ]
+      });
+      setInputStart('imprtntMsg');
     },
     steps : [
-      function() {
+      function(phrase) {
+        if(phrase.length > 0) {
+          cmdHelper.data.text.push(phrase);
+        } else {
+          cmdHelper.onStep++;
 
+          platformCmds.queueMessage({
+            text : ['Preview of the message:']
+          });
+          platformCmds.queueMessage({
+            text : JSON.parse(JSON.stringify(cmdHelper.data.text)),
+            extraClass : 'importantMsg'
+          });
+          platformCmds.queueMessage({
+            text : ['Is this OK? "yes" to accept the message']
+          });
+        }
+      },
+      function(phrase) {
+        if(phrase.length > 0) {
+          if(phrase === 'yes') {
+            cmdHelper.onStep++;
+
+            platformCmds.queueMessage({
+              text : [
+                'Do you want to send is as morse code too? ' +
+                '"yes" to send it as morse too'
+              ]
+            });
+          } else {
+            resetCommand(true);
+          }
+        }
+      },
+      function(phrase) {
+        if(phrase.length > 0) {
+          if(phrase === 'yes') {
+            cmdHelper.data.morse = true;
+          }
+
+          socket.emit('importantMsg', cmdHelper.data);
+          resetCommand();
+        }
       }
     ],
     help : [],
@@ -1593,8 +1651,11 @@ var validCmds = {
 
         if (roomName) {
           room.roomName = roomName;
-          // Flag that will be used in .on function locally to
-          // show user they have entered
+
+          /**
+           * Flag that will be used in .on function locally to
+           * show user they have entered
+           */
           room.entered = true;
 
           socket.emit('switchRoom', room);
@@ -1651,8 +1712,18 @@ var validCmds = {
         resetCommand();
       }
     ],
-    help : [],
-    instructions : [],
+    help : [
+      'Removes a room',
+      'You have to be either the owner or an admin of the room to remove it'
+    ],
+    instructions : [
+      ' Usage:',
+      '  removeroom *room name*',
+      '  *Follow the instructions*',
+      ' Example:',
+      '  removeroom room1',
+      '  *Follow the instructions*'
+    ],
     accessLevel : 1,
     cmdGroup : 'advanced'
   }

@@ -1,6 +1,7 @@
 'use strict';
 
 const manager = require('../manager');
+const dbDefaults = require('../config/dbPopDefaults.js');
 
 const messageSort = function(a, b) {
   if (a.time < b.time) {
@@ -20,7 +21,7 @@ function handle(socket) {
   socket.on('chatMsg', function(data) {
     const newData = data;
     let roomName = newData.message.whisper ?
-                   newData.roomName + '-whisper' : newData.roomName;
+                   newData.roomName + dbDefaults.whisper : newData.roomName;
 
     newData.message.time = new Date();
 
@@ -42,7 +43,7 @@ function handle(socket) {
           // Save the sent message in the sender's room history too,
           // if it is a whisper
           if (newData.message.whisper) {
-            const whisperRoom = newData.message.user + '-whisper';
+            const whisperRoom = newData.message.user + dbDefaults.whisper;
             manager.addMsgToHistory(whisperRoom,
               newData.message,
               function(err, history) {
@@ -435,9 +436,26 @@ function handle(socket) {
   });
 
   socket.on('importantMsg', function(message) {
+
     //add to history important
     socket.broadcast.emit('importantMsg', message);
     socket.emit('importantMsg', message);
+
+    /**
+     * Database failure does not block important messages. It is more crucial
+     * for them to be sent out ASAP to online users
+     */
+    manager.addMsgToHistory(
+      dbDefaults.rooms.important.roomName, message, function(err, history) {
+        if(err || history === null) {
+          socket.emit('message', {
+            text : [
+              'Failed to store message in database',
+              'Users who are not online might not receive the message'
+            ]
+          });
+        }
+    });
   });
 }
 

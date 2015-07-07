@@ -95,6 +95,8 @@ function watchPrivate() {
     });
 }
 
-watchPrivate();
+if(config.mode === 'dev') {
+  watchPrivate();
+}
 
 module.exports = app;
