@@ -379,16 +379,36 @@ function handle(socket) {
   socket.on('roomHackable', function(roomName) {
     const roomNameLower = roomName.toLowerCase();
 
-    manager.getRoom(roomNameLower, function(err, room) {
-      if (err || room === null) {
+    manager.getUserById(socket.id, function(err, user) {
+      if(err || user === null) {
         socket.emit('message', {
-          text : [
-            'The room is not hackable or doesn\'t exist'
-          ]
+          text : ['Something went wrong. Failed to hack room']
         });
         socket.emit('commandFail');
       } else {
-        socket.emit('commandSuccess');
+        manager.getRoom(roomNameLower, function(err, room) {
+          if (err || room === null) {
+            socket.emit('message', {
+              text : [
+                'The room is not hackable by you or doesn\'t exist'
+              ]
+            });
+            socket.emit('commandFail');
+          } else {
+
+            // Only rooms visible to the user can be hacked
+            if(user.accessLevel >= room.visibility) {
+              socket.emit('commandSuccess');
+            } else {
+              socket.emit('message', {
+                text : [
+                  'The room is not hackable by you or doesn\'t exist'
+                ]
+              });
+              socket.emit('commandFail');
+            }
+          }
+        });
       }
     });
   });

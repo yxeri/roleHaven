@@ -1298,8 +1298,7 @@ var validCmds = {
             'You can cancel out of the command by typing ' +
             '"exit" or "abort"',
             'Press enter to continue'
-          ],
-          speed : 10
+          ]
         });
 
         setInputStart('Start');
