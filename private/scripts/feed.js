@@ -219,6 +219,7 @@ var mapHelper = {
 };
 
 var commandFailText = { text : ['command not found'] };
+
 var platformCmds = {
   setLocalVal : function(name, item) {
     localStorage.setItem(name, item);
@@ -243,31 +244,6 @@ var platformCmds = {
     currentUser = null;
     localStorage.removeItem('room');
     setInputStart('RAZCMD');
-  },
-  getCommands : function(group) {
-    var keys = Object.keys(validCmds).sort();
-    var commands = [];
-
-    if (group !== undefined) {
-      commands.push(capitalizeString(group) + ' commands:');
-    }
-
-    for (var i = 0; i < keys.length; i++) {
-      var command = validCmds[keys[i]];
-      var commandAccessLevel = command.accessLevel;
-
-      if ((isNaN(commandAccessLevel) ||
-           currentAccessLevel >= commandAccessLevel) &&
-          (group === undefined || command.cmdGroup === group)) {
-        var msg = '  ';
-
-        msg += keys[i];
-
-        commands.push(msg);
-      }
-    }
-
-    return commands;
   }
 };
 
@@ -294,11 +270,41 @@ var interval = {
 var validCmds = {
   help : {
     func : function(phrases) {
-      var getAll = function() {
-        var basicCmds = platformCmds.getCommands('basic');
-        var advancedCmds = platformCmds.getCommands('advanced');
-        var hackingCmds = platformCmds.getCommands('hacking');
-        var adminCmds = platformCmds.getCommands('admin');
+      function capitalizeString(text) {
+        return text.charAt(0).toUpperCase() + text.slice(1);
+      }
+
+      function getCommands(group) {
+        var keys = Object.keys(validCmds).sort();
+        var commands = [];
+
+        if (group !== undefined) {
+          commands.push(capitalizeString(group) + ' commands:');
+        }
+
+        for (var i = 0; i < keys.length; i++) {
+          var command = validCmds[keys[i]];
+          var commandAccessLevel = command.accessLevel;
+
+          if ((isNaN(commandAccessLevel) ||
+               currentAccessLevel >= commandAccessLevel) &&
+              (group === undefined || command.cmdGroup === group)) {
+            var msg = '  ';
+
+            msg += keys[i];
+
+            commands.push(msg);
+          }
+        }
+
+        return commands;
+      }
+
+      function getAll() {
+        var basicCmds = getCommands('basic');
+        var advancedCmds = getCommands('advanced');
+        var hackingCmds = getCommands('hacking');
+        var adminCmds = getCommands('admin');
 
         if (basicCmds.length > 1) {
           platformCmds.queueMessage({
@@ -323,7 +329,7 @@ var validCmds = {
             text : adminCmds
           });
         }
-      };
+      }
 
       if (currentUser === null) {
         platformCmds.queueMessage({
@@ -334,7 +340,7 @@ var validCmds = {
           ]
         });
         platformCmds.queueMessage({
-          text : platformCmds.getCommands('login')
+          text : getCommands('login')
         });
       } else if (phrases === undefined || phrases.length === 0) {
         platformCmds.queueMessage({
@@ -357,7 +363,7 @@ var validCmds = {
             ]
           });
           platformCmds.queueMessage({
-            text : platformCmds.getCommands('basic')
+            text : getCommands('basic')
           });
         } else {
           getAll();
@@ -1731,10 +1737,6 @@ var validCmds = {
 function resetPrevCmdPointer() {
   previousCommandPointer =
     cmdHistory.length > 0 ? cmdHistory.length : 0;
-}
-
-function capitalizeString(text) {
-  return text.charAt(0).toUpperCase() + text.slice(1);
 }
 
 // Needed for Android 2.1. trim() is not supported

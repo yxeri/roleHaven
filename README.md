@@ -1,3 +1,5 @@
+[![Join the chat at https://gitter.im/yxeri/roleHaven](https://badges.gitter.im/Join%20Chat.svg)](https://gitter.im/yxeri/roleHaven?utm_source=badge&utm_medium=badge&utm_campaign=pr-badge&utm_content=badge)
+
 # roleHaven
 RoleHaven is an initiative to create a platform to be used in-game during LARPs. The first field test will be during a post-apocalyptic LARP played out in Sweden.
 
