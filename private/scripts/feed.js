@@ -32,13 +32,6 @@ var keyPressed = false;
 // Used for Android full screen to change CSS layout
 var clicked = false;
 
-/**
- * Will be set to false after command usage and timeout will set it to true
- * after a certain amount of seconds. This is to block command spam
- */
-var allowCommand = true;
-var commandTimeout = 2000;
-
 // Char that is prepended on commands in chat mode
 var commandChar = '-';
 
@@ -82,15 +75,7 @@ var oscillator;
 var gainNode;
 var soundTimeout = 0;
 
-// Array with all previous command used by the user
-var cmdHistory;
 var previousCommandPointer;
-
-// Logged in user name
-var currentUser;
-
-// Logged in user access level
-var currentAccessLevel;
 
 var morseCodes = {
   'a' : '.-',
@@ -134,35 +119,35 @@ var morseCodes = {
   '#' : '#'
 };
 var razLogo = {
-    text : [
-      ' ',
-      '   ####',
-      '###############',
-      ' #####  #########                                     ' +
-      '      ####',
-      '  ####     #######  ########     ###########    ####  ' +
-      '   ###########',
-      '  ####    ######      #######   ####   #####  ########' +
-      '    ####   #####',
-      '  ####  ###         ####  ####        ####  ###    ###' +
-      '### ####   #####',
-      '  #########        ####    ####     ####   #####     #' +
-      '#############',
-      '  #### ######     ####     #####  ####     #######   #' +
-      '##  ########',
-      '  ####   ######  ##### #### #### ############  #######' +
-      '    ####   ###',
-      ' ######    #############    ################     ###  ' +
-      '    ####    #####',
-      '########     ########         ###                     ' +
-      '   ######      #####   ##',
-      '               ###########        ##                  ' +
-      '                  ###### ',
-      '                    ###############    Razor1911',
-      '                         #####   demos - warez - honey',
-      ' '
-    ],
-    extraClass : 'logo'
+  text : [
+    ' ',
+    '   ####',
+    '###############',
+    ' #####  #########                                     ' +
+    '      ####',
+    '  ####     #######  ########     ###########    ####  ' +
+    '   ###########',
+    '  ####    ######      #######   ####   #####  ########' +
+    '    ####   #####',
+    '  ####  ###         ####  ####        ####  ###    ###' +
+    '### ####   #####',
+    '  #########        ####    ####     ####   #####     #' +
+    '#############',
+    '  #### ######     ####     #####  ####     #######   #' +
+    '##  ########',
+    '  ####   ######  ##### #### #### ############  #######' +
+    '    ####   ###',
+    ' ######    #############    ################     ###  ' +
+    '    ####    #####',
+    '########     ########         ###                     ' +
+    '   ######      #####   ##',
+    '               ###########        ##                  ' +
+    '                  ###### ',
+    '                    ###############    Razor1911',
+    '                         #####   demos - warez - honey',
+    ' '
+  ],
+  extraClass : 'logo'
 };
 var logo = {
   text : [
@@ -220,6 +205,14 @@ var mapHelper = {
 
 var commandFailText = { text : ['command not found'] };
 
+var cmdHelper = {
+  maxSteps : 0,
+  onStep : 0,
+  command : null,
+  keyboardBlocked : false,
+  data : null
+};
+
 var platformCmds = {
   setLocalVal : function(name, item) {
     localStorage.setItem(name, item);
@@ -237,22 +230,99 @@ var platformCmds = {
     messageQueue.push(message);
   },
   resetAllLocalVals : function() {
-    localStorage.removeItem('cmdHistory');
-    cmdHistory = [];
-    previousCommandPointer = 0;
-    localStorage.removeItem('user');
-    currentUser = null;
-    localStorage.removeItem('room');
-    setInputStart('RAZCMD');
-  }
-};
+    platformCmds.removeLocalVal('cmdHistory');
+    platformCmds.removeLocalVal('user');
+    platformCmds.removeLocalVal('room');
 
-var cmdHelper = {
-  maxSteps : 0,
-  onStep : 0,
-  command : null,
-  keyboardBlocked : false,
-  data : null
+    previousCommandPointer = 0;
+    platformCmds.setInputStart('RAZCMD');
+  },
+  getAccessLevel : function() {
+    return parseInt(platformCmds.getLocalVal('accessLevel'));
+  },
+  setAccessLevel : function(accessLevel) {
+    platformCmds.setLocalVal('accessLevel', accessLevel);
+  },
+  getCommands : function() {
+    return validCmds;
+  },
+  getUser : function() {
+    return platformCmds.getLocalVal('user');
+  },
+  setUser : function(user) {
+    platformCmds.setLocalVal('user', user);
+  },
+  getCommandChar : function() {
+    return commandChar;
+  },
+  getFeed : function() {
+    return mainFeed;
+  },
+  // TODO: Change name to setModeText or similar
+  setModeText : function(text) {
+    modeField.textContent = text;
+  },
+  // TODO: Change name to setModeText or similar
+  getModeText : function() {
+    return modeField.textContent; // String
+  },
+  setMode : function(mode) {
+    platformCmds.setLocalVal('mode', mode);
+  },
+  getMode : function() {
+    return platformCmds.getLocalVal('mode');
+  },
+  isTracking : function() {
+    return tracking;
+  },
+  // TODO: Change name to setInputStartText or similar
+  setInputStart : function(text) {
+    inputStart.textContent = text;
+  },
+  getCmdHelper : function() {
+    return cmdHelper;
+  },
+  setCmdHelper : function(cmdObj) {
+    cmdHelper = cmdObj;
+  },
+  resetCommand : function(aborted) {
+    var cmdObj = platformCmds.getCmdHelper();
+
+    cmdObj.command = null;
+    cmdObj.onStep = 0;
+    cmdObj.maxSteps = 0;
+    cmdObj.keyboardBlocked = false;
+    cmdObj.data = null;
+    platformCmds.setInputStart(platformCmds.getLocalVal('room'));
+
+    if (aborted) {
+      platformCmds.queueMessage({
+        text : ['Aborting command']
+      });
+    }
+  },
+  refreshApp : function() {
+    window.location.reload();
+  },
+  getMapHelper : function() {
+    return mapHelper;
+  },
+  setMapHelper : function(mapObj) {
+    mapHelper = mapObj;
+  },
+  getCmdHistory : function() {
+    platformCmds.getLocalVal('cmdHistory');
+  },
+  pushCmdHistory : function(cmd) {
+    var cmdHistory = platformCmds.getLocalVal('cmdHistory') !== null ?
+                     JSON.parse(platformCmds.getLocalVal('cmdHistory')) : [];
+
+    cmdHistory.push(cmd);
+    platformCmds.setLocalVal('cmdHistory', JSON.stringify(cmdHistory));
+  },
+  setCommand : function(sentCommand) {
+    platformCmds.getCmdHelper().command = sentCommand;
+  }
 };
 
 /**
@@ -275,29 +345,30 @@ var validCmds = {
       }
 
       function getCommands(group) {
-        var keys = Object.keys(validCmds).sort();
-        var commands = [];
+        var commands = platformCmds.getCommands();
+        var keys = Object.keys(commands).sort();
+        var commandStrings = [];
 
         if (group !== undefined) {
-          commands.push(capitalizeString(group) + ' commands:');
+          commandStrings.push(capitalizeString(group) + ' commands:');
         }
 
         for (var i = 0; i < keys.length; i++) {
-          var command = validCmds[keys[i]];
+          var command = commands[keys[i]];
           var commandAccessLevel = command.accessLevel;
 
           if ((isNaN(commandAccessLevel) ||
-               currentAccessLevel >= commandAccessLevel) &&
+               platformCmds.getAccessLevel() >= commandAccessLevel) &&
               (group === undefined || command.cmdGroup === group)) {
             var msg = '  ';
 
             msg += keys[i];
 
-            commands.push(msg);
+            commandStrings.push(msg);
           }
         }
 
-        return commands;
+        return commandStrings;
       }
 
       function getAll() {
@@ -331,7 +402,7 @@ var validCmds = {
         }
       }
 
-      if (currentUser === null) {
+      if (platformCmds.getUser() === null) {
         platformCmds.queueMessage({
           text : [
             'Use register to register a new user',
@@ -343,18 +414,20 @@ var validCmds = {
           text : getCommands('login')
         });
       } else if (phrases === undefined || phrases.length === 0) {
+        var cmdChar = platformCmds.getCommandChar();
+
         platformCmds.queueMessage({
           text : [
-            'You have to prepend commands with "' + commandChar +
-            '" in chat mode. ' + 'Example: ' + commandChar +
+            'You have to prepend commands with "' + cmdChar +
+            '" in chat mode. ' + 'Example: ' + cmdChar +
             'enterroom',
             'Add -help after a command to get instructions' +
-            ' on how to use it. Example: ' + commandChar +
+            ' on how to use it. Example: ' + cmdChar +
             'decryptmodule -help'
           ]
         });
 
-        if (currentAccessLevel === 1) {
+        if (platformCmds.getAccessLevel() === 1) {
           platformCmds.queueMessage({
             text : [
               'This is a list of basic commands. ' +
@@ -390,8 +463,10 @@ var validCmds = {
   },
   clear : {
     func : function() {
-      while (mainFeed.childNodes.length > 1) {
-        mainFeed.removeChild(mainFeed.lastChild);
+      var feed = platformCmds.getFeed();
+
+      while (feed.childNodes.length > 1) {
+        feed.removeChild(feed.lastChild);
       }
     },
     help : ['Clears the terminal view'],
@@ -401,7 +476,7 @@ var validCmds = {
   },
   whoami : {
     func : function() {
-      platformCmds.queueMessage({ text : [currentUser] });
+      platformCmds.queueMessage({ text : [platformCmds.getUser()] });
     },
     help : ['Shows the current user'],
     accessLevel : 1,
@@ -415,7 +490,7 @@ var validCmds = {
         socket.emit('chatMsg', {
           message : {
             text : [writtenMsg],
-            user : currentUser
+            user : platformCmds.getUser()
           },
           roomName : platformCmds.getLocalVal('room')
         });
@@ -447,7 +522,7 @@ var validCmds = {
         socket.emit('broadcastMsg', {
           message : {
             text : [writtenMsg],
-            user : currentUser
+            user : platformCmds.getUser()
           },
           roomName : 'ALL'
         });
@@ -620,18 +695,19 @@ var validCmds = {
     func : function(phrases, verbose) {
       if (phrases.length > 0) {
         var newMode = phrases[0].toLowerCase();
+        var cmdChar = platformCmds.getCommandChar();
 
         if (newMode === 'chat') {
-          platformCmds.setLocalVal('mode', 'chat');
-          setMode('');
+          platformCmds.setMode('chat');
+          platformCmds.setModeText('');
 
           if (verbose === undefined || verbose) {
             platformCmds.queueMessage({
               text : [
                 '-------------------',
                 'Chat mode activated',
-                'Prepend commands with "' + commandChar +
-                '", e.g. ' + '"' + commandChar +
+                'Prepend commands with "' + cmdChar +
+                '", e.g. ' + '"' + cmdChar +
                 'decryptmodule"',
                 'Everything else written and sent ' +
                 'will be intepreted' +
@@ -641,8 +717,8 @@ var validCmds = {
             });
           }
         } else if (newMode === 'cmd') {
-          platformCmds.setLocalVal('mode', 'cmd');
-          setMode('[CMD]');
+          platformCmds.setMode('cmd');
+          platformCmds.setModeText('[CMD]');
 
           if (verbose === undefined || verbose) {
             platformCmds.queueMessage({
@@ -650,7 +726,7 @@ var validCmds = {
                 '-------------------',
                 'Command mode activated',
                 'Commands can be used without "' +
-                commandChar + '"',
+                cmdChar + '"',
                 'You have to use command "msg" ' +
                 'to send messages',
                 '-------------------'
@@ -665,7 +741,7 @@ var validCmds = {
       } else {
         platformCmds.queueMessage({
           text : [
-            'Current mode: ' + platformCmds.getLocalVal('mode')
+            'Current mode: ' + platformCmds.getMode()
           ]
         });
       }
@@ -776,7 +852,7 @@ var validCmds = {
 
           room.roomName = roomName;
           room.password = password;
-          room.owner = currentUser;
+          room.owner = platformCmds.getUser();
 
           socket.emit('createRoom', room);
         } else {
@@ -812,7 +888,7 @@ var validCmds = {
   },
   login : {
     func : function(phrases) {
-      if (phrases.length > 1 && currentUser === null) {
+      if (phrases.length > 1 && platformCmds.getUser() === null) {
         var user = {};
         user.userName = phrases[0].toLowerCase();
         user.password = phrases[1];
@@ -851,7 +927,7 @@ var validCmds = {
   },
   locate : {
     func : function(phrases) {
-      if (!tracking) {
+      if (!platformCmds.isTracking()) {
         platformCmds.queueMessage({
           text : [
             'Tracking not available',
@@ -863,7 +939,7 @@ var validCmds = {
 
         socket.emit('locate', userName);
       } else {
-        socket.emit('locate', currentUser);
+        socket.emit('locate', platformCmds.getUser());
       }
     },
     help : [
@@ -886,6 +962,7 @@ var validCmds = {
   },
   decryptmodule : {
     func : function() {
+      // TODO: razLogo should be move to DB or other place
       platformCmds.queueMessage(JSON.parse(JSON.stringify(razLogo)));
       platformCmds.queueMessage({
         text : [
@@ -911,61 +988,67 @@ var validCmds = {
           'or "abort"'
         ]
       });
-      setInputStart('Enter encryption key');
+      platformCmds.setInputStart('Enter encryption key');
       socket.emit('entities');
     },
     steps : [
       function(phrase, socket) {
+        var cmdObj = platformCmds.getCmdHelper();
+
         socket.emit('verifyKey', phrase.toLowerCase());
         platformCmds.queueMessage({
           text : [
             'Verifying key. Please wait...'
           ]
         });
-        cmdHelper.keyboardBlocked = true;
-        setInputStart('Verifying...');
+        cmdObj.keyboardBlocked = true;
+        platformCmds.setInputStart('Verifying...');
       },
       function(data, socket) {
         if (data.keyData !== null) {
           if (!data.keyData.used) {
+            var cmdObj = platformCmds.getCmdHelper();
+
             platformCmds.queueMessage({
               text : ['Key has been verified. Proceeding']
             });
-            cmdHelper.onStep++;
-            cmdHelper.data = data;
-            validCmds[cmdHelper.command].steps[cmdHelper.onStep](
-              socket
-            );
+            cmdObj.onStep++;
+            cmdObj.data = data;
+            platformCmds.getCommands()[cmdObj.command].steps[cmdObj.onStep](
+              socket);
           } else {
             platformCmds.queueMessage({
               text : ['Key has already been used. Aborting']
             });
-            resetCommand(true);
+            platformCmds.resetCommand(true);
           }
         } else {
           platformCmds.queueMessage({
             text : ['The key is invalid. Aborting']
           });
-          resetCommand(true);
+          platformCmds.resetCommand(true);
         }
       },
       function() {
-        setInputStart('Enter entity name');
-        cmdHelper.keyboardBlocked = false;
-        cmdHelper.onStep++;
+        var cmdObj = platformCmds.getCmdHelper();
+
+        platformCmds.setInputStart('Enter entity name');
+        cmdObj.keyboardBlocked = false;
+        cmdObj.onStep++;
       },
       function(phrase, socket) {
-        var data = cmdHelper.data;
+        var cmdObj = platformCmds.getCmdHelper();
+        var data = cmdObj.data;
 
         data.entityName = phrase.toLowerCase();
-        data.userName = currentUser;
+        data.userName = platformCmds.getUser();
         socket.emit('unlockEntity', data);
         platformCmds.queueMessage({
           text : [
             'Unlocking entity. Please wait...'
           ]
         });
-        cmdHelper.keyboardBlocked = true;
+        cmdObj.keyboardBlocked = true;
       },
       function(entity) {
         if (entity !== null) {
@@ -988,7 +1071,7 @@ var validCmds = {
           });
         }
 
-        resetCommand(true);
+        platformCmds.resetCommand(true);
       }
     ],
     help : [
@@ -1001,6 +1084,7 @@ var validCmds = {
     instructions : [
       'Follow the on-screen instructions'
     ],
+    clearBeforeUse : true,
     accessLevel : 1,
     cmdGroup : 'advanced'
   },
@@ -1008,7 +1092,6 @@ var validCmds = {
     func : function(phrases) {
       var maxLines = phrases[0];
 
-      validCmds.clear.func();
       socket.emit('history', maxLines);
     },
     help : [
@@ -1024,6 +1107,7 @@ var validCmds = {
       '  history 25'
     ],
     clearAfterUse : true,
+    clearBeforeUse : true,
     accessLevel : 1,
     cmdGroup : 'advanced'
   },
@@ -1077,7 +1161,7 @@ var validCmds = {
         var data = {};
         data.oldPassword = phrases[0];
         data.newPassword = phrases[1];
-        data.userName = currentUser;
+        data.userName = platformCmds.getUser();
 
         if (data.newPassword.length >= 4 &&
             data.newPassword.length <= 10) {
@@ -1117,8 +1201,8 @@ var validCmds = {
   },
   logout : {
     func : function() {
-      validCmds.clear.func();
-      socket.emit('logout', currentUser);
+      platformCmds.getCommands().clear.func();
+      socket.emit('logout', platformCmds.getUser());
       platformCmds.resetAllLocalVals();
     },
     help : ['Logs out from the current user'],
@@ -1128,7 +1212,7 @@ var validCmds = {
   },
   reboot : {
     func : function() {
-      window.location.reload();
+      platformCmds.refreshApp();
     },
     help : ['Reboots terminal'],
     accessLevel : 0,
@@ -1229,7 +1313,7 @@ var validCmds = {
         data.message = {};
         data.roomName = phrases[0].toLowerCase();
         data.message.text = [phrases.slice(1).join(' ')];
-        data.message.user = currentUser;
+        data.message.user = platformCmds.getUser();
         data.message.whisper = true;
 
         socket.emit('chatMsg', data);
@@ -1276,8 +1360,9 @@ var validCmds = {
 
           return code;
         };
-        cmdHelper.data = data;
+        platformCmds.getCmdHelper().data = data;
 
+        // TODO: razLogo should be moved to DB or other place
         platformCmds.queueMessage(JSON.parse(JSON.stringify(razLogo)));
         // TODO: Message about abort should be sent from a common
         // function for all commands
@@ -1307,12 +1392,12 @@ var validCmds = {
           ]
         });
 
-        setInputStart('Start');
+        platformCmds.setInputStart('Start');
       } else {
         platformCmds.queueMessage({
           text : ['You forgot to input the room name!']
         });
-        resetCommand(true);
+        platformCmds.resetCommand(true);
       }
     },
     steps : [
@@ -1320,9 +1405,10 @@ var validCmds = {
         platformCmds.queueMessage({
           text : ['Checking room access...']
         });
-        socket.emit('roomHackable', cmdHelper.data.roomName);
+        socket.emit('roomHackable', platformCmds.getCmdHelper().data.roomName);
       },
       function() {
+        var cmdObj = platformCmds.getCmdHelper();
         var timeout = 15000;
         var timerEnded = function() {
           platformCmds.queueMessage({
@@ -1335,14 +1421,14 @@ var validCmds = {
             message : {
               text : [
                 'WARNING! Intrustion attempt detected!',
-                'User ' + currentUser + ' tried breaking in'
+                'User ' + platformCmds.getUser() + ' tried breaking in'
               ],
               user : 'SYSTEM'
             },
-            roomName : cmdHelper.data.roomName,
+            roomName : cmdObj.data.roomName,
             skipSelfMsg : true
           });
-          resetCommand(true);
+          platformCmds.resetCommand(true);
         };
 
         platformCmds.queueMessage({
@@ -1350,21 +1436,22 @@ var validCmds = {
             'Activating cracking bot....',
             'Warning. Intrusion defense system activated',
             'Time until detection: ' + (timeout / 1000) + ' seconds'
-          ],
-          speed : 1
+          ]
         });
-        setInputStart('Verify seq');
-        cmdHelper.data.code = cmdHelper.data.randomizer(10);
-        cmdHelper.data.timer = setTimeout(timerEnded, timeout);
-        cmdHelper.onStep++;
+        platformCmds.setInputStart('Verify seq');
+        cmdObj.data.code = cmdObj.data.randomizer(10);
+        cmdObj.data.timer = setTimeout(timerEnded, timeout);
+        cmdObj.onStep++;
         platformCmds.queueMessage({
-          text : ['Sequence: ' + cmdHelper.data.code]
+          text : ['Sequence: ' + cmdObj.data.code]
         });
       },
       function(phrase) {
-        if (phrase.toLowerCase() === cmdHelper.data.code) {
+        var cmdObj = platformCmds.getCmdHelper();
+
+        if (phrase.toLowerCase() === cmdObj.data.code) {
           platformCmds.queueMessage({ text : ['Sequence accepted'] });
-          cmdHelper.data.timesCracked++;
+          cmdObj.data.timesCracked++;
         } else {
           platformCmds.queueMessage({
             text : [
@@ -1374,19 +1461,19 @@ var validCmds = {
           });
         }
 
-        if (cmdHelper.data.timesCracked <
-            cmdHelper.data.timesRequired) {
-          cmdHelper.data.code = cmdHelper.data.randomizer(10);
+        if (cmdObj.data.timesCracked <
+            cmdObj.data.timesRequired) {
+          cmdObj.data.code = cmdObj.data.randomizer(10);
           platformCmds.queueMessage({
-            text : ['Sequence: ' + cmdHelper.data.code]
+            text : ['Sequence: ' + cmdObj.data.code]
           });
         } else {
           var data = {
-            userName : currentUser,
-            roomName : cmdHelper.data.roomName
+            userName : platformCmds.getUser(),
+            roomName : cmdObj.data.roomName
           };
 
-          clearTimeout(cmdHelper.data.timer);
+          clearTimeout(cmdObj.data.timer);
           socket.emit('hackRoom', data);
           platformCmds.queueMessage(({
             text : [
@@ -1396,12 +1483,12 @@ var validCmds = {
               'Thank you for using RAH'
             ]
           }));
-          resetCommand();
+          platformCmds.resetCommand();
         }
       }
     ],
     abortFunc : function() {
-      clearTimeout(cmdHelper.data.timer);
+      clearTimeout(platformCmds.getCmdHelper().data.timer);
     },
     help : [
       'ERROR. UNAUTHORIZED COMMAND...AUTHORIZATION OVERRIDDEN. ' +
@@ -1416,26 +1503,27 @@ var validCmds = {
       ' Example:',
       '  hackroom secret'
     ],
+    clearBeforeUse : true,
     accessLevel : 1,
     cmdGroup : 'hacking'
   },
   showmap : {
     func : function() {
-      platformCmds.queueMessage({ text : ['WORK IN PROGRESS'] });
+      var cmdObj = platformCmds.getMapHelper();
       var li = document.createElement('li');
       var table = document.createElement('table');
       var thead = document.createElement('thead');
       var tbody = document.createElement('tbody');
-      var yKeys = Object.keys(mapHelper.yGrids);
-      var xKeys = Object.keys(mapHelper.xGrids);
+      var yKeys = Object.keys(cmdObj.yGrids);
+      var xKeys = Object.keys(cmdObj.xGrids);
 
       // First blank td in header
       thead.appendChild(document.createElement('td'));
 
-      for (var i = 0; i < mapHelper.yGridsMax; i++) {
+      for (var i = 0; i < cmdObj.yGridsMax; i++) {
         var row = document.createElement('tr');
 
-        for (var j = 0; j < mapHelper.xGridsMax; j++) {
+        for (var j = 0; j < cmdObj.xGridsMax; j++) {
           var td = document.createElement('td');
 
           if (j === 0) {
@@ -1463,7 +1551,7 @@ var validCmds = {
       table.appendChild(thead);
       table.appendChild(tbody);
       li.appendChild(table);
-      mainFeed.appendChild(li);
+      platformCmds.getFeed().appendChild(li);
     },
     help : [],
     instructions : [],
@@ -1476,7 +1564,7 @@ var validCmds = {
       var data = {};
 
       data.text = [];
-      cmdHelper.data = data;
+      platformCmds.getCmdHelper().data = data;
 
       platformCmds.queueMessage({
         text : [
@@ -1490,11 +1578,11 @@ var validCmds = {
           'Press enter without any input when you are done with the message'
         ]
       });
-      setInputStart('imprtntMsg');
+      platformCmds.setInputStart('imprtntMsg');
     },
     steps : [
       function(phrase) {
-        if(phrase.length > 0) {
+        if (phrase.length > 0) {
           cmdHelper.data.text.push(phrase);
         } else {
           cmdHelper.onStep++;
@@ -1512,8 +1600,8 @@ var validCmds = {
         }
       },
       function(phrase) {
-        if(phrase.length > 0) {
-          if(phrase === 'yes') {
+        if (phrase.length > 0) {
+          if (phrase === 'yes') {
             cmdHelper.onStep++;
 
             platformCmds.queueMessage({
@@ -1523,18 +1611,18 @@ var validCmds = {
               ]
             });
           } else {
-            resetCommand(true);
+            platformCmds.resetCommand(true);
           }
         }
       },
       function(phrase) {
-        if(phrase.length > 0) {
-          if(phrase === 'yes') {
+        if (phrase.length > 0) {
+          if (phrase === 'yes') {
             cmdHelper.data.morse = true;
           }
 
           socket.emit('importantMsg', cmdHelper.data);
-          resetCommand();
+          platformCmds.resetCommand();
         }
       }
     ],
@@ -1560,7 +1648,7 @@ var validCmds = {
 
         return code;
       };
-      cmdHelper.data = data;
+      platformCmds.getCmdHelper().data = data;
 
       platformCmds.queueMessage({
         text : [
@@ -1591,11 +1679,13 @@ var validCmds = {
           'Press enter to continue'
         ]
       });
-      setInputStart('Chipper');
+      platformCmds.setInputStart('Chipper');
     },
     steps : [
       function() {
-        cmdHelper.onStep++;
+        var cmdObj = platformCmds.getCmdHelper();
+
+        cmdObj.onStep++;
         platformCmds.queueMessage({
           text : [
             'Chipper has been activated',
@@ -1603,7 +1693,7 @@ var validCmds = {
           ]
         });
         setTimeout(
-          validCmds[cmdHelper.command].steps[cmdHelper.onStep], 2000);
+          validCmds[cmdObj.command].steps[cmdObj.onStep], 2000);
       },
       function() {
         var stopFunc = function() {
@@ -1616,23 +1706,26 @@ var validCmds = {
             extraClass : 'importantMsg'
           });
         };
+        var cmdObj = platformCmds.getCmdHelper();
 
-        if (cmdHelper.data.timer === undefined) {
-          cmdHelper.data.timer =
+        if (cmdObj.data.timer === undefined) {
+          cmdObj.data.timer =
             setTimeout(stopFunc, 180000, false);
         }
 
         platformCmds.queueMessage({
-          text : [cmdHelper.data.randomizer(39)]
+          text : [cmdObj.data.randomizer(39)]
         });
 
-        cmdHelper.data.printTimer = setTimeout(
-          validCmds[cmdHelper.command].steps[cmdHelper.onStep], 150);
+        cmdObj.data.printTimer = setTimeout(
+          validCmds[cmdObj.command].steps[cmdObj.onStep], 150);
       }
     ],
     abortFunc : function() {
-      clearTimeout(cmdHelper.data.printTimer);
-      clearTimeout(cmdHelper.data.timer);
+      var cmdObj = platformCmds.getCmdHelper();
+
+      clearTimeout(cmdObj.data.printTimer);
+      clearTimeout(cmdObj.data.timer);
       validCmds.clear.func();
       platformCmds.queueMessage({
         text : [
@@ -1690,7 +1783,7 @@ var validCmds = {
         var data = {};
 
         data.roomName = phrases[0].toLowerCase();
-        cmdHelper.data = data;
+        platformCmds.getCmdHelper().data = data;
 
         platformCmds.queueMessage({
           text : [
@@ -1699,9 +1792,9 @@ var validCmds = {
           ]
         });
 
-        setInputStart('removeroom');
+        platformCmds.setInputStart('removeroom');
       } else {
-        resetCommand(true);
+        platformCmds.resetCommand(true);
 
         platformCmds.queueMessage({
           text : ['You forgot to input the room name']
@@ -1711,10 +1804,10 @@ var validCmds = {
     steps : [
       function(phrase) {
         if (phrase.toLowerCase() === 'yes') {
-          socket.emit('removeRoom', cmdHelper.data.roomName);
+          socket.emit('removeRoom', platformCmds.getCmdHelper().data.roomName);
         }
 
-        resetCommand();
+        platformCmds.resetCommand();
       }
     ],
     help : [
@@ -1735,8 +1828,10 @@ var validCmds = {
 };
 
 function resetPrevCmdPointer() {
+  var cmdHistory = platformCmds.getCmdHistory();
+
   previousCommandPointer =
-    cmdHistory.length > 0 ? cmdHistory.length : 0;
+    cmdHistory ? cmdHistory.length : 0;
 }
 
 // Needed for Android 2.1. trim() is not supported
@@ -1788,6 +1883,25 @@ function playMorse(morseCode) {
 
   setTimeout(finishSoundQueue, soundTimeout, (2 * morseCode.length),
     morseCode);
+}
+
+/**
+ * Taken from http://stackoverflow.com/questions/639695/
+ * how-to-convert-latitude-or-longitude-to-meters/11172685#11172685
+ * generally used geo measurement function
+ */
+function measureDistance(lat1, lon1, lat2, lon2) {
+
+  // Radius of earth in KM
+  var R = 6378.137;
+  var dLat = (lat2 - lat1) * Math.PI / 180;
+  var dLon = (lon2 - lon1) * Math.PI / 180;
+  var a = Math.sin(dLat / 2) * Math.sin(dLat / 2) +
+          Math.cos(lat1 * Math.PI / 180) * Math.cos(lat2 * Math.PI / 180) *
+          Math.sin(dLon / 2) * Math.sin(dLon / 2);
+  var c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
+  var d = R * c;
+  return d * 1000; // meters
 }
 
 function generateMap() {
@@ -1854,15 +1968,87 @@ function locateOnMap(latitude, longitude) {
 
 function reconnect() {
   if (!reconnecting) {
+    var user = platformCmds.getUser();
+
     reconnecting = true;
 
     socket.disconnect();
     socket.connect({ forceNew : true });
 
-    if (currentUser) {
-      socket.emit('updateId', { userName : currentUser });
+    if (user) {
+      socket.emit('updateId', { userName : user });
     }
   }
+}
+
+/**
+ * Geolocation object is empty when sent through Socket.IO
+ * This is a fix for that
+ */
+function preparePositionData(position) {
+  var preparedPosition = {};
+
+  preparedPosition.latitude = position.coords.latitude;
+  preparedPosition.longitude = position.coords.longitude;
+  preparedPosition.speed = position.coords.speed;
+  preparedPosition.accuracy = position.coords.accuracy;
+  preparedPosition.heading = position.coords.heading;
+  preparedPosition.timestamp = position.timestamp;
+
+  return preparedPosition; // geolocation
+}
+
+function sendLocationData() {
+  function retrievePosition() {
+    var clearingWatch = function() {
+      navigator.geolocation.clearWatch(watchId);
+      watchId = null;
+      interval.tracking = setTimeout(sendLocationData, pausePositionTime);
+    };
+
+    watchId = navigator.geolocation.watchPosition(function(position) {
+      if (position !== undefined) {
+        positions.push(position);
+      }
+    }, function(err) {
+      if (err.code === err.PERMISSION_DENIED) {
+        tracking = false;
+        clearTimeout(interval.tracking);
+        platformCmds.queueMessage({
+          text : [
+            'Unable to connect to the tracking satellites',
+            'Turning off tracking is a major offense',
+            'Organica Re-Education Squads have been ' +
+            'sent to scour the area'
+          ], extraClass : 'importantMsg'
+        });
+      } else {
+        console.log(err);
+      }
+    }, { enableHighAccuracy : true });
+
+    if (tracking) {
+      interval.tracking = setTimeout(clearingWatch, watchPositionTime);
+    }
+  }
+
+  if (platformCmds.getUser() !== null && positions.length > 0) {
+    var mostAccuratePos = positions[positions.length - 1];
+
+    for (var i = positions.length - 2; i >= 0; i--) {
+      var position = positions[i];
+      var accuracy = positions[i].coords.accuracy;
+
+      if (mostAccuratePos.coords.accuracy > accuracy) {
+        mostAccuratePos = position;
+      }
+    }
+
+    positions = [];
+    socket.emit('updateLocation', preparePositionData(mostAccuratePos));
+  }
+
+  retrievePosition();
 }
 
 /**
@@ -1978,12 +2164,15 @@ function setMarkerText(text) {
   marker.value = text;
 }
 
-function setInputStart(text) {
-  inputStart.textContent = text;
-}
-
 function getInputStart() {
   return inputStart.textContent;
+}
+
+function clearInput() {
+  setLeftText('');
+  setRightText('');
+  // Fix for blinking marker
+  setMarkerText(' ');
 }
 
 function triggerAutoComplete(text) {
@@ -2001,8 +2190,79 @@ function isAllowedChar(text) {
   return /^[a-zA-Z0-9åäöÅÄÖ/\s\-_\.,;:!"\*'\?\+=&\)\(]+$/g.test(text);
 }
 
-function allowCommand() {
-  allowCommand = true;
+function autoComplete() {
+  var phrases = trimSpace(getInputText().toLowerCase()).split(' ');
+  var partialCommand = phrases[0];
+  var commands = Object.keys(platformCmds.getCommands());
+  var matched = [];
+  var sign = partialCommand.charAt(0);
+  var cmdChar = platformCmds.getCommandChar();
+
+  /**
+   * Auto-complete should only trigger when one phrase is in the input
+   * It will not auto-complete flags
+   * If chat mode and the command is prepended or normal mode
+   */
+  if (phrases.length === 1 && partialCommand.length > 0 &&
+      (sign === cmdChar || (platformCmds.getLocalVal('mode') === 'cmd') ||
+       platformCmds.getUser() === null)) {
+
+    // Removes prepend sign
+    if (sign === cmdChar) {
+      partialCommand = partialCommand.slice(1);
+    }
+
+    for (var i = 0; i < commands.length; i++) {
+      var matches = false;
+
+      for (var j = 0; j < partialCommand.length; j++) {
+        var commandAccessLevel =
+          platformCmds.getCommands()[commands[i]].accessLevel;
+
+        if ((isNaN(commandAccessLevel) ||
+             platformCmds.getAccessLevel() >= commandAccessLevel) &&
+            partialCommand.charAt(j) === commands[i].charAt(j)) {
+          matches = true;
+        } else {
+          matches = false;
+
+          break;
+        }
+      }
+
+      if (matches) {
+        matched.push(commands[i]);
+      }
+    }
+
+    if (matched.length === 1) {
+      var newText = '';
+
+      if (sign === commandChar) {
+        newText += commandChar;
+      }
+
+      newText += matched[0] + ' ';
+
+      clearInput();
+      setLeftText(newText);
+    } else if (matched.length > 0) {
+      var msg = '';
+
+      matched.sort();
+
+      for (var cmdMatched = 0; cmdMatched <
+                               matched.length; cmdMatched++) {
+        msg += matched[cmdMatched] + '\t';
+      }
+
+      platformCmds.queueMessage({ text : [msg] });
+    }
+
+    // No input? Show all available commands
+  } else if (partialCommand.length === 0) {
+    validCmds.help.func();
+  }
 }
 
 // Needed for arrow and delete keys. They are not detected with keypress
@@ -2106,7 +2366,8 @@ function specialKeyPress(event) {
           if (previousCommandPointer > 0) {
             clearInput();
             previousCommandPointer--;
-            appendToLeftText(cmdHistory[previousCommandPointer]);
+            appendToLeftText(
+              platformCmds.getCmdHistory()[previousCommandPointer]);
           }
         }
 
@@ -2116,6 +2377,8 @@ function specialKeyPress(event) {
 
       // Down arrow
       case 40:
+        var cmdHistory = platformCmds.getCmdHistory();
+
         keyPressed = true;
 
         if (!cmdHelper.keyboardBlocked &&
@@ -2162,24 +2425,28 @@ function keyPress(event) {
 
       // Enter
       case 13:
+        var cmdObj = platformCmds.getCmdHelper();
+
         keyPressed = true;
 
-        if (!cmdHelper.keyboardBlocked) {
-          if (cmdHelper.command !== null) {
+        if (!cmdObj.keyboardBlocked) {
+          var commands = platformCmds.getCommands();
+
+          if (cmdObj.command !== null) {
             var phrase = trimSpace(getInputText().toLowerCase());
 
             if (phrase === 'exit' || phrase === 'abort') {
-              if (validCmds[cmdHelper.command].abortFunc) {
-                validCmds[cmdHelper.command].abortFunc();
+              if (commands[cmdObj.command].abortFunc) {
+                commands[cmdObj.command].abortFunc();
               }
 
-              resetCommand(true);
+              platformCmds.resetCommand(true);
             } else {
               platformCmds.queueMessage({
                 text : [phrase]
               });
 
-              validCmds[cmdHelper.command].steps[cmdHelper.onStep](
+              commands[cmdObj.command].steps[cmdObj.onStep](
                 phrase, socket
               );
             }
@@ -2190,28 +2457,24 @@ function keyPress(event) {
             var commandName;
 
             if (phrases[0].length > 0) {
+              var user = platformCmds.getUser();
               var sign = phrases[0].charAt(0);
 
               if (sign === commandChar) {
                 commandName = phrases[0].slice(1).toLowerCase();
-                command = validCmds[commandName];
+                command = commands[commandName];
               } else if (platformCmds.getLocalVal('mode') ===
-                         'cmd' ||
-                         currentUser === null) {
+                         'cmd' || user === null) {
                 commandName = phrases[0].toLowerCase();
-                command = validCmds[commandName];
+                command = commands[commandName];
               }
 
-              if (currentUser !== null && command &&
+              if (user !== null && command &&
                   (isNaN(command.accessLevel) ||
-                   currentAccessLevel >= command.accessLevel)) {
+                   platformCmds.getAccessLevel() >= command.accessLevel)) {
 
                 // Store the command for usage with up/down arrows
-                cmdHistory.push(phrases.join(' '));
-                platformCmds.setLocalVal(
-                  'cmdHistory',
-                  JSON.stringify(cmdHistory)
-                );
+                platformCmds.pushCmdHistory(phrases.join(' '));
 
                 /**
                  * Print input if the command shouldn't clear
@@ -2220,7 +2483,7 @@ function keyPress(event) {
                 if (!command.clearAfterUse) {
                   var cmdUsedMsg = {
                     text : [
-                      getInputStart() + getMode() + '$ ' +
+                      getInputStart() + platformCmds.getModeText() + '$ ' +
                       inputText
                     ]
                   };
@@ -2252,9 +2515,13 @@ function keyPress(event) {
                   }
                 } else {
                   if (command.steps) {
-                    cmdHelper.command = commandName;
-                    cmdHelper.maxSteps =
+                    cmdObj.command = commandName;
+                    cmdObj.maxSteps =
                       command.steps.length;
+                  }
+
+                  if (command.clearBeforeUse) {
+                    validCmds.clear.func();
                   }
 
                   command.func(phrases.splice(1));
@@ -2264,14 +2531,14 @@ function keyPress(event) {
                  * A user who is not logged in will have access
                  * to register and login commands
                  */
-              } else if (currentUser === null && command &&
+              } else if (user === null && command &&
                          (commandName === 'register' ||
                           commandName === 'login')) {
                 command.func(phrases.splice(1));
               } else if (platformCmds.getLocalVal('mode') ===
                          'chat' && phrases[0].length > 0) {
                 if (phrases[0].charAt(0) !== commandChar) {
-                  validCmds.msg.func(phrases);
+                  commands.msg.func(phrases);
 
                   /**
                    * User input commandChar but didn\'t write
@@ -2285,7 +2552,7 @@ function keyPress(event) {
                     ]
                   });
                 }
-              } else if (currentUser === null) {
+              } else if (user === null) {
                 platformCmds.queueMessage({
                   text : [
                     'You must register a new user or login ' +
@@ -2323,7 +2590,7 @@ function keyPress(event) {
           }
 
           if (triggerAutoComplete(getLeftText(marker)) &&
-              cmdHelper.command === null) {
+              platformCmds.getCmdHelper().command === null) {
             autoComplete();
           }
         }
@@ -2337,204 +2604,8 @@ function keyPress(event) {
 
 function setRoom(roomName) {
   platformCmds.setLocalVal('room', roomName);
-  setInputStart(roomName);
+  platformCmds.setInputStart(roomName);
   platformCmds.queueMessage({ text : ['Entered ' + roomName] });
-}
-
-function setCommand(sentCommand) {
-  cmdHelper.command = sentCommand;
-}
-
-function resetCommand(aborted) {
-  cmdHelper.command = null;
-  cmdHelper.onStep = 0;
-  cmdHelper.maxSteps = 0;
-  cmdHelper.keyboardBlocked = false;
-  cmdHelper.data = null;
-  setInputStart(platformCmds.getLocalVal('room'));
-
-  if (aborted) {
-    platformCmds.queueMessage({
-      text : ['Aborting command']
-    });
-  }
-}
-
-function setMode(text) {
-  modeField.textContent = text;
-}
-
-function getMode() {
-  return modeField.textContent; // string
-}
-
-function clearInput() {
-  setLeftText('');
-  setRightText('');
-  // Fix for blinking marker
-  setMarkerText(' ');
-}
-
-/**
- * Taken from http://stackoverflow.com/questions/639695/
- * how-to-convert-latitude-or-longitude-to-meters/11172685#11172685
- * generally used geo measurement function
- */
-function measureDistance(lat1, lon1, lat2, lon2) {
-
-  // Radius of earth in KM
-  var R = 6378.137;
-  var dLat = (lat2 - lat1) * Math.PI / 180;
-  var dLon = (lon2 - lon1) * Math.PI / 180;
-  var a = Math.sin(dLat / 2) * Math.sin(dLat / 2) +
-          Math.cos(lat1 * Math.PI / 180) * Math.cos(lat2 * Math.PI / 180) *
-          Math.sin(dLon / 2) * Math.sin(dLon / 2);
-  var c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
-  var d = R * c;
-  return d * 1000; // meters
-}
-
-/**
- * Geolocation object is empty when sent through Socket.IO
- * This is a fix for that
- */
-function preparePositionData(position) {
-  var preparedPosition = {};
-
-  preparedPosition.latitude = position.coords.latitude;
-  preparedPosition.longitude = position.coords.longitude;
-  preparedPosition.speed = position.coords.speed;
-  preparedPosition.accuracy = position.coords.accuracy;
-  preparedPosition.heading = position.coords.heading;
-  preparedPosition.timestamp = position.timestamp;
-
-  return preparedPosition; // geolocation
-}
-
-function retrievePosition() {
-  var clearingWatch = function() {
-    navigator.geolocation.clearWatch(watchId);
-    watchId = null;
-    interval.tracking = setTimeout(sendLocationData, pausePositionTime);
-  };
-
-  watchId = navigator.geolocation.watchPosition(function(position) {
-    if (position !== undefined) {
-      positions.push(position);
-    }
-  }, function(err) {
-    if (err.code === err.PERMISSION_DENIED) {
-      tracking = false;
-      clearTimeout(interval.tracking);
-      platformCmds.queueMessage({
-        text : [
-          'Unable to connect to the tracking satellites',
-          'Turning off tracking is a major offense',
-          'Organica Re-Education Squads have been ' +
-          'sent to scour the area'
-        ], extraClass : 'importantMsg'
-      });
-    } else {
-      console.log(err);
-    }
-  }, { enableHighAccuracy : true });
-
-  if (tracking) {
-    interval.tracking = setTimeout(clearingWatch, watchPositionTime);
-  }
-}
-
-function sendLocationData() {
-  if (currentUser !== null && positions.length > 0) {
-    var mostAccuratePos = positions[positions.length - 1];
-
-    for (var i = positions.length - 2; i >= 0; i--) {
-      var position = positions[i];
-      var accuracy = positions[i].coords.accuracy;
-
-      if (mostAccuratePos.coords.accuracy > accuracy) {
-        mostAccuratePos = position;
-      }
-    }
-
-    positions = [];
-    socket.emit('updateLocation', preparePositionData(mostAccuratePos));
-  }
-
-  retrievePosition();
-}
-
-function autoComplete() {
-  var phrases = trimSpace(getInputText().toLowerCase()).split(' ');
-  var partialCommand = phrases[0];
-  var commands = Object.keys(validCmds);
-  var matched = [];
-  var sign = partialCommand.charAt(0);
-
-  /**
-   * Auto-complete should only trigger when one phrase is in the input
-   * It will not auto-complete flags
-   * If chat mode and the command is prepended or normal mode
-   */
-  if (phrases.length === 1 && partialCommand.length > 0 &&
-      (sign === commandChar || (platformCmds.getLocalVal('mode') === 'cmd') ||
-       currentUser === null)) {
-
-    // Removes prepend sign
-    if (sign === commandChar) {
-      partialCommand = partialCommand.slice(1);
-    }
-
-    for (var i = 0; i < commands.length; i++) {
-      var matches = false;
-
-      for (var j = 0; j < partialCommand.length; j++) {
-        var commandAccessLevel = validCmds[commands[i]].accessLevel;
-
-        if ((isNaN(commandAccessLevel) ||
-             currentAccessLevel >= commandAccessLevel) &&
-            partialCommand.charAt(j) === commands[i].charAt(j)) {
-          matches = true;
-        } else {
-          matches = false;
-
-          break;
-        }
-      }
-
-      if (matches) {
-        matched.push(commands[i]);
-      }
-    }
-
-    if (matched.length === 1) {
-      var newText = '';
-
-      if (sign === commandChar) {
-        newText += commandChar;
-      }
-
-      newText += matched[0] + ' ';
-
-      clearInput();
-      setLeftText(newText);
-    } else if (matched.length > 0) {
-      var msg = '';
-
-      matched.sort();
-
-      for (var cmdMatched = 0; cmdMatched <
-                               matched.length; cmdMatched++) {
-        msg += matched[cmdMatched] + '\t';
-      }
-
-      platformCmds.queueMessage({ text : [msg] });
-    }
-
-    // No input? Show all available commands
-  } else if (partialCommand.length === 0) {
-    validCmds.help.func();
-  }
 }
 
 function scrollView() {
@@ -2644,7 +2715,7 @@ function printWelcomeMsg() {
   platformCmds.queueMessage(JSON.parse(JSON.stringify(logo)));
   platformCmds.queueMessage({
     text : [
-      'Welcome, employee ' + currentUser,
+      'Welcome, employee ' + platformCmds.getUser(),
       'Did you know that you can auto-complete ' +
       'commands by using ' +
       'the tab button or writing double spaces?',
@@ -2732,7 +2803,7 @@ function startSocketListeners() {
       });
 
       if (room.exited) {
-        setInputStart('public');
+        platformCmds.setInputStart('public');
         platformCmds.setLocalVal('room', 'public');
         socket.emit('follow', { roomName : 'public', entered : true });
       }
@@ -2740,13 +2811,18 @@ function startSocketListeners() {
 
     socket.on('login', function(user) {
       validCmds.clear.func();
-      platformCmds.setLocalVal('user', user.userName);
-      currentUser = user.userName;
-      currentAccessLevel = user.accessLevel;
+
+      platformCmds.setUser(user.userName);
+      platformCmds.setAccessLevel(user.accessLevel);
       platformCmds.queueMessage({
         text : ['Successfully logged in as ' + user.userName]
       });
       printWelcomeMsg();
+
+      if (!platformCmds.getMode()) {
+        platformCmds.getCommands().mode.func(['chat']);
+      }
+
       socket.emit('follow', { roomName : 'public', entered : true });
     });
 
@@ -2756,7 +2832,7 @@ function startSocketListeners() {
     });
 
     socket.on('commandFail', function() {
-      resetCommand(true);
+      platformCmds.resetCommand(true);
     });
 
     socket.on('reconnectSuccess', function(data) {
@@ -2769,7 +2845,7 @@ function startSocketListeners() {
           text : ['Retrieving missed messages (if any)']
         });
       } else {
-        currentAccessLevel = data.user.accessLevel;
+        platformCmds.setAccessLevel(data.user.accessLevel);
         printWelcomeMsg();
 
         if (platformCmds.getLocalVal('room')) {
@@ -2778,12 +2854,12 @@ function startSocketListeners() {
         }
       }
 
-      if (platformCmds.getLocalVal('mode') === null) {
-        validCmds.mode.func(['chat'], false);
-      } else {
-        var mode = platformCmds.getLocalVal('mode');
+      if (platformCmds.getMode()) {
+        var mode = platformCmds.getMode();
 
-        validCmds.mode.func([mode], false);
+        platformCmds.getCommands().mode.func([mode], false);
+      } else {
+        platformCmds.getCommands().mode.func(['chat'], false);
       }
 
       reconnecting = false;
@@ -2927,10 +3003,6 @@ function startBoot() {
   var background = document.getElementById('background');
 
   messageQueue = [];
-  cmdHistory = platformCmds.getLocalVal('cmdHistory') ?
-               JSON.parse(platformCmds.getLocalVal('cmdHistory')) : [];
-  currentUser = platformCmds.getLocalVal('user');
-  currentAccessLevel = 1;
   socket = io();
 
   background.addEventListener('click', function(event) {
@@ -2943,8 +3015,8 @@ function startBoot() {
     }
 
     // Set whole document to full screen
-    goFullScreen(document.documentElement);
-    fullscreenResize(clicked);
+    //goFullScreen(document.documentElement);
+    //fullscreenResize(clicked);
 
     event.preventDefault();
   });
@@ -2963,7 +3035,13 @@ function startBoot() {
   setIntervals();
   startAudio();
 
-  socket.emit('updateId', { userName : currentUser, firstConnection : true });
+  // TODO: Move this
+  if (!platformCmds.getAccessLevel()) {
+    platformCmds.setAccessLevel(0);
+  }
+
+  socket.emit('updateId',
+    { userName : platformCmds.getUser(), firstConnection : true });
 }
 
 startBoot();
