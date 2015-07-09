@@ -369,7 +369,7 @@ function handle(socket, io) {
         const bannedSocketId = user.socketId;
 
         socket.emit('message', {
-          text : ['User' + userNameLower + ' has been banned']
+          text : ['User ' + userNameLower + ' has been banned']
         });
 
         manager.updateUserSocketId(userNameLower, '',
