@@ -10,18 +10,20 @@ var rowTimeout = 40;
 
 /**
  * Number of messages that will be processed and printed
- * per loop in consomeQueue
+ * per loop in consumeMsgQueue
  */
 var msgsPerQueue = 3;
 
 // Queue of all the message objects that will be handled and printed
-var messageQueue;
+var msgQueue;
 
 /**
  * Shorter queue of messages that will be processed this loop. Length is
  * based on msgsPerQueue variable
  */
-var shortQueue;
+var shortMsgQueue;
+
+var cmdQueue;
 
 // True if messages are being processed and printed right now
 var printing = false;
@@ -76,6 +78,10 @@ var gainNode;
 var soundTimeout = 0;
 
 var previousCommandPointer;
+
+var commandTime = 1000;
+var commandUsed = false;
+var commandTimeout;
 
 var morseCodes = {
   'a' : '.-',
@@ -227,7 +233,7 @@ var platformCmds = {
     return /^[a-zA-Z0-9]+$/g.test(text);
   },
   queueMessage : function(message) {
-    messageQueue.push(message);
+    msgQueue.push(message);
   },
   resetAllLocalVals : function() {
     platformCmds.removeLocalVal('cmdHistory');
@@ -311,7 +317,7 @@ var platformCmds = {
     mapHelper = mapObj;
   },
   getCmdHistory : function() {
-    platformCmds.getLocalVal('cmdHistory');
+    return JSON.parse(platformCmds.getLocalVal('cmdHistory'));
   },
   pushCmdHistory : function(cmd) {
     var cmdHistory = platformCmds.getLocalVal('cmdHistory') !== null ?
@@ -322,6 +328,13 @@ var platformCmds = {
   },
   setCommand : function(sentCommand) {
     platformCmds.getCmdHelper().command = sentCommand;
+  },
+  queueCommand : function(command, data, cmdMsg) {
+    cmdQueue.push({
+      command : command,
+      data : data,
+      cmdMsg : cmdMsg
+    });
   }
 };
 
@@ -329,10 +342,10 @@ var platformCmds = {
  * Used by isScreenOff() to force reconnect when phone screen is off
  * for a longer period of time
  */
-var lastInterval = (new Date()).getTime();
+var lastScreenOff = (new Date()).getTime();
 
 // Object containing all running intervals
-var interval = {
+var intervals = {
   tracking : null,
   printText : null,
   isScreenOff : null
@@ -2003,7 +2016,7 @@ function sendLocationData() {
     var clearingWatch = function() {
       navigator.geolocation.clearWatch(watchId);
       watchId = null;
-      interval.tracking = setTimeout(sendLocationData, pausePositionTime);
+      intervals.tracking = setTimeout(sendLocationData, pausePositionTime);
     };
 
     watchId = navigator.geolocation.watchPosition(function(position) {
@@ -2013,7 +2026,7 @@ function sendLocationData() {
     }, function(err) {
       if (err.code === err.PERMISSION_DENIED) {
         tracking = false;
-        clearTimeout(interval.tracking);
+        clearTimeout(intervals.tracking);
         platformCmds.queueMessage({
           text : [
             'Unable to connect to the tracking satellites',
@@ -2028,7 +2041,7 @@ function sendLocationData() {
     }, { enableHighAccuracy : true });
 
     if (tracking) {
-      interval.tracking = setTimeout(clearingWatch, watchPositionTime);
+      intervals.tracking = setTimeout(clearingWatch, watchPositionTime);
     }
   }
 
@@ -2060,10 +2073,10 @@ function sendLocationData() {
  */
 function isScreenOff() {
   var now = (new Date()).getTime();
-  var diff = now - lastInterval;
+  var diff = now - lastScreenOff;
   var offBy = diff - 1000;
 
-  lastInterval = now;
+  lastScreenOff = now;
 
   if (offBy > 10000) {
     reconnect();
@@ -2075,12 +2088,12 @@ function isScreenOff() {
  * This is to make sure that nothing has been killed in the background
  */
 function setIntervals() {
-  if (interval.printText !== null) {
-    clearInterval(interval.printText);
+  if (intervals.printText !== null) {
+    clearInterval(intervals.printText);
   }
 
-  if (interval.tracking !== null) {
-    clearTimeout(interval.tracking);
+  if (intervals.tracking !== null) {
+    clearTimeout(intervals.tracking);
   }
 
   if (watchId !== null) {
@@ -2088,8 +2101,8 @@ function setIntervals() {
   }
 
   // Prints messages from the queue
-  interval.printText = setInterval(
-    consumeQueue, printIntervalTime, messageQueue);
+  intervals.printText = setInterval(
+    consumeMsgQueue, printIntervalTime, msgQueue);
 
   if (tracking) {
     // Gets new geolocation data
@@ -2097,14 +2110,14 @@ function setIntervals() {
   }
 
   // Should not be recreated on focus
-  if (interval.isScreenOff === null) {
+  if (intervals.isScreenOff === null) {
 
     /**
      * Checks time between when JS stopped and started working again
      * This will be most frequently triggered when a user turns off the
      * screen on their phone and turns it back on
      */
-    interval.isScreenOff = setInterval(isScreenOff, screenOffIntervalTime);
+    intervals.isScreenOff = setInterval(isScreenOff, screenOffIntervalTime);
   }
 }
 
@@ -2184,6 +2197,35 @@ function triggerAutoComplete(text) {
   }
 
   return false;
+}
+
+function setCommandUsed(used) {
+  commandUsed = used;
+}
+
+function consumeCmdQueue() {
+  if (cmdQueue.length > 0) {
+    var storedCmd = cmdQueue.shift();
+    var command = storedCmd.command;
+    var data = storedCmd.data;
+    var cmdMsg = storedCmd.cmdMsg;
+
+    if(cmdMsg !== undefined) {
+      platformCmds.queueMessage(cmdMsg);
+    }
+
+    setCommandUsed(true);
+    command(data);
+    commandTimeout = setTimeout(consumeCmdQueue, commandTime);
+  } else {
+    setCommandUsed(false);
+  }
+}
+
+function startCmdQueue() {
+  if (!commandUsed) {
+    consumeCmdQueue();
+  }
 }
 
 function isAllowedChar(text) {
@@ -2359,6 +2401,8 @@ function specialKeyPress(event) {
 
       // Up arrow
       case 38:
+        var cmdHistory = platformCmds.getCmdHistory();
+
         keyPressed = true;
 
         if (!cmdHelper.keyboardBlocked &&
@@ -2366,8 +2410,7 @@ function specialKeyPress(event) {
           if (previousCommandPointer > 0) {
             clearInput();
             previousCommandPointer--;
-            appendToLeftText(
-              platformCmds.getCmdHistory()[previousCommandPointer]);
+            appendToLeftText(cmdHistory[previousCommandPointer]);
           }
         }
 
@@ -2472,6 +2515,7 @@ function keyPress(event) {
               if (user !== null && command &&
                   (isNaN(command.accessLevel) ||
                    platformCmds.getAccessLevel() >= command.accessLevel)) {
+                var cmdUsedMsg;
 
                 // Store the command for usage with up/down arrows
                 platformCmds.pushCmdHistory(phrases.join(' '));
@@ -2481,14 +2525,12 @@ function keyPress(event) {
                  * after use
                  */
                 if (!command.clearAfterUse) {
-                  var cmdUsedMsg = {
+                  cmdUsedMsg = {
                     text : [
                       getInputStart() + platformCmds.getModeText() + '$ ' +
                       inputText
                     ]
                   };
-
-                  platformCmds.queueMessage(cmdUsedMsg);
                 }
 
                 /**
@@ -2524,7 +2566,9 @@ function keyPress(event) {
                     validCmds.clear.func();
                   }
 
-                  command.func(phrases.splice(1));
+                  platformCmds.queueCommand(
+                    command.func, phrases.splice(1), cmdUsedMsg);
+                  startCmdQueue();
                 }
 
                 /**
@@ -2538,7 +2582,8 @@ function keyPress(event) {
               } else if (platformCmds.getLocalVal('mode') ===
                          'chat' && phrases[0].length > 0) {
                 if (phrases[0].charAt(0) !== commandChar) {
-                  commands.msg.func(phrases);
+                  platformCmds.queueCommand(commands.msg.func, phrases);
+                  startCmdQueue();
 
                   /**
                    * User input commandChar but didn\'t write
@@ -2655,9 +2700,9 @@ function generateFullText(sentText, message) {
   return text;
 }
 
-function consumeShortQueue() {
-  if (shortQueue.length > 0) {
-    var message = shortQueue.shift();
+function consumeMsgShortQueue() {
+  if (shortMsgQueue.length > 0) {
+    var message = shortMsgQueue.shift();
 
     printRow(message);
   } else {
@@ -2666,12 +2711,11 @@ function consumeShortQueue() {
 }
 
 // Prints messages from the queue
-function consumeQueue(messageQueue) {
+function consumeMsgQueue(messageQueue) {
   if (!printing && messageQueue.length > 0) {
-    shortQueue = messageQueue.splice(0, msgsPerQueue);
-
+    shortMsgQueue = messageQueue.splice(0, msgsPerQueue);
     printing = true;
-    consumeShortQueue();
+    consumeMsgShortQueue();
   }
 }
 
@@ -2701,7 +2745,7 @@ function printRow(message) {
 
     setTimeout(printRow, rowTimeout, message);
   } else {
-    consumeShortQueue();
+    consumeMsgShortQueue();
   }
 }
 
@@ -2916,11 +2960,11 @@ function startSocketListeners() {
 
           text += 'Accuracy: ' + accuracy + ' meters\t';
 
-          if (heading !== null) {
-            text += 'Heading: ' + heading + ' deg.\t';
-          }
+          text += 'Coordinates: ' + latitude + ', ' + longitude + '\t';
 
-          text += 'Coordinates: ' + latitude + ', ' + longitude;
+          if (heading !== null) {
+            text += 'Heading: ' + heading + ' deg.';
+          }
 
           platformCmds.queueMessage({ text : [text] });
         }
@@ -3002,7 +3046,8 @@ function fullscreenResize(keyboardShown) {
 function startBoot() {
   var background = document.getElementById('background');
 
-  messageQueue = [];
+  msgQueue = [];
+  cmdQueue = [];
   socket = io();
 
   background.addEventListener('click', function(event) {
