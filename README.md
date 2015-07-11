@@ -1,3 +1,5 @@
+[![Join the chat at https://gitter.im/yxeri/roleHaven](https://badges.gitter.im/Join%20Chat.svg)](https://gitter.im/yxeri/roleHaven?utm_source=badge&utm_medium=badge&utm_campaign=pr-badge&utm_content=badge)
+
 # roleHaven
 
 [![Join the chat at https://gitter.im/yxeri/roleHaven](https://badges.gitter.im/Join%20Chat.svg)](https://gitter.im/yxeri/roleHaven?utm_source=badge&utm_medium=badge&utm_campaign=pr-badge&utm_content=badge)
@@ -39,3 +41,9 @@ Note! This system is meant to be used as a game within a game. Passwords are not
 * logout - Logs you out of the current user
 * reboot - Refreshes the page
 * verifyuser - Verifies a user and allows it to log in
+
+## Contributors
+* Stanislav B - [Github](https://github.com/stanislavb)
+* Thomas
+* Jonta - [Personal site](http://mirk.se)
+* Others who helped test the application, give feedback and ideas or/and donate hardware 
