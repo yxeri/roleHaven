@@ -707,7 +707,7 @@ function populateDbRooms(sentRooms, user) {
       console.log('PopulateDb: Creating rooms from defaults');
 
       for (let i = 0; i < roomKeys.length; i++) {
-        const room = rooms[roomKeys[i]];
+        const room = sentRooms[roomKeys[i]];
 
         createRoom(room, user, roomCallback);
       }
