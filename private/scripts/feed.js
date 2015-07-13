@@ -288,9 +288,6 @@ var platformCmds = {
   getCmdHelper : function() {
     return cmdHelper;
   },
-  setCmdHelper : function(cmdObj) {
-    cmdHelper = cmdObj;
-  },
   resetCommand : function(aborted) {
     var cmdObj = platformCmds.getCmdHelper();
 
@@ -313,22 +310,6 @@ var platformCmds = {
   getMapHelper : function() {
     return mapHelper;
   },
-  setMapHelper : function(mapObj) {
-    mapHelper = mapObj;
-  },
-  getCmdHistory : function() {
-    return JSON.parse(platformCmds.getLocalVal('cmdHistory'));
-  },
-  pushCmdHistory : function(cmd) {
-    var cmdHistory = platformCmds.getLocalVal('cmdHistory') !== null ?
-                     JSON.parse(platformCmds.getLocalVal('cmdHistory')) : [];
-
-    cmdHistory.push(cmd);
-    platformCmds.setLocalVal('cmdHistory', JSON.stringify(cmdHistory));
-  },
-  setCommand : function(sentCommand) {
-    platformCmds.getCmdHelper().command = sentCommand;
-  },
   queueCommand : function(command, data, cmdMsg) {
     cmdQueue.push({
       command : command,
@@ -350,6 +331,7 @@ var intervals = {
   printText : null,
   isScreenOff : null
 };
+
 var validCmds = {
   help : {
     func : function(phrases) {
@@ -907,10 +889,17 @@ var validCmds = {
         user.password = phrases[1];
 
         socket.emit('login', user);
+      } else if(platformCmds.getUser() !== null) {
+        platformCmds.queueMessage({
+          text : [
+            'You are already logged in',
+            'You have to be logged out to log in'
+          ]
+        });
       } else {
         platformCmds.queueMessage({
           text : [
-            'You need to input a user name and password and you',
+            'You need to input a user name and password',
             'Example: login bestname secretpassword'
           ]
         });
@@ -1840,8 +1829,20 @@ var validCmds = {
   }
 };
 
+function getCmdHistory() {
+  return JSON.parse(platformCmds.getLocalVal('cmdHistory'));
+}
+
+function pushCmdHistory(cmd) {
+  var cmdHistory = platformCmds.getLocalVal('cmdHistory') !== null ?
+                   JSON.parse(platformCmds.getLocalVal('cmdHistory')) : [];
+
+  cmdHistory.push(cmd);
+  platformCmds.setLocalVal('cmdHistory', JSON.stringify(cmdHistory));
+}
+
 function resetPrevCmdPointer() {
-  var cmdHistory = platformCmds.getCmdHistory();
+  var cmdHistory = getCmdHistory();
 
   previousCommandPointer =
     cmdHistory ? cmdHistory.length : 0;
@@ -2401,7 +2402,7 @@ function specialKeyPress(event) {
 
       // Up arrow
       case 38:
-        var cmdHistory = platformCmds.getCmdHistory();
+        var cmdHistory = getCmdHistory();
 
         keyPressed = true;
 
@@ -2420,7 +2421,7 @@ function specialKeyPress(event) {
 
       // Down arrow
       case 40:
-        var cmdHistory = platformCmds.getCmdHistory();
+        var cmdHistory = getCmdHistory();
 
         keyPressed = true;
 
@@ -2518,7 +2519,7 @@ function keyPress(event) {
                 var cmdUsedMsg;
 
                 // Store the command for usage with up/down arrows
-                platformCmds.pushCmdHistory(phrases.join(' '));
+                pushCmdHistory(phrases.join(' '));
 
                 /**
                  * Print input if the command shouldn't clear
@@ -3042,6 +3043,21 @@ function fullscreenResize(keyboardShown) {
   }
 }
 
+function generateDeviceId() {
+  var randomString = '0123456789abcdefghijkmnopqrstuvwxyz' +
+                     'ABCDEFGHIJKLMNOPQRSTUVWXYZ';
+  var randomLength = randomString.length;
+  var deviceId = '';
+
+  for (var i = 0; i < 15; i++) {
+    var randomVal = Math.random() * (randomLength - 1);
+
+    deviceId += randomString[Math.round(randomVal)];
+  }
+
+  return deviceId;
+}
+
 // Sets everything relevant when a user enters the site
 function startBoot() {
   var background = document.getElementById('background');
@@ -3049,6 +3065,11 @@ function startBoot() {
   msgQueue = [];
   cmdQueue = [];
   socket = io();
+
+  // TODO: Move this
+  if (!platformCmds.getLocalVal('deviceId')) {
+    platformCmds.setLocalVal('deviceId', generateDeviceId());
+  }
 
   background.addEventListener('click', function(event) {
     clicked = !clicked;
