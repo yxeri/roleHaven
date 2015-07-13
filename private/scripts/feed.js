@@ -1203,9 +1203,7 @@ var validCmds = {
   },
   logout : {
     func : function() {
-      platformCmds.getCommands().clear.func();
-      socket.emit('logout', platformCmds.getUser());
-      platformCmds.resetAllLocalVals();
+      socket.emit('logout');
     },
     help : ['Logs out from the current user'],
     accessLevel : 1,
@@ -2983,6 +2981,11 @@ function startSocketListeners() {
         ],
         extraClass : 'importantMsg'
       });
+      platformCmds.resetAllLocalVals();
+    });
+
+    socket.on('logout', function() {
+      platformCmds.getCommands().clear.func();
       platformCmds.resetAllLocalVals();
     });
   }

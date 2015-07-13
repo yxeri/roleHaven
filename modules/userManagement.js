@@ -7,7 +7,7 @@ function isTextAllowed(text) {
   return /^[a-zA-Z0-9]+$/g.test(text);
 }
 
-function handle(socket, io) {
+function handle(socket) {
   socket.on('register', function(sentUser) {
     sentUser.userName = sentUser.userName.toLowerCase();
 
@@ -255,24 +255,31 @@ function handle(socket, io) {
     }
   });
 
-  socket.on('logout', function(sentUserName) {
-    if (sentUserName) {
-      manager.updateUserSocketId(sentUserName, ' ', function(err, user) {
-        if (err || user === null) {
-          console.log('Failed to reset socket id', err);
-        } else {
-          const rooms = socket.rooms;
+  socket.on('logout', function() {
+    manager.getUserById(socket.id, function(err, currentUser) {
+      if (err || currentUser === null) {
+        console.log('Failed to get user to logout', err);
+      } else {
+        const userName = currentUser.userName;
 
-          for (let i = 1; i < rooms.length; i++) {
-            socket.leave(rooms[i]);
+        manager.updateUserSocketId(userName, ' ', function(err, user) {
+          if (err || user === null) {
+            console.log('Failed to reset socket id', err);
+          } else {
+            const rooms = socket.rooms;
+
+            for (let i = 1; i < rooms.length; i++) {
+              socket.leave(rooms[i]);
+            }
+
+            socket.emit('logout');
+            socket.emit('message', {
+              text : ['You have been logged out']
+            });
           }
-
-          socket.emit('message', {
-            text : ['You have been logged out']
-          });
-        }
-      });
-    }
+        });
+      }
+    });
   });
 
   socket.on('verifyUser', function(sentUserName) {
