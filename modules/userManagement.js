@@ -406,6 +406,53 @@ function handle(socket) {
       }
     });
   });
+
+  socket.on('updateUser', function(data) {
+    manager.getUserById(socket.id, function(err, user) {
+      if (err || user === null) {
+
+      } else {
+        if (user.accessLevel >= 11) {
+          const userName = data.user;
+          const field = data.field;
+          const value = data.value;
+          const callback = function(err, user) {
+            if(err || user === null) {
+
+            } else {
+              socket.emit('message', {
+                text : ['User has been updated']
+              });
+            }
+          };
+          let managerFunc;
+
+          switch(field) {
+            case 'visibility':
+              managerFunc = manager.updateUserVisibility(
+                userName, value, callback);
+
+              break;
+            case 'accesslevel':
+              managerFunc = manager.updateUserAccessLevel(
+                userName, value, callback);
+
+              break;
+            default:
+              socket.emit('message', {
+                text : ['Invalid field. User doesn\'t have ' + field]
+              });
+
+              break;
+          }
+        } else {
+          socket.emit('message', {
+            text : ['You do not have access to this command']
+          });
+        }
+      }
+    });
+  });
 }
 
 exports.handle = handle;

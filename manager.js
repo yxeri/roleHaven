@@ -747,6 +747,32 @@ function populateDbUsers(sentUsers) {
   });
 }
 
+function updateUserVisibility(userName, value, callback) {
+  const query = { userName : userName };
+  const update = { visibility : value };
+
+  User.findOneAndUpdate(query, update).lean().exec(function(err, user) {
+    if (err) {
+      console.log('Failed to update user', err);
+    }
+
+    callback(err, user);
+  });
+}
+
+function updateUserAccessLevel(userName, value, callback) {
+  const query = { userName : userName };
+  const update = { accessLevel : value };
+
+  User.findOneAndUpdate(query, update).lean().exec(function(err, user) {
+    if (err) {
+      console.log('Failed to update user', err);
+    }
+
+    callback(err, user);
+  });
+}
+
 exports.getUserById = getUserById;
 exports.authUser = authUser;
 exports.addUser = addUser;
@@ -780,6 +806,8 @@ exports.getOwnedRooms = getOwnedRooms;
 exports.removeRoom = removeRoom;
 exports.populateDbUsers = populateDbUsers;
 exports.populateDbRooms = populateDbRooms;
+exports.updateUserVisibility = updateUserVisibility;
+exports.updateUserAccessLevel = updateUserAccessLevel;
 
 //Blodsband specific
 exports.addEncryptionKey = addEncryptionKey;

@@ -1824,6 +1824,38 @@ var validCmds = {
     ],
     accessLevel : 1,
     cmdGroup : 'advanced'
+  },
+  updateuser : {
+    func : function(phrases) {
+      if(phrases.length > 2) {
+        var data = {};
+        data.user = phrases[0];
+        data.field = phrases[1];
+        data.value = phrases[2];
+
+        socket.emit('updateUser', data);
+      } else {
+        platformCmds.queueMessage({
+          text : [
+            'You need to write a user name, field name and value',
+            'Example: updateuser user1 accesslevel 3'
+          ]
+        });
+      }
+    },
+    help : [
+      'Change fields on a user',
+      'You can currently change visibility or accesslevel'
+    ],
+    instructions : [
+      ' Usage:',
+      '  updateuser *user name* *field name* *value*',
+      ' Example:',
+      '  updateuser user1 accesslevel 3',
+      '  updateuser user1 visibility 6'
+    ],
+    accessLevel : 1,
+    cmdGroup : 'admin'
   }
 };
 
