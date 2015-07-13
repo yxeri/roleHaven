@@ -166,94 +166,60 @@ function handle(socket, io) {
     sentUser.userName = sentUser.userName.toLowerCase();
 
     if (sentUser.userName && sentUser.password) {
-      manager.authUser(sentUser.userName, sentUser.password,
-        function(err, user) {
-          if (err || user === null) {
-            socket.emit('message', { text : ['Failed to login'] });
-          } else {
-            if (user.verified && !user.banned) {
-              const userSocketId = user.socketId;
-              const allSockets = Object.keys(io.sockets.connected);
-              let userIsOnline = false;
+      manager.getUserById(socket.id, function(err, loggedInUser) {
 
-              for (let i = 0; i < allSockets.length; i++) {
-                if (userSocketId === allSockets[i]) {
-                  userIsOnline = true;
-
-                  break;
-                }
-              }
-
-              if (!userIsOnline) {
-                const authUser = user;
-
-                manager.updateUserSocketId(sentUser.userName,
-                  socket.id,
-                  function(err, user) {
-                    if (err || user === null) {
-                      socket.emit('message',
-                        { text : ['Failed to login'] });
-                    } else {
-                      const rooms = authUser.rooms;
-
-                      for (let i = 0; i < rooms.length; i++) {
-                        socket.join(rooms[i]);
-                      }
-
-                      socket.emit('login', authUser);
-                    }
-                  });
+        // Should not allow to login if already logged in
+        if(err || loggedInUser !== null) {
+          socket.emit('message', {
+            text : [
+              'You are already logged in',
+              'You have to be logged out to log in'
+            ]
+          });
+        } else {
+          manager.authUser(sentUser.userName, sentUser.password,
+            function(err, user) {
+              if (err || user === null) {
+                socket.emit('message', { text : ['Failed to login'] });
               } else {
-                manager.getUserById(socket.id, function(err, user) {
-                  if (err || user == null) {
-                    socket.emit('message',
-                      { text : ['Failed to login'] });
-                  } else {
-                    socket.to(userSocketId).emit('message', {
-                      text : [
-                        '-------------------',
-                        'Intrusion attempt detected ' +
-                        'by user ' + user.userName,
-                        'User tried to log in ' +
-                        'to your account',
-                        'Coordinates: ' +
-                        (user.position ?
-                         (user.position.longitude +
-                        ', ' + user.position.latitude) :
-                         'Unable to locate user'),
-                        '-------------------'
-                      ]
+                if (user.verified && !user.banned) {
+                  const authUser = user;
+
+                  manager.updateUserSocketId(sentUser.userName, socket.id,
+                    function(err, user) {
+                      if (err || user === null) {
+                        socket.emit('message',
+                          { text : ['Failed to login'] });
+                      } else {
+                        const rooms = authUser.rooms;
+
+                        for (let i = 0; i < rooms.length; i++) {
+                          socket.join(rooms[i]);
+                        }
+
+                        socket.emit('login', authUser);
+                      }
                     });
+                } else {
+                  if (!user.verified) {
                     socket.emit('message', {
                       text : [
-                        'User is already logged in and ' +
-                        'has been notified about ' +
-                        'your intrusion attempt',
-                        'Your user name and coordinates ' +
-                        'have been sent to the user'
+                        'The user has not yet been verified. ' +
+                        'Failed to login'
+                      ]
+                    });
+                  } else {
+                    socket.emit('message', {
+                      text : [
+                        'The user has been banned. Failed to login'
                       ]
                     });
                   }
-                });
+                }
               }
-            } else {
-              if (!user.verified) {
-                socket.emit('message', {
-                  text : [
-                    'The user has not yet been verified. ' +
-                    'Failed to login'
-                  ]
-                });
-              } else {
-                socket.emit('message', {
-                  text : [
-                    'The user has been banned. Failed to login'
-                  ]
-                });
-              }
-            }
-          }
-        });
+            });
+        }
+      });
     } else {
       socket.emit('message', {
         text : [
