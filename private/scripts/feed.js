@@ -354,7 +354,7 @@ var validCmds = {
 
           if ((isNaN(commandAccessLevel) ||
                platformCmds.getAccessLevel() >= commandAccessLevel) &&
-              (group === undefined || command.cmdGroup === group)) {
+              (group === undefined || command.category === group)) {
             var msg = '  ';
 
             msg += keys[i];
@@ -418,24 +418,11 @@ var validCmds = {
             'enterroom',
             'Add -help after a command to get instructions' +
             ' on how to use it. Example: ' + cmdChar +
-            'decryptmodule -help'
+            'uploadkey -help'
           ]
         });
 
-        if (platformCmds.getAccessLevel() === 1) {
-          platformCmds.queueMessage({
-            text : [
-              'This is a list of basic commands. ' +
-              'Use "help all" to ' +
-              'see all your available commands'
-            ]
-          });
-          platformCmds.queueMessage({
-            text : getCommands('basic')
-          });
-        } else {
-          getAll();
-        }
+        getAll();
       } else {
         getAll();
       }
@@ -454,7 +441,7 @@ var validCmds = {
       '  help all'
     ],
     accessLevel : 1,
-    cmdGroup : 'basic'
+    category : 'basic'
   },
   clear : {
     func : function() {
@@ -466,16 +453,16 @@ var validCmds = {
     },
     help : ['Clears the terminal view'],
     clearAfterUse : true,
-    accessLevel : 1,
-    cmdGroup : 'basic'
+    accessLevel : 13,
+    category : 'basic'
   },
   whoami : {
     func : function() {
       platformCmds.queueMessage({ text : [platformCmds.getUser()] });
     },
     help : ['Shows the current user'],
-    accessLevel : 1,
-    cmdGroup : 'basic'
+    accessLevel : 13,
+    category : 'basic'
   },
   msg : {
     func : function(phrases) {
@@ -506,8 +493,8 @@ var validCmds = {
       '  msg Hello!'
     ],
     clearAfterUse : true,
-    accessLevel : 1,
-    cmdGroup : 'advanced'
+    accessLevel : 13,
+    category : 'advanced'
   },
   broadcast : {
     func : function(phrases) {
@@ -538,8 +525,8 @@ var validCmds = {
       '  broadcast Hello!'
     ],
     clearAfterUse : true,
-    accessLevel : 1,
-    cmdGroup : 'admin'
+    accessLevel : 13,
+    category : 'admin'
   },
   enterroom : {
     func : function(phrases) {
@@ -586,8 +573,8 @@ var validCmds = {
       ' Example:',
       '  enterroom sector5 banana'
     ],
-    accessLevel : 1,
-    cmdGroup : 'basic'
+    accessLevel : 13,
+    category : 'basic'
   },
   follow : {
     func : function(phrases) {
@@ -617,8 +604,8 @@ var validCmds = {
       ' Example:',
       '  follow room1 banana'
     ],
-    accessLevel : 1,
-    cmdGroup : 'advanced'
+    accessLevel : 13,
+    category : 'advanced'
   },
   unfollow : {
     func : function(phrases) {
@@ -646,8 +633,8 @@ var validCmds = {
       ' Example:',
       '  unfollow roomname'
     ],
-    accessLevel : 1,
-    cmdGroup : 'advanced'
+    accessLevel : 13,
+    category : 'advanced'
   },
   list : {
     func : function(phrases) {
@@ -683,8 +670,8 @@ var validCmds = {
       '  list rooms',
       '  list users'
     ],
-    accessLevel : 1,
-    cmdGroup : 'basic'
+    accessLevel : 13,
+    category : 'basic'
   },
   mode : {
     func : function(phrases, verbose) {
@@ -703,7 +690,7 @@ var validCmds = {
                 'Chat mode activated',
                 'Prepend commands with "' + cmdChar +
                 '", e.g. ' + '"' + cmdChar +
-                'decryptmodule"',
+                'uploadkey"',
                 'Everything else written and sent ' +
                 'will be intepreted' +
                 'as a chat message',
@@ -746,14 +733,14 @@ var validCmds = {
       '--Chat mode--',
       'Everything written will be interpreted as chat messages',
       'All commands have to be prepended with "' + commandChar + '" ' +
-      'Example: ' + commandChar + 'decryptmodule',
+      'Example: ' + commandChar + 'uploadkey',
       '--Cmd mode--',
       'Text written will not be automatically be intepreted as' +
       'chat messages',
       'You have to use "msg" command to write messages' +
       'Example: msg hello',
       'Commands do not have to be prepended with anything. ' +
-      'Example: decryptmodule'
+      'Example: uploadkey'
     ],
     instructions : [
       ' Usage:',
@@ -762,8 +749,8 @@ var validCmds = {
       '  mode chat',
       '  mode cmd'
     ],
-    accessLevel : 1,
-    cmdGroup : 'advanced'
+    accessLevel : 13,
+    category : 'advanced'
   },
   register : {
     func : function(phrases) {
@@ -823,7 +810,7 @@ var validCmds = {
     ],
     clearAfterUse : true,
     accessLevel : 0,
-    cmdGroup : 'login'
+    category : 'login'
   },
   createroom : {
     func : function(phrases) {
@@ -870,16 +857,16 @@ var validCmds = {
       ' Example:',
       '  createroom myroom banana'
     ],
-    accessLevel : 1,
-    cmdGroup : 'advanced'
+    accessLevel : 13,
+    category : 'advanced'
   },
   myrooms : {
     func : function() {
       socket.emit('myRooms');
     },
     help : ['Shows a list of all rooms you are following'],
-    accessLevel : 1,
-    cmdGroup : 'advanced'
+    accessLevel : 13,
+    category : 'advanced'
   },
   login : {
     func : function(phrases) {
@@ -917,15 +904,15 @@ var validCmds = {
     ],
     clearAfterUse : true,
     accessLevel : 0,
-    cmdGroup : 'login'
+    category : 'login'
   },
   time : {
     func : function() {
       socket.emit('time');
     },
     help : ['Shows the current time'],
-    accessLevel : 1,
-    cmdGroup : 'basic'
+    accessLevel : 13,
+    category : 'basic'
   },
   locate : {
     func : function(phrases) {
@@ -959,10 +946,10 @@ var validCmds = {
       '  locate *',
       '  locate'
     ],
-    accessLevel : 1,
-    cmdGroup : 'advanced'
+    accessLevel : 13,
+    category : 'advanced'
   },
-  decryptmodule : {
+  uploadkey : {
     func : function() {
       // TODO: razLogo should be move to DB or other place
       platformCmds.queueMessage(JSON.parse(JSON.stringify(razLogo)));
@@ -1008,7 +995,7 @@ var validCmds = {
       },
       function(data, socket) {
         if (data.keyData !== null) {
-          if (!data.keyData.used) {
+          if (data.keyData.reusable || !data.keyData.used) {
             var cmdObj = platformCmds.getCmdHelper();
 
             platformCmds.queueMessage({
@@ -1087,8 +1074,8 @@ var validCmds = {
       'Follow the on-screen instructions'
     ],
     clearBeforeUse : true,
-    accessLevel : 1,
-    cmdGroup : 'advanced'
+    accessLevel : 13,
+    category : 'basic'
   },
   history : {
     func : function(phrases) {
@@ -1111,7 +1098,7 @@ var validCmds = {
     clearAfterUse : true,
     clearBeforeUse : true,
     accessLevel : 1,
-    cmdGroup : 'advanced'
+    category : 'advanced'
   },
   morse : {
     func : function(phrases) {
@@ -1154,8 +1141,8 @@ var validCmds = {
       ' Example:',
       '  morse sos'
     ],
-    accessLevel : 1,
-    cmdGroup : 'admin'
+    accessLevel : 13,
+    category : 'admin'
   },
   password : {
     func : function(phrases) {
@@ -1198,16 +1185,16 @@ var validCmds = {
       ' Example:',
       '  password old1 new1'
     ],
-    accessLevel : 1,
-    cmdGroup : 'basic'
+    accessLevel : 13,
+    category : 'basic'
   },
   logout : {
     func : function() {
       socket.emit('logout');
     },
     help : ['Logs out from the current user'],
-    accessLevel : 1,
-    cmdGroup : 'basic',
+    accessLevel : 13,
+    category : 'basic',
     clearAfterUse : true
   },
   reboot : {
@@ -1215,8 +1202,8 @@ var validCmds = {
       platformCmds.refreshApp();
     },
     help : ['Reboots terminal'],
-    accessLevel : 0,
-    cmdGroup : 'basic'
+    accessLevel : 1,
+    category : 'basic'
   },
   verifyuser : {
     func : function(phrases) {
@@ -1248,8 +1235,8 @@ var validCmds = {
       '  verifyuser appl1',
       '  verifyuser *'
     ],
-    accessLevel : 11,
-    cmdGroup : 'admin'
+    accessLevel : 13,
+    category : 'admin'
   },
   banuser : {
     func : function(phrases) {
@@ -1275,8 +1262,8 @@ var validCmds = {
       '  banuser',
       '  banuser evil1'
     ],
-    accessLevel : 11,
-    cmdGroup : 'admin'
+    accessLevel : 13,
+    category : 'admin'
   },
   unbanuser : {
     func : function(phrases) {
@@ -1302,8 +1289,8 @@ var validCmds = {
       '  unbanuser',
       '  unbanuser evil1'
     ],
-    accessLevel : 11,
-    cmdGroup : 'admin'
+    accessLevel : 13,
+    category : 'admin'
   },
   whisper : {
     func : function(phrases) {
@@ -1336,8 +1323,8 @@ var validCmds = {
       '  whisper user1 sounds good!'
     ],
     clearAfterUse : true,
-    accessLevel : 1,
-    cmdGroup : 'basic'
+    accessLevel : 13,
+    category : 'basic'
   },
   hackroom : {
     func : function(phrases) {
@@ -1504,8 +1491,8 @@ var validCmds = {
       '  hackroom secret'
     ],
     clearBeforeUse : true,
-    accessLevel : 1,
-    cmdGroup : 'hacking'
+    accessLevel : 13,
+    category : 'hacking'
   },
   showmap : {
     func : function() {
@@ -1556,8 +1543,8 @@ var validCmds = {
     help : [],
     instructions : [],
     clearAfterUse : true,
-    accessLevel : 1,
-    cmdGroup : 'advanced'
+    accessLevel : 13,
+    category : 'advanced'
   },
   importantmsg : {
     func : function() {
@@ -1628,8 +1615,8 @@ var validCmds = {
     ],
     help : [],
     instructions : [],
-    accessLevel : 1,
-    cmdGroup : 'admin'
+    accessLevel : 13,
+    category : 'admin'
   },
   chipper : {
     func : function() {
@@ -1738,8 +1725,8 @@ var validCmds = {
       'Activate chipper function',
       'Press enter when you have retrieved confirmation from the ECU'
     ],
-    accessLevel : 1,
-    cmdGroup : 'hacking'
+    accessLevel : 13,
+    category : 'hacking'
   },
   switchroom : {
     func : function(phrases) {
@@ -1774,8 +1761,8 @@ var validCmds = {
       ' Example:',
       '  switchroom room1'
     ],
-    accessLevel : 1,
-    cmdGroup : 'advanced'
+    accessLevel : 13,
+    category : 'advanced'
   },
   removeroom : {
     func : function(phrases) {
@@ -1822,8 +1809,8 @@ var validCmds = {
       '  removeroom room1',
       '  *Follow the instructions*'
     ],
-    accessLevel : 1,
-    cmdGroup : 'advanced'
+    accessLevel : 13,
+    category : 'advanced'
   },
   updateuser : {
     func : function(phrases) {
@@ -1845,17 +1832,50 @@ var validCmds = {
     },
     help : [
       'Change fields on a user',
-      'You can currently change visibility or accesslevel'
+      'You can change visibility, accesslevel or add/remove a group',
+      'Valid fields: visibility, accesslevel, addgroup, removegroup'
     ],
     instructions : [
       ' Usage:',
       '  updateuser *user name* *field name* *value*',
       ' Example:',
       '  updateuser user1 accesslevel 3',
-      '  updateuser user1 visibility 6'
+      '  updateuser user1 group hackers'
     ],
-    accessLevel : 1,
-    cmdGroup : 'admin'
+    accessLevel : 13,
+    category : 'admin'
+  },
+  updatecommand : {
+    func : function(phrases) {
+      if(phrases.length > 2) {
+        var data = {};
+        data.cmdName = phrases[0];
+        data.field = phrases[1];
+        data.value = phrases[2];
+
+        socket.emit('updateCommand', data);
+      } else {
+        platformCmds.queueMessage({
+          text : [
+            'You need to write a command name, field name and value',
+            'Example: updatecommand help accesslevel 3'
+          ]
+        });
+      }
+    },
+    help : [
+      'Change fields on a command',
+      'You can currently change visibility or accesslevel'
+    ],
+    instructions : [
+      ' Usage:',
+      '  updatecommand *command name* *field name* *value*',
+      ' Example:',
+      '  updatecommand help accesslevel 3',
+      '  updatecommand help visibility 6'
+    ],
+    accessLevel : 13,
+    category : 'admin'
   }
 };
 
@@ -2260,7 +2280,7 @@ function startCmdQueue() {
 }
 
 function isAllowedChar(text) {
-  return /^[a-zA-Z0-9åäöÅÄÖ/\s\-_\.,;:!"\*'\?\+=&\)\(]+$/g.test(text);
+  return /^[a-zA-Z0-9åäöÅÄÖ/\s\-_\.,;:!"\*'\?\+=&@\)\(]+$/g.test(text);
 }
 
 function autoComplete() {
@@ -2674,8 +2694,6 @@ function keyPress(event) {
         break;
     }
   }
-
-  event.preventDefault();
 }
 
 function setRoom(roomName) {
@@ -3020,6 +3038,26 @@ function startSocketListeners() {
       platformCmds.getCommands().clear.func();
       platformCmds.resetAllLocalVals();
     });
+
+    socket.on('updateCommands', function(commands) {
+      if (commands) {
+        var cmdKeys = Object.keys(commands);
+
+        console.log(commands)
+
+        for (var i = 0; i < cmdKeys.length; i++) {
+          var newCommand = commands[cmdKeys[i]];
+          var oldCommand = validCmds[newCommand.commandName];
+
+          if (oldCommand) {
+            oldCommand.accessLevel = newCommand.accessLevel;
+            oldCommand.category = newCommand.category;
+            oldCommand.visibility = newCommand.visibility;
+            oldCommand.authGroup = newCommand.authGroup;
+          }
+        }
+      }
+    });
   }
 }
 
@@ -3100,6 +3138,8 @@ function startBoot() {
   msgQueue = [];
   cmdQueue = [];
   socket = io();
+
+  socket.emit('getCommands');
 
   // TODO: Move this
   if (!platformCmds.getLocalVal('deviceId')) {

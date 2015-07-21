@@ -31,7 +31,7 @@ function handle(socket) {
     const keyLower = sentKey.toLowerCase();
 
     manager.getEncryptionKey(keyLower, function(err, key) {
-      if (err) {
+      if (err || key === null) {
         socket.emit(
           'message',
           { text : ['Failed to get key. Aborting'] }
@@ -52,10 +52,11 @@ function handle(socket) {
 
     manager.unlockEntity(data.keyData.key, data.entityName, data.userName,
       function(err, entity) {
-        if (err) {
+        if (err || entity === null) {
           socket.emit('message',
             { text : ['Failed unlock entity. Aborting'] }
           );
+          console.log('failed to unlock entity', err);
           socket.emit('commandFail');
         } else {
           const message = {

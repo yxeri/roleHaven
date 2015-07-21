@@ -7,6 +7,26 @@ function isTextAllowed(text) {
   return /^[a-zA-Z0-9]+$/g.test(text);
 }
 
+function getUser(socketId, callback) {
+  manager.getUserById(socketId, function(err, user) {
+    if (err || user === null) {
+
+    }
+
+    callback(err, user);
+  });
+}
+
+function authUserToCommand(callback) {
+  manager.authUserToCommand(user, cmdName, function(err, command) {
+    if (err || command === null) {
+
+    }
+
+    callback(err, command);
+  });
+}
+
 function handle(socket) {
   socket.on('register', function(sentUser) {
     sentUser.userName = sentUser.userName.toLowerCase();
@@ -70,6 +90,7 @@ function handle(socket) {
     }
   });
 
+  //TODO: This needs to be refactored. Too big
   socket.on('updateId', function(sentObject) {
     manager.updateUserSocketId(sentObject.userName, socket.id,
       function(err, user) {
@@ -410,7 +431,10 @@ function handle(socket) {
   socket.on('updateUser', function(data) {
     manager.getUserById(socket.id, function(err, user) {
       if (err || user === null) {
-
+        socket.emit('message', {
+          text : ['Failed to update user']
+        });
+        console.log('Failed to get user to update it', err);
       } else {
         if (user.accessLevel >= 11) {
           const userName = data.user;
@@ -418,7 +442,10 @@ function handle(socket) {
           const value = data.value;
           const callback = function(err, user) {
             if(err || user === null) {
-
+              socket.emit('message', {
+                text : ['Failed to update user']
+              });
+              console.log('Failed to update user', err);
             } else {
               socket.emit('message', {
                 text : ['User has been updated']
@@ -436,6 +463,12 @@ function handle(socket) {
             case 'accesslevel':
               managerFunc = manager.updateUserAccessLevel(
                 userName, value, callback);
+
+              break;
+            case 'addgroup':
+
+              break;
+            case 'removegroup':
 
               break;
             default:

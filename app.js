@@ -40,6 +40,7 @@ app.use('/', require('./routes/index')(app.io));
 
 manager.populateDbUsers(confDefaults.users);
 manager.populateDbRooms(confDefaults.rooms, confDefaults.users.superuser);
+manager.populateDbCommands(confDefaults.commands);
 
 /// catch 404 and forward to error handler
 app.use(function(req, res, next) {

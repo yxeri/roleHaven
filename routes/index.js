@@ -5,6 +5,7 @@ const router = express.Router();
 const chat = require('../modules/chat');
 const userManagement = require('../modules/userManagement');
 const manager = require('../manager');
+const commandManagement = require('../modules/commandManagement');
 //Blodsband specific
 const blodsband = require('../modules/blodsband');
 
@@ -16,6 +17,7 @@ function handle(io) {
   io.on('connection', function(socket) {
     userManagement.handle(socket, io);
     chat.handle(socket, io);
+    commandManagement.handle(socket, io)
     blodsband.handle(socket, io);
 
     socket.on('importantMsg', function(msg) {

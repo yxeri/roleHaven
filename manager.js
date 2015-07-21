@@ -27,7 +27,8 @@ const userSchema = new mongoose.Schema({
   position : {},
   lastOnline : Date,
   verified : { type : Boolean, default : false },
-  banned : { type : Boolean, default : false }
+  banned : { type : Boolean, default : false },
+  authGroups : [{ type : String, unique : true }]
 }, { collection : 'users' });
 const roomSchema = new mongoose.Schema({
   roomName : { type : String, unique : true },
@@ -53,13 +54,10 @@ const historySchema = new mongoose.Schema({
 }, { collection : 'histories' });
 const commandSchema = new mongoose.Schema({
   commandName : String,
-  func : {},
-  steps : [{}],
-  abortFunc : {},
-  help : [String],
-  instructions : [String],
-  clearAfterUse : Boolean,
-  cmdGroup : String
+  accessLevel : Number,
+  visibility : Number,
+  authGroup : String,
+  category : String
 }, { collection : 'commands' });
 const schedEventSchema = new mongoose.Schema({
   receiverName : String,
@@ -77,7 +75,8 @@ const entitySchema = new mongoose.Schema({
 const encryptionKeySchema = new mongoose.Schema({
   key : { type : String, unique : true },
   used : Boolean,
-  usedBy : String
+  usedBy : String,
+  reusable : Boolean
 }, { collection : 'encryptionKeys' });
 
 const User = mongoose.model('User', userSchema);
@@ -85,12 +84,94 @@ const Room = mongoose.model('Room', roomSchema);
 const History = mongoose.model('History', historySchema);
 const Command = mongoose.model('Command', commandSchema);
 const SchedEvent = mongoose.model('SchedEvent', schedEventSchema);
+
 // Blodsband specific
 const Entity = mongoose.model('Entity', entitySchema);
 const EncryptionKey = mongoose.model('EncryptionKey', encryptionKeySchema);
 
 function addEncryptionKey() {
 
+}
+
+function addCommand(command, callback) {
+  const newCmd = new Command(command);
+  const query = { entityName : command.entityName };
+
+  Command.findOne(query).lean().exec(function(err, cmd) {
+    if (err) {
+      console.log('Failed to find a command', err);
+    } else if (cmd === null) {
+      newCmd.save(function(err, newCmd) {
+        if (err) {
+          console.log('Failed to save command', err);
+        }
+
+        callback(err, newCmd);
+      });
+    } else {
+      callback(err, null);
+    }
+  });
+}
+
+function updateCommandVisibility(cmdName, value, callback) {
+  const query = { commandName : cmdName };
+  const update = { $set : { visibility : value } };
+  const options = { new : true };
+
+  Command.findOneAndUpdate(query, update, options).lean().exec(
+    function(err, cmd) {
+    if (err) {
+      console.log('Failed to update command visibility', err);
+    }
+
+    callback(err, cmd);
+  });
+}
+
+function updateCommandAccessLevel(cmdName, value, callback) {
+  const query = { commandName : cmdName };
+  const update = { $set : { accessLevel : value } };
+  const options = { new : true };
+
+  Command.findOneAndUpdate(query, update, options).lean().exec(
+    function(err, cmd) {
+    if (err) {
+      console.log('Failed to update command access level', err);
+    }
+
+    callback(err, cmd);
+  });
+}
+
+function authUserToCommand(user, cmdName, callback) {
+  const query = {
+    $and : [
+      { accessLevel : { $lte : user.accessLevel } },
+      { commandName : cmdName }
+    ]
+  };
+
+  Room.findOne(query).lean().exec(function(err, room) {
+    if (err) {
+      console.log('Failed to check auth against room', err);
+    }
+
+    callback(err, room);
+  });
+}
+
+function addGroupToUser(userName, group, callback) {
+  const query = { userName : userName };
+  const update = { $push : { group : group } };
+
+  User.findOneAndUpdate(query, update).lean().exec(function(err, user) {
+    if (err) {
+      console.log('Failed to update user', err);
+    }
+
+    callback(err, user);
+  });
 }
 
 function addEntity(entity, callback) {
@@ -115,7 +196,7 @@ function addEntity(entity, callback) {
 }
 
 function unlockEntity(sentKey, sentEntityName, sentUserName, callback) {
-  const keyQuery = { key : sentKey, used : false };
+  const keyQuery = { key : sentKey};
   const keyUpdate = { used : true, usedBy : sentUserName };
 
   EncryptionKey.findOneAndUpdate(keyQuery, keyUpdate).lean().
@@ -123,9 +204,9 @@ function unlockEntity(sentKey, sentEntityName, sentUserName, callback) {
       if (err || key === null) {
         console.log('Failed to update key', sentKey, err);
         callback(err, null);
-      } else {
+      } else if (key.reusable || !key.used) {
         const entityQuery = { entityName : sentEntityName };
-        const entityUpdate = { $addToSet : { keys : key.key } };
+        const entityUpdate = { $push : { keys : key.key } };
 
         Entity.findOneAndUpdate(
           entityQuery, entityUpdate
@@ -151,6 +232,8 @@ function unlockEntity(sentKey, sentEntityName, sentUserName, callback) {
 
             callback(err, entity);
           });
+      } else {
+        callback(err, null);
       }
     });
 }
@@ -165,6 +248,18 @@ function getAllEntities(callback) {
     }
 
     callback(err, entities);
+  });
+}
+
+function getAllCommands(callback) {
+  const filter = { _id : 0 };
+
+  Command.find({}, filter).lean().exec(function(err, commands) {
+    if (err || commands === null) {
+      console.log('Failed to get all command', err);
+    }
+
+    callback(err, commands);
   });
 }
 
@@ -747,6 +842,26 @@ function populateDbUsers(sentUsers) {
   });
 }
 
+function populateDbCommands(sentCommands) {
+  const cmdKeys = Object.keys(sentCommands);
+  const callback = function(err, command) {
+    if (err) {
+      console.log(
+        'PopulateDb: [failure] Failed to update command',
+        err
+      );
+    }
+  };
+
+  for (let i = 0; i < cmdKeys.length; i++) {
+    const command = sentCommands[cmdKeys[i]];
+    const query = { commandName : command.commandName };
+    const options = { upsert : true };
+
+    Command.findOneAndUpdate(query, command, options).lean().exec(callback);
+  }
+}
+
 function updateUserVisibility(userName, value, callback) {
   const query = { userName : userName };
   const update = { visibility : value };
@@ -808,6 +923,11 @@ exports.populateDbUsers = populateDbUsers;
 exports.populateDbRooms = populateDbRooms;
 exports.updateUserVisibility = updateUserVisibility;
 exports.updateUserAccessLevel = updateUserAccessLevel;
+exports.updateCommandVisibility = updateCommandVisibility;
+exports.updateCommandAccessLevel = updateCommandAccessLevel;
+exports.addGroupToUser = addGroupToUser;
+exports.getAllCommands = getAllCommands;
+exports.populateDbCommands = populateDbCommands;
 
 //Blodsband specific
 exports.addEncryptionKey = addEncryptionKey;
