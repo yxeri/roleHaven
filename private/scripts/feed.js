@@ -413,12 +413,21 @@ var validCmds = {
 
         platformCmds.queueMessage({
           text : [
-            'You have to prepend commands with "' + cmdChar +
+            '-------- HELP --------',
+            'Instructions',
+            '  You have to prepend commands with "' + cmdChar +
             '" in chat mode. ' + 'Example: ' + cmdChar +
             'enterroom',
-            'Add -help after a command to get instructions' +
+            '  Add -help after a command to get instructions' +
             ' on how to use it. Example: ' + cmdChar +
-            'uploadkey -help'
+            'uploadkey -help',
+            'Shortcuts',
+            '  Use page up/down to scroll the view',
+            '  Press arrow up/down to go through your previous used commands',
+            '  Pressing tab or space twice will auto-complete any ' +
+            'command you have begun writing.',
+            '  Example: "he" and a tab / double space ' +
+            'will automatically turn into "help"'
           ]
         });
 
@@ -2190,6 +2199,8 @@ function startAudio() {
     gainNode.gain.value = 0;
     oscillator.type = 'sine';
     oscillator.frequency.value = '440';
+    // oscillator.type = 'square';
+    // oscillator.frequency.value = '300';
 
     oscillator.start(0);
   }

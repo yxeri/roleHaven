@@ -61,6 +61,7 @@ function handle(socket) {
         } else {
           const message = {
             text : [
+              'Entity event',
               'User ' + data.userName + ' has used a key on entity ' +
               data.entityName,
               'Organica Re-Education Squads have been deployed'
