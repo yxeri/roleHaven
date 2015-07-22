@@ -79,8 +79,221 @@ config.rooms = {
   }
 };
 
-// Appended to the user name to create a room which is used to store private
-// messages sent to a user (e.g user1-whisper)
+/**
+ * Appended to the user name to create a room which is used to store private
+ * messages sent to a user (e.g user1-whisper)
+ */
 config.whisper = '-whisper';
+
+/**
+ *
+ */
+config.commands = {
+  help : {
+    commandName : 'help',
+    accessLevel : 1,
+    visibility : 1,
+    category : 'basic'
+  },
+  clear : {
+    commandName : 'clear',
+    accessLevel : 1,
+    visibility : 1,
+    category : 'basic'
+  },
+  whoami : {
+    commandName : 'whoami',
+    accessLevel : 1,
+    visibility : 1,
+    category : 'basic'
+  },
+  msg : {
+    commandName : 'msg',
+    accessLevel : 1,
+    visibility : 1,
+    category : 'advanced'
+  },
+  broadcast : {
+    commandName : 'broadcast',
+    accessLevel : 9,
+    visibility : 9,
+    category : 'advanced'
+  },
+  enterroom : {
+    commandName : 'enterroom',
+    accessLevel : 1,
+    visibility : 1,
+    category : 'basic'
+  },
+  follow : {
+    commandName : 'follow',
+    accessLevel : 1,
+    visibility : 1,
+    category : 'advanced'
+  },
+  unfollow : {
+    commandName : 'unfollow',
+    accessLevel : 1,
+    visibility : 1,
+    category : 'advanced'
+  },
+  list : {
+    commandName : 'list',
+    accessLevel : 1,
+    visibility : 1,
+    category : 'basic'
+  },
+  mode : {
+    commandName : 'mode',
+    accessLevel : 1,
+    visibility : 1,
+    category : 'advanced'
+  },
+  register : {
+    commandName : 'register',
+    accessLevel : 0,
+    visibility : 0,
+    category : 'login'
+  },
+  createroom : {
+    commandName : 'createroom',
+    accessLevel : 1,
+    visibility : 1,
+    category : 'advanced'
+  },
+  myrooms : {
+    commandName : 'myrooms',
+    accessLevel : 1,
+    visibility : 1,
+    category : 'advanced'
+  },
+  login : {
+    commandName : 'login',
+    accessLevel : 0,
+    visibility : 0,
+    category : 'login'
+  },
+  time : {
+    commandName : 'time',
+    accessLevel : 1,
+    visibility : 1,
+    category : 'basic'
+  },
+  locate : {
+    commandName : 'locate',
+    accessLevel : 1,
+    visibility : 1,
+    category : 'advanced'
+  },
+  uploadkey : {
+    commandName : 'uploadkey',
+    accessLevel : 1,
+    visibility : 1,
+    category : 'basic'
+  },
+  history : {
+    commandName : 'history',
+    accessLevel : 1,
+    visibility : 1,
+    category : 'advanced'
+  },
+  morse : {
+    commandName : 'morse',
+    accessLevel : 11,
+    visibility : 11,
+    category : 'admin'
+  },
+  password : {
+    commandName : 'password',
+    accessLevel : 1,
+    visibility : 1,
+    category : 'basic'
+  },
+  logout : {
+    commandName : 'logout',
+    accessLevel : 1,
+    visibility : 1,
+    category : 'basic'
+  },
+  reboot : {
+    commandName : 'reboot',
+    accessLevel : 0,
+    visibility : 0,
+    category : 'login'
+  },
+  verifyuser : {
+    commandName : 'verifyuser',
+    accessLevel : 11,
+    visibility : 11,
+    category : 'admin'
+  },
+  banuser : {
+    commandName : 'banuser',
+    accessLevel : 11,
+    visibility : 11,
+    category : 'admin'
+  },
+  unbanuser : {
+    commandName : 'unbanuser',
+    accessLevel : 11,
+    visibility : 11,
+    category : 'admin'
+  },
+  whisper : {
+    commandName : 'whisper',
+    accessLevel : 1,
+    visibility : 1,
+    category : 'basic'
+  },
+  hackroom : {
+    commandName : 'hackroom',
+    accessLevel : 1,
+    visibility : 1,
+    category : 'hacking'
+  },
+  showmap : {
+    commandName : 'showmap',
+    accessLevel : 1,
+    visibility : 1,
+    category : 'advanced'
+  },
+  importantmsg : {
+    commandName : 'importantmsg',
+    accessLevel : 11,
+    visibility : 11,
+    category : 'admin'
+  },
+  chipper : {
+    commandName : 'chipper',
+    accessLevel : 1,
+    visibility : 1,
+    category : 'hacking',
+    authGroup : 'hackers'
+  },
+  switchroom : {
+    commandName : 'switchroom',
+    accessLevel : 1,
+    visibility : 1,
+    category : 'advanced'
+  },
+  removeroom : {
+    commandName : 'removeroom',
+    accessLevel : 1,
+    visibility : 1,
+    category : 'admin'
+  },
+  updateuser : {
+    commandName : 'updateuser',
+    accessLevel : 11,
+    visibility : 11,
+    category : 'admin'
+  },
+  updatecommand : {
+    commandName : 'updatecommand',
+    accessLevel : 11,
+    visibility : 11,
+    category : 'admin'
+  }
+};
 
 module.exports = config;

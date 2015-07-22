@@ -288,9 +288,6 @@ var platformCmds = {
   getCmdHelper : function() {
     return cmdHelper;
   },
-  setCmdHelper : function(cmdObj) {
-    cmdHelper = cmdObj;
-  },
   resetCommand : function(aborted) {
     var cmdObj = platformCmds.getCmdHelper();
 
@@ -313,22 +310,6 @@ var platformCmds = {
   getMapHelper : function() {
     return mapHelper;
   },
-  setMapHelper : function(mapObj) {
-    mapHelper = mapObj;
-  },
-  getCmdHistory : function() {
-    return JSON.parse(platformCmds.getLocalVal('cmdHistory'));
-  },
-  pushCmdHistory : function(cmd) {
-    var cmdHistory = platformCmds.getLocalVal('cmdHistory') !== null ?
-                     JSON.parse(platformCmds.getLocalVal('cmdHistory')) : [];
-
-    cmdHistory.push(cmd);
-    platformCmds.setLocalVal('cmdHistory', JSON.stringify(cmdHistory));
-  },
-  setCommand : function(sentCommand) {
-    platformCmds.getCmdHelper().command = sentCommand;
-  },
   queueCommand : function(command, data, cmdMsg) {
     cmdQueue.push({
       command : command,
@@ -350,6 +331,7 @@ var intervals = {
   printText : null,
   isScreenOff : null
 };
+
 var validCmds = {
   help : {
     func : function(phrases) {
@@ -372,7 +354,7 @@ var validCmds = {
 
           if ((isNaN(commandAccessLevel) ||
                platformCmds.getAccessLevel() >= commandAccessLevel) &&
-              (group === undefined || command.cmdGroup === group)) {
+              (group === undefined || command.category === group)) {
             var msg = '  ';
 
             msg += keys[i];
@@ -436,24 +418,11 @@ var validCmds = {
             'enterroom',
             'Add -help after a command to get instructions' +
             ' on how to use it. Example: ' + cmdChar +
-            'decryptmodule -help'
+            'uploadkey -help'
           ]
         });
 
-        if (platformCmds.getAccessLevel() === 1) {
-          platformCmds.queueMessage({
-            text : [
-              'This is a list of basic commands. ' +
-              'Use "help all" to ' +
-              'see all your available commands'
-            ]
-          });
-          platformCmds.queueMessage({
-            text : getCommands('basic')
-          });
-        } else {
-          getAll();
-        }
+        getAll();
       } else {
         getAll();
       }
@@ -472,7 +441,7 @@ var validCmds = {
       '  help all'
     ],
     accessLevel : 1,
-    cmdGroup : 'basic'
+    category : 'basic'
   },
   clear : {
     func : function() {
@@ -484,16 +453,16 @@ var validCmds = {
     },
     help : ['Clears the terminal view'],
     clearAfterUse : true,
-    accessLevel : 1,
-    cmdGroup : 'basic'
+    accessLevel : 13,
+    category : 'basic'
   },
   whoami : {
     func : function() {
       platformCmds.queueMessage({ text : [platformCmds.getUser()] });
     },
     help : ['Shows the current user'],
-    accessLevel : 1,
-    cmdGroup : 'basic'
+    accessLevel : 13,
+    category : 'basic'
   },
   msg : {
     func : function(phrases) {
@@ -524,8 +493,8 @@ var validCmds = {
       '  msg Hello!'
     ],
     clearAfterUse : true,
-    accessLevel : 1,
-    cmdGroup : 'advanced'
+    accessLevel : 13,
+    category : 'advanced'
   },
   broadcast : {
     func : function(phrases) {
@@ -556,8 +525,8 @@ var validCmds = {
       '  broadcast Hello!'
     ],
     clearAfterUse : true,
-    accessLevel : 1,
-    cmdGroup : 'admin'
+    accessLevel : 13,
+    category : 'admin'
   },
   enterroom : {
     func : function(phrases) {
@@ -604,8 +573,8 @@ var validCmds = {
       ' Example:',
       '  enterroom sector5 banana'
     ],
-    accessLevel : 1,
-    cmdGroup : 'basic'
+    accessLevel : 13,
+    category : 'basic'
   },
   follow : {
     func : function(phrases) {
@@ -635,8 +604,8 @@ var validCmds = {
       ' Example:',
       '  follow room1 banana'
     ],
-    accessLevel : 1,
-    cmdGroup : 'advanced'
+    accessLevel : 13,
+    category : 'advanced'
   },
   unfollow : {
     func : function(phrases) {
@@ -664,8 +633,8 @@ var validCmds = {
       ' Example:',
       '  unfollow roomname'
     ],
-    accessLevel : 1,
-    cmdGroup : 'advanced'
+    accessLevel : 13,
+    category : 'advanced'
   },
   list : {
     func : function(phrases) {
@@ -701,8 +670,8 @@ var validCmds = {
       '  list rooms',
       '  list users'
     ],
-    accessLevel : 1,
-    cmdGroup : 'basic'
+    accessLevel : 13,
+    category : 'basic'
   },
   mode : {
     func : function(phrases, verbose) {
@@ -721,7 +690,7 @@ var validCmds = {
                 'Chat mode activated',
                 'Prepend commands with "' + cmdChar +
                 '", e.g. ' + '"' + cmdChar +
-                'decryptmodule"',
+                'uploadkey"',
                 'Everything else written and sent ' +
                 'will be intepreted' +
                 'as a chat message',
@@ -764,14 +733,14 @@ var validCmds = {
       '--Chat mode--',
       'Everything written will be interpreted as chat messages',
       'All commands have to be prepended with "' + commandChar + '" ' +
-      'Example: ' + commandChar + 'decryptmodule',
+      'Example: ' + commandChar + 'uploadkey',
       '--Cmd mode--',
       'Text written will not be automatically be intepreted as' +
       'chat messages',
       'You have to use "msg" command to write messages' +
       'Example: msg hello',
       'Commands do not have to be prepended with anything. ' +
-      'Example: decryptmodule'
+      'Example: uploadkey'
     ],
     instructions : [
       ' Usage:',
@@ -780,8 +749,8 @@ var validCmds = {
       '  mode chat',
       '  mode cmd'
     ],
-    accessLevel : 1,
-    cmdGroup : 'advanced'
+    accessLevel : 13,
+    category : 'advanced'
   },
   register : {
     func : function(phrases) {
@@ -841,7 +810,7 @@ var validCmds = {
     ],
     clearAfterUse : true,
     accessLevel : 0,
-    cmdGroup : 'login'
+    category : 'login'
   },
   createroom : {
     func : function(phrases) {
@@ -888,16 +857,16 @@ var validCmds = {
       ' Example:',
       '  createroom myroom banana'
     ],
-    accessLevel : 1,
-    cmdGroup : 'advanced'
+    accessLevel : 13,
+    category : 'advanced'
   },
   myrooms : {
     func : function() {
       socket.emit('myRooms');
     },
     help : ['Shows a list of all rooms you are following'],
-    accessLevel : 1,
-    cmdGroup : 'advanced'
+    accessLevel : 13,
+    category : 'advanced'
   },
   login : {
     func : function(phrases) {
@@ -907,10 +876,17 @@ var validCmds = {
         user.password = phrases[1];
 
         socket.emit('login', user);
+      } else if(platformCmds.getUser() !== null) {
+        platformCmds.queueMessage({
+          text : [
+            'You are already logged in',
+            'You have to be logged out to log in'
+          ]
+        });
       } else {
         platformCmds.queueMessage({
           text : [
-            'You need to input a user name and password and you',
+            'You need to input a user name and password',
             'Example: login bestname secretpassword'
           ]
         });
@@ -928,15 +904,15 @@ var validCmds = {
     ],
     clearAfterUse : true,
     accessLevel : 0,
-    cmdGroup : 'login'
+    category : 'login'
   },
   time : {
     func : function() {
       socket.emit('time');
     },
     help : ['Shows the current time'],
-    accessLevel : 1,
-    cmdGroup : 'basic'
+    accessLevel : 13,
+    category : 'basic'
   },
   locate : {
     func : function(phrases) {
@@ -970,10 +946,10 @@ var validCmds = {
       '  locate *',
       '  locate'
     ],
-    accessLevel : 1,
-    cmdGroup : 'advanced'
+    accessLevel : 13,
+    category : 'advanced'
   },
-  decryptmodule : {
+  uploadkey : {
     func : function() {
       // TODO: razLogo should be move to DB or other place
       platformCmds.queueMessage(JSON.parse(JSON.stringify(razLogo)));
@@ -1019,7 +995,7 @@ var validCmds = {
       },
       function(data, socket) {
         if (data.keyData !== null) {
-          if (!data.keyData.used) {
+          if (data.keyData.reusable || !data.keyData.used) {
             var cmdObj = platformCmds.getCmdHelper();
 
             platformCmds.queueMessage({
@@ -1098,8 +1074,8 @@ var validCmds = {
       'Follow the on-screen instructions'
     ],
     clearBeforeUse : true,
-    accessLevel : 1,
-    cmdGroup : 'advanced'
+    accessLevel : 13,
+    category : 'basic'
   },
   history : {
     func : function(phrases) {
@@ -1122,14 +1098,12 @@ var validCmds = {
     clearAfterUse : true,
     clearBeforeUse : true,
     accessLevel : 1,
-    cmdGroup : 'advanced'
+    category : 'advanced'
   },
   morse : {
-    func : function(phrases) {
+    func : function(phrases, local) {
       if (phrases && phrases.length > 0) {
-        console.log('phrases to morse', phrases);
         var filteredText = phrases.join(' ').toLowerCase();
-        console.log('filtered text', filteredText);
         var morseCodeText = '';
 
         filteredText = filteredText.replace(/[åä]/g, 'a');
@@ -1150,8 +1124,8 @@ var validCmds = {
         if (morseCodeText.length > 0) {
           console.log(morseCodeText);
           socket.emit('morse', {
-            roomName : platformCmds.getLocalVal('room'),
-            morseCode : morseCodeText
+            morseCode : morseCodeText,
+            local : local
           });
         }
       }
@@ -1165,8 +1139,8 @@ var validCmds = {
       ' Example:',
       '  morse sos'
     ],
-    accessLevel : 1,
-    cmdGroup : 'admin'
+    accessLevel : 13,
+    category : 'admin'
   },
   password : {
     func : function(phrases) {
@@ -1209,18 +1183,16 @@ var validCmds = {
       ' Example:',
       '  password old1 new1'
     ],
-    accessLevel : 1,
-    cmdGroup : 'basic'
+    accessLevel : 13,
+    category : 'basic'
   },
   logout : {
     func : function() {
-      platformCmds.getCommands().clear.func();
-      socket.emit('logout', platformCmds.getUser());
-      platformCmds.resetAllLocalVals();
+      socket.emit('logout');
     },
     help : ['Logs out from the current user'],
-    accessLevel : 1,
-    cmdGroup : 'basic',
+    accessLevel : 13,
+    category : 'basic',
     clearAfterUse : true
   },
   reboot : {
@@ -1228,8 +1200,8 @@ var validCmds = {
       platformCmds.refreshApp();
     },
     help : ['Reboots terminal'],
-    accessLevel : 0,
-    cmdGroup : 'basic'
+    accessLevel : 1,
+    category : 'basic'
   },
   verifyuser : {
     func : function(phrases) {
@@ -1261,8 +1233,8 @@ var validCmds = {
       '  verifyuser appl1',
       '  verifyuser *'
     ],
-    accessLevel : 11,
-    cmdGroup : 'admin'
+    accessLevel : 13,
+    category : 'admin'
   },
   banuser : {
     func : function(phrases) {
@@ -1288,8 +1260,8 @@ var validCmds = {
       '  banuser',
       '  banuser evil1'
     ],
-    accessLevel : 11,
-    cmdGroup : 'admin'
+    accessLevel : 13,
+    category : 'admin'
   },
   unbanuser : {
     func : function(phrases) {
@@ -1315,8 +1287,8 @@ var validCmds = {
       '  unbanuser',
       '  unbanuser evil1'
     ],
-    accessLevel : 11,
-    cmdGroup : 'admin'
+    accessLevel : 13,
+    category : 'admin'
   },
   whisper : {
     func : function(phrases) {
@@ -1349,8 +1321,8 @@ var validCmds = {
       '  whisper user1 sounds good!'
     ],
     clearAfterUse : true,
-    accessLevel : 1,
-    cmdGroup : 'basic'
+    accessLevel : 13,
+    category : 'basic'
   },
   hackroom : {
     func : function(phrases) {
@@ -1517,8 +1489,8 @@ var validCmds = {
       '  hackroom secret'
     ],
     clearBeforeUse : true,
-    accessLevel : 1,
-    cmdGroup : 'hacking'
+    accessLevel : 13,
+    category : 'hacking'
   },
   showmap : {
     func : function() {
@@ -1569,8 +1541,8 @@ var validCmds = {
     help : [],
     instructions : [],
     clearAfterUse : true,
-    accessLevel : 1,
-    cmdGroup : 'advanced'
+    accessLevel : 13,
+    category : 'advanced'
   },
   importantmsg : {
     func : function() {
@@ -1588,7 +1560,8 @@ var validCmds = {
       platformCmds.queueMessage({
         text : [
           'Write a line and press enter',
-          'Press enter without any input when you are done with the message'
+          'Press enter without any input when you are done with the message',
+          'Try to keep the first line short if you want to send it as morse'
         ]
       });
       platformCmds.setInputStart('imprtntMsg');
@@ -1620,7 +1593,8 @@ var validCmds = {
             platformCmds.queueMessage({
               text : [
                 'Do you want to send is as morse code too? ' +
-                '"yes" to send it as morse too'
+                '"yes" to send it as morse too',
+                'Note! Only the first line will be sent as morse'
               ]
             });
           } else {
@@ -1631,7 +1605,7 @@ var validCmds = {
       function(phrase) {
         if (phrase.length > 0) {
           if (phrase === 'yes') {
-            cmdHelper.data.morse = true;
+            cmdHelper.data.morse = { local : true };
           }
 
           socket.emit('importantMsg', cmdHelper.data);
@@ -1641,8 +1615,8 @@ var validCmds = {
     ],
     help : [],
     instructions : [],
-    accessLevel : 1,
-    cmdGroup : 'admin'
+    accessLevel : 13,
+    category : 'admin'
   },
   chipper : {
     func : function() {
@@ -1751,8 +1725,8 @@ var validCmds = {
       'Activate chipper function',
       'Press enter when you have retrieved confirmation from the ECU'
     ],
-    accessLevel : 1,
-    cmdGroup : 'hacking'
+    accessLevel : 13,
+    category : 'hacking'
   },
   switchroom : {
     func : function(phrases) {
@@ -1787,8 +1761,8 @@ var validCmds = {
       ' Example:',
       '  switchroom room1'
     ],
-    accessLevel : 1,
-    cmdGroup : 'advanced'
+    accessLevel : 13,
+    category : 'advanced'
   },
   removeroom : {
     func : function(phrases) {
@@ -1835,13 +1809,90 @@ var validCmds = {
       '  removeroom room1',
       '  *Follow the instructions*'
     ],
-    accessLevel : 1,
-    cmdGroup : 'advanced'
+    accessLevel : 13,
+    category : 'advanced'
+  },
+  updateuser : {
+    func : function(phrases) {
+      if(phrases.length > 2) {
+        var data = {};
+        data.user = phrases[0];
+        data.field = phrases[1];
+        data.value = phrases[2];
+
+        socket.emit('updateUser', data);
+      } else {
+        platformCmds.queueMessage({
+          text : [
+            'You need to write a user name, field name and value',
+            'Example: updateuser user1 accesslevel 3'
+          ]
+        });
+      }
+    },
+    help : [
+      'Change fields on a user',
+      'You can change visibility, accesslevel or add/remove a group',
+      'Valid fields: visibility, accesslevel, addgroup, removegroup'
+    ],
+    instructions : [
+      ' Usage:',
+      '  updateuser *user name* *field name* *value*',
+      ' Example:',
+      '  updateuser user1 accesslevel 3',
+      '  updateuser user1 group hackers'
+    ],
+    accessLevel : 13,
+    category : 'admin'
+  },
+  updatecommand : {
+    func : function(phrases) {
+      if(phrases.length > 2) {
+        var data = {};
+        data.cmdName = phrases[0];
+        data.field = phrases[1];
+        data.value = phrases[2];
+
+        socket.emit('updateCommand', data);
+      } else {
+        platformCmds.queueMessage({
+          text : [
+            'You need to write a command name, field name and value',
+            'Example: updatecommand help accesslevel 3'
+          ]
+        });
+      }
+    },
+    help : [
+      'Change fields on a command',
+      'You can currently change visibility or accesslevel'
+    ],
+    instructions : [
+      ' Usage:',
+      '  updatecommand *command name* *field name* *value*',
+      ' Example:',
+      '  updatecommand help accesslevel 3',
+      '  updatecommand help visibility 6'
+    ],
+    accessLevel : 13,
+    category : 'admin'
   }
 };
 
+function getCmdHistory() {
+  return JSON.parse(platformCmds.getLocalVal('cmdHistory'));
+}
+
+function pushCmdHistory(cmd) {
+  var cmdHistory = platformCmds.getLocalVal('cmdHistory') !== null ?
+                   JSON.parse(platformCmds.getLocalVal('cmdHistory')) : [];
+
+  cmdHistory.push(cmd);
+  platformCmds.setLocalVal('cmdHistory', JSON.stringify(cmdHistory));
+}
+
 function resetPrevCmdPointer() {
-  var cmdHistory = platformCmds.getCmdHistory();
+  var cmdHistory = getCmdHistory();
 
   previousCommandPointer =
     cmdHistory ? cmdHistory.length : 0;
@@ -2229,7 +2280,7 @@ function startCmdQueue() {
 }
 
 function isAllowedChar(text) {
-  return /^[a-zA-Z0-9åäöÅÄÖ/\s\-_\.,;:!"\*'\?\+=&\)\(]+$/g.test(text);
+  return /^[a-zA-Z0-9åäöÅÄÖ/\s\-_\.,;:!"\*'\?\+=&@\)\(]+$/g.test(text);
 }
 
 function autoComplete() {
@@ -2401,7 +2452,7 @@ function specialKeyPress(event) {
 
       // Up arrow
       case 38:
-        var cmdHistory = platformCmds.getCmdHistory();
+        var cmdHistory = getCmdHistory();
 
         keyPressed = true;
 
@@ -2420,7 +2471,7 @@ function specialKeyPress(event) {
 
       // Down arrow
       case 40:
-        var cmdHistory = platformCmds.getCmdHistory();
+        var cmdHistory = getCmdHistory();
 
         keyPressed = true;
 
@@ -2518,7 +2569,7 @@ function keyPress(event) {
                 var cmdUsedMsg;
 
                 // Store the command for usage with up/down arrows
-                platformCmds.pushCmdHistory(phrases.join(' '));
+                pushCmdHistory(phrases.join(' '));
 
                 /**
                  * Print input if the command shouldn't clear
@@ -2643,8 +2694,6 @@ function keyPress(event) {
         break;
     }
   }
-
-  event.preventDefault();
 }
 
 function setRoom(roomName) {
@@ -2779,6 +2828,20 @@ function printWelcomeMsg() {
   });
 }
 
+function printImportantMsg(msg) {
+  var message = msg;
+
+  message.extraClass = 'importantMsg';
+
+  console.log('important', message);
+  platformCmds.queueMessage(message);
+
+  if (message.morse) {
+    console.log(message.text.slice(0, 1));
+    validCmds.morse.func(message.text.slice(0, 1), message.morse.local);
+  }
+}
+
 function startSocketListeners() {
   if (socket) {
     socket.on('chatMsg', function(message) {
@@ -2799,17 +2862,7 @@ function startSocketListeners() {
       platformCmds.queueMessage(message);
     });
 
-    socket.on('importantMsg', function(msg) {
-      var message = msg;
-
-      message.extraClass = 'importantMsg';
-
-      platformCmds.queueMessage(message);
-
-      if (message.morse) {
-        validCmds.morse.func(message.text);
-      }
-    });
+    socket.on('importantMsg', printImportantMsg);
 
     socket.on('multiMsg', function(messages) {
       for (var i = 0; i < messages.length; i++) {
@@ -2984,6 +3037,29 @@ function startSocketListeners() {
       });
       platformCmds.resetAllLocalVals();
     });
+
+    socket.on('logout', function() {
+      platformCmds.getCommands().clear.func();
+      platformCmds.resetAllLocalVals();
+    });
+
+    socket.on('updateCommands', function(commands) {
+      if (commands) {
+        var cmdKeys = Object.keys(commands);
+
+        for (var i = 0; i < cmdKeys.length; i++) {
+          var newCommand = commands[cmdKeys[i]];
+          var oldCommand = validCmds[newCommand.commandName];
+
+          if (oldCommand) {
+            oldCommand.accessLevel = newCommand.accessLevel;
+            oldCommand.category = newCommand.category;
+            oldCommand.visibility = newCommand.visibility;
+            oldCommand.authGroup = newCommand.authGroup;
+          }
+        }
+      }
+    });
   }
 }
 
@@ -3042,6 +3118,21 @@ function fullscreenResize(keyboardShown) {
   }
 }
 
+function generateDeviceId() {
+  var randomString = '0123456789abcdefghijkmnopqrstuvwxyz' +
+                     'ABCDEFGHIJKLMNOPQRSTUVWXYZ';
+  var randomLength = randomString.length;
+  var deviceId = '';
+
+  for (var i = 0; i < 15; i++) {
+    var randomVal = Math.random() * (randomLength - 1);
+
+    deviceId += randomString[Math.round(randomVal)];
+  }
+
+  return deviceId;
+}
+
 // Sets everything relevant when a user enters the site
 function startBoot() {
   var background = document.getElementById('background');
@@ -3049,6 +3140,13 @@ function startBoot() {
   msgQueue = [];
   cmdQueue = [];
   socket = io();
+
+  socket.emit('getCommands');
+
+  // TODO: Move this
+  if (!platformCmds.getLocalVal('deviceId')) {
+    platformCmds.setLocalVal('deviceId', generateDeviceId());
+  }
 
   background.addEventListener('click', function(event) {
     clicked = !clicked;

@@ -7,7 +7,27 @@ function isTextAllowed(text) {
   return /^[a-zA-Z0-9]+$/g.test(text);
 }
 
-function handle(socket, io) {
+function getUser(socketId, callback) {
+  manager.getUserById(socketId, function(err, user) {
+    if (err || user === null) {
+
+    }
+
+    callback(err, user);
+  });
+}
+
+function authUserToCommand(callback) {
+  manager.authUserToCommand(user, cmdName, function(err, command) {
+    if (err || command === null) {
+
+    }
+
+    callback(err, command);
+  });
+}
+
+function handle(socket) {
   socket.on('register', function(sentUser) {
     sentUser.userName = sentUser.userName.toLowerCase();
 
@@ -70,6 +90,7 @@ function handle(socket, io) {
     }
   });
 
+  //TODO: This needs to be refactored. Too big
   socket.on('updateId', function(sentObject) {
     manager.updateUserSocketId(sentObject.userName, socket.id,
       function(err, user) {
@@ -166,94 +187,60 @@ function handle(socket, io) {
     sentUser.userName = sentUser.userName.toLowerCase();
 
     if (sentUser.userName && sentUser.password) {
-      manager.authUser(sentUser.userName, sentUser.password,
-        function(err, user) {
-          if (err || user === null) {
-            socket.emit('message', { text : ['Failed to login'] });
-          } else {
-            if (user.verified && !user.banned) {
-              const userSocketId = user.socketId;
-              const allSockets = Object.keys(io.sockets.connected);
-              let userIsOnline = false;
+      manager.getUserById(socket.id, function(err, loggedInUser) {
 
-              for (let i = 0; i < allSockets.length; i++) {
-                if (userSocketId === allSockets[i]) {
-                  userIsOnline = true;
-
-                  break;
-                }
-              }
-
-              if (!userIsOnline) {
-                const authUser = user;
-
-                manager.updateUserSocketId(sentUser.userName,
-                  socket.id,
-                  function(err, user) {
-                    if (err || user === null) {
-                      socket.emit('message',
-                        { text : ['Failed to login'] });
-                    } else {
-                      const rooms = authUser.rooms;
-
-                      for (let i = 0; i < rooms.length; i++) {
-                        socket.join(rooms[i]);
-                      }
-
-                      socket.emit('login', authUser);
-                    }
-                  });
+        // Should not allow to login if already logged in
+        if(err || loggedInUser !== null) {
+          socket.emit('message', {
+            text : [
+              'You are already logged in',
+              'You have to be logged out to log in'
+            ]
+          });
+        } else {
+          manager.authUser(sentUser.userName, sentUser.password,
+            function(err, user) {
+              if (err || user === null) {
+                socket.emit('message', { text : ['Failed to login'] });
               } else {
-                manager.getUserById(socket.id, function(err, user) {
-                  if (err || user == null) {
-                    socket.emit('message',
-                      { text : ['Failed to login'] });
-                  } else {
-                    socket.to(userSocketId).emit('message', {
-                      text : [
-                        '-------------------',
-                        'Intrusion attempt detected ' +
-                        'by user ' + user.userName,
-                        'User tried to log in ' +
-                        'to your account',
-                        'Coordinates: ' +
-                        (user.position ?
-                         (user.position.longitude +
-                        ', ' + user.position.latitude) :
-                         'Unable to locate user'),
-                        '-------------------'
-                      ]
+                if (user.verified && !user.banned) {
+                  const authUser = user;
+
+                  manager.updateUserSocketId(sentUser.userName, socket.id,
+                    function(err, user) {
+                      if (err || user === null) {
+                        socket.emit('message',
+                          { text : ['Failed to login'] });
+                      } else {
+                        const rooms = authUser.rooms;
+
+                        for (let i = 0; i < rooms.length; i++) {
+                          socket.join(rooms[i]);
+                        }
+
+                        socket.emit('login', authUser);
+                      }
                     });
+                } else {
+                  if (!user.verified) {
                     socket.emit('message', {
                       text : [
-                        'User is already logged in and ' +
-                        'has been notified about ' +
-                        'your intrusion attempt',
-                        'Your user name and coordinates ' +
-                        'have been sent to the user'
+                        'The user has not yet been verified. ' +
+                        'Failed to login'
+                      ]
+                    });
+                  } else {
+                    socket.emit('message', {
+                      text : [
+                        'The user has been banned. Failed to login'
                       ]
                     });
                   }
-                });
+                }
               }
-            } else {
-              if (!user.verified) {
-                socket.emit('message', {
-                  text : [
-                    'The user has not yet been verified. ' +
-                    'Failed to login'
-                  ]
-                });
-              } else {
-                socket.emit('message', {
-                  text : [
-                    'The user has been banned. Failed to login'
-                  ]
-                });
-              }
-            }
-          }
-        });
+            });
+        }
+      });
     } else {
       socket.emit('message', {
         text : [
@@ -289,24 +276,31 @@ function handle(socket, io) {
     }
   });
 
-  socket.on('logout', function(sentUserName) {
-    if (sentUserName) {
-      manager.updateUserSocketId(sentUserName, ' ', function(err, user) {
-        if (err || user === null) {
-          console.log('Failed to reset socket id', err);
-        } else {
-          const rooms = socket.rooms;
+  socket.on('logout', function() {
+    manager.getUserById(socket.id, function(err, currentUser) {
+      if (err || currentUser === null) {
+        console.log('Failed to get user to logout', err);
+      } else {
+        const userName = currentUser.userName;
 
-          for (let i = 1; i < rooms.length; i++) {
-            socket.leave(rooms[i]);
+        manager.updateUserSocketId(userName, ' ', function(err, user) {
+          if (err || user === null) {
+            console.log('Failed to reset socket id', err);
+          } else {
+            const rooms = socket.rooms;
+
+            for (let i = 1; i < rooms.length; i++) {
+              socket.leave(rooms[i]);
+            }
+
+            socket.emit('logout');
+            socket.emit('message', {
+              text : ['You have been logged out']
+            });
           }
-
-          socket.emit('message', {
-            text : ['You have been logged out']
-          });
-        }
-      });
-    }
+        });
+      }
+    });
   });
 
   socket.on('verifyUser', function(sentUserName) {
@@ -430,6 +424,65 @@ function handle(socket, io) {
         }
 
         socket.emit('message', { text : [usersString] });
+      }
+    });
+  });
+
+  socket.on('updateUser', function(data) {
+    manager.getUserById(socket.id, function(err, user) {
+      if (err || user === null) {
+        socket.emit('message', {
+          text : ['Failed to update user']
+        });
+        console.log('Failed to get user to update it', err);
+      } else {
+        if (user.accessLevel >= 11) {
+          const userName = data.user;
+          const field = data.field;
+          const value = data.value;
+          const callback = function(err, user) {
+            if(err || user === null) {
+              socket.emit('message', {
+                text : ['Failed to update user']
+              });
+              console.log('Failed to update user', err);
+            } else {
+              socket.emit('message', {
+                text : ['User has been updated']
+              });
+            }
+          };
+          let managerFunc;
+
+          switch(field) {
+            case 'visibility':
+              managerFunc = manager.updateUserVisibility(
+                userName, value, callback);
+
+              break;
+            case 'accesslevel':
+              managerFunc = manager.updateUserAccessLevel(
+                userName, value, callback);
+
+              break;
+            case 'addgroup':
+
+              break;
+            case 'removegroup':
+
+              break;
+            default:
+              socket.emit('message', {
+                text : ['Invalid field. User doesn\'t have ' + field]
+              });
+
+              break;
+          }
+        } else {
+          socket.emit('message', {
+            text : ['You do not have access to this command']
+          });
+        }
       }
     });
   });
