@@ -64,7 +64,7 @@ function handle(socket) {
               'User ' + data.userName + ' has used a key on entity ' +
               data.entityName,
               'Organica Re-Education Squads have been deployed'
-            ], morse : true
+            ], morse : { local : true }
           };
 
           socket.emit('commandSuccess', entity);

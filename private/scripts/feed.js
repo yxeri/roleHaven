@@ -1101,11 +1101,9 @@ var validCmds = {
     category : 'advanced'
   },
   morse : {
-    func : function(phrases) {
+    func : function(phrases, local) {
       if (phrases && phrases.length > 0) {
-        console.log('phrases to morse', phrases);
         var filteredText = phrases.join(' ').toLowerCase();
-        console.log('filtered text', filteredText);
         var morseCodeText = '';
 
         filteredText = filteredText.replace(/[åä]/g, 'a');
@@ -1126,8 +1124,8 @@ var validCmds = {
         if (morseCodeText.length > 0) {
           console.log(morseCodeText);
           socket.emit('morse', {
-            roomName : platformCmds.getLocalVal('room'),
-            morseCode : morseCodeText
+            morseCode : morseCodeText,
+            local : local
           });
         }
       }
@@ -1562,7 +1560,8 @@ var validCmds = {
       platformCmds.queueMessage({
         text : [
           'Write a line and press enter',
-          'Press enter without any input when you are done with the message'
+          'Press enter without any input when you are done with the message',
+          'Try to keep the first line short if you want to send it as morse'
         ]
       });
       platformCmds.setInputStart('imprtntMsg');
@@ -1594,7 +1593,8 @@ var validCmds = {
             platformCmds.queueMessage({
               text : [
                 'Do you want to send is as morse code too? ' +
-                '"yes" to send it as morse too'
+                '"yes" to send it as morse too',
+                'Note! Only the first line will be sent as morse'
               ]
             });
           } else {
@@ -1605,7 +1605,7 @@ var validCmds = {
       function(phrase) {
         if (phrase.length > 0) {
           if (phrase === 'yes') {
-            cmdHelper.data.morse = true;
+            cmdHelper.data.morse = { local : true };
           }
 
           socket.emit('importantMsg', cmdHelper.data);
@@ -2828,6 +2828,20 @@ function printWelcomeMsg() {
   });
 }
 
+function printImportantMsg(msg) {
+  var message = msg;
+
+  message.extraClass = 'importantMsg';
+
+  console.log('important', message);
+  platformCmds.queueMessage(message);
+
+  if (message.morse) {
+    console.log(message.text.slice(0, 1));
+    validCmds.morse.func(message.text.slice(0, 1), message.morse.local);
+  }
+}
+
 function startSocketListeners() {
   if (socket) {
     socket.on('chatMsg', function(message) {
@@ -2848,17 +2862,7 @@ function startSocketListeners() {
       platformCmds.queueMessage(message);
     });
 
-    socket.on('importantMsg', function(msg) {
-      var message = msg;
-
-      message.extraClass = 'importantMsg';
-
-      platformCmds.queueMessage(message);
-
-      if (message.morse) {
-        validCmds.morse.func(message.text);
-      }
-    });
+    socket.on('importantMsg', printImportantMsg);
 
     socket.on('multiMsg', function(messages) {
       for (var i = 0; i < messages.length; i++) {
@@ -3042,8 +3046,6 @@ function startSocketListeners() {
     socket.on('updateCommands', function(commands) {
       if (commands) {
         var cmdKeys = Object.keys(commands);
-
-        console.log(commands)
 
         for (var i = 0; i < cmdKeys.length; i++) {
           var newCommand = commands[cmdKeys[i]];

@@ -17,12 +17,8 @@ function handle(io) {
   io.on('connection', function(socket) {
     userManagement.handle(socket, io);
     chat.handle(socket, io);
-    commandManagement.handle(socket, io)
+    commandManagement.handle(socket, io);
     blodsband.handle(socket, io);
-
-    socket.on('importantMsg', function(msg) {
-      socket.broadcast.emit('importantMsg', msg);
-    });
 
     socket.on('disconnect', function() {
       manager.getUserById(socket.id, function(err, user) {

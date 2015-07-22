@@ -370,9 +370,10 @@ function handle(socket) {
   });
 
   socket.on('morse', function(data) {
-    data.roomName.toLowerCase();
+    if (!data.local) {
+      socket.broadcast.emit('morse', data.morseCode);
+    }
 
-    socket.broadcast.to(data.roomName).emit('morse', data.morseCode);
     socket.emit('morse', data.morseCode);
   });
 
@@ -455,18 +456,19 @@ function handle(socket) {
     });
   });
 
-  socket.on('importantMsg', function(message) {
+  socket.on('importantMsg', function(msg) {
+    console.log('importantmsg', msg);
 
     //add to history important
-    socket.broadcast.emit('importantMsg', message);
-    socket.emit('importantMsg', message);
+    socket.broadcast.emit('importantMsg', msg);
+    socket.emit('importantMsg', msg);
 
     /**
      * Database failure does not block important messages. It is more crucial
      * for them to be sent out ASAP to online users
      */
     manager.addMsgToHistory(
-      dbDefaults.rooms.important.roomName, message, function(err, history) {
+      dbDefaults.rooms.important.roomName, msg, function(err, history) {
         if(err || history === null) {
           socket.emit('message', {
             text : [
