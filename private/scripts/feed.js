@@ -1926,15 +1926,15 @@ function playMorse(morseCode) {
     var shouldPlay = false;
 
     if (morseCode[i] === '.') {
-      duration = 100;
+      duration = 50;
       shouldPlay = true;
     } else if (morseCode[i] === '-') {
-      duration = 300;
+      duration = 150;
       shouldPlay = true;
     } else if (morseCode[i] === '#') {
-      duration = 100;
+      duration = 50;
     } else {
-      duration = 150;
+      duration = 75;
     }
 
     if (shouldPlay) {
