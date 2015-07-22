@@ -258,7 +258,7 @@ config.commands = {
     category : 'advanced'
   },
   importantmsg : {
-    commandName : 'importantMsg',
+    commandName : 'importantmsg',
     accessLevel : 11,
     visibility : 11,
     category : 'admin'
