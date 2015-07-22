@@ -1,19 +1,19 @@
 {
-  "name" : "roleHaven",
-  "version" : "0.0.1",
-  "private" : true,
-  "scripts" : {
-    "start" : "node ./bin/www"
+  "name": "roleHaven",
+  "version": "0.2.0",
+  "private": true,
+  "scripts": {
+    "start": "node ./bin/www"
   },
-  "dependencies" : {
-    "compression" : "^1.4.3",
-    "debug" : "~0.7.4",
-    "express" : "~4.2.0",
-    "hbs" : "^3.0.1",
-    "html-minifier" : "^0.7.0",
-    "morgan" : "~1.0.0",
-    "node-minify" : "^1.0.2",
-    "socket.io" : "^1.3.5",
-    "mongoose" : "^4.0.4"
+  "dependencies": {
+    "compression": "^1.4.3",
+    "debug": "~0.7.4",
+    "express": "~4.2.0",
+    "hbs": "^3.0.1",
+    "html-minifier": "^0.7.0",
+    "morgan": "~1.0.0",
+    "node-minify": "^1.0.2",
+    "socket.io": "^1.3.5",
+    "mongoose": "^4.0.4"
   }
 }
