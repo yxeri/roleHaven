@@ -251,7 +251,14 @@ function handle(socket) {
                 roomsString += rooms[i].roomName + '\t';
               }
 
-              socket.emit('message', { text : [roomsString] });
+              socket.emit('message', {
+                text : [
+                  '--------------',
+                  '  List rooms',
+                  '--------------',
+                  roomsString
+                ]
+              });
             }
           }
         });
@@ -279,7 +286,14 @@ function handle(socket) {
                 }
               }
 
-              socket.emit('message', { text : [usersString] });
+              socket.emit('message', {
+                text : [
+                  '--------------',
+                  '  List users',
+                  '--------------',
+                  usersString
+                ]
+              });
             }
           }
         });
@@ -295,6 +309,9 @@ function handle(socket) {
 
     socket.emit('message', {
       text : [
+        '------------',
+        '  My rooms',
+        '------------',
         'You are following rooms:',
         roomsString
       ]

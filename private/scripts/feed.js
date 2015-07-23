@@ -413,7 +413,9 @@ var validCmds = {
 
         platformCmds.queueMessage({
           text : [
-            '-------- HELP --------',
+            '--------',
+            '  Help',
+            '--------',
             'Instructions',
             '  You have to prepend commands with "' + cmdChar +
             '" in chat mode. ' + 'Example: ' + cmdChar +
@@ -467,7 +469,15 @@ var validCmds = {
   },
   whoami : {
     func : function() {
-      platformCmds.queueMessage({ text : [platformCmds.getUser()] });
+      platformCmds.queueMessage({
+        text : [
+          '----------',
+          '  Whoami',
+          '----------',
+          'User name: ' + platformCmds.getUser(),
+          'Access level: ' + platformCmds.getAccessLevel()
+        ]
+      });
     },
     help : ['Shows the current user'],
     accessLevel : 13,
@@ -695,15 +705,15 @@ var validCmds = {
           if (verbose === undefined || verbose) {
             platformCmds.queueMessage({
               text : [
-                '-------------------',
-                'Chat mode activated',
+                '-----------------------',
+                '  Chat mode activated',
+                '-----------------------',
                 'Prepend commands with "' + cmdChar +
                 '", e.g. ' + '"' + cmdChar +
                 'uploadkey"',
                 'Everything else written and sent ' +
                 'will be intepreted' +
-                'as a chat message',
-                '-------------------'
+                'as a chat message'
               ]
             });
           }
@@ -714,13 +724,13 @@ var validCmds = {
           if (verbose === undefined || verbose) {
             platformCmds.queueMessage({
               text : [
-                '-------------------',
-                'Command mode activated',
+                '--------------------------',
+                '  Command mode activated',
+                '--------------------------',
                 'Commands can be used without "' +
                 cmdChar + '"',
                 'You have to use command "msg" ' +
-                'to send messages',
-                '-------------------'
+                'to send messages'
               ]
             });
           }
@@ -1648,18 +1658,11 @@ var validCmds = {
 
       platformCmds.queueMessage({
         text : [
-          '----------',
-          'DEACTIVATE',
-          '----------'
+          '--------------',
+          '- DEACTIVATE -',
+          '--------------'
         ],
         extraClass : 'importantMsg large'
-      });
-      platformCmds.queueMessage({
-        text : [
-          'CONTROL WORD SENT',
-          'AWAITING CONFIRMATION'
-        ],
-        extraClass : 'importantMsg'
       });
       platformCmds.queueMessage({
         text : [
@@ -1735,7 +1738,8 @@ var validCmds = {
       'Press enter when you have retrieved confirmation from the ECU'
     ],
     accessLevel : 13,
-    category : 'hacking'
+    category : 'hacking',
+    clearBeforeUse : true
   },
   switchroom : {
     func : function(phrases) {
