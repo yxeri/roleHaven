@@ -89,29 +89,31 @@ const SchedEvent = mongoose.model('SchedEvent', schedEventSchema);
 const Entity = mongoose.model('Entity', entitySchema);
 const EncryptionKey = mongoose.model('EncryptionKey', encryptionKeySchema);
 
-function addEncryptionKey() {
-
-}
-
-function addCommand(command, callback) {
-  const newCmd = new Command(command);
-  const query = { entityName : command.entityName };
-
-  Command.findOne(query).lean().exec(function(err, cmd) {
+function addEncryptionKeys(keys, callback) {
+  let newKey;
+  const findCallback = function(err, foundKey) {
     if (err) {
-      console.log('Failed to find a command', err);
-    } else if (cmd === null) {
-      newCmd.save(function(err, newCmd) {
+      console.log('Failed to find a encryption key', err);
+    } else if (foundKey === null) {
+      newKey.save(function(err, newKey) {
         if (err) {
-          console.log('Failed to save command', err);
+          console.log('Failed to save encryption key', err);
         }
 
-        callback(err, newCmd);
+        callback(err, newKey);
       });
     } else {
       callback(err, null);
     }
-  });
+  };
+
+  for (let i = 0; i < keys.length; i++) {
+    const key = keys[i];
+    newKey = new EncryptionKey(key);
+    const query = { key : key.key };
+
+    EncryptionKey.findOne(query).lean().exec(findCallback);
+  }
 }
 
 function updateCommandVisibility(cmdName, value, callback) {
@@ -531,7 +533,7 @@ function getRoom(sentRoomName, callback) {
 function getOwnedRooms(sentUser, callback) {
   const query = { owner : sentUser.userName };
   const sort = { roomName : 1 };
-  const filter = { _id : 0 }
+  const filter = { _id : 0 };
 
   Room.find(query, filter).sort(sort).lean().exec(function(err, rooms) {
     if (err) {
@@ -807,7 +809,7 @@ function populateDbRooms(sentRooms, user) {
         createRoom(room, user, roomCallback);
       }
     } else {
-      console.log('PopulateDb: [success] DB has all the main rooms')
+      console.log('PopulateDb: [success] DB has all the main rooms');
     }
   });
 }
@@ -818,6 +820,16 @@ function populateDbUsers(sentUsers) {
       console.log('PopulateDb: [failure] Failed to count users', err);
     } else if (userCount < 1) {
       const userKeys = Object.keys(sentUsers);
+      const callback = function(err, user) {
+        if (err || user === null) {
+          console.log(
+            'PopulateDb: [failure] Failed to create user', err);
+        } else {
+          console.log(
+            'PopulateDb: [success] Created user',
+            user.userName, user.password);
+        }
+      };
 
       console.log('PopulateDb: [failure] There are no users');
       console.log('PopulateDb: Creating users from defaults');
@@ -825,16 +837,7 @@ function populateDbUsers(sentUsers) {
       for (let i = 0; i < userKeys.length; i++) {
         const user = sentUsers[userKeys[i]];
 
-        addUser(user, function(err, user) {
-          if (err || user === null) {
-            console.log(
-              'PopulateDb: [failure] Failed to create user', err);
-          } else {
-            console.log(
-              'PopulateDb: [success] Created user',
-              user.userName, user.password);
-          }
-        });
+        addUser(user, callback);
       }
     } else {
       console.log('PopulateDb: [success] DB has at least one user');
@@ -844,7 +847,7 @@ function populateDbUsers(sentUsers) {
 
 function populateDbCommands(sentCommands) {
   const cmdKeys = Object.keys(sentCommands);
-  const callback = function(err, command) {
+  const callback = function(err) {
     if (err) {
       console.log(
         'PopulateDb: [failure] Failed to update command',
@@ -930,7 +933,7 @@ exports.getAllCommands = getAllCommands;
 exports.populateDbCommands = populateDbCommands;
 
 //Blodsband specific
-exports.addEncryptionKey = addEncryptionKey;
+exports.addEncryptionKeys = addEncryptionKeys;
 exports.addEntity = addEntity;
 exports.unlockEntity = unlockEntity;
 exports.getAllEntities = getAllEntities;

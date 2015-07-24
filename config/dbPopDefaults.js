@@ -293,6 +293,12 @@ config.commands = {
     accessLevel : 11,
     visibility : 11,
     category : 'admin'
+  },
+  addencryptionkeys : {
+    commandName : 'addencryptionkeys',
+    accessLevel : 11,
+    visibility : 11,
+    category : 'admin'
   }
 };
 

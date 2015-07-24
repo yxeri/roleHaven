@@ -74,6 +74,25 @@ function handle(socket) {
         }
       });
   });
+
+  socket.on('addKeys', function(keys) {
+    for (let i = 0; i < keys.length; i++) {
+      keys[i].key = keys[i].key.toLowerCase();
+    }
+
+    manager.addEncryptionKeys(keys, function(err) {
+      if (err) {
+        socket.emit('message', {
+          text : ['Failed to upload keys to the database']
+        });
+        console.log('Failed to add new encryption keys', err);
+      } else {
+        socket.emit('message', {
+          text : ['Key has been uploaded to the database']
+        });
+      }
+    });
+  });
 }
 
 exports.handle = handle;

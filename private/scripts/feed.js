@@ -1000,8 +1000,9 @@ var validCmds = {
       socket.emit('entities');
     },
     steps : [
-      function(phrase, socket) {
+      function(phrases, socket) {
         var cmdObj = platformCmds.getCmdHelper();
+        var phrase = phrases.join(' ');
 
         socket.emit('verifyKey', phrase.toLowerCase());
         platformCmds.queueMessage({
@@ -1044,9 +1045,10 @@ var validCmds = {
         cmdObj.keyboardBlocked = false;
         cmdObj.onStep++;
       },
-      function(phrase, socket) {
+      function(phrases, socket) {
         var cmdObj = platformCmds.getCmdHelper();
         var data = cmdObj.data;
+        var phrase = phrases.join(' ');
 
         data.entityName = phrase.toLowerCase();
         data.userName = platformCmds.getUser();
@@ -1141,7 +1143,6 @@ var validCmds = {
         }
 
         if (morseCodeText.length > 0) {
-          console.log(morseCodeText);
           socket.emit('morse', {
             morseCode : morseCodeText,
             local : local
@@ -1450,8 +1451,9 @@ var validCmds = {
           text : ['Sequence: ' + cmdObj.data.code]
         });
       },
-      function(phrase) {
+      function(phrases) {
         var cmdObj = platformCmds.getCmdHelper();
+        var phrase = phrases.join(' ');
 
         if (phrase.toLowerCase() === cmdObj.data.code) {
           platformCmds.queueMessage({ text : ['Sequence accepted'] });
@@ -1586,8 +1588,10 @@ var validCmds = {
       platformCmds.setInputStart('imprtntMsg');
     },
     steps : [
-      function(phrase) {
-        if (phrase.length > 0) {
+      function(phrases) {
+        if (phrases.length > 0) {
+          var phrase = phrases.join(' ');
+
           cmdHelper.data.text.push(phrase);
         } else {
           cmdHelper.onStep++;
@@ -1604,9 +1608,9 @@ var validCmds = {
           });
         }
       },
-      function(phrase) {
-        if (phrase.length > 0) {
-          if (phrase === 'yes') {
+      function(phrases) {
+        if (phrases.length > 0) {
+          if (phrases[0].toLowerCase() === 'yes') {
             cmdHelper.onStep++;
 
             platformCmds.queueMessage({
@@ -1621,9 +1625,9 @@ var validCmds = {
           }
         }
       },
-      function(phrase) {
-        if (phrase.length > 0) {
-          if (phrase === 'yes') {
+      function(phrases) {
+        if (phrases.length > 0) {
+          if (phrases[0].toLowerCase() === 'yes') {
             cmdHelper.data.morse = { local : true };
           }
 
@@ -1802,8 +1806,8 @@ var validCmds = {
       }
     },
     steps : [
-      function(phrase) {
-        if (phrase.toLowerCase() === 'yes') {
+      function(phrases) {
+        if (phrases[0].toLowerCase() === 'yes') {
           socket.emit('removeRoom', platformCmds.getCmdHelper().data.roomName);
         }
 
@@ -1889,6 +1893,75 @@ var validCmds = {
     ],
     accessLevel : 13,
     category : 'admin'
+  },
+  addencryptionkeys : {
+    func : function() {
+      var data = {};
+
+      data.keys = [];
+      cmdHelper.data = data;
+
+      platformCmds.queueMessage({
+        text : [
+          '-----------------------',
+          '  Add encryption keys',
+          '-----------------------',
+          'You can add more than one key',
+          'Press enter without any input when you are done',
+          'You can cancel out of the command by typing ' +
+          '"exit" or "abort"',
+          'Input an encryption key:'
+        ]
+      });
+      platformCmds.setInputStart('Input key');
+    },
+    steps : [
+      function(phrases) {
+        if (phrases.length > 0 && phrases[0] !== '') {
+          var keyObj = {};
+
+          keyObj.key = phrases[0];
+
+          if (phrases[1] && phrases[1].toLowerCase() === 'reusable') {
+            keyObj.reusable = true;
+          }
+
+          cmdHelper.data.keys.push(keyObj);
+        } else {
+          platformCmds.queueMessage({
+            text : [
+              'Are you sure you want to add the keys?',
+              'Write "yes" to accept'
+            ]
+          });
+          cmdHelper.onStep++;
+        }
+      },
+      function(phrases) {
+        if (phrases[0].toLowerCase() === 'yes') {
+          platformCmds.queueMessage({
+            text : ['Uploading new keys...']
+          });
+          socket.emit('addKeys', cmdHelper.data.keys);
+          platformCmds.resetCommand();
+        } else {
+          platformCmds.queueMessage({
+            text : ['The keys will not be uploaded']
+          });
+          platformCmds.resetCommand(true);
+        }
+      }
+    ],
+    help : [
+      'Add one or more encryption keys to the database'
+    ],
+    instructions : [
+      ' Usage:',
+      '  Follow the instructions'
+    ],
+    accessLevel : 13,
+    category : 'admin',
+    clearBeforeUse : true
   }
 };
 
@@ -2540,11 +2613,14 @@ function keyPress(event) {
 
         if (!cmdObj.keyboardBlocked) {
           var commands = platformCmds.getCommands();
+          var inputText;
+          var phrases;
 
           if (cmdObj.command !== null) {
-            var phrase = trimSpace(getInputText().toLowerCase());
+            inputText = getInputText();
+            phrases = trimSpace(inputText).split(' ');
 
-            if (phrase === 'exit' || phrase === 'abort') {
+            if (phrases[0] === 'exit' || phrases[0] === 'abort') {
               if (commands[cmdObj.command].abortFunc) {
                 commands[cmdObj.command].abortFunc();
               }
@@ -2552,16 +2628,16 @@ function keyPress(event) {
               platformCmds.resetCommand(true);
             } else {
               platformCmds.queueMessage({
-                text : [phrase]
+                text : [inputText]
               });
 
               commands[cmdObj.command].steps[cmdObj.onStep](
-                phrase, socket
+                phrases, socket
               );
             }
           } else {
-            var inputText = getInputText();
-            var phrases = trimSpace(inputText).split(' ');
+            inputText = getInputText();
+            phrases = trimSpace(inputText).split(' ');
             var command = null;
             var commandName;
 
@@ -2848,11 +2924,9 @@ function printImportantMsg(msg) {
 
   message.extraClass = 'importantMsg';
 
-  console.log('important', message);
   platformCmds.queueMessage(message);
 
   if (message.morse) {
-    console.log(message.text.slice(0, 1));
     validCmds.morse.func(message.text.slice(0, 1), message.morse.local);
   }
 }
