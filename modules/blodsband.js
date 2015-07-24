@@ -93,6 +93,25 @@ function handle(socket) {
       }
     });
   });
+
+  socket.on('addEntities', function(entities) {
+    for (let i = 0; i < entities.length; i++) {
+      entities[i].entityName = entities[i].entityName.toLowerCase();
+    }
+
+    manager.addEntities(entities, function(err) {
+      if (err) {
+        socket.emit('message', {
+          text : ['Failed to upload entities to the database']
+        });
+        console.log('Failed to add new entities', err);
+      } else {
+        socket.emit('message', {
+          text : ['Entity has been uploaded to the database']
+        });
+      }
+    });
+  });
 }
 
 exports.handle = handle;

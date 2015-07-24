@@ -1513,7 +1513,7 @@ var validCmds = {
     accessLevel : 13,
     category : 'hacking'
   },
-  showmap : {
+  /*showmap : {
     func : function() {
       var cmdObj = platformCmds.getMapHelper();
       var li = document.createElement('li');
@@ -1564,7 +1564,7 @@ var validCmds = {
     clearAfterUse : true,
     accessLevel : 13,
     category : 'advanced'
-  },
+  },*/
   importantmsg : {
     func : function() {
       var data = {};
@@ -1954,6 +1954,71 @@ var validCmds = {
     ],
     help : [
       'Add one or more encryption keys to the database'
+    ],
+    instructions : [
+      ' Usage:',
+      '  Follow the instructions'
+    ],
+    accessLevel : 13,
+    category : 'admin',
+    clearBeforeUse : true
+  },
+  addentities : {
+    func : function() {
+      var data = {};
+
+      data.entities = [];
+      cmdHelper.data = data;
+
+      platformCmds.queueMessage({
+        text : [
+          '-----------------------',
+          '  Add entities',
+          '-----------------------',
+          'You can add more than one entity',
+          'Press enter without any input when you are done',
+          'You can cancel out of the command by typing ' +
+          '"exit" or "abort"',
+          'Input an entity:'
+        ]
+      });
+      platformCmds.setInputStart('Input entity');
+    },
+    steps : [
+      function(phrases) {
+        if (phrases.length > 0 && phrases[0] !== '') {
+          var entityObj = {};
+
+          entityObj.entityName = phrases[0];
+
+          cmdHelper.data.entities.push(entityObj);
+        } else {
+          platformCmds.queueMessage({
+            text : [
+              'Are you sure you want to add the entities?',
+              'Write "yes" to accept'
+            ]
+          });
+          cmdHelper.onStep++;
+        }
+      },
+      function(phrases) {
+        if (phrases[0].toLowerCase() === 'yes') {
+          platformCmds.queueMessage({
+            text : ['Uploading new entities...']
+          });
+          socket.emit('addEntities', cmdHelper.data.entities);
+          platformCmds.resetCommand();
+        } else {
+          platformCmds.queueMessage({
+            text : ['The entities will not be uploaded']
+          });
+          platformCmds.resetCommand(true);
+        }
+      }
+    ],
+    help : [
+      'Add one or more entities to the database'
     ],
     instructions : [
       ' Usage:',
@@ -2452,6 +2517,8 @@ function specialKeyPress(event) {
                 event.keyCode;
 
   if (!keyPressed) {
+    var cmdHistory;
+
     switch (keyCode) {
 
       // Backspace
@@ -2540,7 +2607,7 @@ function specialKeyPress(event) {
 
       // Up arrow
       case 38:
-        var cmdHistory = getCmdHistory();
+        cmdHistory = getCmdHistory();
 
         keyPressed = true;
 
@@ -2559,7 +2626,7 @@ function specialKeyPress(event) {
 
       // Down arrow
       case 40:
-        var cmdHistory = getCmdHistory();
+        cmdHistory = getCmdHistory();
 
         keyPressed = true;
 

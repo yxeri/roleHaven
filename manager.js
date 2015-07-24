@@ -90,8 +90,7 @@ const Entity = mongoose.model('Entity', entitySchema);
 const EncryptionKey = mongoose.model('EncryptionKey', encryptionKeySchema);
 
 function addEncryptionKeys(keys, callback) {
-  let newKey;
-  const findCallback = function(err, foundKey) {
+  const findCallback = function(err, foundKey, newKey) {
     if (err) {
       console.log('Failed to find a encryption key', err);
     } else if (foundKey === null) {
@@ -109,10 +108,12 @@ function addEncryptionKeys(keys, callback) {
 
   for (let i = 0; i < keys.length; i++) {
     const key = keys[i];
-    newKey = new EncryptionKey(key);
+    const newKey = new EncryptionKey(key);
     const query = { key : key.key };
 
-    EncryptionKey.findOne(query).lean().exec(findCallback);
+    EncryptionKey.findOne(query).lean().exec(function(err, foundKey) {
+      findCallback(err, foundKey, newKey);
+    });
   }
 }
 
@@ -176,14 +177,11 @@ function addGroupToUser(userName, group, callback) {
   });
 }
 
-function addEntity(entity, callback) {
-  const newEntity = new Entity(entity);
-  const query = { entityName : entity.entityName };
-
-  Entity.findOne(query).lean().exec(function(err, entity) {
+function addEntities(entities, callback) {
+  const findCallback = function(err, foundEntity, newEntity) {
     if (err) {
       console.log('Failed to find an entity', err);
-    } else if (entity === null) {
+    } else if (foundEntity === null) {
       newEntity.save(function(err, newEntity) {
         if (err) {
           console.log('Failed to save entity', err);
@@ -194,7 +192,17 @@ function addEntity(entity, callback) {
     } else {
       callback(err, null);
     }
-  });
+  };
+
+  for (let i = 0; i < entities.length; i++) {
+    const entity = entities[i];
+    const query = { entityName : entity.entityName };
+    const newEntity = new Entity(entity);
+
+    Entity.findOne(query).lean().exec(function(err, foundEntity) {
+      findCallback(err, foundEntity, newEntity);
+    });
+  }
 }
 
 function unlockEntity(sentKey, sentEntityName, sentUserName, callback) {
@@ -934,7 +942,7 @@ exports.populateDbCommands = populateDbCommands;
 
 //Blodsband specific
 exports.addEncryptionKeys = addEncryptionKeys;
-exports.addEntity = addEntity;
+exports.addEntities = addEntities;
 exports.unlockEntity = unlockEntity;
 exports.getAllEntities = getAllEntities;
 exports.getEncryptionKey = getEncryptionKey;
