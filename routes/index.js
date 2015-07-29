@@ -6,8 +6,26 @@ const chat = require('../modules/chat');
 const userManagement = require('../modules/userManagement');
 const manager = require('../manager');
 const commandManagement = require('../modules/commandManagement');
+const config = require('../config/config');
+const http = require('http');
 //Blodsband specific
 const blodsband = require('../modules/blodsband');
+
+function generateWeatherReport(jsonObj) {
+  const weatherRep = {};
+
+  weatherRep.time = new Date(jsonObj.validTime);
+  weatherRep.temperature = jsonObj.t;
+  weatherRep.visibility = jsonObj.vis;
+  weatherRep.windDirection = jsonObj.wd;
+  weatherRep.thunder = jsonObj.tstm;
+  weatherRep.gust = jsonObj.gust;
+  weatherRep.cloud = jsonObj.tcc;
+  weatherRep.precipitation = jsonObj.pit;
+  weatherRep.precipType = jsonObj.pcat;
+
+  return weatherRep;
+}
 
 function handle(io) {
   router.get('/', function(req, res) {
@@ -39,7 +57,7 @@ function handle(io) {
       });
     });
 
-    // This should be moved
+    //TODO This should be moved
     socket.on('locate', function(sentUserName) {
       manager.getUserById(socket.id, function(err, user) {
         if (err || user === null) {
@@ -120,8 +138,60 @@ function handle(io) {
       });
     });
 
+    //TODO This should be moved
     socket.on('time', function() {
       socket.emit('time', new Date());
+    });
+
+    socket.on('weather', function() {
+
+
+      const lat = config.gameLocation.lat;
+      const lon = config.gameLocation.lon;
+      const hoursAllowed = [0, 4, 8, 12, 16, 20];
+      let url = '';
+
+      if (config.gameLocation.country.toLowerCase() === 'sweden') {
+        url = 'http://opendata-download-metfcst.smhi.se/api/category/pmp1.5g/' +
+              'version/1/geopoint/lat/' + lat + '/lon/' + lon + '/data.json';
+      }
+
+      http.get(url, function(resp) {
+        let body = '';
+
+        resp.on('data', function(chunk) {
+          body += chunk;
+        });
+
+        resp.on('end', function() {
+          const response = JSON.parse(body);
+          const times = response.timeseries;
+          const now = new Date();
+          const report = [];
+
+          for (let i = 0; i < times.length; i++) {
+            const weatherRep = generateWeatherReport(times[i]);
+
+            console.log(weatherRep.time.getHours());
+
+            if (weatherRep.time > now && hoursAllowed.indexOf(
+                weatherRep.time.getHours()) > -1) {
+              report.push(weatherRep);
+            } else if (weatherRep.time < now && times[i + 1] &&
+                       new Date(times[i + 1].validTime) > now) {
+              if (now.getMinutes() > 30) {
+                report.push(generateWeatherReport(times[i + 1]));
+              } else {
+                report.push(weatherRep);
+              }
+            }
+          }
+
+          socket.emit('weather', report);
+        });
+      }).on('error', function(err) {
+        console.log('Failed to get weather status', err);
+      });
     });
   });
 

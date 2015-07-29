@@ -350,7 +350,12 @@ function handle(socket) {
       if (err || user === null) {
         console.log('Failed to get history. Couldn\'t get user', err);
       } else {
-        manager.getUserHistory(socket.rooms, function(err, history) {
+        const allRooms = socket.rooms;
+
+        allRooms.push('important');
+        allRooms.push('broadcast');
+
+        manager.getUserHistory(allRooms, function(err, history) {
           if (err || history === null) {
             console.log('Failed to get history', err);
           } else {
@@ -474,7 +479,7 @@ function handle(socket) {
   });
 
   socket.on('importantMsg', function(msg) {
-    console.log('importantmsg', msg);
+    msg.time = new Date();
 
     //add to history important
     socket.broadcast.emit('importantMsg', msg);

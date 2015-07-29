@@ -99,6 +99,10 @@ function handle(socket) {
           socket.emit('disconnectUser');
         } else {
           const data = {};
+          const allRooms = user.rooms;
+
+          allRooms.push('important');
+          allRooms.push('broadcast');
 
           data.firstConnection = sentObject.firstConnection;
           data.user = user;
@@ -111,59 +115,57 @@ function handle(socket) {
 
           socket.emit('reconnectSuccess', data);
 
-          if (!sentObject.firstConnection) {
-            manager.getUserHistory(user.rooms, function(err, history) {
-              if (err || history === null) {
-                socket.emit('message', {
-                  text : [
-                    'Unable to retrieve missed chat history'
-                  ]
-                });
-              } else {
-                const missedMessages = [];
+          manager.getUserHistory(user.rooms, function(err, history) {
+            if (err || history === null) {
+              socket.emit('message', {
+                text : [
+                  'Unable to retrieve missed chat history'
+                ]
+              });
+            } else {
+              const missedMessages = [];
 
-                for (let i = 0; i < history.length; i++) {
-                  const currentHistory = history[i];
-                  const messages = currentHistory.messages;
+              for (let i = 0; i < history.length; i++) {
+                const currentHistory = history[i];
+                const messages = currentHistory.messages;
 
-                  // Does the history document actually contain
-                  // any messages?
-                  if (messages.length > 0) {
-                    const messagesLength = messages.length - 1;
-                    for (let j = messagesLength; j !== 0; j--) {
-                      const message = messages[j];
+                // Does the history document actually contain
+                // any messages?
+                if (messages.length > 0) {
+                  const messagesLength = messages.length - 1;
+                  for (let j = messagesLength; j !== 0; j--) {
+                    const message = messages[j];
 
-                      // Pushes only the messages that
-                      // the user hasn't already seen
-                      if (message !== undefined &&
-                          user.lastOnline <= message.time) {
-                        message.roomName =
-                          currentHistory.roomName;
-                        missedMessages.push(message);
-                      }
+                    // Pushes only the messages that
+                    // the user hasn't already seen
+                    if (message !== undefined &&
+                        user.lastOnline <= message.time) {
+                      message.roomName =
+                        currentHistory.roomName;
+                      missedMessages.push(message);
                     }
                   }
                 }
-
-                if (missedMessages.length > 0) {
-                  // Above loop pushes in everything in the
-                  // reverse order. Let's fix that
-                  missedMessages.reverse();
-                  missedMessages.sort(function(a, b) {
-                    if (a.time < b.time) {
-                      return -1;
-                    } else if (a.time > b.time) {
-                      return 1;
-                    }
-
-                    return 0;
-                  });
-
-                  socket.emit('multiMsg', missedMessages);
-                }
               }
-            });
-          }
+
+              if (missedMessages.length > 0) {
+                // Above loop pushes in everything in the
+                // reverse order. Let's fix that
+                missedMessages.reverse();
+                missedMessages.sort(function(a, b) {
+                  if (a.time < b.time) {
+                    return -1;
+                  } else if (a.time > b.time) {
+                    return 1;
+                  }
+
+                  return 0;
+                });
+
+                socket.emit('multiMsg', missedMessages);
+              }
+            }
+          });
         }
       });
   });

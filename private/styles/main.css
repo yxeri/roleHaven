@@ -8,6 +8,7 @@ body {
     background-color: black;
     font-family: monospace;
     font-size: 1em;
+    letter-spacing: 0.05em;
     white-space: pre-wrap;
     overflow: hidden;
     background: -webkit-linear-gradient(#212e21 50%, black 50%);
@@ -78,6 +79,7 @@ pre {
 .logo {
     white-space: pre;
     line-height: 1.2;
+    letter-spacing: 0;
     text-transform: uppercase;
     word-wrap: normal;
 }

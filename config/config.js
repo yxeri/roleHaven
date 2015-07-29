@@ -10,7 +10,8 @@ config.privateBase = 'private';
 config.paths = {
   views : 'views',
   styles : 'styles',
-  scripts : 'scripts'
+  scripts : 'scripts',
+  favicon : 'images/favicon.ico'
 };
 
 // Morgan log level
@@ -29,5 +30,11 @@ config.dbName = process.env.DBNAME || 'bbr2';
 config.port = process.env.PORT || 8888;
 
 config.mode = process.env.MODE || 'prod';
+
+config.gameLocation = {
+  country : 'Sweden',
+  lat : '59.751429',
+  lon : '15.198645'
+};
 
 module.exports = config;

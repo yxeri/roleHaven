@@ -754,7 +754,7 @@ var validCmds = {
       'All commands have to be prepended with "' + commandChar + '" ' +
       'Example: ' + commandChar + 'uploadkey',
       '--Cmd mode--',
-      'Text written will not be automatically be intepreted as' +
+      'Text written will not be automatically be intepreted as ' +
       'chat messages',
       'You have to use "msg" command to write messages' +
       'Example: msg hello',
@@ -777,7 +777,7 @@ var validCmds = {
         var errorMsg = {
           text : [
             'Name has to be 3 to 6 characters long',
-            'Password has to be 4 to 10 characters',
+            'Password has to be at least 4 characters',
             'The name and password can only contain letters ' +
             'and numbers (a-z, 0-9, upper or lowercase)',
             'Don\'t use whitespace in your name or password!',
@@ -791,7 +791,7 @@ var validCmds = {
           var password = phrases[1];
 
           if (userName.length >= 3 && userName.length <= 6 &&
-              password.length >= 4 && password.length <= 10 &&
+              password.length >= 4 &&
               platformCmds.isTextAllowed(userName) &&
               platformCmds.isTextAllowed(password)) {
             user.userName = userName;
@@ -1363,7 +1363,7 @@ var validCmds = {
             code += randomString[Math.round(randomVal)];
           }
 
-          return code;
+          return code.toUpperCase();
         };
         platformCmds.getCmdHelper().data = data;
 
@@ -1419,7 +1419,7 @@ var validCmds = {
           platformCmds.queueMessage({
             text : [
               'Your hacking attempt has been detected',
-              'Users of the room has been sent your user name'
+              'Users of the room have been notified of your intrusion'
             ]
           });
           socket.emit('chatMsg', {
@@ -1589,7 +1589,7 @@ var validCmds = {
     },
     steps : [
       function(phrases) {
-        if (phrases.length > 0) {
+        if (phrases.length > 0 && phrases[0] !== '') {
           var phrase = phrases.join(' ');
 
           cmdHelper.data.text.push(phrase);
@@ -2027,6 +2027,13 @@ var validCmds = {
     accessLevel : 13,
     category : 'admin',
     clearBeforeUse : true
+  },
+  weather : {
+    func : function() {
+      socket.emit('weather');
+    },
+    accessLevel : 1,
+    category : 'basic'
   }
 };
 
@@ -3094,9 +3101,6 @@ function startSocketListeners() {
           text : ['Re-established connection'],
           extraClass : 'importantMsg'
         });
-        platformCmds.queueMessage({
-          text : ['Retrieving missed messages (if any)']
-        });
       } else {
         platformCmds.setAccessLevel(data.user.accessLevel);
         printWelcomeMsg();
@@ -3114,6 +3118,10 @@ function startSocketListeners() {
       } else {
         platformCmds.getCommands().mode.func(['chat'], false);
       }
+
+      platformCmds.queueMessage({
+        text : ['Retrieving missed messages (if any)']
+      });
 
       reconnecting = false;
     });
@@ -3215,6 +3223,98 @@ function startSocketListeners() {
           }
         }
       }
+    });
+
+    socket.on('weather', function(report) {
+      var weather = [];
+
+      for (var i = 0; i < report.length; i++) {
+        var weatherInst = report[i];
+        var weatherString = '';
+        var time = new Date(weatherInst.time);
+        var hours = time.getHours() > 9 ?
+                    time.getHours() : '0' + time.getHours();
+        var day = time.getDate() > 9 ? time.getDate() : '0' + time.getDate();
+        var month = time.getMonth() > 9 ?
+                    time.getMonth() : '0' + time.getMonth();
+        var precipType;
+        var temperature = Math.round(weatherInst.temperature);
+        var windSpeed = Math.round(weatherInst.gust);
+        var precip = weatherInst.precipitation === 0 ?
+                     'Light ' : weatherInst.precipitation + 'mm ';
+        var coverage;
+
+        switch (weatherInst.precipType) {
+          // No
+          case 0:
+            break;
+          // Snow
+          case 1:
+            precipType = 'snow';
+            break;
+          // Snow + rain
+          case 2:
+            precipType = 'snow and rain';
+            break;
+          // Rain
+          case 3:
+            precipType = 'acid rain';
+            break;
+          // Drizzle
+          case 4:
+            precipType = 'drizzle';
+            break;
+          // Freezing rain
+          case 5:
+            precipType = 'freezing rain';
+            break;
+          // Freezing drizzle
+          case 6:
+            precipType = 'freezing drizzle';
+            break;
+        }
+
+        switch (weatherInst.cloud) {
+          case 0:
+          case 1:
+          case 2:
+          case 3:
+            coverage = 'Light';
+
+            break;
+          case 4:
+          case 5:
+          case 6:
+            coverage = 'Moderate';
+
+            break;
+          case 7:
+          case 8:
+          case 9:
+            coverage = 'High';
+
+            break;
+        }
+
+        weatherString += day + '/' + month + ' ' +
+                         hours + ':00' + '\t';
+        weatherString += 'Temperature: ' + temperature + '\xB0C\t';
+        weatherString += 'Visibility: ' + weatherInst.visibility + 'km \t';
+        weatherString +=
+          'Wind [ direction: ' + weatherInst.windDirection + '\xB0 ';
+        weatherString += 'speed: ' + windSpeed + 'm/s ]\t';
+        weatherString += 'Blowout risk: ' + weatherInst.thunder + '%\t';
+        weatherString += 'Pollution coverage: ' + coverage + '\t';
+
+        if (precipType) {
+          weatherString += precip;
+          weatherString += precipType;
+        }
+
+        weather.push(weatherString);
+      }
+
+      platformCmds.queueMessage({ text : weather });
     });
   }
 }

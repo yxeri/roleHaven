@@ -305,6 +305,12 @@ config.commands = {
     accessLevel : 11,
     visibility : 11,
     category : 'admin'
+  },
+  weather : {
+    commandName : 'weather',
+    accessLevel : 1,
+    visibility : 1,
+    category : 'basic'
   }
 };
 
