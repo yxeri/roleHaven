@@ -37,41 +37,11 @@ app.use(logger(config.logLevel));
 app.use(express.static(path.join(__dirname, config.publicBase)));
 
 app.use('/', require('./routes/index')(app.io));
+app.use('*', require('./routes/error')(app.io));
 
 manager.populateDbUsers(confDefaults.users);
 manager.populateDbRooms(confDefaults.rooms, confDefaults.users.superuser);
 manager.populateDbCommands(confDefaults.commands);
-
-/// catch 404 and forward to error handler
-app.use(function(req, res, next) {
-  const err = new Error('Not Found');
-  err.status = 404;
-  next(err);
-});
-
-/// error handlers
-
-// development error handler
-// will print stacktrace
-if (app.get('env') === 'development') {
-  app.use(function(err, req, res) {
-    res.status(err.status || 500);
-    res.render('error', {
-      message : err.message,
-      error : err
-    });
-  });
-}
-
-// production error handler
-// no stacktraces leaked to user
-app.use(function(err, req, res) {
-  res.status(err.status || 500);
-  res.render('error', {
-    message : err.message,
-    error : {}
-  });
-});
 
 setInterval(eventsFunc, 1000, app.io);
 

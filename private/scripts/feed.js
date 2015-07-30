@@ -578,7 +578,7 @@ var validCmds = {
         }
       } else {
         platformCmds.queueMessage({
-          text : ['You have to specify which room to follow']
+          text : ['You have to specify which room to enter']
         });
       }
     },
