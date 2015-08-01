@@ -1849,8 +1849,8 @@ var validCmds = {
     },
     help : [
       'Change fields on a user',
-      'You can change visibility, accesslevel or add/remove a group',
-      'Valid fields: visibility, accesslevel, addgroup, removegroup'
+      'You can change visibility, accesslevel, password or add/remove a group',
+      'Valid fields: visibility, accesslevel, addgroup, removegroup, password'
     ],
     instructions : [
       ' Usage:',

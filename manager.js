@@ -899,6 +899,19 @@ function updateUserAccessLevel(userName, value, callback) {
   });
 }
 
+function updateUserPassword(userName, value, callback) {
+  const query = { userName : userName };
+  const update = { password : value };
+
+  User.findOneAndUpdate(query, update).lean().exec(function(err, user) {
+    if (err) {
+      console.log('Failed to update password', err);
+    }
+
+    callback(err, user);
+  });
+}
+
 exports.getUserById = getUserById;
 exports.authUser = authUser;
 exports.addUser = addUser;
@@ -939,6 +952,7 @@ exports.updateCommandAccessLevel = updateCommandAccessLevel;
 exports.addGroupToUser = addGroupToUser;
 exports.getAllCommands = getAllCommands;
 exports.populateDbCommands = populateDbCommands;
+exports.updateUserPassword = updateUserPassword;
 
 //Blodsband specific
 exports.addEncryptionKeys = addEncryptionKeys;

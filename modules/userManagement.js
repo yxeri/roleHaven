@@ -473,6 +473,11 @@ function handle(socket) {
             case 'removegroup':
 
               break;
+            case 'password':
+              managerFunc = manager.updateUserPassword(
+                userName, value, callback);
+
+              break;
             default:
               socket.emit('message', {
                 text : ['Invalid field. User doesn\'t have ' + field]
