@@ -115,7 +115,7 @@ pre {
 .fullscreenFix {
     position: fixed;
     overflow: scroll;
-    max-height: 55vh;
+    max-height: 60vh;
 }
 
 @-webkit-keyframes blinking {
