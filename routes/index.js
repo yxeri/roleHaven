@@ -49,6 +49,13 @@ function handle(io) {
             function(err, user) {
               if (err || user === null) {
                 console.log('Failed to set last online');
+              } else {
+                manager.updateUserSocketId(
+                  user.userName, ' ', function(err, user) {
+                  if (err || user === null) {
+                    console.log('Failed to reset socket id', err);
+                  }
+                });
               }
             });
 

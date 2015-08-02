@@ -178,7 +178,7 @@ function handle(socket) {
         manager.updateUserLocation(user.userName, position,
           function(err) {
             if (err) {
-              console.log('Failed to update location');
+              console.log('Failed to update location', err);
             }
           });
       }
@@ -204,6 +204,19 @@ function handle(socket) {
             function(err, user) {
               if (err || user === null) {
                 socket.emit('message', { text : ['Failed to login'] });
+              } else if (user.socketId !== ' ') {
+                socket.emit('message', {
+                  text : [
+                    'Failed to login. User is already logged in',
+                    'User has been notified of your intrusion attempt'
+                  ]
+                });
+                socket.to(user.socketId).emit('importantMsg', {
+                  text : [
+                    'Intrusion attempt detected',
+                    'Someone tried to login as your user'
+                  ]
+                });
               } else {
                 if (user.verified && !user.banned) {
                   const authUser = user;

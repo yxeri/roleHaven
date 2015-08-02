@@ -277,12 +277,19 @@ function handle(socket) {
           } else {
             if (users.length > 0) {
               let usersString = '';
+              let onlineString = '';
 
               for (let i = 0; i < users.length; i++) {
                 const currentUser = users[i];
 
                 if (currentUser.verified && !currentUser.banned) {
-                  usersString += currentUser.userName + '\t';
+                  if (currentUser.socketId !== ' ') {
+                    onlineString += currentUser.userName;
+                    onlineString += '\t';
+                  } else {
+                    usersString += currentUser.userName;
+                    usersString += '\t';
+                  }
                 }
               }
 
@@ -290,7 +297,13 @@ function handle(socket) {
                 text : [
                   '--------------',
                   '  List users',
-                  '--------------',
+                  '--------------------',
+                  '  Currently online',
+                  '--------------------',
+                  onlineString,
+                  '-----------------',
+                  '  Other users',
+                  '-----------------',
                   usersString
                 ]
               });
