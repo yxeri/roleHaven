@@ -35,7 +35,7 @@ var keyPressed = false;
 var clicked = false;
 
 // Char that is prepended on commands in chat mode
-var commandChar = '-';
+var commandChars = ['-', '/'];
 
 /**
  * Focus can sometimes trigger twice, which is used to check if a reconnection
@@ -258,8 +258,8 @@ var platformCmds = {
   setUser : function(user) {
     platformCmds.setLocalVal('user', user);
   },
-  getCommandChar : function() {
-    return commandChar;
+  getCommandChars : function() {
+    return commandChars;
   },
   getFeed : function() {
     return mainFeed;
@@ -409,7 +409,7 @@ var validCmds = {
           text : getCommands('login')
         });
       } else if (phrases === undefined || phrases.length === 0) {
-        var cmdChar = platformCmds.getCommandChar();
+        var cmdChars = platformCmds.getCommandChars();
 
         platformCmds.queueMessage({
           text : [
@@ -417,11 +417,11 @@ var validCmds = {
             '  Help',
             '--------',
             'Instructions',
-            '  You have to prepend commands with "' + cmdChar +
-            '" in chat mode. ' + 'Example: ' + cmdChar +
+            '  You have to prepend commands with "' + cmdChars.join('" or "') +
+            '" in chat mode. ' + 'Example: ' + cmdChars[0] +
             'enterroom',
             '  Add -help after a command to get instructions' +
-            ' on how to use it. Example: ' + cmdChar +
+            ' on how to use it. Example: ' + cmdChars[0] +
             'uploadkey -help',
             'Shortcuts',
             '  Use page up/down to scroll the view',
@@ -696,7 +696,7 @@ var validCmds = {
     func : function(phrases, verbose) {
       if (phrases.length > 0) {
         var newMode = phrases[0].toLowerCase();
-        var cmdChar = platformCmds.getCommandChar();
+        var cmdChars = platformCmds.getCommandChars();
 
         if (newMode === 'chat') {
           platformCmds.setMode('chat');
@@ -708,8 +708,8 @@ var validCmds = {
                 '-----------------------',
                 '  Chat mode activated',
                 '-----------------------',
-                'Prepend commands with "' + cmdChar +
-                '", e.g. ' + '"' + cmdChar +
+                'Prepend commands with "' + cmdChars.join('" or "') +
+                '", e.g. ' + '"' + cmdChars[0] +
                 'uploadkey"',
                 'Everything else written and sent ' +
                 'will be intepreted' +
@@ -728,7 +728,7 @@ var validCmds = {
                 '  Command mode activated',
                 '--------------------------',
                 'Commands can be used without "' +
-                cmdChar + '"',
+                cmdChars[0] + '"',
                 'You have to use command "msg" ' +
                 'to send messages'
               ]
@@ -751,12 +751,13 @@ var validCmds = {
       'Change the input mode. The options are chat or cmd',
       '--Chat mode--',
       'Everything written will be interpreted as chat messages',
-      'All commands have to be prepended with "' + commandChar + '" ' +
-      'Example: ' + commandChar + 'uploadkey',
+      'All commands have to be prepended with "' +
+      commandChars.join('" or "') + '" ' +
+      'Example: ' + commandChars[0] + 'uploadkey',
       '--Cmd mode--',
       'Text written will not be automatically be intepreted as ' +
       'chat messages',
-      'You have to use "msg" command to write messages' +
+      'You have to use "msg" command to write messages ' +
       'Example: msg hello',
       'Commands do not have to be prepended with anything. ' +
       'Example: uploadkey'
@@ -2449,7 +2450,7 @@ function autoComplete() {
   var commands = Object.keys(platformCmds.getCommands());
   var matched = [];
   var sign = partialCommand.charAt(0);
-  var cmdChar = platformCmds.getCommandChar();
+  var cmdChars = platformCmds.getCommandChars();
 
   /**
    * Auto-complete should only trigger when one phrase is in the input
@@ -2457,11 +2458,12 @@ function autoComplete() {
    * If chat mode and the command is prepended or normal mode
    */
   if (phrases.length === 1 && partialCommand.length > 0 &&
-      (sign === cmdChar || (platformCmds.getLocalVal('mode') === 'cmd') ||
+      (cmdChars.indexOf(sign) >= 0 ||
+       (platformCmds.getLocalVal('mode') === 'cmd') ||
        platformCmds.getUser() === null)) {
 
     // Removes prepend sign
-    if (sign === cmdChar) {
+    if (cmdChars.indexOf(sign) >= 0) {
       partialCommand = partialCommand.slice(1);
     }
 
@@ -2490,9 +2492,10 @@ function autoComplete() {
 
     if (matched.length === 1) {
       var newText = '';
+      var cmdIndex = cmdChars.indexOf(sign);
 
-      if (sign === commandChar) {
-        newText += commandChar;
+      if (cmdIndex >= 0) {
+        newText += cmdChars[cmdIndex];
       }
 
       newText += matched[0] + ' ';
@@ -2719,7 +2722,7 @@ function keyPress(event) {
               var user = platformCmds.getUser();
               var sign = phrases[0].charAt(0);
 
-              if (sign === commandChar) {
+              if (commandChars.indexOf(sign) >= 0) {
                 commandName = phrases[0].slice(1).toLowerCase();
                 command = commands[commandName];
               } else if (platformCmds.getLocalVal('mode') ===
@@ -2794,10 +2797,10 @@ function keyPress(event) {
               } else if (user === null && command &&
                          (commandName === 'register' ||
                           commandName === 'login')) {
-                command.func(phrases.splice(1));
+                platformCmds.queueCommand(command.func(phrases.splice(1)));
               } else if (platformCmds.getLocalVal('mode') ===
                          'chat' && phrases[0].length > 0) {
-                if (phrases[0].charAt(0) !== commandChar) {
+                if (commandChars.indexOf(phrases[0].charAt(0)) < 0) {
                   platformCmds.queueCommand(commands.msg.func, phrases);
                   startCmdQueue();
 
@@ -2814,6 +2817,7 @@ function keyPress(event) {
                   });
                 }
               } else if (user === null) {
+                platformCmds.queueMessage({ text : [phrases.toString()] });
                 platformCmds.queueMessage({
                   text : [
                     'You must register a new user or login ' +
@@ -2964,7 +2968,7 @@ function printRow(message) {
 }
 
 function convertWhisperRoom(roomName) {
-  var convertedRoom = roomName.indexOf('-whisper') > 0 ? 'WHISPR' : roomName;
+  var convertedRoom = roomName.indexOf('-whisper') >= 0 ? 'WHISPR' : roomName;
 
   return convertedRoom;
 }

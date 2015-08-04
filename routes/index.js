@@ -151,8 +151,6 @@ function handle(io) {
     });
 
     socket.on('weather', function() {
-
-
       const lat = config.gameLocation.lat;
       const lon = config.gameLocation.lon;
       const hoursAllowed = [0, 4, 8, 12, 16, 20];

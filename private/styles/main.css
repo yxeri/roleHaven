@@ -11,8 +11,8 @@ body {
     letter-spacing: 0.05em;
     white-space: pre-wrap;
     overflow: hidden;
-    background: -webkit-linear-gradient(#212e21 50%, black 50%);
-    background: linear-gradient(#212e21 50%, black 50%);
+    background: -webkit-linear-gradient(#111e11 50%, black 50%);
+    background: linear-gradient(#111e11 50%, black 50%);
     background-size: 100% 5px;
 }
 
@@ -56,6 +56,11 @@ pre {
 
 #marker:focus {
     outline: 0;
+}
+
+.blinkAnim {
+    -webkit-animation: blinking 1s step-end infinite;
+    animation: blinking 1s step-end infinite;
 }
 
 #mode {
@@ -121,7 +126,7 @@ pre {
 @-webkit-keyframes blinking {
     from {
         background-color: transparent;
-        text-shadow: 0px 0px .0001px #00FF00;
+        color: #00FF00;
     }
     50% {
         background-color: #00FF00;
@@ -131,7 +136,7 @@ pre {
 @keyframes blinking {
     from {
         background-color: transparent;
-        text-shadow: 0px 0px .0001px #00FF00;
+        color: #00FF00;
     }
     50% {
         background-color: #00FF00;
