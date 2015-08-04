@@ -57,7 +57,8 @@ var pausePositionTime = 40000;
  */
 var mainFeed = document.getElementById('mainFeed');
 var marker = document.getElementById('marker');
-var inputText = document.getElementById('inputText');
+var leftText = document.getElementById('leftText');
+var rightText = document.getElementById('rightText');
 var inputStart = document.getElementById('inputStart');
 var modeField = document.getElementById('mode');
 var spacer = document.getElementById('spacer');
@@ -2365,7 +2366,7 @@ function getRightText(marker) {
 }
 
 function getInputText() {
-  return inputText.textContent;
+  return leftText.textContent + marker.value + rightText.textContent;
 }
 
 function setLeftText(text) {
@@ -2373,7 +2374,10 @@ function setLeftText(text) {
 }
 
 function appendToLeftText(text) {
-  marker.parentElement.childNodes[0].textContent += text;
+  var textNode = document.createTextNode(text);
+
+  document.createTextNode(
+    marker.parentElement.childNodes[0].appendChild(textNode));
 }
 
 function setRightText(text) {

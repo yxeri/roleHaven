@@ -11,8 +11,8 @@ body {
     letter-spacing: 0.05em;
     white-space: pre-wrap;
     overflow: hidden;
-    background: -webkit-linear-gradient(#111e11 50%, black 50%);
-    background: linear-gradient(#111e11 50%, black 50%);
+    background: -webkit-linear-gradient(#192619 50%, black 50%);
+    background: linear-gradient(#192619 50%, black 50%);
     background-size: 100% 5px;
 }
 
