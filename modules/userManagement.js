@@ -204,7 +204,7 @@ function handle(socket) {
             function(err, user) {
               if (err || user === null) {
                 socket.emit('message', { text : ['Failed to login'] });
-              } else if (user.socketId !== ' ') {
+              } /* else if (user.socketId !== ' ') {
                 socket.emit('message', {
                   text : [
                     'Failed to login. User is already logged in',
@@ -217,7 +217,7 @@ function handle(socket) {
                     'Someone tried to login as your user'
                   ]
                 });
-              } else {
+              }*/ else {
                 if (user.verified && !user.banned) {
                   const authUser = user;
 
