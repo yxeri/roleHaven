@@ -2801,7 +2801,8 @@ function keyPress(event) {
               } else if (user === null && command &&
                          (commandName === 'register' ||
                           commandName === 'login')) {
-                platformCmds.queueCommand(command.func(phrases.splice(1)));
+                platformCmds.queueCommand(command.func, phrases.splice(1));
+                startCmdQueue();
               } else if (platformCmds.getLocalVal('mode') ===
                          'chat' && phrases[0].length > 0) {
                 if (commandChars.indexOf(phrases[0].charAt(0)) < 0) {
@@ -2866,6 +2867,8 @@ function keyPress(event) {
 
         break;
     }
+
+    event.preventDefault();
   }
 }
 
@@ -3342,11 +3345,11 @@ function isFullscreen() {
  */
 function goFullScreen(element) {
   if (element.requestFullscreen) {
-    element.requestFullscreen();
+    element.requestFullscreen(Element.ALLOW_KEYBOARD_INPUT);
   } else if (element.webkitRequestFullscreen) {
-    element.webkitRequestFullscreen();
+    element.webkitRequestFullscreen(Element.ALLOW_KEYBOARD_INPUT);
   } else if (element.mozRequestFullScreen) {
-    element.mozRequestFullScreen();
+    element.mozRequestFullScreen(Element.ALLOW_KEYBOARD_INPUT);
   }
 }
 
