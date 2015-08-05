@@ -4,6 +4,7 @@ const fs = require('fs');
 const path = require('path');
 const htmlMinifier = require('html-minifier');
 const minifier = require('node-minify');
+const config = require('./config/config');
 
 function htmlMinify(inPath, outPath) {
   fs.readFile(inPath, 'utf8', function(readError, readFile) {
@@ -57,12 +58,18 @@ function minifyDir(inPath, outPath, extension) {
         const fullOutPath = path.join(outPath, file);
 
         if (path.extname(file).substr(1) === extension) {
+          let type = '';
+
           if (extension === 'html') {
             htmlMinify(fullInPath, fullOutPath);
           } else if (extension === 'js') {
-            nodeMinify(fullInPath, fullOutPath, 'uglifyjs');
+            type = config.mode === 'dev' ? 'no-compress' : 'uglifyjs';
+
+            nodeMinify(fullInPath, fullOutPath, type);
           } else if (extension === 'css') {
-            nodeMinify(fullInPath, fullOutPath, 'sqwish');
+            type = config.mode === 'dev' ? 'no-compress' : 'sqwish';
+
+            nodeMinify(fullInPath, fullOutPath, type);
           }
         }
       });
