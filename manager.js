@@ -126,7 +126,7 @@ function addEncryptionKeys(keys, callback) {
 function updateDeviceAlias(deviceId, value, callback) {
   const query = { deviceId : deviceId };
   const update = { $set : { alias : value } };
-  const options = { upsert : true, new : true };
+  const options = { new : true };
 
   Device.findOneAndUpdate(query, update, options).lean().exec(
     function (err, device) {
