@@ -311,6 +311,12 @@ config.commands = {
     accessLevel : 1,
     visibility : 1,
     category : 'basic'
+  },
+  updatedevice : {
+    commandName : 'updatedevice',
+    accessLevel : 11,
+    visibility : 11,
+    category : 'admin'
   }
 };
 

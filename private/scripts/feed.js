@@ -476,7 +476,8 @@ var validCmds = {
           '  Whoami',
           '----------',
           'User name: ' + platformCmds.getUser(),
-          'Access level: ' + platformCmds.getAccessLevel()
+          'Access level: ' + platformCmds.getAccessLevel(),
+          'Device ID: ' + platformCmds.getLocalVal('deviceId')
         ]
       });
     },
@@ -2036,6 +2037,38 @@ var validCmds = {
     },
     accessLevel : 1,
     category : 'basic'
+  },
+  updatedevice : {
+    func : function(phrases) {
+      if(phrases.length > 2) {
+        var data = {};
+        data.deviceId = phrases[0];
+        data.field = phrases[1];
+        data.value = phrases[2];
+
+        socket.emit('updateDevice', data);
+      } else {
+        platformCmds.queueMessage({
+          text : [
+            'You need to write a device Id, field name and value',
+            'Example: updatedevice 11jfej433 id betteralias'
+          ]
+        });
+      }
+    },
+    help : [
+      'Change fields on a device',
+      'You can currently change the alias',
+      'Valid fields: alias'
+    ],
+    instructions : [
+      ' Usage:',
+      '  updatedevice *device ID* *field name* *value*',
+      ' Example:',
+      '  updatedevice 32r23rj alias betteralias'
+    ],
+    accessLevel : 13,
+    category : 'admin'
   }
 };
 
@@ -2662,8 +2695,6 @@ function specialKeyPress(event) {
         event.preventDefault();
 
         break;
-      default:
-        break;
     }
   } else {
     event.preventDefault();
@@ -2868,6 +2899,8 @@ function keyPress(event) {
         break;
     }
 
+    event.preventDefault();
+  } else {
     event.preventDefault();
   }
 }
@@ -3107,6 +3140,12 @@ function startSocketListeners() {
     });
 
     socket.on('reconnectSuccess', function(data) {
+      socket.emit('updateDevice', {
+        deviceId : platformCmds.getLocalVal('deviceId'),
+        field : 'socketId',
+        value : socket.id
+      });
+
       if (!data.firstConnection) {
         platformCmds.queueMessage({
           text : ['Re-established connection'],
@@ -3326,6 +3365,10 @@ function startSocketListeners() {
       }
 
       platformCmds.queueMessage({ text : weather });
+    });
+
+    socket.on('updateDeviceId', function(newId) {
+      platformCmds.setLocalVal('deviceId', newId);
     });
   }
 }

@@ -198,6 +198,64 @@ function handle(io) {
         console.log('Failed to get weather status', err);
       });
     });
+
+    //TODO This should be moved
+    socket.on('updateDevice', function(data) {
+      manager.getUserById(socket.id, function(err, user) {
+        if (err || user === null) {
+          socket.emit('message', {
+            text : ['Failed to update device']
+          });
+          console.log('Failed to get user to update device', err);
+        } else {
+          const deviceId = data.deviceId;
+          const field = data.field;
+          const value = data.value;
+          const callback = function(err, device) {
+            if(err || device === null) {
+              let errMsg = 'Failed to update device';
+
+              if (err.code === 11000) {
+                errMsg += '. Alias already exists';
+              }
+
+              socket.emit('message', {
+                text : [errMsg]
+              });
+              console.log(errMsg, err);
+            } else {
+              socket.emit('message', {
+                text : ['Device has been updated']
+              });
+            }
+          };
+
+          switch(field) {
+            case 'alias':
+              if (user.accessLevel >= 11) {
+                manager.updateDeviceAlias(deviceId, value, callback);
+              } else {
+                socket.emit('message', {
+                  text : ['You do not have access to this command']
+                });
+              }
+
+              break;
+            case 'socketId':
+              manager.updateDeviceSocketId(
+                deviceId, value, callback);
+
+              break;
+            default:
+              socket.emit('message', {
+                text : ['Invalid field. Device doesn\'t have ' + field]
+              });
+
+              break;
+          }
+        }
+      });
+    });
   });
 
   return router;

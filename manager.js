@@ -65,6 +65,11 @@ const schedEventSchema = new mongoose.Schema({
   createdAt : Date,
   endAt : Date
 }, { collection : 'events' });
+const deviceSchema = new mongoose.Schema({
+  deviceId : { type : String, unique : true },
+  socketId : String,
+  alias : { type : String, unique : true }
+}, { collection : 'devices' });
 
 // Blodsband specific schemas
 const entitySchema = new mongoose.Schema({
@@ -84,6 +89,7 @@ const Room = mongoose.model('Room', roomSchema);
 const History = mongoose.model('History', historySchema);
 const Command = mongoose.model('Command', commandSchema);
 const SchedEvent = mongoose.model('SchedEvent', schedEventSchema);
+const Device = mongoose.model('Device', deviceSchema);
 
 // Blodsband specific
 const Entity = mongoose.model('Entity', entitySchema);
@@ -117,6 +123,38 @@ function addEncryptionKeys(keys, callback) {
   }
 }
 
+function updateDeviceAlias(deviceId, value, callback) {
+  const query = { deviceId : deviceId };
+  const update = { $set : { alias : value } };
+  const options = { upsert : true, new : true };
+
+  Device.findOneAndUpdate(query, update, options).lean().exec(
+    function (err, device) {
+      if (err) {
+        console.log('Failed to update device Id', err);
+      }
+
+      callback(err, device);
+    }
+  );
+}
+
+function updateDeviceSocketId(deviceId, value, callback) {
+  const query = { deviceId : deviceId };
+  const update = { $set : { socketId : value } };
+  const options = { upsert : true, new : true };
+
+  Device.findOneAndUpdate(query, update, options).lean().exec(
+    function (err, device) {
+      if (err) {
+        console.log('Failed to update device socket Id', err);
+      }
+
+      callback(err, device);
+    }
+  );
+}
+
 function updateCommandVisibility(cmdName, value, callback) {
   const query = { commandName : cmdName };
   const update = { $set : { visibility : value } };
@@ -124,12 +162,13 @@ function updateCommandVisibility(cmdName, value, callback) {
 
   Command.findOneAndUpdate(query, update, options).lean().exec(
     function(err, cmd) {
-    if (err) {
-      console.log('Failed to update command visibility', err);
-    }
+      if (err) {
+        console.log('Failed to update command visibility', err);
+      }
 
-    callback(err, cmd);
-  });
+      callback(err, cmd);
+    }
+  );
 }
 
 function updateCommandAccessLevel(cmdName, value, callback) {
@@ -139,12 +178,13 @@ function updateCommandAccessLevel(cmdName, value, callback) {
 
   Command.findOneAndUpdate(query, update, options).lean().exec(
     function(err, cmd) {
-    if (err) {
-      console.log('Failed to update command access level', err);
-    }
+      if (err) {
+        console.log('Failed to update command access level', err);
+      }
 
-    callback(err, cmd);
-  });
+      callback(err, cmd);
+    }
+  );
 }
 
 function authUserToCommand(user, cmdName, callback) {
@@ -953,6 +993,8 @@ exports.addGroupToUser = addGroupToUser;
 exports.getAllCommands = getAllCommands;
 exports.populateDbCommands = populateDbCommands;
 exports.updateUserPassword = updateUserPassword;
+exports.updateDeviceAlias = updateDeviceAlias;
+exports.updateDeviceSocketId = updateDeviceSocketId;
 
 //Blodsband specific
 exports.addEncryptionKeys = addEncryptionKeys;
