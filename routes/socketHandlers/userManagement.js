@@ -1,7 +1,7 @@
 'use strict';
 
-const manager = require('../manager');
-const dbDefaults = require('../config/dbPopDefaults.js');
+const manager = require('../../manager');
+const dbDefaults = require('../../config/dbPopDefaults.js');
 
 function isTextAllowed(text) {
   return /^[a-zA-Z0-9]+$/g.test(text);

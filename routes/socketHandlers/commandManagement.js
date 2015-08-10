@@ -1,7 +1,7 @@
 'use strict';
 
-const manager = require('../manager');
-const dbDefaults = require('../config/dbPopDefaults.js');
+const manager = require('../../manager');
+const dbDefaults = require('../../config/dbPopDefaults.js');
 
 function handle(socket) {
   socket.on('getCommands', function() {

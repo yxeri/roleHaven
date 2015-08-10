@@ -1,7 +1,7 @@
 'use strict';
 
-const manager = require('../manager');
-const dbDefaults = require('../config/dbPopDefaults.js');
+const manager = require('../../manager');
+const dbDefaults = require('../../config/dbPopDefaults.js');
 
 const messageSort = function(a, b) {
   if (a.time < b.time) {

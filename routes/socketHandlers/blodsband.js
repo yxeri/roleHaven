@@ -1,6 +1,6 @@
 'use strict';
 
-const manager = require('../manager');
+const manager = require('../../manager');
 
 function handle(socket) {
   socket.on('entities', function() {

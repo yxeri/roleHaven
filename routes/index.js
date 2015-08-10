@@ -2,15 +2,15 @@
 
 const express = require('express');
 const router = express.Router();
-const chat = require('../modules/chat');
-const userManagement = require('../modules/userManagement');
+const chat = require('./socketHandlers/chat');
+const userManagement = require('./socketHandlers/userManagement');
 const manager = require('../manager');
-const commandManagement = require('../modules/commandManagement');
+const commandManagement = require('./socketHandlers/commandManagement');
 const config = require('../config/config');
 const http = require('http');
 const dbDefaults = require('../config/dbPopDefaults.js');
 //Blodsband specific
-const blodsband = require('../modules/blodsband');
+const blodsband = require('./socketHandlers/blodsband');
 
 function generateWeatherReport(jsonObj) {
   const weatherRep = {};
