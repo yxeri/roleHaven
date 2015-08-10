@@ -86,6 +86,12 @@ config.rooms = {
 config.whisper = '-whisper';
 
 /**
+ * Appended to device ID to create a room which is used to store messages
+ * sent to a device (e.g fe3Liw19Xz-device)
+ */
+config.device = '-device';
+
+/**
  *
  */
 config.commands = {

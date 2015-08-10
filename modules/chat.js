@@ -29,6 +29,7 @@ function handle(socket) {
       function(err, history) {
         if (err || history === null) {
           console.log('Failed to add message to history', err);
+          socket.emit('message', { text : ['Failed to send the whisper'] });
         } else {
           const newMessage = newData.message;
 
@@ -283,7 +284,7 @@ function handle(socket) {
                 const currentUser = users[i];
 
                 if (currentUser.verified && !currentUser.banned) {
-                  if (currentUser.socketId !== ' ') {
+                  if (currentUser.online) {
                     onlineString += currentUser.userName;
                     onlineString += '\t';
                   } else {
@@ -314,11 +315,28 @@ function handle(socket) {
     });
   });
 
-  socket.on('myRooms', function() {
-    // The first room is auto-created by socket.io (has name of socket.id)
-    // The second room is used for whispering between user
-    // (has same name as user). They should not be visible to the user
-    const roomsString = socket.rooms.slice(2).sort().join('\t');
+  socket.on('myRooms', function(data) {
+    function shouldBeHidden(room) {
+      let hiddenRooms = [
+        socket.id,
+        data.userName + dbDefaults.whisper,
+        data.device + dbDefaults.device,
+        dbDefaults.rooms.important.roomName,
+        dbDefaults.rooms.broadcast.roomName
+      ];
+
+      return hiddenRooms.indexOf(room) >= 0;
+    }
+
+    const rooms = [];
+
+    for (let i = 0; i < socket.rooms.length; i++) {
+      const room = socket.rooms[i];
+
+      if (!shouldBeHidden(room)) {
+        rooms.push(room);
+      }
+    }
 
     socket.emit('message', {
       text : [
@@ -326,7 +344,7 @@ function handle(socket) {
         '  My rooms',
         '------------',
         'You are following rooms:',
-        roomsString
+        rooms.join('\t')
       ]
     });
 
@@ -365,16 +383,15 @@ function handle(socket) {
       } else {
         const allRooms = socket.rooms;
 
-        allRooms.push('important');
-        allRooms.push('broadcast');
+        allRooms.push(dbDefaults.rooms.important.roomName);
+        allRooms.push(dbDefaults.rooms.broadcast.roomName);
 
-        manager.getUserHistory(allRooms, function(err, history) {
+        manager.getHistoryFromRooms(allRooms, function(err, history) {
           if (err || history === null) {
             console.log('Failed to get history', err);
           } else {
             const historyMessages = [];
-            const maxLines = lines === null || isNaN(lines) ?
-                             60 : lines;
+            const maxLines = lines === null || isNaN(lines) ? 60 : lines;
 
             for (let i = 0; i < history.length; i++) {
               const currentHistory = history[i];
@@ -491,28 +508,49 @@ function handle(socket) {
     });
   });
 
-  socket.on('importantMsg', function(msg) {
-    msg.time = new Date();
-
-    //add to history important
-    socket.broadcast.emit('importantMsg', msg);
-    socket.emit('importantMsg', msg);
-
-    /**
-     * Database failure does not block important messages. It is more crucial
-     * for them to be sent out ASAP to online users
-     */
-    manager.addMsgToHistory(
-      dbDefaults.rooms.important.roomName, msg, function(err, history) {
+  socket.on('importantMsg', function(data) {
+    const deviceFunc = function(roomName) {
+      console.log(roomName);
+      socket.to(roomName).emit('importantMsg', data);
+    };
+    const messageFunc = function() {
+      socket.broadcast.emit('importantMsg', data);
+      socket.emit('importantMsg', data);
+    };
+    const historyFunc = function(roomName, sendFunc) {
+      manager.addMsgToHistory(roomName, data, function(err, history) {
         if(err || history === null) {
           socket.emit('message', {
             text : [
-              'Failed to store message in database',
-              'Users who are not online might not receive the message'
+              'Failed to send the message'
             ]
           });
+        } else {
+          sendFunc(roomName);
         }
-    });
+      });
+    };
+
+    data.time = new Date();
+
+    if (data.device) {
+      manager.getDevice(data.device, function(err, device) {
+        if (err || device === null) {
+          socket.emit('message', {
+            text : ['Failed to send the message to the device']
+          });
+        } else {
+          const deviceId = device.deviceId;
+          const roomName = deviceId + dbDefaults.device;
+
+          historyFunc(roomName, deviceFunc);
+        }
+      });
+    } else {
+      const roomName = dbDefaults.rooms.important.roomName;
+
+      historyFunc(roomName, messageFunc);
+    }
   });
 }
 

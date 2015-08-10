@@ -7,26 +7,6 @@ function isTextAllowed(text) {
   return /^[a-zA-Z0-9]+$/g.test(text);
 }
 
-function getUser(socketId, callback) {
-  manager.getUserById(socketId, function(err, user) {
-    if (err || user === null) {
-
-    }
-
-    callback(err, user);
-  });
-}
-
-function authUserToCommand(callback) {
-  manager.authUserToCommand(user, cmdName, function(err, command) {
-    if (err || command === null) {
-
-    }
-
-    callback(err, command);
-  });
-}
-
 function handle(socket) {
   socket.on('register', function(sentUser) {
     sentUser.userName = sentUser.userName.toLowerCase();
@@ -35,7 +15,8 @@ function handle(socket) {
       const userObj = {
         userName : sentUser.userName,
         socketId : '',
-        password : sentUser.password
+        password : sentUser.password,
+        registerDevice : sentUser.registerDevice
       };
 
       manager.addUser(userObj, function(err, user) {
@@ -101,21 +82,22 @@ function handle(socket) {
           const data = {};
           const allRooms = user.rooms;
 
-          allRooms.push('important');
-          allRooms.push('broadcast');
+          allRooms.push(dbDefaults.rooms.important.roomName);
+          allRooms.push(dbDefaults.rooms.broadcast.roomName);
+          allRooms.push(sentObject.device + dbDefaults.device);
 
           data.firstConnection = sentObject.firstConnection;
           data.user = user;
 
-          for (let i = 0; i < user.rooms.length; i++) {
-            const room = user.rooms[i];
+          for (let i = 0; i < allRooms.length; i++) {
+            const room = allRooms[i];
 
             socket.join(room);
           }
 
           socket.emit('reconnectSuccess', data);
 
-          manager.getUserHistory(user.rooms, function(err, history) {
+          manager.getHistoryFromRooms(allRooms, function(err, history) {
             if (err || history === null) {
               socket.emit('message', {
                 text : [
@@ -129,15 +111,17 @@ function handle(socket) {
                 const currentHistory = history[i];
                 const messages = currentHistory.messages;
 
-                // Does the history document actually contain
-                // any messages?
+                // Does the history document actually contain any messages?
                 if (messages.length > 0) {
                   const messagesLength = messages.length - 1;
+
                   for (let j = messagesLength; j !== 0; j--) {
                     const message = messages[j];
 
-                    // Pushes only the messages that
-                    // the user hasn't already seen
+                    /**
+                     * Pushes only the messages that
+                     * the user hasn't already seen
+                     */
                     if (message !== undefined &&
                         user.lastOnline <= message.time) {
                       message.roomName =
@@ -149,8 +133,10 @@ function handle(socket) {
               }
 
               if (missedMessages.length > 0) {
-                // Above loop pushes in everything in the
-                // reverse order. Let's fix that
+                /**
+                 * Above loop pushes in everything in the
+                 * reverse order. Let's fix that
+                 */
                 missedMessages.reverse();
                 missedMessages.sort(function(a, b) {
                   if (a.time < b.time) {
@@ -189,71 +175,48 @@ function handle(socket) {
     sentUser.userName = sentUser.userName.toLowerCase();
 
     if (sentUser.userName && sentUser.password) {
-      manager.getUserById(socket.id, function(err, loggedInUser) {
-
-        // Should not allow to login if already logged in
-        if(err || loggedInUser !== null) {
-          socket.emit('message', {
-            text : [
-              'You are already logged in',
-              'You have to be logged out to log in'
-            ]
-          });
+      manager.authUser(
+        sentUser.userName, sentUser.password, function(err, user) {
+        if (err || user === null) {
+          socket.emit('message', { text : ['Failed to login'] });
         } else {
-          manager.authUser(sentUser.userName, sentUser.password,
-            function(err, user) {
-              if (err || user === null) {
-                socket.emit('message', { text : ['Failed to login'] });
-              } /* else if (user.socketId !== ' ') {
-                socket.emit('message', {
-                  text : [
-                    'Failed to login. User is already logged in',
-                    'User has been notified of your intrusion attempt'
-                  ]
-                });
-                socket.to(user.socketId).emit('importantMsg', {
-                  text : [
-                    'Intrusion attempt detected',
-                    'Someone tried to login as your user'
-                  ]
-                });
-              }*/ else {
-                if (user.verified && !user.banned) {
-                  const authUser = user;
+          if (user.verified && !user.banned) {
+            const authUser = user;
 
-                  manager.updateUserSocketId(sentUser.userName, socket.id,
-                    function(err, user) {
-                      if (err || user === null) {
-                        socket.emit('message',
-                          { text : ['Failed to login'] });
-                      } else {
-                        const rooms = authUser.rooms;
-
-                        for (let i = 0; i < rooms.length; i++) {
-                          socket.join(rooms[i]);
-                        }
-
-                        socket.emit('login', authUser);
-                      }
-                    });
+            manager.updateUserSocketId(sentUser.userName, socket.id,
+              function(err, user) {
+                if (err || user === null) {
+                  socket.emit('message',
+                    { text : ['Failed to login'] });
                 } else {
-                  if (!user.verified) {
-                    socket.emit('message', {
-                      text : [
-                        'The user has not yet been verified. ' +
-                        'Failed to login'
-                      ]
-                    });
-                  } else {
-                    socket.emit('message', {
-                      text : [
-                        'The user has been banned. Failed to login'
-                      ]
-                    });
+                  const rooms = authUser.rooms;
+
+                  rooms.push(dbDefaults.rooms.important.roomName);
+                  rooms.push(dbDefaults.rooms.broadcast.roomName);
+
+                  for (let i = 0; i < rooms.length; i++) {
+                    socket.join(rooms[i]);
                   }
+
+                  socket.emit('login', authUser);
                 }
-              }
-            });
+              });
+          } else {
+            if (!user.verified) {
+              socket.emit('message', {
+                text : [
+                  'The user has not yet been verified. ' +
+                  'Failed to login'
+                ]
+              });
+            } else {
+              socket.emit('message', {
+                text : [
+                  'The user has been banned. Failed to login'
+                ]
+              });
+            }
+          }
         }
       });
     } else {
@@ -298,14 +261,16 @@ function handle(socket) {
       } else {
         const userName = currentUser.userName;
 
-        manager.updateUserSocketId(userName, ' ', function(err, user) {
+        manager.updateUserOnline(userName, false, function(err, user) {
           if (err || user === null) {
             console.log('Failed to reset socket id', err);
           } else {
             const rooms = socket.rooms;
 
             for (let i = 1; i < rooms.length; i++) {
-              socket.leave(rooms[i]);
+              if (rooms[i].indexOf(dbDefaults.device) < 0) {
+                socket.leave(rooms[i]);
+              }
             }
 
             socket.emit('logout');
@@ -327,22 +292,43 @@ function handle(socket) {
           socket.emit('message',
             { text : ['Failed to verify user'] });
         } else {
+          //const room = user.registerDevice + dbDefaults.device;
+
           socket.emit('message', {
             text : ['User ' + user.userName + ' has been verified']
           });
+
+          //TODO Send message to verified user
         }
       });
     }
   });
 
   socket.on('verifyAllUsers', function() {
-    manager.verifyAllUsers(function(err, user) {
-      if (err || user === null) {
-        socket.emit('message',
-          { text : ['Failed to verify all users'] });
+    manager.getUnverifiedUsers(function(err, users) {
+      if (err || users === null) {
+        socket.emit('message', {
+          text : ['Failed to verify all users']
+        });
       } else {
-        socket.emit('message',
-          { text : ['Users have been verified'] });
+        manager.verifyAllUsers(function(err) {
+          if (err) {
+            socket.emit('message', {
+              text : ['Failed to verify all users']
+            });
+          } else {
+            socket.emit('message', {
+              text : ['Users have been verified']
+            });
+
+            for (let i = 0; i < users.length; i++) {
+              //const user = users[i];
+              //const room = user.registerDevice + dbDefaults.device;
+
+              //TODO Send message to verified user
+            }
+          }
+        });
       }
     });
   });

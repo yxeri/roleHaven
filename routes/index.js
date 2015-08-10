@@ -8,6 +8,7 @@ const manager = require('../manager');
 const commandManagement = require('../modules/commandManagement');
 const config = require('../config/config');
 const http = require('http');
+const dbDefaults = require('../config/dbPopDefaults.js');
 //Blodsband specific
 const blodsband = require('../modules/blodsband');
 
@@ -50,10 +51,10 @@ function handle(io) {
               if (err || user === null) {
                 console.log('Failed to set last online');
               } else {
-                manager.updateUserSocketId(
-                  user.userName, ' ', function(err, user) {
+                manager.updateUserOnline(
+                  user.userName, false, function(err, user) {
                   if (err || user === null) {
-                    console.log('Failed to reset socket id', err);
+                    console.log('Failed to update online', err);
                   }
                 });
               }
@@ -200,6 +201,35 @@ function handle(io) {
     });
 
     //TODO This should be moved
+    /**
+     * Updates socket ID on the device in the database and joins the socket
+     * to the device room
+     */
+    socket.on('updateDeviceSocketId', function(data) {
+      const deviceId = data.deviceId;
+      const socketId = data.socketId;
+      const user = data.user;
+
+      socket.join(deviceId + dbDefaults.device);
+
+      manager.updateDeviceSocketId(
+        deviceId, socketId, user, function(err, device) {
+        if(err || device === null) {
+          let errMsg = 'Failed to update device';
+
+          socket.emit('message', {
+            text : [errMsg]
+          });
+          console.log(errMsg, err);
+        } else {
+          socket.emit('message', {
+            text : ['Device has been updated']
+          });
+        }
+      });
+    });
+
+    //TODO This should be moved
     socket.on('updateDevice', function(data) {
       manager.getUserById(socket.id, function(err, user) {
         if (err || user === null) {
@@ -241,11 +271,6 @@ function handle(io) {
               }
 
               break;
-            case 'socketId':
-              manager.updateDeviceSocketId(
-                deviceId, value, callback);
-
-              break;
             default:
               socket.emit('message', {
                 text : ['Invalid field. Device doesn\'t have ' + field]
@@ -253,6 +278,26 @@ function handle(io) {
 
               break;
           }
+        }
+      });
+    });
+
+    socket.on('verifyDevice', function(data) {
+      manager.getDevice(data.device, function(err, device) {
+        if (err || device === null) {
+          socket.emit('message', {
+            text : [
+              'Device is not in the database'
+            ]
+          });
+          socket.emit('commandFail');
+        } else {
+          socket.emit('message', {
+            text : [
+              'Device found in the database'
+            ]
+          });
+          socket.emit('commandSuccess', data);
         }
       });
     });

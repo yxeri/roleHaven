@@ -28,6 +28,8 @@ const userSchema = new mongoose.Schema({
   lastOnline : Date,
   verified : { type : Boolean, default : false },
   banned : { type : Boolean, default : false },
+  online : { type : Boolean, default : false },
+  registerDevice : String,
   authGroups : [{ type : String, unique : true }]
 }, { collection : 'users' });
 const roomSchema = new mongoose.Schema({
@@ -68,7 +70,8 @@ const schedEventSchema = new mongoose.Schema({
 const deviceSchema = new mongoose.Schema({
   deviceId : { type : String, unique : true },
   socketId : String,
-  alias : { type : String, unique : true }
+  alias : { type : String, unique : true },
+  lastUser : String
 }, { collection : 'devices' });
 
 // Blodsband specific schemas
@@ -139,9 +142,9 @@ function updateDeviceAlias(deviceId, value, callback) {
   );
 }
 
-function updateDeviceSocketId(deviceId, value, callback) {
+function updateDeviceSocketId(deviceId, socketId, user, callback) {
   const query = { deviceId : deviceId };
-  const update = { $set : { socketId : value } };
+  const update = { $set : { socketId : socketId, lastUser : user } };
   const options = { upsert : true, new : true };
 
   Device.findOneAndUpdate(query, update, options).lean().exec(
@@ -185,23 +188,6 @@ function updateCommandAccessLevel(cmdName, value, callback) {
       callback(err, cmd);
     }
   );
-}
-
-function authUserToCommand(user, cmdName, callback) {
-  const query = {
-    $and : [
-      { accessLevel : { $lte : user.accessLevel } },
-      { commandName : cmdName }
-    ]
-  };
-
-  Room.findOne(query).lean().exec(function(err, room) {
-    if (err) {
-      console.log('Failed to check auth against room', err);
-    }
-
-    callback(err, room);
-  });
 }
 
 function addGroupToUser(userName, group, callback) {
@@ -326,6 +312,39 @@ function getEncryptionKey(sentKey, callback) {
   });
 }
 
+function getUserByDevice(deviceCode, callback) {
+  const query = { $or : [{ deviceId : deviceCode }, { alias : deviceCode }] };
+
+  Device.findOne(query).lean().exec(function(err, device) {
+    if (err || device === null) {
+      console.log('Failed to get device', err);
+      callback(err, null);
+    } else {
+      const userQuery = { socketId : device.socketId };
+
+      User.findOne(userQuery).lean().exec(function(err, user) {
+        if (err || user === null) {
+          console.log('Failed to get user by device', err);
+        }
+
+        callback(err, user);
+      });
+    }
+  });
+}
+
+function getDevice(deviceCode, callback) {
+  const query = { $or : [{ deviceId : deviceCode }, { alias : deviceCode }] };
+
+  Device.findOne(query).lean().exec(function(err, device) {
+    if (err || device === null) {
+      console.log('Failed to get device', err);
+    }
+
+    callback(err, device);
+  });
+}
+
 function getUserById(sentSocketId, callback) {
   const query = { socketId : sentSocketId };
   const filter = { _id : 0 };
@@ -377,8 +396,10 @@ function addUser(user, callback) {
 function addMsgToHistory(sentRoomName, sentMessage, callback) {
   const query = { roomName : sentRoomName };
   const update = { $push : { messages : sentMessage } };
+  const options = { upsert : true, new : true };
 
-  History.findOneAndUpdate(query, update).lean().exec(function(err, history) {
+  History.findOneAndUpdate(query, update, options).lean().exec(
+    function(err, history) {
     if (err) {
       console.log('Failed to add message to history', err);
     }
@@ -387,8 +408,8 @@ function addMsgToHistory(sentRoomName, sentMessage, callback) {
   });
 }
 
-function getHistoryFromRoom(sentRoomName, callback) {
-  const query = { roomName : sentRoomName };
+function getHistoryFromRoom(roomName, callback) {
+  const query = { roomName : roomName };
   const filter = { 'messages._id' : 0, _id : 0 };
 
   History.find(query, filter).lean().exec(function(err, history) {
@@ -400,7 +421,7 @@ function getHistoryFromRoom(sentRoomName, callback) {
   });
 }
 
-function getUserHistory(rooms, callback) {
+function getHistoryFromRooms(rooms, callback) {
   const query = { roomName : { $in : rooms } };
   const filter = { 'messages._id' : 0, _id : 0 };
 
@@ -413,9 +434,22 @@ function getUserHistory(rooms, callback) {
   });
 }
 
-function updateUserSocketId(sentUserName, value, callback) {
-  const query = { userName : sentUserName };
-  const update = { socketId : value };
+function updateUserSocketId(userName, value, callback) {
+  const query = { userName : userName };
+  const update = { socketId : value, online : true };
+
+  User.findOneAndUpdate(query, update).lean().exec(function(err, user) {
+    if (err) {
+      console.log('Failed to update user', err);
+    }
+
+    callback(err, user);
+  });
+}
+
+function updateUserOnline(userName, value, callback) {
+  const query = { userName : userName };
+  const update = { online : value };
 
   User.findOneAndUpdate(query, update).lean().exec(function(err, user) {
     if (err) {
@@ -436,19 +470,6 @@ function updateUserLocation(sentUserName, sentPosition, callback) {
     }
 
     callback(err);
-  });
-}
-
-function updateUserPassword(sentUserName, newPassword, callback) {
-  const query = { userName : sentUserName };
-  var update = { password : newPassword };
-
-  User.findOneAndUpdate(query, update).lean().exec(function(err, user) {
-    if (err) {
-      console.log('Failed to update password', err);
-    }
-
-    callback(err, user);
   });
 }
 
@@ -476,6 +497,18 @@ function verifyAllUsers(callback) {
     }
 
     callback(err);
+  });
+}
+
+function getAllDevices(callback) {
+  const query = {};
+
+  Device.find(query).lean().exec(function(err, devices) {
+    if (err) {
+      console.log('Failed to get all devices', err);
+    }
+
+    callback(err, devices);
   });
 }
 
@@ -507,7 +540,7 @@ function createRoom(sentRoom, sentUser, callback) {
     query = {
       $or : [
         { roomName : sentRoom.roomName },
-        { owner : sentRoom.owner },
+        { owner : sentRoom.owner }
       ]
     };
   } else {
@@ -681,7 +714,7 @@ function setUserLastOnline(sentUserName, sentDate, callback) {
 
 function getUnverifiedUsers(callback) {
   const query = { verified : false };
-  const filter = { userName : 1, _id : 0 };
+  const filter = { _id : 0 };
   const sort = { userName : 1 };
 
   User.find(query, filter).sort(sort).lean().exec(function(err, users) {
@@ -968,7 +1001,7 @@ exports.removeRoomFromUser = removeRoomFromUser;
 exports.addMsgToHistory = addMsgToHistory;
 exports.getHistoryFromRoom = getHistoryFromRoom;
 exports.setUserLastOnline = setUserLastOnline;
-exports.getUserHistory = getUserHistory;
+exports.getHistoryFromRooms = getHistoryFromRooms;
 exports.updateUserPassword = updateUserPassword;
 exports.verifyUser = verifyUser;
 exports.getUnverifiedUsers = getUnverifiedUsers;
@@ -992,9 +1025,12 @@ exports.updateCommandAccessLevel = updateCommandAccessLevel;
 exports.addGroupToUser = addGroupToUser;
 exports.getAllCommands = getAllCommands;
 exports.populateDbCommands = populateDbCommands;
-exports.updateUserPassword = updateUserPassword;
 exports.updateDeviceAlias = updateDeviceAlias;
 exports.updateDeviceSocketId = updateDeviceSocketId;
+exports.updateUserOnline = updateUserOnline;
+exports.getUserByDevice = getUserByDevice;
+exports.getDevice = getDevice;
+exports.getAllDevices = getAllDevices;
 
 //Blodsband specific
 exports.addEncryptionKeys = addEncryptionKeys;

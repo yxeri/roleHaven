@@ -238,8 +238,9 @@ var platformCmds = {
   },
   resetAllLocalVals : function() {
     platformCmds.removeLocalVal('cmdHistory');
-    platformCmds.removeLocalVal('user');
     platformCmds.removeLocalVal('room');
+    platformCmds.removeLocalVal('user');
+    platformCmds.setAccessLevel(0);
 
     previousCommandPointer = 0;
     platformCmds.setInputStart('RAZCMD');
@@ -798,7 +799,7 @@ var validCmds = {
               platformCmds.isTextAllowed(userName) &&
               platformCmds.isTextAllowed(password)) {
             user.userName = userName;
-            // Check for empty!
+            user.registerDevice = platformCmds.getLocalVal('deviceId');
             user.password = password;
             socket.emit('register', user);
           } else {
@@ -884,7 +885,12 @@ var validCmds = {
   },
   myrooms : {
     func : function() {
-      socket.emit('myRooms');
+      var data = {};
+
+      data.userName = platformCmds.getUser();
+      data.device = platformCmds.getLocalVal('deviceId');
+
+      socket.emit('myRooms', data);
     },
     help : ['Shows a list of all rooms you are following'],
     accessLevel : 13,
@@ -892,19 +898,19 @@ var validCmds = {
   },
   login : {
     func : function(phrases) {
-      if (phrases.length > 1 && platformCmds.getUser() === null) {
-        var user = {};
-        user.userName = phrases[0].toLowerCase();
-        user.password = phrases[1];
-
-        socket.emit('login', user);
-      } else if(platformCmds.getUser() !== null) {
+      if (platformCmds.getUser() !== null) {
         platformCmds.queueMessage({
           text : [
             'You are already logged in',
             'You have to be logged out to log in'
           ]
         });
+      } else if (phrases.length > 1) {
+        var user = {};
+        user.userName = phrases[0].toLowerCase();
+        user.password = phrases[1];
+
+        socket.emit('login', user);
       } else {
         platformCmds.queueMessage({
           text : [
@@ -1103,9 +1109,12 @@ var validCmds = {
   },
   history : {
     func : function(phrases) {
-      var maxLines = phrases[0];
+      var data = {};
 
-      socket.emit('history', maxLines);
+      data.lines = phrases[0];
+      data.device = platformCmds.getLocalVal('deviceId');
+
+      socket.emit('history', data);
     },
     help : [
       'Clears the screen and retrieves chat messages from server',
@@ -1583,14 +1592,42 @@ var validCmds = {
       });
       platformCmds.queueMessage({
         text : [
-          'Write a line and press enter',
-          'Press enter without any input when you are done with the message',
-          'Try to keep the first line short if you want to send it as morse'
+          'Do you want to send it to a specific device?',
+          'Enter the device ID or alias to send it to a specific device',
+          'Leave it empty and press enter if you want to send it to ' +
+          'all users'
         ]
       });
       platformCmds.setInputStart('imprtntMsg');
     },
     steps : [
+      function(phrases) {
+        if (phrases.length > 0) {
+          var device = phrases[0];
+
+          if (device.length > 0) {
+            cmdHelper.data.device = device;
+            platformCmds.queueMessage({
+              text : ['Searching for device...']
+            });
+            socket.emit('verifyDevice', cmdHelper.data);
+          } else {
+            cmdHelper.onStep++;
+            validCmds[cmdHelper.command].steps[cmdHelper.onStep]();
+          }
+        }
+      },
+      function() {
+        cmdHelper.onStep++;
+        platformCmds.queueMessage({
+          text : [
+            'Write a line and press enter',
+            'Press enter without any input when you are done ' +
+            'with the message',
+            'Try to keep the first line short if you want to send it as morse'
+          ]
+        });
+      },
       function(phrases) {
         if (phrases.length > 0 && phrases[0] !== '') {
           var phrase = phrases.join(' ');
@@ -1618,7 +1655,7 @@ var validCmds = {
 
             platformCmds.queueMessage({
               text : [
-                'Do you want to send is as morse code too? ' +
+                'Do you want to send it as morse code too? ' +
                 '"yes" to send it as morse too',
                 'Note! Only the first line will be sent as morse'
               ]
@@ -1639,8 +1676,13 @@ var validCmds = {
         }
       }
     ],
-    help : [],
-    instructions : [],
+    help : [
+      'Send an important message to a single device or all users'
+    ],
+    instructions : [
+      'Follow the on-screen instructions',
+      'Note! Only the first line can be sent as morse code (optional)'
+    ],
     accessLevel : 13,
     category : 'admin'
   },
@@ -2942,7 +2984,7 @@ function generateShortTime(date) {
 function generateFullText(sentText, message) {
   var text = '';
 
-  if (message.time) {
+  if (message.time && !message.skipTime) {
     text += generateShortTime(message.time);
   }
   if (message.roomName) {
@@ -3008,7 +3050,25 @@ function printRow(message) {
 }
 
 function convertWhisperRoom(roomName) {
-  var convertedRoom = roomName.indexOf('-whisper') >= 0 ? 'WHISPR' : roomName;
+  var convertedRoom = roomName.indexOf('-whisper') >= 0 ? 'WHISPER' : roomName;
+
+  return convertedRoom;
+}
+
+function convertDeviceRoom(roomName) {
+  var convertedRoom = roomName.indexOf('-device') >= 0 ? 'DEVICE' : roomName;
+
+  return convertedRoom;
+}
+
+function convertImportantRoom(roomName) {
+  var convertedRoom = roomName === 'important' ? 'IMPRTNT' : roomName;
+
+  return convertedRoom;
+}
+
+function convertBroadcastRoom(roomName) {
+  var convertedRoom = roomName === 'broadcast' ? 'BRODCST' : roomName;
 
   return convertedRoom;
 }
@@ -3041,6 +3101,7 @@ function printImportantMsg(msg) {
   var message = msg;
 
   message.extraClass = 'importantMsg';
+  message.skipTime = true;
 
   platformCmds.queueMessage(message);
 
@@ -3076,6 +3137,9 @@ function startSocketListeners() {
         var message = messages[i];
 
         message.roomName = convertWhisperRoom(message.roomName);
+        message.roomName = convertDeviceRoom(message.roomName);
+        message.roomName = convertImportantRoom(message.roomName);
+        message.roomName = convertBroadcastRoom(message.roomName);
 
         platformCmds.queueMessage(message);
       }
@@ -3114,6 +3178,8 @@ function startSocketListeners() {
     });
 
     socket.on('login', function(user) {
+      var mode = platformCmds.getMode();
+
       validCmds.clear.func();
 
       platformCmds.setUser(user.userName);
@@ -3123,9 +3189,18 @@ function startSocketListeners() {
       });
       printWelcomeMsg();
 
-      if (!platformCmds.getMode()) {
+      //TODO Duplicate code
+      if (mode) {
+        platformCmds.getCommands().mode.func([mode]);
+      } else {
         platformCmds.getCommands().mode.func(['chat']);
       }
+
+      socket.emit('updateDeviceSocketId', {
+        deviceId : platformCmds.getLocalVal('deviceId'),
+        socketId : socket.id,
+        user : platformCmds.getUser()
+      });
 
       socket.emit('follow', { roomName : 'public', entered : true });
     });
@@ -3140,10 +3215,21 @@ function startSocketListeners() {
     });
 
     socket.on('reconnectSuccess', function(data) {
-      socket.emit('updateDevice', {
+      var mode = platformCmds.getMode();
+
+      //TODO Duplicate code
+      if (mode) {
+        platformCmds.getCommands().mode.func([mode], false);
+      } else {
+        platformCmds.getCommands().mode.func(['chat'], false);
+      }
+
+      platformCmds.setAccessLevel(data.user.accessLevel);
+
+      socket.emit('updateDeviceSocketId', {
         deviceId : platformCmds.getLocalVal('deviceId'),
-        field : 'socketId',
-        value : socket.id
+        socketId : socket.id,
+        user : platformCmds.getUser()
       });
 
       if (!data.firstConnection) {
@@ -3152,21 +3238,12 @@ function startSocketListeners() {
           extraClass : 'importantMsg'
         });
       } else {
-        platformCmds.setAccessLevel(data.user.accessLevel);
         printWelcomeMsg();
 
         if (platformCmds.getLocalVal('room')) {
           var room = platformCmds.getLocalVal('room');
           validCmds.enterroom.func([room]);
         }
-      }
-
-      if (platformCmds.getMode()) {
-        var mode = platformCmds.getMode();
-
-        platformCmds.getCommands().mode.func([mode], false);
-      } else {
-        platformCmds.getCommands().mode.func(['chat'], false);
       }
 
       platformCmds.queueMessage({
@@ -3493,8 +3570,11 @@ function startBoot() {
     platformCmds.setAccessLevel(0);
   }
 
-  socket.emit('updateId',
-    { userName : platformCmds.getUser(), firstConnection : true });
+  socket.emit('updateId', {
+    userName : platformCmds.getUser(),
+    firstConnection : true,
+    device : platformCmds.getLocalVal('deviceId')
+  });
 }
 
 startBoot();
