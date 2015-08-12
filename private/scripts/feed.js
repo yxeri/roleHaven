@@ -783,7 +783,7 @@ var validCmds = {
             'Name has to be 3 to 6 characters long',
             'Password has to be at least 4 characters',
             'The name and password can only contain letters ' +
-            'and numbers (a-z, 0-9, upper or lowercase)',
+            'and numbers (a-z, 0-9. Password can mix upper and lowercase)',
             'Don\'t use whitespace in your name or password!',
             'e.g. register myname apple1'
           ]
@@ -841,8 +841,8 @@ var validCmds = {
         text : [
           'Failed to create room.',
           'Room name has to be 1 to 6 characters long',
-          'The room name can only contain letters and numbers ' +
-          '(a-z, 0-9)',
+          'The room name and password can only contain letters and numbers ' +
+          '(a-z, 0-9. Password can mix upper and lowercase)',
           'e.g. createroom myroom'
         ]
       };
@@ -852,7 +852,8 @@ var validCmds = {
         var password = phrases[1];
 
         if (roomName.length > 0 && roomName.length < 7 &&
-            platformCmds.isTextAllowed(roomName)) {
+            platformCmds.isTextAllowed(roomName) &&
+            platformCmds.isTextAllowed(password)) {
           var room = {};
 
           room.roomName = roomName;
@@ -979,8 +980,11 @@ var validCmds = {
   },
   uploadkey : {
     func : function() {
+      var razLogoToPrint = razLogo !== null ?
+                           JSON.parse(JSON.stringify(razLogo)) : { text : ['']};
+
       // TODO: razLogo should be move to DB or other place
-      platformCmds.queueMessage(JSON.parse(JSON.stringify(razLogo)));
+      platformCmds.queueMessage(razLogoToPrint);
       platformCmds.queueMessage({
         text : [
           'Razor1911 proudly presents:',
@@ -1361,6 +1365,9 @@ var validCmds = {
       var data = {};
 
       if (phrases.length > 0) {
+        var razLogoToPrint = razLogo !== null ?
+                             JSON.parse(JSON.stringify(razLogo)) : { text : ['']};
+
         data.roomName = phrases[0].toLowerCase();
         data.timesCracked = 0;
         data.timesRequired = 3;
@@ -1380,7 +1387,7 @@ var validCmds = {
         platformCmds.getCmdHelper().data = data;
 
         // TODO: razLogo should be moved to DB or other place
-        platformCmds.queueMessage(JSON.parse(JSON.stringify(razLogo)));
+        platformCmds.queueMessage(razLogoToPrint);
         // TODO: Message about abort should be sent from a common
         // function for all commands
         platformCmds.queueMessage({
@@ -1634,13 +1641,16 @@ var validCmds = {
 
           cmdHelper.data.text.push(phrase);
         } else {
+          var dataText = dataText !== null ?
+                         JSON.parse(JSON.stringify(cmdHelper.data.text)) : '';
+
           cmdHelper.onStep++;
 
           platformCmds.queueMessage({
             text : ['Preview of the message:']
           });
           platformCmds.queueMessage({
-            text : JSON.parse(JSON.stringify(cmdHelper.data.text)),
+            text : dataText,
             extraClass : 'importantMsg'
           });
           platformCmds.queueMessage({
@@ -2115,7 +2125,13 @@ var validCmds = {
 };
 
 function getCmdHistory() {
-  return JSON.parse(platformCmds.getLocalVal('cmdHistory'));
+  var cmdHistory = platformCmds.getLocalVal('cmdHistory');
+
+  if (cmdHistory !== null) {
+    return JSON.parse(platformCmds.getLocalVal('cmdHistory'));
+  }
+
+  return [];
 }
 
 function pushCmdHistory(cmd) {
@@ -2261,7 +2277,7 @@ function locateOnMap(latitude, longitude) {
   if (x !== undefined && y !== undefined) {
     return x + '' + y;
   } else {
-    return 'Out of area';
+    return '---';
   }
 }
 
@@ -2517,10 +2533,6 @@ function startCmdQueue() {
   if (!commandUsed) {
     consumeCmdQueue();
   }
-}
-
-function isAllowedChar(text) {
-  return /^[a-zA-Z0-9åäöÅÄÖ/\s\-_\.,;:!"\*'\?\+=&@\)\(]+$/g.test(text);
 }
 
 function autoComplete() {
@@ -2927,23 +2939,23 @@ function keyPress(event) {
       default:
         var textChar = String.fromCharCode(keyCode);
 
-        if (isAllowedChar(textChar)) {
-          if (textChar) {
-            appendToLeftText(textChar);
-          }
+        if (textChar) {
+          appendToLeftText(textChar);
+        }
 
-          if (triggerAutoComplete(getLeftText(marker)) &&
-              platformCmds.getCmdHelper().command === null) {
-            autoComplete();
-          }
+        if (triggerAutoComplete(getLeftText(marker)) &&
+            platformCmds.getCmdHelper().command === null) {
+          autoComplete();
         }
 
         break;
     }
 
     event.preventDefault();
+    event.stopPropagation();
   } else {
     event.preventDefault();
+    event.stopPropagation();
   }
 }
 
@@ -2961,7 +2973,7 @@ function scrollView() {
 }
 
 // Takes date and returns shorter readable time
-function generateShortTime(date) {
+function generateTimeStamp(date, full) {
   var newDate = new Date(date);
 
   // Splitting of date is a fix for NaN on Android 2.*
@@ -2977,6 +2989,14 @@ function generateShortTime(date) {
   var minutes = (newDate.getMinutes() < 10 ? '0' : '') + newDate.getMinutes();
   var hours = (newDate.getHours() < 10 ? '0' : '') + newDate.getHours();
 
+  if (full) {
+    var month = ((newDate.getMonth() + 1) < 10 ?
+                 '0' : '') + (newDate.getMonth() + 1);
+    var day = (newDate.getDate() < 10 ? '0' : '') + newDate.getDate();
+
+    return hours + ':' + minutes + ' ' + day + '/' + month + ' ';
+  }
+
   return hours + ':' + minutes + ' ';
 }
 
@@ -2985,7 +3005,7 @@ function generateFullText(sentText, message) {
   var text = '';
 
   if (message.time && !message.skipTime) {
-    text += generateShortTime(message.time);
+    text += generateTimeStamp(message.time);
   }
   if (message.roomName) {
     text += message.roomName !== platformCmds.getLocalVal('room') ?
@@ -3074,7 +3094,12 @@ function convertBroadcastRoom(roomName) {
 }
 
 function printWelcomeMsg() {
-  platformCmds.queueMessage(JSON.parse(JSON.stringify(logo)));
+  var logoToPrint = logo !== null ?
+                    JSON.parse(JSON.stringify(logo)) : { text : [''] };
+  var razLogoToPrint = razLogo !== null ?
+                       JSON.parse(JSON.stringify(razLogo)) : { text : [''] };
+
+  platformCmds.queueMessage(logoToPrint);
   platformCmds.queueMessage({
     text : [
       'Welcome, employee ' + platformCmds.getUser(),
@@ -3088,7 +3113,7 @@ function printWelcomeMsg() {
       'Razor1911 team. Enjoy! ##'
     ]
   });
-  platformCmds.queueMessage(JSON.parse(JSON.stringify(razLogo)));
+  platformCmds.queueMessage(razLogoToPrint);
   platformCmds.queueMessage({
     text : [
       '## This terminal has been cracked by your friendly ' +
@@ -3277,7 +3302,7 @@ function startSocketListeners() {
 
     socket.on('time', function(time) {
       platformCmds.queueMessage({
-        text : ['Time: ' + generateShortTime(time)]
+        text : ['Time: ' + generateTimeStamp(time)]
       });
     });
 
@@ -3289,25 +3314,29 @@ function startSocketListeners() {
 
         if (locationData[user].coords) {
           var userLoc = locationData[user];
-          var latitude = userLoc.coords.latitude;
-          var longitude = userLoc.coords.longitude;
+          var latitude = userLoc.coords.latitude.toFixed(6);
+          var longitude = userLoc.coords.longitude.toFixed(6);
           var heading = userLoc.coords.heading !== null ?
                         Math.round(userLoc.coords.heading) : null;
-          var accuracy = userLoc.accuracy;
+          var accuracy = userLoc.accuracy < 100 ?
+                         Math.ceil(userLoc.accuracy) : '99+';
           var text = '';
+          var mapLoc = locateOnMap(latitude, longitude);
 
           text += 'User: ' + user + '\t';
           text +=
-            'Time: ' + generateShortTime(userLoc.locTime) + '\t';
+            'Time: ' + generateTimeStamp(userLoc.locTime) + '\t';
           text += 'Location: ' +
-                  locateOnMap(latitude, longitude) + '\t';
+                  mapLoc + '\t';
 
-          text += 'Accuracy: ' + accuracy + ' meters\t';
+          if (mapLoc !== '---') {
+            text += 'Accuracy: ' + accuracy + ' meters\t';
 
-          text += 'Coordinates: ' + latitude + ', ' + longitude + '\t';
+            text += 'Coordinates: ' + latitude + ', ' + longitude + '\t';
 
-          if (heading !== null) {
-            text += 'Heading: ' + heading + ' deg.';
+            if (heading !== null) {
+              text += 'Heading: ' + heading + ' deg.';
+            }
           }
 
           platformCmds.queueMessage({ text : [text] });
@@ -3368,7 +3397,7 @@ function startSocketListeners() {
         var temperature = Math.round(weatherInst.temperature);
         var windSpeed = Math.round(weatherInst.gust);
         var precip = weatherInst.precipitation === 0 ?
-                     'Light ' : weatherInst.precipitation + 'mm ';
+                     '0.1< ' : weatherInst.precipitation + 'mm ';
         var coverage;
 
         switch (weatherInst.precipType) {
@@ -3428,8 +3457,8 @@ function startSocketListeners() {
         weatherString += 'Temperature: ' + temperature + '\xB0C\t';
         weatherString += 'Visibility: ' + weatherInst.visibility + 'km \t';
         weatherString +=
-          'Wind [ direction: ' + weatherInst.windDirection + '\xB0 ';
-        weatherString += 'speed: ' + windSpeed + 'm/s ]\t';
+          'Wind direction: ' + weatherInst.windDirection + '\xB0\t';
+        weatherString += 'Wind speed: ' + windSpeed + 'm/s\t';
         weatherString += 'Blowout risk: ' + weatherInst.thunder + '%\t';
         weatherString += 'Pollution coverage: ' + coverage + '\t';
 
