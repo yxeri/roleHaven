@@ -125,6 +125,11 @@ pre {
     max-height: 60vh;
 }
 
+#hiddenInput {
+    visibility: hidden;
+    border: 0;
+}
+
 @-webkit-keyframes blinking {
     from {
         background-color: transparent;

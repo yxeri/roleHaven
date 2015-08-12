@@ -23,7 +23,8 @@
 			</div>
 			<div id="spacer"><span>&nbsp;</span></div>
 		</div>
-
+		<!-- Required for Android 2.2. Browser will crash if there is only one input field -->
+		<input disabled="true" id="hiddenInput" />
 		<script src="/socket.io/socket.io.js"></script>
 		<!--Android 2.2 fails when using cdn-->
 		<!--<script src="https://cdn.socket.io/socket.io-1.3.5.js"></script>-->
