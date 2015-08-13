@@ -414,7 +414,9 @@ function handle(socket) {
             historyMessages.reverse();
             historyMessages.sort(messageSort);
 
-            socket.emit('multiMsg', historyMessages);
+            while (historyMessages.length) {
+              socket.emit('multiMsg', historyMessages.splice(0, 10));
+            }
           }
         });
       }

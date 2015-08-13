@@ -148,7 +148,9 @@ function handle(socket) {
                   return 0;
                 });
 
-                socket.emit('multiMsg', missedMessages);
+                while (missedMessages.length) {
+                  socket.emit('multiMsg', missedMessages.splice(0, 10));
+                }
               }
             }
           });
