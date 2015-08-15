@@ -7,7 +7,7 @@ function isTextAllowed(text) {
   return /^[a-zA-Z0-9]+$/g.test(text);
 }
 
-function handle(socket) {
+function handle(socket, io) {
   socket.on('register', function(sentUser) {
     sentUser.userName = sentUser.userName.toLowerCase();
 
@@ -184,6 +184,7 @@ function handle(socket) {
         } else {
           if (user.verified && !user.banned) {
             const authUser = user;
+            const oldSocket = io.sockets.connected[user.socketId];
 
             manager.updateUserSocketId(sentUser.userName, socket.id,
               function(err, user) {
@@ -192,6 +193,24 @@ function handle(socket) {
                     { text : ['Failed to login'] });
                 } else {
                   const rooms = authUser.rooms;
+
+                  if (oldSocket) {
+                    const oldRooms = oldSocket.rooms;
+
+                    for (let i = 1; i < oldRooms.length; i++) {
+                      if (oldRooms[i].indexOf(dbDefaults.device) < 0) {
+                        oldSocket.leave(oldRooms[i]);
+                      }
+                    }
+
+                    oldSocket.emit('logout');
+                    oldSocket.emit('message', {
+                      text : [
+                        'Your user has been logged in on another device',
+                        'You have been logged out'
+                      ]
+                    });
+                  }
 
                   rooms.push(dbDefaults.rooms.important.roomName);
                   rooms.push(dbDefaults.rooms.broadcast.roomName);
