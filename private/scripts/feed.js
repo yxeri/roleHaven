@@ -3392,7 +3392,7 @@ function startSocketListeners() {
                     time.getHours() : '0' + time.getHours();
         var day = time.getDate() > 9 ? time.getDate() : '0' + time.getDate();
         var month = time.getMonth() > 9 ?
-                    time.getMonth() : '0' + time.getMonth();
+                    (time.getMonth() + 1) : '0' + (time.getMonth() + 1);
         var precipType;
         var temperature = Math.round(weatherInst.temperature);
         var windSpeed = Math.round(weatherInst.gust);
