@@ -343,6 +343,7 @@ var validCmds = {
 
       function getCommands(group) {
         var commands = platformCmds.getCommands();
+        //TODO Change from Object.keys for compatibility with older Android
         var keys = Object.keys(commands).sort();
         var commandStrings = [];
 
@@ -1474,7 +1475,7 @@ var validCmds = {
         var cmdObj = platformCmds.getCmdHelper();
         var phrase = phrases.join(' ');
 
-        if (phrase.toLowerCase() === cmdObj.data.code) {
+        if (phrase.toUpperCase() === cmdObj.data.code) {
           platformCmds.queueMessage({ text : ['Sequence accepted'] });
           cmdObj.data.timesCracked++;
         } else {
@@ -1539,6 +1540,7 @@ var validCmds = {
       var table = document.createElement('table');
       var thead = document.createElement('thead');
       var tbody = document.createElement('tbody');
+   //TODO Change from Object.keys for compatibility with older Android
       var yKeys = Object.keys(cmdObj.yGrids);
       var xKeys = Object.keys(cmdObj.xGrids);
 
@@ -2240,6 +2242,7 @@ function generateMap() {
 }
 
 function locateOnMap(latitude, longitude) {
+  //TODO Change from Object.keys for compatibility with older Android
   var xKeys = Object.keys(mapHelper.xGrids);
   var yKeys = Object.keys(mapHelper.yGrids);
   var x;
@@ -2538,6 +2541,7 @@ function startCmdQueue() {
 function autoComplete() {
   var phrases = trimSpace(getInputText().toLowerCase()).split(' ');
   var partialCommand = phrases[0];
+  //TODO Change from Object.keys for compatibility with older Android
   var commands = Object.keys(platformCmds.getCommands());
   var matched = [];
   var sign = partialCommand.charAt(0);
@@ -3307,6 +3311,7 @@ function startSocketListeners() {
     });
 
     socket.on('locationMsg', function(locationData) {
+      //TODO Change from Object.keys for compatibility with older Android
       var locationKeys = Object.keys(locationData);
 
       for (var i = 0; i < locationKeys.length; i++) {
@@ -3365,10 +3370,8 @@ function startSocketListeners() {
 
     socket.on('updateCommands', function(commands) {
       if (commands) {
-        var cmdKeys = Object.keys(commands);
-
-        for (var i = 0; i < cmdKeys.length; i++) {
-          var newCommand = commands[cmdKeys[i]];
+        for (var i = 0; i < commands.length; i++) {
+          var newCommand = commands[i];
           var oldCommand = validCmds[newCommand.commandName];
 
           if (oldCommand) {
@@ -3597,6 +3600,15 @@ function startBoot() {
   // TODO: Move this
   if (!platformCmds.getAccessLevel()) {
     platformCmds.setAccessLevel(0);
+  }
+
+  if (!platformCmds.getUser()) {
+    platformCmds.setInputStart('RAZCMD');
+    socket.emit('updateDeviceSocketId', {
+      deviceId : platformCmds.getLocalVal('deviceId'),
+      socketId : socket.id,
+      user : 'NO_USER_LOGGED_IN'
+    });
   }
 
   socket.emit('updateId', {
