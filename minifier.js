@@ -79,12 +79,17 @@ function minifyDir(inPath, outPath, extension) {
 
 function minifyFile(filePath, outPath) {
   const extension = path.extname(filePath).substr(1);
+  let type = '';
 
   if (extension === 'html') {
     htmlMinify(filePath, outPath);
   } else if (extension === 'js') {
+    type = config.mode === 'dev' ? 'no-compress' : 'uglifyjs';
+
     nodeMinify(filePath, outPath, 'uglifyjs');
   } else if (extension === 'css') {
+    type = config.mode === 'dev' ? 'no-compress' : 'sqwish';
+
     nodeMinify(filePath, outPath, 'sqwish');
   }
 }
