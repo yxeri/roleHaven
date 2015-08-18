@@ -172,6 +172,9 @@ pre {
 
 /* PiTft */
 @media (max-height: 240px) {
+    body {
+        background: none #212e21;
+    }
 
     .feed {
         padding-left: .1em;
