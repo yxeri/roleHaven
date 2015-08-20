@@ -282,24 +282,31 @@ function handle(socket, io) {
       } else {
         const userName = currentUser.userName;
 
-        manager.updateUserOnline(userName, false, function(err, user) {
-          if (err || user === null) {
-            console.log('Failed to reset socket id', err);
-          } else {
-            const rooms = socket.rooms;
+        manager.updateUserSocketId(userName, '',
+          function(err, socketUser) {
+            if (err || socketUser === null) {
+              console.log('Failed to reset user socket ID', err);
+            } else {
+              manager.updateUserOnline(userName, false, function(err, user) {
+                if (err || user === null) {
+                  console.log('Failed to reset socket id', err);
+                } else {
+                  const rooms = socket.rooms;
 
-            for (let i = 1; i < rooms.length; i++) {
-              if (rooms[i].indexOf(dbDefaults.device) < 0) {
-                socket.leave(rooms[i]);
-              }
+                  for (let i = 1; i < rooms.length; i++) {
+                    if (rooms[i].indexOf(dbDefaults.device) < 0) {
+                      socket.leave(rooms[i]);
+                    }
+                  }
+
+                  socket.emit('logout');
+                  socket.emit('message', {
+                    text : ['You have been logged out']
+                  });
+                }
+              });
             }
-
-            socket.emit('logout');
-            socket.emit('message', {
-              text : ['You have been logged out']
-            });
-          }
-        });
+          });
       }
     });
   });

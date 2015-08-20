@@ -46,17 +46,24 @@ function handle(io) {
             'User has disconnected. Couldn\'t retrieve user name'
           );
         } else {
-          manager.setUserLastOnline(user.userName, new Date(),
-            function(err, user) {
-              if (err || user === null) {
-                console.log('Failed to set last online');
+          manager.updateUserSocketId(user.userName, '',
+            function(err, socketUser) {
+              if (err || socketUser === null) {
+                console.log('Failed to reset user socket ID', err);
               } else {
-                manager.updateUserOnline(
-                  user.userName, false, function(err, user) {
-                  if (err || user === null) {
-                    console.log('Failed to update online', err);
-                  }
-                });
+                manager.setUserLastOnline(user.userName, new Date(),
+                  function(err, user) {
+                    if (err || user === null) {
+                      console.log('Failed to set last online');
+                    } else {
+                      manager.updateUserOnline(
+                        user.userName, false, function(err, user) {
+                          if (err || user === null) {
+                            console.log('Failed to update online', err);
+                          }
+                        });
+                    }
+                  });
               }
             });
 
