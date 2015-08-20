@@ -253,8 +253,8 @@ config.commands = {
   },
   hackroom : {
     commandName : 'hackroom',
-    accessLevel : 1,
-    visibility : 1,
+    accessLevel : 2,
+    visibility : 2,
     category : 'hacking'
   },
   showmap : {
@@ -271,8 +271,8 @@ config.commands = {
   },
   chipper : {
     commandName : 'chipper',
-    accessLevel : 1,
-    visibility : 1,
+    accessLevel : 2,
+    visibility : 2,
     category : 'hacking',
     authGroup : 'hackers'
   },
