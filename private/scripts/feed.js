@@ -1376,7 +1376,7 @@ var validCmds = {
         data.timesCracked = 0;
         data.timesRequired = 3;
         data.randomizer = function(length) {
-          var randomString = '023456789abcdefghijkmnopqrstuvwxyz';
+          var randomString = '23456789abcdefghijkmnpqrstuvwxyz';
           var randomLength = randomString.length;
           var code = '';
 
@@ -1437,7 +1437,7 @@ var validCmds = {
       },
       function() {
         var cmdObj = platformCmds.getCmdHelper();
-        var timeout = 15000;
+        var timeout = 18000;
         var timerEnded = function() {
           platformCmds.queueMessage({
             text : [
@@ -1476,7 +1476,7 @@ var validCmds = {
       },
       function(phrases) {
         var cmdObj = platformCmds.getCmdHelper();
-        var phrase = phrases.join(' ');
+        var phrase = phrases.join(' ').trim();
 
         if (phrase.toUpperCase() === cmdObj.data.code) {
           platformCmds.queueMessage({ text : ['Sequence accepted'] });
