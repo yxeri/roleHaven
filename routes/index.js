@@ -215,11 +215,8 @@ function handle(io) {
       manager.updateDeviceSocketId(
         deviceId, socketId, user, function(err, device) {
         if(err || device === null) {
-          let errMsg = 'Failed to update device';
+          const errMsg = 'Failed to update device';
 
-          socket.emit('message', {
-            text : [errMsg]
-          });
           console.log(errMsg, err);
         } else {
           socket.emit('message', {

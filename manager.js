@@ -144,16 +144,36 @@ function updateDeviceAlias(deviceId, value, callback) {
 
 function updateDeviceSocketId(deviceId, socketId, user, callback) {
   const query = { deviceId : deviceId };
-  const update = { $set : { socketId : socketId, lastUser : user } };
-  const options = { upsert : true, new : true };
+  const update = { $set : {
+    socketId : socketId,
+    lastUser : user
+  } };
+  const options = { new : true };
 
   Device.findOneAndUpdate(query, update, options).lean().exec(
     function (err, device) {
       if (err) {
         console.log('Failed to update device socket Id', err);
-      }
+        callback(err, null);
+      } else if (device === null) {
+        const newDevice = new Device({
+          deviceId : deviceId,
+          socketId : socketId,
+          lastUser : user,
+          alias : deviceId
+        });
 
-      callback(err, device);
+        console.log('Saving new device');
+        newDevice.save(function(err, newDevice) {
+          if (err) {
+            console.log('Failed to save device', err);
+          }
+
+          callback(err, newDevice);
+        });
+      } else {
+        callback(err, device);
+      }
     }
   );
 }
