@@ -667,6 +667,8 @@ var validCmds = {
           socket.emit('listRooms');
         } else if (listOption === 'users') {
           socket.emit('listUsers');
+        } else if (listOption === 'devices') {
+          socket.emit('listDevices');
         } else {
           platformCmds.queueMessage({
             text : [listOption + 'is not a valid option']
@@ -676,14 +678,14 @@ var validCmds = {
         platformCmds.queueMessage({
           text : [
             'You have to input which option you want to list',
-            'Available options: users  rooms',
+            'Available options: users, rooms, devices',
             'Example: list rooms'
           ]
         });
       }
     },
     help : [
-      'Shows a list of users or rooms which you are allowed to see',
+      'Shows a list of users, rooms or devices which you are allowed to see',
       'You have to input which option you want to list'
     ],
     instructions : [
@@ -691,7 +693,8 @@ var validCmds = {
       '  list *option*',
       ' Example',
       '  list rooms',
-      '  list users'
+      '  list users',
+      '  list devices'
     ],
     accessLevel : 13,
     category : 'basic'

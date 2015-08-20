@@ -522,8 +522,9 @@ function verifyAllUsers(callback) {
 
 function getAllDevices(callback) {
   const query = {};
+  const filter = { _id : 0 };
 
-  Device.find(query).lean().exec(function(err, devices) {
+  Device.find(query, filter).lean().exec(function(err, devices) {
     if (err) {
       console.log('Failed to get all devices', err);
     }

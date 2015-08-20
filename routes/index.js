@@ -298,6 +298,43 @@ function handle(io) {
         }
       });
     });
+
+    socket.on('listDevices', function() {
+      manager.getUserById(socket.id, function(err, user) {
+        if (err || user === null) {
+          console.log('Failed to get user by id', err);
+        } else {
+          if (user.accessLevel >= 11) {
+            manager.getAllDevices(function(devErr, devices) {
+              if (devErr) {
+                console.log('Failed to get all devices', devErr);
+              } else {
+                const allDevices = [];
+
+                if (devices.length > 0) {
+                  for (let i = 0; i < devices.length; i++) {
+                    const device = devices[i];
+                    let deviceString = '';
+
+                    deviceString += 'DeviceID: ' + device.deviceId + '\t';
+                    deviceString += 'Alias: ' + device.alias;
+                    allDevices.push(deviceString);
+                  }
+
+                  socket.emit('message', {
+                    text : allDevices
+                  });
+                }
+              }
+            });
+          } else {
+            socket.emit('message', {
+              text : ['You are not allow to list devices']
+            });
+          }
+        }
+      });
+    });
   });
 
   return router;
