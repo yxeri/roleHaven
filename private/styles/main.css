@@ -118,11 +118,22 @@ pre {
     font-size: 0.2em;
 }
 
-/* For Android in full screen when the keyboard is shown */
-.fullscreenFix {
-    position: fixed;
+/*
+ * For Android in full screen when the keyboard is shown
+ * Virtual keyboard blocks part of the view
+ */
+.fullscreenKeyboardFix {
     overflow: scroll;
     max-height: 50vh;
+}
+
+/*
+ * For Android in full screen when the keyboard isn't shown.
+ * Virtual buttons blocks the input field
+ */
+.fullscreenFix {
+    overflow: scroll;
+    max-height: 93vh;
 }
 
 #hiddenInput {

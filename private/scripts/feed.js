@@ -3531,9 +3531,11 @@ function fullscreenResize(keyboardShown) {
     var background = document.getElementById('background');
 
     if (keyboardShown) {
-      background.classList.add('fullscreenFix');
-    } else {
+      background.classList.add('fullscreenKeyboardFix');
       background.classList.remove('fullscreenFix');
+    } else {
+      background.classList.remove('fullscreenKeyboardFix');
+      background.classList.add('fullscreenFix');
     }
 
     scrollView();
