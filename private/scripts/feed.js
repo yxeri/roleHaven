@@ -2653,7 +2653,176 @@ function specialKeyPress(event) {
         event.preventDefault();
 
         break;
+      // Enter
+      case 13:
+        var cmdObj = platformCmds.getCmdHelper();
 
+        keyPressed = true;
+
+        if (!cmdObj.keyboardBlocked) {
+          var commands = platformCmds.getCommands();
+          var inputText;
+          var phrases;
+
+          if (cmdObj.command !== null) {
+            inputText = getInputText();
+            phrases = trimSpace(inputText).split(' ');
+
+            if (phrases[0] === 'exit' || phrases[0] === 'abort') {
+              if (commands[cmdObj.command].abortFunc) {
+                commands[cmdObj.command].abortFunc();
+              }
+
+              platformCmds.resetCommand(true);
+            } else {
+              platformCmds.queueMessage({
+                text : [inputText]
+              });
+
+              commands[cmdObj.command].steps[cmdObj.onStep](
+                phrases, socket
+              );
+            }
+          } else {
+            inputText = getInputText();
+            phrases = trimSpace(inputText).split(' ');
+            var command = null;
+            var commandName;
+
+            if (phrases[0].length > 0) {
+              var user = platformCmds.getUser();
+              var sign = phrases[0].charAt(0);
+
+              if (commandChars.indexOf(sign) >= 0) {
+                commandName = phrases[0].slice(1).toLowerCase();
+                command = commands[commandName];
+              } else if (platformCmds.getLocalVal('mode') ===
+                         'cmd' || user === null) {
+                commandName = phrases[0].toLowerCase();
+                command = commands[commandName];
+              }
+
+              if (user !== null && command &&
+                  (isNaN(command.accessLevel) ||
+                   platformCmds.getAccessLevel() >= command.accessLevel)) {
+                var cmdUsedMsg;
+
+                // Store the command for usage with up/down arrows
+                pushCmdHistory(phrases.join(' '));
+
+                /**
+                 * Print input if the command shouldn't clear
+                 * after use
+                 */
+                if (!command.clearAfterUse) {
+                  cmdUsedMsg = {
+                    text : [
+                      getInputStart() + platformCmds.getModeText() + '$ ' +
+                      inputText
+                    ]
+                  };
+                }
+
+                /**
+                 * Print the help and instruction parts of
+                 * the command
+                 */
+                if (phrases[1] === '-help') {
+                  var helpMsg = { text : [] };
+
+                  if (command.help) {
+                    helpMsg.text =
+                      helpMsg.text.concat(command.help);
+                  }
+
+                  if (command.instructions) {
+                    helpMsg.text =
+                      helpMsg.text.concat(
+                        command.instructions
+                      );
+                  }
+
+                  if (helpMsg.text.length > 0) {
+                    platformCmds.queueMessage(helpMsg);
+                  }
+                } else {
+                  if (command.steps) {
+                    cmdObj.command = commandName;
+                    cmdObj.maxSteps =
+                      command.steps.length;
+                  }
+
+                  if (command.clearBeforeUse) {
+                    validCmds.clear.func();
+                  }
+
+                  platformCmds.queueCommand(
+                    command.func, phrases.splice(1), cmdUsedMsg);
+                  startCmdQueue();
+                }
+
+                /**
+                 * A user who is not logged in will have access
+                 * to register and login commands
+                 */
+              } else if (user === null && command &&
+                         (commandName === 'register' ||
+                          commandName === 'login')) {
+                platformCmds.queueCommand(command.func, phrases.splice(1));
+                startCmdQueue();
+                /**
+                 * User is logged in and in chat mode
+                 */
+              } else if (user !== null && platformCmds.getLocalVal('mode') ===
+                                          'chat' && phrases[0].length > 0) {
+                if (commandChars.indexOf(phrases[0].charAt(0)) < 0) {
+                  platformCmds.queueCommand(commands.msg.func, phrases);
+                  startCmdQueue();
+
+                  /**
+                   * User input commandChar but didn\'t write
+                   * a proper command
+                   */
+                } else {
+                  platformCmds.queueMessage({
+                    text : [
+                      phrases[0] + ': ' +
+                      commandFailText.text
+                    ]
+                  });
+                }
+              } else if (user === null) {
+                platformCmds.queueMessage({ text : [phrases.toString()] });
+                platformCmds.queueMessage({
+                  text : [
+                    'You must register a new user or login ' +
+                    'with an existing user',
+                    'Use command "register" or "login"',
+                    'e.g. register myname 1135',
+                    'or login myname 1135'
+                  ]
+                });
+
+                /**
+                 * Sent command was not found.
+                 * Print the failed input
+                 */
+              } else if (commandName.length > 0) {
+                platformCmds.queueMessage({
+                  text : ['- ' + phrases[0] + ': ' +
+                          commandFailText.text]
+                });
+              }
+            }
+          }
+        }
+
+        resetPrevCmdPointer();
+        clearInput();
+
+        event.preventDefault();
+
+        break;
       // Delete
       case 46:
 
@@ -2777,172 +2946,6 @@ function keyPress(event) {
     }
 
     switch (keyCode) {
-
-      // Enter
-      case 13:
-        var cmdObj = platformCmds.getCmdHelper();
-
-        keyPressed = true;
-
-        if (!cmdObj.keyboardBlocked) {
-          var commands = platformCmds.getCommands();
-          var inputText;
-          var phrases;
-
-          if (cmdObj.command !== null) {
-            inputText = getInputText();
-            phrases = trimSpace(inputText).split(' ');
-
-            if (phrases[0] === 'exit' || phrases[0] === 'abort') {
-              if (commands[cmdObj.command].abortFunc) {
-                commands[cmdObj.command].abortFunc();
-              }
-
-              platformCmds.resetCommand(true);
-            } else {
-              platformCmds.queueMessage({
-                text : [inputText]
-              });
-
-              commands[cmdObj.command].steps[cmdObj.onStep](
-                phrases, socket
-              );
-            }
-          } else {
-            inputText = getInputText();
-            phrases = trimSpace(inputText).split(' ');
-            var command = null;
-            var commandName;
-
-            if (phrases[0].length > 0) {
-              var user = platformCmds.getUser();
-              var sign = phrases[0].charAt(0);
-
-              if (commandChars.indexOf(sign) >= 0) {
-                commandName = phrases[0].slice(1).toLowerCase();
-                command = commands[commandName];
-              } else if (platformCmds.getLocalVal('mode') ===
-                         'cmd' || user === null) {
-                commandName = phrases[0].toLowerCase();
-                command = commands[commandName];
-              }
-
-              if (user !== null && command &&
-                  (isNaN(command.accessLevel) ||
-                   platformCmds.getAccessLevel() >= command.accessLevel)) {
-                var cmdUsedMsg;
-
-                // Store the command for usage with up/down arrows
-                pushCmdHistory(phrases.join(' '));
-
-                /**
-                 * Print input if the command shouldn't clear
-                 * after use
-                 */
-                if (!command.clearAfterUse) {
-                  cmdUsedMsg = {
-                    text : [
-                      getInputStart() + platformCmds.getModeText() + '$ ' +
-                      inputText
-                    ]
-                  };
-                }
-
-                /**
-                 * Print the help and instruction parts of
-                 * the command
-                 */
-                if (phrases[1] === '-help') {
-                  var helpMsg = { text : [] };
-
-                  if (command.help) {
-                    helpMsg.text =
-                      helpMsg.text.concat(command.help);
-                  }
-
-                  if (command.instructions) {
-                    helpMsg.text =
-                      helpMsg.text.concat(
-                        command.instructions
-                      );
-                  }
-
-                  if (helpMsg.text.length > 0) {
-                    platformCmds.queueMessage(helpMsg);
-                  }
-                } else {
-                  if (command.steps) {
-                    cmdObj.command = commandName;
-                    cmdObj.maxSteps =
-                      command.steps.length;
-                  }
-
-                  if (command.clearBeforeUse) {
-                    validCmds.clear.func();
-                  }
-
-                  platformCmds.queueCommand(
-                    command.func, phrases.splice(1), cmdUsedMsg);
-                  startCmdQueue();
-                }
-
-                /**
-                 * A user who is not logged in will have access
-                 * to register and login commands
-                 */
-              } else if (user === null && command &&
-                         (commandName === 'register' ||
-                          commandName === 'login')) {
-                platformCmds.queueCommand(command.func, phrases.splice(1));
-                startCmdQueue();
-              } else if (command && platformCmds.getLocalVal('mode') ===
-                         'chat' && phrases[0].length > 0) {
-                if (commandChars.indexOf(phrases[0].charAt(0)) < 0) {
-                  platformCmds.queueCommand(commands.msg.func, phrases);
-                  startCmdQueue();
-
-                  /**
-                   * User input commandChar but didn\'t write
-                   * a proper command
-                   */
-                } else {
-                  platformCmds.queueMessage({
-                    text : [
-                      phrases[0] + ': ' +
-                      commandFailText.text
-                    ]
-                  });
-                }
-              } else if (user === null) {
-                platformCmds.queueMessage({ text : [phrases.toString()] });
-                platformCmds.queueMessage({
-                  text : [
-                    'You must register a new user or login ' +
-                    'with an existing user',
-                    'Use command "register" or "login"',
-                    'e.g. register myname 1135',
-                    'or login myname 1135'
-                  ]
-                });
-
-                /**
-                 * Sent command was not found.
-                 * Print the failed input
-                 */
-              } else if (commandName.length > 0) {
-                platformCmds.queueMessage({
-                  text : ['- ' + phrases[0] + ': ' +
-                          commandFailText.text]
-                });
-              }
-            }
-          }
-        }
-
-        resetPrevCmdPointer();
-        clearInput();
-
-        break;
       default:
         var textChar = String.fromCharCode(keyCode);
 
