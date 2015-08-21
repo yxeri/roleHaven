@@ -122,7 +122,7 @@ pre {
 .fullscreenFix {
     position: fixed;
     overflow: scroll;
-    max-height: 60vh;
+    max-height: 50vh;
 }
 
 #hiddenInput {

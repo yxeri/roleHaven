@@ -2959,10 +2959,8 @@ function keyPress(event) {
     }
 
     event.preventDefault();
-    event.stopPropagation();
   } else {
     event.preventDefault();
-    event.stopPropagation();
   }
 }
 
