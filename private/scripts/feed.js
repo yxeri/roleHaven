@@ -2895,7 +2895,7 @@ function keyPress(event) {
                           commandName === 'login')) {
                 platformCmds.queueCommand(command.func, phrases.splice(1));
                 startCmdQueue();
-              } else if (platformCmds.getLocalVal('mode') ===
+              } else if (command && platformCmds.getLocalVal('mode') ===
                          'chat' && phrases[0].length > 0) {
                 if (commandChars.indexOf(phrases[0].charAt(0)) < 0) {
                   platformCmds.queueCommand(commands.msg.func, phrases);
