@@ -185,8 +185,6 @@ function handle(io) {
           for (let i = 0; i < times.length; i++) {
             const weatherRep = generateWeatherReport(times[i]);
 
-            console.log(weatherRep.time.getHours());
-
             if (weatherRep.time > now && hoursAllowed.indexOf(
                 weatherRep.time.getHours()) > -1) {
               report.push(weatherRep);
