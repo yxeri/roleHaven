@@ -472,16 +472,26 @@ function handle(socket) {
     const roomName = data.roomName.toLowerCase();
     const userName = data.userName.toLowerCase();
 
-    manager.addRoomToUser(userName, roomName, function(err) {
-      if (err) {
+    manager.getUserById(socket.id, function(err, user) {
+      if (err || user === null) {
+        console.log('Failed to get user to hack room', err);
+      } else if (user.accessLevel < 2) {
         socket.emit('message', {
-          text : ['Failed to follow the room']
+          text : ['You are not allow to use this command']
         });
       } else {
-        const room = { roomName : roomName };
+        manager.addRoomToUser(userName, roomName, function(err) {
+          if (err) {
+            socket.emit('message', {
+              text : ['Failed to follow the room']
+            });
+          } else {
+            const room = { roomName : roomName };
 
-        socket.join(roomName);
-        socket.emit('follow', room);
+            socket.join(roomName);
+            socket.emit('follow', room);
+          }
+        });
       }
     });
   });
