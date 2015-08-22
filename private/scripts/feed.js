@@ -1768,12 +1768,14 @@ var validCmds = {
             ],
             extraClass : 'importantMsg'
           });
+
+          validCmds[cmdObj.command].abortFunc();
         };
         var cmdObj = platformCmds.getCmdHelper();
 
         if (cmdObj.data.timer === undefined) {
           cmdObj.data.timer =
-            setTimeout(stopFunc, 180000, false);
+            setTimeout(stopFunc, 300000, false);
         }
 
         platformCmds.queueMessage({
@@ -1781,7 +1783,7 @@ var validCmds = {
         });
 
         cmdObj.data.printTimer = setTimeout(
-          validCmds[cmdObj.command].steps[cmdObj.onStep], 150);
+          validCmds[cmdObj.command].steps[cmdObj.onStep], 250);
       }
     ],
     abortFunc : function() {
@@ -1796,6 +1798,7 @@ var validCmds = {
           'Control has been released'
         ]
       });
+      platformCmds.resetCommand();
     },
     help : [
       'Activate chipper function',
