@@ -150,7 +150,7 @@ var razLogo = {
     '   ######      #####   ##',
     '               ###########        ##                  ' +
     '                  ###### ',
-    '                    ###############    Razor1911',
+    '                    ###############',
     '                         #####   demos - warez - honey',
     ' '
   ],
@@ -173,7 +173,7 @@ var logo = {
     ' ######      Oracle        ##       #      #############',
     '   ####     Operations     ##       #      ##     ####',
     '   ####     Center         ##       #      ##    #####',
-    '   ####      Razor1911     ##       #      ###########',
+    '   ####      Razor         ##       #      ###########',
     '########      Edition      ##       #########    ########',
     '########                   ##########      #    #########',
     ' ########                  ##      ##     ## ###########',
@@ -520,35 +520,88 @@ var validCmds = {
     category : 'advanced'
   },
   broadcast : {
-    func : function(phrases) {
-      if (phrases && phrases.length > 0) {
-        var writtenMsg = phrases.join(' ');
+    func : function() {
+      var data = {};
 
-        socket.emit('broadcastMsg', {
-          message : {
-            text : [writtenMsg],
-            user : platformCmds.getUser()
-          },
-          roomName : 'ALL'
-        });
-      } else {
-        platformCmds.queueMessage({
-          text : ['You forgot to write the message!']
-        });
-      }
+      data.text = [];
+      platformCmds.getCmdHelper().data = data;
+
+      platformCmds.queueMessage({
+        text : [
+          'Who is the broadcast from?',
+          'You can also leave it empty and just press enter'
+        ]
+      });
+      platformCmds.queueMessage({
+        text : [
+          'You can cancel out of the command by typing ' +
+          '"exit" or "abort"'
+        ]
+      });
+      platformCmds.setInputStart('broadcast');
     },
+    steps : [
+      function(phrases) {
+        if (phrases.length > 0 && phrases[0] !== '') {
+          var phrase = phrases.join(' ');
+
+          cmdHelper.data.text.push('--- BROADCAST FROM: ' + phrase + ' ---');
+        } else {
+          cmdHelper.data.text.push('--- BROADCAST ---');
+        }
+
+        platformCmds.queueMessage({
+          text : [
+            'Write a line and press enter',
+            'Press enter without any input when you are done ' +
+            'with the message'
+          ]
+        });
+        cmdHelper.onStep++;
+      },
+      function(phrases) {
+        if (phrases.length > 0 && phrases[0] !== '') {
+          var phrase = phrases.join(' ');
+
+          cmdHelper.data.text.push(phrase);
+        } else {
+          var dataText;
+
+          cmdHelper.data.text.push('--- END BROADCAST ---');
+          dataText = cmdHelper.data.text !== null ?
+                         JSON.parse(JSON.stringify(cmdHelper.data.text)) : '';
+
+          cmdHelper.onStep++;
+
+          platformCmds.queueMessage({
+            text : ['Preview of the message:']
+          });
+          platformCmds.queueMessage({
+            text : dataText
+          });
+          platformCmds.queueMessage({
+            text : ['Is this OK? "yes" to accept the message']
+          });
+        }
+      },
+      function(phrases) {
+        if (phrases.length > 0 && phrases[0].toLowerCase() === 'yes') {
+          socket.emit('broadcastMsg', cmdHelper.data);
+          platformCmds.resetCommand();
+        } else {
+          platformCmds.resetCommand(true);
+        }
+      }
+    ],
     help : [
       'Sends a message to all users in all rooms',
       'It will prepend the message with "[ALL]"'
     ],
     instructions : [
-      ' Usage:',
-      '  broadcast *message*',
-      ' Example:',
-      '  broadcast Hello!'
+      'Follow the on-screen instructions'
     ],
-    clearAfterUse : true,
     accessLevel : 13,
+    clearAfterUse : true,
     category : 'admin'
   },
   enterroom : {
@@ -991,7 +1044,7 @@ var validCmds = {
       platformCmds.queueMessage(razLogoToPrint);
       platformCmds.queueMessage({
         text : [
-          'Razor1911 proudly presents:',
+          'Razor proudly presents:',
           'Entity Hacking Access! (EHA)',
           'AAAB3NzaC1yc2EAAAADAQABAAABAQDHS//2a/B',
           'D6Rsc8OO/6wFUVDdpdAItvSCLCrc/dcJE/ybEV',
@@ -1396,7 +1449,7 @@ var validCmds = {
         // function for all commands
         platformCmds.queueMessage({
           text : [
-            'Razor1911 proudly presents:',
+            'Razor proudly presents:',
             'Room Access Hacking! (RAH)',
             '/8iybEVaC1yc2EAAAADAQABAAABAQDS//2ag4/',
             'D6Rsc8OO/6wFUVDdpdAItvSCLCrc/dcE/8iybE',
@@ -3121,14 +3174,14 @@ function printWelcomeMsg() {
       'your productivity!',
       'May you have a productive day',
       '## This terminal has been cracked by your friendly ' +
-      'Razor1911 team. Enjoy! ##'
+      'Razor team. Enjoy! ##'
     ]
   });
   platformCmds.queueMessage(razLogoToPrint);
   platformCmds.queueMessage({
     text : [
       '## This terminal has been cracked by your friendly ' +
-      'Razor1911 team. Enjoy! ##'
+      'Razor team. Enjoy! ##'
     ]
   });
 }
@@ -3362,7 +3415,7 @@ function startSocketListeners() {
           'You have been banned from the system',
           'Contact your nearest Organica IT Support ' +
           'Center for re-education',
-          '## or your nearest friendly Razor1911 member. ' +
+          '## or your nearest friendly Razor member. ' +
           'Bring a huge bribe ##'
         ],
         extraClass : 'importantMsg'

@@ -61,23 +61,18 @@ function handle(socket) {
   });
 
   socket.on('broadcastMsg', function(data) {
-    const newData = data;
+    data.time = new Date();
 
-    newData.message.time = new Date();
+    manager.addMsgToHistory('broadcast', data, function(err, history) {
+      if(err || history === null) {
+        console.log('Failed to add message to history', err);
+      } else {
+        data.roomName = 'ALL';
 
-    manager.addMsgToHistory('broadcast', newData.message,
-      function(err, history) {
-        if (err || history === null) {
-          console.log('Failed to add message to history', err);
-        } else {
-          const newMessage = newData.message;
-
-          newMessage.roomName = newData.roomName;
-
-          socket.broadcast.emit('broadcastMsg', newMessage);
-          socket.emit('message', newMessage);
-        }
-      });
+        socket.broadcast.emit('broadcastMsg', data);
+        socket.emit('message', data);
+      }
+    });
   });
 
   socket.on('createRoom', function(sentRoom) {
