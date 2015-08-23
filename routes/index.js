@@ -322,7 +322,8 @@ function handle(io) {
                     let deviceString = '';
 
                     deviceString += 'DeviceID: ' + device.deviceId + '\t';
-                    deviceString += 'Alias: ' + device.alias;
+                    deviceString += 'Alias: ' + device.alias + '\t';
+                    deviceString += 'Last user: ' + device.lastUser;
                     allDevices.push(deviceString);
                   }
 
