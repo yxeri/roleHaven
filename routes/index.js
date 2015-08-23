@@ -247,7 +247,7 @@ function handle(io) {
             if(err || device === null) {
               let errMsg = 'Failed to update device';
 
-              if (err.code === 11000) {
+              if (err && err.code === 11000) {
                 errMsg += '. Alias already exists';
               }
 
