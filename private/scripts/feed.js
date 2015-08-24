@@ -198,11 +198,11 @@ var logo = {
  * (which is set with coordinates) and max amount of X and Y grids
  */
 var mapHelper = {
-  leftLong : 17.7992307,
-  rightLong : 18.1828902,
-  topLat : 59.4463469,
-  bottomLat : 59.2818812,
-  xGridsMax : 23,
+  leftLong : 15118.61393 ,
+  rightLong : 151226.29445 ,
+  topLat : 594539.49007 ,
+  bottomLat : 594439.86055 ,
+  xGridsMax : 24,
   yGridsMax : 36,
   xSize : 0,
   ySize : 0,
@@ -2281,7 +2281,7 @@ function measureDistance(lat1, lon1, lat2, lon2) {
 }
 
 function generateMap() {
-  var letter = 'B';
+  var letter = 'A';
 
   mapHelper.xSize = (mapHelper.rightLong - mapHelper.leftLong) /
                     parseFloat(mapHelper.xGridsMax);
@@ -2290,6 +2290,14 @@ function generateMap() {
 
   for (var xGrid = 0; xGrid < mapHelper.xGridsMax; xGrid++) {
     var currentChar = String.fromCharCode(letter.charCodeAt(0) + xGrid);
+
+    //TODO Remove ugly hack necessary for BBR specific map
+    if (currentChar === 'W') {
+      currentChar = 'X';
+    } else if (currentChar === 'X') {
+      currentChar = 'Y';
+    }
+
     mapHelper.xGrids[currentChar] =
       mapHelper.leftLong + parseFloat(mapHelper.xSize * xGrid);
   }
