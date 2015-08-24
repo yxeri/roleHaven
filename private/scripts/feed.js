@@ -3391,8 +3391,8 @@ function startSocketListeners() {
           var longitude = userLoc.coords.longitude.toFixed(6);
           var heading = userLoc.coords.heading !== null ?
                         Math.round(userLoc.coords.heading) : null;
-          var accuracy = userLoc.accuracy < 100 ?
-                         Math.ceil(userLoc.accuracy) : '99+';
+          var accuracy = userLoc.accuracy < 1000 ?
+                         Math.ceil(userLoc.accuracy) : 'BAD';
           var text = '';
           var mapLoc = locateOnMap(latitude, longitude);
 
