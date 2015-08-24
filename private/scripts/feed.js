@@ -1832,7 +1832,7 @@ var validCmds = {
         }
 
         platformCmds.queueMessage({
-          text : [cmdObj.data.randomizer(39)]
+          text : [cmdObj.data.randomizer(36)]
         });
 
         cmdObj.data.printTimer = setTimeout(
