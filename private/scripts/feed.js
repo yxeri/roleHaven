@@ -3066,7 +3066,7 @@ function generateTimeStamp(date, full) {
                  '0' : '') + (newDate.getMonth() + 1);
     var day = (newDate.getDate() < 10 ? '0' : '') + newDate.getDate();
 
-    return hours + ':' + minutes + ' ' + day + '/' + month + ' ';
+    return day + '/' + month + ' ' + hours + ':' + minutes + ' ';
   }
 
   return hours + ':' + minutes + ' ';
@@ -3398,7 +3398,7 @@ function startSocketListeners() {
 
           text += 'User: ' + user + '\t';
           text +=
-            'Time: ' + generateTimeStamp(userLoc.locTime) + '\t';
+            'Time: ' + generateTimeStamp(userLoc.locTime, true) + '\t';
           text += 'Location: ' +
                   mapLoc + '\t';
 
