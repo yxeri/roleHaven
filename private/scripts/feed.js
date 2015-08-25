@@ -3062,8 +3062,8 @@ function generateTimeStamp(date, full) {
   var hours = (newDate.getHours() < 10 ? '0' : '') + newDate.getHours();
 
   if (full) {
-    var month = ((newDate.getMonth() + 1) < 10 ?
-                 '0' : '') + (newDate.getMonth() + 1);
+    var month = (newDate.getMonth() < 10 ?
+                 '0' : '') + newDate.getMonth();
     var day = (newDate.getDate() < 10 ? '0' : '') + newDate.getDate();
 
     return day + '/' + month + ' ' + hours + ':' + minutes + ' ';
@@ -3374,7 +3374,7 @@ function startSocketListeners() {
 
     socket.on('time', function(time) {
       platformCmds.queueMessage({
-        text : ['Time: ' + generateTimeStamp(time)]
+        text : ['Time: ' + generateTimeStamp(time, true)]
       });
     });
 
