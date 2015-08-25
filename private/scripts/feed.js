@@ -198,10 +198,10 @@ var logo = {
  * (which is set with coordinates) and max amount of X and Y grids
  */
 var mapHelper = {
-  leftLong : 15118.61393 ,
-  rightLong : 151226.29445 ,
-  topLat : 594539.49007 ,
-  bottomLat : 594439.86055 ,
+  leftLong : 15.1857261,
+  rightLong : 15.2045467,
+  topLat : 59.7609695,
+  bottomLat : 59.7465301,
   xGridsMax : 24,
   yGridsMax : 36,
   xSize : 0,
