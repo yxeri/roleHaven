@@ -1516,7 +1516,8 @@ var validCmds = {
           text : [
             'Activating cracking bot....',
             'Warning. Intrusion defense system activated',
-            'Time until detection: ' + (timeout / 1000) + ' seconds'
+            'Time until detection: ' + (timeout / 1000) + ' seconds',
+            'You will need 3 successful sequences to succeed'
           ]
         });
         platformCmds.setInputStart('Verify seq');
@@ -1803,6 +1804,10 @@ var validCmds = {
     help : [
       'Activate chipper function',
       'Press enter when you have retrieved confirmation from the ECU'
+    ],
+    instructions : [
+      'Follow the instructions on the screen',
+      'The chipper will shutdown and release control after 5 minutes'
     ],
     accessLevel : 13,
     category : 'hacking',
