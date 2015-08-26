@@ -993,6 +993,32 @@ function updateUserAccessLevel(userName, value, callback) {
   });
 }
 
+function updateRoomVisibility(roomName, value, callback) {
+  const query = { roomName : roomName };
+  const update = { visibility : value };
+
+  User.findOneAndUpdate(query, update).lean().exec(function(err, user) {
+    if (err) {
+      console.log('Failed to update room', err);
+    }
+
+    callback(err, user);
+  });
+}
+
+function updateRoomAccessLevel(roomName, value, callback) {
+  const query = { roomName : roomName };
+  const update = { accessLevel : value };
+
+  User.findOneAndUpdate(query, update).lean().exec(function(err, user) {
+    if (err) {
+      console.log('Failed to update room', err);
+    }
+
+    callback(err, user);
+  });
+}
+
 function updateUserPassword(userName, value, callback) {
   const query = { userName : userName };
   const update = { password : value };
@@ -1041,6 +1067,8 @@ exports.populateDbUsers = populateDbUsers;
 exports.populateDbRooms = populateDbRooms;
 exports.updateUserVisibility = updateUserVisibility;
 exports.updateUserAccessLevel = updateUserAccessLevel;
+exports.updateRoomVisibility = updateRoomVisibility;
+exports.updateRoomAccessLevel = updateRoomAccessLevel;
 exports.updateCommandVisibility = updateCommandVisibility;
 exports.updateCommandAccessLevel = updateCommandAccessLevel;
 exports.addGroupToUser = addGroupToUser;

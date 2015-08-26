@@ -317,6 +317,18 @@ config.commands = {
     accessLevel : 11,
     visibility : 11,
     category : 'admin'
+  },
+  updateroom : {
+    commandName : 'updateroom',
+    accessLevel : 11,
+    visibility : 11,
+    category : 'admin'
+  },
+  moduleraid : {
+    commandName : 'moduleraid',
+    accessLevel : 11,
+    visibility : 11,
+    category : 'admin'
   }
 };
 

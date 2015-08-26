@@ -559,6 +559,59 @@ function handle(socket) {
       historyFunc(roomName, messageFunc);
     }
   });
+
+  socket.on('updateRoom', function(data) {
+    manager.getUserById(socket.id, function(err, user) {
+      if (err || user === null) {
+        socket.emit('message', {
+          text : ['Failed to update room']
+        });
+        console.log('Failed to get user to update room', err);
+      } else {
+        if (user.accessLevel >= 11) {
+          const userName = data.user;
+          const field = data.field;
+          const value = data.value;
+          const callback = function(err, user) {
+            if(err || user === null) {
+              socket.emit('message', {
+                text : ['Failed to update room']
+              });
+              console.log('Failed to update room', err);
+            } else {
+              socket.emit('message', {
+                text : ['User has been updated']
+              });
+            }
+          };
+          let managerFunc;
+
+          switch(field) {
+            case 'visibility':
+              managerFunc = manager.updateRoomVisibility(
+                userName, value, callback);
+
+              break;
+            case 'accesslevel':
+              managerFunc = manager.updateRoomAccessLevel(
+                userName, value, callback);
+
+              break;
+            default:
+              socket.emit('message', {
+                text : ['Invalid field. Room doesn\'t have ' + field]
+              });
+
+              break;
+          }
+        } else {
+          socket.emit('message', {
+            text : ['You do not have access to this command']
+          });
+        }
+      }
+    });
+  });
 }
 
 exports.handle = handle;

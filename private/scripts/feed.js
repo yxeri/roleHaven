@@ -1589,59 +1589,6 @@ var validCmds = {
     accessLevel : 13,
     category : 'hacking'
   },
-  /*showmap : {
-    func : function() {
-      var cmdObj = platformCmds.getMapHelper();
-      var li = document.createElement('li');
-      var table = document.createElement('table');
-      var thead = document.createElement('thead');
-      var tbody = document.createElement('tbody');
-   //TODO Change from Object.keys for compatibility with older Android
-      var yKeys = Object.keys(cmdObj.yGrids);
-      var xKeys = Object.keys(cmdObj.xGrids);
-
-      // First blank td in header
-      thead.appendChild(document.createElement('td'));
-
-      for (var i = 0; i < cmdObj.yGridsMax; i++) {
-        var row = document.createElement('tr');
-
-        for (var j = 0; j < cmdObj.xGridsMax; j++) {
-          var td = document.createElement('td');
-
-          if (j === 0) {
-            var leftTd = document.createElement('td');
-            var yVal = document.createTextNode(yKeys[i]);
-
-            leftTd.appendChild(yVal);
-            row.appendChild(leftTd);
-          }
-
-          if (i === 0) {
-            var headTd = document.createElement('td');
-
-            headTd.appendChild(document.createTextNode(xKeys[j]));
-            thead.appendChild(headTd);
-          }
-
-          row.appendChild(td);
-        }
-
-        tbody.appendChild(row);
-      }
-
-      table.id = 'map';
-      table.appendChild(thead);
-      table.appendChild(tbody);
-      li.appendChild(table);
-      platformCmds.getFeed().appendChild(li);
-    },
-    help : [],
-    instructions : [],
-    clearAfterUse : true,
-    accessLevel : 13,
-    category : 'advanced'
-  },*/
   importantmsg : {
     func : function() {
       var data = {};
@@ -2010,6 +1957,38 @@ var validCmds = {
     accessLevel : 13,
     category : 'admin'
   },
+  updateroom : {
+    func : function(phrases) {
+      if(phrases.length > 2) {
+        var data = {};
+        data.user = phrases[0];
+        data.field = phrases[1];
+        data.value = phrases[2];
+
+        socket.emit('updateRoom', data);
+      } else {
+        platformCmds.queueMessage({
+          text : [
+            'You need to write a room name, field name and value',
+            'Example: updateroom room1 accesslevel 3'
+          ]
+        });
+      }
+    },
+    help : [
+      'Change fields on a room',
+      'You can change visibility, accesslevel',
+      'Valid fields: visibility, accesslevel'
+    ],
+    instructions : [
+      ' Usage:',
+      '  updateroom *room name* *field name* *value*',
+      ' Example:',
+      '  updateroom user1 accesslevel 3'
+    ],
+    accessLevel : 13,
+    category : 'admin'
+  },
   addencryptionkeys : {
     func : function() {
       var data = {};
@@ -2182,7 +2161,74 @@ var validCmds = {
     ],
     accessLevel : 13,
     category : 'admin'
-  }
+  },
+  moduleraid : {
+    func : function() {
+      var data = {};
+
+      data.text = [];
+      platformCmds.getCmdHelper().data = data;
+
+      platformCmds.queueMessage({
+        text : [
+          'Write a line and press enter',
+          'Press enter without any input when you are done ' +
+          'with the message'
+        ]
+      });
+      platformCmds.queueMessage({
+        text : [
+          'You can cancel out of the command by typing ' +
+          '"exit" or "abort"'
+        ]
+      });
+      platformCmds.setInputStart('broadcast');
+    },
+    steps : [
+      function(phrases) {
+        if (phrases.length > 0 && phrases[0] !== '') {
+          var phrase = phrases.join(' ');
+
+          cmdHelper.data.text.push(phrase);
+        } else {
+          var dataText;
+
+          dataText = cmdHelper.data.text !== null ?
+                     JSON.parse(JSON.stringify(cmdHelper.data.text)) : '';
+
+          cmdHelper.onStep++;
+
+          platformCmds.queueMessage({
+            text : ['Preview of the message:']
+          });
+          platformCmds.queueMessage({
+            text : dataText
+          });
+          platformCmds.queueMessage({
+            text : ['Is this OK? "yes" to accept the message']
+          });
+        }
+      },
+      function(phrases) {
+        if (phrases.length > 0 && phrases[0].toLowerCase() === 'yes') {
+          socket.emit('broadcastMsg', cmdHelper.data);
+          platformCmds.resetCommand();
+        } else {
+          platformCmds.resetCommand(true);
+        }
+      }
+    ],
+    help : [
+      'Sends a message to all users in all rooms',
+      'It will prepend the message with "[ALL]"'
+    ],
+    instructions : [
+      'Follow the on-screen instructions'
+    ],
+    accessLevel : 13,
+    clearAfterUse : true,
+    category : 'admin'
+  },
 };
 
 function getCmdHistory() {
