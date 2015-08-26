@@ -2176,7 +2176,7 @@ var validCmds = {
 
       platformCmds.queueMessage({
         text : [
-          'Write a line and press enter',
+          'Write a coordinate and press enter',
           'Press enter without any input when you are done ' +
           'with the message'
         ]
@@ -2187,7 +2187,7 @@ var validCmds = {
           '"exit" or "abort"'
         ]
       });
-      platformCmds.setInputStart('broadcast');
+      platformCmds.setInputStart('moduleraid');
     },
     steps : [
       function(phrases) {
@@ -2196,10 +2196,16 @@ var validCmds = {
 
           cmdHelper.data.text.push(phrase);
         } else {
-          var dataText;
+          var startText = [
+            'Seismic activity detected!',
+            'Satellite have visual confirmation of active modules',
+            'Sending Organica retrieval squads to the following coordinates:'
+          ];
+          var text = [];
 
-          dataText = cmdHelper.data.text !== null ?
-                     JSON.parse(JSON.stringify(cmdHelper.data.text)) : '';
+          cmdHelper.data.text = text.concat(startText, cmdHelper.data.text);
+          text = cmdHelper.data.text !== null ?
+                 JSON.parse(JSON.stringify(cmdHelper.data.text)) : [];
 
           cmdHelper.onStep++;
 
@@ -2207,7 +2213,8 @@ var validCmds = {
             text : ['Preview of the message:']
           });
           platformCmds.queueMessage({
-            text : dataText
+            text : text,
+            extraClass : 'importantMsg'
           });
           platformCmds.queueMessage({
             text : ['Is this OK? "yes" to accept the message']
@@ -2216,7 +2223,7 @@ var validCmds = {
       },
       function(phrases) {
         if (phrases.length > 0 && phrases[0].toLowerCase() === 'yes') {
-          socket.emit('broadcastMsg', cmdHelper.data);
+          socket.emit('importantMsg', cmdHelper.data);
           platformCmds.resetCommand();
         } else {
           platformCmds.resetCommand(true);
@@ -2224,8 +2231,8 @@ var validCmds = {
       }
     ],
     help : [
-      'Sends a message to all users in all rooms',
-      'It will prepend the message with "[ALL]"'
+      'Send a module raid message to all users',
+      'It will look like an important message'
     ],
     instructions : [
       'Follow the on-screen instructions'
