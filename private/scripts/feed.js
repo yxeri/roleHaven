@@ -1966,7 +1966,7 @@ var validCmds = {
     func : function(phrases) {
       if(phrases.length > 2) {
         var data = {};
-        data.user = phrases[0];
+        data.room = phrases[0];
         data.field = phrases[1];
         data.value = phrases[2];
 
@@ -2197,7 +2197,7 @@ var validCmds = {
           cmdHelper.data.text.push(phrase);
         } else {
           var startText = [
-            'Seismic activity detected!',
+            'Celestial activity detected!',
             'Satellite have visual confirmation of active modules',
             'Sending Organica retrieval squads to the following coordinates:'
           ];
