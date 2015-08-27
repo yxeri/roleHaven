@@ -540,6 +540,8 @@ function handle(socket) {
 
     data.time = new Date();
 
+    console.log(data.morse, data.text);
+
     if (data.device) {
       manager.getDevice(data.device, function(err, device) {
         if (err || device === null) {
@@ -569,7 +571,7 @@ function handle(socket) {
         console.log('Failed to get user to update room', err);
       } else {
         if (user.accessLevel >= 11) {
-          const userName = data.user;
+          const roomName = data.room;
           const field = data.field;
           const value = data.value;
           const callback = function(err, user) {
@@ -589,12 +591,12 @@ function handle(socket) {
           switch(field) {
             case 'visibility':
               managerFunc = manager.updateRoomVisibility(
-                userName, value, callback);
+                roomName, value, callback);
 
               break;
             case 'accesslevel':
               managerFunc = manager.updateRoomAccessLevel(
-                userName, value, callback);
+                roomName, value, callback);
 
               break;
             default:
