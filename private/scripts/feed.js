@@ -2223,6 +2223,7 @@ var validCmds = {
       },
       function(phrases) {
         if (phrases.length > 0 && phrases[0].toLowerCase() === 'yes') {
+          cmdHelper.data.morse = { local : true };
           socket.emit('importantMsg', cmdHelper.data);
           platformCmds.resetCommand();
         } else {
