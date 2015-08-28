@@ -305,6 +305,7 @@ function handle(socket, io) {
                     text : ['You have been logged out']
                   });
                   socket.join(dbDefaults.rooms.public.roomName);
+                  console.log(socket.rooms);
                 }
               });
             }
