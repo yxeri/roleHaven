@@ -78,6 +78,7 @@ function handle(socket, io) {
         if (err || user === null) {
           console.log('Failed to update Id', err);
           socket.emit('disconnectUser');
+          socket.join(dbDefaults.rooms.public.roomName);
         } else {
           const data = {};
           const allRooms = user.rooms;
