@@ -43,7 +43,12 @@ function handle(socket, io) {
             text : [
               user.userName + ' has been registered!',
               'You need to be verified by another user before ' +
-              'you can log in'
+              'you can log in',
+              'Contact your nearest Razor representative for assistance',
+              'The Razor representative for your sector is Mina',
+              'Can\'t find your representative? Get in touch with another' +
+              ' person who has' +
+              ' access and ask them to contact Mina'
             ]
           });
 
