@@ -3740,6 +3740,7 @@ function startBoot() {
       socketId : socket.id,
       user : 'NO_USER_LOGGED_IN'
     });
+    platformCmds.queueCommand(validCmds.follow.func, ['public']);
   }
 
   socket.emit('updateId', {
