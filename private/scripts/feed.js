@@ -3493,6 +3493,7 @@ function startSocketListeners() {
     socket.on('logout', function() {
       platformCmds.getCommands().clear.func();
       platformCmds.resetAllLocalVals();
+      socket.emit('followPublic');
     });
 
     socket.on('updateCommands', function(commands) {

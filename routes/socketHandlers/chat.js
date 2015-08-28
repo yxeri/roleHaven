@@ -562,6 +562,11 @@ function handle(socket) {
     }
   });
 
+  //TODO Change this, quick fix implementation
+  socket.on('followPublic', function() {
+    socket.join(dbDefaults.rooms.public.roomName);
+  });
+
   socket.on('updateRoom', function(data) {
     manager.getUserById(socket.id, function(err, user) {
       if (err || user === null) {
