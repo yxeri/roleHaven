@@ -11,7 +11,7 @@ mongoose.connect(dbPath, function(err) {
   if (err) {
     logger.sendErrorMsg(logger.ErrorCodes.db, 'Failed to connect to database', err);
   } else {
-    logger.sendErrorMsg(logger.ErrorCodes.db, 'Connection established to database');
+    logger.sendInfoMsg('Connection established to database');
   }
 });
 
@@ -893,7 +893,7 @@ function populateDbRooms(sentRooms, user) {
       logger.sendErrorMsg(logger.ErrorCodes.db,
         'PopulateDb: [failure] Failed to create room', err);
     } else {
-      logger.sendErrorMsg(logger.ErrorCodes.db, 'PopulateDb: [success] Created room');
+      logger.sendInfoMsg('PopulateDb: [success] Created room');
     }
   };
 
@@ -903,9 +903,8 @@ function populateDbRooms(sentRooms, user) {
     } else if (rooms === null || rooms.length < 3) {
       const roomKeys = Object.keys(sentRooms);
 
-      logger.sendErrorMsg(logger.ErrorCodes.db,
-        'PopulateDb: [failure] One of the main rooms are missing');
-      logger.sendErrorMsg(logger.ErrorCodes.db, 'PopulateDb: Creating rooms from defaults');
+      logger.sendErrorMsg(logger.ErrorCodes.db, 'PopulateDb: [failure] One of the main rooms are missing');
+      logger.sendInfoMsg('PopulateDb: Creating rooms from defaults');
 
       for (let i = 0; i < roomKeys.length; i++) {
         const room = sentRooms[roomKeys[i]];
@@ -913,7 +912,7 @@ function populateDbRooms(sentRooms, user) {
         createRoom(room, user, roomCallback);
       }
     } else {
-      logger.sendErrorMsg(logger.ErrorCodes.db, 'PopulateDb: [success] DB has all the main rooms');
+      logger.sendInfoMsg('PopulateDb: [success] DB has all the main rooms');
     }
   });
 }
@@ -929,14 +928,12 @@ function populateDbUsers(sentUsers) {
           logger.sendErrorMsg(logger.ErrorCodes.db,
             'PopulateDb: [failure] Failed to create user', err);
         } else {
-          logger.sendErrorMsg(logger.ErrorCodes.db,
-            'PopulateDb: [success] Created user',
-            user.userName, user.password);
+          logger.sendInfoMsg('PopulateDb: [success] Created user', user.userName, user.password);
         }
       };
 
       logger.sendErrorMsg(logger.ErrorCodes.db, 'PopulateDb: [failure] There are no users');
-      logger.sendErrorMsg(logger.ErrorCodes.db, 'PopulateDb: Creating users from defaults');
+      logger.sendInfoMsg('PopulateDb: Creating users from defaults');
 
       for (let i = 0; i < userKeys.length; i++) {
         const user = sentUsers[userKeys[i]];
@@ -944,7 +941,7 @@ function populateDbUsers(sentUsers) {
         addUser(user, callback);
       }
     } else {
-      logger.sendErrorMsg(logger.ErrorCodes.db, 'PopulateDb: [success] DB has at least one user');
+      logger.sendInfoMsg('PopulateDb: [success] DB has at least one user');
     }
   });
 }
