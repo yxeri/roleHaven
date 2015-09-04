@@ -20,7 +20,7 @@ var ErrorCodes = {
 };
 
 function sendErrorMsg(code, text, err) {
-  console.log('[ERROR]', code, text, err);
+  console.log('[ERROR]', code, text, '- Error:', err);
 }
 
 function sendSocketErrorMsg(socket, code, text) {

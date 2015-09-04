@@ -3,20 +3,21 @@
 const express = require('express');
 const socketIo = require('socket.io');
 const path = require('path');
-const logger = require('morgan');
+const morgan = require('morgan');
 const compression = require('compression');
 const fs = require('fs');
-const minifier = require('./minifier.js');
-const dbConnector = require('./databaseConnector.js');
-const config = require('./config/config.js');
-const confDefaults = require('./config/dbPopDefaults.js');
+const minifier = require('./minifier');
+const dbConnector = require('./databaseConnector');
+const config = require('./config/config');
+const confDefaults = require('./config/dbPopDefaults');
+const logger = require('./logger');
 const app = express();
 
 // TODO: This should be moved
 const eventsFunc = function(io) {
   dbConnector.getPassedEvents(function(err, events) {
     if (err) {
-      console.log('Failed to get events', err);
+      logger.sendErrorMsg(logger.ErrorCodes.general, 'Failed to get events', err);
     } else if (events.length > 1) {
       for (let i = 0; i < events.length; i++) {
 
@@ -33,7 +34,7 @@ app.set('view engine', 'html');
 app.engine('html', require('hbs').__express);
 
 app.use(compression());
-app.use(logger(config.logLevel));
+app.use(morgan(config.logLevel));
 app.use(express.static(path.join(__dirname, config.publicBase)));
 
 app.use('/', require('./routes/index')(app.io));
@@ -60,7 +61,7 @@ function watchPrivate() {
 
           minifier.minifyFile(
             fullPath, path.join(config.publicBase, filePath));
-          console.log('Event:', triggeredEvent, '. File:', fullPath);
+          logger.sendInfoMsg('Event: ' + triggeredEvent + '. File: ' + fullPath);
         });
       }
     });

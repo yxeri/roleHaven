@@ -31,7 +31,6 @@ function handle(socket) {
         const callback = function(err, command) {
           if (err || command === null) {
             logger.sendSocketErrorMsg(socket, logger.ErrorCodes.db, 'Failed to update command');
-            logger.sendErrorMsg(logger.ErrorCodes.db, 'Failed to update command', err);
           } else {
             socket.emit('message', { text : ['Command has been updated'] });
             socket.emit('updateCommands', [command]);
@@ -52,7 +51,8 @@ function handle(socket) {
 
             break;
           default:
-            logger.sendSocketErrorMsg(socket, logger.ErrorCodes.notFound, 'Invalid field. Command doesn\'t have ' + field);
+            logger.sendSocketErrorMsg(socket, logger.ErrorCodes.notFound, 'Invalid field. Command doesn\'t have ' +
+                                                                          field);
 
             break;
         }
