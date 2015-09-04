@@ -1,17 +1,17 @@
 'use strict';
 
 const mongoose = require('mongoose');
-const config = require('./config/config.js');
-const logger = require('./logger.js');
+const config = require('./config/config');
+const logger = require('./logger');
 const dbPath = 'mongodb://' +
                config.dbHost + ':' +
                config.dbPort + '/' +
                config.dbName;
 mongoose.connect(dbPath, function(err) {
   if (err) {
-    console.log('Failed to connect to database', err);
+    logger.sendErrorMsg(logger.ErrorCodes.db, 'Failed to connect to database', err);
   } else {
-    console.log('Connection established to database');
+    logger.sendErrorMsg(logger.ErrorCodes.db, 'Connection established to database');
   }
 });
 
@@ -102,11 +102,11 @@ const EncryptionKey = mongoose.model('EncryptionKey', encryptionKeySchema);
 function addEncryptionKeys(keys, callback) {
   const findCallback = function(err, foundKey, newKey) {
     if (err) {
-      console.log('Failed to find a encryption key', err);
+      logger.sendErrorMsg(logger.ErrorCodes.db, 'Failed to find an encryption key', err);
     } else if (foundKey === null) {
       newKey.save(function(err, newKey) {
         if (err) {
-          console.log('Failed to save encryption key', err);
+          logger.sendErrorMsg(logger.ErrorCodes.db, 'Failed to save encryption key', err);
         }
 
         callback(err, newKey);
@@ -135,7 +135,7 @@ function updateDeviceAlias(deviceId, value, callback) {
   Device.findOneAndUpdate(query, update, options).lean().exec(
     function (err, device) {
       if (err) {
-        console.log('Failed to update device Id', err);
+        logger.sendErrorMsg(logger.ErrorCodes.db, 'Failed to update device Id', err);
       }
 
       callback(err, device);
@@ -154,7 +154,7 @@ function updateDeviceSocketId(deviceId, socketId, user, callback) {
   Device.findOneAndUpdate(query, update, options).lean().exec(
     function (err, device) {
       if (err) {
-        console.log('Failed to update device socket Id', err);
+        logger.sendErrorMsg(logger.ErrorCodes.db, 'Failed to update device socket Id', err);
         callback(err, null);
       } else if (device === null) {
         const newDevice = new Device({
@@ -164,10 +164,9 @@ function updateDeviceSocketId(deviceId, socketId, user, callback) {
           alias : deviceId
         });
 
-        console.log('Saving new device');
         newDevice.save(function(err, newDevice) {
           if (err) {
-            console.log('Failed to save device', err);
+            logger.sendErrorMsg(logger.ErrorCodes.db, 'Failed to save device', err);
           }
 
           callback(err, newDevice);
@@ -187,7 +186,7 @@ function updateCommandVisibility(cmdName, value, callback) {
   Command.findOneAndUpdate(query, update, options).lean().exec(
     function(err, cmd) {
       if (err) {
-        console.log('Failed to update command visibility', err);
+        logger.sendErrorMsg(logger.ErrorCodes.db, 'Failed to update command visibility', err);
       }
 
       callback(err, cmd);
@@ -203,7 +202,7 @@ function updateCommandAccessLevel(cmdName, value, callback) {
   Command.findOneAndUpdate(query, update, options).lean().exec(
     function(err, cmd) {
       if (err) {
-        console.log('Failed to update command access level', err);
+        logger.sendErrorMsg(logger.ErrorCodes.db, 'Failed to update command access level', err);
       }
 
       callback(err, cmd);
@@ -217,7 +216,7 @@ function addGroupToUser(userName, group, callback) {
 
   User.findOneAndUpdate(query, update).lean().exec(function(err, user) {
     if (err) {
-      console.log('Failed to update user', err);
+      logger.sendErrorMsg(logger.ErrorCodes.db, 'Failed to update user', err);
     }
 
     callback(err, user);
@@ -227,11 +226,11 @@ function addGroupToUser(userName, group, callback) {
 function addEntities(entities, callback) {
   const findCallback = function(err, foundEntity, newEntity) {
     if (err) {
-      console.log('Failed to find an entity', err);
+      logger.sendErrorMsg(logger.ErrorCodes.db, 'Failed to find an entity', err);
     } else if (foundEntity === null) {
       newEntity.save(function(err, newEntity) {
         if (err) {
-          console.log('Failed to save entity', err);
+          logger.sendErrorMsg(logger.ErrorCodes.db, 'Failed to save entity', err);
         }
 
         callback(err, newEntity);
@@ -259,7 +258,7 @@ function unlockEntity(sentKey, sentEntityName, sentUserName, callback) {
   EncryptionKey.findOneAndUpdate(keyQuery, keyUpdate).lean().
     exec(function(err, key) {
       if (err || key === null) {
-        console.log('Failed to update key', sentKey, err);
+        logger.sendErrorMsg(logger.ErrorCodes.db, 'Failed to update key', sentKey, err);
         callback(err, null);
       } else if (key.reusable || !key.used) {
         const entityQuery = { entityName : sentEntityName };
@@ -274,14 +273,14 @@ function unlockEntity(sentKey, sentEntityName, sentUserName, callback) {
               const rollbackQuery = { key : sentKey };
               const rollbackUpdate = { used : false, usedBy : '' };
 
-              console.log('Failed to find and update entity', err);
+              logger.sendErrorMsg(logger.ErrorCodes.db, 'Failed to find and update entity', err);
 
               // Rollback
               EncryptionKey.findOneAndUpdate(
                 rollbackQuery, rollbackUpdate
               ).lean().exec(function(err) {
                   if (err) {
-                    console.log(
+                    logger.sendErrorMsg(logger.ErrorCodes.db,
                       'Failed to do a rollback on key',
                       sentKey
                     );
@@ -303,7 +302,7 @@ function getAllEntities(callback) {
 
   Entity.find({}, filter).sort(sort).lean().exec(function(err, entities) {
     if (err || entities === null) {
-      console.log('Failed to get all entities', err);
+      logger.sendErrorMsg(logger.ErrorCodes.db, 'Failed to get all entities', err);
     }
 
     callback(err, entities);
@@ -315,7 +314,7 @@ function getAllCommands(callback) {
 
   Command.find({}, filter).lean().exec(function(err, commands) {
     if (err || commands === null) {
-      console.log('Failed to get all command', err);
+      logger.sendErrorMsg(logger.ErrorCodes.db, 'Failed to get all command', err);
     }
 
     callback(err, commands);
@@ -328,7 +327,7 @@ function getEncryptionKey(sentKey, callback) {
 
   EncryptionKey.findOne(query, filter).lean().exec(function(err, key) {
     if (err) {
-      console.log('Failed to get encryption key', err);
+      logger.sendErrorMsg(logger.ErrorCodes.db, 'Failed to get encryption key', err);
     }
 
     callback(err, key);
@@ -340,14 +339,14 @@ function getUserByDevice(deviceCode, callback) {
 
   Device.findOne(query).lean().exec(function(err, device) {
     if (err || device === null) {
-      console.log('Failed to get device', err);
+      logger.sendErrorMsg(logger.ErrorCodes.db, 'Failed to get device', err);
       callback(err, null);
     } else {
       const userQuery = { socketId : device.socketId };
 
       User.findOne(userQuery).lean().exec(function(err, user) {
         if (err || user === null) {
-          console.log('Failed to get user by device', err);
+          logger.sendErrorMsg(logger.ErrorCodes.db, 'Failed to get user by device', err);
         }
 
         callback(err, user);
@@ -361,7 +360,7 @@ function getDevice(deviceCode, callback) {
 
   Device.findOne(query).lean().exec(function(err, device) {
     if (err || device === null) {
-      console.log('Failed to get device', err);
+      logger.sendErrorMsg(logger.ErrorCodes.db, 'Failed to get device', err);
     }
 
     callback(err, device);
@@ -374,7 +373,7 @@ function getUserById(sentSocketId, callback) {
 
   User.findOne(query, filter).lean().exec(function(err, user) {
     if (err) {
-      console.log('Failed to get user', err);
+      logger.sendErrorMsg(logger.ErrorCodes.db, 'Failed to get user', err);
     }
 
     callback(err, user);
@@ -388,7 +387,7 @@ function authUser(sentUserName, sentPassword, callback) {
 
   User.findOne(query).lean().exec(function(err, user) {
     if (err) {
-      console.log('Failed to login', err);
+      logger.sendErrorMsg(logger.ErrorCodes.db, 'Failed to login', err);
     }
 
     callback(err, user);
@@ -401,11 +400,11 @@ function addUser(user, callback) {
 
   User.findOne(query).lean().exec(function(err, user) {
     if (err) {
-      console.log('Failed to find user');
+      logger.sendErrorMsg(logger.ErrorCodes.db, 'Failed to find user');
     } else if (user === null) {
       newUser.save(function(err, newUser) {
         if (err) {
-          console.log('Failed to save user', err);
+          logger.sendErrorMsg(logger.ErrorCodes.db, 'Failed to save user', err);
         }
 
         callback(err, newUser);
@@ -424,7 +423,7 @@ function addMsgToHistory(sentRoomName, sentMessage, callback) {
   History.findOneAndUpdate(query, update, options).lean().exec(
     function(err, history) {
     if (err) {
-      console.log('Failed to add message to history', err);
+      logger.sendErrorMsg(logger.ErrorCodes.db, 'Failed to add message to history', err);
     }
 
     callback(err, history);
@@ -437,7 +436,7 @@ function getHistoryFromRoom(roomName, callback) {
 
   History.find(query, filter).lean().exec(function(err, history) {
     if (err) {
-      console.log('Failed to get history', err);
+      logger.sendErrorMsg(logger.ErrorCodes.db, 'Failed to get history', err);
     }
 
     callback(err, history);
@@ -450,7 +449,7 @@ function getHistoryFromRooms(rooms, callback) {
 
   History.find(query, filter).lean().exec(function(err, history) {
     if (err) {
-      console.log('Failed to retrieve all history from', rooms);
+      logger.sendErrorMsg(logger.ErrorCodes.db, 'Failed to retrieve all history from', rooms);
     }
 
     callback(err, history);
@@ -463,7 +462,7 @@ function updateUserSocketId(userName, value, callback) {
 
   User.findOneAndUpdate(query, update).lean().exec(function(err, user) {
     if (err) {
-      console.log('Failed to update user', err);
+      logger.sendErrorMsg(logger.ErrorCodes.db, 'Failed to update user', err);
     }
 
     callback(err, user);
@@ -476,7 +475,7 @@ function updateUserOnline(userName, value, callback) {
 
   User.findOneAndUpdate(query, update).lean().exec(function(err, user) {
     if (err) {
-      console.log('Failed to update user', err);
+      logger.sendErrorMsg(logger.ErrorCodes.db, 'Failed to update user', err);
     }
 
     callback(err, user);
@@ -489,7 +488,7 @@ function updateUserLocation(sentUserName, sentPosition, callback) {
 
   User.findOneAndUpdate(query, update).lean().exec(function(err) {
     if (err) {
-      console.log('Failed to update user', err);
+      logger.sendErrorMsg(logger.ErrorCodes.db, 'Failed to update user', err);
     }
 
     callback(err);
@@ -502,7 +501,7 @@ function verifyUser(sentUserName, callback) {
 
   User.findOneAndUpdate(query, newVarupdate).lean().exec(function(err, user) {
     if (err) {
-      console.log('Failed to verify user', err);
+      logger.sendErrorMsg(logger.ErrorCodes.db, 'Failed to verify user', err);
     }
 
     callback(err, user);
@@ -516,7 +515,7 @@ function verifyAllUsers(callback) {
 
   User.update(query, update, options).lean().exec(function(err) {
     if (err) {
-      console.log('Failed to verify all user', err);
+      logger.sendErrorMsg(logger.ErrorCodes.db, 'Failed to verify all user', err);
     }
 
     callback(err);
@@ -529,7 +528,7 @@ function getAllDevices(callback) {
 
   Device.find(query, filter).lean().exec(function(err, devices) {
     if (err) {
-      console.log('Failed to get all devices', err);
+      logger.sendErrorMsg(logger.ErrorCodes.db, 'Failed to get all devices', err);
     }
 
     callback(err, devices);
@@ -547,7 +546,7 @@ function authUserToRoom(sentUser, sentRoomName, sentPassword, callback) {
 
   Room.findOne(query).lean().exec(function(err, room) {
     if (err) {
-      console.log('Failed to check auth against room', err);
+      logger.sendErrorMsg(logger.ErrorCodes.db, 'Failed to check auth against room', err);
     }
 
     callback(err, room);
@@ -574,13 +573,13 @@ function createRoom(sentRoom, sentUser, callback) {
   // Checks if room already exists
   Room.findOne(query).lean().exec(function(err, room) {
     if (err) {
-      console.log('Failed to find if room already exists', err);
+      logger.sendErrorMsg(logger.ErrorCodes.db, 'Failed to find if room already exists', err);
       // Room doesn't exist in the collection, so let's add it!
     } else if (room === null) {
       // Checks if history for room already exists
       History.findOne(query).lean().exec(function(err, history) {
         if (err) {
-          console.log(
+          logger.sendErrorMsg(logger.ErrorCodes.db,
             'Failed to find if history already exists', err
           );
           // History doesn't exist in the collection, so let's
@@ -588,11 +587,11 @@ function createRoom(sentRoom, sentUser, callback) {
         } else if (history === null) {
           newHistory.save(function(err, newHistory) {
             if (err || newHistory === null) {
-              console.log('Failed to save history', err);
+              logger.sendErrorMsg(logger.ErrorCodes.db, 'Failed to save history', err);
             } else {
               newRoom.save(function(err, newRoom) {
                 if (err) {
-                  console.log(
+                  logger.sendErrorMsg(logger.ErrorCodes.db,
                     'Failed to save room', err);
                 }
 
@@ -615,7 +614,7 @@ function getAllUsers(sentUser, callback) {
 
   User.find(query, filter).sort(sort).lean().exec(function(err, users) {
     if (err) {
-      console.log('Failed to list users', err);
+      logger.sendErrorMsg(logger.ErrorCodes.db, 'Failed to list users', err);
     }
 
     callback(err, users);
@@ -628,7 +627,7 @@ function getRoom(sentRoomName, callback) {
 
   Room.findOne(query, filter).lean().exec(function(err, room) {
     if (err) {
-      console.log('Failed to get room ', sentRoomName, err);
+      logger.sendErrorMsg(logger.ErrorCodes.db, 'Failed to get room ', sentRoomName, err);
     }
 
     callback(err, room);
@@ -642,7 +641,7 @@ function getOwnedRooms(sentUser, callback) {
 
   Room.find(query, filter).sort(sort).lean().exec(function(err, rooms) {
     if (err) {
-      console.log('Failed to get owned rooms', err);
+      logger.sendErrorMsg(logger.ErrorCodes.db, 'Failed to get owned rooms', err);
     }
 
     callback(err, rooms);
@@ -656,7 +655,7 @@ function getAllRooms(sentUser, callback) {
 
   Room.find(query, filter).sort(sort).lean().exec(function(err, rooms) {
     if (err) {
-      console.log('Failed to list rooms', err);
+      logger.sendErrorMsg(logger.ErrorCodes.db, 'Failed to list rooms', err);
     }
 
     callback(err, rooms);
@@ -670,7 +669,7 @@ function getAllUserLocations(sentUser, callback) {
 
   User.find(query, filter).sort(sort).lean().exec(function(err, users) {
     if (err) {
-      console.log('Failed to get all user locations', err);
+      logger.sendErrorMsg(logger.ErrorCodes.db, 'Failed to get all user locations', err);
     }
 
     callback(err, users);
@@ -688,7 +687,7 @@ function getUserLocation(sentUser, sentUserName, callback) {
 
   User.findOne(query, filter).lean().exec(function(err, user) {
     if (err) {
-      console.log('Failed to get all user locations', err);
+      logger.sendErrorMsg(logger.ErrorCodes.db, 'Failed to get all user locations', err);
     }
 
     callback(err, user);
@@ -701,7 +700,7 @@ function addRoomToUser(sentUserName, sentRoomName, callback) {
 
   User.findOneAndUpdate(query, update).lean().exec(function(err) {
     if (err) {
-      console.log('Failed to add room to user', err);
+      logger.sendErrorMsg(logger.ErrorCodes.db, 'Failed to add room to user', err);
     }
 
     callback(err);
@@ -714,7 +713,7 @@ function removeRoomFromUser(sentUserName, sentRoomName, callback) {
 
   User.findOneAndUpdate(query, update).lean().exec(function(err, user) {
     if (err) {
-      console.log('Failed to remove room from user', err);
+      logger.sendErrorMsg(logger.ErrorCodes.db, 'Failed to remove room from user', err);
     }
 
     callback(err, user);
@@ -727,10 +726,10 @@ function setUserLastOnline(sentUserName, sentDate, callback) {
 
   User.findOneAndUpdate(query, update).lean().exec(function(err, user) {
     if (err) {
-      console.log('Failed to update last online on', sentUserName, err);
+      logger.sendErrorMsg(logger.ErrorCodes.db, 'Failed to update last online on', sentUserName, err);
     }
 
-    console.log('Updated', sentUserName, 'with', sentDate);
+    logger.sendErrorMsg(logger.ErrorCodes.db, 'Updated', sentUserName, 'with', sentDate);
 
     callback(err, user);
   });
@@ -743,7 +742,7 @@ function getUnverifiedUsers(callback) {
 
   User.find(query, filter).sort(sort).lean().exec(function(err, users) {
     if (err) {
-      console.log('Failed to get unverified users', err);
+      logger.sendErrorMsg(logger.ErrorCodes.db, 'Failed to get unverified users', err);
     }
 
     callback(err, users);
@@ -756,7 +755,7 @@ function banUser(sentUserName, callback) {
 
   User.findOneAndUpdate(query, update).lean().exec(function(err, user) {
     if (err) {
-      console.log('Failed to ban user', err);
+      logger.sendErrorMsg(logger.ErrorCodes.db, 'Failed to ban user', err);
     }
 
     callback(err, user);
@@ -769,7 +768,7 @@ function banUserFromRoom(sentUserName, sentRoomName, callback) {
 
   Room.findOneAndUpdate(query, update).lean().exec(function(err, room) {
     if (err) {
-      console.log(
+      logger.sendErrorMsg(logger.ErrorCodes.db,
         'Failed to ban user', sentUserName,
         ' from room ', sentRoomName, err
       );
@@ -785,7 +784,7 @@ function unbanUserFromRoom(sentUserName, sentRoomName, callback) {
 
   Room.findOneAndUpdate(query, update).lean().exec(function(err, room) {
     if (err) {
-      console.log(
+      logger.sendErrorMsg(logger.ErrorCodes.db,
         'Failed to unban user', sentUserName,
         ' from room ', sentRoomName, err
       );
@@ -801,7 +800,7 @@ function unbanUser(sentUserName, callback) {
 
   User.findOneAndUpdate(query, update).lean().exec(function(err, user) {
     if (err) {
-      console.log('Failed to unban user', err);
+      logger.sendErrorMsg(logger.ErrorCodes.db, 'Failed to unban user', err);
     }
 
     callback(err, user);
@@ -815,7 +814,7 @@ function getBannedUsers(callback) {
 
   User.find(query, filter).sort(sort).lean().exec(function(err, users) {
     if (err) {
-      console.log('Failed to get banned users', err);
+      logger.sendErrorMsg(logger.ErrorCodes.db, 'Failed to get banned users', err);
     }
 
     callback(err, users);
@@ -833,7 +832,7 @@ function addEvent(sentReceiverName, sentEndAt, callback) {
 
   newEvent.save(function(err, newEvent) {
     if (err) {
-      console.log('Failed to save event', err);
+      logger.sendErrorMsg(logger.ErrorCodes.db, 'Failed to save event', err);
     }
 
     callback(err, newEvent);
@@ -847,7 +846,7 @@ function getPassedEvents(callback) {
 
   SchedEvent.find(query, filter).lean().exec(function(err, events) {
     if (err) {
-      console.log('Failed to trigger events', err);
+      logger.sendErrorMsg(logger.ErrorCodes.db, 'Failed to trigger events', err);
     }
 
     callback(err, events);
@@ -870,12 +869,12 @@ function removeRoom(sentRoomName, sentUser, callback) {
 
   Room.findOneAndRemove(query).lean().exec(function(err, room) {
     if (err) {
-      console.log('Failed to remove room', err);
+      logger.sendErrorMsg(logger.ErrorCodes.db, 'Failed to remove room', err);
     } else if (room !== null) {
       History.findOneAndRemove({ roomName : sentRoomName }).lean().exec(
         function(err, history) {
           if (err) {
-            console.log('Failed to remove history', err);
+            logger.sendErrorMsg(logger.ErrorCodes.db, 'Failed to remove history', err);
           } else if (history !== null) {
             callback(err, history);
           } else {
@@ -891,22 +890,22 @@ function removeRoom(sentRoomName, sentUser, callback) {
 function populateDbRooms(sentRooms, user) {
   const roomCallback = function(err, room) {
     if (err || room === null) {
-      console.log(
+      logger.sendErrorMsg(logger.ErrorCodes.db,
         'PopulateDb: [failure] Failed to create room', err);
     } else {
-      console.log('PopulateDb: [success] Created room');
+      logger.sendErrorMsg(logger.ErrorCodes.db, 'PopulateDb: [success] Created room');
     }
   };
 
   Room.find().lean().exec(function(err, rooms) {
     if (err) {
-      console.log('PopulateDb: [failure] Failed to find rooms', err);
+      logger.sendErrorMsg(logger.ErrorCodes.db, 'PopulateDb: [failure] Failed to find rooms', err);
     } else if (rooms === null || rooms.length < 3) {
       const roomKeys = Object.keys(sentRooms);
 
-      console.log(
+      logger.sendErrorMsg(logger.ErrorCodes.db,
         'PopulateDb: [failure] One of the main rooms are missing');
-      console.log('PopulateDb: Creating rooms from defaults');
+      logger.sendErrorMsg(logger.ErrorCodes.db, 'PopulateDb: Creating rooms from defaults');
 
       for (let i = 0; i < roomKeys.length; i++) {
         const room = sentRooms[roomKeys[i]];
@@ -914,7 +913,7 @@ function populateDbRooms(sentRooms, user) {
         createRoom(room, user, roomCallback);
       }
     } else {
-      console.log('PopulateDb: [success] DB has all the main rooms');
+      logger.sendErrorMsg(logger.ErrorCodes.db, 'PopulateDb: [success] DB has all the main rooms');
     }
   });
 }
@@ -922,22 +921,22 @@ function populateDbRooms(sentRooms, user) {
 function populateDbUsers(sentUsers) {
   User.count({}).exec(function(err, userCount) {
     if (err) {
-      console.log('PopulateDb: [failure] Failed to count users', err);
+      logger.sendErrorMsg(logger.ErrorCodes.db, 'PopulateDb: [failure] Failed to count users', err);
     } else if (userCount < 1) {
       const userKeys = Object.keys(sentUsers);
       const callback = function(err, user) {
         if (err || user === null) {
-          console.log(
+          logger.sendErrorMsg(logger.ErrorCodes.db,
             'PopulateDb: [failure] Failed to create user', err);
         } else {
-          console.log(
+          logger.sendErrorMsg(logger.ErrorCodes.db,
             'PopulateDb: [success] Created user',
             user.userName, user.password);
         }
       };
 
-      console.log('PopulateDb: [failure] There are no users');
-      console.log('PopulateDb: Creating users from defaults');
+      logger.sendErrorMsg(logger.ErrorCodes.db, 'PopulateDb: [failure] There are no users');
+      logger.sendErrorMsg(logger.ErrorCodes.db, 'PopulateDb: Creating users from defaults');
 
       for (let i = 0; i < userKeys.length; i++) {
         const user = sentUsers[userKeys[i]];
@@ -945,7 +944,7 @@ function populateDbUsers(sentUsers) {
         addUser(user, callback);
       }
     } else {
-      console.log('PopulateDb: [success] DB has at least one user');
+      logger.sendErrorMsg(logger.ErrorCodes.db, 'PopulateDb: [success] DB has at least one user');
     }
   });
 }
@@ -954,7 +953,7 @@ function populateDbCommands(sentCommands) {
   const cmdKeys = Object.keys(sentCommands);
   const callback = function(err) {
     if (err) {
-      console.log(
+      logger.sendErrorMsg(logger.ErrorCodes.db,
         'PopulateDb: [failure] Failed to update command',
         err
       );
@@ -976,7 +975,7 @@ function updateUserVisibility(userName, value, callback) {
 
   User.findOneAndUpdate(query, update).lean().exec(function(err, user) {
     if (err) {
-      console.log('Failed to update user', err);
+      logger.sendErrorMsg(logger.ErrorCodes.db, 'Failed to update user', err);
     }
 
     callback(err, user);
@@ -989,7 +988,7 @@ function updateUserAccessLevel(userName, value, callback) {
 
   User.findOneAndUpdate(query, update).lean().exec(function(err, user) {
     if (err) {
-      console.log('Failed to update user', err);
+      logger.sendErrorMsg(logger.ErrorCodes.db, 'Failed to update user', err);
     }
 
     callback(err, user);
@@ -1002,7 +1001,7 @@ function updateRoomVisibility(roomName, value, callback) {
 
   User.findOneAndUpdate(query, update).lean().exec(function(err, user) {
     if (err) {
-      console.log('Failed to update room', err);
+      logger.sendErrorMsg(logger.ErrorCodes.db, 'Failed to update room', err);
     }
 
     callback(err, user);
@@ -1015,7 +1014,7 @@ function updateRoomAccessLevel(roomName, value, callback) {
 
   User.findOneAndUpdate(query, update).lean().exec(function(err, user) {
     if (err) {
-      console.log('Failed to update room', err);
+      logger.sendErrorMsg(logger.ErrorCodes.db, 'Failed to update room', err);
     }
 
     callback(err, user);
@@ -1028,7 +1027,7 @@ function updateUserPassword(userName, value, callback) {
 
   User.findOneAndUpdate(query, update).lean().exec(function(err, user) {
     if (err) {
-      console.log('Failed to update password', err);
+      logger.sendErrorMsg(logger.ErrorCodes.db, 'Failed to update password', err);
     }
 
     callback(err, user);

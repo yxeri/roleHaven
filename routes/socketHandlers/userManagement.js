@@ -3,6 +3,7 @@
 const dbConnector = require('../../databaseConnector');
 const dbDefaults = require('../../config/dbPopDefaults');
 const manager = require('../../manager');
+const logger = require('../../logger');
 
 function isTextAllowed(text) {
   return /^[a-zA-Z0-9]+$/g.test(text);
@@ -24,8 +25,7 @@ function handle(socket, io) {
 
           dbConnector.addUser(userObj, function(err, user) {
             if (err) {
-              socket.emit('message',
-                { text : ['Failed to register user'] });
+              logger.sendSocketErrorMsg(socket, logger.ErrorCodes.db, 'Failed to register user');
             } else if (user !== null) {
               const message = {};
               const newRoom = {};
