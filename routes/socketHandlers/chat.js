@@ -1,5 +1,6 @@
 'use strict';
 
+const dbConnector = require('../../databaseConnector');
 const manager = require('../../manager');
 const dbDefaults = require('../../config/dbPopDefaults.js');
 
@@ -19,35 +20,33 @@ function isTextAllowed(text) {
 
 function handle(socket) {
   socket.on('chatMsg', function(data) {
-    const newData = data;
-    let roomName = newData.message.whisper ?
-                   newData.roomName + dbDefaults.whisper : newData.roomName;
+    manager.userAllowedCommand(socket.id, dbDefaults.commands.msg.commandName, function(allowed) {
+      if (allowed) {
+        const newData = data;
+        let roomName = newData.message.whisper ? newData.roomName + dbDefaults.whisper : newData.roomName;
 
-    newData.message.time = new Date();
+        newData.message.time = new Date();
 
-    manager.addMsgToHistory(roomName, newData.message,
-      function(err, history) {
-        if (err || history === null) {
-          console.log('Failed to add message to history', err);
-          socket.emit('message', { text : ['Failed to send the whisper'] });
-        } else {
-          const newMessage = newData.message;
+        dbConnector.addMsgToHistory(roomName, newData.message, function(err, history) {
+          if (err || history === null) {
+            console.log('Failed to add message to history', err);
+            socket.emit('message', { text : ['Failed to send the whisper'] });
+          } else {
+            const newMessage = newData.message;
 
-          newMessage.roomName = newData.roomName;
+            newMessage.roomName = newData.roomName;
 
-          socket.broadcast.to(roomName).emit('chatMsg', newMessage);
+            socket.broadcast.to(roomName).emit('chatMsg', newMessage);
 
-          if (!data.skipSelfMsg) {
-            socket.emit('message', newMessage);
-          }
+            if (!data.skipSelfMsg) {
+              socket.emit('message', newMessage);
+            }
 
-          // Save the sent message in the sender's room history too,
-          // if it is a whisper
-          if (newData.message.whisper) {
-            const whisperRoom = newData.message.user + dbDefaults.whisper;
-            manager.addMsgToHistory(whisperRoom,
-              newData.message,
-              function(err, history) {
+            // Save the sent message in the sender's room history too,
+            // if it is a whisper
+            if (newData.message.whisper) {
+              const whisperRoom = newData.message.user + dbDefaults.whisper;
+              dbConnector.addMsgToHistory(whisperRoom, newData.message, function(err, history) {
                 if (err || history === null) {
                   console.log(
                     'Failed to save whisper in senders history',
@@ -55,37 +54,39 @@ function handle(socket) {
                   );
                 }
               });
+            }
           }
-        }
-      });
+        });
+      }
+    });
   });
 
   socket.on('broadcastMsg', function(data) {
-    data.time = new Date();
+    manager.userAllowedCommand(socket.id, dbDefaults.commands.broadcast.commandName, function(allowed) {
+      if (allowed) {
+        data.time = new Date();
 
-    manager.addMsgToHistory('broadcast', data, function(err, history) {
-      if(err || history === null) {
-        console.log('Failed to add message to history', err);
-      } else {
-        data.roomName = 'ALL';
+        dbConnector.addMsgToHistory('broadcast', data, function(err, history) {
+          if (err || history === null) {
+            console.log('Failed to add message to history', err);
+          } else {
+            data.roomName = 'ALL';
 
-        socket.broadcast.emit('broadcastMsg', data);
-        socket.emit('message', data);
+            socket.broadcast.emit('broadcastMsg', data);
+            socket.emit('message', data);
+          }
+        });
       }
     });
   });
 
   socket.on('createRoom', function(sentRoom) {
-    sentRoom.roomName = sentRoom.roomName.toLowerCase();
+    manager.userAllowedCommand(socket.id, dbDefaults.commands.createroom.commandName, function(allowed, user) {
+      if (allowed) {
+        sentRoom.roomName = sentRoom.roomName.toLowerCase();
 
-    if (sentRoom && sentRoom.owner && isTextAllowed(sentRoom.roomName)) {
-      manager.getUserById(socket.id, function(err, user) {
-        if (err || user === null) {
-          socket.emit('message',
-            { text : ['Failed to create the room'] }
-          );
-        } else {
-          manager.createRoom(sentRoom, user, function(err, room) {
+        if (sentRoom && sentRoom.owner && isTextAllowed(sentRoom.roomName)) {
+          dbConnector.createRoom(sentRoom, user, function(err, room) {
             if (err) {
               socket.emit('message',
                 { text : ['Failed to create the room'] }
@@ -106,81 +107,68 @@ function handle(socket) {
               );
             }
           });
+        } else {
+          socket.emit('message', { text : ['Failed to create the room'] });
         }
-      });
-    } else {
-      socket.emit('message', { text : ['Failed to create the room'] });
-    }
+      }
+    });
   });
 
   socket.on('follow', function(data) {
-    data.roomName = data.roomName.toLowerCase();
+    manager.userAllowedCommand(socket.id, dbDefaults.commands.follow.commandName, function(allowed, user) {
+      if (allowed) {
+        data.roomName = data.roomName.toLowerCase();
 
-    if (data.password === undefined) {
-      data.password = '';
-    }
+        if (data.password === undefined) {
+          data.password = '';
+        }
+        dbConnector.authUserToRoom(user, data.roomName, data.password, function(err, room) {
+          if (err || room === null) {
+            socket.emit('message', {
+              text : [
+                'You are not authorized to join ' + data.roomName
+              ]
+            });
+          } else {
+            const roomName = room.roomName;
 
-    manager.getUserById(socket.id, function(err, user) {
-      if (err || user === null) {
-        socket.emit('message',
-          { text : ['Failed to follow ' + data.roomName] });
-      } else {
-        manager.authUserToRoom(user, data.roomName, data.password,
-          function(err, room) {
-            if (err || room === null) {
-              socket.emit('message', {
-                text : [
-                  'You are not authorized to join ' +
-                  data.roomName
-                ]
-              });
-            } else {
-              const roomName = room.roomName;
-
-              manager.addRoomToUser(user.userName, roomName,
-                function(err) {
-                  if (err) {
-                    socket.emit('message', {
-                      text : [
-                        'Failed to follow ' +
-                        data.roomName
-                      ]
-                    });
-                  } else {
-                    if (data.entered) {
-                      room.entered = true;
-                    }
-
-                    if (socket.rooms.indexOf(roomName) < 0) {
-                      socket.broadcast.to(roomName).emit(
-                        'chatMsg', {
-                          text : [
-                            user.userName + ' is following ' +
-                            roomName
-                          ],
-                          room : roomName
-                        });
-                    }
-
-                    socket.join(roomName);
-                    socket.emit('follow', room);
-                  }
+            dbConnector.addRoomToUser(user.userName, roomName, function(err) {
+              if (err) {
+                socket.emit('message', {
+                  text : [
+                    'Failed to follow ' + data.roomName
+                  ]
                 });
-            }
-          });
+              } else {
+                if (data.entered) {
+                  room.entered = true;
+                }
+
+                if (socket.rooms.indexOf(roomName) < 0) {
+                  socket.broadcast.to(roomName).emit(
+                    'chatMsg', {
+                      text : [
+                        user.userName + ' is following ' + roomName
+                      ],
+                      room : roomName
+                    });
+                }
+
+                socket.join(roomName);
+                socket.emit('follow', room);
+              }
+            });
+          }
+        });
       }
     });
   });
 
   socket.on('switchRoom', function(room) {
-    room.roomName = room.roomName.toLowerCase();
+    manager.userAllowedCommand(socket.id, dbDefaults.commands.switchroom.commandName, function(allowed) {
+      if (allowed) {
+        room.roomName = room.roomName.toLowerCase();
 
-    manager.getUserById(socket.id, function(err, user) {
-      if (err || user === null) {
-        socket.emit('message', {
-          text : ['Failed to switch to room ' + room.roomName]
-        });
-      } else {
         if (socket.rooms.indexOf(room.roomName) > 0) {
           socket.emit('follow', room);
         } else {
@@ -193,20 +181,17 @@ function handle(socket) {
   });
 
   socket.on('unfollow', function(room) {
-    const roomName = room.roomName.toLowerCase();
+    manager.userAllowedCommand(socket.id, dbDefaults.commands.unfollow.commandName, function(allowed, user) {
+      if (allowed) {
+        const roomName = room.roomName.toLowerCase();
 
-    if (socket.rooms.indexOf(roomName) > -1) {
-      manager.getUserById(socket.id, function(err, user) {
-        if (err || user === null) {
-          socket.emit('message',
-            { text : ['Failed to unfollow room'] });
-        } else {
+        if (socket.rooms.indexOf(roomName) > -1) {
           const userName = user.userName;
 
           // User should not be able to unfollow its own room
           // That room is for private messaging between users
           if (roomName !== userName) {
-            manager.removeRoomFromUser(userName, roomName,
+            dbConnector.removeRoomFromUser(userName, roomName,
               function(err, user) {
                 if (err || user === null) {
                   socket.emit('message', {
@@ -222,21 +207,19 @@ function handle(socket) {
                 }
               });
           }
+        } else {
+          socket.emit('message',
+            { text : ['You are not following ' + roomName] });
         }
-      });
-    } else {
-      socket.emit('message',
-        { text : ['You are not following ' + roomName] });
-    }
+      }
+    });
   });
 
   // Shows all available rooms
   socket.on('listRooms', function() {
-    manager.getUserById(socket.id, function(err, user) {
-      if (err || user === null) {
-        console.log('Failed to get user by id', err);
-      } else {
-        manager.getAllRooms(user, function(roomErr, rooms) {
+    manager.userAllowedCommand(socket.id, dbDefaults.commands.list.commandName, function(allowed, user) {
+      if (allowed) {
+        dbConnector.getAllRooms(user, function(roomErr, rooms) {
           if (roomErr) {
             console.log('Failed to get all room names', roomErr);
           } else {
@@ -263,11 +246,9 @@ function handle(socket) {
   });
 
   socket.on('listUsers', function() {
-    manager.getUserById(socket.id, function(err, user) {
-      if (err || user === null) {
-        console.log('Failed to get user by id', err);
-      } else {
-        manager.getAllUsers(user, function(userErr, users) {
+    manager.userAllowedCommand(socket.id, dbDefaults.commands.list.commandName, function(allowed, user) {
+      if (allowed) {
+        dbConnector.getAllUsers(user, function(userErr, users) {
           if (userErr || users === null) {
             console.log('Failed to get all users', userErr);
           } else {
@@ -323,31 +304,29 @@ function handle(socket) {
       return hiddenRooms.indexOf(room) >= 0;
     }
 
-    const rooms = [];
+    manager.userAllowedCommand(socket.id, dbDefaults.commands.myrooms.commandName, function(allowed, user) {
+      if (allowed) {
+        const rooms = [];
 
-    for (let i = 0; i < socket.rooms.length; i++) {
-      const room = socket.rooms[i];
+        for (let i = 0; i < socket.rooms.length; i++) {
+          const room = socket.rooms[i];
 
-      if (!shouldBeHidden(room)) {
-        rooms.push(room);
-      }
-    }
+          if (!shouldBeHidden(room)) {
+            rooms.push(room);
+          }
+        }
 
-    socket.emit('message', {
-      text : [
-        '------------',
-        '  My rooms',
-        '------------',
-        'You are following rooms:',
-        rooms.join('\t')
-      ]
-    });
+        socket.emit('message', {
+          text : [
+            '------------',
+            '  My rooms',
+            '------------',
+            'You are following rooms:',
+            rooms.join('\t')
+          ]
+        });
 
-    manager.getUserById(socket.id, function(err, user) {
-      if (err || user === null) {
-        console.log('Failed to get user for owned rooms', err);
-      } else {
-        manager.getOwnedRooms(user, function(err, rooms) {
+        dbConnector.getOwnedRooms(user, function(err, rooms) {
           if (err || rooms === null) {
             console.log('Failed to get owned rooms', err);
           } else {
@@ -372,21 +351,19 @@ function handle(socket) {
   });
 
   socket.on('history', function(lines) {
-    manager.getUserById(socket.id, function(err, user) {
-      if (err || user === null) {
-        console.log('Failed to get history. Couldn\'t get user', err);
-      } else {
+    manager.userAllowedCommand(socket.id, dbDefaults.commands.history.commandName, function(allowed) {
+      if (allowed) {
         const allRooms = socket.rooms;
 
         allRooms.push(dbDefaults.rooms.important.roomName);
         allRooms.push(dbDefaults.rooms.broadcast.roomName);
 
-        manager.getHistoryFromRooms(allRooms, function(err, history) {
+        dbConnector.getHistoryFromRooms(allRooms, function(err, history) {
           if (err || history === null) {
             console.log('Failed to get history', err);
           } else {
             const historyMessages = [];
-            const maxLines = lines === null || isNaN(lines) ? 60 : lines;
+            const maxLines = lines === null || isNaN(lines) ? 20 : lines;
 
             for (let i = 0; i < history.length; i++) {
               const currentHistory = history[i];
@@ -419,24 +396,28 @@ function handle(socket) {
   });
 
   socket.on('morse', function(data) {
-    if (!data.local) {
-      socket.broadcast.emit('morse', data.morseCode);
-    }
+    manager.userAllowedCommand(socket.id, dbDefaults.commands.morse.commandName, function(allowed) {
+      if (allowed) {
+        if (!data.local) {
+          socket.broadcast.emit('morse', data.morseCode);
+        }
 
-    socket.emit('morse', data.morseCode);
+        socket.emit('morse', data.morseCode);
+      }
+    });
   });
 
   socket.on('roomHackable', function(roomName) {
     const roomNameLower = roomName.toLowerCase();
 
-    manager.getUserById(socket.id, function(err, user) {
-      if(err || user === null) {
+    dbConnector.getUserById(socket.id, function(err, user) {
+      if (err || user === null) {
         socket.emit('message', {
           text : ['Something went wrong. Failed to hack room']
         });
         socket.emit('commandFail');
       } else {
-        manager.getRoom(roomNameLower, function(err, room) {
+        dbConnector.getRoom(roomNameLower, function(err, room) {
           if (err || room === null) {
             socket.emit('message', {
               text : [
@@ -447,7 +428,7 @@ function handle(socket) {
           } else {
 
             // Only rooms visible to the user can be hacked
-            if(user.accessLevel >= room.visibility) {
+            if (user.accessLevel >= room.visibility) {
               socket.emit('commandSuccess');
             } else {
               socket.emit('message', {
@@ -464,18 +445,12 @@ function handle(socket) {
   });
 
   socket.on('hackRoom', function(data) {
-    const roomName = data.roomName.toLowerCase();
-    const userName = data.userName.toLowerCase();
+    manager.userAllowedCommand(socket.id, dbDefaults.commands.hackroom.commandName, function(allowed) {
+      if (allowed) {
+        const roomName = data.roomName.toLowerCase();
+        const userName = data.userName.toLowerCase();
 
-    manager.getUserById(socket.id, function(err, user) {
-      if (err || user === null) {
-        console.log('Failed to get user to hack room', err);
-      } else if (user.accessLevel < 2) {
-        socket.emit('message', {
-          text : ['You are not allow to use this command']
-        });
-      } else {
-        manager.addRoomToUser(userName, roomName, function(err) {
+        dbConnector.addRoomToUser(userName, roomName, function(err) {
           if (err) {
             socket.emit('message', {
               text : ['Failed to follow the room']
@@ -492,15 +467,11 @@ function handle(socket) {
   });
 
   socket.on('removeRoom', function(roomName) {
-    const roomNameLower = roomName.toLowerCase();
+    manager.userAllowedCommand(socket.id, dbDefaults.commands.removeroom.commandName, function(allowed, user) {
+      if (allowed) {
+        const roomNameLower = roomName.toLowerCase();
 
-    manager.getUserById(socket.id, function(err, user) {
-      if (err || user == null) {
-        socket.emit('message', {
-          text : ['Failed to remove the room']
-        });
-      } else {
-        manager.removeRoom(roomNameLower, user, function(err, room) {
+        dbConnector.removeRoom(roomNameLower, user, function(err, room) {
           if (err || room == null) {
             socket.emit('message', {
               text : ['Failed to remove the room']
@@ -525,8 +496,8 @@ function handle(socket) {
       socket.emit('importantMsg', data);
     };
     const historyFunc = function(roomName, sendFunc) {
-      manager.addMsgToHistory(roomName, data, function(err, history) {
-        if(err || history === null) {
+      dbConnector.addMsgToHistory(roomName, data, function(err, history) {
+        if (err || history === null) {
           socket.emit('message', {
             text : [
               'Failed to send the message'
@@ -538,28 +509,30 @@ function handle(socket) {
       });
     };
 
-    data.time = new Date();
+    manager.userAllowedCommand(socket.id, dbDefaults.commands.importantmsg.commandName, function(allowed) {
+      if (allowed) {
+        data.time = new Date();
 
-    console.log(data.morse, data.text);
+        if (data.device) {
+          dbConnector.getDevice(data.device, function(err, device) {
+            if (err || device === null) {
+              socket.emit('message', {
+                text : ['Failed to send the message to the device']
+              });
+            } else {
+              const deviceId = device.deviceId;
+              const roomName = deviceId + dbDefaults.device;
 
-    if (data.device) {
-      manager.getDevice(data.device, function(err, device) {
-        if (err || device === null) {
-          socket.emit('message', {
-            text : ['Failed to send the message to the device']
+              historyFunc(roomName, deviceFunc);
+            }
           });
         } else {
-          const deviceId = device.deviceId;
-          const roomName = deviceId + dbDefaults.device;
+          const roomName = dbDefaults.rooms.important.roomName;
 
-          historyFunc(roomName, deviceFunc);
+          historyFunc(roomName, messageFunc);
         }
-      });
-    } else {
-      const roomName = dbDefaults.rooms.important.roomName;
-
-      historyFunc(roomName, messageFunc);
-    }
+      }
+    });
   });
 
   //TODO Change this, quick fix implementation
@@ -568,53 +541,42 @@ function handle(socket) {
   });
 
   socket.on('updateRoom', function(data) {
-    manager.getUserById(socket.id, function(err, user) {
-      if (err || user === null) {
-        socket.emit('message', {
-          text : ['Failed to update room']
-        });
-        console.log('Failed to get user to update room', err);
-      } else {
-        if (user.accessLevel >= 11) {
-          const roomName = data.room;
-          const field = data.field;
-          const value = data.value;
-          const callback = function(err, user) {
-            if(err || user === null) {
-              socket.emit('message', {
-                text : ['Failed to update room']
-              });
-              console.log('Failed to update room', err);
-            } else {
-              socket.emit('message', {
-                text : ['User has been updated']
-              });
-            }
-          };
-          let managerFunc;
-
-          switch(field) {
-            case 'visibility':
-              managerFunc = manager.updateRoomVisibility(
-                roomName, value, callback);
-
-              break;
-            case 'accesslevel':
-              managerFunc = manager.updateRoomAccessLevel(
-                roomName, value, callback);
-
-              break;
-            default:
-              socket.emit('message', {
-                text : ['Invalid field. Room doesn\'t have ' + field]
-              });
-
-              break;
+    manager.userAllowedCommand(socket.id, dbDefaults.commands.updateroom.commandName, function(allowed) {
+      if (allowed) {
+        const roomName = data.room;
+        const field = data.field;
+        const value = data.value;
+        const callback = function(err, room) {
+          if (err || room === null) {
+            socket.emit('message', {
+              text : ['Failed to update room']
+            });
+            console.log('Failed to update room', err);
+          } else {
+            socket.emit('message', {
+              text : ['User has been updated']
+            });
           }
-        } else {
-          socket.emit('message', {
-            text : ['You do not have access to this command']
-          });
+        };
+        let managerFunc;
+
+        switch (field) {
+          case 'visibility':
+            managerFunc = dbConnector.updateRoomVisibility(
+              roomName, value, callback);
+
+            break;
+          case 'accesslevel':
+            managerFunc = dbConnector.updateRoomAccessLevel(
+              roomName, value, callback);
+
+            break;
+          default:
+            socket.emit('message', {
+              text : ['Invalid field. Room doesn\'t have ' + field]
+            });
+
+            break;
         }
       }
     });

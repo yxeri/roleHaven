@@ -97,8 +97,8 @@ config.device = '-device';
 config.commands = {
   help : {
     commandName : 'help',
-    accessLevel : 1,
-    visibility : 1,
+    accessLevel : 0,
+    visibility : 0,
     category : 'basic'
   },
   clear : {
@@ -181,8 +181,8 @@ config.commands = {
   },
   time : {
     commandName : 'time',
-    accessLevel : 1,
-    visibility : 1,
+    accessLevel : 0,
+    visibility : 0,
     category : 'basic'
   },
   locate : {
@@ -257,12 +257,6 @@ config.commands = {
     visibility : 2,
     category : 'hacking'
   },
-  showmap : {
-    commandName : 'showmap',
-    accessLevel : 1,
-    visibility : 1,
-    category : 'advanced'
-  },
   importantmsg : {
     commandName : 'importantmsg',
     accessLevel : 11,
@@ -308,8 +302,8 @@ config.commands = {
   },
   weather : {
     commandName : 'weather',
-    accessLevel : 1,
-    visibility : 1,
+    accessLevel : 0,
+    visibility : 0,
     category : 'basic'
   },
   updatedevice : {

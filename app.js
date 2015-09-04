@@ -7,14 +7,14 @@ const logger = require('morgan');
 const compression = require('compression');
 const fs = require('fs');
 const minifier = require('./minifier.js');
-const manager = require('./manager.js');
+const dbConnector = require('./databaseConnector.js');
 const config = require('./config/config.js');
 const confDefaults = require('./config/dbPopDefaults.js');
 const app = express();
 
 // TODO: This should be moved
 const eventsFunc = function(io) {
-  manager.getPassedEvents(function(err, events) {
+  dbConnector.getPassedEvents(function(err, events) {
     if (err) {
       console.log('Failed to get events', err);
     } else if (events.length > 1) {
@@ -39,9 +39,9 @@ app.use(express.static(path.join(__dirname, config.publicBase)));
 app.use('/', require('./routes/index')(app.io));
 app.use('*', require('./routes/error')(app.io));
 
-manager.populateDbUsers(confDefaults.users);
-manager.populateDbRooms(confDefaults.rooms, confDefaults.users.superuser);
-manager.populateDbCommands(confDefaults.commands);
+dbConnector.populateDbUsers(confDefaults.users);
+dbConnector.populateDbRooms(confDefaults.rooms, confDefaults.users.superuser);
+dbConnector.populateDbCommands(confDefaults.commands);
 
 setInterval(eventsFunc, 1000, app.io);
 

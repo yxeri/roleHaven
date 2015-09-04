@@ -370,10 +370,26 @@ var validCmds = {
       }
 
       function getAll() {
+        var loginCmds = getCommands('login');
         var basicCmds = getCommands('basic');
         var advancedCmds = getCommands('advanced');
         var hackingCmds = getCommands('hacking');
         var adminCmds = getCommands('admin');
+
+        if (platformCmds.getUser() === null) {
+          platformCmds.queueMessage({
+            text : [
+              '------------------------------------------------',
+              'Use register to register a new user',
+              'Use login to log in to an existing user',
+              'You have to log in to access most of the system',
+              '------------------------------------------------'
+            ]
+          });
+          platformCmds.queueMessage({
+            text : loginCmds
+          });
+        }
 
         if (basicCmds.length > 1) {
           platformCmds.queueMessage({
@@ -400,18 +416,7 @@ var validCmds = {
         }
       }
 
-      if (platformCmds.getUser() === null) {
-        platformCmds.queueMessage({
-          text : [
-            'Use register to register a new user',
-            'Use login to log in to an existing user',
-            'You have to log in to access the rest of the system'
-          ]
-        });
-        platformCmds.queueMessage({
-          text : getCommands('login')
-        });
-      } else if (phrases === undefined || phrases.length === 0) {
+      if (phrases === undefined || phrases.length === 0) {
         var cmdChars = platformCmds.getCommandChars();
 
         platformCmds.queueMessage({
@@ -1341,16 +1346,12 @@ var validCmds = {
     },
     help : [
       'Bans a user and disconnects it from the system',
-      'The user will not be able to log on again',
-      'banuser without any additional input will show a list of all ' +
-      'banned users'
+      'The user will not be able to log on again'
     ],
     instructions : [
       ' Usage:',
-      '  banuser',
       '  banuser *username*',
       ' Example:',
-      '  banuser',
       '  banuser evil1'
     ],
     accessLevel : 13,
@@ -2825,8 +2826,7 @@ function specialKeyPress(event) {
                 command = commands[commandName];
               }
 
-              if (user !== null && command &&
-                  (isNaN(command.accessLevel) ||
+              if (command && (isNaN(command.accessLevel) ||
                    platformCmds.getAccessLevel() >= command.accessLevel)) {
                 var cmdUsedMsg;
 
@@ -2883,29 +2883,19 @@ function specialKeyPress(event) {
                     command.func, phrases.splice(1), cmdUsedMsg);
                   startCmdQueue();
                 }
-
-                /**
-                 * A user who is not logged in will have access
-                 * to register and login commands
-                 */
-              } else if (user === null && command &&
-                         (commandName === 'register' ||
-                          commandName === 'login')) {
-                platformCmds.queueCommand(command.func, phrases.splice(1));
-                startCmdQueue();
-                /**
-                 * User is logged in and in chat mode
-                 */
+              /**
+               * User is logged in and in chat mode
+               */
               } else if (user !== null && platformCmds.getLocalVal('mode') ===
                                           'chat' && phrases[0].length > 0) {
                 if (commandChars.indexOf(phrases[0].charAt(0)) < 0) {
                   platformCmds.queueCommand(commands.msg.func, phrases);
                   startCmdQueue();
 
-                  /**
-                   * User input commandChar but didn\'t write
-                   * a proper command
-                   */
+                /**
+                 * User input commandChar but didn\'t write
+                 * a proper command
+                 */
                 } else {
                   platformCmds.queueMessage({
                     text : [
@@ -2919,8 +2909,8 @@ function specialKeyPress(event) {
                 platformCmds.queueMessage({
                   text : [
                     'You must register a new user or login ' +
-                    'with an existing user',
-                    'Use command "register" or "login"',
+                    'with an existing user to gain access to more commands',
+                    'Use command register or login',
                     'e.g. register myname 1135',
                     'or login myname 1135'
                   ]
@@ -3377,7 +3367,7 @@ function startSocketListeners() {
       if (mode) {
         platformCmds.getCommands().mode.func([mode], false);
       } else {
-        platformCmds.getCommands().mode.func(['chat'], false);
+        platformCmds.getCommands().mode.func(['cmd'], false);
       }
 
       platformCmds.setAccessLevel(data.user.accessLevel);
