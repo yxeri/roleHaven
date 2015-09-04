@@ -3623,21 +3623,6 @@ function goFullScreen(element) {
   }
 }
 
-//TODO This should add classes, not rules
-function setStartingCssRules(element) {
-  var css = document.styleSheets[0];
-
-  /**
-   * iPhone 4 and 4s has trouble with the background effect
-   * It is removed to increase performance
-   */
-  if (navigator.userAgent.match(/(iPhone|iPod touch);.*CPU.*OS (6|7|8)_\d/i) &&
-      window.screen.height <= 480) {
-    css.addRule(element, 'background: none');
-    css.addRule(element, 'background-color: #212e21');
-  }
-}
-
 function fullscreenResize(keyboardShown) {
 
   /**
@@ -3705,7 +3690,6 @@ function startBoot() {
     event.preventDefault();
   });
 
-  setStartingCssRules('body');
   startSocketListeners();
   addEventListener('keypress', keyPress);
 

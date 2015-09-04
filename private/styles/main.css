@@ -5,15 +5,12 @@ html {
 body {
     margin: 0;
     color: #00FF00;
-    background-color: black;
+    background-color: #151e15;
     font-family: monospace;
     font-size: 1em;
     letter-spacing: 0.05em;
     white-space: pre-wrap;
     overflow: hidden;
-    background: -webkit-linear-gradient(#172317 50%, black 50%);
-    background: linear-gradient(#172317 50%, black 50%);
-    background-size: 100% 5px;
     -webkit-text-size-adjust: 100%;
 }
 
@@ -32,12 +29,6 @@ li {
 pre {
     padding: 0;
     margin: 0;
-}
-
-:-webkit-full-screen {
-    background: -webkit-linear-gradient(#172317 50%, black 50%);
-    background: linear-gradient(#172317 50%, black 50%);
-    background-size: 100% 5px;
 }
 
 #marker {
@@ -183,10 +174,6 @@ pre {
 
 /* PiTft */
 @media (max-height: 240px) {
-    body {
-        background: none #212e21;
-    }
-
     .feed {
         padding-left: .1em;
         padding-right: .1em;
