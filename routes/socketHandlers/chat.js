@@ -2,18 +2,9 @@
 
 const dbConnector = require('../../databaseConnector');
 const manager = require('../../manager');
-const dbDefaults = require('../../config/dbPopDefaults.js');
+const dbDefaults = require('../../config/dbPopDefaults');
+const config = require('../../config/config');
 const logger = require('../../logger');
-
-const messageSort = function(a, b) {
-  if (a.time < b.time) {
-    return -1;
-  } else if (a.time > b.time) {
-    return 1;
-  }
-
-  return 0;
-};
 
 function isTextAllowed(text) {
   return /^[a-zA-Z0-9]+$/g.test(text);
@@ -338,39 +329,9 @@ function handle(socket) {
       if (allowed) {
         const allRooms = socket.rooms;
 
-        allRooms.push(dbDefaults.rooms.important.roomName);
-        allRooms.push(dbDefaults.rooms.broadcast.roomName);
-
-        dbConnector.getHistoryFromRooms(allRooms, function(err, history) {
-          if (err || history === null) {
-            logger.sendErrorMsg(logger.ErrorCodes.db, 'Failed to get history');
-          } else {
-            const historyMessages = [];
-            const maxLines = lines === null || isNaN(lines) ? 20 : lines;
-
-            for (let i = 0; i < history.length; i++) {
-              const currentHistory = history[i];
-
-              if (currentHistory.messages.length > 0) {
-                const messages = currentHistory.messages.slice(-maxLines);
-                const messageLength = messages.length - 1;
-
-                for (let j = messageLength; j !== 0; j--) {
-                  const message = messages[j];
-
-                  message.roomName = currentHistory.roomName;
-                  historyMessages.push(message);
-                }
-              }
-            }
-
-            // Above loop pushes in everything in the reverse order.
-            historyMessages.reverse();
-            historyMessages.sort(messageSort);
-
-            while (historyMessages.length) {
-              socket.emit('multiMsg', historyMessages.splice(0, 10));
-            }
+        manager.getHistory(allRooms, lines, false, new Date(), function(historyMessages) {
+          while (historyMessages.length) {
+            socket.emit('multiMsg', historyMessages.splice(0, config.chunkLength));
           }
         });
       }

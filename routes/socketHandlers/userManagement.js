@@ -4,6 +4,7 @@ const dbConnector = require('../../databaseConnector');
 const dbDefaults = require('../../config/dbPopDefaults');
 const manager = require('../../manager');
 const logger = require('../../logger');
+const config = require('../../config/config');
 
 function isTextAllowed(text) {
   return /^[a-zA-Z0-9]+$/g.test(text);
@@ -106,61 +107,11 @@ function handle(socket, io) {
 
           socket.emit('reconnectSuccess', data);
 
-          dbConnector.getHistoryFromRooms(allRooms, function(err, history) {
-            if (err || history === null) {
-              socket.emit('message', {
-                text : [
-                  'Unable to retrieve missed chat history'
-                ]
-              });
-            } else {
-              const missedMessages = [];
-
-              for (let i = 0; i < history.length; i++) {
-                const currentHistory = history[i];
-                const messages = currentHistory.messages;
-
-                // Does the history document actually contain any messages?
-                if (messages.length > 0) {
-                  const messagesLength = messages.length - 1;
-
-                  for (let j = messagesLength; j !== 0; j--) {
-                    const message = messages[j];
-
-                    /**
-                     * Pushes only the messages that
-                     * the user hasn't already seen
-                     */
-                    if (message !== undefined && user.lastOnline <= message.time) {
-                      message.roomName = currentHistory.roomName;
-                      missedMessages.push(message);
-                    }
-                  }
-                }
-              }
-
-              if (missedMessages.length > 0) {
-                /**
-                 * Above loop pushes in everything in the
-                 * reverse order. Let's fix that
-                 */
-                missedMessages.reverse();
-                missedMessages.sort(function(a, b) {
-                  if (a.time < b.time) {
-                    return -1;
-                  } else if (a.time > b.time) {
-                    return 1;
-                  }
-
-                  return 0;
-                });
-
-                while (missedMessages.length) {
-                  socket.emit('multiMsg', missedMessages.splice(0, 10));
-                }
-              }
+          manager.getHistory(allRooms, Infinity, true, user.lastOnline, function(missedMessages) {
+            while (missedMessages.length) {
+              socket.emit('multiMsg', missedMessages.splice(0, config.chunkLength));
             }
-          });
+          })
         }
       });
   });
@@ -497,9 +448,16 @@ function handle(socket, io) {
             break;
           default:
             logger.sendSocketErrorMsg(socket, logger.ErrorCodes.general, 'Invalid field. User doesn\'t have ' + field);
+            socket.emit('message', {
+              text : ['Invalid field. User doesn\'t have ' + field]
+            });
 
             break;
         }
+      } else {
+        socket.emit('message', {
+          text : ['You do not have access to this command']
+        });
       }
     });
   });

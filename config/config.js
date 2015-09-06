@@ -37,4 +37,8 @@ config.gameLocation = {
   lon : '15.198645'
 };
 
+config.historyLines = 15;
+
+config.chunkLength = 10;
+
 module.exports = config;
