@@ -6,10 +6,6 @@ const dbDefaults = require('../../config/dbPopDefaults');
 const config = require('../../config/config');
 const logger = require('../../logger');
 
-function isTextAllowed(text) {
-  return /^[a-zA-Z0-9]+$/g.test(text);
-}
-
 function handle(socket) {
   socket.on('chatMsg', function(data) {
     manager.userAllowedCommand(socket.id, dbDefaults.commands.msg.commandName, function(allowed) {
@@ -34,8 +30,9 @@ function handle(socket) {
               socket.emit('message', newMessage);
             }
 
-            // Save the sent message in the sender's room history too,
-            // if it is a whisper
+            /*
+             * Save the sent message in the sender's room history too, if it is a whisper
+             */
             if (newData.message.whisper) {
               const whisperRoom = newData.message.user + dbDefaults.whisper;
               dbConnector.addMsgToHistory(whisperRoom, newData.message, function(err, history) {
@@ -72,29 +69,9 @@ function handle(socket) {
   socket.on('createRoom', function(sentRoom) {
     manager.userAllowedCommand(socket.id, dbDefaults.commands.createroom.commandName, function(allowed, user) {
       if (allowed) {
-        sentRoom.roomName = sentRoom.roomName.toLowerCase();
-
-        if (sentRoom && sentRoom.owner && isTextAllowed(sentRoom.roomName)) {
-          dbConnector.createRoom(sentRoom, user, function(err, room) {
-            if (err) {
-              logger.sendErrorMsg(logger.ErrorCodes.db, 'Failed to create the room');
-            } else if (room !== null) {
-              socket.emit('message',
-                { text : ['Room successfully created'] }
-              );
-            } else {
-              socket.emit('message', {
-                  text : [
-                    sentRoom.roomName + ' either already exists or you\'ve already created a room',
-                    'You can only be the owner of one room'
-                  ]
-                }
-              );
-            }
-          });
-        } else {
-          logger.sendErrorMsg(logger.ErrorCodes.db, 'Failed to create the room');
-        }
+        manager.createRoom(sentRoom, user, function(roomName) {
+          socket.join(roomName);
+        });
       }
     });
   });
@@ -346,55 +323,6 @@ function handle(socket) {
         }
 
         socket.emit('morse', data.morseCode);
-      }
-    });
-  });
-
-  socket.on('roomHackable', function(roomName) {
-    const roomNameLower = roomName.toLowerCase();
-
-    dbConnector.getUserById(socket.id, function(err, user) {
-      if (err || user === null) {
-        logger.sendSocketErrorMsg(socket, logger.ErrorCodes.db, 'Something went wrong. Failed to hack room');
-        socket.emit('commandFail');
-      } else {
-        dbConnector.getRoom(roomNameLower, function(err, room) {
-          if (err || room === null) {
-            logger.sendSocketErrorMsg(socket, logger.ErrorCodes.db, 'The room is not hackable by you or doesn\'t ' +
-                                                                    'exist');
-            socket.emit('commandFail');
-          } else {
-
-            // Only rooms visible to the user can be hacked
-            if (user.accessLevel >= room.visibility) {
-              socket.emit('commandSuccess');
-            } else {
-              logger.sendSocketErrorMsg(socket, logger.ErrorCodes.general, 'The room is not hackable by you or' +
-                                                                          ' doesn\'t exist');
-              socket.emit('commandFail');
-            }
-          }
-        });
-      }
-    });
-  });
-
-  socket.on('hackRoom', function(data) {
-    manager.userAllowedCommand(socket.id, dbDefaults.commands.hackroom.commandName, function(allowed) {
-      if (allowed) {
-        const roomName = data.roomName.toLowerCase();
-        const userName = data.userName.toLowerCase();
-
-        dbConnector.addRoomToUser(userName, roomName, function(err) {
-          if (err) {
-            logger.sendSocketErrorMsg(socket, logger.ErrorCodes.db, 'Failed to follow the room');
-          } else {
-            const room = { roomName : roomName };
-
-            socket.join(roomName);
-            socket.emit('follow', room);
-          }
-        });
       }
     });
   });

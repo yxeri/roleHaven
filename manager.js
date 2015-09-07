@@ -15,6 +15,10 @@ const messageSort = function(a, b) {
   return 0;
 };
 
+function isTextAllowed(text) {
+  return /^[a-zA-Z0-9]+$/g.test(text);
+}
+
 function getUserById(socketId, callback) {
   dbConnector.getUserById(socketId, function(err, user) {
     if (err) {
@@ -37,9 +41,11 @@ function userAllowedCommand(socketId, commandName, callback) {
   let isAllowed = false;
   const callbackFunc = function(err, user) {
     if (err) {
+      callback(false);
     } else {
       getCommand(commandName, function(err, command) {
         if (err) {
+          callback(false);
         } else {
           const userLevel = user ? user.accessLevel : 0;
           const commandLevel = command.accessLevel;
@@ -57,15 +63,13 @@ function userAllowedCommand(socketId, commandName, callback) {
   getUserById(socketId, callbackFunc);
 }
 
-function addToHistory(roomName, message, callback) {
-}
-
 /**
  *
  * @param rooms Array. History from these rooms will retrieved
  * @param lines Number. Amount of lines returned for each room
  * @param missedMsgs Boolean. If true, only messages that the user missed since being logged in last time are returned
  * @param lastOnline Date. Last time user was online. Used to determine which missed messages to send
+ * @param callback Function.
  */
 function getHistory(rooms, lines, missedMsgs, lastOnline, callback) {
   dbConnector.getHistoryFromRooms(rooms, function(err, history) {
@@ -105,6 +109,30 @@ function getHistory(rooms, lines, missedMsgs, lastOnline, callback) {
   });
 }
 
+/**
+ *
+ * @param newRoom Object.
+ * @param user Object.
+ * @param callback Function.
+ */
+function createRoom(newRoom, user, callback) {
+  newRoom.roomName = newRoom.roomName.toLowerCase();
+
+  dbConnector.createRoom(newRoom, null, function(err, room) {
+    if (err || room === null) {
+      logger.sendErrorMsg(logger.ErrorCodes.db, 'Failed to create room for user ' + user.userName, err);
+    } else {
+      dbConnector.addRoomToUser(user.userName, room.roomName, function(err) {
+        if (err) {
+          logger.sendErrorMsg(logger.ErrorCodes.db, 'Failed to add user ' + user.userName + ' to its room');
+        } else {
+          callback(room.roomName);
+        }
+      });
+    }
+  });
+}
+
 exports.userAllowedCommand = userAllowedCommand;
-exports.addToHistory = addToHistory;
 exports.getHistory = getHistory;
+exports.createRoom = createRoom;

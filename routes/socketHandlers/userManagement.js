@@ -24,6 +24,7 @@ function handle(socket, io) {
             registerDevice : sentUser.registerDevice
           };
 
+          //TODO Refactor the inner code
           dbConnector.addUser(userObj, function(err, user) {
             if (err) {
               logger.sendSocketErrorMsg(socket, logger.ErrorCodes.db, 'Failed to register user');
@@ -56,18 +57,8 @@ function handle(socket, io) {
                 ]
               });
 
-              dbConnector.createRoom(newRoom, null, function(err, room) {
-                if (err || room === null) {
-                  logger.sendErrorMsg(logger.ErrorCodes.db, 'Failed to create room for user ' + user.userName, err);
-                } else {
-                  dbConnector.addRoomToUser(user.userName, room.roomName, function(err) {
-                    if (err) {
-                      logger.sendErrorMsg(logger.ErrorCodes.db, 'Failed to add user ' + user.userName + ' to its room');
-                    } else {
-                      socket.join(room.roomName);
-                    }
-                  });
-                }
+              manager.createRoom(newRoom, user, function(roomName) {
+                socket.join(roomName);
               });
             } else {
               socket.emit('message',

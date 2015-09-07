@@ -6,6 +6,7 @@ const chat = require('./socketHandlers/chat');
 const userManagement = require('./socketHandlers/userManagement');
 const dbConnector = require('../databaseConnector');
 const commandManagement = require('./socketHandlers/commandManagement');
+const hacking = require('./socketHandlers/hacking');
 const manager = require('../manager');
 const config = require('../config/config');
 const http = require('http');
@@ -56,6 +57,7 @@ function handle(io) {
     userManagement.handle(socket, io);
     chat.handle(socket, io);
     commandManagement.handle(socket, io);
+    hacking.handle(socket, io);
     blodsband.handle(socket, io);
 
     socket.on('disconnect', function() {
