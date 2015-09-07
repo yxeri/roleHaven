@@ -37,17 +37,13 @@ function handle(socket) {
             socket.broadcast.emit('updateCommands', [command]);
           }
         };
-        let managerFunc;
-
         switch(field) {
           case 'visibility':
-            managerFunc = dbConnector.updateCommandVisibility(
-              cmdName, value, callback);
+            dbConnector.updateCommandVisibility(cmdName, value, callback);
 
             break;
           case 'accesslevel':
-            managerFunc = dbConnector.updateCommandAccessLevel(
-              cmdName, value, callback);
+            dbConnector.updateCommandAccessLevel(cmdName, value, callback);
 
             break;
           default:
