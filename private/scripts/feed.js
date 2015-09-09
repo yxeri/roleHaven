@@ -1142,7 +1142,7 @@ var validCmds = {
               'Confirmed. Encryption key has been used on ' +
               'the entity',
               entity.entityName + ' now has ' +
-              (entity.keys.length + 2) + ' unlocks',
+              (entity.keys.length + 1) + ' unlocks',
               'Thank you for using EHA'
             ]
           });

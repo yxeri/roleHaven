@@ -262,9 +262,7 @@ function unlockEntity(sentKey, sentEntityName, sentUserName, callback) {
         callback(err, null);
       } else if (key.reusable || !key.used) {
         const entityQuery = { entityName : sentEntityName };
-        const entityUpdate = {
-          $push : { keys : { $each : [key.key, key.key + '-2'] } }
-        };
+        const entityUpdate = { $push : { keys : key.key } };
 
         Entity.findOneAndUpdate(
           entityQuery, entityUpdate
