@@ -10,19 +10,22 @@ function handle(socket) {
   socket.on('roomHackable', function(roomName) {
     const roomNameLower = roomName.toLowerCase();
 
-    manager.userAllowedCommand(socket.id, dbDefaults.commands.hackroom.commandName, function(allowed, user) {
-      if (allowed) {
-        dbConnector.getRoom(roomNameLower, function(err, room) {
-          if (err || room === null || user.accessLevel < room.visibility) {
-            logger.sendSocketErrorMsg(socket, logger.ErrorCodes.db, 'Room is not hackable by you or doesn\'t exist');
-            socket.emit('commandFail');
-          } else {
-            socket.emit('commandSuccess');
-          }
-        });
-      } else {
-        hackFail('Unable to hack the room. Something is broken');
+    manager.userAllowedCommand(socket.id, dbDefaults.commands.hackroom.commandName, function(allowErr, allowed, user) {
+      if (allowErr || !allowed) {
+        logger.sendSocketErrorMsg(socket, logger.ErrorCodes.general, 'Unable to hack the room. Something is broken');
+        return;
       }
+
+      dbConnector.getRoom(roomNameLower, function(err, room) {
+        if (err || room === null || user.accessLevel < room.visibility) {
+          logger.sendSocketErrorMsg(socket, logger.ErrorCodes.db, 'Room is not hackable by you or doesn\'t exist');
+          socket.emit('commandFail');
+          return;
+        }
+
+        socket.emit('commandSuccess');
+
+      });
     });
   });
 

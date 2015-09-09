@@ -41,4 +41,6 @@ config.historyLines = 15;
 
 config.chunkLength = 10;
 
+config.userVerify = false;
+
 module.exports = config;

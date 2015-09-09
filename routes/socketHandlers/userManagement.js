@@ -12,111 +12,120 @@ function isTextAllowed(text) {
 
 function handle(socket, io) {
   socket.on('register', function(sentUser) {
-    manager.userAllowedCommand(socket.id, dbDefaults.commands.register.commandName, function(allowed) {
-      if (allowed) {
-        sentUser.userName = sentUser.userName.toLowerCase();
+    manager.userAllowedCommand(socket.id, dbDefaults.commands.register.commandName, function(allowErr, allowed) {
+      if (allowErr || !allowed || !sentUser || !isTextAllowed(sentUser.userName)) {
+        return;
+      }
 
-        if (sentUser && isTextAllowed(sentUser.userName)) {
-          const userObj = {
-            userName : sentUser.userName,
-            socketId : '',
-            password : sentUser.password,
-            registerDevice : sentUser.registerDevice
-          };
+      const userName = sentUser.userName.toLowerCase();
+      const userObj = {
+        userName : userName,
+        socketId : '',
+        password : sentUser.password,
+        registerDevice : sentUser.registerDevice
+      };
 
-          //TODO Refactor the inner code
-          dbConnector.addUser(userObj, function(err, user) {
-            if (err) {
-              logger.sendSocketErrorMsg(socket, logger.ErrorCodes.db, 'Failed to register user');
-            } else if (user !== null) {
-              const message = {};
-              const newRoom = {};
+      if (!config.userVerify) {
+        userObj.verified = true;
+      }
 
-              message.text = [
+      //TODO Refactor the inner code
+      dbConnector.addUser(userObj, function(err, user) {
+        if (err) {
+          logger.sendSocketErrorMsg(socket, logger.ErrorCodes.db, 'Failed to register user');
+          return;
+        }
+
+        if (user !== null) {
+          const message = {};
+          const newRoom = {};
+
+          message.time = new Date();
+          message.roomName = dbDefaults.rooms.admin.roomName;
+
+          newRoom.roomName = user.userName + dbDefaults.whisper;
+          newRoom.visibility = 12;
+          newRoom.accessLevel = 12;
+
+          if (config.userVerify) {
+            socket.broadcast.to(message.roomName).emit('message', {
+              text : [
                 'User ' + user.userName + ' needs to be verified'
-              ];
-              message.time = new Date();
-              message.roomName = dbDefaults.rooms.admin.roomName;
+              ]
+            });
+          }
 
-              newRoom.roomName = user.userName + dbDefaults.whisper;
-              newRoom.visibility = 12;
-              newRoom.accessLevel = 12;
+          socket.emit('message', {
+            text : [
+              user.userName + ' has been registered!'
+            ]
+          });
 
-              socket.broadcast.to(dbDefaults.rooms.admin.roomName).emit(
-                'message', message);
-              socket.emit('message', {
-                text : [
-                  user.userName + ' has been registered!',
-                  'You need to be verified by another user before ' +
-                  'you can log in',
-                  'Contact your nearest Razor representative for assistance',
-                  'The Razor representative for your sector is Mina',
-                  'Can\'t find your representative? Get in touch with another' +
-                  ' person who has' +
-                  ' access and ask them to contact Mina'
-                ]
-              });
-
-              manager.createRoom(newRoom, user, function(roomName) {
-                socket.join(roomName);
-              });
-            } else {
-              socket.emit('message',
-                { text : [sentUser.userName + ' already exists'] });
+          manager.createRoom(newRoom, user, function(createErr, roomName) {
+            if (createErr) {
+              return;
             }
+
+            socket.join(roomName);
+          });
+        } else {
+          socket.emit('message', {
+            text : [
+              userName + ' already exists'
+            ]
           });
         }
-      }
+      });
     });
   });
 
-  //TODO: This needs to be refactored. Too big
+  //TODO Rename to reflect the function
   socket.on('updateId', function(sentObject) {
-    dbConnector.updateUserSocketId(sentObject.userName, socket.id,
-      function(err, user) {
-        if (err) {
-          logger.sendErrorMsg(logger.ErrorCodes.db, 'Failed to update Id', err);
-        } else if (user === null) {
-          socket.emit('disconnectUser');
-          socket.join(dbDefaults.rooms.public.roomName);
-        } else {
-          const data = {};
-          const allRooms = user.rooms;
+    manager.updateUserSocketId(socket.id, sentObject.userName, function(idErr, user) {
+      if (idErr) {
+        return;
+      }
 
-          allRooms.push(dbDefaults.rooms.important.roomName);
-          allRooms.push(dbDefaults.rooms.broadcast.roomName);
-          allRooms.push(sentObject.device + dbDefaults.device);
+      if (user === null) {
+        socket.emit('disconnectUser');
+        socket.join(dbDefaults.rooms.public.roomName);
+      } else {
+        const data = {};
+        const allRooms = user.rooms;
 
-          data.firstConnection = sentObject.firstConnection;
-          data.user = user;
+        data.firstConnection = sentObject.firstConnection;
+        data.user = user;
 
-          for (let i = 0; i < allRooms.length; i++) {
-            const room = allRooms[i];
+        manager.joinRooms(allRooms, socket, sentObject.device);
 
-            socket.join(room);
+        socket.emit('reconnectSuccess', data);
+
+        manager.getHistory(allRooms, Infinity, true, user.lastOnline, function(histErr, missedMessages) {
+          if (histErr) {
+            return;
           }
 
-          socket.emit('reconnectSuccess', data);
+          while (missedMessages.length) {
+            socket.emit('multiMsg', missedMessages.splice(0, config.chunkLength));
+          }
 
-          manager.getHistory(allRooms, Infinity, true, user.lastOnline, function(missedMessages) {
-            while (missedMessages.length) {
-              socket.emit('multiMsg', missedMessages.splice(0, config.chunkLength));
-            }
-          })
-        }
-      });
+        });
+      }
+    });
   });
 
   socket.on('updateLocation', function(position) {
     dbConnector.getUserById(socket.id, function(err, user) {
       if (err) {
         logger.sendErrorMsg(logger.ErrorCodes.db, 'Failed to update location');
-      } else if (user === null) {
+        return;
+      }
 
-      } else {
+      if (user) {
         dbConnector.updateUserLocation(user.userName, position, function(err) {
           if (err) {
             logger.sendErrorMsg(logger.ErrorCodes.db, 'Failed to update location');
+            return;
           }
         });
       }
@@ -124,331 +133,351 @@ function handle(socket, io) {
   });
 
   socket.on('login', function(sentUser) {
-    manager.userAllowedCommand(socket.id, dbDefaults.commands.login.commandName, function(allowed) {
-      if (allowed) {
-        sentUser.userName = sentUser.userName.toLowerCase();
+    manager.userAllowedCommand(socket.id, dbDefaults.commands.login.commandName, function(allowErr, allowed) {
+      if (allowErr || !allowed || !sentUser.userName || !sentUser.password) {
+        return;
+      }
 
-        if (sentUser.userName && sentUser.password) {
-          dbConnector.authUser(sentUser.userName, sentUser.password, function(err, user) {
-            if (err || user === null) {
-              logger.sendSocketErrorMsg(socket, logger.ErrorCodes.general, 'Failed to login');
-            } else {
-              if (user.verified && !user.banned) {
-                const authUser = user;
-                const oldSocket = io.sockets.connected[user.socketId];
+      const userName = sentUser.userName.toLowerCase();
 
-                dbConnector.updateUserSocketId(sentUser.userName, socket.id,
-                  function(err, user) {
-                    if (err || user === null) {
-                      logger.sendSocketErrorMsg(socket, logger.ErrorCodes.general, 'Failed to login');
-                    } else {
-                      const rooms = authUser.rooms;
+      dbConnector.authUser(userName, sentUser.password, function(err, user) {
+        if (err || user === null) {
+          logger.sendSocketErrorMsg(socket, logger.ErrorCodes.general, 'Failed to login');
+          return;
+        }
 
-                      if (oldSocket) {
-                        const oldRooms = oldSocket.rooms;
+        if (user.verified && !user.banned) {
+          const authUser = user;
+          const oldSocket = io.sockets.connected[user.socketId];
 
-                        for (let i = 1; i < oldRooms.length; i++) {
-                          if (oldRooms[i].indexOf(dbDefaults.device) < 0) {
-                            oldSocket.leave(oldRooms[i]);
-                          }
-                        }
+          manager.updateUserSocketId(socket.id, userName, function(idErr) {
+            if (idErr) {
+              return;
+            }
 
-                        oldSocket.emit('logout');
-                        oldSocket.emit('message', {
-                          text : [
-                            'Your user has been logged in on another device',
-                            'You have been logged out'
-                          ]
-                        });
-                      }
+            const rooms = authUser.rooms;
 
-                      rooms.push(dbDefaults.rooms.important.roomName);
-                      rooms.push(dbDefaults.rooms.broadcast.roomName);
+            if (oldSocket) {
+              const oldRooms = oldSocket.rooms;
 
-                      for (let i = 0; i < rooms.length; i++) {
-                        socket.join(rooms[i]);
-                      }
-
-                      socket.emit('login', authUser);
-                    }
-                  });
-              } else {
-                if (!user.verified) {
-                  logger.sendSocketErrorMsg(socket, logger.ErrorCodes.general, 'The user has not yet been verified.' +
-                                                                             ' Failed to login');
-                } else {
-                  logger.sendSocketErrorMsg(socket, logger.ErrorCodes.general, 'The user has been banned. Failed to' +
-                                                                               ' login');
+              for (let i = 1; i < oldRooms.length; i++) {
+                if (oldRooms[i].indexOf(dbDefaults.device) < 0) {
+                  oldSocket.leave(oldRooms[i]);
                 }
               }
+
+              oldSocket.emit('logout');
+              oldSocket.emit('message', {
+                text : [
+                  'Your user has been logged in on another device',
+                  'You have been logged out'
+                ]
+              });
             }
+
+            manager.joinRooms(rooms, socket);
+
+            socket.emit('login', authUser);
           });
         } else {
-          logger.sendSocketErrorMsg(socket, logger.ErrorCodes.general, 'User name and password needed to login.' +
-                                                                       ' Failed to login');
+          if (!user.verified) {
+            logger.sendSocketErrorMsg(socket, logger.ErrorCodes.general, 'The user has not yet been verified.' +
+                                                                         ' Failed to login');
+          } else {
+            logger.sendSocketErrorMsg(socket, logger.ErrorCodes.general, 'The user has been banned. Failed to' +
+                                                                         ' login');
+          }
         }
-      }
+      });
     });
   });
 
   socket.on('changePassword', function(data) {
-    manager.userAllowedCommand(socket.id, dbDefaults.commands.login.commandName, function(allowed) {
-      if (allowed && data.oldPassword && data.newPassword && data.userName) {
+    manager.userAllowedCommand(socket.id, dbDefaults.commands.login.commandName, function(allowErr, allowed) {
+      if (allowErr || !allowed) {
+        return;
+      }
+
+      if (data.oldPassword && data.newPassword && data.userName) {
         dbConnector.authUser(data.userName, data.oldPassword, function(err, user) {
           if (err || user === null) {
             logger.sendSocketErrorMsg(socket, logger.ErrorCodes.general, 'Failed to update password');
-          } else {
-            dbConnector.updateUserPassword(user.userName, data.newPassword, function(err, user) {
-              if (err || user === null) {
-                logger.sendSocketErrorMsg(socket, logger.ErrorCodes.general, 'Failed to update password');
-              } else {
-                socket.emit('message', {
-                  text : [
-                    'Password has been successfully changed!'
-                  ]
-                });
-              }
-            });
+            return
           }
+
+          dbConnector.updateUserPassword(user.userName, data.newPassword, function(err, user) {
+            if (err || user === null) {
+              logger.sendSocketErrorMsg(socket, logger.ErrorCodes.general, 'Failed to update password');
+              return;
+            }
+
+            socket.emit('message', {
+              text : [
+                'Password has been successfully changed!'
+              ]
+            });
+          });
         });
       }
     });
   });
 
   socket.on('logout', function() {
-    manager.userAllowedCommand(socket.id, dbDefaults.commands.login.commandName, function(allowed, user) {
-      if (allowed) {
-        const userName = user.userName;
-
-        dbConnector.updateUserSocketId(userName, '', function(err, socketUser) {
-          if (err || socketUser === null) {
-            console.log('Failed to reset user socket ID', err);
-          } else {
-            dbConnector.updateUserOnline(userName, false, function(err, user) {
-              if (err || user === null) {
-                console.log('Failed to reset socket id', err);
-              } else {
-                const rooms = socket.rooms;
-
-                for (let i = 1; i < rooms.length; i++) {
-                  if (rooms[i].indexOf(dbDefaults.device) < 0) {
-                    socket.leave(rooms[i]);
-                  }
-                }
-
-                socket.emit('logout');
-                socket.emit('message', {
-                  text : ['You have been logged out']
-                });
-              }
-            });
-          }
-        });
+    manager.userAllowedCommand(socket.id, dbDefaults.commands.login.commandName, function(allowErr, allowed, user) {
+      if (allowErr || !allowed) {
+        return;
       }
+
+      const userName = user.userName;
+
+      dbConnector.updateUserSocketId(userName, '', function(err, socketUser) {
+        if (err || socketUser === null) {
+          logger.sendErrorMsg(logger.ErrorCodes.general, 'Failed to reset user socket ID', err);
+          return;
+        }
+
+        dbConnector.updateUserOnline(userName, false, function(err, user) {
+          if (err || user === null) {
+            logger.sendErrorMsg(logger.ErrorCodes.general, 'Failed to reset socket id', err);
+            return;
+          }
+
+          const rooms = socket.rooms;
+
+          for (let i = 1; i < rooms.length; i++) {
+            if (rooms[i].indexOf(dbDefaults.device) < 0) {
+              socket.leave(rooms[i]);
+            }
+          }
+
+          socket.emit('logout');
+          socket.emit('message', {
+            text : ['You have been logged out']
+          });
+        });
+      });
     });
   });
 
   socket.on('verifyUser', function(sentUserName) {
-    manager.userAllowedCommand(socket.id, dbDefaults.commands.verifyuser.commandName, function(allowed) {
-      if (allowed) {
-        const userNameLower = sentUserName.toLowerCase();
+    manager.userAllowedCommand(socket.id, dbDefaults.commands.verifyuser.commandName, function(allowErr, allowed) {
+      if (allowErr || !allowed) {
+        return;
+      }
 
-        if (userNameLower !== undefined) {
-          dbConnector.verifyUser(userNameLower, function(err, user) {
-            if (err || user === null) {
-              logger.sendSocketErrorMsg(socket, logger.ErrorCodes.general, 'Failed to verify user');
-            } else {
-              socket.emit('message', {
-                text : ['User ' + user.userName + ' has been verified']
-              });
+      const userNameLower = sentUserName.toLowerCase();
 
-              //TODO Send message to verified user
-            }
+      if (userNameLower !== undefined) {
+        dbConnector.verifyUser(userNameLower, function(err, user) {
+          if (err || user === null) {
+            logger.sendSocketErrorMsg(socket, logger.ErrorCodes.general, 'Failed to verify user');
+            return;
+          }
+
+          socket.emit('message', {
+            text : ['User ' + user.userName + ' has been verified']
           });
-        }
+
+          //TODO Send message to verified user
+
+        });
       }
     });
   });
 
   socket.on('verifyAllUsers', function() {
-    manager.userAllowedCommand(socket.id, dbDefaults.commands.verifyuser.commandName, function(allowed) {
-      if (allowed) {
-        dbConnector.getUnverifiedUsers(function(err, users) {
-          if (err || users === null) {
-            logger.sendSocketErrorMsg(socket, logger.ErrorCodes.general, 'Failed to verify all user');
-          } else {
-            dbConnector.verifyAllUsers(function(err) {
-              if (err) {
-                logger.sendSocketErrorMsg(socket, logger.ErrorCodes.general, 'Failed to verify all user');
-              } else {
-                socket.emit('message', {
-                  text : ['Users have been verified']
-                });
-                //TODO Send message to verified user
-              }
-            });
-          }
-        });
+    manager.userAllowedCommand(socket.id, dbDefaults.commands.verifyuser.commandName, function(allowErr, allowed) {
+      if (allowErr || !allowed) {
+        return;
       }
+
+      dbConnector.getUnverifiedUsers(function(err, users) {
+        if (err || users === null) {
+          logger.sendSocketErrorMsg(socket, logger.ErrorCodes.general, 'Failed to verify all user');
+          return;
+        }
+
+        dbConnector.verifyAllUsers(function(err) {
+          if (err) {
+            logger.sendSocketErrorMsg(socket, logger.ErrorCodes.general, 'Failed to verify all user');
+            return;
+          }
+
+          socket.emit('message', {
+            text : ['Users have been verified']
+          });
+          //TODO Send message to verified user
+        });
+      });
     });
   });
 
   socket.on('unverifiedUsers', function() {
-    manager.userAllowedCommand(socket.id, dbDefaults.commands.verifyuser.commandName, function(allowed) {
-      if (allowed) {
-        dbConnector.getUnverifiedUsers(function(err, users) {
-          if (err || users === null) {
-            logger.sendSocketErrorMsg(socket, logger.ErrorCodes.general, 'Failed to unverified users');
-          } else {
-            let usersString = '';
-
-            for (let i = 0; i < users.length; i++) {
-              usersString += users[i].userName;
-
-              if (i !== users.length - 1) {
-                usersString += ' | ';
-              }
-            }
-
-            socket.emit('message', { text : [usersString] });
-          }
-        });
+    manager.userAllowedCommand(socket.id, dbDefaults.commands.verifyuser.commandName, function(allowErr, allowed) {
+      if (allowErr || !allowed) {
+        return;
       }
+
+      dbConnector.getUnverifiedUsers(function(err, users) {
+        if (err || users === null) {
+          logger.sendSocketErrorMsg(socket, logger.ErrorCodes.general, 'Failed to unverified users');
+          return;
+        }
+
+        let usersString = '';
+
+        for (let i = 0; i < users.length; i++) {
+          usersString += users[i].userName;
+
+          if (i !== users.length - 1) {
+            usersString += ' | ';
+          }
+        }
+
+        socket.emit('message', { text : [usersString] });
+      });
     });
   });
 
   socket.on('ban', function(sentUserName) {
-    manager.userAllowedCommand(socket.id, dbDefaults.commands.banuser.commandName, function(allowed) {
-      if (allowed) {
-        const userNameLower = sentUserName.toLowerCase();
-
-        dbConnector.banUser(userNameLower, function(err, user) {
-          if (err || user === null) {
-            logger.sendSocketErrorMsg(socket, logger.ErrorCodes.general, 'Failed to ban user');
-          } else {
-            const bannedSocketId = user.socketId;
-
-            socket.emit('message', {
-              text : ['User ' + userNameLower + ' has been banned']
-            });
-
-            dbConnector.updateUserSocketId(userNameLower, '',
-              function(err, user) {
-                if (err || user === null) {
-                  logger.sendSocketErrorMsg(socket, logger.ErrorCodes.general, 'Failed to disconnect user ' +
-                                                                               userNameLower);
-                } else {
-                  var rooms = socket.rooms;
-
-                  socket.to(bannedSocketId).emit('ban');
-
-                  for (let i = 1; i < rooms.length; i++) {
-                    socket.leave(rooms[i]);
-                  }
-
-                  socket.emit('message', {
-                    text : [
-                      'User ' + userNameLower + ' has been disconnected'
-                    ]
-                  });
-                }
-              });
-          }
-        });
+    manager.userAllowedCommand(socket.id, dbDefaults.commands.banuser.commandName, function(allowErr, allowed) {
+      if (allowErr || !allowed) {
+        return;
       }
+
+      const userNameLower = sentUserName.toLowerCase();
+
+      dbConnector.banUser(userNameLower, function(err, user) {
+        if (err || user === null) {
+          logger.sendSocketErrorMsg(socket, logger.ErrorCodes.general, 'Failed to ban user');
+          return;
+        }
+
+        const bannedSocketId = user.socketId;
+
+        socket.emit('message', {
+          text : ['User ' + userNameLower + ' has been banned']
+        });
+
+        dbConnector.updateUserSocketId(userNameLower, '', function(err, user) {
+          if (err || user === null) {
+            logger.sendSocketErrorMsg(socket, logger.ErrorCodes.general, 'Failed to disconnect user ' +
+                                                                         userNameLower);
+            return;
+          }
+
+          var rooms = socket.rooms;
+
+          socket.to(bannedSocketId).emit('ban');
+
+          for (let i = 1; i < rooms.length; i++) {
+            socket.leave(rooms[i]);
+          }
+
+          socket.emit('message', {
+            text : [
+              'User ' + userNameLower + ' has been disconnected'
+            ]
+          });
+        });
+      });
     });
   });
 
   socket.on('unban', function(sentUserName) {
-    manager.userAllowedCommand(socket.id, dbDefaults.commands.unbanuser.commandName, function(allowed) {
-      if (allowed) {
-        const userNameLower = sentUserName.toLowerCase();
-
-        dbConnector.unbanUser(userNameLower, function(err, user) {
-          if (err || user === null) {
-            logger.sendSocketErrorMsg(socket, logger.ErrorCodes.general, 'Failed to unban user');
-          } else {
-            socket.emit('message', {
-              text : ['Ban on user ' + userNameLower + ' has been removed']
-            });
-          }
-        });
+    manager.userAllowedCommand(socket.id, dbDefaults.commands.unbanuser.commandName, function(allowErr, allowed) {
+      if (allowErr || !allowed) {
+        return;
       }
+
+      const userNameLower = sentUserName.toLowerCase();
+
+      dbConnector.unbanUser(userNameLower, function(err, user) {
+        if (err || user === null) {
+          logger.sendSocketErrorMsg(socket, logger.ErrorCodes.general, 'Failed to unban user');
+          return;
+        }
+
+        socket.emit('message', {
+          text : ['Ban on user ' + userNameLower + ' has been removed']
+        });
+      });
     });
   });
 
   socket.on('bannedUsers', function() {
-    manager.userAllowedCommand(socket.id, dbDefaults.commands.unbanuser.commandName, function(allowed) {
-      if (allowed) {
-        dbConnector.getBannedUsers(function(err, users) {
-          if (err || users === null) {
-            logger.sendSocketErrorMsg(socket, logger.ErrorCodes.general, 'Failed to get all banned users');
-          } else {
-            let usersString = '';
-
-            for (let i = 0; i < users.length; i++) {
-              usersString += users[i].userName;
-
-              if (i !== users.length - 1) {
-                usersString += ' | ';
-              }
-            }
-
-            socket.emit('message', { text : [usersString] });
-          }
-        });
+    manager.userAllowedCommand(socket.id, dbDefaults.commands.unbanuser.commandName, function(allowErr, allowed) {
+      if (allowErr || !allowed) {
+        return;
       }
+
+      dbConnector.getBannedUsers(function(err, users) {
+        if (err || users === null) {
+          logger.sendSocketErrorMsg(socket, logger.ErrorCodes.general, 'Failed to get all banned users');
+          return;
+        }
+
+        let usersString = '';
+
+        for (let i = 0; i < users.length; i++) {
+          usersString += users[i].userName;
+
+          if (i !== users.length - 1) {
+            usersString += ' | ';
+          }
+        }
+
+        socket.emit('message', { text : [usersString] });
+      });
     });
   });
 
   socket.on('updateUser', function(data) {
-    dbConnector.userAllowedCommand(socket.id, dbDefaults.commands.updateuser.commandName, function(allowed) {
-      if (allowed) {
-        const userName = data.user;
-        const field = data.field;
-        const value = data.value;
-        const callback = function(err, user) {
-          if(err || user === null) {
-            logger.sendSocketErrorMsg(socket, logger.ErrorCodes.general, 'Failed to update user');
-          } else {
-            socket.emit('message', {
-              text : ['User has been updated']
-            });
-          }
-        };
-        let managerFunc;
+    dbConnector.userAllowedCommand(socket.id, dbDefaults.commands.updateuser.commandName, function(allowErr, allowed) {
+      if (allowErr || !allowed) {
+        return;
+      }
 
-        switch(field) {
-          case 'visibility':
-            managerFunc = dbConnector.updateUserVisibility(userName, value, callback);
-
-            break;
-          case 'accesslevel':
-            managerFunc = dbConnector.updateUserAccessLevel(userName, value, callback);
-
-            break;
-          case 'addgroup':
-
-            break;
-          case 'removegroup':
-
-            break;
-          case 'password':
-            managerFunc = dbConnector.updateUserPassword(userName, value, callback);
-
-            break;
-          default:
-            logger.sendSocketErrorMsg(socket, logger.ErrorCodes.general, 'Invalid field. User doesn\'t have ' + field);
-            socket.emit('message', {
-              text : ['Invalid field. User doesn\'t have ' + field]
-            });
-
-            break;
+      const userName = data.user;
+      const field = data.field;
+      const value = data.value;
+      const callback = function(err, user) {
+        if(err || user === null) {
+          logger.sendSocketErrorMsg(socket, logger.ErrorCodes.general, 'Failed to update user');
+          return;
         }
-      } else {
+
         socket.emit('message', {
-          text : ['You do not have access to this command']
+          text : ['User has been updated']
         });
+      };
+
+      switch(field) {
+        case 'visibility':
+          dbConnector.updateUserVisibility(userName, value, callback);
+
+          break;
+        case 'accesslevel':
+          dbConnector.updateUserAccessLevel(userName, value, callback);
+
+          break;
+        case 'addgroup':
+
+          break;
+        case 'removegroup':
+
+          break;
+        case 'password':
+          dbConnector.updateUserPassword(userName, value, callback);
+
+          break;
+        default:
+          logger.sendSocketErrorMsg(socket, logger.ErrorCodes.general, 'Invalid field. User doesn\'t have ' + field);
+          socket.emit('message', {
+            text : ['Invalid field. User doesn\'t have ' + field]
+          });
+
+          break;
       }
     });
   });
