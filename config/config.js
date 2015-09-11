@@ -37,7 +37,7 @@ config.gameLocation = {
   lon : '15.198645'
 };
 
-config.historyLines = 15;
+config.historyLines = 30;
 
 config.chunkLength = 10;
 
