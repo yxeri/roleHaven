@@ -309,9 +309,6 @@ var platformCmds = {
   refreshApp : function() {
     window.location.reload();
   },
-  getMapHelper : function() {
-    return mapHelper;
-  },
   queueCommand : function(command, data, cmdMsg) {
     cmdQueue.push({
       command : command,
@@ -765,7 +762,7 @@ var validCmds = {
 
         if (newMode === 'chat') {
           platformCmds.setMode('chat');
-          platformCmds.setModeText('');
+          platformCmds.setModeText('[CHAT]');
 
           if (verbose === undefined || verbose) {
             platformCmds.queueMessage({
