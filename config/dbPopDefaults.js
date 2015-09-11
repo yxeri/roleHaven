@@ -253,8 +253,8 @@ config.commands = {
   },
   hackroom : {
     commandName : 'hackroom',
-    accessLevel : 2,
-    visibility : 2,
+    accessLevel : 1,
+    visibility : 1,
     category : 'hacking'
   },
   importantmsg : {
@@ -265,8 +265,8 @@ config.commands = {
   },
   chipper : {
     commandName : 'chipper',
-    accessLevel : 2,
-    visibility : 2,
+    accessLevel : 1,
+    visibility : 1,
     category : 'hacking',
     authGroup : 'hackers'
   },
@@ -296,6 +296,12 @@ config.commands = {
   },
   addentities : {
     commandName : 'addentities',
+    accessLevel : 11,
+    visibility : 11,
+    category : 'admin'
+  },
+  addencryptionkeys : {
+    commandName : 'addencryptionkeys',
     accessLevel : 11,
     visibility : 11,
     category : 'admin'
