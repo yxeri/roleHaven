@@ -33,7 +33,7 @@ app.io = socketIo();
 app.disable('x-powered-by');
 
 // view engine setup
-app.set('views', `${__dirname}/../../../../${appConfig.publicBase}${appConfig.viewsPath}`);
+app.set('views', `${__dirname}/../../../../${appConfig.publicBase}/${appConfig.viewsPath}`);
 app.set('view engine', 'html');
 app.engine('html', require('hbs').__express); // eslint-disable-line no-underscore-dangle, import/newline-after-import
 app.use(bodyParser.json());
