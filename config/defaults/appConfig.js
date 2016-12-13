@@ -16,12 +16,10 @@
 
 'use strict';
 
-const path = require('path');
-
 let config = {};
 
 try {
-  config = require(path.join(__dirname, 'config', 'appConfig')).config; // eslint-disable-line import/no-unresolved, global-require, import/no-dynamic-require
+  config = require(`${__dirname}/../../../../config/appConfig`).config; // eslint-disable-line import/no-unresolved, global-require, import/no-dynamic-require
 } catch (err) {
   console.log('Did not find modified appConfig. Using defaults');
 }
