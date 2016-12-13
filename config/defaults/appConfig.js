@@ -16,12 +16,10 @@
 
 'use strict';
 
-const path = require('path');
-
 let config = {};
 
 try {
-  config = require(`${__dirname}/../../../../config/appConfig`).config; // eslint-disable-line import/no-unresolved, global-require, import/no-dynamic-require
+  config = require('../../../../config/appConfig').config; // eslint-disable-line import/no-unresolved, global-require, import/no-dynamic-require
 } catch (err) {
   console.log('Did not find modified appConfig. Using defaults');
 }
@@ -126,15 +124,15 @@ console.log(__dirname);
  * @type {{sitePath:string, filePath:string}[]}
  */
 config.routes = config.routes || [
-  { sitePath: '/', filePath: path.normalize(`${__dirname}/../../routes/index.js`) },
-  { sitePath: '/api/authenticate', filePath: path.normalize(`${__dirname}/../../routes/rest/authenticate.js`) },
-  { sitePath: '/api/rooms', filePath: path.normalize(`${__dirname}/../../routes/rest/rooms.js`) },
-  { sitePath: '/api/histories', filePath: path.normalize(`${__dirname}/../../routes/rest/histories.js`) },
-  { sitePath: '/api/positions', filePath: path.normalize(`${__dirname}/../../routes/rest/positions.js`) },
-  { sitePath: '/api/archives', filePath: path.normalize(`${__dirname}/../../routes/rest/archives.js`) },
-  { sitePath: '/api/messages', filePath: path.normalize(`${__dirname}/../../routes/rest/messages.js`) },
-  { sitePath: '/api/users', filePath: path.normalize(`${__dirname}/../../routes/rest/users.js`) },
-  { sitePath: '*', filePath: path.normalize(`${__dirname}/../../routes/error.js`) },
+  { sitePath: '/', filePath: '/usr/src/app/routes/index.js' },
+  { sitePath: '/api/authenticate', filePath: '/usr/src/app/routes/rest/authenticate.js' },
+  { sitePath: '/api/rooms', filePath: '/usr/src/app/routes/rest/rooms.js' },
+  { sitePath: '/api/histories', filePath: '/usr/src/app/routes/rest/histories.js' },
+  { sitePath: '/api/positions', filePath: '/usr/src/app/routes/rest/positions.js' },
+  { sitePath: '/api/archives', filePath: '/usr/src/app/routes/rest/archives.js' },
+  { sitePath: '/api/messages', filePath: '/usr/src/app/routes/rest/messages.js' },
+  { sitePath: '/api/users', filePath: '/usr/src/app/routes/rest/users.js' },
+  { sitePath: '*', filePath: '/usr/src/app/routes/error.js' },
 ];
 
 //

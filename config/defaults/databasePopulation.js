@@ -16,12 +16,10 @@
 
 'use strict';
 
-const path = require('path');
-
 let config = {};
 
 try {
-  config = require(path.join(__dirname, 'config', 'databasePopulation')).config; // eslint-disable-line import/no-unresolved, global-require, import/no-dynamic-require
+  config = require('../../../../config/databasePopulation').config; // eslint-disable-line import/no-unresolved, global-require, import/no-dynamic-require
 } catch (err) {
   console.log('Did not find modified databasePopulation. Using defaults');
 }
