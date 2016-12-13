@@ -124,15 +124,15 @@ console.log(__dirname);
  * @type {{sitePath:string, filePath:string}[]}
  */
 config.routes = config.routes || [
-  { sitePath: '/', filePath: '/usr/src/app/routes/index.js' },
-  { sitePath: '/api/authenticate', filePath: '/usr/src/app/routes/rest/authenticate.js' },
-  { sitePath: '/api/rooms', filePath: '/usr/src/app/routes/rest/rooms.js' },
-  { sitePath: '/api/histories', filePath: '/usr/src/app/routes/rest/histories.js' },
-  { sitePath: '/api/positions', filePath: '/usr/src/app/routes/rest/positions.js' },
-  { sitePath: '/api/archives', filePath: '/usr/src/app/routes/rest/archives.js' },
-  { sitePath: '/api/messages', filePath: '/usr/src/app/routes/rest/messages.js' },
-  { sitePath: '/api/users', filePath: '/usr/src/app/routes/rest/users.js' },
-  { sitePath: '*', filePath: '/usr/src/app/routes/error.js' },
+  { sitePath: '/', filePath: '../../../../routes/index.js' },
+  { sitePath: '/api/authenticate', filePath: '../../../../routes/rest/authenticate.js' },
+  { sitePath: '/api/rooms', filePath: '../../../../routes/rest/rooms.js' },
+  { sitePath: '/api/histories', filePath: '../../../../routes/rest/histories.js' },
+  { sitePath: '/api/positions', filePath: '../../../../routes/rest/positions.js' },
+  { sitePath: '/api/archives', filePath: '../../../../routes/rest/archives.js' },
+  { sitePath: '/api/messages', filePath: '../../../../routes/rest/messages.js' },
+  { sitePath: '/api/users', filePath: '../../../../routes/rest/users.js' },
+  { sitePath: '*', filePath: '../../../../routes/error.js' },
 ];
 
 //
