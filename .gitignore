@@ -1,0 +1,11 @@
+.idea
+.vscode
+.DS_store
+npm-debug.log
+docker-compose.override.yml
+out/
+.travis/deploy_key
+config/modified/
+# Remove this if node_modules needs to be jammed into git repository
+# for docker caching reasons
+node_modules

@@ -1,0 +1,21 @@
+{
+  "extends": "airbnb/base",
+  "env": {
+    "node": true,
+    "browser": true
+  },
+  "rules": {
+    // Printing info in Node
+    "no-console": 0,
+    // Strict is needed in Node
+    "strict": 0,
+    "max-len": 0,
+    "require-jsdoc": "error",
+    "valid-jsdoc": ["error", { "requireReturn": false }]
+  },
+  "globals": {
+    "google": false,
+    "MapLabel": false,
+    "MarkerClusterer": false
+  }
+}
