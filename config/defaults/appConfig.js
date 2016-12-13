@@ -19,7 +19,7 @@
 let config = {};
 
 try {
-  config = require('../../../../config/appConfig').config; // eslint-disable-line import/no-unresolved, global-require, import/no-dynamic-require
+  config = require(`${__dirname}/../../../../config/appConfig`).config; // eslint-disable-line import/no-unresolved, global-require, import/no-dynamic-require
 } catch (err) {
   console.log('Did not find modified appConfig. Using defaults', err);
 }
@@ -124,15 +124,15 @@ console.log(__dirname);
  * @type {{sitePath:string, filePath:string}[]}
  */
 config.routes = config.routes || [
-  { sitePath: '/', filePath: `${__dirname}/routes/index.js` },
-  { sitePath: '/api/authenticate', filePath: `${__dirname}/routes/rest/authenticate.js` },
-  { sitePath: '/api/rooms', filePath: `${__dirname}/routes/rest/rooms.js` },
-  { sitePath: '/api/histories', filePath: `${__dirname}/routes/rest/histories.js` },
-  { sitePath: '/api/positions', filePath: `${__dirname}/routes/rest/positions.js` },
-  { sitePath: '/api/archives', filePath: `${__dirname}/routes/rest/archives.js` },
-  { sitePath: '/api/messages', filePath: `${__dirname}/routes/rest/messages.js` },
-  { sitePath: '/api/users', filePath: `${__dirname}/routes/rest/users.js` },
-  { sitePath: '*', filePath: `${__dirname}/routes/error.js` },
+  { sitePath: '/', filePath: `${__dirname}/../../routes/index.js` },
+  { sitePath: '/api/authenticate', filePath: `${__dirname}/../../routes/rest/authenticate.js` },
+  { sitePath: '/api/rooms', filePath: `${__dirname}/../../routes/rest/rooms.js` },
+  { sitePath: '/api/histories', filePath: `${__dirname}/../../routes/rest/histories.js` },
+  { sitePath: '/api/positions', filePath: `${__dirname}/../../routes/rest/positions.js` },
+  { sitePath: '/api/archives', filePath: `${__dirname}/../../routes/rest/archives.js` },
+  { sitePath: '/api/messages', filePath: `${__dirname}/../../routes/rest/messages.js` },
+  { sitePath: '/api/users', filePath: `${__dirname}/../../routes/rest/users.js` },
+  { sitePath: '*', filePath: `${__dirname}/../../routes/error.js` },
 ];
 
 //
