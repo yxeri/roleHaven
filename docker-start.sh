@@ -2,11 +2,6 @@
 
 npm prune && npm install
 
-# Installs wget, if it doesn't exist
-if ! type "wget" > /dev/null; then
-  apt-get update && apt-get -y install wget && rm -rf /var/lib/apt/lists/*
-fi
-
 # Creates directories for scripts, views and styles in public
 mkdir -p ./public/scripts ./public/views ./public/styles
 
@@ -41,6 +36,11 @@ configSize=${#CONFIGPATH}
 
 # Installs config from external source, if CONFIGPATH is set
 if (($configSize > 0)); then
+  # Installs wget, if it doesn't exist
+  if ! type "wget" > /dev/null; then
+    apt-get update && apt-get -y install wget && rm -rf /var/lib/apt/lists/*
+  fi
+
   mkdir ./config/modified
   wget $CONFIGPATH/appConfig.js -O ./config/modified/appConfig.js
   wget $CONFIGPATH/databasePopulation.js -O ./config/modified/databasePopulation.js

@@ -170,21 +170,21 @@ function isUserFollowingRoom(user, roomName) {
 /**
  * Sends a message to a room. The message will not be stored in history
  * Emits message
- * @param {{sendTo: string, socket: Object}} params - Parameters
+ * @param {string} sendTo - User name to send to
+ * @param {Object} socket - Socket.io socket
  * @param {Object} params.message - Message to send
  * @param {string} params.message.userName - Name of sender
  * @param {string[]} params.message.text - Text in message
  * @param {string[]} [params.message.text_se] - Text in message
  */
-function sendMsg(params) {
-  if (!objectValidator.isValidData(params, { socket: true, message: { text: true, userName: true }, sendTo: true })) {
+function sendMsg({ socket, message, userName, sendTo }) {
+  if (!objectValidator.isValidData({ message, userName }, { socket: true, message: { text: true, userName: true }, sendTo: true })) {
     return;
   }
 
-  const socket = params.socket;
   const data = {
-    message: params.message,
-    sendTo: params.sendTo,
+    message,
+    sendTo,
   };
 
   socket.broadcast.to(data.sendTo).emit('message', data);
@@ -272,11 +272,13 @@ function sendAndStoreMsg({ user, callback, message, io }) {
  * @param {Function} callback - Client callback
  */
 function sendChatMsg({ message, user, callback, io }) {
-  if (!objectValidator.isValidData({ message, user, callback, io }, { user: { userName: true }, message: { text: true, roomName: true, userName: true }, io: true })) {
+  if (!objectValidator.isValidData({ message, user, callback, io }, { user: { userName: true }, message: { text: true, roomName: true }, io: true })) {
     callback({ error: {} });
 
     return;
   }
+
+  console.log(message, user, callback);
 
   if (message.userName) {
     dbUser.getUserByAlias(message.userName, (aliasErr, aliasUser) => {

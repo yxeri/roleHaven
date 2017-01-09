@@ -16,13 +16,17 @@
 
 'use strict';
 
+const path = require('path');
+
 let config = {};
 
 try {
-  config = require(`${__dirname}/../../../../config/appConfig`).config; // eslint-disable-line import/no-unresolved, global-require, import/no-dynamic-require
+  config = require(path.normalize(`${__dirname}/../../../../config/appConfig`)).config; // eslint-disable-line import/no-unresolved, global-require, import/no-dynamic-require
 } catch (err) {
-  console.log('Did not find modified appConfig. Using defaults', err);
+  console.log('Did not find modified appConfig. Using defaults');
 }
+
+// TODO Move all converters to a converter file
 
 /**
  * Converts string to boolean
@@ -37,6 +41,28 @@ function convertToBoolean(envar) {
   }
 
   return undefined;
+}
+
+/**
+ * Convert string to float
+ * @param {string} float - Value to be converted
+ * @returns {number|null} Converted number
+ */
+function convertToFloat(float) {
+  const parsedFloat = parseFloat(float);
+
+  return isNaN(parsedFloat) ? 0 : parsedFloat;
+}
+
+/**
+ * Convert string to int
+ * @param {string} int - Value to be converted
+ * @returns {number} Converted number
+ */
+function convertToInt(int) {
+  const parsedInt = parseInt(int, 10);
+
+  return isNaN(parsedInt) ? 0 : parsedInt;
 }
 
 /*
@@ -67,18 +93,18 @@ config.defaultLanguage = process.env.DEFAULTLANGUAGE || config.defaultLanguage |
 /*
  * Base directory for public and private files
  */
-config.publicBase = process.env.PUBLICBASE || config.publicBase || 'public';
-config.privateBase = process.env.PRIVATEBASE || config.privateBase || 'private';
+config.publicBase = path.normalize(`${__dirname}/../../../../public`);
+config.privateBase = path.normalize(`${__dirname}/../../../../private`);
 
 /*
  * Sub directories for public and private files
  * Will be appended to the base directories
  */
-config.viewsPath = process.env.VIEWSPATH || config.viewsPath || 'views';
-config.stylesPath = process.env.STYLESPATH || config.stylesPath || 'styles';
-config.scriptsPath = process.env.SCRIPTSPATH || config.scriptsPath || 'scripts';
-config.requiredPath = process.env.REQUIREDPATH || config.requiredPath || 'required';
-config.faviconPath = process.env.FAVICONPATH || config.faviconPath || 'images/favicon.ico';
+config.viewsPath = 'views';
+config.stylesPath = 'styles';
+config.scriptsPath = 'scripts';
+config.requiredPath = 'required';
+config.faviconPath = 'images/favicon.ico';
 
 // Morgan log level
 config.logLevel = process.env.LOGLEVEL || config.logLevel || 'tiny';
@@ -108,8 +134,6 @@ config.socketPath = (process.env.SOCKETPATH === 'cdn' || config.socketPath === '
  */
 config.mode = process.env.MODE || config.mode || 'prod';
 
-
-console.log(__dirname);
 /**
  * Array of route paths
  * Should contain objects of site and file paths
@@ -145,13 +169,13 @@ config.gMapsKey = process.env.GMAPSKEY || config.gMapsKey;
 config.mapLayersPath = process.env.MAPLAYERSPATH || config.mapLayersPath || 'https://www.google.com/maps/d/kml?hl=en_US&app=mp&mid=1j97gNHqYj-6M10RbW9CGAVNxUV4&forcekml=1&cid=mp&cv=jm93Tu_hxIY.en_US.';
 
 config.country = process.env.COUNTRY || config.country || 'Sweden';
-config.centerLat = parseFloat(process.env.CENTERLAT || config.centerLat || 59.3534372);
-config.centerLong = parseFloat(process.env.CENTERLONG || config.centerLong || 18.0044666);
-config.cornerOneLat = parseFloat(process.env.CORNERONELAT || config.cornerOneLat || 67.3926316);
-config.cornerOneLong = parseFloat(process.env.CORNERONELONG || config.cornerOneLong || 24.0936037);
-config.cornerTwoLat = parseFloat(process.env.CORNERTWOLAT || config.cornerTwoLat || 55.699443);
-config.cornerTwoLong = parseFloat(process.env.CORNERTWOLONG || config.cornerTwoLong || 10.3777913);
-config.defaultZoomLevel = parseInt(process.env.DEFAULTZOOMLEVEL || config.defaultZoomLevel || 15, 10);
+config.centerLat = convertToFloat(process.env.CENTERLAT || config.centerLat || 59.3534372);
+config.centerLong = convertToFloat(process.env.CENTERLONG || config.centerLong || 18.0044666);
+config.cornerOneLat = convertToFloat(process.env.CORNERONELAT || config.cornerOneLat || 67.3926316);
+config.cornerOneLong = convertToFloat(process.env.CORNERONELONG || config.cornerOneLong || 24.0936037);
+config.cornerTwoLat = convertToFloat(process.env.CORNERTWOLAT || config.cornerTwoLat || 55.699443);
+config.cornerTwoLong = convertToFloat(process.env.CORNERTWOLONG || config.cornerTwoLong || 10.3777913);
+config.defaultZoomLevel = convertToInt(process.env.DEFAULTZOOMLEVEL || config.defaultZoomLevel || 15, 10);
 
 // Amount of messages retrieved with the history command
 config.historyLines = process.env.MAXHISTORY || config.historyLines || 80;
