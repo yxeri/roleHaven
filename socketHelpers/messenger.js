@@ -222,7 +222,7 @@ function sendImportantMsg({ socket, message, device, callback }) {
     }
 
     if (device) {
-      socket.to(data.message.roomName).emit('importantMsg', data);
+      socket.broadcast.to(data.message.roomName).emit('importantMsg', data);
     } else {
       socket.broadcast.emit('importantMsg', data);
     }
@@ -238,7 +238,7 @@ function sendImportantMsg({ socket, message, device, callback }) {
  * @param {Object} params.message - Message to send
  * @param {Object} params.io - Socket.io
  */
-function sendAndStoreMsg({ user, callback, message, io }) {
+function sendAndStoreChatMsg({ user, callback, message, io }) {
   dbUser.getUser(user.userName, (userErr, foundUser) => {
     if (userErr || foundUser === null || !isUserFollowingRoom(foundUser, message.roomName)) {
       callback({ error: {} });
@@ -258,7 +258,7 @@ function sendAndStoreMsg({ user, callback, message, io }) {
         return;
       }
 
-      io.to(data.message.roomName).emit('message', data);
+      io.broadcast.to(data.message.roomName).emit('chatMsg', data);
       callback({ data });
     });
   });
@@ -299,7 +299,7 @@ function sendChatMsg({ message, user, callback, io }) {
         return;
       }
 
-      sendAndStoreMsg({ io, message, user, callback });
+      sendAndStoreChatMsg({ io, message, user, callback });
     });
   } else {
     const modifiedMessage = message;
@@ -309,7 +309,7 @@ function sendChatMsg({ message, user, callback, io }) {
       modifiedMessage.roomName = user.team + appConfig.teamAppend;
     }
 
-    sendAndStoreMsg({ io, message, user, callback });
+    sendAndStoreChatMsg({ io, message, user, callback });
   }
 }
 

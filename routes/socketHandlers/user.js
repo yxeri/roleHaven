@@ -84,14 +84,18 @@ function handle(socket, io) {
 
   socket.on('register', ({ user }, callback = () => {}) => {
     if (!objectValidator.isValidData({ user }, { user: { userName: true, password: true, registerDevice: true } })) {
-      callback({ error: {} });
+      callback({ error: { text: ['Invalid data'] } });
 
       return;
     }
 
     manager.userAllowedCommand(socket.id, databasePopulation.commands.register.commandName, (allowErr, allowed) => {
-      if (allowErr || !allowed || !user || !isTextAllowed(user.userName)) {
-        callback({ error: {} });
+      if (allowErr || !allowed) {
+        callback({ error: { text: [`User not allowed to use command ${databasePopulation.commands.register.commandName}`] } });
+
+        return;
+      } else if (!isTextAllowed(user.userName)) {
+        callback({ error: { text: ['User name contains invalid characters'] } });
 
         return;
       }
@@ -111,14 +115,11 @@ function handle(socket, io) {
           databasePopulation.rooms.morse.roomName,
         ],
       };
+
       dbUser.createUser(userObj, (err, createdUser) => {
         if (err) {
           callback({
-            error: {
-              code: logger.ErrorCodes.db,
-              text: ['Failed to register user'],
-              text_se: ['Misslyckades med att registrera användare'],
-            },
+            error: err,
           });
 
           return;
@@ -168,7 +169,7 @@ function handle(socket, io) {
           registeredMessage.text_se.push('Ni måste bli verifierad innan ni kan logga in');
         }
 
-        callback({ message: registeredMessage });
+        callback({ data: { user: createdUser } });
       });
     });
   });
@@ -180,15 +181,16 @@ function handle(socket, io) {
       return;
     }
 
-    if (user.userName === null) {
-      const publicRoom = databasePopulation.rooms.public.roomName;
+    const data = {};
 
-      socket.join(publicRoom);
-      socket.emit('reconnectSuccess', {
-        firstConnection,
-        anonUser: true,
-        welcomeMessage: appConfig.welcomeMessage,
-      });
+    if (firstConnection) {
+      data.welcomeMessage = appConfig.welcomeMessage;
+    }
+
+    if (user.userName === null) {
+      data.anonUser = true;
+
+      socket.join(databasePopulation.rooms.public.roomName);
     } else {
       manager.updateUserSocketId(socket.id, user.userName, (idErr, updatedUser) => {
         if (idErr) {
@@ -196,20 +198,16 @@ function handle(socket, io) {
 
           return;
         } else if (updatedUser === null) {
-          socket.emit('disconnectUser');
+          callback({ data: { anonUser: true } });
           socket.join(databasePopulation.rooms.public.roomName);
 
           return;
         }
 
         const allRooms = updatedUser.rooms;
+        data.user = updatedUser;
 
         manager.joinRooms(allRooms, socket, device.deviceId);
-        socket.emit('reconnectSuccess', {
-          firstConnection,
-          user: updatedUser,
-          welcomeMessage: appConfig.welcomeMessage,
-        });
         manager.getHistory({
           rooms: allRooms,
           lines: Infinity,
@@ -228,6 +226,8 @@ function handle(socket, io) {
         });
       });
     }
+
+    callback({ data });
   });
 
   socket.on('login', ({ user }, callback = () => {}) => {
