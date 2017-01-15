@@ -54,11 +54,6 @@ function handle(io) {
       defaultLanguage: appConfig.defaultLanguage,
       forceFullscreen: appConfig.forceFullscreen,
       gpsTracking: appConfig.gpsTracking,
-      disableCommands: appConfig.disableCommands,
-      hideRoomNames: appConfig.hideRoomNames,
-      hideTimeStamp: appConfig.hideTimeStamp,
-      staticInputStart: appConfig.staticInputStart,
-      defaultInputStart: appConfig.defaultInputStart,
       customFlags: appConfig.customFlags,
       centerLat: appConfig.centerLat,
       centerLong: appConfig.centerLong,
@@ -68,6 +63,7 @@ function handle(io) {
       cornerTwoLong: appConfig.cornerTwoLong,
       defaultZoomLevel: appConfig.defaultZoomLevel,
       radioChannels: appConfig.radioChannels,
+      yearModification: appConfig.yearModification,
     });
 
     socket.on('disconnect', () => {
