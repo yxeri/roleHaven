@@ -244,7 +244,7 @@ if (config.revealFailedHack === undefined) {
 /**
  * The number of years that will be subtracted/added to the current year
  */
-config.yearModification = config.yearModification || 0;
+config.yearModification = process.env.YEARMODIFICATION || config.yearModification || 0;
 
 /**
  * Should the frontend force full screen on click?
