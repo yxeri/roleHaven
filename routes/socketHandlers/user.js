@@ -30,7 +30,7 @@ const objectValidator = require('../../utils/objectValidator');
  * @returns {boolean} Does string contain valid characters?
  */
 function isTextAllowed(text) {
-  return /^[a-zA-Z0-9]+$/g.test(text);
+  return /^[a-zA-ZåäöÅÄÖ0-9]+$/g.test(text);
 }
 
 /**
