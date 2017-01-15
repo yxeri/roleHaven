@@ -175,7 +175,7 @@ config.cornerOneLat = convertToFloat(process.env.CORNERONELAT || config.cornerOn
 config.cornerOneLong = convertToFloat(process.env.CORNERONELONG || config.cornerOneLong || 24.0936037);
 config.cornerTwoLat = convertToFloat(process.env.CORNERTWOLAT || config.cornerTwoLat || 55.699443);
 config.cornerTwoLong = convertToFloat(process.env.CORNERTWOLONG || config.cornerTwoLong || 10.3777913);
-config.defaultZoomLevel = convertToInt(process.env.DEFAULTZOOMLEVEL || config.defaultZoomLevel || 15, 10);
+config.defaultZoomLevel = convertToInt(process.env.DEFAULTZOOMLEVEL || config.defaultZoomLevel || 15);
 
 // Amount of messages retrieved with the history command
 config.historyLines = process.env.MAXHISTORY || config.historyLines || 80;
