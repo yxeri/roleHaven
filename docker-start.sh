@@ -1,7 +1,5 @@
 #!/bin/bash
 
-npm prune && npm install
-
 # Creates directories for scripts, views and styles in public
 mkdir -p ./public/scripts ./public/views ./public/styles
 
