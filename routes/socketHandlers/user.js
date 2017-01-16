@@ -286,33 +286,34 @@ function handle(socket, io) {
             return;
           }
 
-          const oldSocket = io.sockets.connected[authUser.socketId];
+          // const oldSocket = io.sockets.connected[authUser.socketId];
+          //
+          // if (oldSocket) {
+          //   const oldRooms = Object.keys(oldSocket.rooms);
+          //
+          //   for (const oldRoom of oldRooms) {
+          //     if (oldRoom.indexOf(appConfig.deviceAppend) < 0) {
+          //       oldSocket.leave(oldRoom);
+          //     }
+          //   }
+          //
+          //   oldSocket.emit('logout');
+          //   messenger.sendSelfMsg({
+          //     socket: oldSocket,
+          //     message: {
+          //       text: [
+          //         'Your user has been logged in on another device',
+          //         'You have been logged out',
+          //       ],
+          //       text_se: [
+          //         'Din användare har loggat in på en annan enhet',
+          //         'Ni har blivit urloggade',
+          //       ],
+          //     },
+          //   });
+          // }
+
           const rooms = authUser.rooms;
-
-          if (oldSocket) {
-            const oldRooms = Object.keys(oldSocket.rooms);
-
-            for (const oldRoom of oldRooms) {
-              if (oldRoom.indexOf(appConfig.deviceAppend) < 0) {
-                oldSocket.leave(oldRoom);
-              }
-            }
-
-            oldSocket.emit('logout');
-            messenger.sendSelfMsg({
-              socket: oldSocket,
-              message: {
-                text: [
-                  'Your user has been logged in on another device',
-                  'You have been logged out',
-                ],
-                text_se: [
-                  'Din användare har loggat in på en annan enhet',
-                  'Ni har blivit urloggade',
-                ],
-              },
-            });
-          }
 
           manager.joinRooms(rooms, socket);
           callback({ data: { user: authUser } });
