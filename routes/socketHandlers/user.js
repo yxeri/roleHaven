@@ -191,6 +191,7 @@ function handle(socket, io) {
       data.anonUser = true;
 
       socket.join(databasePopulation.rooms.public.roomName);
+      callback({ data });
     } else {
       manager.updateUserSocketId(socket.id, user.userName, (idErr, updatedUser) => {
         if (idErr) {
@@ -198,8 +199,8 @@ function handle(socket, io) {
 
           return;
         } else if (updatedUser === null) {
-          callback({ data: { anonUser: true } });
           socket.join(databasePopulation.rooms.public.roomName);
+          callback({ data: { anonUser: true } });
 
           return;
         }
@@ -218,16 +219,13 @@ function handle(socket, io) {
               return;
             }
 
-            messenger.sendSelfMsgs({
-              socket,
-              messages: missedMessages,
-            });
+            data.missedMessages = missedMessages;
+
+            callback({ data });
           },
         });
       });
     }
-
-    callback({ data });
   });
 
   socket.on('login', ({ user }, callback = () => {}) => {

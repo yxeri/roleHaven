@@ -146,6 +146,19 @@ function sendSelfMsgs({ messages, socket }) {
 }
 
 /**
+ * Sends multiple message to the user's socket
+ * @param {{text: string[]}[]} messages - Messages to send
+ * @param {Object} socket - Socket.io socket
+ */
+function sendSelfChatMsgs({ messages, socket }) {
+  if (!objectValidator.isValidData({ messages, socket }, { socket: true, messages: true })) {
+    return;
+  }
+
+  socket.emit('chatMsgs', { messages });
+}
+
+/**
  * Checks if the user is following a room
  * @param {Object} user - User to check
  * @param {string} roomName - Name of the room
@@ -466,3 +479,4 @@ exports.sendSelfMsg = sendSelfMsg;
 exports.sendSelfMsgs = sendSelfMsgs;
 exports.sendList = sendList;
 exports.sendMorse = sendMorse;
+exports.sendSelfChatMsgs = sendSelfChatMsgs;
