@@ -92,7 +92,7 @@ function handle(socket, io) {
         return;
       }
 
-      messenger.sendChatMsg({ user, callback, message, io });
+      messenger.sendChatMsg({ user, callback, message, io, socket });
     });
   });
 

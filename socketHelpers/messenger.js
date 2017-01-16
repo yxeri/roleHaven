@@ -236,9 +236,10 @@ function sendImportantMsg({ socket, message, device, callback }) {
  * @param {Object} params.user - User sending the message
  * @param {Function} params.callback - Callback
  * @param {Object} params.message - Message to send
- * @param {Object} params.io - Socket.io
+ * @param {Object} params.io - Socket.io. Used by API, when no socket is available
+ * @param {Object} params.socket - Socket.io socket
  */
-function sendAndStoreChatMsg({ user, callback, message, io }) {
+function sendAndStoreChatMsg({ user, callback, message, io, socket }) {
   dbUser.getUser(user.userName, (userErr, foundUser) => {
     if (userErr || foundUser === null || !isUserFollowingRoom(foundUser, message.roomName)) {
       callback({ error: {} });
@@ -258,7 +259,12 @@ function sendAndStoreChatMsg({ user, callback, message, io }) {
         return;
       }
 
-      io.broadcast.to(data.message.roomName).emit('chatMsg', data);
+      if (socket) {
+        socket.broadcast.to(data.message.roomName).emit('chatMsg', data);
+      } else {
+        io.to(data.message.roomName).emit('chatMsg', data);
+      }
+
       callback({ data });
     });
   });
@@ -269,16 +275,16 @@ function sendAndStoreChatMsg({ user, callback, message, io }) {
  * Emits message
  * @param {Object} message - Message to be sent
  * @param {Object} user - User sending the message
+ * @param {Object} params.io - Socket.io. Used by API, when no socket is available
+ * @param {Object} params.socket - Socket.io socket
  * @param {Function} callback - Client callback
  */
-function sendChatMsg({ message, user, callback, io }) {
+function sendChatMsg({ message, user, callback, io, socket }) {
   if (!objectValidator.isValidData({ message, user, callback, io }, { user: { userName: true }, message: { text: true, roomName: true }, io: true })) {
     callback({ error: {} });
 
     return;
   }
-
-  console.log(message, user, callback);
 
   if (message.userName) {
     dbUser.getUserByAlias(message.userName, (aliasErr, aliasUser) => {
@@ -299,7 +305,7 @@ function sendChatMsg({ message, user, callback, io }) {
         return;
       }
 
-      sendAndStoreChatMsg({ io, message, user, callback });
+      sendAndStoreChatMsg({ io, message, user, callback, socket });
     });
   } else {
     const modifiedMessage = message;
@@ -309,7 +315,7 @@ function sendChatMsg({ message, user, callback, io }) {
       modifiedMessage.roomName = user.team + appConfig.teamAppend;
     }
 
-    sendAndStoreChatMsg({ io, message, user, callback });
+    sendAndStoreChatMsg({ io, message, user, callback, socket });
   }
 }
 
