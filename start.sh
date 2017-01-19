@@ -3,8 +3,11 @@
 # Creates directories for scripts, views and styles in public
 mkdir -p ./public/scripts ./public/views ./public/styles
 
-# Creates directories for sounds
+# Creates directory for sounds
 mkdir -p ./public/sounds
+
+# Creates directory for images
+mkdir -p ./public/images
 
 # Copies required JS files to public, such as socket.io
 cp -r ./private/required/* ./public/scripts/
