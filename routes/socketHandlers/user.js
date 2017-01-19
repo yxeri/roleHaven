@@ -174,6 +174,16 @@ function handle(socket, io) {
     });
   });
 
+  socket.on('iAmAlive', () => {
+    manager.userAllowedCommand(socket.id, databasePopulation.commands.register.commandName, (allowErr, allowed, user) => {
+      if (allowErr || !allowed || user === null) {
+        return;
+      }
+
+      dbUser.setUserLastOnline(user.userName, new Date(), () => {});
+    });
+  });
+
   socket.on('updateId', ({ user, device, firstConnection }, callback = () => {}) => {
     if (!objectValidator.isValidData({ user }, { user: true })) {
       callback({ error: {} });
