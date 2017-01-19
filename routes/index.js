@@ -72,8 +72,8 @@ function handle(io) {
           return;
         }
 
-        dbUser.updateUserSocketId(user.userName, '', (userErr, socketUser) => {
-          if (userErr || socketUser === null) {
+        dbUser.updateUserSocketId(user.userName, '', (userErr, offlineUser) => {
+          if (userErr || offlineUser === null) {
             logger.sendErrorMsg({
               code: logger.ErrorCodes.general,
               text: ['Failed to reset user socket ID'],
@@ -82,8 +82,8 @@ function handle(io) {
           }
         });
 
-        dbUser.setUserLastOnline(user.userName, new Date(), (userOnlineErr, settedUser) => {
-          if (userOnlineErr || settedUser === null) {
+        dbUser.setUserLastOnline(user.userName, new Date(), (userOnlineErr, offlineUser) => {
+          if (userOnlineErr || offlineUser === null) {
             logger.sendErrorMsg({
               code: logger.ErrorCodes.general,
               text: ['Failed to set last online'],
@@ -92,8 +92,8 @@ function handle(io) {
           }
         });
 
-        dbUser.updateUserOnline(user.userName, false, (onlineErr, updatedUser) => {
-          if (onlineErr || updatedUser === null) {
+        dbUser.updateUserOnline(user.userName, false, (onlineErr, offlineUser) => {
+          if (onlineErr || offlineUser === null) {
             logger.sendErrorMsg({
               code: logger.ErrorCodes.general,
               text: ['Failed to update online'],
