@@ -26,6 +26,8 @@ const appConfig = require('../../config/defaults/config').app;
 const logger = require('../../utils/logger');
 const messenger = require('../../socketHelpers/messenger');
 const objectValidator = require('../../utils/objectValidator');
+const fs = require('fs');
+const path = require('path');
 
 /**
  * Follow a new room on the socket
@@ -78,7 +80,7 @@ function shouldBeHidden(room, socketId) {
  * @param {object} io - Socket.IO
  */
 function handle(socket, io) {
-  socket.on('chatMsg', ({ message }, callback = () => {}) => {
+  socket.on('chatMsg', ({ message, image }, callback = () => {}) => {
     if (!objectValidator.isValidData({ message }, { message: { text: true, roomName: true } })) {
       callback({ error: {} });
 
@@ -92,7 +94,27 @@ function handle(socket, io) {
         return;
       }
 
-      messenger.sendChatMsg({ user, callback, message, io, socket });
+      if (image && image.source.match(/^data:image\/((png)|(jpeg));base64,/)) {
+        const fileName = `${user.userName}-${appConfig.mode}-${image.imageName}`;
+
+        fs.writeFile(path.join(appConfig.publicBase, 'images', fileName), image.source.replace(/data:image\/((png)|(jpeg));base64,/, ''), { encoding: 'base64' }, (err) => {
+          if (err) {
+            callback({ error: err || {} });
+
+            return;
+          }
+
+          const chatMsg = message;
+          chatMsg.image = {
+            imageName: image.imageName,
+            fileName,
+          };
+
+          messenger.sendChatMsg({ user, callback, message: chatMsg, io, socket });
+        });
+      } else {
+        messenger.sendChatMsg({ user, callback, message, io, socket });
+      }
     });
   });
 

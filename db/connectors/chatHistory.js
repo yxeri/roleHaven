@@ -27,6 +27,10 @@ const chatHistorySchema = new mongoose.Schema({
     extraClass: String,
     customSender: String,
     morseCode: String,
+    image: {
+      imageName: String,
+      fileName: String,
+    },
   }],
 }, { collection: 'chatHistories' });
 
