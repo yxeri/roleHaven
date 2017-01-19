@@ -97,12 +97,16 @@ function handle(socket, io) {
       if (image && image.source.match(/^data:image\/((png)|(jpeg));base64,/)) {
         const fileName = `${user.userName}-${appConfig.mode}-${image.imageName}`;
 
-        fs.writeFile(path.join(appConfig.publicBase, 'images', fileName), image.source.replace(/data:image\/((png)|(jpeg));base64,/, ''), { encoding: 'base64' }, (err) => {
+        console.log(path.join(appConfig.publicBase, 'images', fileName));
+
+        fs.writeFile(path.join(appConfig.publicBase, 'images', fileName), image.source.replace(/data:image\/((png)|(jpeg));base64,/, ''), { encoding: 'base64' }, (err, file) => {
           if (err) {
             callback({ error: err || {} });
 
             return;
           }
+
+          console.log(file);
 
           const chatMsg = message;
           chatMsg.image = {
