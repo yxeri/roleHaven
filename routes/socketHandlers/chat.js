@@ -100,14 +100,16 @@ function handle(socket, io) {
         console.log('mode:', appConfig.mode, 'image:', image);
         console.log('Path to image:', `${appConfig.publicBase}/images/${fileName}`);
 
-        fs.writeFile(`${appConfig.publicBase}/images/${fileName}`, image.source.replace(/data:image\/((png)|(jpeg));base64,/, ''), { encoding: 'base64' }, (err, file) => {
+        fs.writeFile(`${appConfig.publicBase}/images/${fileName}`, image.source.replace(/data:image\/((png)|(jpeg));base64,/, ''), { encoding: 'base64' }, (err) => {
           if (err) {
             callback({ error: err || {} });
 
             return;
           }
 
-          console.log(file);
+          fs.readdir(`${appConfig.publicBase}/images/`, (filesErr, files) => {
+            console.log(filesErr, files);
+          });
 
           const chatMsg = message;
           chatMsg.image = {
