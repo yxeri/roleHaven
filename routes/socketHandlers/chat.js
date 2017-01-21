@@ -95,7 +95,7 @@ function handle(socket, io) {
       }
 
       if (image && image.imageName && image.source.match(/^data:image\/((png)|(jpeg));base64,/)) {
-        const fileName = `${user.userName}-${appConfig.mode}-${image.imageName.replace(/[^\w\s.]/g, '-')}`;
+        const fileName = `${new Buffer(user.userName).toString('base64')}-${appConfig.mode}-${image.imageName.replace(/[^\w\s.]/g, '-')}`;
 
         console.log('mode:', appConfig.mode, 'image:', image);
         console.log('Path to image:', `${appConfig.publicBase}/images/${fileName}`);
