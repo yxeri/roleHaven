@@ -30,6 +30,8 @@ const chatHistorySchema = new mongoose.Schema({
     image: {
       imageName: String,
       fileName: String,
+      width: Number,
+      height: Number,
     },
   }],
 }, { collection: 'chatHistories' });

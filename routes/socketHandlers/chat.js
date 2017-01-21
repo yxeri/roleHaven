@@ -94,12 +94,13 @@ function handle(socket, io) {
         return;
       }
 
-      if (image && image.source.match(/^data:image\/((png)|(jpeg));base64,/)) {
-        const fileName = `${user.userName}-${appConfig.mode}-${image.imageName}`;
+      if (image && image.imageName && image.source.match(/^data:image\/((png)|(jpeg));base64,/)) {
+        const fileName = `${user.userName}-${appConfig.mode}-${image.imageName.replace(/[^\w\s.]/g, '-')}`;
 
-        console.log(path.join(appConfig.publicBase, 'images', fileName));
+        console.log('mode:', appConfig.mode, 'image:', image);
+        console.log('Path to image:', `${appConfig.publicBase}/images/${fileName}`);
 
-        fs.writeFile(path.join(appConfig.publicBase, 'images', fileName), image.source.replace(/data:image\/((png)|(jpeg));base64,/, ''), { encoding: 'base64' }, (err, file) => {
+        fs.writeFile(`${appConfig.publicBase}/images/${fileName}`, image.source.replace(/data:image\/((png)|(jpeg));base64,/, ''), { encoding: 'base64' }, (err, file) => {
           if (err) {
             callback({ error: err || {} });
 
@@ -112,6 +113,8 @@ function handle(socket, io) {
           chatMsg.image = {
             imageName: image.imageName,
             fileName,
+            width: image.width,
+            height: image.height,
           };
 
           messenger.sendChatMsg({ user, callback, message: chatMsg, io, socket });
