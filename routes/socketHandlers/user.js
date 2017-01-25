@@ -37,7 +37,7 @@ function isTextAllowed(text) {
  * @param {object} socket - Socket.IO socket
  * @param {object} io - Socket.IO
  */
-function handle(socket, io) {
+function handle(socket) {
   socket.on('userExists', (params, callback = () => {}) => {
     if (!objectValidator.isValidData(params, { user: { userName: true } })) {
       callback({ error: {} });
@@ -171,16 +171,6 @@ function handle(socket, io) {
 
         callback({ data: { user: createdUser } });
       });
-    });
-  });
-
-  socket.on('iAmAlive', () => {
-    manager.userAllowedCommand(socket.id, databasePopulation.commands.register.commandName, (allowErr, allowed, user) => {
-      if (allowErr || !allowed || user === null) {
-        return;
-      }
-
-      dbUser.setUserLastOnline(user.userName, new Date(), () => {});
     });
   });
 
