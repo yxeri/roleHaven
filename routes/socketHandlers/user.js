@@ -209,21 +209,22 @@ function handle(socket) {
         data.user = updatedUser;
 
         manager.joinRooms(allRooms, socket, device.deviceId);
-        manager.getHistory({
-          rooms: allRooms,
-          lines: Infinity,
-          missedMsgs: true,
-          lastOnline: updatedUser.lastOnline,
-          callback: (histErr, missedMessages) => {
-            if (histErr) {
-              return;
-            }
-
-            data.missedMessages = missedMessages;
-
-            callback({ data });
-          },
-        });
+        // TODO Client should send time of the last message it received
+        // manager.getHistory({
+        //   rooms: allRooms,
+        //   lines: Infinity,
+        //   missedMsgs: true,
+        //   lastOnline: lastMsgTime,
+        //   callback: (histErr, missedMessages) => {
+        //     if (histErr) {
+        //       return;
+        //     }
+        //
+        //     data.missedMessages = missedMessages;
+        //
+        //     callback({ data });
+        //   },
+        // });
       });
     }
   });
@@ -898,8 +899,6 @@ function handle(socket) {
         return;
       }
 
-      console.log(user);
-
       let matched = [];
 
       if (user.aliases) {
@@ -917,6 +916,32 @@ function handle(socket) {
       }
 
       callback({ matched });
+    });
+  });
+
+  socket.on('addAlias', ({ alias }, callback = () => {}) => {
+    manager.userAllowedCommand(socket.id, databasePopulation.commands.alias.commandName, (allowErr, allowed, user) => {
+      if (allowErr || !allowed) {
+        callback({ error: { text: ['Not allowed to add alias'] } });
+
+        return;
+      } else if (!isTextAllowed(alias)) {
+        callback({ error: { text: ['Alias contains invalid characters'] } });
+
+        return;
+      }
+
+      const aliasLower = alias.toLowerCase();
+
+      dbUser.addAlias(user.userName, aliasLower, (err, aliasUser) => {
+        if (err || aliasUser === null) {
+          callback({ error: { text: ['Failed to add alias'] } });
+
+          return;
+        }
+
+        callback({ data: { alias: aliasLower } });
+      });
     });
   });
 }
