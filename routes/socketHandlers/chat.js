@@ -27,7 +27,6 @@ const logger = require('../../utils/logger');
 const messenger = require('../../socketHelpers/messenger');
 const objectValidator = require('../../utils/objectValidator');
 const fs = require('fs');
-const path = require('path');
 
 /**
  * Follow a new room on the socket
@@ -97,20 +96,12 @@ function handle(socket, io) {
       if (image && image.imageName && image.source.match(/^data:image\/((png)|(jpeg));base64,/)) {
         const fileName = `${new Buffer(user.userName).toString('base64')}-${appConfig.mode}-${image.imageName.replace(/[^\w.]/g, '-')}`;
 
-        console.log('mode:', appConfig.mode, 'image:', image);
-        console.log('Path to image:', `${appConfig.publicBase}/images/${fileName}`);
-        console.log('Stripped image', image.source.replace(/data:image\/((png)|(jpeg));base64,/, ''));
-
         fs.writeFile(`${appConfig.publicBase}/images/${fileName}`, image.source.replace(/data:image\/((png)|(jpeg));base64,/, ''), { encoding: 'base64' }, (err) => {
           if (err) {
             callback({ error: err || {} });
 
             return;
           }
-
-          fs.readdir(`${appConfig.publicBase}/images/`, (filesErr, files) => {
-            console.log(filesErr, files);
-          });
 
           const chatMsg = message;
           chatMsg.image = {
