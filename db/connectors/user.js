@@ -790,19 +790,31 @@ function getUserByAlias(alias, callback) {
  */
 function addAlias(userName, alias, callback) {
   getUser(alias, (err, user) => {
-    if (err || user === null) {
+    if (err) {
       callback(err, null);
-    } else {
-      getUserByAlias(alias, (aliasErr, aliasUser) => {
-        if (aliasErr || aliasUser === null) {
-          callback(aliasErr, null);
-        } else {
-          const update = { $push: { aliases: alias } };
 
-          updateUserValue(userName, update, callback);
-        }
-      });
+      return;
+    } else if (user !== null) {
+      callback({ error: { text: ['User with alias name exists'] } }, null);
+
+      return;
     }
+
+    getUserByAlias(alias, (aliasErr, aliasUser) => {
+      if (aliasErr) {
+        callback(aliasErr, null);
+
+        return;
+      } else if (aliasUser !== null) {
+        callback({ error: { text: ['Alias already exists'] } });
+
+        return;
+      }
+
+      const update = { $push: { aliases: alias } };
+
+      updateUserValue(userName, update, callback);
+    });
   });
 }
 
