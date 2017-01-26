@@ -225,6 +225,8 @@ function handle(socket) {
         //     callback({ data });
         //   },
         // });
+
+        callback({ data });
       });
     }
   });
