@@ -23,6 +23,7 @@ const logger = require('../../utils/logger');
 const appConfig = require('../../config/defaults/config').app;
 const messenger = require('../../socketHelpers/messenger');
 const objectValidator = require('../../utils/objectValidator');
+const errorCreator = require('../../objects/error/errorCreator');
 
 /**
  * Does string contain valid characters?
@@ -84,18 +85,18 @@ function handle(socket) {
 
   socket.on('register', ({ user }, callback = () => {}) => {
     if (!objectValidator.isValidData({ user }, { user: { userName: true, password: true, registerDevice: true } })) {
-      callback({ error: { text: ['Invalid data'] } });
+      callback({ error: new errorCreator.InvalidData() });
 
       return;
     }
 
     manager.userAllowedCommand(socket.id, databasePopulation.commands.register.commandName, (allowErr, allowed) => {
       if (allowErr || !allowed) {
-        callback({ error: { text: [`User not allowed to use command ${databasePopulation.commands.register.commandName}`] } });
+        callback({ error: new errorCreator.NotAllowed({ used: databasePopulation.commands.register.commandName }) });
 
         return;
       } else if (!isTextAllowed(user.userName)) {
-        callback({ error: { text: ['User name contains invalid characters'] } });
+        callback({ error: new errorCreator.InvalidCharacters({ propertyName: 'user name' }) });
 
         return;
       }
@@ -118,36 +119,24 @@ function handle(socket) {
 
       dbUser.createUser(userObj, (err, createdUser) => {
         if (err) {
-          callback({
-            error: err,
-          });
+          callback({ error: new errorCreator.Database() });
 
           return;
         } else if (createdUser === null) {
-          callback({
-            error: {
-              text: [`${userName} already exists`],
-              text_se: [`${userName} existerar redan`],
-            },
-          });
+          callback({ error: new errorCreator.AlreadyExists({ propertyName: 'user name' }) });
 
           return;
         }
-
 
         const newRoom = {
           roomName: createdUser.userName + appConfig.whisperAppend,
           visibility: 12,
           accessLevel: 12,
         };
+        const requiresVerification = appConfig.userVerify;
 
         manager.createRoom(newRoom, createdUser, () => {
         });
-
-        const registeredMessage = {
-          text: [`${createdUser.userName} has been registered`],
-          text_se: [`${createdUser.userName} har blivit registerad`],
-        };
 
         if (appConfig.userVerify) {
           const message = {
@@ -164,12 +153,9 @@ function handle(socket) {
             },
             sendTo: message.roomName,
           });
-
-          registeredMessage.text.push('You will need to be verified before you can login');
-          registeredMessage.text_se.push('Ni måste bli verifierad innan ni kan logga in');
         }
 
-        callback({ data: { user: createdUser } });
+        callback({ data: { user: createdUser, requiresVerification } });
       });
     });
   });
@@ -233,14 +219,14 @@ function handle(socket) {
 
   socket.on('login', ({ user }, callback = () => {}) => {
     if (!objectValidator.isValidData({ user }, { user: { userName: true, password: true } })) {
-      callback({ error: {} });
+      callback({ error: new errorCreator.InvalidData() });
 
       return;
     }
 
     manager.userAllowedCommand(socket.id, databasePopulation.commands.login.commandName, (allowErr, allowed) => {
       if (allowErr || !allowed) {
-        callback({ error: {} });
+        callback({ error: new errorCreator.NotAllowed({ used: databasePopulation.commands.login.commandName }) });
 
         return;
       }
