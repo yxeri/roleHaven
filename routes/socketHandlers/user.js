@@ -31,7 +31,7 @@ const errorCreator = require('../../objects/error/errorCreator');
  * @returns {boolean} Does string contain valid characters?
  */
 function isTextAllowed(text) {
-  return /^[a-zA-ZåäöÅÄÖ0-9]+$/g.test(text);
+  return /^[\w\d\såäöÅÄÖ\-]+$/g.test(text);
 }
 
 /**
