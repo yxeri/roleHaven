@@ -910,11 +910,11 @@ function handle(socket) {
   socket.on('addAlias', ({ alias }, callback = () => {}) => {
     manager.userAllowedCommand(socket.id, databasePopulation.commands.alias.commandName, (allowErr, allowed, user) => {
       if (allowErr || !allowed) {
-        callback({ error: { text: ['Not allowed to add alias'] } });
+        callback({ error: new errorCreator.NotAllowed({ used: databasePopulation.commands.alias.commandName }) });
 
         return;
       } else if (!isTextAllowed(alias)) {
-        callback({ error: { text: ['Alias contains invalid characters'] } });
+        callback({ error: new errorCreator.InvalidCharacters({ propertyName: 'alias name' }) });
 
         return;
       }
@@ -923,7 +923,7 @@ function handle(socket) {
 
       dbUser.addAlias(user.userName, aliasLower, (err, aliasUser) => {
         if (err || aliasUser === null) {
-          callback({ error: { text: ['Failed to add alias'] } });
+          callback({ error: new errorCreator.Database() });
 
           return;
         }
