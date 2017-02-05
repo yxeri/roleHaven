@@ -46,6 +46,7 @@ function handle(io) {
       gMapsKey: appConfig.gMapsKey,
       socketPath: appConfig.socketPath,
       mainJs: appConfig.mode === 'dev' ? 'scripts/bundle.js' : 'scripts/bundle.min.js',
+      mainCss: !isNaN(req.query.style) ? `styles/${req.query.style}.css` : 'styles/main.css',
     });
   });
 
