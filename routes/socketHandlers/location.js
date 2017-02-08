@@ -223,7 +223,7 @@ function handle(socket) {
           return;
         }
 
-        callback({ data: { positions: googlePositions } });
+        callback({ data: { positions: googlePositions, currentTime: (new Date()) } });
       });
     });
   });

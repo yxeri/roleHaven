@@ -1,16 +1,13 @@
 #!/bin/bash
 
-# Creates directories for scripts, views and styles in public
-mkdir -p ./public/scripts ./public/views ./public/styles
-
-# Creates directory for sounds
-mkdir -p ./public/sounds
-
-# Creates directory for images
-mkdir -p ./public/images
+mkdir -p ./public/scripts ./public/views ./public/styles ./public/sounds ./public/images
+mkdir -p ./private/required ./private/images ./private/styles ./private/views ./private/scripts
 
 # Copies required JS files to public, such as socket.io
 cp -r ./private/required/* ./public/scripts/
+
+# Copies all images to public
+cp -r ./private/images/* ./public/images/
 
 # Transpiles code to es5 and outputs it to public
 ./node_modules/browserify/bin/cmd.js private/scripts/* -t [ babelify --presets [ es2015 ] --compact='false' ] -o ./public/scripts/bundle.js

@@ -260,12 +260,14 @@ function sendAndStoreChatMsg({ user, callback, message, io, socket }) {
       return;
     }
 
-    const data = {
-      message,
-    };
-    data.message.time = new Date();
+    const modifiedMessage = message;
+    modifiedMessage.time = new Date();
 
-    addMsgToHistory(data.message.roomName, data.message, (err) => {
+    const data = {
+      messages: [modifiedMessage],
+    };
+
+    addMsgToHistory(modifiedMessage.roomName, modifiedMessage, (err) => {
       if (err) {
         callback({ error: {} });
 
@@ -273,9 +275,9 @@ function sendAndStoreChatMsg({ user, callback, message, io, socket }) {
       }
 
       if (socket) {
-        socket.broadcast.to(data.message.roomName).emit('chatMsg', data);
+        socket.broadcast.to(modifiedMessage.roomName).emit('chatMsgs', data);
       } else {
-        io.to(data.message.roomName).emit('chatMsg', data);
+        io.to(modifiedMessage.roomName).emit('chatMsgs', data);
       }
 
       callback({ data });

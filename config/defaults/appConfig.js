@@ -166,7 +166,7 @@ config.routes = config.routes || [
 config.radioChannels = config.radioChannels || {};
 
 config.gMapsKey = process.env.GMAPSKEY || config.gMapsKey;
-config.mapLayersPath = process.env.MAPLAYERSPATH || config.mapLayersPath || 'https://www.google.com/maps/d/kml?hl=en_US&app=mp&mid=1j97gNHqYj-6M10RbW9CGAVNxUV4&forcekml=1&cid=mp&cv=jm93Tu_hxIY.en_US.';
+config.mapLayersPath = process.env.MAPLAYERSPATH || config.mapLayersPath || 'https://www.google.com/maps/d/kml?mid=1AGg1z3qq-oWABJGGr_FV4uanhZM&hl=en_US&app=mp&forcekml=1&cid=mp&cv=jm93Tu_hxIY.en_US.';
 
 config.country = process.env.COUNTRY || config.country || 'Sweden';
 config.centerLat = convertToFloat(process.env.CENTERLAT || config.centerLat || 59.3534372);
