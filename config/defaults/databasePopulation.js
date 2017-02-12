@@ -64,7 +64,7 @@ config.accessLevels = config.accessLevels || {
  * important, broadcast, admin should always be created. The rest are optional
  */
 config.rooms = {
-  // General chat room, available for every user
+  // GeneralError chat room, available for every user
   public: config.rooms.public || {
     roomName: 'public',
     visibility: config.accessLevels.anonymous,

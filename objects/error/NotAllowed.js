@@ -14,9 +14,9 @@
  limitations under the License.
  */
 
-const General = require('./General');
+const GeneralError = require('./GeneralError');
 
-class InvalidDataError extends General {
+class InvalidDataError extends GeneralError {
   /**
    * InvalidData constructor
    * @param {string} used - Description of what the user tried to access

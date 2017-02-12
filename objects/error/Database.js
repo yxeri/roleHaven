@@ -14,12 +14,12 @@
  limitations under the License.
  */
 
-const General = require('./General');
+const GeneralError = require('./GeneralError');
 
-class Database extends General {
+class Database extends GeneralError {
   constructor() {
     super({
-      type: 'Database error',
+      type: 'Database',
       text: ['Failed to save/retrieve data'],
     });
   }

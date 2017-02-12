@@ -16,13 +16,15 @@
 
 const GeneralError = require('./GeneralError');
 
-class AlreadyExists extends GeneralError {
-  constructor({ propertyName = 'unknown' }) {
+class External extends GeneralError {
+  constructor({ source = 'unknown' }) {
+    const text = `Failed to retrieve data from ${source}`;
+
     super({
-      type: 'Already exists',
-      text: [`${propertyName} already exists`],
+      type: 'External',
+      text,
     });
   }
 }
 
-module.exports = AlreadyExists;
+module.exports = External;

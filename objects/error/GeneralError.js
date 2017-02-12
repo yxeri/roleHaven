@@ -15,7 +15,7 @@
  */
 
 class GeneralError {
-  constructor({ text = ['Something went wrong'], type = 'General' }) {
+  constructor({ text = ['Something went wrong'], type = 'GeneralError' }) {
     this.text = text;
     this.type = type;
   }

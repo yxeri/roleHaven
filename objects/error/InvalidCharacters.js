@@ -14,9 +14,9 @@
  limitations under the License.
  */
 
-const General = require('./General');
+const GeneralError = require('./GeneralError');
 
-class InvalidCharacters extends General {
+class InvalidCharacters extends GeneralError {
   /**
    * InvalidCharacters constructor
    * @param {string} propertyName - Human-readable name of the property

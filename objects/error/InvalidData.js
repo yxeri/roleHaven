@@ -14,23 +14,25 @@
  limitations under the License.
  */
 
-const General = require('./General');
+const GeneralError = require('./GeneralError');
 
-class InvalidDataError extends General {
+class InvalidDataError extends GeneralError {
   /**
    * InvalidDataError constructor
-   * @param {string} [params.incorrectProperties] - String with incorrect/missing properties
-   * @param {string} [params.expected] - String with the data that was expected
+   * @param {Object} [params] - Params
+   * @param {string} [params.incorrectProperties] - Incorrect/missing properties
+   * @param {string} [params.expectedResult] - Expected result
    */
-  constructor({ incorrectProperties, expected }) {
+  constructor(params = {}) {
+    const { incorrectProperties, expectedResult } = params;
     const text = ['Invalid data sent'];
 
     if (incorrectProperties) {
       text.push(`Incorrect or missing properties: ${incorrectProperties}`);
     }
 
-    if (expected) {
-      text.push(`Expected: ${expected}`);
+    if (expectedResult) {
+      text.push(`Expected: ${expectedResult}`);
     }
 
     super({

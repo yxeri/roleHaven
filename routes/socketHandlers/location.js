@@ -23,6 +23,7 @@ const databasePopulation = require('../../config/defaults/config').databasePopul
 const logger = require('../../utils/logger');
 const objectValidator = require('../../utils/objectValidator');
 const mapCreator = require('../../utils/mapCreator');
+const errorCreator = require('../../objects/error/errorCreator');
 
 /**
  * @param {Object} socket - Socket.IO socket
@@ -114,8 +115,8 @@ function handle(socket) {
     });
   });
 
-  socket.on('getMapPositions', (params, callback = () => {}) => {
-    if (!objectValidator.isValidData(params, { types: true })) {
+  socket.on('getMapPositions', ({ types }, callback = () => {}) => {
+    if (!objectValidator.isValidData({ types }, { types: true })) {
       callback({ error: {} });
 
       return;
@@ -128,7 +129,6 @@ function handle(socket) {
         return;
       }
 
-      const types = params.types;
       const message = {};
 
       /**
@@ -142,7 +142,7 @@ function handle(socket) {
           case 'static': {
             dbLocation.getAllStaticPositions((err, staticPositions) => {
               if (err) {
-                callback({ error: {} });
+                callback({ error: new errorCreator.Database() });
 
                 return;
               }
@@ -156,7 +156,7 @@ function handle(socket) {
             if (user.isTracked) {
               dbUser.getAllUserPositions(user, (err, userPositions) => {
                 if (err) {
-                  callback({ error: {} });
+                  callback({ error: new errorCreator.Database() });
 
                   return;
                 }
@@ -203,28 +203,14 @@ function handle(socket) {
   });
 
   socket.on('getGooglePositions', (params, callback = () => {}) => {
-    manager.userAllowedCommand(socket.id, databasePopulation.commands.map.commandName, (allowErr, allowed) => {
-      if (allowErr || !allowed) {
-        callback({ error: {} });
+    mapCreator.getGooglePositions((err, googlePositions) => {
+      if (err || googlePositions === null) {
+        callback({ error: new errorCreator.External({ source: 'Google Maps' }) });
 
         return;
       }
 
-      mapCreator.getGooglePositions((err, googlePositions) => {
-        if (err || googlePositions === null) {
-          logger.sendErrorMsg({
-            code: logger.ErrorCodes.general,
-            text: ['Failed to get world positions'],
-            err,
-          });
-
-          callback({ error: {} });
-
-          return;
-        }
-
-        callback({ data: { positions: googlePositions, currentTime: (new Date()) } });
-      });
+      callback({ data: { positions: googlePositions, currentTime: (new Date()) } });
     });
   });
 }

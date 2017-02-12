@@ -14,9 +14,10 @@
  limitations under the License.
  */
 
-exports.General = require('./General');
+exports.General = require('./GeneralError');
 exports.InvalidData = require('./InvalidData');
 exports.NotAllowed = require('./NotAllowed');
 exports.InvalidCharacters = require('./InvalidCharacters');
 exports.Database = require('./Database');
 exports.AlreadyExists = require('./AlreadyExists');
+exports.External = require('./External');
