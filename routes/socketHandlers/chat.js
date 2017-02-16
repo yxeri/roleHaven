@@ -27,6 +27,7 @@ const logger = require('../../utils/logger');
 const messenger = require('../../socketHelpers/messenger');
 const objectValidator = require('../../utils/objectValidator');
 const fs = require('fs');
+const errorCreator = require('../../objects/error/errorCreator');
 
 /**
  * Follow a new room on the socket
@@ -75,6 +76,27 @@ function shouldBeHidden(room, socketId) {
 }
 
 /**
+ * Removes empty consecutive elements in the text array
+ * @param {string} text - Array with text
+ * @returns {string[]} Array with text without consecutive empty elements
+ */
+function cleanText(text) {
+  const modifiedText = [];
+
+  for (let i = 0; i < text.length; i += 1) {
+    console.log(i + 1, text.length, text[i] === '');
+
+    if (i === 0 && text[0] !== '') {
+      modifiedText.push(text[0]);
+    } else if (!(text[i - 1] === '' && text[i] === '') && !(i + 1 === text.length && text[i] === '')) {
+      modifiedText.push(text[i]);
+    }
+  }
+
+  return modifiedText;
+}
+
+/**
  * @param {object} socket - Socket.IO socket
  * @param {object} io - Socket.IO
  */
@@ -85,6 +107,8 @@ function handle(socket, io) {
 
       return;
     }
+
+    message.text = cleanText(message.text);
 
     manager.userAllowedCommand(socket.id, databasePopulation.commands.msg.commandName, (allowErr, allowed, user) => {
       if (allowErr || !allowed) {
@@ -423,15 +447,9 @@ function handle(socket, io) {
   });
 
   socket.on('myRooms', (params, callback = () => {}) => {
-    if (!objectValidator.isValidData(params, { user: { userName: true }, device: { deviceId: true } })) {
-      callback({ error: {} });
-
-      return;
-    }
-
     manager.userAllowedCommand(socket.id, databasePopulation.commands.whoami.commandName, (allowErr, allowed, user) => {
       if (allowErr || !allowed) {
-        callback({ error: {} });
+        callback({ error: new errorCreator.NotAllowed({ used: databasePopulation.commands.whoami.commandName }) });
 
         return;
       }
@@ -439,7 +457,7 @@ function handle(socket, io) {
       const rooms = [];
       const socketRooms = Object.keys(socket.rooms);
 
-      if (user.team) {
+      if (user && user.team) {
         rooms.push('team');
       }
 
@@ -451,29 +469,32 @@ function handle(socket, io) {
         }
       }
 
-      dbRoom.getOwnedRooms(user, (err, ownedRooms) => {
-        if (err || !ownedRooms || ownedRooms === null) {
-          logger.sendErrorMsg({
-            code: logger.ErrorCodes.db,
-            text: ['Failed to get owned rooms'],
-            err,
-          });
+      if (!user) {
+        callback({ data: { rooms } });
+      } else {
+        dbRoom.getOwnedRooms(user, (err, ownedRooms) => {
+          if (err || !ownedRooms || ownedRooms === null) {
+            logger.sendErrorMsg({
+              code: logger.ErrorCodes.db,
+              text: ['Failed to get owned rooms'],
+              err,
+            });
+            callback({ error: new errorCreator.Database() });
 
-          callback({ error: {} });
-
-          return;
-        }
-
-        const roomNames = [];
-
-        if (ownedRooms.length > 0) {
-          for (let i = 0; i < ownedRooms.length; i += 1) {
-            roomNames.push(ownedRooms[i].roomName);
+            return;
           }
-        }
 
-        callback({ data: { rooms, ownedRooms: roomNames } });
-      });
+          const roomNames = [];
+
+          if (ownedRooms.length > 0) {
+            for (let i = 0; i < ownedRooms.length; i += 1) {
+              roomNames.push(ownedRooms[i].roomName);
+            }
+          }
+
+          callback({ data: { rooms, ownedRooms: roomNames } });
+        });
+      }
     });
   });
 

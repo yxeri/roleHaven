@@ -185,8 +185,8 @@ config.commands = {
   },
   whoami: config.commands.whoami || {
     commandName: 'whoami',
-    accessLevel: config.accessLevels.basic,
-    visibility: config.accessLevels.basic,
+    accessLevel: config.accessLevels.anonymous,
+    visibility: config.accessLevels.anonymous,
     category: 'basic',
   },
   msg: config.commands.msg || {
