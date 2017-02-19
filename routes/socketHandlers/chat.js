@@ -516,19 +516,13 @@ function handle(socket, io) {
       const modifiedRoom = room;
 
       if (modifiedRoom) {
-        if (user.team && modifiedRoom.roomName === 'team') {
+        if (user && user.team && modifiedRoom.roomName === 'team') {
           modifiedRoom.roomName = user.team + appConfig.teamAppend;
         } else if (modifiedRoom.roomName === 'whisper') {
           modifiedRoom.roomName = user.userName + appConfig.whisperAppend;
         }
 
         if (Object.keys(socket.rooms).indexOf(modifiedRoom.roomName) < 0) {
-          logger.sendSocketErrorMsg({
-            socket,
-            code: logger.ErrorCodes.general,
-            text: [`${user.userName} is not following room ${modifiedRoom.roomName}. Unable to retrieve history`],
-            text_se: [`${user.userName} följer inte rummet ${modifiedRoom.roomName}. Misslyckades med hämtningen av historik`],
-          });
           callback({ error: {} });
 
           return;
@@ -545,13 +539,6 @@ function handle(socket, io) {
         lastOnline: startDate || new Date(),
         callback: (histErr, historyMessages) => {
           if (histErr) {
-            logger.sendSocketErrorMsg({
-              socket,
-              code: logger.ErrorCodes.general,
-              text: ['Unable to retrieve history'],
-              text_se: ['Misslyckades med hämtningen av historik'],
-              err: histErr,
-            });
             callback({ error: {} });
 
             return;
