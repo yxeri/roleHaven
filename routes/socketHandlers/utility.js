@@ -23,6 +23,7 @@ const logger = require('../../utils/logger');
 const http = require('http');
 const objectValidator = require('../../utils/objectValidator');
 const dbArchive = require('../../db/connectors/archive');
+const errorCreator = require('../../objects/error/errorCreator');
 
 // FIXME SMHI API changed. Structure needs to be fixed here before usage
 /**
@@ -89,15 +90,19 @@ function handle(socket) {
   socket.on('getArchivesList', (params, callback = () => {}) => {
     manager.userAllowedCommand(socket.id, databasePopulation.commands.archives.commandName, (allowErr, allowed, user) => {
       if (allowErr || !allowed) {
+        callback({ error: new errorCreator.NotAllowed({ used: databasePopulation.commands.archives.commandName }) });
+
         return;
       }
 
       dbArchive.getArchivesList(user.accessLevel, (err, archives) => {
         if (err) {
+          callback({ error: new errorCreator.Database() });
+
           return;
         }
 
-        callback({ archives });
+        callback({ data: { archives } });
       });
     });
   });

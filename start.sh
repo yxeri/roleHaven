@@ -1,7 +1,7 @@
 #!/bin/bash
 
-mkdir -p ./public/scripts ./public/views ./public/styles ./public/sounds ./public/images ./public/fonts
-mkdir -p ./private/required ./private/images ./private/styles ./private/views ./private/scripts ./private/fonts
+mkdir -p ./public/scripts ./public/views ./public/styles ./public/sounds ./public/images ./public/fonts ./public/sounds
+mkdir -p ./private/required ./private/images ./private/styles ./private/views ./private/scripts ./private/fonts ./private/sounds
 
 # Copies required JS files to public, such as socket.io
 cp -r ./private/required/* ./public/scripts/
@@ -10,6 +10,8 @@ cp -r ./private/required/* ./public/scripts/
 cp -r ./private/images/* ./public/images/
 
 cp -r ./private/fonts/* ./public/fonts/
+
+cp -r ./private/sounds/* ./public/sounds
 
 # Transpiles code to es5 and outputs it to public
 ./node_modules/browserify/bin/cmd.js private/scripts/* -t [ babelify --presets [ es2015 ] --compact='false' ] -o ./public/scripts/bundle.js
