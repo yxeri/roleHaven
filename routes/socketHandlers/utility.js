@@ -67,22 +67,28 @@ function handle(socket) {
     });
   });
 
-  socket.on('getArchive', (params, callback = () => {}) => {
-    if (!objectValidator.isValidData(params, { archiveId: true })) {
+  socket.on('getArchive', ({ archiveId }, callback = () => {}) => {
+    if (!objectValidator.isValidData({ archiveId }, { archiveId: true })) {
+      callback({ error: new errorCreator.InvalidData({}) });
+
       return;
     }
 
     manager.userAllowedCommand(socket.id, databasePopulation.commands.archives.commandName, (allowErr, allowed, user) => {
       if (allowErr || !allowed) {
+        callback({ error: new errorCreator.NotAllowed({ used: databasePopulation.commands.archives.commandName }) });
+
         return;
       }
 
-      dbArchive.getArchive(params.archiveId.toLowerCase(), user.accessLevel, (err, archive) => {
+      dbArchive.getArchive(archiveId.toLowerCase(), user.accessLevel, (err, archive) => {
         if (err) {
+          callback({ error: new errorCreator.Database({}) });
+
           return;
         }
 
-        callback({ archive });
+        callback({ data: { archive } });
       });
     });
   });
