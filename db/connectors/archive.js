@@ -20,7 +20,7 @@ const databaseConnector = require('../databaseConnector');
 
 const archiveSchema = new mongoose.Schema({
   visibility: { type: Number, default: 0 },
-  public: { type: Boolean, default: true },
+  isPublic: { type: Boolean, default: true },
   text: [String],
   archiveId: { type: String, unique: true },
   title: String,
@@ -51,6 +51,38 @@ function createArchive(archive, callback) {
     } else {
       callback(err, null);
     }
+  });
+}
+
+/**
+ * Set text on archive
+ * @param {string} archiveId - ID of archive
+ * @param {Object} params - Properties to change in the archive
+ * @param {string[]} params.text - Array with text
+ * @param {string} params.title - Title
+ * @param {number} params.visibility - Access level required to access the document
+ * @param {boolean} params.isPublic - Is the document visible to the public?
+ * @param {Function} callback - Callback
+ */
+function updateArchive(archiveId, { text, title, visibility, isPublic }, callback) {
+  const query = { archiveId };
+  const update = { };
+
+  if (text) { update.text = text; }
+  if (title) { update.title = title; }
+  if (visibility) { update.visibility = visibility; }
+  if (isPublic) { update.isPublic = isPublic; }
+
+  Archive.findOneAndUpdate(query, update).lean().exec((err, archive) => {
+    if (err) {
+      logger.sendErrorMsg({
+        code: logger.ErrorCodes.db,
+        text: ['Failed to update archive'],
+        err,
+      });
+    }
+
+    callback(err, archive);
   });
 }
 
@@ -105,17 +137,17 @@ function getArchives(accessLevel, callback) {
 /**
  * Get list of archives, based on user access level and if archive is public
  * @param {number} accessLevel - User access level
+ * @param {string} userName - User name
  * @param {Function} callback - Callback
  */
-function getArchivesList(accessLevel, callback) {
+function getArchivesList(accessLevel, userName, callback) {
   const query = {
-    $and: [
-      { visibility: { $lte: accessLevel } },
-      { public: true },
-    ],
+    visibility: { $lte: accessLevel },
+    $or: [{ isPublic: true }, { creator: userName }],
   };
+  const filter = { _id: 0, text: 0, visibility: 0, isPublic: 0 };
 
-  Archive.find(query).lean().exec((err, archives) => {
+  Archive.find(query, filter).lean().exec((err, archives) => {
     if (err) {
       logger.sendErrorMsg({
         code: logger.ErrorCodes.db,
@@ -132,3 +164,4 @@ exports.createArchive = createArchive;
 exports.getArchive = getArchive;
 exports.getArchives = getArchives;
 exports.getArchivesList = getArchivesList;
+exports.updateArchive = updateArchive;

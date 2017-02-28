@@ -67,6 +67,60 @@ function handle(socket) {
     });
   });
 
+  socket.on('createArchive', (archive, callback = () => {}) => {
+    if (!objectValidator.isValidData(archive, { archiveId: true, text: true, title: true })) {
+      callback({ error: new errorCreator.InvalidData({}) });
+
+      return;
+    }
+
+    manager.userAllowedCommand(socket.id, databasePopulation.commands.archives.commandName, (allowErr, allowed, user) => {
+      if (allowErr || !allowed) {
+        callback({ error: new errorCreator.NotAllowed({ used: databasePopulation.commands.archives.commandName }) });
+
+        return;
+      }
+
+      archive.creator = user.userName;
+
+      dbArchive.createArchive(archive, (err, newArchive) => {
+        if (err) {
+          callback({ error: new errorCreator.Database({}) });
+
+          return;
+        }
+
+        callback({ data: { archive: newArchive } });
+      });
+    });
+  });
+
+  socket.on('updateArchive', ({ archiveId, title, text, visibility, isPublic }, callback = () => {}) => {
+    if (!objectValidator.isValidData({ archiveId }, { archiveId: true })) {
+      callback({ error: new errorCreator.InvalidData({}) });
+
+      return;
+    }
+
+    manager.userAllowedCommand(socket.id, databasePopulation.commands.archives.commandName, (allowErr, allowed) => {
+      if (allowErr || !allowed) {
+        callback({ error: new errorCreator.NotAllowed({ used: databasePopulation.commands.archives.commandName }) });
+
+        return;
+      }
+
+      dbArchive.updateArchive(archiveId, { title, text, visibility, isPublic }, (err, archive) => {
+        if (err) {
+          callback({ error: new errorCreator.Database({}) });
+
+          return;
+        }
+
+        callback({ data: { archive } });
+      });
+    });
+  });
+
   socket.on('getArchive', ({ archiveId }, callback = () => {}) => {
     if (!objectValidator.isValidData({ archiveId }, { archiveId: true })) {
       callback({ error: new errorCreator.InvalidData({}) });
@@ -101,14 +155,17 @@ function handle(socket) {
         return;
       }
 
-      dbArchive.getArchivesList(user.accessLevel, (err, archives) => {
+      dbArchive.getArchivesList(user.accessLevel, user.userName, (err, archives) => {
         if (err) {
           callback({ error: new errorCreator.Database() });
 
           return;
         }
 
-        callback({ data: { archives } });
+        const userCreated = archives.filter(archive => archive.creator === user.userName);
+        const otherArchives = archives.filter(archive => archive.creator !== user.userName);
+
+        callback({ data: { userArchives: userCreated, archives: otherArchives } });
       });
     });
   });
