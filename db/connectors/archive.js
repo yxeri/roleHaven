@@ -14,6 +14,8 @@
  limitations under the License.
  */
 
+'use strict';
+
 const mongoose = require('mongoose');
 const logger = require('../../utils/logger');
 const databaseConnector = require('../databaseConnector');
@@ -25,6 +27,7 @@ const archiveSchema = new mongoose.Schema({
   archiveId: { type: String, unique: true },
   title: String,
   creator: { type: String, default: 'SYSTEM' },
+  team: String,
 }, { collection: 'archives' });
 
 const Archive = mongoose.model('Archive', archiveSchema);
