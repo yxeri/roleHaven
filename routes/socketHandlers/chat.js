@@ -373,7 +373,7 @@ function handle(socket, io) {
   });
 
   // Shows all available rooms
-  socket.on('listRooms', (callback = () => {}) => {
+  socket.on('listRooms', (params, callback = () => {}) => {
     manager.userAllowedCommand(socket.id, databasePopulation.commands.list.commandName, (allowErr, allowed, user) => {
       if (allowErr || !allowed || !user) {
         callback({ error: {} });
@@ -394,13 +394,48 @@ function handle(socket, io) {
           return;
         }
 
-        const roomNames = [];
+        const socketRooms = Object.keys(socket.rooms);
+        const roomNames = rooms.filter(room => socketRooms.indexOf(room.roomName) < 0).map(room => room.roomName);
+        const followedNames = [];
 
-        for (let i = 0; i < rooms.length; i += 1) {
-          roomNames.push(rooms[i].roomName);
+        for (let i = 0; i < socketRooms.length; i += 1) {
+          const room = socketRooms[i];
+
+          if (!shouldBeHidden(room, socket.id)) {
+            followedNames.push(room);
+          }
         }
 
-        callback({ data: { rooms: roomNames } });
+        if (!user) {
+          callback({ data: { rooms: roomNames, followedRooms: followedNames } });
+        } else {
+          if (user.team) {
+            followedNames.push('team');
+          }
+
+          dbRoom.getOwnedRooms(user, (err, ownedRooms) => {
+            if (err || !ownedRooms || ownedRooms === null) {
+              logger.sendErrorMsg({
+                code: logger.ErrorCodes.db,
+                text: ['Failed to get owned rooms'],
+                err,
+              });
+              callback({ error: new errorCreator.Database() });
+
+              return;
+            }
+
+            const ownedNames = [];
+
+            if (ownedRooms.length > 0) {
+              for (let i = 0; i < ownedRooms.length; i += 1) {
+                ownedNames.push(ownedRooms[i].roomName);
+              }
+            }
+
+            callback({ data: { rooms: roomNames, followedRooms: followedNames, ownedRooms: ownedNames } });
+          });
+        }
       });
     });
   });
@@ -446,58 +481,6 @@ function handle(socket, io) {
     });
   });
 
-  socket.on('myRooms', (params, callback = () => {}) => {
-    manager.userAllowedCommand(socket.id, databasePopulation.commands.whoami.commandName, (allowErr, allowed, user) => {
-      if (allowErr || !allowed) {
-        callback({ error: new errorCreator.NotAllowed({ used: databasePopulation.commands.whoami.commandName }) });
-
-        return;
-      }
-
-      const rooms = [];
-      const socketRooms = Object.keys(socket.rooms);
-
-      if (user && user.team) {
-        rooms.push('team');
-      }
-
-      for (let i = 0; i < socketRooms.length; i += 1) {
-        const room = socketRooms[i];
-
-        if (!shouldBeHidden(room, socket.id)) {
-          rooms.push(room);
-        }
-      }
-
-      if (!user) {
-        callback({ data: { rooms } });
-      } else {
-        dbRoom.getOwnedRooms(user, (err, ownedRooms) => {
-          if (err || !ownedRooms || ownedRooms === null) {
-            logger.sendErrorMsg({
-              code: logger.ErrorCodes.db,
-              text: ['Failed to get owned rooms'],
-              err,
-            });
-            callback({ error: new errorCreator.Database() });
-
-            return;
-          }
-
-          const roomNames = [];
-
-          if (ownedRooms.length > 0) {
-            for (let i = 0; i < ownedRooms.length; i += 1) {
-              roomNames.push(ownedRooms[i].roomName);
-            }
-          }
-
-          callback({ data: { rooms, ownedRooms: roomNames } });
-        });
-      }
-    });
-  });
-
   /**
    * Get history for one to many rooms
    * @param {Object} params - Parameters
@@ -508,12 +491,32 @@ function handle(socket, io) {
   socket.on('history', ({ room, startDate, lines }, callback = () => {}) => {
     manager.userAllowedCommand(socket.id, databasePopulation.commands.history.commandName, (allowErr, allowed, user) => {
       if (allowErr || !allowed) {
-        callback({ error: {} });
+        callback({ error: new errorCreator.NotAllowed({ used: databasePopulation.commands.history.commandName }) });
 
         return;
       }
 
       const modifiedRoom = room;
+      const getHistory = () => {
+        const allRooms = modifiedRoom ? [modifiedRoom.roomName] : Object.keys(socket.rooms);
+        const historyLines = lines > appConfig.maxHistoryLines ? appConfig.maxHistoryLines : lines;
+
+        manager.getHistory({
+          rooms: allRooms,
+          lines: historyLines,
+          missedMsgs: false,
+          lastOnline: startDate || new Date(),
+          callback: (histErr, historyMessages = []) => {
+            if (histErr) {
+              callback({ error: {} });
+
+              return;
+            }
+
+            callback({ data: { messages: historyMessages } });
+          },
+        });
+      };
 
       if (modifiedRoom) {
         if (user && user.team && modifiedRoom.roomName === 'team') {
@@ -522,31 +525,18 @@ function handle(socket, io) {
           modifiedRoom.roomName = user.userName + appConfig.whisperAppend;
         }
 
-        if (Object.keys(socket.rooms).indexOf(modifiedRoom.roomName) < 0) {
-          callback({ error: {} });
-
-          return;
-        }
-      }
-
-      const allRooms = modifiedRoom ? [modifiedRoom.roomName] : Object.keys(socket.rooms);
-      const historyLines = lines > appConfig.maxHistoryLines ? appConfig.maxHistoryLines : lines;
-
-      manager.getHistory({
-        rooms: allRooms,
-        lines: historyLines,
-        missedMsgs: false,
-        lastOnline: startDate || new Date(),
-        callback: (histErr, historyMessages) => {
-          if (histErr) {
-            callback({ error: {} });
+        dbRoom.authUserToRoom(user, modifiedRoom.roomName, modifiedRoom.password || '', (err, authRoom) => {
+          if (err || authRoom === null) {
+            callback({ error: new errorCreator.NotAllowed({ used: `Not authorized to retrieve history from ${modifiedRoom.roomName}` }) });
 
             return;
           }
 
-          callback({ data: { messages: historyMessages } });
-        },
-      });
+          getHistory();
+        });
+      } else {
+        getHistory();
+      }
     });
   });
 
