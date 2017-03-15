@@ -496,9 +496,8 @@ function handle(socket, io) {
         return;
       }
 
-      const modifiedRoom = room;
       const getHistory = () => {
-        const allRooms = modifiedRoom ? [modifiedRoom.roomName] : Object.keys(socket.rooms);
+        const allRooms = room ? [room.roomName] : Object.keys(socket.rooms);
         const historyLines = lines > appConfig.maxHistoryLines ? appConfig.maxHistoryLines : lines;
 
         manager.getHistory({
@@ -518,25 +517,21 @@ function handle(socket, io) {
         });
       };
 
-      if (modifiedRoom) {
-        if (user && user.team && modifiedRoom.roomName === 'team') {
-          modifiedRoom.roomName = user.team + appConfig.teamAppend;
-        } else if (modifiedRoom.roomName === 'whisper') {
-          modifiedRoom.roomName = user.userName + appConfig.whisperAppend;
+      if (user && user.team && room.roomName === 'team') {
+        room.roomName = user.team + appConfig.teamAppend;
+      } else if (room.roomName === 'whisper') {
+        room.roomName = user.userName + appConfig.whisperAppend;
+      }
+
+      dbRoom.authUserToRoom(user || { accessLevel: 0 }, room.roomName, room.password || '', (err, authRoom) => {
+        if (err || authRoom === null) {
+          callback({ error: new errorCreator.NotAllowed({ used: `Not authorized to retrieve history from ${room.roomName}` }) });
+
+          return;
         }
 
-        dbRoom.authUserToRoom(user, modifiedRoom.roomName, modifiedRoom.password || '', (err, authRoom) => {
-          if (err || authRoom === null) {
-            callback({ error: new errorCreator.NotAllowed({ used: `Not authorized to retrieve history from ${modifiedRoom.roomName}` }) });
-
-            return;
-          }
-
-          getHistory();
-        });
-      } else {
         getHistory();
-      }
+      });
     });
   });
 

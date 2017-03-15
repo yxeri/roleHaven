@@ -47,7 +47,7 @@ const Room = mongoose.model('Room', roomSchema);
  * @param {string} password - Password of the room
  * @param {Function} callback - Callback
  */
-function authUserToRoom(user, roomName, password, callback) {
+function authUserToRoom(user = { accessLevel: 0 }, roomName, password = '', callback) {
   const query = {
     $and: [
       { accessLevel: { $lte: user.accessLevel } },
