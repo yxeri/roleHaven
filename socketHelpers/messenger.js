@@ -162,9 +162,10 @@ function sendSelfChatMsgs({ messages, socket }) {
  * Checks if the user is following a room
  * @param {Object} user - User to check
  * @param {string} roomName - Name of the room
+ * @param {Object} socket - Socket.io socket
  * @returns {boolean} Is the socket following the room?
  */
-function isUserFollowingRoom(user, roomName) {
+function isUserFollowingRoom(user, roomName, socket) {
   if (user.rooms.indexOf(roomName) === -1) {
     sendSelfMsg({
       user,
@@ -172,6 +173,7 @@ function isUserFollowingRoom(user, roomName) {
         text: [`You are not following room ${roomName}`],
         text_se: [`Ni följer inte rummet ${roomName}`],
       },
+      socket,
     });
 
     return false;
@@ -254,7 +256,7 @@ function sendImportantMsg({ socket, message, device, callback }) {
  */
 function sendAndStoreChatMsg({ user, callback, message, io, socket }) {
   dbUser.getUser(user.userName, (userErr, foundUser) => {
-    if (userErr || foundUser === null || !isUserFollowingRoom(foundUser, message.roomName)) {
+    if (userErr || foundUser === null || !isUserFollowingRoom(foundUser, message.roomName, socket)) {
       callback({ error: {} });
 
       return;

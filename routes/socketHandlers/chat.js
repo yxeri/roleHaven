@@ -186,7 +186,7 @@ function handle(socket, io) {
   });
 
   socket.on('createRoom', ({ room }, callback = () => {}) => {
-    if (!objectValidator.isValidData({ room }, { room: { roomName: true, owner: true } })) {
+    if (!objectValidator.isValidData({ room }, { room: { roomName: true } })) {
       callback({ error: {} });
 
       return;
@@ -198,6 +198,8 @@ function handle(socket, io) {
 
         return;
       }
+
+      room.owner = user.userName;
 
       manager.createRoom(room, user, (createErr, createdRoom) => {
         if (createErr) {
@@ -512,7 +514,12 @@ function handle(socket, io) {
               return;
             }
 
-            callback({ data: { messages: historyMessages } });
+            const data = {
+              messages: historyMessages,
+              following: room && Object.keys(socket.rooms).indexOf(room.roomName) > -1,
+            };
+
+            callback({ data });
           },
         });
       };
