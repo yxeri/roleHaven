@@ -466,6 +466,24 @@ config.commands = {
     visibility: config.accessLevels.admin,
     category: 'admin',
   },
+  getArchives: config.commands.getArchives || {
+    commandName: 'getArchives',
+    accessLevel: config.accessLevels.anonymous,
+    visibility: config.accessLevels.anonymous,
+    category: 'basic',
+  },
+  getArchive: config.commands.getArchive || {
+    commandName: 'getArchive',
+    accessLevel: config.accessLevels.anonymous,
+    visibility: config.accessLevels.anonymous,
+    category: 'basic',
+  },
+  getRooms: config.commands.getRooms || {
+    commandName: 'getRooms',
+    accessLevel: config.accessLevels.anonymous,
+    visibility: config.accessLevels.anonymous,
+    category: 'basic',
+  },
 };
 
 module.exports = config;

@@ -36,7 +36,7 @@ function handle(socket) {
       return;
     }
 
-    manager.userAllowedCommand(socket.id, databasePopulation.commands.map.commandName, (allowErr, allowed, user) => {
+    manager.userIsAllowed(socket.id, databasePopulation.commands.map.commandName, (allowErr, allowed, user) => {
       if (allowErr || !allowed) {
         callback({ error: {} });
 
@@ -122,7 +122,7 @@ function handle(socket) {
       return;
     }
 
-    manager.userAllowedCommand(socket.id, databasePopulation.commands.map.commandName, (allowErr, allowed, user) => {
+    manager.userIsAllowed(socket.id, databasePopulation.commands.map.commandName, (allowErr, allowed, user) => {
       if (allowErr || !allowed) {
         callback({ error: {} });
 

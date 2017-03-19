@@ -64,7 +64,7 @@ function handle(socket) {
       return;
     }
 
-    manager.userAllowedCommand(socket.id, databasePopulation.commands.updatecommand.commandName, (allowErr, allowed) => {
+    manager.userIsAllowed(socket.id, databasePopulation.commands.updatecommand.commandName, (allowErr, allowed) => {
       if (allowErr || !allowed) {
         callback({ error: {} });
 

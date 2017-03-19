@@ -32,7 +32,7 @@ function handle(socket) {
    * Emits list
    */
   socket.on('listDevices', (params, callback = () => {}) => {
-    manager.userAllowedCommand(socket.id, databasePopulation.commands.list.commandName, (allowErr, allowed, user) => {
+    manager.userIsAllowed(socket.id, databasePopulation.commands.list.commandName, (allowErr, allowed, user) => {
       if (allowErr || !allowed) {
         callback({ error: {} });
 
@@ -85,7 +85,7 @@ function handle(socket) {
       return;
     }
 
-    manager.userAllowedCommand(socket.id, databasePopulation.commands.updatedevice.commandName, (allowErr, allowed) => {
+    manager.userIsAllowed(socket.id, databasePopulation.commands.updatedevice.commandName, (allowErr, allowed) => {
       if (allowErr || !allowed) {
         callback({ error: {} });
 

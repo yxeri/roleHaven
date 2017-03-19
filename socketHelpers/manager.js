@@ -64,20 +64,24 @@ function getCommand(commandName, callback) {
  * @param {string} commandName - Name of the command
  * @param {Function} callback - callback
  */
-function userAllowedCommand(socketId, commandName, callback) {
+function userIsAllowed(socketId, commandName, callback) {
   let isAllowed = false;
   const callbackFunc = (err, user) => {
     if (err) {
       callback(err);
     } else {
+      const commandUser = {
+        userName: user ? user.userName : '',
+        accessLevel: user ? user.accessLevel : 0,
+      };
+
       getCommand(commandName, (cmdErr, command) => {
         if (cmdErr) {
           callback(cmdErr);
         } else {
-          const userLevel = user ? user.accessLevel : 0;
           const commandLevel = command.accessLevel;
 
-          if (userLevel >= commandLevel) {
+          if (commandUser.accessLevel >= commandLevel) {
             isAllowed = true;
           }
         }
@@ -86,7 +90,7 @@ function userAllowedCommand(socketId, commandName, callback) {
           dbCommand.incrementCommandUsage(commandName);
         }
 
-        callback(cmdErr, isAllowed, user);
+        callback(cmdErr, isAllowed, commandUser);
       });
     }
   };
@@ -214,7 +218,7 @@ function joinRooms(rooms, socket, device) {
   }
 }
 
-exports.userAllowedCommand = userAllowedCommand;
+exports.userIsAllowed = userIsAllowed;
 exports.getHistory = getHistory;
 exports.createRoom = createRoom;
 exports.updateUserSocketId = updateUserSocketId;

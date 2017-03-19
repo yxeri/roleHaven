@@ -122,7 +122,7 @@ function getTeam({ socket, user, callback }) {
  */
 function handle(socket, io) {
   socket.on('getTeam', () => {
-    manager.userAllowedCommand(socket.id, databasePopulation.commands.inviteteam.commandName, (allowErr, allowed, user) => {
+    manager.userIsAllowed(socket.id, databasePopulation.commands.inviteteam.commandName, (allowErr, allowed, user) => {
       if (allowErr || !allowed) {
         return;
       }
@@ -143,7 +143,7 @@ function handle(socket, io) {
       return;
     }
 
-    manager.userAllowedCommand(socket.id, databasePopulation.commands.createteam.commandName, (allowErr, allowed) => {
+    manager.userIsAllowed(socket.id, databasePopulation.commands.createteam.commandName, (allowErr, allowed) => {
       if (allowErr || !allowed) {
         socket.emit('commandFail');
 
@@ -185,7 +185,7 @@ function handle(socket, io) {
       return;
     }
 
-    manager.userAllowedCommand(socket.id, databasePopulation.commands.inviteteam.commandName, (allowErr, allowed, user) => {
+    manager.userIsAllowed(socket.id, databasePopulation.commands.inviteteam.commandName, (allowErr, allowed, user) => {
       if (allowErr || !allowed) {
         return;
       }
@@ -281,7 +281,7 @@ function handle(socket, io) {
       return;
     }
 
-    manager.userAllowedCommand(socket.id, databasePopulation.commands.createteam.commandName, (allowErr, allowed, allowedUser) => {
+    manager.userIsAllowed(socket.id, databasePopulation.commands.createteam.commandName, (allowErr, allowed, allowedUser) => {
       if (allowErr || !allowed) {
         return;
       } else if (allowedUser.team) {
@@ -428,7 +428,7 @@ function handle(socket, io) {
       return;
     }
 
-    manager.userAllowedCommand(socket.id, databasePopulation.commands.verifyteam.commandName, (allowErr, allowed) => {
+    manager.userIsAllowed(socket.id, databasePopulation.commands.verifyteam.commandName, (allowErr, allowed) => {
       if (allowErr || !allowed) {
         return;
       }
@@ -489,7 +489,7 @@ function handle(socket, io) {
   });
 
   socket.on('verifyAllTeams', () => {
-    manager.userAllowedCommand(socket.id, databasePopulation.commands.verifyteam.commandName, (allowErr, allowed) => {
+    manager.userIsAllowed(socket.id, databasePopulation.commands.verifyteam.commandName, (allowErr, allowed) => {
       if (allowErr || !allowed) {
         return;
       }
@@ -534,7 +534,7 @@ function handle(socket, io) {
   });
 
   socket.on('unverifiedTeams', () => {
-    manager.userAllowedCommand(socket.id, databasePopulation.commands.verifyteam.commandName, (allowErr, allowed) => {
+    manager.userIsAllowed(socket.id, databasePopulation.commands.verifyteam.commandName, (allowErr, allowed) => {
       if (allowErr || !allowed) {
         return;
       }
@@ -563,7 +563,7 @@ function handle(socket, io) {
   });
 
   socket.on('leaveTeam', () => {
-    manager.userAllowedCommand(socket.id, databasePopulation.commands.leaveteam.commandName, (allowErr, allowed, user) => {
+    manager.userIsAllowed(socket.id, databasePopulation.commands.leaveteam.commandName, (allowErr, allowed, user) => {
       if (allowErr || !allowed) {
         return;
       }
@@ -625,7 +625,7 @@ function handle(socket, io) {
       return;
     }
 
-    manager.userAllowedCommand(socket.id, databasePopulation.commands.invitations.commandName, (allowErr, allowed, allowedUser) => {
+    manager.userIsAllowed(socket.id, databasePopulation.commands.invitations.commandName, (allowErr, allowed, allowedUser) => {
       if (allowErr || !allowed) {
         return;
       }

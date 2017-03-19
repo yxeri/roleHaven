@@ -46,7 +46,7 @@ function handle(socket) {
       return;
     }
 
-    manager.userAllowedCommand(socket.id, databasePopulation.commands.register.commandName, (allowErr, allowed) => {
+    manager.userIsAllowed(socket.id, databasePopulation.commands.register.commandName, (allowErr, allowed) => {
       if (allowErr || !allowed || !params || !params.user || !isTextAllowed(params.user.userName)) {
         callback({ error: {} });
         socket.emit('commandFail');
@@ -90,7 +90,7 @@ function handle(socket) {
       return;
     }
 
-    manager.userAllowedCommand(socket.id, databasePopulation.commands.register.commandName, (allowErr, allowed) => {
+    manager.userIsAllowed(socket.id, databasePopulation.commands.register.commandName, (allowErr, allowed) => {
       if (allowErr || !allowed) {
         callback({ error: new errorCreator.NotAllowed({ used: databasePopulation.commands.register.commandName }) });
 
@@ -224,7 +224,7 @@ function handle(socket) {
       return;
     }
 
-    manager.userAllowedCommand(socket.id, databasePopulation.commands.login.commandName, (allowErr, allowed) => {
+    manager.userIsAllowed(socket.id, databasePopulation.commands.login.commandName, (allowErr, allowed) => {
       if (allowErr || !allowed) {
         callback({ error: new errorCreator.NotAllowed({ used: databasePopulation.commands.login.commandName }) });
 
@@ -322,7 +322,7 @@ function handle(socket) {
       return;
     }
 
-    manager.userAllowedCommand(socket.id, databasePopulation.commands.password.commandName, (allowErr, allowed, user) => {
+    manager.userIsAllowed(socket.id, databasePopulation.commands.password.commandName, (allowErr, allowed, user) => {
       if (allowErr || !allowed) {
         callback({ error: {} });
 
@@ -360,7 +360,7 @@ function handle(socket) {
       return;
     }
 
-    manager.userAllowedCommand(socket.id, databasePopulation.commands.password.commandName, (allowErr, allowed, user) => {
+    manager.userIsAllowed(socket.id, databasePopulation.commands.password.commandName, (allowErr, allowed, user) => {
       if (allowErr || !allowed) {
         callback({ error: {} });
 
@@ -415,7 +415,7 @@ function handle(socket) {
   });
 
   socket.on('logout', (params, callback = () => {}) => {
-    manager.userAllowedCommand(socket.id, databasePopulation.commands.logout.commandName, (allowErr, allowed, user) => {
+    manager.userIsAllowed(socket.id, databasePopulation.commands.logout.commandName, (allowErr, allowed, user) => {
       if (allowErr || !allowed || !user) {
         callback({ error: {} });
 
@@ -457,12 +457,10 @@ function handle(socket) {
           }
 
           callback({
-            message: {
-              text: ['You have been logged out'],
-              text_se: ['Ni har blivit urloggade'],
+            data: {
+              success: true,
             },
           });
-          socket.emit('logout');
         });
       });
     });
@@ -475,7 +473,7 @@ function handle(socket) {
       return;
     }
 
-    manager.userAllowedCommand(socket.id, databasePopulation.commands.verifyuser.commandName, (allowErr, allowed) => {
+    manager.userIsAllowed(socket.id, databasePopulation.commands.verifyuser.commandName, (allowErr, allowed) => {
       if (allowErr || !allowed) {
         return;
       }
@@ -508,7 +506,7 @@ function handle(socket) {
   });
 
   socket.on('verifyAllUsers', () => {
-    manager.userAllowedCommand(socket.id, databasePopulation.commands.verifyuser.commandName, (allowErr, allowed) => {
+    manager.userIsAllowed(socket.id, databasePopulation.commands.verifyuser.commandName, (allowErr, allowed) => {
       if (allowErr || !allowed) {
         return;
       }
@@ -553,7 +551,7 @@ function handle(socket) {
   });
 
   socket.on('unverifiedUsers', () => {
-    manager.userAllowedCommand(socket.id, databasePopulation.commands.verifyuser.commandName, (allowErr, allowed) => {
+    manager.userIsAllowed(socket.id, databasePopulation.commands.verifyuser.commandName, (allowErr, allowed) => {
       if (allowErr || !allowed) {
         return;
       }
@@ -597,7 +595,7 @@ function handle(socket) {
       return;
     }
 
-    manager.userAllowedCommand(socket.id, databasePopulation.commands.banuser.commandName, (allowErr, allowed) => {
+    manager.userIsAllowed(socket.id, databasePopulation.commands.banuser.commandName, (allowErr, allowed) => {
       if (allowErr || !allowed) {
         return;
       }
@@ -662,7 +660,7 @@ function handle(socket) {
       return;
     }
 
-    manager.userAllowedCommand(socket.id, databasePopulation.commands.unbanuser.commandName, (allowErr, allowed) => {
+    manager.userIsAllowed(socket.id, databasePopulation.commands.unbanuser.commandName, (allowErr, allowed) => {
       if (allowErr || !allowed) {
         return;
       }
@@ -694,7 +692,7 @@ function handle(socket) {
   });
 
   socket.on('bannedUsers', () => {
-    manager.userAllowedCommand(socket.id, databasePopulation.commands.unbanuser.commandName, (allowErr, allowed) => {
+    manager.userIsAllowed(socket.id, databasePopulation.commands.unbanuser.commandName, (allowErr, allowed) => {
       if (allowErr || !allowed) {
         return;
       }
@@ -742,7 +740,7 @@ function handle(socket) {
       return;
     }
 
-    manager.userAllowedCommand(socket.id, databasePopulation.commands.updateuser.commandName, (allowErr, allowed) => {
+    manager.userIsAllowed(socket.id, databasePopulation.commands.updateuser.commandName, (allowErr, allowed) => {
       if (allowErr || !allowed) {
         return;
       }
@@ -816,7 +814,7 @@ function handle(socket) {
       return;
     }
 
-    manager.userAllowedCommand(socket.id, databasePopulation.commands.mode.commandName, (allowErr, allowed, user) => {
+    manager.userIsAllowed(socket.id, databasePopulation.commands.mode.commandName, (allowErr, allowed, user) => {
       if (allowErr || !allowed) {
         return;
       }
@@ -838,7 +836,7 @@ function handle(socket) {
   });
 
   socket.on('whoAmI', (params, callback = () => {}) => {
-    manager.userAllowedCommand(socket.id, databasePopulation.commands.whoami.commandName, (allowErr, allowed, user) => {
+    manager.userIsAllowed(socket.id, databasePopulation.commands.whoami.commandName, (allowErr, allowed, user) => {
       if (allowErr || !allowed || !user) {
         return;
       }
@@ -856,7 +854,7 @@ function handle(socket) {
   socket.on('matchPartialUser', (params, callback = () => {}) => {
     // params.partialName is not checked if it set, to allow the retrieval of all users on no input
 
-    manager.userAllowedCommand(socket.id, databasePopulation.commands.list.commandName, (allowErr, allowed, user) => {
+    manager.userIsAllowed(socket.id, databasePopulation.commands.list.commandName, (allowErr, allowed, user) => {
       if (allowErr || !allowed || !user) {
         callback({ error: {} });
 
@@ -880,7 +878,7 @@ function handle(socket) {
   socket.on('matchPartialAlias', ({ partialName }, callback = () => {}) => {
     // params.partialAlias is not checked if it set, to allow the retrieval of all aliases on no input
 
-    manager.userAllowedCommand(socket.id, databasePopulation.commands.list.commandName, (allowErr, allowed, user) => {
+    manager.userIsAllowed(socket.id, databasePopulation.commands.list.commandName, (allowErr, allowed, user) => {
       if (allowErr || !allowed) {
         callback({ error: {} });
 
@@ -908,7 +906,7 @@ function handle(socket) {
   });
 
   socket.on('addAlias', ({ alias }, callback = () => {}) => {
-    manager.userAllowedCommand(socket.id, databasePopulation.commands.alias.commandName, (allowErr, allowed, user) => {
+    manager.userIsAllowed(socket.id, databasePopulation.commands.alias.commandName, (allowErr, allowed, user) => {
       if (allowErr || !allowed) {
         callback({ error: new errorCreator.NotAllowed({ used: databasePopulation.commands.alias.commandName }) });
 

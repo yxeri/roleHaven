@@ -237,7 +237,7 @@ function updateSignalValue(stationId, boostingSignal) {
  */
 function handle(socket) {
   socket.on('createGameUser', (params) => {
-    manager.userAllowedCommand(socket.id, databasePopulation.commands.creategameuser.commandName, () => {
+    manager.userIsAllowed(socket.id, databasePopulation.commands.creategameuser.commandName, () => {
     });
 
     if (!objectValidator.isValidData(params, { userName: true, password: true })) {
@@ -254,7 +254,7 @@ function handle(socket) {
   });
 
   socket.on('createGamePassword', (params) => {
-    manager.userAllowedCommand(socket.id, databasePopulation.commands.creategameword.commandName, () => {
+    manager.userIsAllowed(socket.id, databasePopulation.commands.creategameword.commandName, () => {
     });
 
     if (!objectValidator.isValidData(params, { password: true })) {
@@ -266,7 +266,7 @@ function handle(socket) {
   });
 
   socket.on('getAllGamePasswords', () => {
-    manager.userAllowedCommand(socket.id, databasePopulation.commands.creategameword.commandName, () => {
+    manager.userIsAllowed(socket.id, databasePopulation.commands.creategameword.commandName, () => {
     });
 
     dbConnector.getAllGamePasswords((err, gamePasswords) => {
@@ -284,7 +284,7 @@ function handle(socket) {
   });
 
   socket.on('getAllGameUsers', () => {
-    manager.userAllowedCommand(socket.id, databasePopulation.commands.creategameuser.commandName, () => {
+    manager.userIsAllowed(socket.id, databasePopulation.commands.creategameuser.commandName, () => {
     });
 
     dbConnector.getAllGameUsers((err, gameUsers) => {
@@ -328,7 +328,7 @@ function handle(socket) {
   });
 
   socket.on('manipulateStation', (params) => {
-    manager.userAllowedCommand(socket.id, databasePopulation.commands.hacklantern.commandName, (allowErr, allowed, allowedUser) => {
+    manager.userIsAllowed(socket.id, databasePopulation.commands.hacklantern.commandName, (allowErr, allowed, allowedUser) => {
       if (allowErr || !allowed) {
         return;
       }

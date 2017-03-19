@@ -110,7 +110,7 @@ function handle(socket, io) {
 
     message.text = cleanText(message.text);
 
-    manager.userAllowedCommand(socket.id, databasePopulation.commands.msg.commandName, (allowErr, allowed, user) => {
+    manager.userIsAllowed(socket.id, databasePopulation.commands.msg.commandName, (allowErr, allowed, user) => {
       if (allowErr || !allowed) {
         callback({ error: {} });
 
@@ -150,7 +150,7 @@ function handle(socket, io) {
       return;
     }
 
-    manager.userAllowedCommand(socket.id, databasePopulation.commands.whisper.commandName, (allowErr, allowed, user) => {
+    manager.userIsAllowed(socket.id, databasePopulation.commands.whisper.commandName, (allowErr, allowed, user) => {
       if (allowErr || !allowed) {
         callback({ error: {} });
 
@@ -171,7 +171,7 @@ function handle(socket, io) {
       return;
     }
 
-    manager.userAllowedCommand(socket.id, databasePopulation.commands.broadcast.commandName, (allowErr, allowed, user) => {
+    manager.userIsAllowed(socket.id, databasePopulation.commands.broadcast.commandName, (allowErr, allowed, user) => {
       if (allowErr || !allowed) {
         callback({ error: {} });
 
@@ -192,7 +192,7 @@ function handle(socket, io) {
       return;
     }
 
-    manager.userAllowedCommand(socket.id, databasePopulation.commands.createroom.commandName, (allowErr, allowed, user) => {
+    manager.userIsAllowed(socket.id, databasePopulation.commands.createroom.commandName, (allowErr, allowed, user) => {
       if (allowErr || !allowed || !user) {
         callback({ error: {} });
 
@@ -232,7 +232,7 @@ function handle(socket, io) {
       return;
     }
 
-    manager.userAllowedCommand(socket.id, databasePopulation.commands.follow.commandName, (allowErr, allowed, user) => {
+    manager.userIsAllowed(socket.id, databasePopulation.commands.follow.commandName, (allowErr, allowed, user) => {
       if (allowErr || !allowed || !user) {
         callback({ error: {} });
 
@@ -289,7 +289,7 @@ function handle(socket, io) {
       return;
     }
 
-    manager.userAllowedCommand(socket.id, databasePopulation.commands.switchroom.commandName, (allowErr, allowed, user) => {
+    manager.userIsAllowed(socket.id, databasePopulation.commands.switchroom.commandName, (allowErr, allowed, user) => {
       if (allowErr || !allowed) {
         callback({ error: {} });
 
@@ -323,7 +323,7 @@ function handle(socket, io) {
       return;
     }
 
-    manager.userAllowedCommand(socket.id, databasePopulation.commands.unfollow.commandName, (allowErr, allowed, user) => {
+    manager.userIsAllowed(socket.id, databasePopulation.commands.unfollow.commandName, (allowErr, allowed, user) => {
       if (allowErr || !allowed || !user) {
         callback({ error: {} });
 
@@ -376,9 +376,9 @@ function handle(socket, io) {
 
   // Shows all available rooms
   socket.on('listRooms', (params, callback = () => {}) => {
-    manager.userAllowedCommand(socket.id, databasePopulation.commands.list.commandName, (allowErr, allowed, user) => {
+    manager.userIsAllowed(socket.id, databasePopulation.commands.getRooms.commandName, (allowErr, allowed, user) => {
       if (allowErr || !allowed || !user) {
-        callback({ error: {} });
+        callback({ error: new errorCreator.NotAllowed({ used: databasePopulation.commands.getRooms.commandName }) });
 
         return;
       }
@@ -443,7 +443,7 @@ function handle(socket, io) {
   });
 
   socket.on('listUsers', (callback = () => {}) => {
-    manager.userAllowedCommand(socket.id, databasePopulation.commands.list.commandName, (allowErr, allowed, user) => {
+    manager.userIsAllowed(socket.id, databasePopulation.commands.list.commandName, (allowErr, allowed, user) => {
       if (allowErr || !allowed || !user) {
         callback({ error: {} });
 
@@ -491,7 +491,7 @@ function handle(socket, io) {
    * @param {number} [params.lines] - Number of lines to retrieve
    */
   socket.on('history', ({ room, startDate, lines }, callback = () => {}) => {
-    manager.userAllowedCommand(socket.id, databasePopulation.commands.history.commandName, (allowErr, allowed, user) => {
+    manager.userIsAllowed(socket.id, databasePopulation.commands.history.commandName, (allowErr, allowed, user) => {
       if (allowErr || !allowed) {
         callback({ error: new errorCreator.NotAllowed({ used: databasePopulation.commands.history.commandName }) });
 
@@ -549,7 +549,7 @@ function handle(socket, io) {
       return;
     }
 
-    manager.userAllowedCommand(socket.id, databasePopulation.commands.morse.commandName, (allowErr, allowed) => {
+    manager.userIsAllowed(socket.id, databasePopulation.commands.morse.commandName, (allowErr, allowed) => {
       if (allowErr || !allowed) {
         callback({ error: {} });
 
@@ -575,7 +575,7 @@ function handle(socket, io) {
       return;
     }
 
-    manager.userAllowedCommand(socket.id, databasePopulation.commands.removeroom.commandName, (allowErr, allowed, user) => {
+    manager.userIsAllowed(socket.id, databasePopulation.commands.removeroom.commandName, (allowErr, allowed, user) => {
       if (allowErr || !allowed || !user) {
         callback({ error: {} });
 
@@ -631,7 +631,7 @@ function handle(socket, io) {
       return;
     }
 
-    manager.userAllowedCommand(socket.id, databasePopulation.commands.importantmsg.commandName, (allowErr, allowed) => {
+    manager.userIsAllowed(socket.id, databasePopulation.commands.importantmsg.commandName, (allowErr, allowed) => {
       if (allowErr || !allowed) {
         callback({ error: {} });
 
@@ -689,7 +689,7 @@ function handle(socket, io) {
       return;
     }
 
-    manager.userAllowedCommand(socket.id, databasePopulation.commands.updateroom.commandName, (allowErr, allowed) => {
+    manager.userIsAllowed(socket.id, databasePopulation.commands.updateroom.commandName, (allowErr, allowed) => {
       if (allowErr || !allowed) {
         callback({ error: {} });
 
@@ -750,7 +750,7 @@ function handle(socket, io) {
   socket.on('matchPartialMyRoom', ({ partialName }, callback = () => {}) => {
     // params.partialName is not checked if it set, to allow the retrieval of all rooms on no input
 
-    manager.userAllowedCommand(socket.id, databasePopulation.commands.list.commandName, (allowErr, allowed, user) => {
+    manager.userIsAllowed(socket.id, databasePopulation.commands.list.commandName, (allowErr, allowed, user) => {
       if (allowErr || !allowed) {
         callback({ error: {} });
 
@@ -779,7 +779,7 @@ function handle(socket, io) {
   socket.on('matchPartialRoom', ({ partialName }, callback = () => {}) => {
     // params.partialName is not checked if it set, to allow the retrieval of all rooms on no input
 
-    manager.userAllowedCommand(socket.id, databasePopulation.commands.list.commandName, (allowErr, allowed, user) => {
+    manager.userIsAllowed(socket.id, databasePopulation.commands.list.commandName, (allowErr, allowed, user) => {
       if (allowErr || !allowed) {
         callback({ error: {} });
 
@@ -812,7 +812,7 @@ function handle(socket, io) {
       return;
     }
 
-    manager.userAllowedCommand(socket.id, databasePopulation.commands.inviteroom.commandName, (allowErr, allowed, allowedUser) => {
+    manager.userIsAllowed(socket.id, databasePopulation.commands.inviteroom.commandName, (allowErr, allowed, allowedUser) => {
       if (allowErr || !allowed) {
         callback({ error: {} });
 
@@ -871,7 +871,7 @@ function handle(socket, io) {
       return;
     }
 
-    manager.userAllowedCommand(socket.id, databasePopulation.commands.invitations.commandName, (allowErr, allowed, allowedUser) => {
+    manager.userIsAllowed(socket.id, databasePopulation.commands.invitations.commandName, (allowErr, allowed, allowedUser) => {
       if (allowErr || !allowed) {
         callback({ error: {} });
 

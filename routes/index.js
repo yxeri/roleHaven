@@ -113,7 +113,7 @@ function handle(io) {
      * Emits commandFail or commandSuccess with the invitations
      */
     socket.on('getInvitations', () => {
-      manager.userAllowedCommand(socket.id, databasePopulation.commands.invitations.commandName, (allowErr, allowed, user) => {
+      manager.userIsAllowed(socket.id, databasePopulation.commands.invitations.commandName, (allowErr, allowed, user) => {
         if (allowErr || !allowed) {
           socket.emit('commandFail');
 

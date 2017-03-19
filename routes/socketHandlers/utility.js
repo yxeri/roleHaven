@@ -55,7 +55,7 @@ function handle(socket) {
    * Emits time
    */
   socket.on('time', (params, callback = () => {}) => {
-    manager.userAllowedCommand(socket.id, databasePopulation.commands.time.commandName, (allowErr, allowed) => {
+    manager.userIsAllowed(socket.id, databasePopulation.commands.time.commandName, (allowErr, allowed) => {
       if (allowErr || !allowed) {
         return;
       }
@@ -74,7 +74,7 @@ function handle(socket) {
       return;
     }
 
-    manager.userAllowedCommand(socket.id, databasePopulation.commands.archives.commandName, (allowErr, allowed, user) => {
+    manager.userIsAllowed(socket.id, databasePopulation.commands.archives.commandName, (allowErr, allowed, user) => {
       if (allowErr || !allowed) {
         callback({ error: new errorCreator.NotAllowed({ used: databasePopulation.commands.archives.commandName }) });
 
@@ -102,7 +102,7 @@ function handle(socket) {
       return;
     }
 
-    manager.userAllowedCommand(socket.id, databasePopulation.commands.archives.commandName, (allowErr, allowed) => {
+    manager.userIsAllowed(socket.id, databasePopulation.commands.archives.commandName, (allowErr, allowed) => {
       if (allowErr || !allowed) {
         callback({ error: new errorCreator.NotAllowed({ used: databasePopulation.commands.archives.commandName }) });
 
@@ -128,9 +128,9 @@ function handle(socket) {
       return;
     }
 
-    manager.userAllowedCommand(socket.id, databasePopulation.commands.archives.commandName, (allowErr, allowed, user) => {
+    manager.userIsAllowed(socket.id, databasePopulation.commands.getArchive.commandName, (allowErr, allowed, user) => {
       if (allowErr || !allowed) {
-        callback({ error: new errorCreator.NotAllowed({ used: databasePopulation.commands.archives.commandName }) });
+        callback({ error: new errorCreator.NotAllowed({ used: databasePopulation.commands.getArchive.commandName }) });
 
         return;
       }
@@ -148,9 +148,9 @@ function handle(socket) {
   });
 
   socket.on('getArchivesList', (params, callback = () => {}) => {
-    manager.userAllowedCommand(socket.id, databasePopulation.commands.archives.commandName, (allowErr, allowed, user) => {
+    manager.userIsAllowed(socket.id, databasePopulation.commands.getArchives.commandName, (allowErr, allowed, user) => {
       if (allowErr || !allowed) {
-        callback({ error: new errorCreator.NotAllowed({ used: databasePopulation.commands.archives.commandName }) });
+        callback({ error: new errorCreator.NotAllowed({ used: databasePopulation.commands.getArchives.commandName }) });
 
         return;
       }
@@ -177,7 +177,7 @@ function handle(socket) {
    * Emits weather
    */
   socket.on('weather', () => {
-    manager.userAllowedCommand(socket.id, databasePopulation.commands.weather.commandName, (allowErr, allowed) => {
+    manager.userIsAllowed(socket.id, databasePopulation.commands.weather.commandName, (allowErr, allowed) => {
       if (allowErr || !allowed) {
         return;
       }
@@ -237,7 +237,7 @@ function handle(socket) {
   });
 
   socket.on('rebootAll', () => {
-    manager.userAllowedCommand(socket.id, databasePopulation.commands.rebootall.commandName, (allowErr, allowed) => {
+    manager.userIsAllowed(socket.id, databasePopulation.commands.rebootall.commandName, (allowErr, allowed) => {
       if (allowErr || !allowed) {
         return;
       }
