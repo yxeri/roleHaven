@@ -24,9 +24,13 @@ const mapPositionSchema = new mongoose.Schema({
   deviceId: String,
   position: {},
   isStatic: { type: Boolean, default: false },
+  isPublic: { type: Boolean, default: false },
+  owner: String,
   type: String,
   group: String,
   lastUpdated: Date,
+  title: String,
+  description: [String],
 }, { collection: 'mapPositions' });
 
 const MapPosition = mongoose.model('MapPosition', mapPositionSchema);
@@ -41,20 +45,13 @@ const MapPosition = mongoose.model('MapPosition', mapPositionSchema);
  * @param {string} [params.group] - Name of the grop that the position belongs to (most commonly used by user)
  * @param {Function} params.callback - Callback
  */
-function updatePosition(params) {
-  const positionName = params.positionName;
-  const position = params.position;
-  const isStatic = params.isStatic;
-  const type = params.type;
-  const group = params.group;
-  const callback = params.callback;
-  const lastUpdated = new Date();
-
-  const query = { positionName };
+function updatePosition({ positionName, position, owner, isStatic, type, group, description, isPublic, lastUpdated = new Date(), callback }) {
+  const query = { $and: [{ positionName }, { owner }] };
   const update = {
     position,
     type,
     lastUpdated,
+    isPublic,
   };
   const options = { upsert: true, new: true };
 
@@ -64,6 +61,10 @@ function updatePosition(params) {
 
   if (typeof isStatic !== 'undefined') {
     update.isStatic = isStatic;
+  }
+
+  if (typeof description !== 'undefined') {
+    update.description = description;
   }
 
   MapPosition.update(query, update, options).lean().exec((err, mapPosition) => {
@@ -141,7 +142,30 @@ function getAllStaticPositions(callback) {
   });
 }
 
-exports.updatePosition = updatePosition;
+/**
+ * Get all custom locations
+ * @param {Function} callback - Callback
+ */
+function getCustomLocations(owner, callback) {
+  const query = { $and: [{ type: 'custom' }, { $or: [{ isPublic: true }, { owner }] }] };
+
+  MapPosition.find(query).lean().exec((err, customLocations) => {
+    if (err) {
+      logger.sendErrorMsg({
+        code: logger.ErrorCodes.db,
+        text: ['Failed to get custom locations'],
+        err,
+      });
+    }
+
+    console.log('custom', customLocations);
+
+    callback(err, customLocations);
+  });
+}
+
+exports.updateLocation = updatePosition;
 exports.getAllStaticPositions = getAllStaticPositions;
 exports.getPosition = getPosition;
 exports.getPositions = getPositions;
+exports.getCustomLocations = getCustomLocations;

@@ -29,7 +29,44 @@ const errorCreator = require('../../objects/error/errorCreator');
  * @param {Object} socket - Socket.IO socket
  */
 function handle(socket) {
-  socket.on('updateLocation', (params, callback = () => {}) => {
+  socket.on('updateLocation', ({ location }, callback = () => {}) => {
+    if (!objectValidator.isValidData({ location }, { location: { longitude: true, latitude: true, title: true } })) {
+      callback({ error: {} });
+
+      return;
+    }
+
+    manager.userIsAllowed(socket.id, databasePopulation.commands.createLocation.commandName, (allowErr, allowed, user) => {
+      if (allowErr || !allowed) {
+        callback({ error: {} });
+
+        return;
+      }
+
+      dbLocation.updateLocation({
+        positionName: location.title.toLowerCase(),
+        description: location.description,
+        owner: user.userName,
+        position: {
+          longitude: location.longitude,
+          latitude: location.latitude,
+        },
+        type: 'custom',
+        isPublic: location.isPublic,
+        callback: (err, createdLocation) => {
+          if (err) {
+            callback({ error: {} });
+
+            return;
+          }
+
+          callback({ data: { location: createdLocation } });
+        },
+      });
+    });
+  });
+
+  socket.on('updateUserLocation', (params, callback = () => {}) => {
     if (!objectValidator.isValidData(params, { position: true })) {
       callback({ error: {} });
 
@@ -55,10 +92,11 @@ function handle(socket) {
         }
       });
 
-      dbLocation.updatePosition({
+      dbLocation.updateLocation({
         positionName: user.userName,
         position: params.position,
         type: 'user',
+        owner: user.userName,
         group: user.team,
         callback: (userErr) => {
           if (userErr) {
@@ -101,7 +139,6 @@ function handle(socket) {
 
               for (const socketUser of users) {
                 if (socketUser.socketId && socket.id !== socketUser.socketId && socketUser.isTracked) {
-                  console.log('position updated');
                   socket.broadcast.to(socketUser.socketId).emit('mapPositions', {
                     positions: [position],
                     currentTime: (new Date()),
@@ -135,43 +172,49 @@ function handle(socket) {
        * Get and send positions
        * @private
        * @param {string} type - Position type
-       * @param {Object[]} positions - All positions
+       * @param {Object[]} locations - All positions
        */
-      function getPositions(type, positions) {
+      function getLocations(type, locations) {
         switch (type) {
-          case 'static': {
-            dbLocation.getAllStaticPositions((err, staticPositions) => {
+          case 'google': {
+            mapCreator.getGooglePositions((err, googleLocations) => {
+              if (err || googleLocations === null) {
+                callback({ error: new errorCreator.External({ source: 'Google Maps' }) });
+
+                return;
+              }
+
+              getLocations(types.shift(), locations.concat(googleLocations));
+            });
+
+            break;
+          }
+          case 'custom': {
+            dbLocation.getCustomLocations(user.userName, (err, customLocations) => {
               if (err) {
                 callback({ error: new errorCreator.Database() });
 
                 return;
               }
 
-              getPositions(types.shift(), positions.concat(staticPositions));
+              getLocations(types.shift(), locations.concat(customLocations));
             });
 
             break;
           }
           case 'users': {
             if (user.isTracked) {
-              dbUser.getAllUserPositions(user, (err, userPositions) => {
+              dbUser.getAllUserLocations(user, (err, userLocations) => {
                 if (err) {
                   callback({ error: new errorCreator.Database() });
 
                   return;
                 }
 
-                getPositions(types.shift(), positions.concat(userPositions));
+                getLocations(types.shift(), locations.concat(userLocations));
               });
             } else {
-              message.text = [
-                'DETECTED: TRACKING DISABLED',
-                'UNABLE TO RETRIEVE USER LOCATIONS',
-                'DISABLING TRACKING IS A MAJOR OFFENSE',
-                'REPORT IN FOR IMMEDIATE RE-EDUCATION SESSION',
-              ];
-
-              getPositions(types.shift(), positions);
+              getLocations(types.shift(), locations);
             }
 
             break;
@@ -179,7 +222,7 @@ function handle(socket) {
           default: {
             const payload = {
               data: {
-                positions,
+                locations,
                 team: user.team,
                 currentTime: (new Date()),
               },
@@ -189,8 +232,6 @@ function handle(socket) {
               payload.message = message;
             }
 
-            console.log('payload', payload);
-
             callback(payload);
 
             break;
@@ -198,19 +239,7 @@ function handle(socket) {
         }
       }
 
-      getPositions(types.shift(), []);
-    });
-  });
-
-  socket.on('getGooglePositions', (params, callback = () => {}) => {
-    mapCreator.getGooglePositions((err, googlePositions) => {
-      if (err || googlePositions === null) {
-        callback({ error: new errorCreator.External({ source: 'Google Maps' }) });
-
-        return;
-      }
-
-      callback({ data: { positions: googlePositions, currentTime: (new Date()) } });
+      getLocations(types.shift(), []);
     });
   });
 }

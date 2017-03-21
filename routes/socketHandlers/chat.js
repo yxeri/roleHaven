@@ -398,17 +398,9 @@ function handle(socket, io) {
 
         const socketRooms = Object.keys(socket.rooms);
         const roomNames = rooms.filter(room => socketRooms.indexOf(room.roomName) < 0).map(room => room.roomName);
-        const followedNames = [];
+        const followedNames = socketRooms.filter(roomName => !shouldBeHidden(roomName, socket.id));
 
-        for (let i = 0; i < socketRooms.length; i += 1) {
-          const room = socketRooms[i];
-
-          if (!shouldBeHidden(room, socket.id)) {
-            followedNames.push(room);
-          }
-        }
-
-        if (!user) {
+        if (user.userName === '') {
           callback({ data: { rooms: roomNames, followedRooms: followedNames } });
         } else {
           if (user.team) {
@@ -427,13 +419,7 @@ function handle(socket, io) {
               return;
             }
 
-            const ownedNames = [];
-
-            if (ownedRooms.length > 0) {
-              for (let i = 0; i < ownedRooms.length; i += 1) {
-                ownedNames.push(ownedRooms[i].roomName);
-              }
-            }
+            const ownedNames = ownedRooms.map(room => room.roomName);
 
             callback({ data: { rooms: roomNames, followedRooms: followedNames, ownedRooms: ownedNames } });
           });

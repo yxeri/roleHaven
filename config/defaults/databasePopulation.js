@@ -484,6 +484,12 @@ config.commands = {
     visibility: config.accessLevels.anonymous,
     category: 'basic',
   },
+  createLocation: config.commands.createLocation || {
+    commandName: 'createLocation',
+    accessLevel: config.accessLevels.basic,
+    visibility: config.accessLevels.basic,
+    category: 'basic',
+  },
 };
 
 module.exports = config;

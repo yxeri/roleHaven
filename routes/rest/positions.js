@@ -89,7 +89,7 @@ function handle(io) {
         return;
       }
 
-      dbUser.getAllUserPositions(decoded.data, (posErr, positions) => {
+      dbUser.getAllUserLocations(decoded.data, (posErr, positions) => {
         if (posErr) {
           res.status(500).json({
             errors: [{
@@ -261,7 +261,7 @@ function handle(io) {
         return;
       }
 
-      dbLocation.updatePosition({
+      dbLocation.updateLocation({
         positionName: decoded.data.userName,
         position: req.body.data.position.position,
         type: 'user',
