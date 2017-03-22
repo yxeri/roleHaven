@@ -224,6 +224,36 @@ function handle(socket, io) {
     });
   });
 
+  socket.on('authUserToRoom', ({ room }, callback = () => {}) => {
+    if (!objectValidator.isValidData({ room }, { room: { roomName: true } })) {
+      callback({ error: {} });
+
+      return;
+    }
+
+    manager.userIsAllowed(socket.id, databasePopulation.commands.follow.commandName, (allowErr, allowed, user) => {
+      if (allowErr || !allowed || !user) {
+        callback({ error: {} });
+
+        return;
+      }
+
+      if (Object.keys(socket.rooms).indexOf(room.roomName) > -1) {
+        callback({ data: { allowed: true } });
+      } else {
+        dbRoom.authUserToRoom(user, room.roomName, room.password, (err, authRoom) => {
+          if (err || authRoom === null) {
+            callback({ error: {} });
+
+            return;
+          }
+
+          callback({ data: { allowed: true } });
+        });
+      }
+    });
+  });
+
   // TODO Duplicate code in rest api
   socket.on('follow', ({ room }, callback = () => {}) => {
     if (!objectValidator.isValidData({ room }, { room: { roomName: true } })) {
@@ -516,15 +546,19 @@ function handle(socket, io) {
         room.roomName = user.userName + appConfig.whisperAppend;
       }
 
-      dbRoom.authUserToRoom(user || { accessLevel: 0 }, room.roomName, room.password || '', (err, authRoom) => {
-        if (err || authRoom === null) {
-          callback({ error: new errorCreator.NotAllowed({ used: `Not authorized to retrieve history from ${room.roomName}` }) });
-
-          return;
-        }
-
+      if (room && Object.keys(socket.rooms).indexOf(room.roomName) > -1) {
         getHistory();
-      });
+      } else {
+        dbRoom.authUserToRoom(user || { accessLevel: 0 }, room.roomName, room.password || '', (err, authRoom) => {
+          if (err || authRoom === null) {
+            callback({ error: new errorCreator.NotAllowed({ used: `Not authorized to retrieve history from ${room.roomName}` }) });
+
+            return;
+          }
+
+          getHistory();
+        });
+      }
     });
   });
 
