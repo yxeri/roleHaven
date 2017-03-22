@@ -19,6 +19,7 @@ const logger = require('../../utils/logger');
 
 const chatHistorySchema = new mongoose.Schema({
   roomName: { type: String, unique: true },
+  anonymous: { type: Boolean, default: false },
   messages: [{
     text: [String],
     time: Date,
@@ -109,9 +110,10 @@ function getHistoryFromRooms(rooms, callback) {
 /**
  * Create and save room history
  * @param {string} roomName - Name of the room
+ * @param {boolean} anonymous - Should retrieved messages be anonymous?
  * @param {Function} callback - Callback
  */
-function createHistory(roomName, callback) {
+function createHistory(roomName, anonymous, callback) {
   const query = { roomName };
 
   // Checks if history for room already exists
@@ -126,7 +128,7 @@ function createHistory(roomName, callback) {
       callback(histErr, history);
       // History doesn't exist in the collection, so let's add it and the room!
     } else if (history === null) {
-      const newHistory = new ChatHistory({ roomName });
+      const newHistory = new ChatHistory({ roomName, anonymous });
 
       newHistory.save(callback);
     } else {

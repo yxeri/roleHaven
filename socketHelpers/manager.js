@@ -142,7 +142,7 @@ function getHistory({ lastOnline = new Date(), rooms, lines, missedMsgs, callbac
       }
     }
 
-    callback(err, historyMessages);
+    callback(err, historyMessages, history[0].anonymous);
   });
 }
 

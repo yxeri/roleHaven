@@ -114,6 +114,8 @@ function addMsgToHistory(roomName, message, callback) {
       });
       callback(err || {});
     } else {
+      message.anonymous = history.anonymous;
+
       callback(err, message);
     }
   });
@@ -274,6 +276,13 @@ function sendAndStoreChatMsg({ user, callback, message, io, socket }) {
         callback({ error: {} });
 
         return;
+      }
+
+      if (modifiedMessage.anonymous) {
+        modifiedMessage.userName = 'anonymous';
+        modifiedMessage.time.setHours(0);
+        modifiedMessage.time.setMinutes(0);
+        modifiedMessage.time.setSeconds(0);
       }
 
       if (socket) {

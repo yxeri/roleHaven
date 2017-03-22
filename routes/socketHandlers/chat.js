@@ -523,7 +523,7 @@ function handle(socket, io) {
           lines: historyLines,
           missedMsgs: false,
           lastOnline: startDate || new Date(),
-          callback: (histErr, historyMessages = []) => {
+          callback: (histErr, historyMessages = [], anonymous) => {
             if (histErr) {
               callback({ error: {} });
 
@@ -531,9 +531,24 @@ function handle(socket, io) {
             }
 
             const data = {
-              messages: historyMessages,
               following: room && Object.keys(socket.rooms).indexOf(room.roomName) > -1,
             };
+
+            if (anonymous) {
+              data.messages = historyMessages.map((message) => {
+                const modifiedMessage = message;
+                modifiedMessage.time = new Date();
+                modifiedMessage.time.setHours(0);
+                modifiedMessage.time.setMinutes(0);
+                modifiedMessage.time.setSeconds(0);
+                modifiedMessage.userName = 'anonymous';
+                console.log(modifiedMessage);
+
+                return modifiedMessage;
+              });
+            } else {
+              data.messages = historyMessages;
+            }
 
             callback({ data });
           },

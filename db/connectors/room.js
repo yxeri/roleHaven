@@ -36,6 +36,7 @@ const roomSchema = new mongoose.Schema({
   bannedUsers: [{ type: String, unique: true }],
   owner: String,
   team: String,
+  anonymous: { type: Boolean, default: false },
 }, { collection: 'rooms' });
 
 const Room = mongoose.model('Room', roomSchema);
@@ -102,7 +103,7 @@ function createRoom(sentRoom, sentUser, callback) {
       });
       // Room doesn't exist in the collection, so let's add it!
     } else if (room === null) {
-      chatHistoryConnector.createHistory(sentRoom.roomName, (saveErr, saveHistory) => {
+      chatHistoryConnector.createHistory(sentRoom.roomName, sentRoom.anonymous, (saveErr, saveHistory) => {
         if (saveErr || saveHistory === null) {
           logger.sendErrorMsg({
             code: logger.ErrorCodes.db,

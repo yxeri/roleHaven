@@ -131,6 +131,13 @@ config.rooms = {
     visibility: config.accessLevels.superUser,
     accessLevel: config.accessLevels.superUser,
   },
+
+  dead: {
+    roomName: 'D34D',
+    visibility: config.accessLevels.anonymous,
+    accessLevel: config.accessLevels.anonymous,
+    anonymous: true,
+  },
 };
 
 /**
@@ -159,6 +166,14 @@ config.users = {
   // Blocking name for users
   admin: config.users.admin || {
     userName: 'admin',
+    password: generatePass(),
+    verified: false,
+    accessLevel: config.accessLevels.anonymous,
+    visibility: config.accessLevels.god,
+    rooms: [],
+  },
+  anonymous: config.users.admin || {
+    userName: 'anonymous',
     password: generatePass(),
     verified: false,
     accessLevel: config.accessLevels.anonymous,
