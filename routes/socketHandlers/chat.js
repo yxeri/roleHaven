@@ -231,7 +231,7 @@ function handle(socket, io) {
       return;
     }
 
-    manager.userIsAllowed(socket.id, databasePopulation.commands.follow.commandName, (allowErr, allowed, user) => {
+    manager.userIsAllowed(socket.id, databasePopulation.commands.history.commandName, (allowErr, allowed, user) => {
       if (allowErr || !allowed || !user) {
         callback({ error: {} });
 
@@ -241,7 +241,7 @@ function handle(socket, io) {
       if (Object.keys(socket.rooms).indexOf(room.roomName) > -1) {
         callback({ data: { allowed: true } });
       } else {
-        dbRoom.authUserToRoom(user, room.roomName, room.password, (err, authRoom) => {
+        dbRoom.authUserToRoom(user || { accessLevel: 0 }, room.roomName, room.password || '', (err, authRoom) => {
           if (err || authRoom === null) {
             callback({ error: {} });
 
