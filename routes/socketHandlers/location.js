@@ -30,7 +30,7 @@ const errorCreator = require('../../objects/error/errorCreator');
  */
 function handle(socket) {
   socket.on('updateLocation', ({ location }, callback = () => {}) => {
-    if (!objectValidator.isValidData({ location }, { location: { longitude: true, latitude: true, title: true } })) {
+    if (!objectValidator.isValidData({ location }, { location: { coordinates: { longitude: true, latitude: true }, title: true } })) {
       callback({ error: {} });
 
       return;
@@ -43,16 +43,12 @@ function handle(socket) {
         return;
       }
 
+      location.markerType = 'custom';
+      location.owner = user.userName;
+      location.team = user.team;
+
       dbLocation.updateLocation({
-        positionName: location.title.toLowerCase(),
-        description: location.description,
-        owner: user.userName,
-        position: {
-          longitude: location.longitude,
-          latitude: location.latitude,
-        },
-        type: 'custom',
-        isPublic: location.isPublic,
+        location,
         callback: (err, createdLocation) => {
           if (err) {
             callback({ error: {} });
@@ -111,7 +107,7 @@ function handle(socket) {
             return;
           }
 
-          dbLocation.getPosition(user.userName, (err, position) => {
+          dbLocation.getLocation(user.userName, (err, position) => {
             if (err) {
               logger.sendErrorMsg({
                 code: logger.ErrorCodes.db,
@@ -139,7 +135,7 @@ function handle(socket) {
 
               for (const socketUser of users) {
                 if (socketUser.socketId && socket.id !== socketUser.socketId && socketUser.isTracked) {
-                  socket.broadcast.to(socketUser.socketId).emit('mapPositions', {
+                  socket.broadcast.to(socketUser.socketId).emit('mapLocations', {
                     positions: [position],
                     currentTime: (new Date()),
                   });
@@ -177,7 +173,7 @@ function handle(socket) {
       function getLocations(type, locations) {
         switch (type) {
           case 'google': {
-            mapCreator.getGooglePositions((err, googleLocations) => {
+            mapCreator.getGoogleLocations((err, googleLocations) => {
               if (err || googleLocations === null) {
                 callback({ error: new errorCreator.External({ source: 'Google Maps' }) });
 

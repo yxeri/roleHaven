@@ -19,21 +19,20 @@
 const mongoose = require('mongoose');
 const logger = require('../../utils/logger');
 
-const mapPositionSchema = new mongoose.Schema({
-  positionName: { type: String, unique: true },
+const mapLocationSchema = new mongoose.Schema({
   deviceId: String,
-  position: {},
+  coordinates: {},
   isStatic: { type: Boolean, default: false },
   isPublic: { type: Boolean, default: false },
   owner: String,
-  type: String,
-  group: String,
+  markerType: String,
+  team: String,
   lastUpdated: Date,
-  title: String,
+  title: { type: String, unique: true },
   description: [String],
-}, { collection: 'mapPositions' });
+}, { collection: 'mapLocations' });
 
-const MapPosition = mongoose.model('MapPosition', mapPositionSchema);
+const MapPosition = mongoose.model('MapLocations', mapLocationSchema);
 
 /**
  * Update position
@@ -45,11 +44,13 @@ const MapPosition = mongoose.model('MapPosition', mapPositionSchema);
  * @param {string} [params.group] - Name of the grop that the position belongs to (most commonly used by user)
  * @param {Function} params.callback - Callback
  */
-function updatePosition({ positionName, position, owner, isStatic, type, group, description, isPublic, lastUpdated = new Date(), callback }) {
-  const query = { $and: [{ positionName }, { owner }] };
+function updateLocation({ location: { title, coordinates, owner, team, isStatic, markerType, group, description, isPublic, lastUpdated = new Date() }, callback }) {
+  const query = { $and: [{ title }, { $or: [{ owner }, { team }] }] };
   const update = {
-    position,
-    type,
+    team,
+    owner,
+    coordinates,
+    markerType,
     lastUpdated,
     isPublic,
   };
@@ -82,17 +83,17 @@ function updatePosition({ positionName, position, owner, isStatic, type, group, 
 
 /**
  * Get position
- * @param {string} positionName - Name of the position
+ * @param {string} title - Name of the position
  * @param {Function} callback - Callback
  */
-function getPosition(positionName, callback) {
-  const query = { positionName };
+function getLocation(title, callback) {
+  const query = { title };
 
   MapPosition.findOne(query).lean().exec((err, position) => {
     if (err) {
       logger.sendErrorMsg({
         code: logger.ErrorCodes.db,
-        text: [`Failed to get position ${positionName}`],
+        text: [`Failed to get position ${title}`],
         err,
       });
     }
@@ -103,13 +104,13 @@ function getPosition(positionName, callback) {
 
 /**
  * Get multiple positions
- * @param {string[]} positionNames - Name of the positions
+ * @param {string[]} locationNames - Name of the positions
  * @param {Function} callback - Callback
  */
-function getPositions(positionNames, callback) {
-  const query = { positionName: { $in: positionNames } };
+function getLocations(locationNames, callback) {
+  const query = { positionName: { $in: locationNames } };
 
-  MapPosition.find(query).lean().exec((mapErr, positions) => {
+  MapPosition.find(query).lean().exec((mapErr, locations) => {
     if (mapErr) {
       logger.sendErrorMsg({
         code: logger.ErrorCodes.db,
@@ -118,7 +119,7 @@ function getPositions(positionNames, callback) {
       });
     }
 
-    callback(mapErr, positions);
+    callback(mapErr, locations);
   });
 }
 
@@ -126,7 +127,7 @@ function getPositions(positionNames, callback) {
  * Get all static positions
  * @param {Function} callback - Callback
  */
-function getAllStaticPositions(callback) {
+function getAllStaticLocations(callback) {
   const query = { isStatic: true };
 
   MapPosition.find(query).lean().exec((err, staticPositions) => {
@@ -147,7 +148,7 @@ function getAllStaticPositions(callback) {
  * @param {Function} callback - Callback
  */
 function getCustomLocations(owner, callback) {
-  const query = { $and: [{ type: 'custom' }, { $or: [{ isPublic: true }, { owner }] }] };
+  const query = { $and: [{ markerType: 'custom' }, { $or: [{ isPublic: true }, { owner }] }] };
 
   MapPosition.find(query).lean().exec((err, customLocations) => {
     if (err) {
@@ -158,14 +159,12 @@ function getCustomLocations(owner, callback) {
       });
     }
 
-    console.log('custom', customLocations);
-
     callback(err, customLocations);
   });
 }
 
-exports.updateLocation = updatePosition;
-exports.getAllStaticPositions = getAllStaticPositions;
-exports.getPosition = getPosition;
-exports.getPositions = getPositions;
+exports.updateLocation = updateLocation;
+exports.getAllStaticLocations = getAllStaticLocations;
+exports.getLocation = getLocation;
+exports.getLocations = getLocations;
 exports.getCustomLocations = getCustomLocations;

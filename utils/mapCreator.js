@@ -98,8 +98,8 @@ function createPosition(placemark) {
   }
 
   return {
-    positionName: placemark.name,
-    position,
+    title: placemark.name,
+    coordinates: position,
     isStatic: true,
     type: 'world',
     geometry,
@@ -147,4 +147,4 @@ function getGooglePositions(callback) {
   });
 }
 
-exports.getGooglePositions = getGooglePositions;
+exports.getGoogleLocations = getGooglePositions;

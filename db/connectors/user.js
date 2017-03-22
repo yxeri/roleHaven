@@ -339,7 +339,7 @@ function getAllUserPositions(sentUser, callback) {
     } else if (users !== null) {
       const userNames = users.map(user => user.userName);
 
-      locationConnector.getPositions(userNames, (mapErr, userPositions) => {
+      locationConnector.getLocations(userNames, (mapErr, userPositions) => {
         if (mapErr) {
           logger.sendErrorMsg({
             code: logger.ErrorCodes.db,
@@ -379,7 +379,7 @@ function getUserPositions(sentUser, sentUserName, callback) {
         err,
       });
     } else if (user !== null) {
-      locationConnector.getPosition(sentUserName, (mapErr, mapPosition) => {
+      locationConnector.getLocation(sentUserName, (mapErr, mapPosition) => {
         if (mapErr) {
           logger.sendErrorMsg({
             code: logger.ErrorCodes.db,
