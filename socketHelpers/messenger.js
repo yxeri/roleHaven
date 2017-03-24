@@ -269,6 +269,7 @@ function sendAndStoreChatMsg({ user, callback, message, io, socket }) {
 
     const data = {
       messages: [modifiedMessage],
+      room: { roomName: message.roomName },
     };
 
     addMsgToHistory(modifiedMessage.roomName, modifiedMessage, (err) => {
