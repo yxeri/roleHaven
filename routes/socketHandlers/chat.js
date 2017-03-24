@@ -200,6 +200,7 @@ function handle(socket, io) {
       }
 
       room.owner = user.userName;
+      room.roomName = room.roomName.toLowerCase();
 
       manager.createRoom(room, user, (createErr, createdRoom) => {
         if (createErr) {
@@ -236,21 +237,13 @@ function handle(socket, io) {
         callback({ error: {} });
 
         return;
+      } else if (Object.keys(socket.rooms).indexOf(room.roomName) === -1) {
+        callback({ error: {} });
+
+        return;
       }
 
-      if (Object.keys(socket.rooms).indexOf(room.roomName) > -1) {
-        callback({ data: { allowed: true } });
-      } else {
-        dbRoom.authUserToRoom(user || { accessLevel: 0 }, room.roomName, room.password || '', (err, authRoom) => {
-          if (err || authRoom === null) {
-            callback({ error: {} });
-
-            return;
-          }
-
-          callback({ data: { allowed: true } });
-        });
-      }
+      callback({ data: { allowed: true } });
     });
   });
 
@@ -542,7 +535,6 @@ function handle(socket, io) {
                 modifiedMessage.time.setMinutes(0);
                 modifiedMessage.time.setSeconds(0);
                 modifiedMessage.userName = 'anonymous';
-                console.log(modifiedMessage);
 
                 return modifiedMessage;
               });
@@ -564,15 +556,7 @@ function handle(socket, io) {
       if (room && Object.keys(socket.rooms).indexOf(room.roomName) > -1) {
         getHistory();
       } else {
-        dbRoom.authUserToRoom(user || { accessLevel: 0 }, room.roomName, room.password || '', (err, authRoom) => {
-          if (err || authRoom === null) {
-            callback({ error: new errorCreator.NotAllowed({ used: `Not authorized to retrieve history from ${room.roomName}` }) });
-
-            return;
-          }
-
-          getHistory();
-        });
+        callback({ error: new errorCreator.NotAllowed({ used: `Not authorized to retrieve history from ${room.roomName}` }) });
       }
     });
   });
