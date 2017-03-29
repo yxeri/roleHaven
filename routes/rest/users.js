@@ -180,7 +180,9 @@ function handle() {
     }
 
     // noinspection JSUnresolvedVariable
-    jwt.verify(req.headers.authorization || '', appConfig.jsonKey, (jwtErr, decoded) => {
+    const auth = req.headers.authorization;
+
+    jwt.verify(auth || '', appConfig.jsonKey, (jwtErr, decoded) => {
       if (jwtErr) {
         res.status(500).json({
           errors: [{
@@ -191,7 +193,7 @@ function handle() {
         });
 
         return;
-      } else if (!decoded) {
+      } else if (!decoded && auth) {
         res.status(401).json({
           errors: [{
             status: 401,

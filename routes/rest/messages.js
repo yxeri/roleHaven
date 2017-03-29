@@ -31,14 +31,14 @@ const router = new express.Router();
  */
 function handle(io) {
   /**
-   * @api {post} /messages Create and send a message
+   * @api {post} /messages Send a message
    * @apiVersion 5.0.2
-   * @apiName CreateMessage
+   * @apiName SendMessage
    * @apiGroup Messages
    *
    * @apiHeader {String} Authorization Your JSON Web Token
    *
-   * @apiDescription Create and send a message to a room
+   * @apiDescription Send a message to a room
    *
    * @apiParam {Object} data
    * @apiParam {Object} data.message Message
@@ -59,30 +59,30 @@ function handle(io) {
    *  }
    *
    * @apiSuccess {Object} data
-   * @apiSuccess {Object} data.message Found archive with sent archive ID. Empty if no match was found
+   * @apiSuccess {Object[]} data.message Message sent
    * @apiSuccessExample {json} Success-Response:
    *   {
    *    "data": {
-   *      "message": {
+   *      "message": [{
    *        "roomName": "bb1",
    *        "text": [
    *          "Hello world!"
    *        ],
    *        "userName": "rez",
    *        "time": "2016-10-28T22:42:06.262Z"
-   *      }
+   *      }]
    *    }
    *  }
    */
   /**
-   * @api {post} /messages Create and send a message
+   * @api {post} /messages Send a message
    * @apiVersion 5.0.1
-   * @apiName CreateMessage
+   * @apiName SendMessage
    * @apiGroup Messages
    *
    * @apiHeader {String} Authorization Your JSON Web Token
    *
-   * @apiDescription Create and send a message to a room
+   * @apiDescription Send a message to a room
    *
    * @apiParam {Object} data
    * @apiParam {Object} data.message Message
@@ -172,7 +172,7 @@ function handle(io) {
             return;
           }
 
-          res.json({ data: { message: data.message } });
+          res.json({ data: { message: data.messages } });
         },
       });
     });

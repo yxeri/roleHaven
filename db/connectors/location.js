@@ -37,7 +37,7 @@ const MapPosition = mongoose.model('MapLocations', mapLocationSchema);
 /**
  * Update position
  * @param {Object} params - Parameters
- * @param {string} params.positionName - Name of the position
+ * @param {string} params.title - Name of the position
  * @param {Object} params.position - Position
  * @param {string} params.type - Type of position
  * @param {boolean} [params.isStatic] - Is the position static? (most commonly used on everything non-user)
@@ -108,7 +108,7 @@ function getLocation(title, callback) {
  * @param {Function} callback - Callback
  */
 function getLocations(locationNames, callback) {
-  const query = { positionName: { $in: locationNames } };
+  const query = { title: { $in: locationNames } };
 
   MapPosition.find(query).lean().exec((mapErr, locations) => {
     if (mapErr) {

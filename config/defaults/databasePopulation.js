@@ -133,7 +133,7 @@ config.rooms = {
   },
 
   dead: {
-    roomName: 'D34D',
+    roomName: 'd34d',
     visibility: config.accessLevels.anonymous,
     accessLevel: config.accessLevels.anonymous,
     anonymous: true,

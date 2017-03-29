@@ -294,7 +294,7 @@ function handle(io) {
    *
    * @apiHeader {String} Authorization Your JSON Web Token
    *
-   * @apiDescription Create and send a message to a room
+   * @apiDescription Follow a room
    *
    * @apiParam {Object} data
    * @apiParam {Object} data.room Room
@@ -405,6 +405,103 @@ function handle(io) {
 
           res.json({ data: { room: { roomName } } });
         });
+      });
+    });
+  });
+
+  /**
+   * @api {post} /rooms/unfollow Unfollow a room
+   * @apiVersion 5.0.2
+   * @apiName UnfollowRoom
+   * @apiGroup Rooms
+   *
+   * @apiHeader {String} Authorization Your JSON Web Token
+   *
+   * @apiDescription Unfollow a room
+   *
+   * @apiParam {Object} data
+   * @apiParam {Object} data.room Room
+   * @apiParam {String} data.room.roomName Name of the room to unfollow
+   * @apiParamExample {json} Request-Example:
+   *   {
+   *    "data": {
+   *      "room": {
+   *        "roomName": "bb1"
+   *      }
+   *    }
+   *  }
+   *
+   * @apiSuccess {Object} data
+   * @apiSuccess {Object} data.room Room
+   * @apiSuccess {String} data.room.roomName Name of the room that was unfollowed
+   * @apiSuccessExample {json} Success-Response:
+   *   {
+   *    "data": {
+   *      "room": {
+   *        "roomName": "bb1"
+   *      }
+   *    }
+   *  }
+   */
+  router.post('/unfollow', (req, res) => {
+    if (!objectValidator.isValidData(req.body, { data: { room: { roomName: true } } })) {
+      res.status(400).json({
+        errors: [{
+          status: 400,
+          title: 'Missing data',
+          detail: 'Unable to parse data',
+        }],
+      });
+
+      return;
+    }
+
+    // noinspection JSUnresolvedVariable
+    const auth = req.headers.authorization;
+
+    jwt.verify(auth || '', appConfig.jsonKey, (jwtErr, decoded) => {
+      if (jwtErr) {
+        res.status(500).json({
+          errors: [{
+            status: 500,
+            title: 'Internal Server Error',
+            detail: 'Internal Server Error',
+          }],
+        });
+
+        return;
+      } else if (!decoded && auth) {
+        res.status(401).json({
+          errors: [{
+            status: 401,
+            title: 'Unauthorized',
+            detail: 'Invalid token',
+          }],
+        });
+
+        return;
+      }
+
+      const { roomName } = req.body.data.room;
+
+      dbUser.removeRoomFromUser(decoded.data.userName, roomName, (roomErr, user = {}) => {
+        if (roomErr) {
+          res.status(500).json({
+            errors: [{
+              status: 500,
+              title: 'Internal Server Error',
+              detail: 'Internal Server Error',
+            }],
+          });
+
+          return;
+        }
+
+        if (user.socketId) {
+          io.to(user.socketId).emit('unfollow', { room: { roomName } });
+        }
+
+        res.json({ data: { room: { roomName } } });
       });
     });
   });
