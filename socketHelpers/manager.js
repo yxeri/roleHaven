@@ -93,8 +93,6 @@ function userIsAllowed(socketId, commandName, callback, userName) {
         } else {
           const commandLevel = command.accessLevel;
 
-          console.log(commandLevel, commandUser);
-
           if (commandUser.accessLevel >= commandLevel) {
             isAllowed = true;
           }
