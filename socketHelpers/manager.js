@@ -48,6 +48,17 @@ function getUserById(socketId, callback) {
 }
 
 /**
+ * Gets user by user name
+ * @param {string} userName - User name
+ * @param {Function} callback - callback
+ */
+function getUserByName(userName, callback) {
+  dbUser.getUserByAlias(userName, (err, user) => {
+    callback(err, user);
+  });
+}
+
+/**
  * Gets a command
  * @param {string} commandName - Name of the command to retrieve
  * @param {Function} callback - callback
@@ -63,8 +74,9 @@ function getCommand(commandName, callback) {
  * @param {string} socketId - The users socket ID from socket.io
  * @param {string} commandName - Name of the command
  * @param {Function} callback - callback
+ * @param {string} [userName] - Name of the user trying to use the command
  */
-function userIsAllowed(socketId, commandName, callback) {
+function userIsAllowed(socketId, commandName, callback, userName) {
   let isAllowed = false;
   const callbackFunc = (err, user) => {
     if (err) {
@@ -81,6 +93,8 @@ function userIsAllowed(socketId, commandName, callback) {
         } else {
           const commandLevel = command.accessLevel;
 
+          console.log(commandLevel, commandUser);
+
           if (commandUser.accessLevel >= commandLevel) {
             isAllowed = true;
           }
@@ -95,7 +109,11 @@ function userIsAllowed(socketId, commandName, callback) {
     }
   };
 
-  getUserById(socketId, callbackFunc);
+  if (socketId !== '') {
+    getUserById(socketId, callbackFunc);
+  } else {
+    getUserByName(userName, callbackFunc);
+  }
 }
 
 /**

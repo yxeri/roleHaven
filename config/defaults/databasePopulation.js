@@ -53,8 +53,9 @@ config.accessLevels = config.accessLevels || {
   god: 13,
   superUser: 12,
   admin: 11,
-  privileged: 9,
-  advanced: 3,
+  privileged: 6,
+  pro: 3,
+  advanced: 2,
   basic: 1,
   anonymous: 0,
 };

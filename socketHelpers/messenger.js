@@ -23,6 +23,7 @@ const appConfig = require('./../config/defaults/config').app;
 const logger = require('./../utils/logger');
 const objectValidator = require('./../utils/objectValidator');
 const errorCreator = require('../objects/error/errorCreator');
+const manager = require('../socketHelpers/manager');
 
 /**
  * Symbolizes space between words in morse string
@@ -418,32 +419,53 @@ function sendWhisperMsg({ io, user, message, socket, callback }) {
  * Emits message
  * @param {Object} message - Message to be sent
  * @param {Object} socket - Socket.io socket
+ * @param {Object} io - Socket.io. Used by API, when no socket is available
  * @param {Function} callback - Client callback
  */
-function sendBroadcastMsg({ message, socket, callback }) {
-  if (!objectValidator.isValidData({ message, socket, callback }, { socket: true, message: { text: true, userName: true } })) {
-    callback({ error: {} });
+function sendBroadcastMsg({ message, socket, callback, io, user }) {
+  const allowCallback = (allowErr, allowed) => {
+    if (allowErr || !allowed) {
+      callback({ error: new errorCreator.NotAllowed({ used: 'broadcast' }) });
 
-    return;
-  }
-
-  const data = {
-    message,
-  };
-  data.message.extraClass = 'broadcastMsg';
-  data.message.roomName = databasePopulation.rooms.bcast.roomName;
-  data.message.time = new Date();
-
-  addMsgToHistory(data.message.roomName, data.message, (err) => {
-    if (err) {
+      return;
+    }
+    if (!objectValidator.isValidData({ message, socket, callback }, { message: { text: true }, io: true })) {
       callback({ error: {} });
 
       return;
     }
 
-    socket.broadcast.emit('message', data);
-    callback(data);
-  });
+    const data = {
+      message,
+    };
+    data.message.extraClass = 'broadcastMsg';
+    data.message.roomName = databasePopulation.rooms.bcast.roomName;
+    data.message.time = new Date();
+
+    if (!data.message.userName) {
+      data.message.userName = 'SYSTEM';
+    }
+
+    addMsgToHistory(data.message.roomName, data.message, (err) => {
+      if (err) {
+        callback({ error: {} });
+
+        return;
+      }
+
+      if (socket) {
+        socket.broadcast.to(data.message.roomName).emit('bcastMsg', data);
+      } else {
+        io.to(data.message.roomName).emit('bcastMsg', data);
+      }
+
+      callback({ data });
+    });
+  };
+
+  const socketId = socket ? socket.id : '';
+
+  manager.userIsAllowed(socketId, databasePopulation.commands.broadcast.commandName, allowCallback, user.userName);
 }
 
 /**
