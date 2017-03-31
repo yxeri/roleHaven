@@ -22,6 +22,7 @@ const databasePopulation = require('./../config/defaults/config').databasePopula
 const appConfig = require('./../config/defaults/config').app;
 const logger = require('./../utils/logger');
 const objectValidator = require('./../utils/objectValidator');
+const errorCreator = require('../objects/error/errorCreator');
 
 /**
  * Symbolizes space between words in morse string
@@ -164,24 +165,11 @@ function sendSelfChatMsgs({ messages, socket }) {
  * Checks if the user is following a room
  * @param {Object} user - User to check
  * @param {string} roomName - Name of the room
- * @param {Object} socket - Socket.io socket
  * @returns {boolean} Is the socket following the room?
  */
-function isUserFollowingRoom(user, roomName, socket) {
-  if (user.rooms.indexOf(roomName) === -1) {
-    sendSelfMsg({
-      user,
-      message: {
-        text: [`You are not following room ${roomName}`],
-        text_se: [`Ni följer inte rummet ${roomName}`],
-      },
-      socket,
-    });
+function isUserFollowingRoom(user, roomName) {
 
-    return false;
-  }
-
-  return true;
+  return user.rooms.indexOf(roomName) > -1;
 }
 
 /**
@@ -258,8 +246,12 @@ function sendImportantMsg({ socket, message, device, callback }) {
  */
 function sendAndStoreChatMsg({ user, callback, message, io, socket }) {
   dbUser.getUser(user.userName, (userErr, foundUser) => {
-    if (userErr || foundUser === null || !isUserFollowingRoom(foundUser, message.roomName, socket)) {
-      callback({ error: {} });
+    if (userErr || foundUser === null) {
+      callback({ error: new errorCreator.Database() });
+
+      return;
+    } else if (!isUserFollowingRoom(foundUser, message.roomName)) {
+      callback({ error: new errorCreator.NotAllowed({ used: `send message to ${message.roomName}` }) });
 
       return;
     }
@@ -274,7 +266,7 @@ function sendAndStoreChatMsg({ user, callback, message, io, socket }) {
 
     addMsgToHistory(modifiedMessage.roomName, modifiedMessage, (err) => {
       if (err) {
-        callback({ error: {} });
+        callback({ error: new errorCreator.Database() });
 
         return;
       }
@@ -308,7 +300,7 @@ function sendAndStoreChatMsg({ user, callback, message, io, socket }) {
  */
 function sendChatMsg({ message, user, callback, io, socket }) {
   if (!objectValidator.isValidData({ message, user, callback, io }, { user: { userName: true }, message: { text: true, roomName: true }, io: true })) {
-    callback({ error: {} });
+    callback({ error: new errorCreator.InvalidData() });
 
     return;
   }
@@ -316,7 +308,7 @@ function sendChatMsg({ message, user, callback, io, socket }) {
   if (message.userName) {
     dbUser.getUserByAlias(message.userName, (aliasErr, aliasUser) => {
       if (aliasErr) {
-        callback({ error: {} });
+        callback({ error: new errorCreator.Database() });
 
         return;
       } else if (aliasUser === null || aliasUser.userName !== user.userName) {
@@ -350,41 +342,72 @@ function sendChatMsg({ message, user, callback, io, socket }) {
  * Sends a message to a whisper room (*user name*-whisper), which is followed by a single user, and stores it in history
  * Emits message
  * @param {Object} message - Message to be sent
+ * @param {Object} user - User who sent the message
  * @param {Object} socket - Socket.io socket
+ * @param {Object} io - Socket.io. Used by API, when no socket is available
  * @param {Function} callback - Client callback
  */
-function sendWhisperMsg({ message, socket, callback }) {
-  if (!objectValidator.isValidData({ message, socket, callback }, { socket: true, message: { text: true, roomName: true, userName: true } })) {
+function sendWhisperMsg({ io, user, message, socket, callback }) {
+  if (!objectValidator.isValidData({ message, io }, { message: { text: true, roomName: true, userName: true }, io: true })) {
     callback({ error: {} });
 
     return;
   }
 
-  const data = {
-    message,
-  };
-  data.message.roomName += appConfig.whisperAppend;
-  data.message.extraClass = 'whisperMsg';
-  data.message.time = new Date();
-
-  addMsgToHistory(data.message.roomName, data.message, (err) => {
-    if (err) {
+  dbUser.getUserByAlias(message.userName, (aliasErr, aliasUser) => {
+    if (aliasErr) {
       callback({ error: {} });
+
+      return;
+    } else if (aliasUser === null || aliasUser.userName !== user.userName) {
+      callback({
+        error: {
+          called: sendChatMsg.name,
+          message: {
+            text: ['User name does not match user trying to send the message'],
+          },
+        },
+      });
 
       return;
     }
 
-    const senderRoomName = data.message.userName + appConfig.whisperAppend;
+    message.roomName += appConfig.whisperAppend;
+    message.extraClass = 'whisperMsg';
+    message.time = new Date();
 
-    addMsgToHistory(senderRoomName, data.message, (senderErr) => {
-      if (senderErr) {
+    const data = {
+      messages: [message],
+      room: { roomName: message.roomName },
+      whisper: true,
+    };
+
+    // TODO Message should be removed if db fails to store it at senders
+    addMsgToHistory(message.roomName, message, (err) => {
+      if (err) {
         callback({ error: {} });
 
         return;
       }
 
-      socket.broadcast.to(data.message.roomName).emit('message', data);
-      callback(data);
+      const senderRoomName = message.userName + appConfig.whisperAppend;
+
+      addMsgToHistory(senderRoomName, message, (senderErr) => {
+        if (senderErr) {
+          callback({ error: {} });
+
+          return;
+        }
+
+        if (socket) {
+          socket.broadcast.to(message.roomName).emit('chatMsgs', data);
+        } else {
+          io.to(message.roomName).emit('chatMsgs', data);
+        }
+
+
+        callback({ data });
+      });
     });
   });
 }

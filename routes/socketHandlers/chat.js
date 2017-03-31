@@ -144,11 +144,13 @@ function handle(socket, io) {
   });
 
   socket.on('whisperMsg', ({ message }, callback = () => {}) => {
-    if (!objectValidator.isValidData({ message }, { message: { text: true, roomName: true, whisper: true } })) {
+    if (!objectValidator.isValidData({ message }, { message: { text: true, roomName: true, userName: true } })) {
       callback({ error: {} });
 
       return;
     }
+
+    message.text = cleanText(message.text);
 
     manager.userIsAllowed(socket.id, databasePopulation.commands.whisper.commandName, (allowErr, allowed, user) => {
       if (allowErr || !allowed) {
@@ -157,10 +159,8 @@ function handle(socket, io) {
         return;
       }
 
-      const modifiedMessage = message;
-      modifiedMessage.userName = user.userName;
 
-      messenger.sendWhisperMsg({ socket, callback, message: modifiedMessage });
+      messenger.sendWhisperMsg({ socket, callback, message, user, io });
     });
   });
 
@@ -237,13 +237,21 @@ function handle(socket, io) {
         callback({ error: {} });
 
         return;
-      } else if (Object.keys(socket.rooms).indexOf(room.roomName) === -1) {
-        callback({ error: {} });
-
-        return;
       }
 
-      callback({ data: { allowed: true } });
+      dbRoom.getRoom(room.roomName, user, (error, retrievedRoom) => {
+        if (error) {
+          callback({ error: {} });
+
+          return;
+        } else if (!retrievedRoom || Object.keys(socket.rooms).indexOf(retrievedRoom.roomName) === -1) {
+          callback({ data: { allowed: false, room: retrievedRoom } });
+
+          return;
+        }
+
+        callback({ data: { allowed: true, room: retrievedRoom } });
+      });
     });
   });
 
@@ -451,7 +459,7 @@ function handle(socket, io) {
     });
   });
 
-  socket.on('listUsers', (callback = () => {}) => {
+  socket.on('listUsers', (params, callback = () => {}) => {
     manager.userIsAllowed(socket.id, databasePopulation.commands.list.commandName, (allowErr, allowed, user) => {
       if (allowErr || !allowed || !user) {
         callback({ error: {} });
@@ -498,8 +506,9 @@ function handle(socket, io) {
    * @param {Object} [params.room] - Room to retrieve history from. Will retrieve from all rooms if not set
    * @param {Date} [params.startDate] - Start date of retrieval
    * @param {number} [params.lines] - Number of lines to retrieve
+   * @param {string} [params.whisperTo] - User name that is whispered to
    */
-  socket.on('history', ({ room, startDate, lines }, callback = () => {}) => {
+  socket.on('history', ({ room, startDate, lines, whisperTo }, callback = () => {}) => {
     manager.userIsAllowed(socket.id, databasePopulation.commands.history.commandName, (allowErr, allowed, user) => {
       if (allowErr || !allowed) {
         callback({ error: new errorCreator.NotAllowed({ used: databasePopulation.commands.history.commandName }) });
@@ -516,6 +525,7 @@ function handle(socket, io) {
           lines: historyLines,
           missedMsgs: false,
           lastOnline: startDate || new Date(),
+          whisperTo,
           callback: (histErr, historyMessages = [], anonymous) => {
             if (histErr) {
               callback({ error: {} });
@@ -549,8 +559,8 @@ function handle(socket, io) {
 
       if (user && user.team && room.roomName === 'team') {
         room.roomName = user.team + appConfig.teamAppend;
-      } else if (room.roomName === 'whisper') {
-        room.roomName = user.userName + appConfig.whisperAppend;
+      } else if (whisperTo) {
+        room.roomName += appConfig.whisperAppend;
       }
 
       if (room && Object.keys(socket.rooms).indexOf(room.roomName) > -1) {
@@ -694,11 +704,6 @@ function handle(socket, io) {
         messenger.sendMorse({ message: morseToSend });
       }
     });
-  });
-
-  // TODO Change this, quick fix implementation
-  socket.on('followPublic', () => {
-    socket.join(databasePopulation.rooms.public.roomName);
   });
 
   socket.on('updateRoom', (params, callback = () => {}) => {

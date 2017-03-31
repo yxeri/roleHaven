@@ -32,13 +32,58 @@ const router = new express.Router();
 function handle(io) {
   /**
    * @api {post} /messages Send a message
-   * @apiVersion 5.0.2
+   * @apiVersion 5.0.3
    * @apiName SendMessage
    * @apiGroup Messages
    *
    * @apiHeader {String} Authorization Your JSON Web Token
    *
    * @apiDescription Send a message to a room
+   *
+   * @apiParam {Object} data
+   * @apiParam {String} [data.whisper] Is this a whisper (direct message) to another user?
+   * @apiParam {Object} data.message Message
+   * @apiParam {String} data.message.roomName Name of the room (or user name) to send the message to
+   * @apiParam {String} [data.message.userName] Name of the sender. Default is your user name. You can instead set it to one of your user's aliases
+   * @apiParam {String[]} data.message.text Content of the message
+   * @apiParamExample {json} Request-Example:
+   *   {
+   *    "data": {
+   *      "message": {
+   *        "roomName": "bb1",
+   *        "userName": "rez",
+   *        "text": [
+   *          "Hello world!"
+   *        ]
+   *      }
+   *    }
+   *  }
+   *
+   * @apiSuccess {Object} data
+   * @apiSuccess {Object[]} data.message Message sent
+   * @apiSuccessExample {json} Success-Response:
+   *   {
+   *    "data": {
+   *      "message": [{
+   *        "roomName": "bb1",
+   *        "text": [
+   *          "Hello world!"
+   *        ],
+   *        "userName": "rez",
+   *        "time": "2016-10-28T22:42:06.262Z"
+   *      }]
+   *    }
+   *  }
+   */
+  /**
+   * @api {post} /messages Send a message
+   * @apiVersion 5.0.2
+   * @apiName SendMessage
+   * @apiGroup Messages
+   *
+   * @apiHeader {String} Authorization Your JSON Web Token
+   *
+   * @apiDescription Create and send a message to a room
    *
    * @apiParam {Object} data
    * @apiParam {Object} data.message Message
@@ -154,13 +199,18 @@ function handle(io) {
       }
 
       const message = req.body.data.message;
-
-      messenger.sendChatMsg({
-        io,
-        message,
-        user: decoded.data,
-        callback: ({ error, data }) => {
-          if (error) {
+      const whisper = req.body.data.whisper;
+      const callback = ({ error, data }) => {
+        if (error) {
+          if (error.type && error.type === 'Not allowed') {
+            res.status(401).json({
+              errors: [{
+                status: 401,
+                title: 'Unauthorized',
+                detail: 'Not following room',
+              }],
+            });
+          } else {
             res.status(500).json({
               errors: [{
                 status: 500,
@@ -168,13 +218,31 @@ function handle(io) {
                 detail: 'Internal Server Error',
               }],
             });
-
-            return;
           }
 
-          res.json({ data: { message: data.messages } });
-        },
-      });
+          return;
+        }
+
+        res.json({ data: { message: data.messages } });
+      };
+
+      if (whisper) {
+        message.userName = decoded.data.userName;
+
+        messenger.sendWhisperMsg({
+          io,
+          user: decoded.data,
+          message,
+          callback,
+        });
+      } else {
+        messenger.sendChatMsg({
+          io,
+          message,
+          user: decoded.data,
+          callback,
+        });
+      }
     });
   });
 

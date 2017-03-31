@@ -16,7 +16,7 @@
 
 const GeneralError = require('./GeneralError');
 
-class InvalidDataError extends GeneralError {
+class NotAllowedError extends GeneralError {
   /**
    * InvalidData constructor
    * @param {string} used - Description of what the user tried to access
@@ -35,4 +35,4 @@ class InvalidDataError extends GeneralError {
   }
 }
 
-module.exports = InvalidDataError;
+module.exports = NotAllowedError;

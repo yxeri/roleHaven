@@ -128,15 +128,18 @@ function createRoom(sentRoom, sentUser, callback) {
  */
 function getRoom(roomName, user, callback) {
   const query = { roomName, accessLevel: { $lte: user.accessLevel } };
-  const filter = { password: 0 };
 
-  Room.findOne(query, filter).lean().exec((err, room) => {
+  Room.findOne(query).lean().exec((err, room) => {
     if (err) {
       logger.sendErrorMsg({
         code: logger.ErrorCodes.db,
         text: [`Failed to get room ${roomName}`],
         err,
       });
+    }
+
+    if (room && room.password && room.password !== '') {
+      room.password = true;
     }
 
     callback(err, room);

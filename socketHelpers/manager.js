@@ -104,9 +104,10 @@ function userIsAllowed(socketId, commandName, callback) {
  * @param {number} [lines] - How many message to retrieve
  * @param {boolean} [missedMsgs] - Set to true if only the messages since the users last connection should be returned
  * @param {Date} [lastOnline] - Date of the last time the user was online
+ * @param {string} [whisperTo] - User name whispered to
  * @param {Function} callback - callback
  */
-function getHistory({ lastOnline = new Date(), rooms, lines, missedMsgs, callback }) {
+function getHistory({ lastOnline = new Date(), rooms, lines, missedMsgs, whisperTo, callback }) {
   dbChatHistory.getHistoryFromRooms(rooms, (err, history) => {
     let historyMessages = [];
 
@@ -121,6 +122,10 @@ function getHistory({ lastOnline = new Date(), rooms, lines, missedMsgs, callbac
 
       for (const roomHistory of history) {
         historyMessages = historyMessages.concat(roomHistory.messages);
+      }
+
+      if (whisperTo) {
+        historyMessages = historyMessages.filter(message => message.roomName === `${whisperTo}${appConfig.whisperAppend}` || message.userName === whisperTo);
       }
 
       historyMessages.sort(messageSort);

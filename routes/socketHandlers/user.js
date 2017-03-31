@@ -451,7 +451,7 @@ function handle(socket) {
           const rooms = Object.keys(socket.rooms);
 
           for (const room of rooms) {
-            if (room.indexOf(appConfig.deviceAppend) < 0) {
+            if (room.indexOf(appConfig.deviceAppend) < 0 && room !== databasePopulation.rooms.public.roomName) {
               socket.leave(room);
             }
           }
@@ -926,7 +926,20 @@ function handle(socket) {
           return;
         }
 
-        callback({ data: { alias: aliasLower } });
+        const room = {
+          owner: user.userName,
+          roomName: alias + appConfig.whisperAppend,
+        };
+
+        manager.createRoom(room, user, (createErr, createdRoom) => {
+          if (createErr || !createdRoom) {
+            callback({ error: new errorCreator.Database() });
+
+            return;
+          }
+
+          callback({ data: { alias: aliasLower } });
+        });
       });
     });
   });

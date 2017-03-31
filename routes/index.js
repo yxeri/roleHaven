@@ -51,6 +51,8 @@ function handle(io) {
   });
 
   io.on('connection', (socket) => {
+    socket.join(databasePopulation.rooms.public.roomName);
+
     socket.emit('startup', {
       defaultLanguage: appConfig.defaultLanguage,
       forceFullscreen: appConfig.forceFullscreen,
