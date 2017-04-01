@@ -487,10 +487,20 @@ function handle(socket, io) {
           const currentUser = users[i];
 
           if ((!appConfig.userVerify || currentUser.verified) && !currentUser.banned) {
+            const aliases = currentUser.aliases;
+
             if (currentUser.online) {
               onlineUsers.push(currentUser.userName);
             } else {
               offlineUsers.push(currentUser.userName);
+            }
+
+            if (aliases && aliases.length > 0) {
+              if (currentUser.online) {
+                Array.prototype.push.apply(onlineUsers, aliases);
+              } else {
+                Array.prototype.push.apply(offlineUsers, aliases);
+              }
             }
           }
         }
