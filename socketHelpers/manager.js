@@ -95,6 +95,7 @@ function userIsAllowed(socketId, commandName, callback, userName) {
       const commandUser = {
         userName: user ? user.userName : '',
         accessLevel: user ? user.accessLevel : 0,
+        whisperRooms: user.whisperRooms || [],
       };
 
       getCommand(commandName, (cmdErr, command) => {

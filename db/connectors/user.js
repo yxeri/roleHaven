@@ -32,6 +32,7 @@ const userSchema = new mongoose.Schema({
   accessLevel: { type: Number, default: 1 },
   visibility: { type: Number, default: 1 },
   rooms: [{ type: String, unique: true }],
+  whisperRooms: [{ type: String, unique: true }],
   lastOnline: Date,
   verified: { type: Boolean, default: false },
   banned: { type: Boolean, default: false },
@@ -465,6 +466,52 @@ function removeRoomFromUser(userName, roomName, callback) {
 }
 
 /**
+ * Add whisper room to user
+ * @param {string} userName - Name of the user
+ * @param {string} roomName - Name of the room
+ * @param {Function} callback - Callback
+ */
+function addWhisperRoomToUser(userName, roomName, callback) {
+  const query = { userName };
+  const update = { $addToSet: { whisperRooms: roomName } };
+
+  User.findOneAndUpdate(query, update).lean().exec((err, user) => {
+    if (err || user === null) {
+      logger.sendErrorMsg({
+        code: logger.ErrorCodes.db,
+        text: ['Failed to add room to user'],
+        err,
+      });
+    }
+
+    callback(err, user);
+  });
+}
+
+/**
+ * Remove whisper room from user
+ * @param {string} userName - Name of the user
+ * @param {string} roomName - Name of the room
+ * @param {Function} callback - Callback
+ */
+function removeWhisperRoomFromUser(userName, roomName, callback) {
+  const query = { userName };
+  const update = { $pull: { whisperRooms: roomName } };
+
+  User.findOneAndUpdate(query, update).lean().exec((err, user) => {
+    if (err) {
+      logger.sendErrorMsg({
+        code: logger.ErrorCodes.db,
+        text: [`Failed to remove room ${roomName} from user`],
+        err,
+      });
+    }
+
+    callback(err, user);
+  });
+}
+
+/**
  * Remove room from all users following it
  * @param {string} roomName - Name of the room
  * @param {Function} callback - Callback
@@ -827,6 +874,8 @@ exports.getAllUserLocations = getAllUserPositions;
 exports.getUserPosition = getUserPositions;
 exports.addRoomToUser = addRoomToUser;
 exports.removeRoomFromUser = removeRoomFromUser;
+exports.addWhisperRoomToUser = addWhisperRoomToUser;
+exports.removeWhisperRoomFromUser = removeWhisperRoomFromUser;
 exports.setUserLastOnline = setUserLastOnline;
 exports.updateUserPassword = updateUserPassword;
 exports.verifyUser = verifyUser;

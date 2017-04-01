@@ -255,6 +255,58 @@ function handle(socket, io) {
     });
   });
 
+  socket.on('followWhisper', ({ room }, callback = () => {}) => {
+    if (!objectValidator.isValidData({ room }, { room: { roomName: true } })) {
+      callback({ error: new errorCreator.Database() });
+
+      return;
+    }
+
+    manager.userIsAllowed(socket.id, databasePopulation.commands.follow.commandName, (allowErr, allowed, user) => {
+      if (allowErr || !allowed || !user) {
+        callback({ error: new errorCreator.Database() });
+
+        return;
+      }
+
+      dbUser.addWhisperRoomToUser(user.userName, room.roomName, (dbErr) => {
+        if (dbErr) {
+          callback({ error: new errorCreator.Database() });
+
+          return;
+        }
+
+        callback({ data: { room } });
+      });
+    });
+  });
+
+  socket.on('unfollowWhisper', ({ room }, callback = () => {}) => {
+    if (!objectValidator.isValidData({ room }, { room: { roomName: true } })) {
+      callback({ error: new errorCreator.Database() });
+
+      return;
+    }
+
+    manager.userIsAllowed(socket.id, databasePopulation.commands.unfollow.commandName, (allowErr, allowed, user) => {
+      if (allowErr || !allowed || !user) {
+        callback({ error: new errorCreator.Database() });
+
+        return;
+      }
+
+      dbUser.removeWhisperRoomFromUser(user.userName, room.roomName, (dbErr) => {
+        if (dbErr) {
+          callback({ error: new errorCreator.Database() });
+
+          return;
+        }
+
+        callback({ data: { room } });
+      });
+    });
+  });
+
   // TODO Duplicate code in rest api
   socket.on('follow', ({ room }, callback = () => {}) => {
     if (!objectValidator.isValidData({ room }, { room: { roomName: true } })) {
@@ -452,7 +504,7 @@ function handle(socket, io) {
 
             const ownedNames = ownedRooms.map(room => room.roomName);
 
-            callback({ data: { rooms: roomNames, followedRooms: followedNames, ownedRooms: ownedNames } });
+            callback({ data: { rooms: roomNames, followedRooms: followedNames, ownedRooms: ownedNames, whisperRooms: user.whisperRooms || [] } });
           });
         }
       });
