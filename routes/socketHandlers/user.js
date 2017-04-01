@@ -911,36 +911,9 @@ function handle(socket) {
         callback({ error: new errorCreator.NotAllowed({ used: databasePopulation.commands.alias.commandName }) });
 
         return;
-      } else if (!isTextAllowed(alias)) {
-        callback({ error: new errorCreator.InvalidCharacters({ propertyName: 'alias name' }) });
-
-        return;
       }
 
-      const aliasLower = alias.toLowerCase();
-
-      dbUser.addAlias(user.userName, aliasLower, (err, aliasUser) => {
-        if (err || aliasUser === null) {
-          callback({ error: new errorCreator.Database() });
-
-          return;
-        }
-
-        const room = {
-          owner: user.userName,
-          roomName: alias + appConfig.whisperAppend,
-        };
-
-        manager.createRoom(room, user, (createErr, createdRoom) => {
-          if (createErr || !createdRoom) {
-            callback({ error: new errorCreator.Database() });
-
-            return;
-          }
-
-          callback({ data: { alias: aliasLower } });
-        });
-      });
+      manager.addAlias({ user, alias, callback });
     });
   });
 }

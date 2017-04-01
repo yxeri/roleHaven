@@ -22,6 +22,16 @@ const dbRoom = require('./../db/connectors/room');
 const dbChatHistory = require('./../db/connectors/chatHistory');
 const logger = require('./../utils/logger.js');
 const appConfig = require('./../config/defaults/config').app;
+const errorCreator = require('../objects/error/errorCreator');
+
+/**
+ * Does string contain valid characters?
+ * @param {string} text - String to check
+ * @returns {boolean} Does string contain valid characters?
+ */
+function isTextAllowed(text) {
+  return /^[\w\d\såäöÅÄÖ\-]+$/g.test(text);
+}
 
 /*
  * Sort messages based on timestamp
@@ -239,8 +249,48 @@ function joinRooms(rooms, socket, device) {
   }
 }
 
+/**
+ * Add alias to users
+ * @param {Object} user - User that will get a new alias
+ * @param {string} alias - Alias to add
+ * @param {Function} callback - Callback
+ */
+function addAlias({ user, alias, callback }) {
+  if (!isTextAllowed(alias)) {
+    callback({ error: new errorCreator.InvalidCharacters({ propertyName: 'alias name' }) });
+
+    return;
+  }
+
+  const aliasLower = alias.toLowerCase();
+
+  dbUser.addAlias(user.userName, aliasLower, (err, aliasUser) => {
+    if (err || aliasUser === null) {
+      callback({ error: new errorCreator.Database() });
+
+      return;
+    }
+
+    const room = {
+      owner: user.userName,
+      roomName: alias + appConfig.whisperAppend,
+    };
+
+    createRoom(room, user, (createErr, createdRoom) => {
+      if (createErr || !createdRoom) {
+        callback({ error: new errorCreator.Database() });
+
+        return;
+      }
+
+      callback({ data: { alias: aliasLower } });
+    });
+  });
+}
+
 exports.userIsAllowed = userIsAllowed;
 exports.getHistory = getHistory;
 exports.createRoom = createRoom;
 exports.updateUserSocketId = updateUserSocketId;
 exports.joinRooms = joinRooms;
+exports.addAlias = addAlias;
