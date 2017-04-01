@@ -20,37 +20,37 @@ const mongoose = require('mongoose');
 const logger = require('../../utils/logger');
 const databaseConnector = require('../databaseConnector');
 
-const archiveSchema = new mongoose.Schema({
+const docFileSchema = new mongoose.Schema({
   visibility: { type: Number, default: 0 },
   isPublic: { type: Boolean, default: true },
   text: [String],
-  archiveId: { type: String, unique: true },
+  docFileId: { type: String, unique: true },
   title: String,
   creator: { type: String, default: 'SYSTEM' },
   team: String,
-}, { collection: 'archives' });
+}, { collection: 'docFiles' });
 
-const Archive = mongoose.model('Archive', archiveSchema);
+const DocFile = mongoose.model('DocFile', docFileSchema);
 
 /**
- * Create and save archive
- * @param {Object} archive - New archive
+ * Create and save docFile
+ * @param {Object} docFile - New docFile
  * @param {Function} callback - Callback
  */
-function createArchive(archive, callback) {
-  const query = { archiveId: archive.archiveId };
+function createDocFile(docFile, callback) {
+  const query = { docFileId: docFile.docFileId };
 
-  Archive.findOne(query).lean().exec((err, foundArchive) => {
+  DocFile.findOne(query).lean().exec((err, foundDocFile) => {
     if (err) {
       logger.sendErrorMsg({
         code: logger.ErrorCodes.db,
         text: ['Failed to check if user exists'],
         err,
       });
-    } else if (foundArchive === null) {
-      const newArchive = new Archive(archive);
+    } else if (foundDocFile === null) {
+      const newDocFile = new DocFile(docFile);
 
-      databaseConnector.saveObject(newArchive, 'archive', callback);
+      databaseConnector.saveObject(newDocFile, 'docFile', callback);
     } else {
       callback(err, null);
     }
@@ -58,17 +58,17 @@ function createArchive(archive, callback) {
 }
 
 /**
- * Set text on archive
- * @param {string} archiveId - ID of archive
- * @param {Object} params - Properties to change in the archive
+ * Set text on docFile
+ * @param {string} docFileId - ID of docFile
+ * @param {Object} params - Properties to change in the docFile
  * @param {string[]} params.text - Array with text
  * @param {string} params.title - Title
  * @param {number} params.visibility - Access level required to access the document
  * @param {boolean} params.isPublic - Is the document visible to the public?
  * @param {Function} callback - Callback
  */
-function updateArchive(archiveId, { text, title, visibility, isPublic }, callback) {
-  const query = { archiveId };
+function updateDocFile(docFileId, { text, title, visibility, isPublic }, callback) {
+  const query = { docFileId };
   const update = { };
 
   if (text) { update.text = text; }
@@ -76,95 +76,95 @@ function updateArchive(archiveId, { text, title, visibility, isPublic }, callbac
   if (visibility) { update.visibility = visibility; }
   if (isPublic) { update.isPublic = isPublic; }
 
-  Archive.findOneAndUpdate(query, update).lean().exec((err, archive) => {
+  DocFile.findOneAndUpdate(query, update).lean().exec((err, docFile) => {
     if (err) {
       logger.sendErrorMsg({
         code: logger.ErrorCodes.db,
-        text: ['Failed to update archive'],
+        text: ['Failed to update docFile'],
         err,
       });
     }
 
-    callback(err, archive);
+    callback(err, docFile);
   });
 }
 
 /**
- * Get archive by archive ID and user access level
- * @param {string} archiveId - ID of archive
+ * Get docFile by docFile ID and user access level
+ * @param {string} docFileId - ID of docFile
  * @param {number} accessLevel - User access level
  * @param {Function} callback - Callback
  */
-function getArchive(archiveId, accessLevel, callback) {
+function getDocFile(docFileId, accessLevel, callback) {
   const query = {
     $and: [
       { visibility: { $lte: accessLevel } },
-      { archiveId },
+      { docFileId },
     ],
   };
 
-  Archive.findOne(query).lean().exec((err, archive) => {
+  DocFile.findOne(query).lean().exec((err, docFile) => {
     if (err) {
       logger.sendErrorMsg({
         code: logger.ErrorCodes.db,
-        text: [`Failed to get archive with id ${archiveId}`],
+        text: [`Failed to get archive with id ${docFileId}`],
         err,
       });
     }
 
-    callback(err, archive);
+    callback(err, docFile);
   });
 }
 
 /**
- * Get all archives based on user access level
+ * Get all docFiles based on user access level
  * @param {number} accessLevel - User access level
  * @param {Function} callback - Callback
  */
-function getArchives(accessLevel, callback) {
+function getDocFiles(accessLevel, callback) {
   const query = { accessLevel: { $lte: accessLevel } };
 
-  Archive.find(query).lean().exec((err, archives) => {
+  DocFile.find(query).lean().exec((err, docFile) => {
     if (err) {
       logger.sendErrorMsg({
         code: logger.ErrorCodes.db,
-        text: ['Failed to get archives'],
+        text: ['Failed to get docFiles'],
         err,
       });
     }
 
-    callback(err, archives);
+    callback(err, docFile);
   });
 }
 
 /**
- * Get list of archives, based on user access level and if archive is public
+ * Get list of docFiles, based on user access level and if docFile is public
  * @param {number} accessLevel - User access level
  * @param {string} userName - User name
  * @param {Function} callback - Callback
  */
-function getArchivesList(accessLevel, userName, callback) {
+function getDocFilesList(accessLevel, userName, callback) {
   const query = {
     visibility: { $lte: accessLevel },
     $or: [{ isPublic: true }, { creator: userName }],
   };
   const filter = { _id: 0, text: 0, visibility: 0, isPublic: 0 };
 
-  Archive.find(query, filter).lean().exec((err, archives) => {
+  DocFile.find(query, filter).lean().exec((err, docFiles) => {
     if (err) {
       logger.sendErrorMsg({
         code: logger.ErrorCodes.db,
-        text: ['Failed to get archives list'],
+        text: ['Failed to get docFiles list'],
         err,
       });
     }
 
-    callback(err, archives);
+    callback(err, docFiles);
   });
 }
 
-exports.createArchive = createArchive;
-exports.getArchive = getArchive;
-exports.getArchives = getArchives;
-exports.getArchivesList = getArchivesList;
-exports.updateArchive = updateArchive;
+exports.createDocFile = createDocFile;
+exports.getDocFile = getDocFile;
+exports.getDocFiles = getDocFiles;
+exports.getDocFilesList = getDocFilesList;
+exports.updateDocFile = updateDocFile;

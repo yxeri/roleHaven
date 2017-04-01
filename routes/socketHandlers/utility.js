@@ -22,7 +22,7 @@ const appConfig = require('../../config/defaults/config').app;
 const logger = require('../../utils/logger');
 const http = require('http');
 const objectValidator = require('../../utils/objectValidator');
-const dbArchive = require('../../db/connectors/archive');
+const dbDocFile = require('../../db/connectors/docFile');
 const errorCreator = require('../../objects/error/errorCreator');
 
 // FIXME SMHI API changed. Structure needs to be fixed here before usage
@@ -67,105 +67,105 @@ function handle(socket) {
     });
   });
 
-  socket.on('createArchive', (archive, callback = () => {}) => {
-    if (!objectValidator.isValidData(archive, { archiveId: true, text: true, title: true })) {
+  socket.on('createDocFile', (docFile, callback = () => {}) => {
+    if (!objectValidator.isValidData(docFile, { docFileId: true, text: true, title: true })) {
       callback({ error: new errorCreator.InvalidData({}) });
 
       return;
     }
 
-    manager.userIsAllowed(socket.id, databasePopulation.commands.archives.commandName, (allowErr, allowed, user) => {
+    manager.userIsAllowed(socket.id, databasePopulation.commands.docFiles.commandName, (allowErr, allowed, user) => {
       if (allowErr || !allowed) {
-        callback({ error: new errorCreator.NotAllowed({ used: databasePopulation.commands.archives.commandName }) });
+        callback({ error: new errorCreator.NotAllowed({ used: databasePopulation.commands.docFiles.commandName }) });
 
         return;
       }
 
-      archive.creator = user.userName;
+      docFile.creator = user.userName;
 
-      dbArchive.createArchive(archive, (err, newArchive) => {
+      dbDocFile.createDocFile(docFile, (err, newDocFiles) => {
         if (err) {
           callback({ error: new errorCreator.Database({}) });
 
           return;
         }
 
-        callback({ data: { archive: newArchive } });
+        callback({ data: { docFile: newDocFiles } });
       });
     });
   });
 
-  socket.on('updateArchive', ({ archiveId, title, text, visibility, isPublic }, callback = () => {}) => {
-    if (!objectValidator.isValidData({ archiveId }, { archiveId: true })) {
+  socket.on('updateDocFile', ({ docFileId, title, text, visibility, isPublic }, callback = () => {}) => {
+    if (!objectValidator.isValidData({ docFileId }, { docFileId: true })) {
       callback({ error: new errorCreator.InvalidData({}) });
 
       return;
     }
 
-    manager.userIsAllowed(socket.id, databasePopulation.commands.archives.commandName, (allowErr, allowed) => {
+    manager.userIsAllowed(socket.id, databasePopulation.commands.docFiles.commandName, (allowErr, allowed) => {
       if (allowErr || !allowed) {
-        callback({ error: new errorCreator.NotAllowed({ used: databasePopulation.commands.archives.commandName }) });
+        callback({ error: new errorCreator.NotAllowed({ used: databasePopulation.commands.docFiles.commandName }) });
 
         return;
       }
 
-      dbArchive.updateArchive(archiveId, { title, text, visibility, isPublic }, (err, archive) => {
+      dbDocFile.updateDocFile(docFileId, { title, text, visibility, isPublic }, (err, docFile) => {
         if (err) {
           callback({ error: new errorCreator.Database({}) });
 
           return;
         }
 
-        callback({ data: { archive } });
+        callback({ data: { docFile } });
       });
     });
   });
 
-  socket.on('getArchive', ({ archiveId }, callback = () => {}) => {
-    if (!objectValidator.isValidData({ archiveId }, { archiveId: true })) {
+  socket.on('getDocFile', ({ docFileId }, callback = () => {}) => {
+    if (!objectValidator.isValidData({ docFileId }, { docFileId: true })) {
       callback({ error: new errorCreator.InvalidData({}) });
 
       return;
     }
 
-    manager.userIsAllowed(socket.id, databasePopulation.commands.getArchive.commandName, (allowErr, allowed, user) => {
+    manager.userIsAllowed(socket.id, databasePopulation.commands.getDocFile.commandName, (allowErr, allowed, user) => {
       if (allowErr || !allowed) {
-        callback({ error: new errorCreator.NotAllowed({ used: databasePopulation.commands.getArchive.commandName }) });
+        callback({ error: new errorCreator.NotAllowed({ used: databasePopulation.commands.getDocFile.commandName }) });
 
         return;
       }
 
-      dbArchive.getArchive(archiveId.toLowerCase(), user.accessLevel, (err, archive) => {
+      dbDocFile.getDocFile(docFileId.toLowerCase(), user.accessLevel, (err, docFile) => {
         if (err) {
           callback({ error: new errorCreator.Database({}) });
 
           return;
         }
 
-        callback({ data: { archive } });
+        callback({ data: { docFile } });
       });
     });
   });
 
-  socket.on('getArchivesList', (params, callback = () => {}) => {
-    manager.userIsAllowed(socket.id, databasePopulation.commands.getArchives.commandName, (allowErr, allowed, user) => {
+  socket.on('getDocFilesList', (params, callback = () => {}) => {
+    manager.userIsAllowed(socket.id, databasePopulation.commands.getDocFiles.commandName, (allowErr, allowed, user) => {
       if (allowErr || !allowed) {
-        callback({ error: new errorCreator.NotAllowed({ used: databasePopulation.commands.getArchives.commandName }) });
+        callback({ error: new errorCreator.NotAllowed({ used: databasePopulation.commands.getDocFiles.commandName }) });
 
         return;
       }
 
-      dbArchive.getArchivesList(user.accessLevel, user.userName, (err, archives) => {
+      dbDocFile.getDocFilesList(user.accessLevel, user.userName, (err, docFiles) => {
         if (err) {
           callback({ error: new errorCreator.Database() });
 
           return;
         }
 
-        const userCreated = archives.filter(archive => archive.creator === user.userName);
-        const otherArchives = archives.filter(archive => archive.creator !== user.userName);
+        const userCreated = docFiles.filter(docFile => docFile.creator === user.userName);
+        const otherDocFiles = docFiles.filter(docFile => docFile.creator !== user.userName);
 
-        callback({ data: { userArchives: userCreated, archives: otherArchives } });
+        callback({ data: { userDocFiles: userCreated, docFiles: otherDocFiles } });
       });
     });
   });

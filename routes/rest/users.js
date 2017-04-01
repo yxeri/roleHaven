@@ -41,7 +41,7 @@ function handle() {
    * @apiDescription Retrieve all users
    *
    * @apiSuccess {Object} data
-   * @apiSuccess {Object} data.message Found archive with sent archive ID. Empty if no match was found
+   * @apiSuccess {Object} data.users Users found
    * @apiSuccessExample {json} Success-Response:
    *   {
    *    "data": {

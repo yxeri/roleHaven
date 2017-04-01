@@ -146,7 +146,7 @@ function handle(io) {
    *  }
    *
    * @apiSuccess {Object} data
-   * @apiSuccess {Object} data.message Found archive with sent archive ID. Empty if no match was found
+   * @apiSuccess {Object} data.message Sent message
    * @apiSuccessExample {json} Success-Response:
    *   {
    *    "data": {

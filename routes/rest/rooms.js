@@ -210,7 +210,7 @@ function handle(io) {
    *  }
    *
    * @apiSuccess {Object} data
-   * @apiSuccess {Object} data.message Found archive with sent archive ID. Empty if no match was found
+   * @apiSuccess {Object} data.room Room created
    * @apiSuccessExample {json} Success-Response:
    *   {
    *    "data": {

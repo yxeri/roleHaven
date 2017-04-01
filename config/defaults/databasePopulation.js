@@ -452,8 +452,8 @@ config.commands = {
     visibility: config.accessLevels.basic,
     category: 'basic',
   },
-  archives: config.commands.archives || {
-    commandName: 'archives',
+  docFiles: config.commands.docFiles || {
+    commandName: 'docFiles',
     accessLevel: config.accessLevels.basic,
     visibility: config.accessLevels.basic,
     category: 'basic',
@@ -482,14 +482,14 @@ config.commands = {
     visibility: config.accessLevels.admin,
     category: 'admin',
   },
-  getArchives: config.commands.getArchives || {
-    commandName: 'getArchives',
+  getDocFiles: config.commands.getDocFiles || {
+    commandName: 'getDocFiles',
     accessLevel: config.accessLevels.anonymous,
     visibility: config.accessLevels.anonymous,
     category: 'basic',
   },
-  getArchive: config.commands.getArchive || {
-    commandName: 'getArchive',
+  getDocFile: config.commands.getDocFile || {
+    commandName: 'getDocFile',
     accessLevel: config.accessLevels.anonymous,
     visibility: config.accessLevels.anonymous,
     category: 'basic',

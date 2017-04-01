@@ -19,7 +19,7 @@
 const express = require('express');
 const objectValidator = require('../../utils/objectValidator');
 const appConfig = require('../../config/defaults/config').app;
-const dbArchive = require('../../db/connectors/archive');
+const dbDocFile = require('../../db/connectors/docFile');
 const jwt = require('jsonwebtoken');
 
 const router = new express.Router();
@@ -29,25 +29,25 @@ const router = new express.Router();
  */
 function handle() {
   /**
-   * @api {get} /archives Retrieve all public archives
+   * @api {get} /docFiles Retrieve all public docFiles
    * @apiVersion 5.0.1
-   * @apiName GetPublicArchives
-   * @apiGroup Archives
+   * @apiName GetPublicDocFiles
+   * @apiGroup DocFiles
    *
    * @apiHeader {String} Authorization Your JSON Web Token
    *
-   * @apiDescription Retrieve all public archives
+   * @apiDescription Retrieve all public docFiles
    *
    * @apiSuccess {Object} data
-   * @apiSuccess {Object[]} data.archives All public archives. Empty if no match was found
+   * @apiSuccess {Object[]} data.docFiles All public docFiles. Empty if no match was found
    * @apiSuccessExample {json} Success-Response:
    *  {
    *    "data": {
-   *      "archives": [
+   *      "docFiles": [
    *        {
    *          "_id": "58093459d3b44c3400858273",
    *          "title": "Hello",
-   *          "archiveId": "hello",
+   *          "docFileId": "hello",
    *          "creator": "rez5",
    *          "text": [
    *            "Hello world!",
@@ -85,8 +85,8 @@ function handle() {
         return;
       }
 
-      dbArchive.getArchivesList(decoded.data.accessLevel, (archiveErr, archives) => {
-        if (archiveErr) {
+      dbDocFile.getDocFilesList(decoded.data.accessLevel, decoded.data.userName, (docFileErr, docFiles) => {
+        if (docFileErr) {
           res.status(500).json({
             errors: [{
               status: 500,
@@ -98,33 +98,33 @@ function handle() {
           return;
         }
 
-        res.json({ data: { archives } });
+        res.json({ data: { docFiles } });
       });
     });
   });
 
   /**
-   * @api {get} /archives/:id Retrieve specific archive
+   * @api {get} /docFiles/:id Retrieve specific docFile
    * @apiVersion 5.0.1
-   * @apiName GetArchive
-   * @apiGroup Archives
+   * @apiName GetDocFile
+   * @apiGroup DocFiles
    *
    * @apiHeader {String} Authorization Your JSON Web Token
    *
-   * @apiDescription Retrieve a specific archive based on the sent archive ID
+   * @apiDescription Retrieve a specific docFile based on the sent docFile ID
    *
-   * @apiParam {String} id The archive ID.
+   * @apiParam {String} id The docFile ID.
    *
    * @apiSuccess {Object} data
-   * @apiSuccess {Object[]} data.archives Found archive with sent archive ID. Empty if no match was found
+   * @apiSuccess {Object[]} data.docFiles Found docFile with sent docFile ID. Empty if no match was found
    * @apiSuccessExample {json} Success-Response:
    *  {
    *    "data": {
-   *      "archives": [
+   *      "docFiles": [
    *        {
    *          "_id": "58093459d3b44c3400858273",
    *          "title": "Hello",
-   *          "archiveId": "hello",
+   *          "docFileId": "hello",
    *          "creator": "rez5",
    *          "text": [
    *            "Hello world!",
@@ -162,8 +162,8 @@ function handle() {
         return;
       }
 
-      dbArchive.getArchive(req.params.id, decoded.data.accessLevel, (archiveErr, archive) => {
-        if (archiveErr) {
+      dbDocFile.getDocFile(req.params.id, decoded.data.accessLevel, (docFileErr, docFile) => {
+        if (docFileErr) {
           res.status(500).json({
             errors: [{
               status: 500,
@@ -175,34 +175,34 @@ function handle() {
           return;
         }
 
-        res.json({ data: { archives: [archive] } });
+        res.json({ data: { docFiles: [docFile] } });
       });
     });
   });
 
   /**
-   * @api {post} /archives Create an archive
+   * @api {post} /docFiles Create an docFile
    * @apiVersion 5.0.1
-   * @apiName CreateArchive
-   * @apiGroup Archives
+   * @apiName CreateDocFile
+   * @apiGroup DocFiles
    *
    * @apiHeader {String} Authorization Your JSON Web Token
    *
-   * @apiDescription Create an archive
+   * @apiDescription Create an docFile
    *
    * @apiParam {Object} data
-   * @apiParam {Object} data.archive Archive
-   * @apiParam {String} data.archive.title Title for the archive
-   * @apiParam {String} data.archive.archiveId ID of the archive. Will be used to retrieve this specific archive
-   * @apiParam {String[]} data.archive.text Content of the archive
-   * @apiParam {Boolean} data.archive.public Should the archive be public? Non-public archives can only be retrieved with its archive ID
+   * @apiParam {Object} data.docFile DocFile
+   * @apiParam {String} data.docFile.title Title for the docFile
+   * @apiParam {String} data.docFile.docFileId ID of the docFile. Will be used to retrieve this specific docFile
+   * @apiParam {String[]} data.docFile.text Content of the docFile
+   * @apiParam {Boolean} data.docFile.public Should the docFile be public? Non-public docFiles can only be retrieved with its docFile ID
    * @apiParamExample {json} Request-Example:
    *   {
    *    "data": {
-   *      "archives": [
+   *      "docFiles": [
    *        {
    *          "title": "Hello",
-   *          "archiveId": "hello",
+   *          "docFileId": "hello",
    *          "text": [
    *            "Hello world!",
    *            "This is great"
@@ -214,15 +214,15 @@ function handle() {
    *  }
    *
    * @apiSuccess {Object} data
-   * @apiSuccess {Object[]} data.archives Found archive with sent archive ID. Empty if no match was found
+   * @apiSuccess {Object[]} data.docFiles Found docFile with sent docFile ID. Empty if no match was found
    * @apiSuccessExample {json} Success-Response:
    *  {
    *    "data": {
-   *      "archives": [
+   *      "docFiles": [
    *        {
    *          "_id": "58093459d3b44c3400858273",
    *          "title": "Hello",
-   *          "archiveId": "hello",
+   *          "docFileId": "hello",
    *          "creator": "rez5",
    *          "text": [
    *            "Hello world!",
@@ -236,7 +236,7 @@ function handle() {
    *  }
    */
   router.post('/', (req, res) => {
-    if (!objectValidator.isValidData(req.body, { data: { archive: { archiveId: true, text: true, title: true } } })) {
+    if (!objectValidator.isValidData(req.body, { data: { docFile: { docFileId: true, text: true, title: true } } })) {
       res.status(400).json({
         errors: [{
           status: 400,
@@ -272,12 +272,12 @@ function handle() {
         return;
       }
 
-      const newArchive = req.body.data.archive;
-      newArchive.creator = decoded.data.userName;
-      newArchive.archiveId = newArchive.archiveId.toLowerCase();
+      const newDocFile = req.body.data.docFile;
+      newDocFile.creator = decoded.data.userName;
+      newDocFile.docFileId = newDocFile.docFileId.toLowerCase();
 
-      dbArchive.createArchive(newArchive, (archiveErr, archive) => {
-        if (archiveErr) {
+      dbDocFile.createDocFile(newDocFile, (docFileErr, docFile) => {
+        if (docFileErr) {
           res.status(500).json({
             errors: [{
               status: 500,
@@ -287,19 +287,19 @@ function handle() {
           });
 
           return;
-        } else if (archive === null) {
+        } else if (docFile === null) {
           res.status(402).json({
             errors: [{
               status: 402,
-              title: 'Archive already exists',
-              detail: `Archive with ID ${newArchive.archiveId} already exists`,
+              title: 'DocFile already exists',
+              detail: `DocFile with ID ${newDocFile.docFileId} already exists`,
             }],
           });
 
           return;
         }
 
-        res.json({ data: { archives: [archive] } });
+        res.json({ data: { docFiles: [docFile] } });
       });
     });
   });

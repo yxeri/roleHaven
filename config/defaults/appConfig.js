@@ -153,7 +153,7 @@ config.routes = config.routes || [
   { sitePath: '/api/rooms', filePath: `${__dirname}/../../routes/rest/rooms.js` },
   { sitePath: '/api/histories', filePath: `${__dirname}/../../routes/rest/histories.js` },
   { sitePath: '/api/positions', filePath: `${__dirname}/../../routes/rest/positions.js` },
-  { sitePath: '/api/archives', filePath: `${__dirname}/../../routes/rest/archives.js` },
+  { sitePath: '/api/docFiles', filePath: `${__dirname}/../../routes/rest/docFiles.js` },
   { sitePath: '/api/messages', filePath: `${__dirname}/../../routes/rest/messages.js` },
   { sitePath: '/api/users', filePath: `${__dirname}/../../routes/rest/users.js` },
   { sitePath: '*', filePath: `${__dirname}/../../routes/error.js` },
