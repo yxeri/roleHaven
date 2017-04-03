@@ -14,11 +14,17 @@
  limitations under the License.
  */
 
-exports.General = require('./GeneralError');
-exports.InvalidData = require('./InvalidData');
-exports.NotAllowed = require('./NotAllowed');
-exports.InvalidCharacters = require('./InvalidCharacters');
-exports.Database = require('./Database');
-exports.AlreadyExists = require('./AlreadyExists');
-exports.External = require('./External');
-exports.Missing = require('./Missing');
+const GeneralError = require('./GeneralError');
+
+class MissingError extends GeneralError {
+  constructor() {
+    const text = ['Missing value'];
+
+    super({
+      type: 'Missing value',
+      text,
+    });
+  }
+}
+
+module.exports = MissingError;

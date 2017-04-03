@@ -57,24 +57,11 @@ function handle(socket, io) {
         return;
       }
 
-      dbTransaction.getAllUserTransactions(user.userName, (err, transactions) => {
-        if (err) {
-          callback({ err: new errorCreator.Database() });
-
-          return;
-        }
-
-        const data = {};
-
-        if (transactions && transactions.length > 0) {
-          data.toTransactions = transactions.filter(transaction => transaction.to === user.userName);
-          data.fromTransactions = transactions.filter(transaction => transaction.from === user.userName);
-        } else {
-          data.toTransactions = [];
-          data.fromTransactions = [];
-        }
-
-        callback({ data });
+      manager.getAllUserTransactions({
+        userName: user.userName,
+        callback: ({ error, data }) => {
+          callback({ error, data });
+        },
       });
     });
   });
@@ -100,40 +87,13 @@ function handle(socket, io) {
       transaction.from = user.userName;
       transaction.time = new Date();
 
-      dbTransaction.createTransaction(transaction, (transErr) => {
-        if (transErr) {
-          callback({ error: new errorCreator.Database() });
-
-          return;
-        }
-
-        dbWallet.decreaseAmount(user.userName, user.accessLevel, transaction.from, transaction.amount, (errDecrease) => {
-          if (errDecrease) {
-            callback({ error: new errorCreator.Database() });
-
-            return;
-          }
-
-          dbWallet.increaseAmount(transaction.to, transaction.amount, (err) => {
-            if (err) {
-              callback({ error: new errorCreator.Database() });
-
-              return;
-            }
-
-            callback({ data: { transaction } });
-
-            dbUser.getUserByAlias(transaction.to, (aliasErr, receiver) => {
-              if (aliasErr) {
-                return;
-              }
-
-              if (receiver.socketId !== '') {
-                io.to(receiver.socketId).emit('transaction', { transaction });
-              }
-            });
-          });
-        });
+      manager.createTransaction({
+        transaction,
+        user,
+        io,
+        callback: ({ error, data }) => {
+          callback({ error, data });
+        },
       });
     });
   });

@@ -84,8 +84,9 @@ function createWallet(wallet, callback) {
 function increaseAmount(owner, value, callback) {
   const query = { owner };
   const update = { $inc: { amount: Math.abs(value) } };
+  const options = { new: true };
 
-  Wallet.findOneAndUpdate(query, update).lean().exec((err, wallet) => {
+  Wallet.findOneAndUpdate(query, update, options).lean().exec((err, wallet) => {
     if (err) {
       logger.sendErrorMsg({
         code: logger.ErrorCodes.db,
@@ -116,10 +117,9 @@ function decreaseAmount(userName, userAccessLevel, owner, value, callback) {
         ] },
     ] };
   const update = { $inc: { amount: -Math.abs(value) } };
+  const options = { new: true };
 
-  console.log(-Math.abs(value));
-
-  Wallet.findOneAndUpdate(query, update).lean().exec((err, wallet) => {
+  Wallet.findOneAndUpdate(query, update, options).lean().exec((err, wallet) => {
     if (err) {
       logger.sendErrorMsg({
         code: logger.ErrorCodes.db,

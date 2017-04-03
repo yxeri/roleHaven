@@ -24,6 +24,7 @@ const dbWallet = require('../db/connectors/wallet');
 const logger = require('./../utils/logger.js');
 const appConfig = require('./../config/defaults/config').app;
 const errorCreator = require('../objects/error/errorCreator');
+const dbTransaction = require('../db/connectors/transaction');
 
 /**
  * Does string contain valid characters?
@@ -292,12 +293,11 @@ function addAlias({ user, alias, callback }) {
 
 /**
  * Creates a new wallet
- * @param {Object} sentRoom - New room
- * @param {Object} user User who is creating the new room
+ * @param {Object} wallet - New wallet
  * @param {Function} callback - callback
  */
 function createWallet(wallet, callback) {
-  dbWallet.createWallet(wallet, (error, wallet) => {
+  dbWallet.createWallet(wallet, (error) => {
     if (error) {
       callback({ error: new errorCreator.Database() });
 
@@ -308,6 +308,90 @@ function createWallet(wallet, callback) {
   });
 }
 
+/**
+ * Get all user's transactions
+ * @param {string} userName - Name of the user
+ * @param {Function} callback - Callback
+ */
+function getAllUserTransactions({ userName, callback = () => {} }) {
+  dbTransaction.getAllUserTransactions(userName, (err, transactions) => {
+    if (err) {
+      callback({ err: new errorCreator.Database() });
+
+      return;
+    }
+
+    const data = {};
+
+    if (transactions && transactions.length > 0) {
+      data.toTransactions = transactions.filter(transaction => transaction.to === userName);
+      data.fromTransactions = transactions.filter(transaction => transaction.from === userName);
+    } else {
+      data.toTransactions = [];
+      data.fromTransactions = [];
+    }
+
+    callback({ data });
+  });
+}
+
+/**
+ *
+ * @param {Object} transaction - New transaction
+ * @param {Function} callback - Callback
+ * @param {Object} user - User creating the transaction
+ * @param {Object} io - Socket.io io
+ */
+function createTransaction({ transaction, callback, user, io }) {
+  dbWallet.getWallet(transaction.from, (walletErr, userWallet) => {
+    if (walletErr) {
+      callback({ error: new errorCreator.Database() });
+
+      return;
+    } else if (userWallet.amount - transaction.amount < 0) {
+      callback({ error: new errorCreator.Missing() });
+
+      return;
+    }
+
+    dbTransaction.createTransaction(transaction, (transErr) => {
+      if (transErr) {
+        callback({ error: new errorCreator.Database() });
+
+        return;
+      }
+
+      dbWallet.decreaseAmount(user.userName, user.accessLevel, transaction.from, transaction.amount, (errDecrease, decreasedWallet) => {
+        if (errDecrease) {
+          callback({ error: new errorCreator.Database() });
+
+          return;
+        }
+
+        dbWallet.increaseAmount(transaction.to, transaction.amount, (err, increasedWallet) => {
+          if (err) {
+            callback({ error: new errorCreator.Database() });
+
+            return;
+          }
+
+          callback({ data: { transaction, wallet: decreasedWallet } });
+
+          dbUser.getUserByAlias(transaction.to, (aliasErr, receiver) => {
+            if (aliasErr) {
+              return;
+            }
+
+            if (receiver.socketId !== '') {
+              io.to(receiver.socketId).emit('transaction', { transaction, wallet: increasedWallet });
+            }
+          });
+        });
+      });
+    });
+  });
+}
+
 exports.userIsAllowed = userIsAllowed;
 exports.getHistory = getHistory;
 exports.createRoom = createRoom;
@@ -315,3 +399,5 @@ exports.updateUserSocketId = updateUserSocketId;
 exports.joinRooms = joinRooms;
 exports.addAlias = addAlias;
 exports.createWallet = createWallet;
+exports.getAllUserTransactions = getAllUserTransactions;
+exports.createTransaction = createTransaction;
