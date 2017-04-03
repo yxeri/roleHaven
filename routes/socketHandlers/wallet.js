@@ -81,7 +81,11 @@ function handle(socket, io) {
 
   socket.on('createTransaction', ({ transaction }, callback = () => {}) => {
     if (!objectValidator.isValidData({ transaction }, { transaction: { to: true, amount: true } })) {
-      callback({ error: {} });
+      callback({ error: new errorCreator.InvalidData() });
+
+      return;
+    } else if (isNaN(transaction.amount)) {
+      callback({ error: new errorCreator.InvalidData() });
 
       return;
     }
