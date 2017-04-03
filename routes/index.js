@@ -32,6 +32,7 @@ const databasePopulation = require('../config/defaults/config').databasePopulati
 const logger = require('../utils/logger');
 const messenger = require('../socketHelpers/messenger');
 const deviceHandler = require('./socketHandlers/device');
+const walletHandler = require('./socketHandlers/wallet');
 
 const router = new express.Router();
 
@@ -153,7 +154,7 @@ function handle(io) {
       });
     });
 
-    userHandler.handle(socket, io);
+    userHandler.handle(socket);
     chatHandler.handle(socket, io);
     commandHandler.handle(socket);
     deviceHandler.handle(socket);
@@ -161,6 +162,7 @@ function handle(io) {
     hackingHandler.handle(socket);
     utilityHandler.handle(socket);
     locationHandler.handle(socket);
+    walletHandler.handle(socket, io);
   });
 
   return router;

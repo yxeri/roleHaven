@@ -506,6 +506,12 @@ config.commands = {
     visibility: config.accessLevels.basic,
     category: 'basic',
   },
+  getWallet: config.commands.getWallet || {
+    commandName: 'getWallet',
+    accessLevel: config.accessLevels.basic,
+    visibility: config.accessLevels.basic,
+    category: 'basic',
+  }
 };
 
 module.exports = config;

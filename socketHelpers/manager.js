@@ -20,6 +20,7 @@ const dbUser = require('./../db/connectors/user');
 const dbCommand = require('./../db/connectors/command');
 const dbRoom = require('./../db/connectors/room');
 const dbChatHistory = require('./../db/connectors/chatHistory');
+const dbWallet = require('../db/connectors/wallet');
 const logger = require('./../utils/logger.js');
 const appConfig = require('./../config/defaults/config').app;
 const errorCreator = require('../objects/error/errorCreator');
@@ -95,7 +96,7 @@ function userIsAllowed(socketId, commandName, callback, userName) {
       const commandUser = {
         userName: user ? user.userName : '',
         accessLevel: user ? user.accessLevel : 0,
-        whisperRooms: user.whisperRooms || [],
+        whisperRooms: user ? user.whisperRooms : [],
       };
 
       getCommand(commandName, (cmdErr, command) => {
@@ -289,9 +290,28 @@ function addAlias({ user, alias, callback }) {
   });
 }
 
+/**
+ * Creates a new wallet
+ * @param {Object} sentRoom - New room
+ * @param {Object} user User who is creating the new room
+ * @param {Function} callback - callback
+ */
+function createWallet(wallet, callback) {
+  dbWallet.createWallet(wallet, (error, wallet) => {
+    if (error) {
+      callback({ error: new errorCreator.Database() });
+
+      return;
+    }
+
+    callback({ data: { wallet } });
+  });
+}
+
 exports.userIsAllowed = userIsAllowed;
 exports.getHistory = getHistory;
 exports.createRoom = createRoom;
 exports.updateUserSocketId = updateUserSocketId;
 exports.joinRooms = joinRooms;
 exports.addAlias = addAlias;
+exports.createWallet = createWallet;

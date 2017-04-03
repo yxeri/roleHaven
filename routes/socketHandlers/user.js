@@ -116,6 +116,9 @@ function handle(socket) {
           databasePopulation.rooms.morse.roomName,
         ],
       };
+      const wallet = {
+        owner: userName,
+      };
 
       dbUser.createUser(userObj, (err, createdUser) => {
         if (err) {
@@ -135,8 +138,8 @@ function handle(socket) {
         };
         const requiresVerification = appConfig.userVerify;
 
-        manager.createRoom(newRoom, createdUser, () => {
-        });
+        manager.createRoom(newRoom, createdUser, () => {});
+        manager.createWallet(wallet, () => {});
 
         if (appConfig.userVerify) {
           const message = {

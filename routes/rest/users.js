@@ -219,6 +219,9 @@ function handle() {
           databasePopulation.rooms.morse.roomName,
         ],
       };
+      const wallet = {
+        owner: newUser.userName,
+      };
 
       dbUser.createUser(newUser, (userErr, user) => {
         if (userErr) {
@@ -249,8 +252,8 @@ function handle() {
           accessLevel: 12,
         };
 
-        manager.createRoom(whisperRoom, user, () => {
-        });
+        manager.createRoom(whisperRoom, user, () => {});
+        manager.createWallet(wallet, () => {});
 
         res.json({
           data: { users: [user] },
