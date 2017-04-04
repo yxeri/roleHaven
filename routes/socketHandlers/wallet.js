@@ -84,9 +84,6 @@ function handle(socket, io) {
         return;
       }
 
-      transaction.from = user.userName;
-      transaction.time = new Date();
-
       manager.createTransaction({
         transaction,
         user,

@@ -343,6 +343,9 @@ function getAllUserTransactions({ userName, callback = () => {} }) {
  * @param {Object} io - Socket.io io
  */
 function createTransaction({ transaction, callback, user, io }) {
+  transaction.time = new Date();
+  transaction.from = user.userName;
+
   dbWallet.getWallet(transaction.from, (walletErr, userWallet) => {
     if (walletErr) {
       callback({ error: new errorCreator.Database() });

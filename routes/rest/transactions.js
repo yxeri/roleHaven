@@ -208,7 +208,6 @@ function handle(io) {
       }
 
       const transaction = req.body.data.transaction;
-      transaction.from = decoded.data.userName;
 
       manager.createTransaction({
         user: decoded.data,
