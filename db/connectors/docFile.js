@@ -148,7 +148,7 @@ function getDocFilesList(accessLevel, userName, callback) {
     visibility: { $lte: accessLevel },
     $or: [{ isPublic: true }, { creator: userName }],
   };
-  const filter = { _id: 0, text: 0, visibility: 0, isPublic: 0 };
+  const filter = { _id: 0, text: 0 };
 
   DocFile.find(query, filter).lean().exec((err, docFiles) => {
     if (err) {

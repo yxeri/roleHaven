@@ -25,9 +25,10 @@ const jwt = require('jsonwebtoken');
 const router = new express.Router();
 
 /**
+ * @param {object} io - Socket.IO
  * @returns {Object} Router
  */
-function handle() {
+function handle(io) {
   /**
    * @api {get} /docFiles Retrieve all public docFiles
    * @apiVersion 5.0.1
@@ -53,8 +54,8 @@ function handle() {
    *            "Hello world!",
    *            "This is great"
    *          ],
-   *          "public": true,
-   *          "visibility": "0"
+   *          "isPublic": true,
+   *          "visibility": 0
    *        }
    *      ]
    *    }
@@ -130,8 +131,8 @@ function handle() {
    *            "Hello world!",
    *            "This is great"
    *          ],
-   *          "public": true,
-   *          "visibility": "0"
+   *          "isPublic": true,
+   *          "visibility": 0
    *        }
    *      ]
    *    }
@@ -195,7 +196,7 @@ function handle() {
    * @apiParam {String} data.docFile.title Title for the docFile
    * @apiParam {String} data.docFile.docFileId ID of the docFile. Will be used to retrieve this specific docFile
    * @apiParam {String[]} data.docFile.text Content of the docFile
-   * @apiParam {Boolean} data.docFile.public Should the docFile be public? Non-public docFiles can only be retrieved with its docFile ID
+   * @apiParam {Boolean} data.docFile.isPublic Should the docFile be public? Non-public docFiles can only be retrieved with its docFile ID
    * @apiParamExample {json} Request-Example:
    *   {
    *    "data": {
@@ -207,7 +208,7 @@ function handle() {
    *            "Hello world!",
    *            "This is great"
    *          ],
-   *          "public": true
+   *          "isPublic": true
    *        }
    *      ]
    *    }
@@ -218,20 +219,18 @@ function handle() {
    * @apiSuccessExample {json} Success-Response:
    *  {
    *    "data": {
-   *      "docFiles": [
-   *        {
-   *          "_id": "58093459d3b44c3400858273",
-   *          "title": "Hello",
-   *          "docFileId": "hello",
-   *          "creator": "rez5",
-   *          "text": [
-   *            "Hello world!",
-   *            "This is great"
-   *          ],
-   *          "public": true,
-   *          "visibility": "0"
-   *        }
-   *      ]
+   *      "docFile": {
+ *          "_id": "58093459d3b44c3400858273",
+ *          "title": "Hello",
+ *          "docFileId": "hello",
+ *          "creator": "rez5",
+ *          "text": [
+ *            "Hello world!",
+ *            "This is great"
+ *          ],
+ *          "isPublic": true,
+ *          "visibility": 0
+ *        }
    *    }
    *  }
    */
@@ -299,7 +298,15 @@ function handle() {
           return;
         }
 
-        res.json({ data: { docFiles: [docFile] } });
+        if (docFile.isPublic) {
+          io.emit('docFile', { docFile });
+        } else if (docFile.team && docFile.team !== '') {
+          const teamRoom = newDocFile.team + appConfig.teamAppend;
+
+          io.to(teamRoom).emit('docFile', { docFile });
+        }
+
+        res.json({ data: { docFile } });
       });
     });
   });

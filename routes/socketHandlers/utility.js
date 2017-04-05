@@ -83,14 +83,22 @@ function handle(socket) {
 
       docFile.creator = user.userName;
 
-      dbDocFile.createDocFile(docFile, (err, newDocFiles) => {
+      dbDocFile.createDocFile(docFile, (err, newDocFile) => {
         if (err) {
           callback({ error: new errorCreator.Database({}) });
 
           return;
         }
 
-        callback({ data: { docFile: newDocFiles } });
+        callback({ data: { docFile: newDocFile } });
+
+        if (newDocFile.isPublic) {
+          socket.broadcast.emit('docFile', { docFile: newDocFile });
+        } else if (newDocFile.team && newDocFile.team !== '') {
+          const teamRoom = newDocFile.team + appConfig.teamAppend;
+
+          socket.broadcast.to(teamRoom).emit('docFile', { docFile: newDocFile });
+        }
       });
     });
   });
@@ -162,10 +170,10 @@ function handle(socket) {
           return;
         }
 
-        const userCreated = docFiles.filter(docFile => docFile.creator === user.userName);
-        const otherDocFiles = docFiles.filter(docFile => docFile.creator !== user.userName);
+        const userDocFiles = docFiles.filter(docFile => docFile.creator === user.userName);
+        const publicDocFiles = docFiles.filter(docFile => docFile.creator !== user.userName && docFile.isPublic);
 
-        callback({ data: { userDocFiles: userCreated, docFiles: otherDocFiles } });
+        callback({ data: { userDocFiles, publicDocFiles } });
       });
     });
   });

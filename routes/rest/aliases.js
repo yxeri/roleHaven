@@ -21,6 +21,7 @@ const appConfig = require('../../config/defaults/config').app;
 const jwt = require('jsonwebtoken');
 const objectValidator = require('../../utils/objectValidator');
 const manager = require('../../socketHelpers/manager');
+const dbUser = require('../../db/connectors/user');
 
 const router = new express.Router();
 
@@ -28,6 +29,73 @@ const router = new express.Router();
  * @returns {Object} Router
  */
 function handle() {
+  /**
+   * @api {get} /aliases Get all user's aliases
+   * @apiVersion 5.0.3
+   * @apiName GetAliases
+   * @apiGroup Aliases
+   *
+   * @apiHeader {String} Authorization Your JSON Web Token
+   *
+   * @apiDescription Get all user's aliases, including user name
+   *
+   * @apiSuccess {Object} data
+   * @apiSuccess {Object} data.aliases Aliases found
+   * @apiSuccess {Object} data.user
+   * @apiSuccess {Object} data.user.userName User name
+   * @apiSuccessExample {json} Success-Response:
+   *   {
+   *    "data": {
+   *      "aliases": ["baz", "h1"],
+   *      "user": { "userName": "raz" }
+   *    }
+   *  }
+   */
+  router.get('/', (req, res) => {
+    // noinspection JSUnresolvedVariable
+    jwt.verify(req.headers.authorization || '', appConfig.jsonKey, (jwtErr, decoded) => {
+      if (jwtErr) {
+        res.status(500).json({
+          errors: [{
+            status: 500,
+            title: 'Internal Server Error',
+            detail: 'Internal Server Error',
+          }],
+        });
+
+        return;
+      } else if (!decoded) {
+        res.status(401).json({
+          errors: [{
+            status: 401,
+            title: 'Unauthorized',
+            detail: 'Invalid token',
+          }],
+        });
+
+        return;
+      }
+
+      dbUser.getUser(decoded.data.userName, (err, user) => {
+        if (err) {
+          res.status(500).json({
+            errors: [{
+              status: 500,
+              title: 'Internal Server Error',
+              detail: 'Internal Server Error',
+            }],
+          });
+
+          return;
+        }
+
+        const aliases = user.aliases || [];
+
+        res.json({ data: { aliases, user: { userName: decoded.data.userName } } });
+      });
+    });
+  });
+
   /**
    * @api {post} /aliases Create an alias
    * @apiVersion 5.0.3
