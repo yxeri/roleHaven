@@ -343,6 +343,7 @@ function getAllUserTransactions({ userName, callback = () => {} }) {
  * @param {Object} io - Socket.io io
  */
 function createTransaction({ transaction, callback, user, io }) {
+  transaction.amount = Math.abs(transaction.amount);
   transaction.time = new Date();
   transaction.from = user.userName;
 
