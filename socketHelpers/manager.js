@@ -23,6 +23,7 @@ const dbChatHistory = require('./../db/connectors/chatHistory');
 const dbWallet = require('../db/connectors/wallet');
 const logger = require('./../utils/logger.js');
 const appConfig = require('./../config/defaults/config').app;
+const dbConfig = require('../config/defaults/config').databasePopulation;
 const errorCreator = require('../objects/error/errorCreator');
 const dbTransaction = require('../db/connectors/transaction');
 
@@ -277,6 +278,8 @@ function addAlias({ user, alias, callback }) {
     const room = {
       owner: user.userName,
       roomName: alias + appConfig.whisperAppend,
+      accessLevel: dbConfig.accessLevels.superUser,
+      visibility: dbConfig.accessLevels.superUser,
     };
 
     createRoom(room, user, (createErr, createdRoom) => {
