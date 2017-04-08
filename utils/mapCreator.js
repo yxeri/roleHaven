@@ -82,28 +82,28 @@ function createCoordsCollection(coords) {
  * @returns {{positionName: string, position: Object, isStatic: boolean, type: string, geometry: string, description: string}} New position
  */
 function createPosition(placemark) {
-  const position = {};
+  const coordinates = {};
   let geometry = '';
 
   if (placemark.Polygon) {
-    position.coordsCollection = createCoordsCollection(parseGoogleCoords(placemark.Polygon.outerBoundaryIs.LinearRing.coordinates));
+    coordinates.coordsCollection = createCoordsCollection(parseGoogleCoords(placemark.Polygon.outerBoundaryIs.LinearRing.coordinates));
     geometry = 'polygon';
   } else if (placemark.LineString) {
-    position.coordsCollection = createCoordsCollection(parseGoogleCoords(placemark.LineString.coordinates));
+    coordinates.coordsCollection = createCoordsCollection(parseGoogleCoords(placemark.LineString.coordinates));
     geometry = 'line';
   } else if (placemark.Point) {
-    position.latitude = placemark.Point.coordinates.split(',')[1];
-    position.longitude = placemark.Point.coordinates.split(',')[0];
+    coordinates.latitude = placemark.Point.coordinates.split(',')[1];
+    coordinates.longitude = placemark.Point.coordinates.split(',')[0];
     geometry = 'point';
   }
 
   return {
-    title: placemark.name,
-    coordinates: position,
+    positionName: placemark.name,
     isStatic: true,
-    type: 'world',
+    markerType: 'world',
+    description: placemark.description ? placemark.description.replace(/<br>/g, '\n').replace(/<img .+?\/>/g, '') : 'No information',
+    coordinates,
     geometry,
-    description: placemark.description ? placemark.description.replace(/<br>/g, '') : 'No information',
   };
 }
 
@@ -147,4 +147,4 @@ function getGooglePositions(callback) {
   });
 }
 
-exports.getGoogleLocations = getGooglePositions;
+exports.getGooglePositions = getGooglePositions;

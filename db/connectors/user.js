@@ -20,12 +20,13 @@ const mongoose = require('mongoose');
 const logger = require('../../utils/logger');
 const databaseConnector = require('../databaseConnector');
 const deviceConnector = require('./device');
-const locationConnector = require('./location');
+const positionConnector = require('./position');
 
 // Access levels: Lowest / Lower / Middle / Higher / Highest / God
 // 1 / 3 / 5 / 7 / 9 / 11
 
 const userSchema = new mongoose.Schema({
+  fullName: String,
   userName: { type: String, unique: true },
   password: String,
   socketId: String,
@@ -340,7 +341,7 @@ function getAllUserPositions(sentUser, callback) {
     } else if (users !== null) {
       const userNames = users.map(user => user.userName);
 
-      locationConnector.getLocations(userNames, (mapErr, userPositions) => {
+      positionConnector.getPositions(userNames, (mapErr, userPositions) => {
         if (mapErr) {
           logger.sendErrorMsg({
             code: logger.ErrorCodes.db,
@@ -380,11 +381,11 @@ function getUserPositions(sentUser, sentUserName, callback) {
         err,
       });
     } else if (user !== null) {
-      locationConnector.getLocation(sentUserName, (mapErr, mapPosition) => {
+      positionConnector.getPosition(sentUserName, (mapErr, mapPosition) => {
         if (mapErr) {
           logger.sendErrorMsg({
             code: logger.ErrorCodes.db,
-            text: ['Failed to get user positions'],
+            text: ['Failed to get user position'],
             err,
           });
         }
@@ -870,7 +871,7 @@ exports.authUser = authUser;
 exports.createUser = createUser;
 exports.updateUserSocketId = updateUserSocketId;
 exports.getAllUsers = getAllUsers;
-exports.getAllUserLocations = getAllUserPositions;
+exports.getAllUserPositions = getAllUserPositions;
 exports.getUserPosition = getUserPositions;
 exports.addRoomToUser = addRoomToUser;
 exports.removeRoomFromUser = removeRoomFromUser;

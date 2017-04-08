@@ -500,8 +500,8 @@ config.commands = {
     visibility: config.accessLevels.anonymous,
     category: 'basic',
   },
-  createLocation: config.commands.createLocation || {
-    commandName: 'createLocation',
+  createPosition: config.commands.createPosition || {
+    commandName: 'createPosition',
     accessLevel: config.accessLevels.basic,
     visibility: config.accessLevels.basic,
     category: 'basic',
@@ -511,7 +511,7 @@ config.commands = {
     accessLevel: config.accessLevels.basic,
     visibility: config.accessLevels.basic,
     category: 'basic',
-  }
+  },
 };
 
 module.exports = config;

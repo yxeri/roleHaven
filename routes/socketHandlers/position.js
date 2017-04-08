@@ -17,7 +17,7 @@
 'use strict';
 
 const dbUser = require('../../db/connectors/user');
-const dbLocation = require('../../db/connectors/location');
+const dbPosition = require('../../db/connectors/position');
 const manager = require('../../socketHelpers/manager');
 const databasePopulation = require('../../config/defaults/config').databasePopulation;
 const logger = require('../../utils/logger');
@@ -29,41 +29,41 @@ const errorCreator = require('../../objects/error/errorCreator');
  * @param {Object} socket - Socket.IO socket
  */
 function handle(socket) {
-  socket.on('updateLocation', ({ location }, callback = () => {}) => {
-    if (!objectValidator.isValidData({ location }, { location: { coordinates: { longitude: true, latitude: true }, title: true } })) {
+  socket.on('updatePosition', ({ position }, callback = () => {}) => {
+    if (!objectValidator.isValidData({ position }, { position: { coordinates: { longitude: true, latitude: true }, positionName: true } })) {
       callback({ error: {} });
 
       return;
     }
 
-    manager.userIsAllowed(socket.id, databasePopulation.commands.createLocation.commandName, (allowErr, allowed, user) => {
+    manager.userIsAllowed(socket.id, databasePopulation.commands.createPosition.commandName, (allowErr, allowed, user) => {
       if (allowErr || !allowed) {
         callback({ error: {} });
 
         return;
       }
 
-      location.markerType = 'custom';
-      location.owner = user.userName;
-      location.team = user.team;
+      position.markerType = 'custom';
+      position.owner = user.userName;
+      position.team = user.team;
 
-      dbLocation.updateLocation({
-        location,
-        callback: (err, createdLocation) => {
+      dbPosition.updatePosition({
+        position,
+        callback: (err, createdPosition) => {
           if (err) {
             callback({ error: {} });
 
             return;
           }
 
-          callback({ data: { location: createdLocation } });
+          callback({ data: { position: createdPosition } });
         },
       });
     });
   });
 
-  socket.on('updateUserLocation', (params, callback = () => {}) => {
-    if (!objectValidator.isValidData(params, { position: true })) {
+  socket.on('updateUserPosition', ({ position }, callback = () => {}) => {
+    if (!objectValidator.isValidData({ position }, { position: { coordinates: true } })) {
       callback({ error: {} });
 
       return;
@@ -88,12 +88,14 @@ function handle(socket) {
         }
       });
 
-      dbLocation.updateLocation({
+
+      // TODO This needs to be updated
+      dbPosition.updatePosition({
         positionName: user.userName,
-        position: params.position,
-        type: 'user',
+        markerType: 'user',
         owner: user.userName,
-        group: user.team,
+        team: user.team,
+        coordinates: position.coordinates,
         callback: (userErr) => {
           if (userErr) {
             logger.sendErrorMsg({
@@ -107,7 +109,7 @@ function handle(socket) {
             return;
           }
 
-          dbLocation.getLocation(user.userName, (err, position) => {
+          dbPosition.getPosition(user.userName, (err, newPosition) => {
             if (err) {
               logger.sendErrorMsg({
                 code: logger.ErrorCodes.db,
@@ -135,8 +137,8 @@ function handle(socket) {
 
               for (const socketUser of users) {
                 if (socketUser.socketId && socket.id !== socketUser.socketId && socketUser.isTracked) {
-                  socket.broadcast.to(socketUser.socketId).emit('mapLocations', {
-                    positions: [position],
+                  socket.broadcast.to(socketUser.socketId).emit('mapPositions', {
+                    positions: [newPosition],
                     currentTime: (new Date()),
                   });
                 }
@@ -168,49 +170,51 @@ function handle(socket) {
        * Get and send positions
        * @private
        * @param {string} type - Position type
-       * @param {Object[]} locations - All positions
+       * @param {Object[]} positions - All positions
        */
-      function getLocations(type, locations) {
+      function getPositions(type, positions) {
         switch (type) {
           case 'google': {
-            mapCreator.getGoogleLocations((err, googleLocations) => {
-              if (err || googleLocations === null) {
+            mapCreator.getGooglePositions((err, googlePositions) => {
+              if (err || googlePositions === null) {
                 callback({ error: new errorCreator.External({ source: 'Google Maps' }) });
 
                 return;
               }
 
-              getLocations(types.shift(), locations.concat(googleLocations));
+              getPositions(types.shift(), positions.concat(googlePositions));
             });
 
             break;
           }
           case 'custom': {
-            dbLocation.getCustomLocations(user.userName, (err, customLocations) => {
+            dbPosition.getCustomPositions(user.userName, (err, customPositions) => {
               if (err) {
                 callback({ error: new errorCreator.Database() });
 
                 return;
               }
 
-              getLocations(types.shift(), locations.concat(customLocations));
+              getPositions(types.shift(), positions.concat(customPositions));
             });
 
             break;
           }
-          case 'users': {
-            if (user.isTracked) {
-              dbUser.getAllUserLocations(user, (err, userLocations) => {
+          case 'user': {
+            if (true || user.isTracked) {
+              dbUser.getAllUserPositions(user, (err, userPositions) => {
                 if (err) {
                   callback({ error: new errorCreator.Database() });
 
                   return;
                 }
 
-                getLocations(types.shift(), locations.concat(userLocations));
+                console.log('pos', userPositions);
+
+                getPositions(types.shift(), positions.concat(userPositions));
               });
             } else {
-              getLocations(types.shift(), locations);
+              getPositions(types.shift(), positions);
             }
 
             break;
@@ -218,7 +222,7 @@ function handle(socket) {
           default: {
             const payload = {
               data: {
-                locations,
+                positions,
                 team: user.team,
                 currentTime: (new Date()),
               },
@@ -235,7 +239,7 @@ function handle(socket) {
         }
       }
 
-      getLocations(types.shift(), []);
+      getPositions(types.shift(), []);
     });
   });
 }
