@@ -24,15 +24,7 @@ const appConfig = require('../../config/defaults/config').app;
 const messenger = require('../../socketHelpers/messenger');
 const objectValidator = require('../../utils/objectValidator');
 const errorCreator = require('../../objects/error/errorCreator');
-
-/**
- * Does string contain valid characters?
- * @param {string} text - String to check
- * @returns {boolean} Does string contain valid characters?
- */
-function isTextAllowed(text) {
-  return /^[\w\d\såäöÅÄÖ\-]+$/g.test(text);
-}
+const textTools = require('../../utils/textTools');
 
 /**
  * @param {object} socket - Socket.IO socket
@@ -47,7 +39,7 @@ function handle(socket) {
     }
 
     manager.userIsAllowed(socket.id, databasePopulation.commands.register.commandName, (allowErr, allowed) => {
-      if (allowErr || !allowed || !params || !params.user || !isTextAllowed(params.user.userName)) {
+      if (allowErr || !allowed || !params || !params.user || !textTools.isAllowedFull(params.user.userName)) {
         callback({ error: {} });
         socket.emit('commandFail');
 
@@ -95,7 +87,7 @@ function handle(socket) {
         callback({ error: new errorCreator.NotAllowed({ used: databasePopulation.commands.register.commandName }) });
 
         return;
-      } else if (!isTextAllowed(user.userName)) {
+      } else if (!textTools.isAllowedFull(user.userName)) {
         callback({ error: new errorCreator.InvalidCharacters({ propertyName: 'user name' }) });
 
         return;

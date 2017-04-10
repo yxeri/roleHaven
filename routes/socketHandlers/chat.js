@@ -28,6 +28,7 @@ const messenger = require('../../socketHelpers/messenger');
 const objectValidator = require('../../utils/objectValidator');
 const fs = require('fs');
 const errorCreator = require('../../objects/error/errorCreator');
+const textTools = require('../../utils/textTools');
 
 /**
  * Follow a new room on the socket
@@ -76,27 +77,6 @@ function shouldBeHidden(room, socketId) {
 }
 
 /**
- * Removes empty consecutive elements in the text array
- * @param {string} text - Array with text
- * @returns {string[]} Array with text without consecutive empty elements
- */
-function cleanText(text) {
-  const modifiedText = [];
-
-  for (let i = 0; i < text.length; i += 1) {
-    console.log(i + 1, text.length, text[i] === '');
-
-    if (i === 0 && text[0] !== '') {
-      modifiedText.push(text[0]);
-    } else if (!(text[i - 1] === '' && text[i] === '') && !(i + 1 === text.length && text[i] === '')) {
-      modifiedText.push(text[i]);
-    }
-  }
-
-  return modifiedText;
-}
-
-/**
  * @param {object} socket - Socket.IO socket
  * @param {object} io - Socket.IO
  */
@@ -108,7 +88,7 @@ function handle(socket, io) {
       return;
     }
 
-    message.text = cleanText(message.text);
+    message.text = textTools.cleanText(message.text);
 
     manager.userIsAllowed(socket.id, databasePopulation.commands.msg.commandName, (allowErr, allowed, user) => {
       if (allowErr || !allowed) {
@@ -150,7 +130,7 @@ function handle(socket, io) {
       return;
     }
 
-    message.text = cleanText(message.text);
+    message.text = textTools.cleanText(message.text);
 
     manager.userIsAllowed(socket.id, databasePopulation.commands.whisper.commandName, (allowErr, allowed, user) => {
       if (allowErr || !allowed) {

@@ -169,7 +169,6 @@ function sendSelfChatMsgs({ messages, socket }) {
  * @returns {boolean} Is the socket following the room?
  */
 function isUserFollowingRoom(user, roomName) {
-
   return user.rooms.indexOf(roomName) > -1;
 }
 

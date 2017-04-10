@@ -50,7 +50,7 @@ function handle(io) {
    *          "to": "rez",
    *          "from": "n4",
    *          "time": "2016-11-28T22:42:06.262Z",
-   *          "note":
+   *          "note": "Bounty payment"
    *        }
    *      ],
    *      "fromTransactions": [
