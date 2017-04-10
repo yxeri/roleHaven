@@ -338,6 +338,8 @@ function getAllUserPositions(sentUser, callback) {
         text: ['Failed to get all users and positions'],
         err,
       });
+
+      callback(err, null);
     } else if (users !== null) {
       const userNames = users.map(user => user.userName);
 

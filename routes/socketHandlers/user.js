@@ -95,6 +95,7 @@ function handle(socket) {
 
       const userName = user.userName.toLowerCase();
       const userObj = {
+        fullName: user.fullName || user.userName,
         userName,
         socketId: '',
         password: user.password,
