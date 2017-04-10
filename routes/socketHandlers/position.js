@@ -30,7 +30,7 @@ const errorCreator = require('../../objects/error/errorCreator');
  */
 function handle(socket) {
   socket.on('updatePosition', ({ position }, callback = () => {}) => {
-    if (!objectValidator.isValidData({ position }, { position: { coordinates: { longitude: true, latitude: true }, positionName: true } })) {
+    if (!objectValidator.isValidData({ position }, { position: { coordinates: { longitude: true, latitude: true }, positionName: true, markerType: true } })) {
       callback({ error: {} });
 
       return;
@@ -43,9 +43,9 @@ function handle(socket) {
         return;
       }
 
-      position.markerType = 'custom';
       position.owner = user.userName;
       position.team = user.team;
+      position.lastUpdated = new Date();
 
       dbPosition.updatePosition({
         position,

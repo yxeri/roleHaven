@@ -43,37 +43,44 @@ const MapPosition = mongoose.model('MapPosition', mapPositionSchema);
 /**
  * Update position
  * @param {Object} params Parameters
- * @param {Object} params.position Location object
+ * @param {Object} params.position Position object
  * @param {string} params.position.positionName Name of the position
  * @param {Object} params.position.coordinates GPS coordinates
  * @param {number} params.position.coordinates.longitude Longitude
  * @param {number} params.position.coordinates.latitude Latitude
- * @param {string} params.position.owner User name of the owner of the location
- * @param {string} params.position.team Name of the team with access to the location
- * @param {string} params.position.markerType Type of location
- * @param {Date} params.position.lastUpdated Date when the location was last updated
+ * @param {string} params.position.owner User name of the owner of the position
+ * @param {string} params.position.markerType Type of position
+ * @param {Date} params.position.lastUpdated Date when the position was last updated
+ * @param {string} [params.position.team] Name of the team with access to the location
  * @param {boolean} [params.position.isStatic] Is the position static? (most commonly used on everything non-user)
+ * @param {boolean} [params.position.isPublic] Is the position public?
  * @param {string[]} [params.position.description] Position text description
  * @param {Function} params.callback Callback
  */
 function updatePosition({ position: { positionName, coordinates, owner, team, isStatic, markerType, description, isPublic, lastUpdated }, callback }) {
-  const query = { $and: [{ positionName }, { $or: [{ owner }, { team }] }] };
+  const query = { $and: [{ positionName }, { owner }] };
   const update = {
-    team,
     owner,
     coordinates,
     markerType,
     lastUpdated,
-    isPublic,
   };
   const options = { upsert: true, new: true };
 
-  if (typeof isStatic !== 'undefined') {
-    update.isStatic = isStatic;
-  }
-
   if (typeof description !== 'undefined') {
     update.description = description;
+  }
+
+  if (typeof team !== 'undefined') {
+    update.team = team;
+  }
+
+  if (typeof isPublic !== 'undefined') {
+    update.isPublic = isPublic;
+  }
+
+  if (typeof isStatic !== 'undefined') {
+    update.team = isStatic;
   }
 
   MapPosition.findOneAndUpdate(query, update, options).lean().exec((err, mapPosition) => {
