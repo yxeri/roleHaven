@@ -512,6 +512,12 @@ config.commands = {
     visibility: config.accessLevels.basic,
     category: 'basic',
   },
+  calibrationMission: config.commands.calibrationMission || {
+    commandName: 'calibrationMission',
+    accessLevel: config.accessLevels.basic,
+    visibility: config.accessLevels.basic,
+    category: 'basic',
+  },
 };
 
 module.exports = config;

@@ -33,6 +33,7 @@ const logger = require('../utils/logger');
 const messenger = require('../socketHelpers/messenger');
 const deviceHandler = require('./socketHandlers/device');
 const walletHandler = require('./socketHandlers/wallet');
+const calibrationJobHandler = require('./socketHandlers/calibrationMission');
 
 const router = new express.Router();
 
@@ -163,6 +164,7 @@ function handle(io) {
     utilityHandler.handle(socket);
     locationHandler.handle(socket);
     walletHandler.handle(socket, io);
+    calibrationJobHandler.handle(socket, io);
   });
 
   return router;
