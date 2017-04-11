@@ -79,7 +79,7 @@ function createCoordsCollection(coords) {
  * @param {Object} [placemark.LineString] - Google Maps position line
  * @param {string} placemark.LineString.coordinates - Google Maps line coordinates
  * @param {Object} [placemark.Point] - Google Maps position point
- * @returns {{positionName: string, position: Object, isStatic: boolean, type: string, geometry: string, description: string}} New position
+ * @returns {{positionName: string, position: Object, isStatic: boolean, type: string, geometry: string, description: string[]}} New position
  */
 function createPosition(placemark) {
   const coordinates = {};
@@ -101,7 +101,7 @@ function createPosition(placemark) {
     positionName: placemark.name,
     isStatic: true,
     markerType: 'world',
-    description: placemark.description ? placemark.description.replace(/<br>/g, '\n').replace(/<img .+?\/>/g, '') : 'No information',
+    description: placemark.description ? placemark.description.replace(/<img .+?\/>/g, '').split(/<br>/) : ['No information'],
     coordinates,
     geometry,
   };
