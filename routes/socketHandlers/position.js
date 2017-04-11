@@ -63,7 +63,7 @@ function handle(socket) {
   });
 
   socket.on('updateUserPosition', ({ position }, callback = () => {}) => {
-    if (!objectValidator.isValidData({ position }, { position: { coordinates: true } })) {
+    if (!objectValidator.isValidData({ position }, { position: { coordinates: { latitude: true, longitude: true, accuracy: true } } })) {
       callback({ error: {} });
 
       return;
@@ -71,79 +71,45 @@ function handle(socket) {
 
     manager.userIsAllowed(socket.id, databasePopulation.commands.map.commandName, (allowErr, allowed, user) => {
       if (allowErr || !allowed) {
-        callback({ error: {} });
+        callback({ error: new errorCreator.NotAllowed({ used: 'updateUserPosition' }) });
 
         return;
       }
 
       dbUser.updateUserIsTracked(user.userName, true, (trackingErr) => {
         if (trackingErr) {
-          logger.sendErrorMsg({
-            code: logger.ErrorCodes.db,
-            text: ['Failed to update user isTracking'],
-            err: trackingErr,
-          });
-
-          callback({ error: {} });
+          callback({ error: new errorCreator.Database() });
         }
       });
 
+      position.positionName = user.userName;
+      position.markerType = 'user';
+      position.owner = user.userName;
+      position.team = user.team;
+      position.lastUpdated = new Date();
 
-      // TODO This needs to be updated
       dbPosition.updatePosition({
-        positionName: user.userName,
-        markerType: 'user',
-        owner: user.userName,
-        team: user.team,
-        coordinates: position.coordinates,
-        callback: (userErr) => {
-          if (userErr) {
-            logger.sendErrorMsg({
-              code: logger.ErrorCodes.db,
-              text: ['Failed to update position'],
-              err: userErr,
-            });
-
-            callback({ error: {} });
+        position,
+        callback: (err, createdPosition) => {
+          if (err) {
+            callback({ error: new errorCreator.Database() });
 
             return;
           }
 
-          dbPosition.getPosition(user.userName, (err, newPosition) => {
-            if (err) {
-              logger.sendErrorMsg({
-                code: logger.ErrorCodes.db,
-                text: ['Failed to broadcast new user position'],
-                err: userErr,
-              });
-
-              callback({ error: {} });
-
-              return;
+          dbUser.getAllUsers(user, (usersErr, allUsers) => {
+            if (usersErr) {
+              callback({ error: new errorCreator.Database() });
             }
 
-            dbUser.getAllUsers(user, (allErr, users) => {
-              if (allErr) {
-                logger.sendErrorMsg({
-                  code: logger.ErrorCodes.db,
-                  text: ['Failed to get all users to broadcast new user position to'],
-                  err: userErr,
+            for (const socketUser of allUsers) {
+              if (socketUser.socketId && socket.id !== socketUser.socketId && socketUser.isTracked) {
+                socket.broadcast.to(socketUser.socketId).emit('mapPositions', {
+                  positions: [createdPosition],
+                  currentTime: (new Date()),
                 });
-
-                callback({ error: {} });
-
-                return;
               }
-
-              for (const socketUser of users) {
-                if (socketUser.socketId && socket.id !== socketUser.socketId && socketUser.isTracked) {
-                  socket.broadcast.to(socketUser.socketId).emit('mapPositions', {
-                    positions: [newPosition],
-                    currentTime: (new Date()),
-                  });
-                }
-              }
-            });
+            }
           });
         },
       });
@@ -208,8 +174,6 @@ function handle(socket) {
 
                   return;
                 }
-
-                console.log('pos', userPositions);
 
                 getPositions(types.shift(), positions.concat(userPositions));
               });
