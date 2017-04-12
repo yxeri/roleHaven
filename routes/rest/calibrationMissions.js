@@ -272,14 +272,14 @@ function handle(io) {
   });
 
   /**
-   * @api {post} /calibrationMissions/cancelMission Set a mission to completed, but without any rewards to user
+   * @api {post} /calibrationMissions/cancelMission Cancel a calibration mission
    * @apiVersion 5.1.0
    * @apiName CancelCalibrationMission
    * @apiGroup CalibrationMissions
    *
    * @apiHeader {String} Authorization Your JSON Web Token
    *
-   * @apiDescription Set a mission to completed, but without any reward to user
+   * @apiDescription Cancel a calibration mission. Mission will still be set to completed, but user will receive no reward
    *
    * @apiParam {Object} data
    * @apiParam {Object} data.mission Mission
