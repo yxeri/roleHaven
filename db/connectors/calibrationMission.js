@@ -107,8 +107,9 @@ function createMission(mission, callback) {
 function setMissionCompleted(code, stationId, callback) {
   const query = { $and: [{ code }, { stationId }, { completed: false }] };
   const update = { $set: { completed: true, timeCompleted: new Date() } };
+  const options = { new: true };
 
-  CalibrationMission.findOneAndUpdate(query, update).lean().exec((err, foundMission) => {
+  CalibrationMission.findOneAndUpdate(query, update, options).lean().exec((err, foundMission) => {
     if (err) {
       logger.sendErrorMsg({
         code: logger.ErrorCodes.db,

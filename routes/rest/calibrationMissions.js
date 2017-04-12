@@ -107,7 +107,7 @@ function handle(io) {
   });
 
   /**
-   * @api {post} /calibrationMissions/complete Set a mission to completed
+   * @api {post} /calibrationMissions/completeMission Set a mission to completed
    * @apiVersion 5.1.0
    * @apiName CompleteCalibrationMission
    * @apiGroup CalibrationMissions
@@ -139,7 +139,7 @@ function handle(io) {
    *        "code": 12345678,
    *        "stationId": 1,
    *        "completed": true,
-   *        timeCompleted: "2016-10-14T11:13:03.555Z"
+   *        "timeCompleted": "2016-10-14T11:13:03.555Z"
    *      },
    *      "transaction": {
    *        "to": "raz",
@@ -266,6 +266,115 @@ function handle(io) {
             });
           });
         });
+      });
+    });
+  });
+
+  /**
+   * @api {post} /calibrationMissions/cancelMission Set a mission to completed, but without any rewards to user
+   * @apiVersion 5.1.0
+   * @apiName CancelCalibrationMission
+   * @apiGroup CalibrationMissions
+   *
+   * @apiHeader {String} Authorization Your JSON Web Token
+   *
+   * @apiDescription Set a mission to completed, but without any reward to user
+   *
+   * @apiParam {Object} data
+   * @apiParam {Object} data.mission Mission
+   * @apiParam {String} data.mission.code Mission code (8 numbers)
+   * @apiParam {String} data.mission.stationId Number of the station
+   * @apiParamExample {json} Request-Example:
+   *   {
+   *    "data": {
+   *      "mission": {
+   *        "code": 12345678,
+   *        "stationId": 1
+   *      }
+   *    }
+   *  }
+   *
+   * @apiSuccess {Object} data
+   * @apiSuccess {Object[]} data.mission Mission completed
+   * @apiSuccess {Boolean} data.cancelled Mission was cancelled
+   * @apiSuccessExample {json} Success-Response:
+   *   {
+   *    "data": {
+   *      "mission": {
+   *        "code": 12345678,
+   *        "stationId": 1,
+   *        "completed": true,
+   *        "timeCompleted": "2016-10-14T11:13:03.555Z"
+   *      },
+   *      "cancelled": true
+   *    }
+   *  }
+   */
+  router.post('/cancelMission', (req, res) => {
+    if (!objectValidator.isValidData(req.body, { data: { mission: { code: true, stationId: true } } })) {
+      res.status(400).json({
+        errors: [{
+          status: 400,
+          title: 'Missing data',
+          detail: 'Unable to parse data',
+        }],
+      });
+
+      return;
+    }
+
+    // noinspection JSUnresolvedVariable
+    const auth = req.headers.authorization;
+
+    jwt.verify(auth || '', appConfig.jsonKey, (jwtErr, decoded) => {
+      if (jwtErr) {
+        res.status(500).json({
+          errors: [{
+            status: 500,
+            title: 'Internal Server Error',
+            detail: 'Internal Server Error',
+          }],
+        });
+
+        return;
+      } else if (!decoded || decoded.data.accessLevel < databasePopulation.commands.updateCalibrationMission.accessLevel) {
+        res.status(401).json({
+          errors: [{
+            status: 401,
+            title: 'Unauthorized',
+            detail: 'Invalid token',
+          }],
+        });
+
+        return;
+      }
+
+      const { code, stationId } = req.body.data.mission;
+
+      dbCalibrationMission.setMissionCompleted(code, stationId, (err, completedMission) => {
+        if (err) {
+          res.status(500).json({
+            errors: [{
+              status: 500,
+              title: 'Internal Server Error',
+              detail: 'Internal Server Error',
+            }],
+          });
+
+          return;
+        } else if (!completedMission) {
+          res.status(404).json({
+            errors: [{
+              status: 404,
+              title: 'Not found',
+              detail: 'Mission not found',
+            }],
+          });
+
+          return;
+        }
+
+        res.json({ data: { mission: completedMission, cancelled: true } });
       });
     });
   });
