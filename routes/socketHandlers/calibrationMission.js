@@ -54,7 +54,7 @@ function handle(socket) {
               stationIds.splice(stationIds.indexOf(previousStationId), 1);
             }
 
-            const newStationId = stationIds[Math.floor(Math.random() * (stationIds.length + 1))];
+            const newStationId = stationIds[Math.floor(Math.random() * (stationIds.length))];
             const newCode = Math.floor(Math.random() * (((99999999 - 10000000) + 1) + 10000000));
             const mission = {
               owner: user.userName,

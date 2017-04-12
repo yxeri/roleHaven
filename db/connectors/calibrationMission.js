@@ -35,8 +35,9 @@ const CalibrationMission = mongoose.model('CalibrationMission', calibrationMissi
  */
 function getActiveMission(owner, callback) {
   const query = { $and: [{ owner }, { completed: false }] };
+  const filter = { _id: 0 };
 
-  CalibrationMission.findOne(query).lean().exec((err, foundMission) => {
+  CalibrationMission.findOne(query, filter).lean().exec((err, foundMission) => {
     if (err) {
       logger.sendErrorMsg({
         code: logger.ErrorCodes.db,
@@ -56,9 +57,10 @@ function getActiveMission(owner, callback) {
  */
 function getInactiveMissions(owner, callback) {
   const query = { $and: [{ owner }, { completed: true }] };
+  const filter = { _id: 0 };
   const sort = { timeCompleted: 1 };
 
-  CalibrationMission.find(query).sort(sort).lean().exec((err, foundMissions) => {
+  CalibrationMission.find(query, filter).sort(sort).lean().exec((err, foundMissions) => {
     if (err) {
       logger.sendErrorMsg({
         code: logger.ErrorCodes.db,

@@ -21,15 +21,18 @@ const appConfig = require('../../config/defaults/config').app;
 const databasePopulation = require('../../config/defaults/config').databasePopulation;
 const jwt = require('jsonwebtoken');
 const objectValidator = require('../../utils/objectValidator');
-const manager = require('../../socketHelpers/manager');
 const dbCalibrationMission = require('../../db/connectors/calibrationMission');
+const dbWallet = require('../../db/connectors/wallet');
+const dbUser = require('../../db/connectors/user');
+const dbTransaction = require('../../db/connectors/transaction');
 
 const router = new express.Router();
 
 /**
+ * @param {Object} io Socket.io
  * @returns {Object} Router
  */
-function handle() {
+function handle(io) {
   /**
    * @api {get} /calibrationMissions Get all of user's active calibration missions
    * @apiVersion 5.1.0
@@ -137,6 +140,12 @@ function handle() {
    *        "stationId": 1,
    *        "completed": true,
    *        timeCompleted: "2016-10-14T11:13:03.555Z"
+   *      },
+   *      "transaction": {
+   *        "to": "raz",
+   *        "from": "SYSTEM",
+   *        "amount": 50
+   *        "time": "2016-10-14T11:13:03.555Z"
    *      }
    *    }
    *  }
@@ -205,7 +214,58 @@ function handle() {
           return;
         }
 
-        res.json({ data: { mission: completedMission } });
+        const transaction = {
+          to: completedMission.owner,
+          from: 'SYSTEM',
+          amount: 50,
+          time: new Date(),
+          note: `CALIBRATION OF STATION ${completedMission.stationId}`,
+        };
+
+        dbTransaction.createTransaction(transaction, (transErr) => {
+          if (transErr) {
+            res.status(500).json({
+              errors: [{
+                status: 500,
+                title: 'Internal Server Error',
+                detail: 'Internal Server Error',
+              }],
+            });
+
+            return;
+          }
+
+          dbWallet.increaseAmount(completedMission.owner, transaction.amount, (walletErr, increasedWallet) => {
+            if (walletErr) {
+              res.status(500).json({
+                errors: [{
+                  status: 500,
+                  title: 'Internal Server Error',
+                  detail: 'Internal Server Error',
+                }],
+              });
+
+              return;
+            }
+
+            dbUser.getUserByAlias(transaction.to, (aliasErr, receiver) => {
+              if (aliasErr) {
+                return;
+              }
+
+              if (receiver.socketId !== '') {
+                io.to(receiver.socketId).emit('transaction', { transaction, wallet: increasedWallet });
+              }
+            });
+
+            res.json({
+              data: {
+                mission: completedMission,
+                transaction,
+              },
+            });
+          });
+        });
       });
     });
   });

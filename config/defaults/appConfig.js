@@ -158,6 +158,7 @@ config.routes = config.routes || [
   { sitePath: '/api/users', filePath: `${__dirname}/../../routes/rest/users.js` },
   { sitePath: '/api/aliases', filePath: `${__dirname}/../../routes/rest/aliases.js` },
   { sitePath: '/api/transactions', filePath: `${__dirname}/../../routes/rest/transactions.js` },
+  { sitePath: '/api/calibrationMissions', filePath: `${__dirname}/../../routes/rest/calibrationMissions.js` },
   { sitePath: '*', filePath: `${__dirname}/../../routes/error.js` },
 ];
 
