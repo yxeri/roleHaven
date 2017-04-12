@@ -255,6 +255,7 @@ function handle(io) {
 
               if (receiver.socketId !== '') {
                 io.to(receiver.socketId).emit('transaction', { transaction, wallet: increasedWallet });
+                io.to(receiver.socketId).emit('terminal', { mission: { missionType: 'calibrationMission', completed: true } });
               }
             });
 
@@ -373,6 +374,16 @@ function handle(io) {
 
           return;
         }
+
+        dbUser.getUserByAlias(completedMission.owner, (aliasErr, user) => {
+          if (aliasErr) {
+            return;
+          }
+
+          if (user.socketId !== '') {
+            io.to(user.socketId).emit('terminal', { mission: { missionType: 'calibrationMission', cancelled: true } });
+          }
+        });
 
         res.json({ data: { mission: completedMission, cancelled: true } });
       });
