@@ -53,6 +53,7 @@ config.accessLevels = config.accessLevels || {
   god: 13,
   superUser: 12,
   admin: 11,
+  lowerAdmin: 9,
   privileged: 6,
   pro: 3,
   advanced: 2,
@@ -517,6 +518,11 @@ config.commands = {
     accessLevel: config.accessLevels.basic,
     visibility: config.accessLevels.basic,
     category: 'basic',
+  },
+  updateCalibrationMission: config.commands.updateCalibrationMission || {
+    commandName: 'updateCalibrationMission',
+    accessLevel: config.accessLevels.lowerAdmin,
+    visibility: config.accessLevels.lowerAdmin,
   },
 };
 

@@ -20,8 +20,8 @@ const databaseConnector = require('../databaseConnector');
 
 const calibrationMissionSchema = new mongoose.Schema({
   owner: String,
-  stationId: String,
-  code: String,
+  stationId: Number,
+  code: Number,
   completed: { type: Boolean, default: false },
   timeCompleted: Date,
 }, { collection: 'calibrationMissions' });
@@ -98,11 +98,12 @@ function createMission(mission, callback) {
 
 /**
  * Set mission completed
- * @param {string} owner - Mission owner
- * @param {Function} callback - Callback
+ * @param {number} code Mission code
+ * @param {number} stationId Station ID
+ * @param {Function} callback Callback
  */
-function setMissionCompleted(owner, callback) {
-  const query = { $and: [{ owner }, { completed: false }] };
+function setMissionCompleted(code, stationId, callback) {
+  const query = { $and: [{ code }, { stationId }, { completed: false }] };
   const update = { $set: { completed: true, timeCompleted: new Date() } };
 
   CalibrationMission.findOneAndUpdate(query, update).lean().exec((err, foundMission) => {
