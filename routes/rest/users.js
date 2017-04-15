@@ -247,17 +247,15 @@ function handle() {
         }
 
         const whisperRoom = {
-          roomName: user.userName + appConfig.whisperAppend,
-          visibility: 12,
-          accessLevel: 12,
+          roomName: newUser.userName + appConfig.whisperAppend,
+          visibility: databasePopulation.accessLevels.superUser,
+          accessLevel: databasePopulation.accessLevels.superUser,
         };
 
         manager.createRoom(whisperRoom, user, () => {});
         manager.createWallet(wallet, () => {});
 
-        res.json({
-          data: { users: [user] },
-        });
+        res.json({ data: { users: [user] } });
       });
     });
   });
