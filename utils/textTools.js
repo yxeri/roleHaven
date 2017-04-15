@@ -38,6 +38,46 @@ function cleanText(text) {
   return modifiedText;
 }
 
+/**
+ * Converts string to boolean
+ * @param {string} envar - Value
+ * @returns {boolean} Converted boolean
+ */
+function convertToBoolean(envar) {
+  if (envar === 'true') {
+    return true;
+  } else if (envar === 'false') {
+    return false;
+  }
+
+  return undefined;
+}
+
+/**
+ * Convert string to float
+ * @param {string} float - Value to be converted
+ * @returns {number|null} Converted number
+ */
+function convertToFloat(float) {
+  const parsedFloat = parseFloat(float);
+
+  return isNaN(parsedFloat) ? 0 : parsedFloat;
+}
+
+/**
+ * Convert string to int
+ * @param {string} int - Value to be converted
+ * @returns {number} Converted number
+ */
+function convertToInt(int) {
+  const parsedInt = parseInt(int, 10);
+
+  return isNaN(parsedInt) ? 0 : parsedInt;
+}
+
 exports.isAlphaNumeric = isAlphaNumeric;
 exports.isAllowedFull = isAllowedFull;
 exports.cleanText = cleanText;
+exports.convertToBoolean = convertToBoolean;
+exports.convertToFloat = convertToFloat;
+exports.convertToInt = convertToInt;

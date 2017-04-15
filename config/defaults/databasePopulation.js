@@ -63,7 +63,6 @@ config.accessLevels = config.accessLevels || {
 
 /**
  * Rooms to be created on first run
- * important, broadcast, admin should always be created. The rest are optional
  */
 config.rooms = {
   // GeneralError chat room, available for every user
@@ -75,31 +74,11 @@ config.rooms = {
   },
 
   /**
-   * Used to store messages labeled as important.
-   * Not used as an ordinary chat room
-   */
-  important: config.rooms.important || {
-    roomName: 'important',
-    visibility: config.accessLevels.superUser,
-    accessLevel: config.accessLevels.superUser,
-  },
-
-  /**
    * Used to store messages labeled as broadcast.
    * Not used as an ordinary chat room
    */
   bcast: config.rooms.bcast || {
     roomName: 'broadcast',
-    visibility: config.accessLevels.superUser,
-    accessLevel: config.accessLevels.superUser,
-  },
-
-  /**
-   * Used for morse messages
-   * Not used as an ordinary chat room
-   */
-  morse: {
-    roomName: 'morse',
     visibility: config.accessLevels.superUser,
     accessLevel: config.accessLevels.superUser,
   },
@@ -134,6 +113,7 @@ config.rooms = {
     accessLevel: config.accessLevels.superUser,
   },
 
+  // TODO Move outside of defaults
   dead: {
     roomName: 'd34d',
     visibility: config.accessLevels.anonymous,
@@ -184,9 +164,6 @@ config.users = {
   },
 };
 
-/**
- *
- */
 config.commands = {
   help: config.commands.help || {
     commandName: 'help',
@@ -236,6 +213,12 @@ config.commands = {
     visibility: config.accessLevels.basic,
     category: 'basic',
   },
+  listDevices: config.commands.listDevices || {
+    commandName: 'listDevices',
+    accessLevel: config.accessLevels.admin,
+    visibility: config.accessLevels.admin,
+    category: 'admin',
+  },
   mode: config.commands.mode || {
     commandName: 'mode',
     accessLevel: config.accessLevels.basic,
@@ -276,12 +259,6 @@ config.commands = {
     commandName: 'history',
     accessLevel: config.accessLevels.anonymous,
     visibility: config.accessLevels.anonymous,
-    category: 'messaging',
-  },
-  morse: config.commands.morse || {
-    commandName: 'morse',
-    accessLevel: config.accessLevels.admin,
-    visibility: config.accessLevels.admin,
     category: 'messaging',
   },
   password: config.commands.password || {
@@ -337,12 +314,6 @@ config.commands = {
     accessLevel: config.accessLevels.basic,
     visibility: config.accessLevels.basic,
     category: 'basic',
-  },
-  importantmsg: config.commands.importantmsg || {
-    commandName: 'importantmsg',
-    accessLevel: config.accessLevels.admin,
-    visibility: config.accessLevels.admin,
-    category: 'messaging',
   },
   chipper: config.commands.chipper || {
     commandName: 'chipper',

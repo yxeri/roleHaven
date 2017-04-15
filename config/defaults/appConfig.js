@@ -17,6 +17,7 @@
 'use strict';
 
 const path = require('path');
+const textTools = require('../../utils/textTools');
 
 let config = {};
 
@@ -26,58 +27,10 @@ try {
   console.log('Did not find modified appConfig. Using defaults');
 }
 
-// TODO Move all converters to a converter file
-
-/**
- * Converts string to boolean
- * @param {string} envar - Value
- * @returns {boolean} Converted boolean
- */
-function convertToBoolean(envar) {
-  if (envar === 'true') {
-    return true;
-  } else if (envar === 'false') {
-    return false;
-  }
-
-  return undefined;
-}
-
-/**
- * Convert string to float
- * @param {string} float - Value to be converted
- * @returns {number|null} Converted number
- */
-function convertToFloat(float) {
-  const parsedFloat = parseFloat(float);
-
-  return isNaN(parsedFloat) ? 0 : parsedFloat;
-}
-
-/**
- * Convert string to int
- * @param {string} int - Value to be converted
- * @returns {number} Converted number
- */
-function convertToInt(int) {
-  const parsedInt = parseInt(int, 10);
-
-  return isNaN(parsedInt) ? 0 : parsedInt;
-}
-
-/*
- * All app specific configuration
- */
-
-const userVerifyEnv = convertToBoolean(process.env.REQUIREVERIFY);
-const revealFailedHackEnv = convertToBoolean(process.env.REVEALFAILEDHACK);
-const forceFullscreenEnv = convertToBoolean(process.env.FORCEFULLSCREEN);
-const gpsTrackingEnv = convertToBoolean(process.env.GPSTRACKING);
-const teamVerifyEnv = convertToBoolean(process.env.REQUIRETEAMVERIFY);
-const disableCommandsEnv = convertToBoolean(process.env.DISABLECOMMANDS);
-const hideRoomNamesEnv = convertToBoolean(process.env.HIDEROOMNAMES);
-const hideTimeStampEnv = convertToBoolean(process.env.HIDETIMESTAMP);
-const staticInputStartEnv = convertToBoolean(process.env.STATICINPUTSTART);
+const userVerifyEnv = textTools.convertToBoolean(process.env.REQUIREVERIFY);
+const forceFullscreenEnv = textTools.convertToBoolean(process.env.FORCEFULLSCREEN);
+const gpsTrackingEnv = textTools.convertToBoolean(process.env.GPSTRACKING);
+const teamVerifyEnv = textTools.convertToBoolean(process.env.REQUIRETEAMVERIFY);
 
 // Title of the site
 config.title = process.env.TITLE || config.title || 'roleHaven';
@@ -134,6 +87,7 @@ config.socketPath = (process.env.SOCKETPATH === 'cdn' || config.socketPath === '
  */
 config.mode = process.env.MODE || config.mode || 'prod';
 
+// TODO Routes should be empty by defaults. Move all routes to app-specific instances
 /**
  * Array of route paths
  * Should contain objects of site and file paths
@@ -162,23 +116,17 @@ config.routes = config.routes || [
   { sitePath: '*', filePath: `${__dirname}/../../routes/error.js` },
 ];
 
-//
-// Instance specific
-//
-
-config.radioChannels = config.radioChannels || {};
-
 config.gMapsKey = process.env.GMAPSKEY || config.gMapsKey;
-config.mapLayersPath = process.env.MAPLAYERSPATH || config.mapLayersPath || 'https://www.google.com/maps/d/kml?mid=1AGg1z3qq-oWABJGGr_FV4uanhZM&hl=en_US&app=mp&forcekml=1&cid=mp&cv=jm93Tu_hxIY.en_US.';
+config.mapLayersPath = process.env.MAPLAYERSPATH || config.mapLayersPath;
 
 config.country = process.env.COUNTRY || config.country || 'Sweden';
-config.centerLat = convertToFloat(process.env.CENTERLAT || config.centerLat || 59.3534372);
-config.centerLong = convertToFloat(process.env.CENTERLONG || config.centerLong || 18.0044666);
-config.cornerOneLat = convertToFloat(process.env.CORNERONELAT || config.cornerOneLat || 67.3926316);
-config.cornerOneLong = convertToFloat(process.env.CORNERONELONG || config.cornerOneLong || 24.0936037);
-config.cornerTwoLat = convertToFloat(process.env.CORNERTWOLAT || config.cornerTwoLat || 55.699443);
-config.cornerTwoLong = convertToFloat(process.env.CORNERTWOLONG || config.cornerTwoLong || 10.3777913);
-config.defaultZoomLevel = convertToInt(process.env.DEFAULTZOOMLEVEL || config.defaultZoomLevel || 15);
+config.centerLat = textTools.convertToFloat(process.env.CENTERLAT || config.centerLat || 59.7526684);
+config.centerLong = textTools.convertToFloat(process.env.CENTERLONG || config.centerLong || 15.1941731);
+config.cornerOneLat = textTools.convertToFloat(process.env.CORNERONELAT || config.cornerOneLat || 59.7580656);
+config.cornerOneLong = textTools.convertToFloat(process.env.CORNERONELONG || config.cornerOneLong || 15.1851052);
+config.cornerTwoLat = textTools.convertToFloat(process.env.CORNERTWOLAT || config.cornerTwoLat || 59.7467013);
+config.cornerTwoLong = textTools.convertToFloat(process.env.CORNERTWOLONG || config.cornerTwoLong || 15.2048731);
+config.defaultZoomLevel = textTools.convertToInt(process.env.DEFAULTZOOMLEVEL || config.defaultZoomLevel || 15);
 
 // Amount of messages retrieved with the history command
 config.historyLines = process.env.MAXHISTORY || config.historyLines || 80;
@@ -224,26 +172,6 @@ config.deviceAppend = '-device';
  */
 config.teamAppend = '-team';
 
-config.modes = config.modes || {
-  command: 'cmd',
-  chat: 'chat',
-};
-
-/**
- * Default mode for command input.
- * Valid options are: cmd chat
- */
-config.defaultMode = process.env.DEFAULTMODE || config.defaultMode || config.modes.command;
-
-/**
- * Should the user that initiated a hack and failed it be revealed to other users?
- */
-config.revealFailedHack = revealFailedHackEnv !== undefined ? revealFailedHackEnv : config.revealFailedHack;
-
-if (config.revealFailedHack === undefined) {
-  config.revealFailedHack = true;
-}
-
 /**
  * The number of years that will be subtracted/added to the current year
  */
@@ -268,48 +196,6 @@ if (config.gpsTracking === undefined) {
 }
 
 /**
- * Should the user be able to use commands in the frontend?
- */
-config.disableCommands = disableCommandsEnv !== undefined ? disableCommandsEnv : config.disableCommands;
-
-if (config.disableCommands === undefined) {
-  config.disableCommands = false;
-}
-
-/**
- * Should room names be hidden in print in the frontend?
- */
-config.hideRoomNames = hideRoomNamesEnv !== undefined ? hideRoomNamesEnv : config.hideRoomNames;
-
-if (config.hideRoomNames === undefined) {
-  config.hideRoomNames = false;
-}
-
-/**
- * Should time stamps be hidden in print in the frontend?
- */
-config.hideTimeStamp = hideTimeStampEnv !== undefined ? hideTimeStampEnv : config.hideTimeStamp;
-
-if (config.hideTimeStamp === undefined) {
-  config.hideTimeStamp = false;
-}
-
-/**
- * Amount of weather reports that will be sent to the client
- */
-config.maxWeatherReports = process.env.MAXWEATHERREPORTS || config.maxWeatherReports || 8;
-
-/**
- * Should the input start be static? Normal behaviour is to set input star to the room name that the user is in
- */
-config.staticInputStart = staticInputStartEnv !== undefined ? staticInputStartEnv : config.staticInputStart;
-
-/**
- * The string that will be shown in the beginning of the command input
- */
-config.defaultInputStart = process.env.DEFAULTINPUTSTART || config.defaultInputStart || 'RAZCMD';
-
-/**
  * Amount of milliseconds between each increment/decrement of signal value (BBR game feature)
  * @type {number}
  */
@@ -324,5 +210,20 @@ config.welcomeMessage = process.env.WELCOMEMESSAGE || config.welcomeMessage;
  * Secret key used with JSON Web Token
  */
 config.jsonKey = process.env.JSONKEY;
+
+/**
+ * Secret key used with BBR events
+ */
+config.hackingApiKey = process.env.HACKINGAPIKEY;
+
+/**
+ * URL to API. Used for BBR events
+ */
+config.hackingApiHost = process.env.HACKINGAPIHOST;
+
+/**
+ * Path for API call. Used for BBR events
+ */
+config.hackingApiPath = process.env.HACKINGAPIPATH;
 
 module.exports = config;
