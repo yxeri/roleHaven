@@ -25,6 +25,8 @@ const logger = require('../../utils/logger');
 const objectValidator = require('../../utils/objectValidator');
 const messenger = require('../../socketHelpers/messenger');
 const appConfig = require('../../config/defaults/config').app;
+const errorCreator = require('../../objects/error/errorCreator');
+const dbPosition = require('../../db/connectors/position');
 
 /**
  * Update user's team
@@ -699,6 +701,26 @@ function handle(socket, io) {
           });
         });
       }
+    });
+  });
+
+  socket.on('getTeamMembers', (params, callback = () => {}) => {
+    manager.userIsAllowed(socket.id, databasePopulation.commands.list.commandName, (allowErr, allowed, user) => {
+      if (allowErr || !allowed || !user) {
+        callback({ error: new errorCreator.Database() });
+
+        return;
+      }
+
+      dbUser.getTeamUsers(user, (err, users = []) => {
+        if (err) {
+          callback({ error: new errorCreator.Database() });
+
+          return;
+        }
+
+        callback({ users });
+      });
     });
   });
 }
