@@ -508,7 +508,7 @@ function matchPartial({ callback, partialName, queryType, filter, sort, user, ty
 
   if (partialName) {
     if (type === 'userName') {
-      query.$and = [{ userName: { $regex: `^${partialName}.*` } }];
+      query.$and = [{ banned: false }, { verified: true }, { userName: { $regex: `^${partialName}.*` } }];
     } else if (type === 'roomName') {
       query.$and = [{ roomName: { $regex: `^${partialName}.*` } }];
     }

@@ -27,7 +27,10 @@ const chatHistorySchema = new mongoose.Schema({
     roomName: String,
     extraClass: String,
     customSender: String,
-    morseCode: String,
+    coordinates: {
+      longitude: Number,
+      latitude: Number,
+    },
     image: {
       imageName: String,
       fileName: String,

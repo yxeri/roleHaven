@@ -335,6 +335,52 @@ function populateDbRooms(rooms, user) {
   }
 }
 
+/**
+ * Set new room visibiity
+ * @param {string} roomName - Name of the room
+ * @param {number} value - New visibility
+ * @param {Function} callback - Callback
+ */
+function updateRoomVisibility(roomName, value, callback) {
+  const query = { roomName };
+  const update = { visibility: value };
+
+  Room.findOneAndUpdate(query, update).lean().exec((err, user) => {
+    if (err) {
+      logger.sendErrorMsg({
+        code: logger.ErrorCodes.db,
+        text: ['Failed to update room'],
+        err,
+      });
+    }
+
+    callback(err, user);
+  });
+}
+
+/**
+ * Set new room access level
+ * @param {string} roomName - Name of the room
+ * @param {number} value - New access level
+ * @param {Function} callback - Callback
+ */
+function updateRoomAccessLevel(roomName, value, callback) {
+  const query = { roomName };
+  const update = { accessLevel: value };
+
+  Room.findOneAndUpdate(query, update).lean().exec((err, user) => {
+    if (err) {
+      logger.sendErrorMsg({
+        code: logger.ErrorCodes.db,
+        text: ['Failed to update room'],
+        err,
+      });
+    }
+
+    callback(err, user);
+  });
+}
+
 exports.authUserToRoom = authUserToRoom;
 exports.createRoom = createRoom;
 exports.getAllRooms = getAllRooms;
@@ -345,3 +391,5 @@ exports.getOwnedRooms = getOwnedRooms;
 exports.removeRoom = removeRoom;
 exports.matchPartialRoom = matchPartialRoom;
 exports.populateDbRooms = populateDbRooms;
+exports.updateRoomVisibility = updateRoomVisibility;
+exports.updateRoomAccessLevel = updateRoomAccessLevel;

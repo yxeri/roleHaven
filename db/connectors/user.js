@@ -41,7 +41,6 @@ const userSchema = new mongoose.Schema({
   registerDevice: String,
   team: String,
   authGroups: [{ type: String, unique: true }],
-  mode: String,
   isTracked: Boolean,
   aliases: [{ type: String, unique: true }],
 }, { collection: 'users' });
@@ -132,7 +131,7 @@ function getUserByDevice(deviceCode, callback) {
       });
       callback(err, null);
     } else {
-      const userQuery = { socketId: device.socketId };
+      const userQuery = { banned: false, verified: true, socketId: device.socketId };
 
       User.findOne(userQuery).lean().exec((userErr, user) => {
         if (userErr || user === null) {
@@ -155,7 +154,7 @@ function getUserByDevice(deviceCode, callback) {
  * @param {Function} callback - Callback
  */
 function getUserById(sentSocketId, callback) {
-  const query = { socketId: sentSocketId };
+  const query = { banned: false, verified: true, socketId: sentSocketId };
   const filter = { _id: 0 };
 
   User.findOne(query, filter).lean().exec((err, user) => {
@@ -178,9 +177,7 @@ function getUserById(sentSocketId, callback) {
  * @param {Function} callback - Callback
  */
 function authUser(userName, password, callback) {
-  const query = {
-    $and: [{ userName }, { password }],
-  };
+  const query = { banned: false, verified: true, userName, password };
   const filter = { password: 0 };
 
   User.findOne(query, filter).lean().exec((err, user) => {
@@ -202,7 +199,7 @@ function authUser(userName, password, callback) {
  * @param {Function} callback - Callback
  */
 function getUser(userName, callback) {
-  const query = { userName };
+  const query = { banned: false, verified: true, userName };
   const filter = { password: 0 };
 
   User.findOne(query, filter).lean().exec((err, foundUser) => {
@@ -233,6 +230,8 @@ function createUser(user, callback) {
         text: ['Failed to check if user exists'],
         err,
       });
+
+      callback(err, null);
     } else if (foundUser === null) {
       databaseConnector.saveObject(newUser, 'user', callback);
     } else {
@@ -266,18 +265,6 @@ function updateUserOnline(userName, value, callback) {
 }
 
 /**
- * Update user's mode
- * @param {string} userName - Name of the user
- * @param {string} mode - New input mode
- * @param {Function} callback - Callback
- */
-function updateUserMode(userName, mode, callback) {
-  const update = { mode };
-
-  updateUserValue(userName, update, callback);
-}
-
-/**
  * Verify user
  * @param {string} userName - Name of the user
  * @param {Function} callback - Callback
@@ -304,9 +291,32 @@ function verifyAllUsers(callback) {
  * @param {Function} callback - Function to be called on completion
  */
 function getAllUsers(sentUser, callback) {
-  const query = { visibility: { $lte: sentUser.accessLevel } };
+  const query = { visibility: { $lte: sentUser.accessLevel }, verified: true, banned: false };
   const sort = { userName: 1 };
   const filter = { _id: 0, password: 0 };
+
+  User.find(query, filter).sort(sort).lean().exec((err, users) => {
+    if (err) {
+      logger.sendErrorMsg({
+        code: logger.ErrorCodes.db,
+        text: ['Failed to list users'],
+        err,
+      });
+    }
+
+    callback(err, users);
+  });
+}
+
+/**
+ * Gets all users in a team
+ * @param {Object} sentUser - User that is retrieving all users
+ * @param {Function} callback - Function to be called on completion
+ */
+function getTeamUsers(sentUser, callback) {
+  const query = { team: sentUser.team, banned: false, verified: true };
+  const sort = { userName: 1 };
+  const filter = { userName: 1, fullName: 1, online: 1, team: 1, isTracked: 1, _id: 0 };
 
   User.find(query, filter).sort(sort).lean().exec((err, users) => {
     if (err) {
@@ -327,7 +337,7 @@ function getAllUsers(sentUser, callback) {
  * @param {Function} callback - Callback
  */
 function getAllUserPositions(sentUser, callback) {
-  const query = { visibility: { $lte: sentUser.accessLevel } };
+  const query = { visibility: { $lte: sentUser.accessLevel }, verified: true, banned: false };
   const sort = { userName: 1 };
   const filter = { _id: 0, userName: 1 };
 
@@ -367,12 +377,7 @@ function getAllUserPositions(sentUser, callback) {
  * @param {Function} callback - Callback
  */
 function getUserPositions(sentUser, sentUserName, callback) {
-  const query = {
-    $and: [
-      { visibility: { $lte: sentUser.accessLevel } },
-      { userName: sentUserName },
-    ],
-  };
+  const query = { visibility: { $lte: sentUser.accessLevel }, userName: sentUserName };
   const filter = { _id: 0 };
 
   User.findOne(query, filter).lean().exec((err, user) => {
@@ -406,7 +411,7 @@ function getUserPositions(sentUser, sentUserName, callback) {
  * @param {Function} callback - Callback
  */
 function getUsersFollowingRoom(roomName, callback) {
-  const query = { rooms: { $in: [roomName] } };
+  const query = { rooms: { $in: [roomName] }, banned: false, verified: true };
   const filter = { rooms: 1, socketId: 1 };
 
   User.find(query, filter).lean().exec((err, users) => {
@@ -565,7 +570,7 @@ function setUserLastOnline(userName, date, callback) {
  * @param {Function} callback - Callback
  */
 function getUnverifiedUsers(callback) {
-  const query = { verified: false };
+  const query = { verified: false, banned: false };
   const filter = { _id: 0 };
   const sort = { userName: 1 };
 
@@ -670,7 +675,7 @@ function populateDbUsers(users) {
             err: userErr,
           });
         } else {
-          logger.sendInfoMsg('PopulateDb: [success] Created user', user.userName, user.password);
+          logger.sendInfoMsg('PopulateDb: [success] Created user', user.userName);
         }
       };
 
@@ -727,52 +732,6 @@ function updateUserAccessLevel(userName, value, callback) {
 }
 
 /**
- * Set new room visibiity
- * @param {string} roomName - Name of the room
- * @param {number} value - New visibility
- * @param {Function} callback - Callback
- */
-function updateRoomVisibility(roomName, value, callback) {
-  const query = { roomName };
-  const update = { visibility: value };
-
-  User.findOneAndUpdate(query, update).lean().exec((err, user) => {
-    if (err) {
-      logger.sendErrorMsg({
-        code: logger.ErrorCodes.db,
-        text: ['Failed to update room'],
-        err,
-      });
-    }
-
-    callback(err, user);
-  });
-}
-
-/**
- * Set new room access level
- * @param {string} roomName - Name of the room
- * @param {number} value - New access level
- * @param {Function} callback - Callback
- */
-function updateRoomAccessLevel(roomName, value, callback) {
-  const query = { roomName };
-  const update = { accessLevel: value };
-
-  User.findOneAndUpdate(query, update).lean().exec((err, user) => {
-    if (err) {
-      logger.sendErrorMsg({
-        code: logger.ErrorCodes.db,
-        text: ['Failed to update room'],
-        err,
-      });
-    }
-
-    callback(err, user);
-  });
-}
-
-/**
  * Set new password for user
  * @param {string} userName - Name of the user
  * @param {string} value - New password
@@ -795,13 +754,13 @@ function matchPartialUser(partialName, user, callback) {
   const sort = { userName: 1 };
 
   databaseConnector.matchPartial({
+    type: 'userName',
+    queryType: User,
     filter,
     sort,
     partialName,
     user,
-    queryType: User,
     callback,
-    type: 'userName',
   });
 }
 
@@ -812,6 +771,8 @@ function matchPartialUser(partialName, user, callback) {
  */
 function getUserByAlias(alias, callback) {
   const query = {
+    verified: true,
+    banned: false,
     $or: [
       { userName: alias },
       { aliases: { $in: [alias] } },
@@ -890,12 +851,9 @@ exports.getBannedUsers = getBannedUsers;
 exports.populateDbUsers = populateDbUsers;
 exports.updateUserVisibility = updateUserVisibility;
 exports.updateUserAccessLevel = updateUserAccessLevel;
-exports.updateRoomVisibility = updateRoomVisibility;
-exports.updateRoomAccessLevel = updateRoomAccessLevel;
 exports.addGroupToUser = addGroupToUser;
 exports.updateUserOnline = updateUserOnline;
 exports.getUserByDevice = getUserByDevice;
-exports.updateUserMode = updateUserMode;
 exports.getUser = getUser;
 exports.updateUserTeam = updateUserTeam;
 exports.matchPartialUser = matchPartialUser;
@@ -904,3 +862,4 @@ exports.removeRoomFromAllUsers = removeRoomFromAllUsers;
 exports.updateUserIsTracked = updateUserIsTracked;
 exports.getUserByAlias = getUserByAlias;
 exports.addAlias = addAlias;
+exports.getTeamUsers = getTeamUsers;
