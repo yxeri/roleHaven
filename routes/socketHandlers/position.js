@@ -20,7 +20,6 @@ const dbUser = require('../../db/connectors/user');
 const dbPosition = require('../../db/connectors/position');
 const manager = require('../../socketHelpers/manager');
 const databasePopulation = require('../../config/defaults/config').databasePopulation;
-const logger = require('../../utils/logger');
 const objectValidator = require('../../utils/objectValidator');
 const mapCreator = require('../../utils/mapCreator');
 const errorCreator = require('../../objects/error/errorCreator');
@@ -29,16 +28,37 @@ const errorCreator = require('../../objects/error/errorCreator');
  * @param {Object} socket - Socket.IO socket
  */
 function handle(socket) {
-  socket.on('updatePosition', ({ position }, callback = () => {}) => {
-    if (!objectValidator.isValidData({ position }, { position: { coordinates: { longitude: true, latitude: true }, positionName: true, markerType: true } })) {
-      callback({ error: {} });
+  socket.on('pingMap', ({ position, pingInfo }, callback = () => {}) => {
+    if (!objectValidator.isValidData({ position, pingInfo }, { position: { coordinates: { longitude: true, latitude: true } }, pingInfo: { pingType: true } })) {
+      callback({ error: new errorCreator.Database() });
 
       return;
     }
 
     manager.userIsAllowed(socket.id, databasePopulation.commands.createPosition.commandName, (allowErr, allowed, user) => {
       if (allowErr || !allowed) {
-        callback({ error: {} });
+        callback({ error: new errorCreator.NotAllowed({ used: 'pingMap' }) });
+
+        return;
+      }
+
+      pingInfo.userName = user.userName;
+
+      socket.broadcast.emit('pingMap', { position, pingInfo });
+      callback({ data: { position, pingInfo } });
+    });
+  });
+
+  socket.on('updatePosition', ({ position }, callback = () => {}) => {
+    if (!objectValidator.isValidData({ position }, { position: { coordinates: { longitude: true, latitude: true }, positionName: true, markerType: true } })) {
+      callback({ error: new errorCreator.Database() });
+
+      return;
+    }
+
+    manager.userIsAllowed(socket.id, databasePopulation.commands.createPosition.commandName, (allowErr, allowed, user) => {
+      if (allowErr || !allowed) {
+        callback({ error: new errorCreator.NotAllowed({ used: 'updatePosition' }) });
 
         return;
       }
@@ -51,7 +71,7 @@ function handle(socket) {
         position,
         callback: (err, createdPosition) => {
           if (err) {
-            callback({ error: {} });
+            callback({ error: new errorCreator.Database() });
 
             return;
           }
@@ -142,7 +162,7 @@ function handle(socket) {
         switch (type) {
           case 'google': {
             mapCreator.getGooglePositions((err, googlePositions) => {
-              if (err || googlePositions === null) {
+              if (err) {
                 callback({ error: new errorCreator.External({ source: 'Google Maps' }) });
 
                 return;
