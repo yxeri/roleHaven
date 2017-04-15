@@ -19,45 +19,31 @@
 const dbDevice = require('../../db/connectors/device');
 const manager = require('../../socketHelpers/manager');
 const databasePopulation = require('../../config/defaults/config').databasePopulation;
-const logger = require('../../utils/logger');
 const objectValidator = require('../../utils/objectValidator');
 const appConfig = require('../../config/defaults/config').app;
+const errorCreator = require('../../objects/error/errorCreator');
 
 /**
  * @param {Object} socket Socket.IO socket
  */
 function handle(socket) {
+  // TODO Update
+
   /**
    * Returns all devices from database, if the user has high enough access level
    * Emits list
    */
   socket.on('listDevices', (params, callback = () => {}) => {
-    manager.userIsAllowed(socket.id, databasePopulation.commands.list.commandName, (allowErr, allowed, user) => {
+    manager.userIsAllowed(socket.id, databasePopulation.commands.listDevices.commandName, (allowErr, allowed) => {
       if (allowErr || !allowed) {
-        callback({ error: {} });
-
-        return;
-      } else if (user.accessLevel < 11) {
-        callback({
-          error: {
-            code: logger.ErrorCodes.unauth,
-            text: ['You are not allowed to list devices'],
-            text_se: ['Ni har inte tillåtelse att lista enheter'],
-          },
-        });
+        callback({ error: new errorCreator.NotAllowed({ used: 'listDevices' }) });
 
         return;
       }
 
       dbDevice.getAllDevices((devErr, devices) => {
         if (devErr) {
-          logger.sendErrorMsg({
-            code: logger.ErrorCodes.db,
-            text: ['Failed to get all devices'],
-            err: devErr,
-          });
-
-          callback({ error: {} });
+          callback({ error: new errorCreator.Database() });
 
           return;
         }
@@ -67,57 +53,50 @@ function handle(socket) {
     });
   });
 
-  socket.on('updateDeviceLastAlive', (params) => {
-    if (!objectValidator.isValidData(params, { device: { deviceId: true, lastAlive: true } })) {
+  socket.on('updateDeviceLastAlive', ({ device }, callback = () => {}) => {
+    if (!objectValidator.isValidData({ device }, { device: { deviceId: true } })) {
+      callback({ error: new errorCreator.InvalidData({ expectedResult: '{ device: { deviceId } }' }) });
+
       return;
     }
 
-    dbDevice.updateDeviceLastAlive(params.device.deviceId, params.device.lastAlive, () => {});
+    dbDevice.updateDeviceLastAlive(device.deviceId, new Date(), (err, updatedDevice) => {
+      if (err) {
+        callback({ error: new errorCreator.Database() });
+
+        return;
+      }
+
+      callback({ data: { device: updatedDevice }});
+    });
   });
 
   /**
    * Updates a field on a device in the database
    */
-  socket.on('updateDevice', (params, callback = () => {}) => {
-    if (!objectValidator.isValidData(params, { device: { deviceId: true }, field: true, value: true })) {
-      callback({ error: {} });
+  socket.on('updateDevice', ({ device, field, value }, callback = () => {}) => {
+    if (!objectValidator.isValidData({ device }, { device: { deviceId: true }, field: true, value: true })) {
+      callback({ error: new errorCreator.InvalidData({ expectedResult: '{ device: { deviceId }, field, value }' }) });
 
       return;
     }
 
     manager.userIsAllowed(socket.id, databasePopulation.commands.updatedevice.commandName, (allowErr, allowed) => {
       if (allowErr || !allowed) {
-        callback({ error: {} });
+        callback({ error: new errorCreator.NotAllowed({ used: 'updateDevice' }) });
 
         return;
       }
 
-      const deviceId = params.device.deviceId;
-      const field = params.field;
-      const value = params.value;
-      const updateCallback = (err, device) => {
-        if (err || device === null) {
-          let errMsg = 'Failed to update device';
-
-          if (err && err.code === 11000) {
-            errMsg += '. Alias already exists';
-          }
-
-          callback({
-            error: {
-              text: [errMsg],
-              code: logger.ErrorCodes.general,
-            },
-          });
+      const deviceId = device.deviceId;
+      const updateCallback = (err, updatedDevice) => {
+        if (err || updatedDevice === null) {
+          callback({ error: new errorCreator.Database() });
 
           return;
         }
 
-        callback({
-          message: {
-            text: [`${device.deviceId} has been updated`],
-          },
-        });
+        callback({ data: { device: updatedDevice } });
       };
 
       switch (field) {
@@ -128,11 +107,7 @@ function handle(socket) {
         }
         default: {
           callback({
-            error: {
-              text: [`Invalid field. Device doesn't have ${field}`],
-              text_se: [`Inkorrekt fält. Enheter har inte fältet ${field}`],
-              code: logger.ErrorCodes.general,
-            },
+            error: new errorCreator.InvalidData({ incorrectProperties: 'field' }),
           });
 
           break;
@@ -145,49 +120,37 @@ function handle(socket) {
    * Checks if the device is in the database
    * Emits commandFail or commandSuccess if the device was found
    */
-  socket.on('verifyDevice', (params, callback = () => {}) => {
+  socket.on('verifyDevice', ({ device }, callback = () => {}) => {
     // TODO Check if either device.alias or device.deviceId is set
-    if (!objectValidator.isValidData(params, { device: { deviceId: true } })) {
+    if (!objectValidator.isValidData({ device }, { device: { deviceId: true } })) {
       return;
     }
 
-    dbDevice.getDevice(params.device.deviceId, (err, device) => {
+    dbDevice.getDevice(device.deviceId, (err, foundDevice) => {
       if (err || device === null) {
-        callback({
-          message: {
-            text: ['Device is not in the database'],
-            text_se: ['Enheten finns inte i databasen'],
-          },
-        });
-        socket.emit('commandFail');
+        callback({ error: new errorCreator.Database() });
 
         return;
       }
 
-      callback({
-        message: {
-          text: ['Device found in the database'],
-          text_se: ['Enheten funnen i databasen'],
-        },
-      });
-      socket.emit('commandSuccess', params);
+      callback({ data: { device: foundDevice } });
     });
   });
 
+  // TODO Should leave previous device room
   /**
    * Updates socketID and user name on a device in the database
    */
-  socket.on('updateDeviceSocketId', (data) => {
-    if (!objectValidator.isValidData(data, { user: { userName: true }, device: { deviceId: true } })) {
+  socket.on('updateDeviceSocketId', ({ user, device }) => {
+    if (!objectValidator.isValidData({ user, device }, { user: { userName: true }, device: { deviceId: true } })) {
       return;
     }
 
-    const deviceId = data.device.deviceId;
-    const userName = data.user.userName;
+    const deviceId = device.deviceId;
 
     socket.join(deviceId + appConfig.deviceAppend);
 
-    dbDevice.updateDeviceSocketId(deviceId, socket.id, userName, () => {
+    dbDevice.updateDeviceSocketId(deviceId, socket.id, user.userName, () => {
     });
   });
 }

@@ -100,13 +100,10 @@ function handle(socket) {
         socketId: '',
         password: user.password,
         registerDevice: user.registerDevice,
-        mode: appConfig.defaultMode,
         verified: false,
         rooms: [
           databasePopulation.rooms.public.roomName,
-          databasePopulation.rooms.important.roomName,
           databasePopulation.rooms.bcast.roomName,
-          databasePopulation.rooms.morse.roomName,
         ],
       };
       const wallet = {

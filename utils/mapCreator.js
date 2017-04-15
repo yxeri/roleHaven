@@ -112,6 +112,12 @@ function createPosition(placemark) {
  * @param {Function} callback - Callback
  */
 function getGooglePositions(callback) {
+  if (!appConfig.mapLayersPath) {
+    callback(null, []);
+
+    return;
+  }
+
   request.get(appConfig.mapLayersPath, (err, response, body) => {
     if (err || response.statusCode !== 200) {
       callback(err || true);

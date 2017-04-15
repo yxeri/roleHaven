@@ -21,7 +21,6 @@ const chatHandler = require('./socketHandlers/chat');
 const userHandler = require('./socketHandlers/user');
 const dbConnector = require('../db/databaseConnector');
 const dbUser = require('../db/connectors/user');
-const commandHandler = require('./socketHandlers/command');
 const teamHandler = require('./socketHandlers/team');
 const hackingHandler = require('./socketHandlers/hacking');
 const utilityHandler = require('./socketHandlers/utility');
@@ -157,7 +156,6 @@ function handle(io) {
 
     userHandler.handle(socket);
     chatHandler.handle(socket, io);
-    commandHandler.handle(socket);
     deviceHandler.handle(socket);
     teamHandler.handle(socket, io);
     hackingHandler.handle(socket);

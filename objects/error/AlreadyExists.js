@@ -17,7 +17,7 @@
 const GeneralError = require('./GeneralError');
 
 class AlreadyExists extends GeneralError {
-  constructor({ propertyName = 'unknown' }) {
+  constructor({ propertyName = '' }) {
     super({
       type: 'Already exists',
       text: [`${propertyName} already exists`],

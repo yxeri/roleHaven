@@ -26,81 +26,6 @@ const errorCreator = require('../objects/error/errorCreator');
 const manager = require('../socketHelpers/manager');
 
 /**
- * Symbolizes space between words in morse string
- * @private
- * @type {string}
- */
-const morseSeparator = '#';
-const morseCodes = {
-  a: '.-',
-  b: '-...',
-  c: '-.-.',
-  d: '-..',
-  e: '.',
-  f: '..-.',
-  g: '--.',
-  h: '....',
-  i: '..',
-  j: '.---',
-  k: '-.-',
-  l: '.-..',
-  m: '--',
-  n: '-.',
-  o: '---',
-  p: '.--.',
-  q: '--.-',
-  r: '.-.',
-  s: '...',
-  t: '-',
-  u: '..-',
-  v: '...-',
-  w: '.--',
-  x: '-..-',
-  y: '-.--',
-  z: '--..',
-  1: '.----',
-  2: '..---',
-  3: '...--',
-  4: '....-',
-  5: '.....',
-  6: '-....',
-  7: '--...',
-  8: '---..',
-  9: '----.',
-  0: '-----',
-  '#': morseSeparator,
-};
-
-/**
- * Parses the text that will be sent as morse and returns the parsed morse text
- * @private
- * @param {string} text - Text to be sent as morse
- * @returns {string} - Parsed morse text
- */
-function parseMorse(text) {
-  let morseCode;
-  let morseCodeText = '';
-  let filteredText = text.toLowerCase();
-
-  filteredText = filteredText.replace(/[åä]/g, 'a');
-  filteredText = filteredText.replace(/[ö]/g, 'o');
-  filteredText = filteredText.replace(/\s/g, '#');
-  filteredText = filteredText.replace(/[^a-z0-9#]/g, '');
-
-  for (let i = 0; i < filteredText.length; i += 1) {
-    morseCode = morseCodes[filteredText.charAt(i)];
-
-    for (let j = 0; j < morseCode.length; j += 1) {
-      morseCodeText += `${morseCode[j]}${j === morseCode.length - 1 ? '' : ' '}`;
-    }
-
-    morseCodeText += '  ';
-  }
-
-  return morseCodeText;
-}
-
-/**
  * Add a sent message to a room's history in the database
  * @param {string} roomName - Name of the room
  * @param {Object} message - Message to be added
@@ -192,48 +117,7 @@ function sendMsg({ socket, message, userName, sendTo }) {
     sendTo,
   };
 
-  socket.broadcast.to(data.sendTo).emit('message', data);
-}
-
-/**
- * Sends a message with the importantMsg class. It can be sent to all connected sockets or one specific device (if toOneDevice is set)
- * It is stored in a separate histories collection for important messages
- * Emits importantMsg
- * @param {Object} socket - Socket.io socket
- * @param {{text: string[], userName: string}} message - Message to send
- * @param {boolean} [device] - Device that will receive message. Empty if message should be sent to all clients
- * @param {Function} callback - Client callback
- */
-function sendImportantMsg({ socket, message, device, callback }) {
-  if (!objectValidator.isValidData({ socket, message, device }, { socket: true, message: { text: true, userName: true } })) {
-    callback({ error: {} });
-
-    return;
-  }
-
-  const data = {
-    message,
-    device,
-  };
-  data.message.roomName = device ? device.deviceId + appConfig.deviceAppend : (data.message.roomName || databasePopulation.rooms.important.roomName);
-  data.message.extraClass = 'importantMsg';
-  data.message.time = new Date();
-
-  addMsgToHistory(data.message.roomName, data.message, (err) => {
-    if (err) {
-      callback({ error: {} });
-
-      return;
-    }
-
-    if (device) {
-      socket.broadcast.to(data.message.roomName).emit('importantMsg', data);
-    } else {
-      socket.broadcast.emit('importantMsg', data);
-    }
-
-    callback(data);
-  });
+  socket.broadcast.to(data.sendTo).emit('chatMsg', data);
 }
 
 /**
@@ -256,32 +140,31 @@ function sendAndStoreChatMsg({ user, callback, message, io, socket }) {
       return;
     }
 
-    const modifiedMessage = message;
-    modifiedMessage.time = new Date();
+    message.time = new Date();
 
     const data = {
-      messages: [modifiedMessage],
+      messages: [message],
       room: { roomName: message.roomName },
     };
 
-    addMsgToHistory(modifiedMessage.roomName, modifiedMessage, (err) => {
+    addMsgToHistory(message.roomName, message, (err) => {
       if (err) {
         callback({ error: new errorCreator.Database() });
 
         return;
       }
 
-      if (modifiedMessage.anonymous) {
-        modifiedMessage.userName = 'anonymous';
-        modifiedMessage.time.setHours(0);
-        modifiedMessage.time.setMinutes(0);
-        modifiedMessage.time.setSeconds(0);
+      if (message.anonymous) {
+        message.userName = 'anonymous';
+        message.time.setHours(0);
+        message.time.setMinutes(0);
+        message.time.setSeconds(0);
       }
 
       if (socket) {
-        socket.broadcast.to(modifiedMessage.roomName).emit('chatMsgs', data);
+        socket.broadcast.to(message.roomName).emit('chatMsgs', data);
       } else {
-        io.to(modifiedMessage.roomName).emit('chatMsgs', data);
+        io.to(message.roomName).emit('chatMsgs', data);
       }
 
       callback({ data });
@@ -303,6 +186,10 @@ function sendChatMsg({ message, user, callback, io, socket }) {
     callback({ error: new errorCreator.InvalidData() });
 
     return;
+  }
+
+  if (message.roomName === 'team') {
+    message.roomName = user.team + appConfig.teamAppend;
   }
 
   if (message.userName) {
@@ -327,12 +214,7 @@ function sendChatMsg({ message, user, callback, io, socket }) {
       sendAndStoreChatMsg({ io, message, user, callback, socket });
     });
   } else {
-    const modifiedMessage = message;
-    modifiedMessage.userName = user.userName;
-
-    if (modifiedMessage.roomName === 'team') {
-      modifiedMessage.roomName = user.team + appConfig.teamAppend;
-    }
+    message.userName = user.userName;
 
     sendAndStoreChatMsg({ io, message, user, callback, socket });
   }
@@ -486,49 +368,6 @@ function sendList(params) {
   socket.emit('list', data);
 }
 
-/**
- * Send morse code to all sockets and store in history
- * @param {Object} socket - Socket.IO socket
- * @param {Object} message - Message
- * @param {string} message.morseCode - Morse code
- * @param {string} [message.room] - Room name
- * @param {boolean} [silent] - Should the morse code text be surpressed?
- * @param {boolean} [local] - Should morse be played on the client that sent it?
- * @param {Function} [callback] - Callback
- */
-function sendMorse({ socket, message, silent, local, callback = () => {} }) {
-  if (!objectValidator.isValidData({ socket, message, silent, local, callback }, { socket: true, message: { morseCode: true } })) {
-    callback({ error: {} });
-
-    return;
-  }
-
-  const roomName = message.roomName || databasePopulation.rooms.morse.roomName;
-  const morseCode = parseMorse(message.morseCode);
-  const morseObj = {
-    morseCode,
-    silent,
-  };
-
-  if (!local) {
-    socket.broadcast.emit('morse', morseObj);
-  }
-
-  socket.emit('morse', morseObj);
-
-  if (!silent) {
-    const morseMessage = {
-      text: [morseCode.replace(/#/g, '')],
-      time: new Date(),
-      roomName,
-    };
-
-    addMsgToHistory(roomName, morseMessage, () => {
-    });
-  }
-}
-
-exports.sendImportantMsg = sendImportantMsg;
 exports.sendChatMsg = sendChatMsg;
 exports.sendWhisperMsg = sendWhisperMsg;
 exports.sendBroadcastMsg = sendBroadcastMsg;
@@ -536,5 +375,4 @@ exports.sendMsg = sendMsg;
 exports.sendSelfMsg = sendSelfMsg;
 exports.sendSelfMsgs = sendSelfMsgs;
 exports.sendList = sendList;
-exports.sendMorse = sendMorse;
 exports.sendSelfChatMsgs = sendSelfChatMsgs;
