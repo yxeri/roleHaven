@@ -27,6 +27,8 @@ const http = require('http');
 const request = require('request');
 const gameUserManager = require('../../utils/gameUserManager');
 
+// TODO Everything needs to be updated
+
 const signalThreshold = 50;
 const signalDefault = 100;
 const changePercentage = 0.2;
@@ -205,12 +207,12 @@ function updateSignalValue(stationId, boostingSignal) {
           return;
         }
         postRequest({
-          host: 'wrecking.bbreloaded.se',
-          path: '/reports/set_boost',
+          host: appConfig.hackingApiHost,
+          path: appConfig.hackingApiPath,
           data: {
             station: stationId,
             boost: ceilSignalValue,
-            key: 'hemligt',
+            key: appConfig.hackingApiKey,
           },
           callback: (response) => {
             console.log(response);
@@ -291,8 +293,6 @@ function handle(socket) {
       if (err) {
         return;
       }
-
-      console.log('Get all game users');
 
       messenger.sendSelfMsg({
         socket,
