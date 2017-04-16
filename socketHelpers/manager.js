@@ -399,6 +399,54 @@ function createTransaction({ transaction, callback, user, io }) {
   });
 }
 
+/**
+ * Follow a new room on the socket
+ * @param {Object} params Parameters
+ * @param {string} params.userName User name following the room
+ * @param {Object} params.room New room to follow
+ * @param {Function} params.callback Callback
+ * @param {Object} [params.socket] Socket.IO socket
+ */
+function followRoom({ userName, socket, room, callback }) {
+  const roomName = room.roomName;
+
+  socket.broadcast.to(roomName).emit('roomFollower', { userName, roomName, isFollowing: true });
+  socket.join(roomName);
+  callback({ data: { room } });
+}
+
+/**
+ * Follow a new room on the user
+ * @param {Object} params.room Room to follow
+ * @param {Object} params.room.roomName Name of the room
+ * @param {Object} [params.room.password] Password to the room
+ * @param {Object} params.user User trying to follow a room
+ * @param {Function} params.callback Callback
+ * @param {Object} [params.socket] Socket.io socket
+ */
+function authFollowRoom({ socket, room, user, callback }) {
+  room.roomName = room.roomName.toLowerCase();
+  room.password = room.password || '';
+
+  dbRoom.authUserToRoom(user, room.roomName, room.password, (err, authRoom) => {
+    if (err || authRoom === null) {
+      callback({ error: new errorCreator.NotAllowed({ used: `follow room ${room.roomName}` }) });
+
+      return;
+    }
+
+    dbUser.addRoomToUser(user.userName, room.roomName, (roomErr) => {
+      if (roomErr) {
+        callback({ error: new errorCreator.Database() });
+
+        return;
+      }
+
+      followRoom({ userName: user.userName, room, callback, socket });
+    });
+  });
+}
+
 exports.userIsAllowed = userIsAllowed;
 exports.getHistory = getHistory;
 exports.createRoom = createRoom;
@@ -408,3 +456,5 @@ exports.addAlias = addAlias;
 exports.createWallet = createWallet;
 exports.getAllUserTransactions = getAllUserTransactions;
 exports.createTransaction = createTransaction;
+exports.authFollowRoom = authFollowRoom;
+exports.followRoom = followRoom;

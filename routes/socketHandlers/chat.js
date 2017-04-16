@@ -19,7 +19,6 @@
 const dbConnector = require('../../db/databaseConnector');
 const dbRoom = require('../../db/connectors/room');
 const dbUser = require('../../db/connectors/user');
-const dbDevice = require('../../db/connectors/device');
 const manager = require('../../socketHelpers/manager');
 const databasePopulation = require('../../config/defaults/config').databasePopulation;
 const appConfig = require('../../config/defaults/config').app;
@@ -29,34 +28,6 @@ const objectValidator = require('../../utils/objectValidator');
 const fs = require('fs');
 const errorCreator = require('../../objects/error/errorCreator');
 const textTools = require('../../utils/textTools');
-
-/**
- * Follow a new room on the socket
- * @param {Object} params - Parameters
- * @param {Object} params.socket - Socket.IO socket
- * @param {Object} params.room - New room to follow
- * @param {string} params.userName - Name of the new user following the room
- * @param {Function} params.callback - Callback
- */
-function followRoom({ socket, room, userName, callback }) {
-  const roomName = room.roomName;
-
-  if (Object.keys(socket.rooms).indexOf(roomName) < 0) {
-    messenger.sendMsg({
-      socket,
-      message: {
-        userName: 'SYSTEM',
-        text: [`${userName} started following ${roomName}`],
-        text_se: [`${userName} började följa ${roomName}`],
-        roomName,
-      },
-      sendTo: roomName,
-    });
-  }
-
-  socket.join(roomName);
-  callback({ data: { room } });
-}
 
 /**
  * Should the room be hidden?
@@ -166,14 +137,14 @@ function handle(socket, io) {
 
   socket.on('createRoom', ({ room }, callback = () => {}) => {
     if (!objectValidator.isValidData({ room }, { room: { roomName: true } })) {
-      callback({ error: {} });
+      callback({ error: new errorCreator.InvalidData({ expectedResult: '{ room: { roomName } }' }) });
 
       return;
     }
 
     manager.userIsAllowed(socket.id, databasePopulation.commands.createroom.commandName, (allowErr, allowed, user) => {
       if (allowErr || !allowed || !user) {
-        callback({ error: {} });
+        callback({ error: new errorCreator.Database() });
 
         return;
       }
@@ -183,23 +154,16 @@ function handle(socket, io) {
 
       manager.createRoom(room, user, (createErr, createdRoom) => {
         if (createErr) {
-          logger.sendSocketErrorMsg({
-            socket,
-            code: logger.ErrorCodes.db,
-            text: ['Failed to create room'],
-            text_se: ['Lyckades inte skapa rummet'],
-            err: createErr,
-          });
-          callback({ error: {} });
+          callback({ error: new errorCreator.Database() });
 
           return;
         } else if (!createdRoom) {
-          callback({});
+          callback({ error: new errorCreator.AlreadyExists({ name: 'room' }) });
 
           return;
         }
 
-        followRoom({ socket, userName: user.userName, room: createdRoom, callback, io });
+        manager.followRoom({ userName: user.userName, room: createdRoom, callback, socket });
       });
     });
   });
@@ -289,58 +253,19 @@ function handle(socket, io) {
   // TODO Duplicate code in rest api
   socket.on('follow', ({ room }, callback = () => {}) => {
     if (!objectValidator.isValidData({ room }, { room: { roomName: true } })) {
-      callback({ error: {} });
+      callback({ error: new errorCreator.InvalidData({ expectedResult: '{ room: { roomName } }' }) });
 
       return;
     }
 
     manager.userIsAllowed(socket.id, databasePopulation.commands.follow.commandName, (allowErr, allowed, user) => {
       if (allowErr || !allowed || !user) {
-        callback({ error: {} });
+        callback({ error: new errorCreator.NotAllowed({ used: 'follow' }) });
 
         return;
       }
 
-      const modifiedRoom = room;
-      modifiedRoom.roomName = room.roomName.toLowerCase();
-
-      if (room.password === undefined) {
-        modifiedRoom.password = '';
-      }
-
-      dbRoom.authUserToRoom(user, modifiedRoom.roomName, modifiedRoom.password, (err, authRoom) => {
-        if (err || authRoom === null) {
-          callback({
-            error: {
-              code: logger.ErrorCodes.db,
-              text: [`You are not authorized to join ${modifiedRoom.roomName}`],
-              text_se: [`Ni har inte tillåtelse att gå in i rummet ${modifiedRoom.roomName}`],
-            },
-          });
-
-          return;
-        }
-
-        dbUser.addRoomToUser(user.userName, modifiedRoom.roomName, (roomErr) => {
-          if (roomErr) {
-            callback({
-              error: {
-                code: logger.ErrorCodes.db,
-                text: [`Failed to follow ${modifiedRoom.roomName}`],
-              },
-            });
-            logger.sendErrorMsg({
-              code: logger.ErrorCodes.db,
-              text: [`Failed to follow ${modifiedRoom.roomName}`],
-              err: roomErr,
-            });
-
-            return;
-          }
-
-          followRoom({ socket, userName: user.userName, room: modifiedRoom, callback, io });
-        });
-      });
+      manager.authFollowRoom({ socket, room, user, callback });
     });
   });
 
@@ -354,50 +279,36 @@ function handle(socket, io) {
 
     manager.userIsAllowed(socket.id, databasePopulation.commands.unfollow.commandName, (allowErr, allowed, user) => {
       if (allowErr || !allowed || !user) {
-        callback({ error: {} });
+        callback({ error: new errorCreator.NotAllowed({ used: 'unfollow' }) });
 
         return;
       }
 
-      // TODO Move toLowerCase to class
       const roomName = room.roomName.toLowerCase();
 
-      if (Object.keys(socket.rooms).indexOf(roomName) > -1) {
-        const userName = user.userName;
+      if (Object.keys(socket.rooms).indexOf(roomName) === -1) {
+        callback({ error: new errorCreator.NotAllowed({ used: 'unfollow room that is not followed' }) });
 
-        /*
-         * User should not be able to unfollow its own room
-         * That room is for private messaging between users
-         */
-        if (roomName !== userName) {
-          dbUser.removeRoomFromUser(userName, roomName, (err, removedUser) => {
-            if (err || removedUser === null) {
-              callback({ error: {} });
+        return;
+      }
 
-              return;
-            }
+      const userName = user.userName;
 
-            messenger.sendMsg({
-              socket,
-              message: {
-                roomName,
-                text: [`${userName} left ${roomName}`],
-                text_se: [`${userName} lämnade ${roomName}`],
-                userName: 'SYSTEM',
-              },
-              sendTo: roomName,
-            });
-            socket.leave(roomName);
-            callback({ data: { room } });
-          });
-        }
-      } else {
-        // TODO Should send error object
-        callback({
-          message: {
-            text: [`You are not following ${roomName}`],
-            text_se: [`Ni följer inte ${roomName}`],
-          },
+      /*
+       * User should not be able to unfollow its own room
+       * That room is for private messaging between users
+       */
+      if (roomName !== userName) {
+        dbUser.removeRoomFromUser(userName, roomName, (err, removedUser) => {
+          if (err || removedUser === null) {
+            callback({ error: {} });
+
+            return;
+          }
+
+          socket.broadcast.to(roomName).emit('roomFollower', { userName, roomName, isFollowing: false });
+          socket.leave(roomName);
+          callback({ data: { room } });
         });
       }
     });
@@ -412,7 +323,7 @@ function handle(socket, io) {
         return;
       }
 
-      dbRoom.getAllRooms(user, (roomErr, rooms) => {
+      dbRoom.getAllRooms(user, (roomErr, rooms = []) => {
         if (roomErr) {
           logger.sendErrorMsg({
             code: logger.ErrorCodes.db,
@@ -465,15 +376,9 @@ function handle(socket, io) {
         return;
       }
 
-      dbUser.getAllUsers(user, (userErr, users) => {
-        if (userErr || users === null) {
-          logger.sendErrorMsg({
-            code: logger.ErrorCodes.db,
-            text: ['Failed to get all users'],
-            err: userErr,
-          });
-
-          callback({ error: {} });
+      dbUser.getAllUsers(user, (userErr, users = []) => {
+        if (userErr) {
+          callback({ error: new errorCreator.Database() });
 
           return;
         }
@@ -622,15 +527,7 @@ function handle(socket, io) {
           socket.broadcast.to(roomNameLower).emit('unfollow', { room });
         });
 
-        messenger.sendMsg({
-          socket,
-          message: {
-            userName: 'SYSTEM',
-            text: [`Room ${roomNameLower} has been removed by the room administrator`],
-            text_se: [`Rummet ${roomNameLower} har blivit borttaget av en administratör för rummet`],
-          },
-          sendTo: roomNameLower,
-        });
+        // TODO Send message that the room has been removed
         callback({ data: { room } });
       });
     });
@@ -855,7 +752,7 @@ function handle(socket, io) {
             return;
           }
 
-          followRoom({ room: { roomName }, socket, userName, callback, io });
+          manager.followRoom({ room: { roomName }, socket, userName, callback });
           dbConnector.removeInvitationFromList(userName, roomName, modifiedInvitation.invitationType, () => {
           });
         });
