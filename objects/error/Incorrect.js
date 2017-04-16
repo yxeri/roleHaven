@@ -14,13 +14,15 @@
  limitations under the License.
  */
 
-exports.General = require('./GeneralError');
-exports.InvalidData = require('./InvalidData');
-exports.NotAllowed = require('./NotAllowed');
-exports.InvalidCharacters = require('./InvalidCharacters');
-exports.Database = require('./Database');
-exports.AlreadyExists = require('./AlreadyExists');
-exports.External = require('./External');
-exports.Missing = require('./Missing');
-exports.DoesNotExist = require('./DoesNotExist');
-exports.Incorrect = require('./Incorrect');
+const GeneralError = require('./GeneralError');
+
+class Incorrect extends GeneralError {
+  constructor({ name = '' }) {
+    super({
+      type: 'Incorrect',
+      text: [`Incorrect ${name}`],
+    });
+  }
+}
+
+module.exports = Incorrect;
