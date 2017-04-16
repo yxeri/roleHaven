@@ -154,8 +154,16 @@ config.users = {
     visibility: config.accessLevels.god,
     rooms: [],
   },
-  anonymous: config.users.admin || {
+  anonymous: config.users.anonymous || {
     userName: 'anonymous',
+    password: generatePass(),
+    verified: false,
+    accessLevel: config.accessLevels.anonymous,
+    visibility: config.accessLevels.god,
+    rooms: [],
+  },
+  system: config.users.system || {
+    userName: 'system',
     password: generatePass(),
     verified: false,
     accessLevel: config.accessLevels.anonymous,
