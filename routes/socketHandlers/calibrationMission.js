@@ -28,7 +28,7 @@ function handle(socket) {
   socket.on('getCalibrationMission', (params, callback = () => {}) => {
     manager.userIsAllowed(socket.id, databasePopulation.commands.calibrationMission.commandName, (allowErr, allowed, user) => {
       if (allowErr || !allowed) {
-        callback({ error: new errorCreator.NotAllowed({ used: 'getCalibrationMission' }) });
+        callback({ error: new errorCreator.NotAllowed({ name: 'getCalibrationMission' }) });
 
         return;
       }
@@ -46,7 +46,7 @@ function handle(socket) {
               return;
             }
 
-            const stationIds = [1, 2, 3, 4]; // TODO This is jsut for testing purposes. Remove when organisers have their backend ready
+            const stationIds = [1, 2, 3, 4]; // TODO This is just for testing purposes. Remove when organisers have their backend ready
 
             if (inactiveMissions && inactiveMissions.length > 0) {
               const previousStationId = inactiveMissions[inactiveMissions.length - 1].stationId;

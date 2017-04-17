@@ -16,7 +16,7 @@
 
 const GeneralError = require('./GeneralError');
 
-class AlreadyExists extends GeneralError {
+class AlreadyExists extends GeneralError.create {
   /**
    * Create already exists error
    * @param {string} [params.name] Name of type of object that already exists

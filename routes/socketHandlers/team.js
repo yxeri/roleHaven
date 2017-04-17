@@ -26,62 +26,18 @@ const objectValidator = require('../../utils/objectValidator');
 const messenger = require('../../socketHelpers/messenger');
 const appConfig = require('../../config/defaults/config').app;
 const errorCreator = require('../../objects/error/errorCreator');
-const dbPosition = require('../../db/connectors/position');
-
-/**
- * Update user's team
- * @param {Object} params - Parameters
- * @param {Object} params.socket - Socket.IO socket
- * @param {string} params.userName - Name of the user
- * @param {string} params.teamName - Name of the team
- * @param {Function} params.callback - Callback
- */
-function updateUserTeam({ socket, userName, teamName, callback }) {
-  dbUser.updateUserTeam(userName, teamName, (err, user) => {
-    if (err || user === null) {
-      logger.sendSocketErrorMsg({
-        socket,
-        code: logger.ErrorCodes.general,
-        text: [`Failed to add member ${userName} to team ${teamName}`],
-        text_se: [`Misslyckades med att lägga till medlem ${userName} till teamet ${teamName}`],
-        err,
-      });
-    } else {
-      messenger.sendMsg({
-        socket,
-        message: {
-          text: [`You have been added to the team ${teamName}`],
-          text_se: [`Ni har blivit tillagd i teamet ${teamName}`],
-          userName: 'SYSTEM',
-        },
-        sendTo: userName + appConfig.whisperAppend,
-      });
-    }
-
-    if (callback) {
-      callback(err, user);
-    }
-  });
-}
 
 /**
  * Add user to team's room
- * @param {Object} params - Parameters
- * @param {string} params.userName - Name of the user
- * @param {string} params.roomName - Name of the room
- * @param {Object} params.io - Socket.IO
+ * @param {string} params.userName Name of the user
+ * @param {string} params.roomName Name of the room
+ * @param {Object} params.io Socket.IO
+ * @param {Function} params.callback Callback
  */
-function addUserTeamRoom({ roomName, userName, io }) {
+function addUserTeamRoom({ roomName, userName, io, callback }) {
   dbUser.addRoomToUser(userName, roomName, (roomErr, user) => {
-    if (roomErr || user === null) {
-      logger.sendErrorMsg({
-        code: logger.ErrorCodes.db,
-        text: ['Failed to follow team room'],
-        text_se: ['Misslyckades med att följa team-rummet'],
-        err: roomErr,
-      });
-
-      return;
+    if (roomErr) {
+      callback({ error: new errorCreator.Database() });
     }
 
     const userSocket = io.sockets.connected[user.socketId];
@@ -90,31 +46,8 @@ function addUserTeamRoom({ roomName, userName, io }) {
       userSocket.join(roomName);
       userSocket.emit('follow', { room: { roomName: 'team' } });
     }
-  });
-}
 
-/**
- * Get team
- * @param {Object} params - Parameters
- * @param {Object} params.socket - Socket.IO socket
- * @param {Object} params.user - User
- * @param {Function} params.callback - Callback
- */
-function getTeam({ socket, user, callback }) {
-  dbConnector.getTeam(user.team, (err, team) => {
-    let newErr;
-
-    if (err || team === null) {
-      logger.sendSocketErrorMsg({
-        socket,
-        code: logger.ErrorCodes.general,
-        text: ['Failed to get team'],
-        err,
-      });
-      newErr = {};
-    }
-
-    callback(newErr, team);
+    callback({ data: { room: { roomName } } });
   });
 }
 
@@ -123,150 +56,24 @@ function getTeam({ socket, user, callback }) {
  * @param {object} io - Socket.IO
  */
 function handle(socket, io) {
-  socket.on('getTeam', () => {
-    manager.userIsAllowed(socket.id, databasePopulation.commands.inviteteam.commandName, (allowErr, allowed, user) => {
-      if (allowErr || !allowed) {
+  socket.on('getTeam', (params, callback = () => {}) => {
+    manager.userIsAllowed(socket.id, databasePopulation.commands.getTeam.commandName, (allowErr, allowed, user) => {
+      if (allowErr) {
+        callback({ error: new errorCreator.Database() });
+
         return;
-      }
-
-      getTeam({
-        socket,
-        user,
-        callback: () => {
-        },
-      });
-    });
-  });
-
-  socket.on('teamExists', (params) => {
-    if (!objectValidator.isValidData(params, { team: { teamName: true } })) {
-      socket.emit('commandFail');
-
-      return;
-    }
-
-    manager.userIsAllowed(socket.id, databasePopulation.commands.createteam.commandName, (allowErr, allowed) => {
-      if (allowErr || !allowed) {
-        socket.emit('commandFail');
+      } else if (!allowed) {
+        callback({ error: new errorCreator.NotAllowed({ name: 'getTeam' }) });
 
         return;
       }
 
-      dbConnector.getTeam(params.team.teamName, (err, foundTeam) => {
+      dbConnector.getTeam(user.team, (err, team) => {
         if (err) {
-          logger.sendSocketErrorMsg({
-            socket,
-            code: logger.ErrorCodes.db,
-            text: ['Failed to check if team exists'],
-            text_se: ['Misslyckades med att försöka hitta teamet'],
-            err,
-          });
-          socket.emit('commandFail');
-
-          return;
-        } else if (foundTeam !== null) {
-          messenger.sendSelfMsg({
-            socket,
-            message: {
-              text: ['Team with that name already exists'],
-              text_se: ['Ett team med det namnet existerar redan'],
-            },
-          });
-          socket.emit('commandFail');
-
-          return;
+          callback({ error: new errorCreator.Database() });
         }
 
-        socket.emit('commandSuccess', { freezeStep: true });
-      });
-    });
-  });
-
-  socket.on('inviteToTeam', (params) => {
-    if (!objectValidator.isValidData(params, { user: { userName: true } })) {
-      return;
-    }
-
-    manager.userIsAllowed(socket.id, databasePopulation.commands.inviteteam.commandName, (allowErr, allowed, user) => {
-      if (allowErr || !allowed) {
-        return;
-      }
-
-      getTeam({
-        socket,
-        user,
-        callback: (err, team) => {
-          if (err) {
-            return;
-          } else if (team.owner !== user.userName && team.admins.indexOf(user.userName) === -1) {
-            logger.sendSocketErrorMsg({
-              socket,
-              code: logger.ErrorCodes.general,
-              text: ['You are not an admin of the team. You are not allowed to add new team members'],
-              text_se: ['Ni är inte en admin av teamet. Ni har inte tillåtelse att lägga till nya medlemmar'],
-              err,
-            });
-
-            return;
-          }
-
-          const userName = params.user.userName;
-
-          dbUser.getUser(userName, (userErr, invitedUser) => {
-            if (userErr) {
-              return;
-            } else if (invitedUser.team) {
-              messenger.sendSelfMsg({
-                socket,
-                message: {
-                  text: ['The user is already part of a team'],
-                  text_se: ['Användaren är redan med i ett team'],
-                },
-              });
-
-              return;
-            }
-
-            const invitation = {
-              itemName: user.team,
-              time: new Date(),
-              invitationType: 'team',
-              sender: user.userName,
-            };
-
-            dbConnector.addInvitationToList(userName, invitation, (invErr, list) => {
-              if (invErr || list !== null) {
-                if (list || invErr.code === 11000) {
-                  messenger.sendSelfMsg({
-                    socket,
-                    message: {
-                      text: ['You have already sent an invite to the user'],
-                      text_se: ['Ni har redan skickat en inbjudan till användaren'],
-                    },
-                  });
-                } else {
-                  logger.sendSocketErrorMsg({
-                    socket,
-                    code: logger.ErrorCodes.general,
-                    text: ['Failed to send the invite'],
-                    text_se: ['Misslyckades med att skicka inbjudan'],
-                    err,
-                  });
-                }
-
-                return;
-              }
-
-              messenger.sendSelfMsg({
-                socket,
-                message: {
-                  text: ['Sent an invitation to the user'],
-                  text_se: ['Skickade en inbjudan till användaren'],
-                },
-              });
-            });
-          });
-        },
+        callback({ data: { team } });
       });
     });
   });
@@ -283,7 +90,7 @@ function handle(socket, io) {
       return;
     }
 
-    manager.userIsAllowed(socket.id, databasePopulation.commands.createteam.commandName, (allowErr, allowed, allowedUser) => {
+    manager.userIsAllowed(socket.id, databasePopulation.commands.createTeam.commandName, (allowErr, allowed, allowedUser) => {
       if (allowErr || !allowed) {
         return;
       } else if (allowedUser.team) {
@@ -394,7 +201,7 @@ function handle(socket, io) {
               },
             });
           } else {
-            updateUserTeam({
+            manager.updateUserTeam({
               socket,
               userName: owner,
               teamName,
@@ -407,7 +214,7 @@ function handle(socket, io) {
 
             if (admins) {
               for (const admin of admins) {
-                updateUserTeam({
+                manager.updateUserTeam({
                   socket,
                   userName: admin,
                   teamName,
@@ -430,7 +237,7 @@ function handle(socket, io) {
       return;
     }
 
-    manager.userIsAllowed(socket.id, databasePopulation.commands.verifyteam.commandName, (allowErr, allowed) => {
+    manager.userIsAllowed(socket.id, databasePopulation.commands.verifyTeam.commandName, (allowErr, allowed) => {
       if (allowErr || !allowed) {
         return;
       }
@@ -453,27 +260,27 @@ function handle(socket, io) {
         const admins = team.admins;
         const roomName = teamName + appConfig.teamAppend;
 
-        updateUserTeam({
-          socket,
+        manager.updateUserTeam({
           userName: owner,
+          socket,
           teamName,
         });
         addUserTeamRoom({
-          io,
           userName: owner,
+          io,
           roomName,
         });
 
         if (admins) {
           for (const admin of admins) {
-            updateUserTeam({
-              socket,
+            manager.updateUserTeam({
               userName: admin,
+              socket,
               teamName,
             });
             addUserTeamRoom({
-              io,
               userName: admin,
+              io,
               roomName,
             });
           }
@@ -491,7 +298,7 @@ function handle(socket, io) {
   });
 
   socket.on('verifyAllTeams', () => {
-    manager.userIsAllowed(socket.id, databasePopulation.commands.verifyteam.commandName, (allowErr, allowed) => {
+    manager.userIsAllowed(socket.id, databasePopulation.commands.verifyTeam.commandName, (allowErr, allowed) => {
       if (allowErr || !allowed) {
         return;
       }
@@ -535,8 +342,8 @@ function handle(socket, io) {
     });
   });
 
-  socket.on('unverifiedTeams', () => {
-    manager.userIsAllowed(socket.id, databasePopulation.commands.verifyteam.commandName, (allowErr, allowed) => {
+  socket.on('getUnverifiedTeams', () => {
+    manager.userIsAllowed(socket.id, databasePopulation.commands.verifyTeam.commandName, (allowErr, allowed) => {
       if (allowErr || !allowed) {
         return;
       }
@@ -565,7 +372,7 @@ function handle(socket, io) {
   });
 
   socket.on('leaveTeam', () => {
-    manager.userIsAllowed(socket.id, databasePopulation.commands.leaveteam.commandName, (allowErr, allowed, user) => {
+    manager.userIsAllowed(socket.id, databasePopulation.commands.leaveTeam.commandName, (allowErr, allowed, user) => {
       if (allowErr || !allowed) {
         return;
       }
@@ -622,90 +429,8 @@ function handle(socket, io) {
     });
   });
 
-  socket.on('teamAnswer', (params) => {
-    if (!objectValidator.isValidData(params, { accepted: true, invitation: { itemName: true, sender: true, invitationType: true } })) {
-      return;
-    }
-
-    manager.userIsAllowed(socket.id, databasePopulation.commands.invitations.commandName, (allowErr, allowed, allowedUser) => {
-      if (allowErr || !allowed) {
-        return;
-      }
-
-      const userName = allowedUser.userName;
-      const invitation = params.invitation;
-      const roomName = params.invitation.itemName + appConfig.teamAppend;
-      invitation.time = new Date();
-
-      if (params.accepted) {
-        updateUserTeam({
-          socket,
-          userName,
-          teamName: invitation.itemName,
-          callback: (err, user) => {
-            if (err || user === null) {
-              return;
-            }
-
-            dbUser.addRoomToUser(userName, roomName, (errRoom) => {
-              if (errRoom) {
-                return;
-              }
-
-              messenger.sendSelfMsg({
-                socket,
-                message: {
-                  text: [`Joined team ${invitation.itemName}`],
-                  text_se: [`Gick med i team ${invitation.itemName}`],
-                },
-              });
-
-              dbConnector.removeInvitationTypeFromList(userName, invitation.invitationType, (teamErr) => {
-                if (teamErr) {
-                  logger.sendErrorMsg({
-                    code: logger.ErrorCodes.db,
-                    text: [`Failed to remove all invitations of type ${invitation.invitationType}`],
-                    text_se: [`Misslyckades med att ta bort alla inbjudan av typen ${invitation.invitationType}`],
-                    err: teamErr,
-                  });
-                }
-              });
-
-              socket.join(roomName);
-              socket.emit('follow', { room: { roomName: 'team' } });
-            });
-          },
-        });
-      } else {
-        dbConnector.removeInvitationFromList(userName, invitation.itemName, invitation.invitationType, (err, list) => {
-          if (err || list === null) {
-            messenger.sendSelfMsg({
-              socket,
-              message: {
-                text: ['Failed to decline invitation'],
-                text_se: ['Misslyckades med att avböja inbjudan'],
-              },
-            });
-
-            return;
-          }
-
-          // TODO Send message to sender of invitation
-
-          messenger.sendSelfMsg({
-            socket,
-            message: {
-              text: ['Successfully declined invitation'],
-              text_se: ['Lyckades avböja inbjudan'],
-            },
-          });
-        });
-      }
-    });
-  });
-
   socket.on('getTeamMembers', (params, callback = () => {}) => {
-    manager.userIsAllowed(socket.id, databasePopulation.commands.list.commandName, (allowErr, allowed, user) => {
+    manager.userIsAllowed(socket.id, databasePopulation.commands.getTeam.commandName, (allowErr, allowed, user) => {
       if (allowErr || !allowed || !user) {
         callback({ error: new errorCreator.Database() });
 

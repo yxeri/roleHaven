@@ -24,6 +24,9 @@ const ErrorTypes = {
   INVALIDCHARACTERS: 'invalid characters',
   INVALIDDATA: 'invalid data',
   NOTALLOWED: 'not allowed',
+  NEEDSVERIFICATION: 'needs verification',
+  BANNED: 'banned',
+  INSUFFICIENT: 'insufficient',
 };
 
 class GeneralError {
@@ -40,5 +43,5 @@ class GeneralError {
   }
 }
 
-module.exports = GeneralError;
 exports.ErrorTypes = ErrorTypes;
+exports.create = GeneralError;

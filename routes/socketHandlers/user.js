@@ -27,76 +27,35 @@ const errorCreator = require('../../objects/error/errorCreator');
 const textTools = require('../../utils/textTools');
 
 /**
- * @param {object} socket - Socket.IO socket
- * @param {object} io - Socket.IO
+ * @param {object} socket Socket.IO socket
+ * @param {object} io Socket.IO
  */
-function handle(socket) {
-  socket.on('userExists', (params, callback = () => {}) => {
-    if (!objectValidator.isValidData(params, { user: { userName: true } })) {
-      callback({ error: {} });
-
-      return;
-    }
-
-    manager.userIsAllowed(socket.id, databasePopulation.commands.register.commandName, (allowErr, allowed) => {
-      if (allowErr || !allowed || !params || !params.user || !textTools.isAllowedFull(params.user.userName)) {
-        callback({ error: {} });
-        socket.emit('commandFail');
-
-        return;
-      }
-
-      dbUser.getUser(params.user.userName, (err, foundUser) => {
-        if (err) {
-          callback({
-            error: {
-              code: logger.ErrorCodes.db,
-              text: ['Failed to check if user exists'],
-              text_se: ['Misslyckades med att försöka hitta användaren'],
-            },
-          });
-          socket.emit('commandFail');
-
-          return;
-        } else if (foundUser !== null) {
-          callback({
-            error: {
-              text: ['User with that name already exists'],
-              text_se: ['En användare med det namnet existerar redan'],
-            },
-          });
-          socket.emit('commandFail');
-
-          return;
-        }
-
-        socket.emit('commandSuccess', { freezeStep: true });
-      });
-    });
-  });
-
+function handle(socket, io) {
   socket.on('register', ({ user }, callback = () => {}) => {
     if (!objectValidator.isValidData({ user }, { user: { userName: true, password: true, registerDevice: true } })) {
-      callback({ error: new errorCreator.InvalidData() });
+      callback({ error: new errorCreator.InvalidData({ expected: '{ user: { userName, password, registerDevice } }' }) });
 
       return;
     }
 
     manager.userIsAllowed(socket.id, databasePopulation.commands.register.commandName, (allowErr, allowed) => {
-      if (allowErr || !allowed) {
-        callback({ error: new errorCreator.NotAllowed({ used: databasePopulation.commands.register.commandName }) });
+      if (allowErr) {
+        callback({ error: new errorCreator.Database() });
+
+        return;
+      } else if (!allowed) {
+        callback({ error: new errorCreator.NotAllowed({ name: 'register' }) });
 
         return;
       } else if (!textTools.isAllowedFull(user.userName)) {
-        callback({ error: new errorCreator.InvalidCharacters({ propertyName: 'user name' }) });
+        callback({ error: new errorCreator.InvalidCharacters({ name: user.userName }) });
 
         return;
       }
 
       const userName = user.userName.toLowerCase();
       const userObj = {
-        fullName: user.fullName || user.userName,
-        userName,
+        fullName: user.fullName || userName,
         socketId: '',
         password: user.password,
         registerDevice: user.registerDevice,
@@ -105,10 +64,9 @@ function handle(socket) {
           databasePopulation.rooms.public.roomName,
           databasePopulation.rooms.bcast.roomName,
         ],
+        userName,
       };
-      const wallet = {
-        owner: userName,
-      };
+      const wallet = { owner: userName };
 
       dbUser.createUser(userObj, (err, createdUser) => {
         if (err) {
@@ -116,35 +74,35 @@ function handle(socket) {
 
           return;
         } else if (createdUser === null) {
-          callback({ error: new errorCreator.AlreadyExists({ propertyName: 'user name' }) });
+          callback({ error: new errorCreator.AlreadyExists({ name: `user ${userName}` }) });
 
           return;
         }
 
         const newRoom = {
           roomName: createdUser.userName + appConfig.whisperAppend,
-          visibility: 12,
-          accessLevel: 12,
+          visibility: databasePopulation.accessLevels.superUser,
+          accessLevel: databasePopulation.accessLevels.superUser,
         };
         const requiresVerification = appConfig.userVerify;
 
         manager.createRoom(newRoom, createdUser, () => {});
         manager.createWallet(wallet, () => {});
 
-        if (appConfig.userVerify) {
+        if (requiresVerification) {
           const message = {
             time: new Date(),
             roomName: databasePopulation.rooms.admin.roomName,
           };
 
           messenger.sendMsg({
-            socket,
             message: {
               userName: 'SYSTEM',
               text: [`User ${createdUser.userName} needs to be verified`],
               text_se: [`Användaren ${createdUser.userName} måste bli verifierad`],
             },
             sendTo: message.roomName,
+            socket,
           });
         }
 
@@ -155,7 +113,7 @@ function handle(socket) {
 
   socket.on('updateId', ({ user, device, firstConnection }, callback = () => {}) => {
     if (!objectValidator.isValidData({ user }, { user: true })) {
-      callback({ error: {} });
+      callback({ error: new errorCreator.InvalidData({ expected: '{ user }' }) });
 
       return;
     }
@@ -172,14 +130,16 @@ function handle(socket) {
       socket.join(databasePopulation.rooms.public.roomName);
       callback({ data });
     } else {
-      manager.updateUserSocketId(socket.id, user.userName, (idErr, updatedUser) => {
+      dbUser.updateUserSocketId(user.userName, socket.id, (idErr, updatedUser) => {
         if (idErr) {
-          callback({ error: {} });
+          callback({ error: new errorCreator.Database() });
 
           return;
         } else if (updatedUser === null) {
+          data.anonUser = true;
+
           socket.join(databasePopulation.rooms.public.roomName);
-          callback({ data: { anonUser: true } });
+          callback({ data });
 
           return;
         }
@@ -212,94 +172,76 @@ function handle(socket) {
 
   socket.on('login', ({ user }, callback = () => {}) => {
     if (!objectValidator.isValidData({ user }, { user: { userName: true, password: true } })) {
-      callback({ error: new errorCreator.InvalidData() });
+      callback({ error: new errorCreator.InvalidData({ expected: '{ user: { userName, password } }' }) });
 
       return;
     }
 
     manager.userIsAllowed(socket.id, databasePopulation.commands.login.commandName, (allowErr, allowed) => {
-      if (allowErr || !allowed) {
-        callback({ error: new errorCreator.NotAllowed({ used: databasePopulation.commands.login.commandName }) });
+      if (allowErr) {
+        callback({ error: new errorCreator.Database() });
+
+        return;
+      } else if (!allowed) {
+        callback({ error: new errorCreator.NotAllowed({ name: 'login' }) });
 
         return;
       }
 
-      const userName = user.userName.toLowerCase();
+      user.userName = user.userName.toLowerCase();
 
-      dbUser.authUser(userName, user.password, (err, authUser) => {
-        if (err || authUser === null) {
-          callback({
-            error: {
-              code: logger.ErrorCodes.general,
-              text: ['Failed to login'],
-              text_se: ['Misslyckades med att logga in'],
-            },
-          });
+      dbUser.authUser(user.userName, user.password, (err, authUser) => {
+        if (err) {
+          callback({ error: new errorCreator.Database() });
+
+          return;
+        } else if (authUser === null) {
+          callback({ error: new errorCreator.DoesNotExist({ name: user.userName }) });
 
           return;
         } else if (appConfig.userVerify && !authUser.verified) {
-          callback({
-            error: {
-              code: logger.ErrorCodes.general,
-              text: ['The user has not yet been verified. Failed to login'],
-              text_se: ['Användaren har ännu inte blivit verifierad. Inloggningen misslyckades'],
-            },
-          });
+          callback({ error: new errorCreator.NeedsVerification({ name: authUser.userName }) });
 
           return;
         } else if (authUser.banned) {
-          callback({
-            error: {
-              code: logger.ErrorCodes.general,
-              text: ['The user has been banned. Failed to login'],
-              text_se: ['Användaren är bannad. Inloggningen misslyckades'],
-            },
-          });
+          callback({ error: new errorCreator.Banned({ name: authUser.userName }) });
 
           return;
         }
 
-        manager.updateUserSocketId(socket.id, userName, (idErr) => {
+        dbUser.updateUserSocketId(user.userName, socket.id, (idErr) => {
           if (idErr) {
-            callback({ error: {} });
+            callback({ error: new errorCreator.Database() });
 
             return;
           }
 
-          // const oldSocket = io.sockets.connected[authUser.socketId];
-          //
-          // if (oldSocket) {
-          //   const oldRooms = Object.keys(oldSocket.rooms);
-          //
-          //   for (const oldRoom of oldRooms) {
-          //     if (oldRoom.indexOf(appConfig.deviceAppend) < 0) {
-          //       oldSocket.leave(oldRoom);
-          //     }
-          //   }
-          //
-          //   oldSocket.emit('logout');
-          //   messenger.sendSelfMsg({
-          //     socket: oldSocket,
-          //     message: {
-          //       text: [
-          //         'Your user has been logged in on another device',
-          //         'You have been logged out',
-          //       ],
-          //       text_se: [
-          //         'Din användare har loggat in på en annan enhet',
-          //         'Ni har blivit urloggade',
-          //       ],
-          //     },
-          //   });
-          // }
+          const oldSocket = io.sockets.connected[authUser.socketId];
 
-          const rooms = authUser.rooms;
+          if (oldSocket) {
+            manager.leaveSocketRooms({ socket });
+            oldSocket.emit('logout');
 
-          manager.joinRooms(rooms, socket);
+            messenger.sendSelfMsg({
+              socket: oldSocket,
+              message: {
+                text: [
+                  'Your user has been logged in on another device',
+                  'You have been logged out',
+                ],
+                text_se: [
+                  'Din användare har loggat in på en annan enhet',
+                  'Ni har blivit urloggade',
+                ],
+              },
+            });
+          }
+
+          manager.joinRooms(authUser.rooms, socket);
           callback({ data: { user: authUser } });
         });
 
-        dbUser.setUserLastOnline(userName, new Date(), (userOnlineErr, settedUser) => {
+        dbUser.setUserLastOnline(user.userName, new Date(), (userOnlineErr, settedUser) => {
           if (userOnlineErr || settedUser === null) {
             console.log('Failed to set last online');
           }
@@ -308,100 +250,44 @@ function handle(socket) {
     });
   });
 
-  socket.on('checkPassword', (params, callback = () => {}) => {
-    if (!objectValidator.isValidData(params, { oldPassword: true })) {
-      callback({ error: {} });
+  // TODO Not used
+  socket.on('changePassword', ({ oldPassword, newPassword }, callback = () => {}) => {
+    if (!objectValidator.isValidData({ oldPassword, newPassword }, { oldPassword: true, newPassword: true })) {
+      callback({ error: new errorCreator.InvalidData({ expected: '{ oldPassword, newPassword }' }) });
 
       return;
     }
 
     manager.userIsAllowed(socket.id, databasePopulation.commands.password.commandName, (allowErr, allowed, user) => {
-      if (allowErr || !allowed) {
-        callback({ error: {} });
+      if (allowErr) {
+        callback({ error: new errorCreator.Database() });
+
+        return;
+      } else if (!allowed) {
+        callback({ error: new errorCreator.NotAllowed({ name: 'changePassword' }) });
 
         return;
       }
 
-      dbUser.authUser(user.userName, params.oldPassword, (err, authUser) => {
-        if (err || authUser === null) {
-          callback({
-            error: {
-              code: logger.ErrorCodes.general,
-              text: ['Incorrect password'],
-              text_se: ['Felaktigt lösenord'],
-            },
-          });
-          socket.emit('commandFail');
+      dbUser.authUser(user.userName, oldPassword, (err, authUser) => {
+        if (err) {
+          callback({ error: new errorCreator.Database() });
+
+          return;
+        } else if (authUser === null) {
+          callback({ error: new errorCreator.NotAllowed({ name: 'changePassword' }) });
 
           return;
         }
 
-        callback({
-          message: {
-            text: ['Enter your new password'],
-            text_se: ['Skriv in ert nya lösenord'],
-          },
-        });
-      });
-    });
-  });
-
-  socket.on('changePassword', (params, callback = () => {}) => {
-    if (!objectValidator.isValidData(params, { oldPassword: true, newPassword: true })) {
-      callback({ error: {} });
-
-      return;
-    }
-
-    manager.userIsAllowed(socket.id, databasePopulation.commands.password.commandName, (allowErr, allowed, user) => {
-      if (allowErr || !allowed) {
-        callback({ error: {} });
-
-        return;
-      } else if (!params.newPassword) {
-        callback({
-          error: {
-            code: logger.ErrorCodes.general,
-            text: ['Failed to update password. No new password sent'],
-            text_se: ['Misslyckades med att uppdatera lösenordet. Inget nytt lösenord skickades'],
-          },
-        });
-
-        return;
-      }
-
-      dbUser.authUser(user.userName, params.oldPassword, (err, authUser) => {
-        if (err || authUser === null) {
-          callback({
-            error: {
-              code: logger.ErrorCodes.general,
-              text: ['Failed to update password'],
-              text_se: ['Misslyckades med att uppdatera lösenordet'],
-            },
-          });
-
-          return;
-        }
-
-        dbUser.updateUserPassword(authUser.userName, params.newPassword, (userErr, updatedUser) => {
-          if (userErr || updatedUser === null) {
-            callback({
-              error: {
-                code: logger.ErrorCodes.general,
-                text: ['Failed to update password'],
-                text_se: ['Misslyckades med att uppdatera lösenordet'],
-              },
-            });
+        dbUser.updateUserPassword(authUser.userName, newPassword, (userErr) => {
+          if (userErr) {
+            callback({ error: new errorCreator.Database() });
 
             return;
           }
 
-          callback({
-            message: {
-              text: ['Password has been successfully changed!'],
-              text_se: ['Lösenordet har ändrats!'],
-            },
-          });
+          callback({ data: { success: true } });
         });
       });
     });
@@ -409,471 +295,342 @@ function handle(socket) {
 
   socket.on('logout', (params, callback = () => {}) => {
     manager.userIsAllowed(socket.id, databasePopulation.commands.logout.commandName, (allowErr, allowed, user) => {
-      if (allowErr || !allowed || !user) {
-        callback({ error: {} });
+      if (allowErr) {
+        callback({ error: new errorCreator.Database() });
+
+        return;
+      } else if (!allowed) {
+        callback({ error: new errorCreator.NotAllowed({ name: 'logout' }) });
 
         return;
       }
 
-      const userName = user.userName;
+      const userName = user.userName.toLowerCase();
 
-      dbUser.updateUserSocketId(userName, '', (err, socketUser) => {
-        if (err || socketUser === null) {
-          logger.sendErrorMsg({
-            code: logger.ErrorCodes.general,
-            text: ['Failed to reset user socket ID'],
-            err,
-          });
-          callback({ error: {} });
+      dbUser.updateUserSocketId(userName, '', (err) => {
+        if (err) {
+          callback({ error: new errorCreator.Database() });
 
           return;
         }
 
-        dbUser.updateUserOnline(userName, false, (userErr, updatedUser) => {
-          if (userErr || updatedUser === null) {
-            logger.sendErrorMsg({
-              code: logger.ErrorCodes.general,
-              text: ['Failed to reset socket id'],
-              err: userErr,
-            });
-            callback({ error: {} });
+        dbUser.updateUserOnline(userName, false, (userErr) => {
+          if (userErr) {
+            callback({ error: new errorCreator.Database() });
 
             return;
           }
 
-          const rooms = Object.keys(socket.rooms);
-
-          for (const room of rooms) {
-            if (room.indexOf(appConfig.deviceAppend) < 0 && room !== databasePopulation.rooms.public.roomName) {
-              socket.leave(room);
-            }
-          }
-
-          callback({
-            data: {
-              success: true,
-            },
-          });
+          manager.leaveSocketRooms({ socket });
+          callback({ data: { success: true } });
         });
       });
     });
   });
 
-  socket.on('verifyUser', (params, callback = () => {}) => {
-    if (!objectValidator.isValidData(params, { user: { userName: true } })) {
-      callback({ error: {} });
+  // TODO Not used
+  socket.on('verifyUser', ({ user }, callback = () => {}) => {
+    if (!objectValidator.isValidData({ user }, { user: { userName: true } })) {
+      callback({ error: new errorCreator.InvalidData({ expected: '{ user }' }) });
 
       return;
     }
 
-    manager.userIsAllowed(socket.id, databasePopulation.commands.verifyuser.commandName, (allowErr, allowed) => {
-      if (allowErr || !allowed) {
+    manager.userIsAllowed(socket.id, databasePopulation.commands.verifyUser.commandName, (allowErr, allowed) => {
+      if (allowErr) {
+        callback({ error: new errorCreator.Database() });
+
+        return;
+      } else if (!allowed) {
+        callback({ error: new errorCreator.NotAllowed({ name: 'verifyUser' }) });
+
         return;
       }
 
-      const userNameLower = params.user.userName.toLowerCase();
+      const userName = user.userName.toLowerCase();
 
-      if (userNameLower !== undefined) {
-        dbUser.verifyUser(userNameLower, (err, user) => {
-          if (err || user === null) {
-            callback({
-              error: {
-                code: logger.ErrorCodes.general,
-                text: ['Failed to verify user'],
-                text_se: ['Misslyckades med att verifiera användaren'],
-              },
-            });
+      if (userName !== undefined) {
+        dbUser.verifyUser(userName, (err) => {
+          if (err) {
+            callback({ error: new errorCreator.Database() });
+
+            return;
+          } else if (user === null) {
+            callback({ error: new errorCreator.DoesNotExist({ name: userName }) });
 
             return;
           }
 
-          callback({
-            message: {
-              text: [`User ${user.userName} has been verified`],
-              text_se: [`Användaren ${user.userName} har blivit verifierad`],
-            },
-          });
+          callback({ data: { user: [user] } });
         });
       }
     });
   });
 
-  socket.on('verifyAllUsers', () => {
-    manager.userIsAllowed(socket.id, databasePopulation.commands.verifyuser.commandName, (allowErr, allowed) => {
-      if (allowErr || !allowed) {
+  // TODO Not used
+  socket.on('verifyAllUsers', (params, callback = () => {}) => {
+    manager.userIsAllowed(socket.id, databasePopulation.commands.verifyUser.commandName, (allowErr, allowed) => {
+      if (allowErr) {
+        callback({ error: new errorCreator.Database() });
+
+        return;
+      } else if (!allowed) {
+        callback({ error: new errorCreator.NotAllowed({ name: 'verifyAllUsers' }) });
+
         return;
       }
 
-      dbUser.getUnverifiedUsers((err, users) => {
-        if (err || users === null) {
-          logger.sendSocketErrorMsg({
-            socket,
-            code: logger.ErrorCodes.general,
-            text: ['Failed to verify all user'],
-            text_se: ['Misslyckades med att verifiera alla användare'],
-            err,
-          });
+      dbUser.verifyAllUsers((verifyErr, users = []) => {
+        if (verifyErr) {
+          callback({ error: new errorCreator.Database() });
 
           return;
         }
 
-        dbUser.verifyAllUsers((verifyErr) => {
-          if (verifyErr) {
-            logger.sendSocketErrorMsg({
-              socket,
-              code: logger.ErrorCodes.general,
-              text: ['Failed to verify all user'],
-              text_se: ['Misslyckades med att verifiera alla användare'],
-              err: verifyErr,
-            });
+        callback({ data: { users } });
 
-            return;
-          }
-
-          messenger.sendSelfMsg({
-            socket,
-            message: {
-              text: ['Users have been verified'],
-              text_se: ['Användarna har blivit verifierade'],
-            },
-          });
-          // TODO Send message to verified user
-        });
+        // TODO Send message to registered device
       });
     });
   });
 
-  socket.on('unverifiedUsers', () => {
-    manager.userIsAllowed(socket.id, databasePopulation.commands.verifyuser.commandName, (allowErr, allowed) => {
-      if (allowErr || !allowed) {
+  // TODO Not used
+  socket.on('getUnverifiedUsers', (params, callback = () => {}) => {
+    manager.userIsAllowed(socket.id, databasePopulation.commands.getUnverifiedUsers.commandName, (allowErr, allowed) => {
+      if (allowErr) {
+        callback({ error: new errorCreator.Database() });
+
+        return;
+      } else if (!allowed) {
+        callback({ error: new errorCreator.NotAllowed({ name: 'getUnverifiedUsers' }) });
+
         return;
       }
 
-      dbUser.getUnverifiedUsers((err, users) => {
-        if (err || users === null) {
-          logger.sendSocketErrorMsg({
-            socket,
-            code: logger.ErrorCodes.general,
-            text: ['Failed to get unverified users'],
-            text_se: ['Misslyckades med hämtningen av icke-verifierade användare'],
-            err,
-          });
+      dbUser.getUnverifiedUsers((err, users = []) => {
+        if (err) {
+          callback({ error: new errorCreator.Database() });
 
           return;
         }
 
-        // TODO Should send a list, not a string
-        let usersString = '';
-
-        for (let i = 0; i < users.length; i += 1) {
-          usersString += users[i].userName;
-
-          if (i !== users.length - 1) {
-            usersString += ' | ';
-          }
-        }
-
-        messenger.sendSelfMsg({
-          socket,
-          message: {
-            text: [usersString],
-          },
-        });
+        callback({ data: { users: users.map(user => user.userName) } });
       });
     });
   });
 
-  socket.on('ban', (params) => {
-    if (!objectValidator.isValidData(params, { user: { userName: true } })) {
+  // TODO Not used
+  socket.on('ban', ({ user }, callback = () => {}) => {
+    if (!objectValidator.isValidData({ user }, { user: { userName: true } })) {
+      callback({ error: new errorCreator.InvalidData({ expected: '{ user: { userName } }' }) });
+
       return;
     }
 
-    manager.userIsAllowed(socket.id, databasePopulation.commands.banuser.commandName, (allowErr, allowed) => {
-      if (allowErr || !allowed) {
+    manager.userIsAllowed(socket.id, databasePopulation.commands.banUser.commandName, (allowErr, allowed) => {
+      if (allowErr) {
+        callback({ error: new errorCreator.Database() });
+
+        return;
+      } else if (!allowed) {
+        callback({ error: new errorCreator.NotAllowed({ name: 'ban' }) });
+
         return;
       }
 
-      const userNameLower = params.user.userName.toLowerCase();
+      const userName = user.userName.toLowerCase();
 
-      dbUser.banUser(userNameLower, (err, user) => {
-        if (err || user === null) {
-          logger.sendSocketErrorMsg({
-            socket,
-            code: logger.ErrorCodes.general,
-            text: ['Failed to ban user'],
-            text_se: ['Misslyckades med att banna användaren'],
-          });
+      dbUser.banUser(userName, (err, bannedUser) => {
+        if (err) {
+          callback({ error: new errorCreator.Database() });
+
+          return;
+        } else if (bannedUser === null) {
+          callback({ error: new errorCreator.DoesNotExist({ name: `user ${userName}` }) });
 
           return;
         }
 
         const bannedSocketId = user.socketId;
 
-        messenger.sendSelfMsg({
-          socket,
-          message: {
-            text: [`User ${userNameLower} has been banned`],
-            text_se: [`Användaren ${userNameLower} har blivit bannad`],
-          },
-        });
-
-        dbUser.updateUserSocketId(userNameLower, '', (userErr, updatedUser) => {
-          if (userErr || updatedUser === null) {
-            logger.sendSocketErrorMsg({
-              socket,
-              code: logger.ErrorCodes.general,
-              text: [`Failed to disconnect user ${userNameLower}`],
-              text_se: [`Misslyckades med att koppla från användaren ${userNameLower}`],
-              err: userErr,
-            });
+        dbUser.updateUserSocketId(userName, '', (userErr) => {
+          if (userErr) {
+            callback({ error: new errorCreator.Database() });
 
             return;
           }
 
           socket.to(bannedSocketId).emit('ban');
+          manager.leaveSocketRooms({ socket });
 
-          for (const room of Object.keys(socket.rooms)) {
-            socket.leave(room);
-          }
-
-          messenger.sendSelfMsg({
-            socket,
-            message: {
-              text: [`User ${userNameLower} has been disconnected`],
-              text_se: [`Användaren ${userNameLower} har blivit urloggad`],
-            },
-          });
+          callback({ data: { success: true } });
         });
       });
     });
   });
 
-  socket.on('unban', (params) => {
-    if (!objectValidator.isValidData(params, { user: { userName: true } })) {
+  // TODO Not used
+  socket.on('unban', ({ user }, callback = () => {}) => {
+    if (!objectValidator.isValidData({ user }, { user: { userName: true } })) {
+      callback({ error: new errorCreator.InvalidData({ expected: '{ user: { userName } }' }) });
+
       return;
     }
 
-    manager.userIsAllowed(socket.id, databasePopulation.commands.unbanuser.commandName, (allowErr, allowed) => {
-      if (allowErr || !allowed) {
+    manager.userIsAllowed(socket.id, databasePopulation.commands.unbanUser.commandName, (allowErr, allowed) => {
+      if (allowErr) {
+        callback({ error: new errorCreator.Database() });
+
+        return;
+      } else if (!allowed) {
+        callback({ error: new errorCreator.NotAllowed({ name: 'unban' }) });
+
         return;
       }
 
-      const userNameLower = params.user.userName.toLowerCase();
+      const userName = user.userName.toLowerCase();
 
-      dbUser.unbanUser(userNameLower, (err, user) => {
-        if (err || user === null) {
-          logger.sendSocketErrorMsg({
-            socket,
-            code: logger.ErrorCodes.general,
-            text: ['Failed to unban user'],
-            text_se: ['Misslyckades med att unbanna användaren'],
-            err,
-          });
+      dbUser.unbanUser(userName, (err, unbannedUser) => {
+        if (err) {
+          callback({ error: new errorCreator.Database() });
+
+          return;
+        } else if (unbannedUser === null) {
+          callback({ error: new errorCreator.DoesNotExist({ name: `user ${userName}` }) });
 
           return;
         }
 
-        messenger.sendSelfMsg({
-          socket,
-          message: {
-            text: [`Ban on user ${userNameLower} has been removed`],
-            text_se: [`Ban på användaren ${userNameLower} har blivit borttaget`],
-          },
-        });
+        callback({ data: { success: true } });
       });
     });
   });
 
-  socket.on('bannedUsers', () => {
-    manager.userIsAllowed(socket.id, databasePopulation.commands.unbanuser.commandName, (allowErr, allowed) => {
-      if (allowErr || !allowed) {
+  socket.on('getBannedUsers', (params, callback = () => {}) => {
+    manager.userIsAllowed(socket.id, databasePopulation.commands.getBannedUsers.commandName, (allowErr, allowed) => {
+      if (allowErr) {
+        callback({ error: new errorCreator.Database() });
+
+        return;
+      } else if (!allowed) {
+        callback({ error: new errorCreator.NotAllowed({ name: 'getBannedUsers' }) });
+
         return;
       }
 
-      dbUser.getBannedUsers((err, users) => {
-        if (err || users === null) {
-          logger.sendSocketErrorMsg({
-            socket,
-            code: logger.ErrorCodes.general,
-            text: ['Failed to get all banned users'],
-            text_se: ['Misslyckades med att hämta en lista över alla bannade användare'],
-            err,
-          });
+      dbUser.getBannedUsers((err, users = []) => {
+        if (err) {
+          callback({ error: new errorCreator.Database() });
 
           return;
         }
 
-        // TODO Should send a list, not a string
-        let usersString = '';
-
-        for (let i = 0; i < users.length; i += 1) {
-          usersString += users[i].userName;
-
-          if (i !== users.length - 1) {
-            usersString += ' | ';
-          }
-        }
-
-        messenger.sendSelfMsg({
-          socket,
-          message: {
-            text: [usersString],
-          },
-        });
+        callback({ data: { users: users.map(user => user.userName) } });
       });
     });
   });
 
+  // TODO Unused and not ready
   socket.on('updateUserTeam', () => {
 
   });
 
-  socket.on('updateUser', (params) => {
-    if (!objectValidator.isValidData(params, { user: { userName: true }, field: true, value: true })) {
+  socket.on('updateUser', ({ user, field, value }, callback = () => {}) => {
+    if (!objectValidator.isValidData({ user, field, value }, { user: { userName: true }, field: true, value: true })) {
+      callback({ error: new errorCreator.InvalidData({ expected: '{ user: { userName }, field, value }' }) });
+
       return;
     }
 
-    manager.userIsAllowed(socket.id, databasePopulation.commands.updateuser.commandName, (allowErr, allowed) => {
-      if (allowErr || !allowed) {
+    manager.userIsAllowed(socket.id, databasePopulation.commands.updateUser.commandName, (allowErr, allowed) => {
+      if (allowErr) {
+        callback({ error: new errorCreator.Database() });
+
+        return;
+      } else if (!allowed) {
+        callback({ error: new errorCreator.NotAllowed({ name: 'updateUser' }) });
+
         return;
       }
 
-      const userName = params.user.userName;
-      const field = params.field;
-      const value = params.value;
-      const callback = (err, user) => {
-        if (err || user === null) {
-          logger.sendSocketErrorMsg({
-            socket,
-            code: logger.ErrorCodes.general,
-            text: ['Failed to update user'],
-            text_se: ['Misslyckades med att uppdatera användaren'],
-            err,
-          });
+      const userName = user.userName.toLowerCase();
+      const updateCallback = (err, updatedUser) => {
+        if (err) {
+          callback({ error: new errorCreator.Database() });
+
+          return;
+        } else if (updatedUser === null) {
+          callback({ error: new errorCreator.DoesNotExist({ name: `user ${userName}` }) });
 
           return;
         }
 
-        messenger.sendSelfMsg({
-          socket,
-          message: {
-            text: ['User has been updated'],
-            text_se: ['Användaren har blivit uppdaterad'],
-          },
-        });
+        callback({ data: { success: true } });
       };
 
       switch (field) {
-        case 'visibility':
-          dbUser.updateUserVisibility(userName, value, callback);
+        case 'visibility': {
+          dbUser.updateUserVisibility(userName, value, updateCallback);
 
           break;
-        case 'accesslevel':
-          dbUser.updateUserAccessLevel(userName, value, callback);
-
-          break;
-        case 'addgroup':
-
-          break;
-        case 'removegroup':
-
-          break;
-        case 'password':
-          dbUser.updateUserPassword(userName, value, callback);
-
-          break;
-        default:
-          logger.sendSocketErrorMsg({
-            socket,
-            code: logger.ErrorCodes.general,
-            text: [`Invalid field. User doesn't have ${field}`],
-            text_se: [`Inkorrekt fält. Användare har inte fältet ${field}`],
-          });
-          messenger.sendSelfMsg({
-            socket,
-            message: {
-              text: [`Invalid field. User doesn't have ${field}`],
-              text_se: [`Inkorrekt fält. Användare har inte fältet ${field}`],
-            },
-          });
-
-          break;
-      }
-    });
-  });
-
-  socket.on('updateMode', ({ mode }) => {
-    if (!objectValidator.isValidData({ mode }, { mode: true })) {
-      return;
-    }
-
-    manager.userIsAllowed(socket.id, databasePopulation.commands.mode.commandName, (allowErr, allowed, user) => {
-      if (allowErr || !allowed) {
-        return;
-      }
-
-      const userName = user.userName;
-
-      dbUser.updateUserMode(userName, mode, (err) => {
-        if (err) {
-          logger.sendSocketErrorMsg({
-            socket,
-            code: logger.ErrorCodes.general,
-            text: ['Failed to store new user mode'],
-            text_se: ['Misslyckades med att lagra nya användarläget'],
-            err,
-          });
         }
-      });
-    });
-  });
+        case 'accesslevel': {
+          dbUser.updateUserAccessLevel(userName, value, updateCallback);
 
-  socket.on('whoAmI', (params, callback = () => {}) => {
-    manager.userIsAllowed(socket.id, databasePopulation.commands.whoami.commandName, (allowErr, allowed, user) => {
-      if (allowErr || !allowed || !user) {
-        return;
+          break;
+        }
+        case 'password': {
+          dbUser.updateUserPassword(userName, value, updateCallback);
+
+          break;
+        }
+        default: {
+          callback({ error: new errorCreator.InvalidData({ expected: 'visibility || accessLevel || password' }) });
+
+          break;
+        }
       }
-
-      callback({
-        user: {
-          userName: user.userName,
-          accessLevel: user.accessLevel,
-          team: user.team,
-        },
-      });
     });
   });
 
+  // TODO Unused
   socket.on('matchPartialUser', (params, callback = () => {}) => {
     // params.partialName is not checked if it set, to allow the retrieval of all users on no input
 
-    manager.userIsAllowed(socket.id, databasePopulation.commands.list.commandName, (allowErr, allowed, user) => {
-      if (allowErr || !allowed || !user) {
-        callback({ error: {} });
+    manager.userIsAllowed(socket.id, databasePopulation.commands.listUsers.commandName, (allowErr, allowed, user) => {
+      if (allowErr) {
+        callback({ error: new errorCreator.Database() });
+
+        return;
+      } else if (!allowed) {
+        callback({ error: new errorCreator.NotAllowed({ name: 'matchPartialUser' }) });
 
         return;
       }
 
       dbUser.matchPartialUser(params.partialName, user, (err, users) => {
         if (err) {
-          callback({ error: {} });
+          callback({ error: new errorCreator.Database() });
 
           return;
         }
 
-        const itemList = Object.keys(users).map(userKey => users[userKey].userName);
-
-        callback({ matched: itemList });
+        callback({ matches: Object.keys(users).map(userKey => users[userKey].userName) });
       });
     });
   });
 
+  // TODO Unused
   socket.on('matchPartialAlias', ({ partialName }, callback = () => {}) => {
     // params.partialAlias is not checked if it set, to allow the retrieval of all aliases on no input
 
-    manager.userIsAllowed(socket.id, databasePopulation.commands.list.commandName, (allowErr, allowed, user) => {
-      if (allowErr || !allowed) {
-        callback({ error: {} });
+    manager.userIsAllowed(socket.id, databasePopulation.commands.aliases.commandName, (allowErr, allowed, user) => {
+      if (allowErr) {
+        callback({ error: new errorCreator.Database() });
+
+        return;
+      } else if (!allowed) {
+        callback({ error: new errorCreator.NotAllowed({ name: 'matchPartialAlias' }) });
 
         return;
       }
@@ -884,13 +641,13 @@ function handle(socket) {
         if (!partialName) {
           matched = user.aliases;
         } else {
-          for (const alias of user.aliases) {
+          user.aliases.forEach((alias) => {
             const aliasRegex = new RegExp(`^${partialName}.*`);
 
             if (alias.match(aliasRegex)) {
               matched.push(alias);
             }
-          }
+          });
         }
       }
 
@@ -899,9 +656,13 @@ function handle(socket) {
   });
 
   socket.on('addAlias', ({ alias }, callback = () => {}) => {
-    manager.userIsAllowed(socket.id, databasePopulation.commands.alias.commandName, (allowErr, allowed, user) => {
-      if (allowErr || !allowed) {
-        callback({ error: new errorCreator.NotAllowed({ used: databasePopulation.commands.alias.commandName }) });
+    manager.userIsAllowed(socket.id, databasePopulation.commands.addAlias.commandName, (allowErr, allowed, user) => {
+      if (allowErr) {
+        callback({ error: new errorCreator.Database() });
+
+        return;
+      } else if (!allowed) {
+        callback({ error: new errorCreator.NotAllowed({ name: 'addAlias' }) });
 
         return;
       }

@@ -26,7 +26,7 @@ const errorCreator = require('../objects/error/errorCreator');
 const manager = require('../socketHelpers/manager');
 
 /**
- * Add a sent message to a room's history in the database
+ * Add a sent message to a room's getHistory in the database
  * @param {string} roomName - Name of the room
  * @param {Object} message - Message to be added
  * @param {Function} callback - callback
@@ -36,7 +36,7 @@ function addMsgToHistory(roomName, message, callback) {
     if (err || history === null) {
       logger.sendErrorMsg({
         code: logger.ErrorCodes.db,
-        text: ['Failed to add message to history'],
+        text: ['Failed to add message to getHistory'],
         err,
       });
       callback(err || {});
@@ -49,42 +49,16 @@ function addMsgToHistory(roomName, message, callback) {
 }
 
 /**
- * Send a message to the user's socket
- * @param {{text: string[]}} message - Message to send
- * @param {Object} socket - Socket.io socket
- */
-function sendSelfMsg({ message, socket }) {
-  if (!objectValidator.isValidData({ message, socket }, { socket: true, message: { text: true } })) {
-    return;
-  }
-
-  socket.emit('message', { message });
-}
-
-/**
  * Sends multiple message to the user's socket
  * @param {{text: string[]}[]} messages - Messages to send
  * @param {Object} socket - Socket.io socket
  */
-function sendSelfMsgs({ messages, socket }) {
+function sendSelfMsg({ messages, socket }) {
   if (!objectValidator.isValidData({ messages, socket }, { socket: true, messages: true })) {
     return;
   }
 
   socket.emit('messages', { messages });
-}
-
-/**
- * Sends multiple message to the user's socket
- * @param {{text: string[]}[]} messages - Messages to send
- * @param {Object} socket - Socket.io socket
- */
-function sendSelfChatMsgs({ messages, socket }) {
-  if (!objectValidator.isValidData({ messages, socket }, { socket: true, messages: true })) {
-    return;
-  }
-
-  socket.emit('chatMsgs', { messages });
 }
 
 /**
@@ -100,24 +74,24 @@ function isUserFollowingRoom(user, roomName) {
 /**
  * Sends a message to a room. The message will not be stored in history
  * Emits message
- * @param {string} sendTo - User name to send to
- * @param {Object} socket - Socket.io socket
- * @param {Object} params.message - Message to send
- * @param {string} params.message.userName - Name of sender
- * @param {string[]} params.message.text - Text in message
- * @param {string[]} [params.message.text_se] - Text in message
+ * @param {Object} params.message Message to send
+ * @param {string[]} params.message.roomName Room to send the message to
+ * @param {Object} params.io Socket.io
+ * @param {Object} [params.socket] Socket.io socket
  */
-function sendMsg({ socket, message, userName, sendTo }) {
-  if (!objectValidator.isValidData({ message, userName }, { socket: true, message: { text: true, userName: true }, sendTo: true })) {
+function sendMsg({ socket, message, io }) {
+  if (!objectValidator.isValidData({ message }, { message: { roomName: true } })) {
     return;
   }
 
-  const data = {
-    message,
-    sendTo,
-  };
+  message.time = new Date();
+  message.userName = databasePopulation.users.admin.userName.toUpperCase();
 
-  socket.broadcast.to(data.sendTo).emit('chatMsg', data);
+  if (socket) {
+    socket.broadcast.to(message.roomName).emit('message', { message });
+  } else {
+    io.to(message.roomName).emit('message', { message });
+  }
 }
 
 /**
@@ -349,30 +323,8 @@ function sendBroadcastMsg({ message, socket, callback, io, user }) {
   manager.userIsAllowed(socketId, databasePopulation.commands.broadcast.commandName, allowCallback, user.userName);
 }
 
-/**
- * Send an array of strings with an optional title
- * Emits list
- * @param {{socket: Object, itemList: { itemList: Object[], listTitle: string}, columns: number}} params - Parameters
- */
-function sendList(params) {
-  if (!objectValidator.isValidData(params, { socket: true, itemList: { itemList: true, listTitle: true } })) {
-    return;
-  }
-
-  const socket = params.socket;
-  const data = {
-    itemList: params.itemList,
-    columns: params.columns,
-  };
-
-  socket.emit('list', data);
-}
-
 exports.sendChatMsg = sendChatMsg;
 exports.sendWhisperMsg = sendWhisperMsg;
 exports.sendBroadcastMsg = sendBroadcastMsg;
 exports.sendMsg = sendMsg;
 exports.sendSelfMsg = sendSelfMsg;
-exports.sendSelfMsgs = sendSelfMsgs;
-exports.sendList = sendList;
-exports.sendSelfChatMsgs = sendSelfChatMsgs;

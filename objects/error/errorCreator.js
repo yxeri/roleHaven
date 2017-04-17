@@ -26,3 +26,6 @@ exports.AlreadyExists = require('./AlreadyExists');
 exports.External = require('./External');
 exports.DoesNotExist = require('./DoesNotExist');
 exports.Incorrect = require('./Incorrect');
+exports.NeedsVerification = require('./NeedsVerification');
+exports.Banned = require('./Banned');
+exports.Insufficient = require('./Insufficient');

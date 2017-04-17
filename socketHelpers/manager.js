@@ -26,6 +26,7 @@ const appConfig = require('./../config/defaults/config').app;
 const dbConfig = require('../config/defaults/config').databasePopulation;
 const errorCreator = require('../objects/error/errorCreator');
 const dbTransaction = require('../db/connectors/transaction');
+const messenger = require('../socketHelpers/messenger');
 
 /**
  * Does string contain valid characters?
@@ -129,8 +130,8 @@ function userIsAllowed(socketId, commandName, callback, userName) {
 }
 
 /**
- * Gets history (messages) from one or more rooms
- * @param {string[]} rooms - The rooms to retrieve the history from
+ * Gets getHistory (messages) from one or more rooms
+ * @param {string[]} rooms - The rooms to retrieve the getHistory from
  * @param {number} [lines] - How many message to retrieve
  * @param {boolean} [missedMsgs] - Set to true if only the messages since the users last connection should be returned
  * @param {Date} [lastOnline] - Date of the last time the user was online
@@ -144,7 +145,7 @@ function getHistory({ lastOnline = new Date(), rooms, lines, missedMsgs, whisper
     if (err || history === null) {
       logger.sendErrorMsg({
         code: logger.ErrorCodes.db,
-        text: ['Failed to get history'],
+        text: ['Failed to get getHistory'],
         err,
       });
     } else {
@@ -212,26 +213,6 @@ function createRoom(sentRoom, user, callback) {
         callback(roomErr, room);
       });
     }
-  });
-}
-
-/**
- * Updates user's socket ID in the database
- * @param {string} socketId - User's socket ID for socket.io
- * @param {string} userName - User's name
- * @param {Function} callback - callback
- */
-function updateUserSocketId(socketId, userName, callback) {
-  dbUser.updateUserSocketId(userName, socketId, (err, user) => {
-    if (err) {
-      logger.sendErrorMsg({
-        code: logger.ErrorCodes.db,
-        text: ['Failed to update Id'],
-        err,
-      });
-    }
-
-    callback(err, user);
   });
 }
 
@@ -356,7 +337,7 @@ function createTransaction({ transaction, callback, user, io }) {
 
       return;
     } else if (userWallet.amount - transaction.amount < 0) {
-      callback({ error: new errorCreator.Missing() });
+      callback({ error: new errorCreator.NotAllowed({ name: 'transfer too much' }) });
 
       return;
     }
@@ -429,8 +410,12 @@ function authFollowRoom({ socket, room, user, callback }) {
   room.password = room.password || '';
 
   dbRoom.authUserToRoom(user, room.roomName, room.password, (err, authRoom) => {
-    if (err || authRoom === null) {
-      callback({ error: new errorCreator.NotAllowed({ used: `follow room ${room.roomName}` }) });
+    if (err) {
+      callback({ error: new errorCreator.Database() });
+
+      return;
+    } else if (authRoom === null) {
+      callback({ error: new errorCreator.NotAllowed({ name: `follow room ${room.roomName}` }) });
 
       return;
     }
@@ -447,10 +432,50 @@ function authFollowRoom({ socket, room, user, callback }) {
   });
 }
 
+/**
+ * Update user's team
+ * @param {Object} params.socket Socket.IO socket
+ * @param {string} params.userName Name of the user
+ * @param {string} params.teamName Name of the team
+ * @param {Function} [params.callback] Callback
+ */
+function updateUserTeam({ socket, userName, teamName, callback = () => {} }) {
+  dbUser.updateUserTeam(userName, teamName, (err, user) => {
+    if (err) {
+      callback({ error: new errorCreator.Database() });
+
+      return;
+    }
+
+    messenger.sendMsg({
+      socket,
+      message: {
+        text: [`You have been added to the team ${teamName}`],
+        text_se: [`Ni har blivit tillagd i teamet ${teamName}`],
+        userName: 'SYSTEM',
+      },
+      sendTo: userName + appConfig.whisperAppend,
+    });
+
+    callback({ data: { user } });
+  });
+}
+
+/**
+ * Leave all rooms (except -device and public) on the socket
+ * @param {Object} socket Socket.io socket
+ */
+function leaveSocketRooms({ socket }) {
+  Object.keys(socket.rooms).forEach((roomName) => {
+    if (roomName.indexOf(appConfig.deviceAppend) < 0 && roomName !== dbConfig.rooms.public.roomName) {
+      socket.leave(roomName);
+    }
+  });
+}
+
 exports.userIsAllowed = userIsAllowed;
 exports.getHistory = getHistory;
 exports.createRoom = createRoom;
-exports.updateUserSocketId = updateUserSocketId;
 exports.joinRooms = joinRooms;
 exports.addAlias = addAlias;
 exports.createWallet = createWallet;
@@ -458,3 +483,5 @@ exports.getAllUserTransactions = getAllUserTransactions;
 exports.createTransaction = createTransaction;
 exports.authFollowRoom = authFollowRoom;
 exports.followRoom = followRoom;
+exports.updateUserTeam = updateUserTeam;
+exports.leaveSocketRooms = leaveSocketRooms;

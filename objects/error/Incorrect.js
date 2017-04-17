@@ -16,7 +16,7 @@
 
 const GeneralError = require('./GeneralError');
 
-class Incorrect extends GeneralError {
+class Incorrect extends GeneralError.create {
   /**
    * Create incorrect error
    * @param {string} [params.name] Name of whatever was sent

@@ -16,7 +16,7 @@
 
 const GeneralError = require('./GeneralError');
 
-class DoesNotExist extends GeneralError {
+class DoesNotExist extends GeneralError.create {
   /**
    * Creates a does not exist error
    * @param {string} [params.name] Name of whatever did not exist

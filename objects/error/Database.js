@@ -16,7 +16,7 @@
 
 const GeneralError = require('./GeneralError');
 
-class Database extends GeneralError {
+class Database extends GeneralError.create {
   /**
    * Creates a database error
    * @param {Error} [params.errorObject] Error object

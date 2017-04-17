@@ -16,22 +16,19 @@
 
 const GeneralError = require('./GeneralError');
 
-class InvalidDataError extends GeneralError.create {
+class Banned extends GeneralError.create {
   /**
-   * Create invalid data error
-   * @param {string} [params.expected] Expected data structure
+   * Create needs verification error
+   * @param {string} [params.name] Name of object that needs to be verified
    * @param {Object} [params.errorObject] Error object
    */
-  constructor({ expected = '-', errorObject }) {
+  constructor({ name = '', errorObject }) {
     super({
-      type: GeneralError.ErrorTypes.INVALIDDATA,
-      text: [
-        'Invalid data sent',
-        `Expected: ${expected}`,
-      ],
+      type: GeneralError.ErrorTypes.BANNED,
+      text: [`${name} is banned`],
       errorObject,
     });
   }
 }
 
-module.exports = InvalidDataError;
+module.exports = Banned;

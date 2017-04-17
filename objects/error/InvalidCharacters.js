@@ -16,7 +16,7 @@
 
 const GeneralError = require('./GeneralError');
 
-class InvalidCharacters extends GeneralError {
+class InvalidCharacters extends GeneralError.create {
   /**
    * Create invalid characters error
    * @param {string} [params.name] Name of the string being checked

@@ -22,17 +22,16 @@ const userHandler = require('./socketHandlers/user');
 const dbConnector = require('../db/databaseConnector');
 const dbUser = require('../db/connectors/user');
 const teamHandler = require('./socketHandlers/team');
-const hackingHandler = require('./socketHandlers/hacking');
+const hackingHandler = require('./socketHandlers/lanternHacking');
 const utilityHandler = require('./socketHandlers/utility');
 const locationHandler = require('./socketHandlers/position');
 const manager = require('../socketHelpers/manager');
 const appConfig = require('../config/defaults/config').app;
 const databasePopulation = require('../config/defaults/config').databasePopulation;
-const logger = require('../utils/logger');
-const messenger = require('../socketHelpers/messenger');
 const deviceHandler = require('./socketHandlers/device');
 const walletHandler = require('./socketHandlers/wallet');
 const calibrationJobHandler = require('./socketHandlers/calibrationMission');
+const errorCreator = require('../objects/error/errorCreator');
 
 const router = new express.Router();
 
@@ -76,91 +75,20 @@ function handle(io) {
           return;
         }
 
-        dbUser.updateUserSocketId(user.userName, '', (userErr, offlineUser) => {
-          if (userErr || offlineUser === null) {
-            logger.sendErrorMsg({
-              code: logger.ErrorCodes.general,
-              text: ['Failed to reset user socket ID'],
-              err: userErr,
-            });
-          }
-        });
-
-        dbUser.setUserLastOnline(user.userName, new Date(), (userOnlineErr, offlineUser) => {
-          if (userOnlineErr || offlineUser === null) {
-            logger.sendErrorMsg({
-              code: logger.ErrorCodes.general,
-              text: ['Failed to set last online'],
-              err: userOnlineErr,
-            });
-          }
-        });
-
-        dbUser.updateUserOnline(user.userName, false, (onlineErr, offlineUser) => {
-          if (onlineErr || offlineUser === null) {
-            logger.sendErrorMsg({
-              code: logger.ErrorCodes.general,
-              text: ['Failed to update online'],
-              err: onlineErr,
-            });
-          }
-        });
-
-        logger.sendInfoMsg(`${socket.id} ${user.userName} has disconnected`);
+        dbUser.updateUserSocketId(user.userName, '', () => {});
+        dbUser.setUserLastOnline(user.userName, new Date(), () => {});
+        dbUser.updateUserOnline(user.userName, false, () => {});
+        dbUser.updateUserIsTracked(user.userName, false, () => {});
       });
     });
 
-    // TODO This should be moved
-    /**
-     * Invitations command. Returns all invitations to rooms and teams for the user
-     * Emits commandFail or commandSuccess with the invitations
-     */
-    socket.on('getInvitations', () => {
-      manager.userIsAllowed(socket.id, databasePopulation.commands.invitations.commandName, (allowErr, allowed, user) => {
-        if (allowErr || !allowed) {
-          socket.emit('commandFail');
-
-          return;
-        }
-
-        dbConnector.getInvitations(user.userName, (err, list) => {
-          if (err) {
-            messenger.sendSelfMsg({
-              socket,
-              message: {
-                text: ['Failed to get invitations'],
-                text_se: ['Misslyckades med att hämta alla inbjudan'],
-              },
-            });
-            socket.emit('commandFail');
-
-            return;
-          } else if (list === null) {
-            messenger.sendSelfMsg({
-              socket,
-              message: {
-                text: ['No invitations founds'],
-                text_se: ['Inga inbjudan hittades'],
-              },
-            });
-
-            socket.emit('commandFail');
-
-            return;
-          }
-
-          socket.emit('commandSuccess', { newData: { invitations: list.invitations }, freezeStep: true });
-        });
-      });
-    });
-
-    userHandler.handle(socket);
+    userHandler.handle(socket, io);
     chatHandler.handle(socket, io);
-    deviceHandler.handle(socket);
+    deviceHandler.handle(socket, io);
     teamHandler.handle(socket, io);
-    hackingHandler.handle(socket);
-    utilityHandler.handle(socket);
-    locationHandler.handle(socket);
+    hackingHandler.handle(socket, io);
+    utilityHandler.handle(socket, io);
+    locationHandler.handle(socket, io);
     walletHandler.handle(socket, io);
     calibrationJobHandler.handle(socket, io);
   });

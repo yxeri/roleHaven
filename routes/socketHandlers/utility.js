@@ -245,7 +245,7 @@ function handle(socket) {
   });
 
   socket.on('rebootAll', () => {
-    manager.userIsAllowed(socket.id, databasePopulation.commands.rebootall.commandName, (allowErr, allowed) => {
+    manager.userIsAllowed(socket.id, databasePopulation.commands.rebootAll.commandName, (allowErr, allowed) => {
       if (allowErr || !allowed) {
         return;
       }

@@ -55,8 +55,9 @@ const User = mongoose.model('User', userSchema);
  */
 function updateUserValue(userName, update, callback) {
   const query = { userName };
+  const options = { new: true };
 
-  User.findOneAndUpdate(query, update).lean().exec((err, user) => {
+  User.findOneAndUpdate(query, update, options).lean().exec((err, user) => {
     if (err) {
       logger.sendErrorMsg({
         code: logger.ErrorCodes.db,
@@ -571,7 +572,7 @@ function setUserLastOnline(userName, date, callback) {
  */
 function getUnverifiedUsers(callback) {
   const query = { verified: false, banned: false };
-  const filter = { _id: 0 };
+  const filter = { _id: 0, userName: 1 };
   const sort = { userName: 1 };
 
   User.find(query, filter).sort(sort).lean().exec((err, users) => {

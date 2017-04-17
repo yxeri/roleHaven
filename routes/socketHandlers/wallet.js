@@ -16,13 +16,11 @@
 
 'use strict';
 
-const dbTransaction = require('../../db/connectors/transaction');
 const dbWallet = require('../../db/connectors/wallet');
 const databasePopulation = require('../../config/defaults/config').databasePopulation;
 const manager = require('../../socketHelpers/manager');
 const objectValidator = require('../../utils/objectValidator');
 const errorCreator = require('../../objects/error/errorCreator');
-const dbUser = require('../../db/connectors/user');
 
 /**
  * @param {object} socket - Socket.IO socket
@@ -31,15 +29,19 @@ const dbUser = require('../../db/connectors/user');
 function handle(socket, io) {
   socket.on('getWallet', (params, callback = () => {}) => {
     manager.userIsAllowed(socket.id, databasePopulation.commands.getWallet.commandName, (allowErr, allowed, user) => {
-      if (allowErr || !allowed || !user) {
-        callback({ err: new errorCreator.Database() });
+      if (allowErr) {
+        callback({ error: new errorCreator.Database() });
+
+        return;
+      } else if (!allowed) {
+        callback({ error: new errorCreator.NotAllowed({ name: 'getWallet' }) });
 
         return;
       }
 
       dbWallet.getWallet(user.userName, (err, wallet) => {
         if (err) {
-          callback({ err: new errorCreator.Database() });
+          callback({ error: new errorCreator.Database() });
 
           return;
         }
@@ -51,8 +53,12 @@ function handle(socket, io) {
 
   socket.on('getAllTransactions', (params, callback = () => {}) => {
     manager.userIsAllowed(socket.id, databasePopulation.commands.getWallet.commandName, (allowErr, allowed, user) => {
-      if (allowErr || !allowed || !user) {
-        callback({ err: new errorCreator.Database() });
+      if (allowErr) {
+        callback({ error: new errorCreator.Database() });
+
+        return;
+      } else if (!allowed) {
+        callback({ error: new errorCreator.NotAllowed({ name: 'getAllTransactions' }) });
 
         return;
       }
@@ -68,18 +74,22 @@ function handle(socket, io) {
 
   socket.on('createTransaction', ({ transaction }, callback = () => {}) => {
     if (!objectValidator.isValidData({ transaction }, { transaction: { to: true, amount: true } })) {
-      callback({ error: new errorCreator.InvalidData() });
+      callback({ error: new errorCreator.InvalidData({ expected: '{ transaction: { to, amount } }' }) });
 
       return;
     } else if (isNaN(transaction.amount)) {
-      callback({ error: new errorCreator.InvalidData() });
+      callback({ error: new errorCreator.Insufficient({ name: 'wallet' }) });
 
       return;
     }
 
     manager.userIsAllowed(socket.id, databasePopulation.commands.getWallet.commandName, (allowErr, allowed, user) => {
-      if (allowErr || !allowed || !user) {
+      if (allowErr) {
         callback({ error: new errorCreator.Database() });
+
+        return;
+      } else if (!allowed) {
+        callback({ error: new errorCreator.NotAllowed({ name: 'createTransaction' }) });
 
         return;
       }

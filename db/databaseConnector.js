@@ -130,7 +130,7 @@ function verifyObject(query, object, objectName, callback) {
  */
 function verifyAllObjects(query, object, objectName, callback) {
   const update = { $set: { verified: true } };
-  const options = { multi: true };
+  const options = { multi: true, new: true };
 
   object.update(query, update, options).lean().exec((err, verified) => {
     if (err) {

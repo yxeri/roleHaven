@@ -16,7 +16,7 @@
 
 const GeneralError = require('./GeneralError');
 
-class External extends GeneralError {
+class External extends GeneralError.create {
   /**
    * Create an external error object
    * Indicates that an error was returned when making a connection to an external source

@@ -16,22 +16,19 @@
 
 const GeneralError = require('./GeneralError');
 
-class InvalidDataError extends GeneralError.create {
+class Insufficient extends GeneralError.create {
   /**
-   * Create invalid data error
-   * @param {string} [params.expected] Expected data structure
+   * Create insufficient error
+   * @param {string} [params.name] Name of the insufficient type
    * @param {Object} [params.errorObject] Error object
    */
-  constructor({ expected = '-', errorObject }) {
+  constructor({ name = '', errorObject }) {
     super({
-      type: GeneralError.ErrorTypes.INVALIDDATA,
-      text: [
-        'Invalid data sent',
-        `Expected: ${expected}`,
-      ],
+      type: GeneralError.ErrorTypes.INSUFFICIENT,
+      text: [`${name} not enough`],
       errorObject,
     });
   }
 }
 
-module.exports = InvalidDataError;
+module.exports = Insufficient;
