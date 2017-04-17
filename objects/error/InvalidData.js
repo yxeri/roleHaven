@@ -18,26 +18,18 @@ const GeneralError = require('./GeneralError');
 
 class InvalidDataError extends GeneralError {
   /**
-   * InvalidDataError constructor
-   * @param {Object} [params] - Params
-   * @param {string} [params.incorrectProperties] - Incorrect/missing properties
-   * @param {string} [params.expectedResult] - Expected result
+   * Create invalid data error
+   * @param {string} [params.expected] Expected data structure
+   * @param {Object} [params.errorObject] Error object
    */
-  constructor(params = {}) {
-    const { incorrectProperties, expectedResult } = params;
-    const text = ['Invalid data sent'];
-
-    if (incorrectProperties) {
-      text.push(`Incorrect or missing properties: ${incorrectProperties}`);
-    }
-
-    if (expectedResult) {
-      text.push(`Expected: ${expectedResult}`);
-    }
-
+  constructor({ expected = '-', errorObject }) {
     super({
-      type: 'Invalid data',
-      text,
+      type: GeneralError.ErrorTypes.INVALIDDATA,
+      text: [
+        'Invalid data sent',
+        `Expected: ${expected}`,
+      ],
+      errorObject,
     });
   }
 }

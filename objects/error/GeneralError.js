@@ -14,11 +14,31 @@
  limitations under the License.
  */
 
+const ErrorTypes = {
+  GENERAL: 'general error',
+  DATABASE: 'database',
+  DOESNOTEXIST: 'does not exist',
+  EXTERNAL: 'external',
+  ALREADYEXISTS: 'already exists',
+  INCORRECT: 'incorrect',
+  INVALIDCHARACTERS: 'invalid characters',
+  INVALIDDATA: 'invalid data',
+  NOTALLOWED: 'not allowed',
+};
+
 class GeneralError {
-  constructor({ text = ['Something went wrong'], type = 'GeneralError' }) {
+  /**
+   * Create a general error
+   * @param {string} [params.text] Human-readable text to send back with the error
+   * @param {string} [params.type] Type of error
+   * @param {Error} [params.errorObject] Error object
+   */
+  constructor({ text = ['Something went wrong'], type = ErrorTypes.GENERAL, errorObject = {} }) {
     this.text = text;
     this.type = type;
+    this.errorObject = errorObject;
   }
 }
 
 module.exports = GeneralError;
+exports.ErrorTypes = ErrorTypes;

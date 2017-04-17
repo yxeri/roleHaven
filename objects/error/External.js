@@ -17,12 +17,17 @@
 const GeneralError = require('./GeneralError');
 
 class External extends GeneralError {
-  constructor({ source = 'unknown' }) {
-    const text = `Failed to retrieve data from ${source}`;
-
+  /**
+   * Create an external error object
+   * Indicates that an error was returned when making a connection to an external source
+   * @param {string} [params.name] Retrieval source
+   * @param {Error} [params.errorObject] Error object
+   */
+  constructor({ name = '-', errorObject }) {
     super({
-      type: 'External',
-      text,
+      type: GeneralError.ErrorTypes.EXTERNAL,
+      text: [`Failed to retrieve data from ${name}`],
+      errorObject,
     });
   }
 }

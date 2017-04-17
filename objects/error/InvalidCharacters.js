@@ -18,20 +18,19 @@ const GeneralError = require('./GeneralError');
 
 class InvalidCharacters extends GeneralError {
   /**
-   * InvalidCharacters constructor
-   * @param {string} propertyName - Human-readable name of the property
-   * @param {string} validCharacters - Valid characters
+   * Create invalid characters error
+   * @param {string} [params.name] Name of the string being checked
+   * @param {string} [params.expected] Expected valid characters
+   * @param {Object} [params.errorObject] Error object
    */
-  constructor({ propertyName = 'unknown', validCharacters }) {
-    const text = [`Property ${propertyName} has invalid characters`];
-
-    if (validCharacters) {
-      text.push(`Valid characters: ${validCharacters}`);
-    }
-
+  constructor({ name = '-', expected = '-', errorObject }) {
     super({
-      type: 'Invalid characters',
-      text,
+      type: GeneralError.ErrorTypes.INVALIDCHARACTERS,
+      text: [
+        `Property ${name} has invalid characters`,
+        `Valid characters: ${expected}`,
+      ],
+      errorObject,
     });
   }
 }

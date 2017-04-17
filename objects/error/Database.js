@@ -17,10 +17,15 @@
 const GeneralError = require('./GeneralError');
 
 class Database extends GeneralError {
-  constructor() {
+  /**
+   * Creates a database error
+   * @param {Error} [params.errorObject] Error object
+   */
+  constructor({ errorObject }) {
     super({
-      type: 'Database',
+      type: GeneralError.ErrorTypes.DATABASE,
       text: ['Failed to save/retrieve data'],
+      errorObject,
     });
   }
 }

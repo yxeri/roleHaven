@@ -14,13 +14,15 @@
  limitations under the License.
  */
 
-exports.General = require('./GeneralError');
+const GeneralError = require('./GeneralError');
+
+exports.ErrorTypes = GeneralError.ErrorTypes;
+exports.General = GeneralError;
 exports.InvalidData = require('./InvalidData');
 exports.NotAllowed = require('./NotAllowed');
 exports.InvalidCharacters = require('./InvalidCharacters');
 exports.Database = require('./Database');
 exports.AlreadyExists = require('./AlreadyExists');
 exports.External = require('./External');
-exports.Missing = require('./Missing');
 exports.DoesNotExist = require('./DoesNotExist');
 exports.Incorrect = require('./Incorrect');

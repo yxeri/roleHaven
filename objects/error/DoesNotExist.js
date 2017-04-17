@@ -17,10 +17,16 @@
 const GeneralError = require('./GeneralError');
 
 class DoesNotExist extends GeneralError {
-  constructor({ name = '' }) {
+  /**
+   * Creates a does not exist error
+   * @param {string} [params.name] Name of whatever did not exist
+   * @param {Error} [params.errorObject] Error object
+   */
+  constructor({ name = '-', errorObject }) {
     super({
-      type: 'Does not exist',
+      type: GeneralError.ErrorTypes.DOESNOTEXIST,
       text: [`${name} does not exists`],
+      errorObject,
     });
   }
 }

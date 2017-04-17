@@ -17,10 +17,16 @@
 const GeneralError = require('./GeneralError');
 
 class Incorrect extends GeneralError {
-  constructor({ name = '' }) {
+  /**
+   * Create incorrect error
+   * @param {string} [params.name] Name of whatever was sent
+   * @param {Object} [params.errorObject] Error object
+   */
+  constructor({ name = '-', errorObject }) {
     super({
-      type: 'Incorrect',
+      type: GeneralError.ErrorTypes.INCORRECT,
       text: [`Incorrect ${name}`],
+      errorObject,
     });
   }
 }

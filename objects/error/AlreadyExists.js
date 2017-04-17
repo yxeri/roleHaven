@@ -17,10 +17,16 @@
 const GeneralError = require('./GeneralError');
 
 class AlreadyExists extends GeneralError {
-  constructor({ name = '' }) {
+  /**
+   * Create already exists error
+   * @param {string} [params.name] Name of type of object that already exists
+   * @param {Object} [params.errorObject] Error object
+   */
+  constructor({ name = '', errorObject }) {
     super({
-      type: 'Already exists',
+      type: GeneralError.ErrorTypes.ALREADYEXISTS,
       text: [`${name} already exists`],
+      errorObject,
     });
   }
 }

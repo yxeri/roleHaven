@@ -18,19 +18,18 @@ const GeneralError = require('./GeneralError');
 
 class NotAllowedError extends GeneralError {
   /**
-   * InvalidData constructor
-   * @param {string} used - Description of what the user tried to access
+   * Create not allowed error
+   * @param {string} [params.name] Description of what the user tried to access
+   * @param {Object} [params.errorObject] Error object
    */
-  constructor({ used }) {
-    const text = ['User has insufficient permissions'];
-
-    if (used) {
-      text.push(`User tried to access ${used}`);
-    }
-
+  constructor({ name, errorObject }) {
     super({
-      text,
-      type: 'Not allowed',
+      type: GeneralError.ErrorTypes.NOTALLOWED,
+      text: [
+        'Insufficient permissions',
+        `Tried to access ${name}`,
+      ],
+      errorObject,
     });
   }
 }
