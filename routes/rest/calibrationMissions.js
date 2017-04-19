@@ -59,7 +59,9 @@ function handle(io) {
    */
   router.get('/', (req, res) => {
     // noinspection JSUnresolvedVariable
-    jwt.verify(req.headers.authorization || '', appConfig.jsonKey, (jwtErr, decoded) => {
+    const auth = req.headers.authorization || '';
+
+    jwt.verify(auth, appConfig.jsonKey, (jwtErr, decoded) => {
       if (jwtErr) {
         res.status(500).json({
           errors: [{
@@ -107,7 +109,7 @@ function handle(io) {
   });
 
   /**
-   * @api {put} /calibrationMissions/:id/complete Set a mission to completed
+   * @api {put} /calibrationMissions/:id/complete Complete a mission
    * @apiVersion 5.1.0
    * @apiName CompleteCalibrationMission
    * @apiGroup CalibrationMissions
@@ -165,9 +167,9 @@ function handle(io) {
     }
 
     // noinspection JSUnresolvedVariable
-    const auth = req.headers.authorization;
+    const auth = req.headers.authorization || '';
 
-    jwt.verify(auth || '', appConfig.jsonKey, (jwtErr, decoded) => {
+    jwt.verify(auth, appConfig.jsonKey, (jwtErr, decoded) => {
       if (jwtErr) {
         res.status(500).json({
           errors: [{
@@ -178,7 +180,7 @@ function handle(io) {
         });
 
         return;
-      } else if (!decoded || decoded.data.accessLevel < databasePopulation.commands.updateCalibrationMission.accessLevel) {
+      } else if (!decoded || decoded.data.accessLevel < databasePopulation.apiCommands.CompleteCalibrationMission.accessLevel) {
         res.status(401).json({
           errors: [{
             status: 401,
@@ -274,7 +276,7 @@ function handle(io) {
   });
 
   /**
-   * @api {put} /calibrationMissions/:id/cancel Cancel a calibration mission
+   * @api {put} /calibrationMissions/:id/cancel Cancel a mission
    * @apiVersion 5.1.0
    * @apiName CancelCalibrationMission
    * @apiGroup CalibrationMissions
@@ -328,9 +330,9 @@ function handle(io) {
     }
 
     // noinspection JSUnresolvedVariable
-    const auth = req.headers.authorization;
+    const auth = req.headers.authorization || '';
 
-    jwt.verify(auth || '', appConfig.jsonKey, (jwtErr, decoded) => {
+    jwt.verify(auth, appConfig.jsonKey, (jwtErr, decoded) => {
       if (jwtErr) {
         res.status(500).json({
           errors: [{
@@ -341,7 +343,7 @@ function handle(io) {
         });
 
         return;
-      } else if (!decoded || decoded.data.accessLevel < databasePopulation.commands.updateCalibrationMission.accessLevel) {
+      } else if (!decoded || decoded.data.accessLevel < databasePopulation.apiCommands.CancelCalibrationMission.accessLevel) {
         res.status(401).json({
           errors: [{
             status: 401,

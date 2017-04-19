@@ -416,4 +416,12 @@ config.commands = {
   },
 };
 
+config.apiCommands = {
+  UnfollowRoom: config.apiCommands.UnfollowRoom || { accessLevel: config.accessLevels.lowerAdmin },
+  FollowRoom: config.apiCommands.FollowRoom || { accessLevel: config.accessLevels.lowerAdmin },
+  CancelCalibrationMission: config.apiCommands.FollowRoom || { accessLevel: config.accessLevels.lowerAdmin },
+  CompleteCalibrationMission: config.apiCommands.FollowRoom || { accessLevel: config.accessLevels.lowerAdmin },
+  SendBroadcast: config.apiCommands.SendBroadcast || { accessLevel: config.accessLevels.lowerAdmin },
+};
+
 module.exports = config;

@@ -175,7 +175,9 @@ function handle(io) {
     }
 
     // noinspection JSUnresolvedVariable
-    jwt.verify(req.headers.authorization || '', appConfig.jsonKey, (jwtErr, decoded) => {
+    const auth = req.headers.authorization || '';
+
+    jwt.verify(auth, appConfig.jsonKey, (jwtErr, decoded) => {
       if (jwtErr) {
         res.status(500).json({
           errors: [{
@@ -245,114 +247,6 @@ function handle(io) {
       }
     });
   });
-  /**
-   * @api {post} /messages/broadcast Send a broadcast
-   * @apiVersion 5.0.3
-   * @apiName SendBroadcast
-   * @apiGroup Messages
-   *
-   * @apiHeader {String} Authorization Your JSON Web Token
-   *
-   * @apiDescription Send a broadcast
-   *
-   * @apiParam {Object} data
-   * @apiParam {Object} data.message Message
-   * @apiParam {String} [data.message.userName] Name of the sender. Default will be set to a generic term, such as "SYSTEM"
-   * @apiParam {String[]} data.message.text Content of the message
-   * @apiParamExample {json} Request-Example:
-   *   {
-   *    "data": {
-   *      "message": {
-   *        "text": [
-   *          "Hello world!"
-   *        ]
-   *      }
-   *    }
-   *  }
-   *
-   * @apiSuccess {Object} data
-   * @apiSuccess {Object[]} data.message Message sent
-   * @apiSuccessExample {json} Success-Response:
-   *   {
-   *    "data": {
-   *      "message": [{
-   *        "text": [
-   *          "Hello world!"
-   *        ],
-   *        "userName": "rez",
-   *        "time": "2016-10-28T22:42:06.262Z"
-   *      }]
-   *    }
-   *  }
-   */
-  router.post('/broadcast', (req, res) => {
-    if (!objectValidator.isValidData(req.body, { data: { message: { text: true } } })) {
-      res.status(400).json({
-        errors: [{
-          status: 400,
-          title: 'Missing data',
-          detail: 'Unable to parse data',
-        }],
-      });
-
-      return;
-    }
-
-    // noinspection JSUnresolvedVariable
-    jwt.verify(req.headers.authorization || '', appConfig.jsonKey, (jwtErr, decoded) => {
-      if (jwtErr) {
-        res.status(500).json({
-          errors: [{
-            status: 500,
-            title: 'Internal Server Error',
-            detail: 'Internal Server Error',
-          }],
-        });
-
-        return;
-      } else if (!decoded) {
-        res.status(401).json({
-          errors: [{
-            status: 401,
-            title: 'Unauthorized',
-            detail: 'Invalid token',
-          }],
-        });
-
-        return;
-      }
-
-      const message = req.body.data.message;
-      const callback = ({ error, data }) => {
-        if (error) {
-          if (error.type && error.type === 'Not allowed') {
-            res.status(401).json({
-              errors: [{
-                status: 401,
-                title: 'Unauthorized',
-                detail: 'Not allowed to send broadcast',
-              }],
-            });
-          } else {
-            res.status(500).json({
-              errors: [{
-                status: 500,
-                title: 'Internal Server Error',
-                detail: 'Internal Server Error',
-              }],
-            });
-          }
-
-          return;
-        }
-
-        res.json({ data: { message: data.message } });
-      };
-
-      messenger.sendBroadcastMsg({ message, io, callback, user: decoded.data });
-    });
-  });
-
 
   return router;
 }

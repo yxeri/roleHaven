@@ -22,7 +22,6 @@ const appConfig = require('../../config/defaults/config').app;
 const jwt = require('jsonwebtoken');
 const manager = require('../../socketHelpers/manager');
 const objectValidator = require('../../utils/objectValidator');
-const dbUser = require('../../db/connectors/user');
 
 const router = new express.Router();
 
@@ -30,7 +29,7 @@ const router = new express.Router();
  * @param {object} io - Socket.IO
  * @returns {Object} Router
  */
-function handle(io) {
+function handle() {
   /**
    * @api {get} /rooms Retrieve all rooms
    * @apiVersion 5.0.1
@@ -55,9 +54,9 @@ function handle(io) {
    */
   router.get('/', (req, res) => {
     // noinspection JSUnresolvedVariable
-    const auth = req.headers.authorization;
+    const auth = req.headers.authorization || '';
 
-    jwt.verify(auth || '', appConfig.jsonKey, (jwtErr, decoded) => {
+    jwt.verify(auth, appConfig.jsonKey, (jwtErr, decoded) => {
       if (jwtErr) {
         res.status(500).json({
           errors: [{
@@ -68,7 +67,7 @@ function handle(io) {
         });
 
         return;
-      } else if (!decoded && auth) {
+      } else if (!decoded) {
         res.status(401).json({
           errors: [{
             status: 401,
@@ -138,9 +137,9 @@ function handle(io) {
    */
   router.get('/:id', (req, res) => {
     // noinspection JSUnresolvedVariable
-    const auth = req.headers.authorization;
+    const auth = req.headers.authorization || '';
 
-    jwt.verify(auth || '', appConfig.jsonKey, (jwtErr, decoded) => {
+    jwt.verify(auth, appConfig.jsonKey, (jwtErr, decoded) => {
       if (jwtErr) {
         res.status(500).json({
           errors: [{
@@ -151,7 +150,7 @@ function handle(io) {
         });
 
         return;
-      } else if (!decoded && auth) {
+      } else if (!decoded) {
         res.status(401).json({
           errors: [{
             status: 401,
@@ -241,7 +240,9 @@ function handle(io) {
     }
 
     // noinspection JSUnresolvedVariable
-    jwt.verify(req.headers.authorization || '', appConfig.jsonKey, (jwtErr, decoded) => {
+    const auth = req.headers.authorization || '';
+
+    jwt.verify(auth, appConfig.jsonKey, (jwtErr, decoded) => {
       if (jwtErr) {
         res.status(500).json({
           errors: [{
@@ -282,226 +283,6 @@ function handle(io) {
         }
 
         res.json({ data: { room } });
-      });
-    });
-  });
-
-  /**
-   * @api {post} /rooms/follow Follow a room
-   * @apiVersion 5.0.1
-   * @apiName FollowRoom
-   * @apiGroup Rooms
-   *
-   * @apiHeader {String} Authorization Your JSON Web Token
-   *
-   * @apiDescription Follow a room
-   *
-   * @apiParam {Object} data
-   * @apiParam {Object} data.room Room
-   * @apiParam {String} data.room.roomName Name of the room to follow
-   * @apiParam {String} [data.room.password] Password of the room to follow
-   * @apiParamExample {json} Request-Example:
-   *   {
-   *    "data": {
-   *      "room": {
-   *        "roomName": "bb1",
-   *        "password": "password"
-   *      }
-   *    }
-   *  }
-   *
-   * @apiSuccess {Object} data
-   * @apiSuccess {Object} data.room Room
-   * @apiSuccess {String} data.room.roomName Name of the room that is followed
-   * @apiSuccessExample {json} Success-Response:
-   *   {
-   *    "data": {
-   *      "room": {
-   *        "roomName": "bb1"
-   *      }
-   *    }
-   *  }
-   */
-  router.post('/follow', (req, res) => {
-    if (!objectValidator.isValidData(req.body, { data: { room: { roomName: true } } })) {
-      res.status(400).json({
-        errors: [{
-          status: 400,
-          title: 'Missing data',
-          detail: 'Unable to parse data',
-        }],
-      });
-
-      return;
-    }
-
-    // noinspection JSUnresolvedVariable
-    const auth = req.headers.authorization;
-
-    jwt.verify(auth || '', appConfig.jsonKey, (jwtErr, decoded) => {
-      if (jwtErr) {
-        res.status(500).json({
-          errors: [{
-            status: 500,
-            title: 'Internal Server Error',
-            detail: 'Internal Server Error',
-          }],
-        });
-
-        return;
-      } else if (!decoded && auth) {
-        res.status(401).json({
-          errors: [{
-            status: 401,
-            title: 'Unauthorized',
-            detail: 'Invalid token',
-          }],
-        });
-
-        return;
-      }
-
-      const { roomName, password = '' } = req.body.data.room;
-
-      dbRoom.authUserToRoom(decoded.data, roomName, password, (errRoom, room) => {
-        if (errRoom) {
-          res.status(500).json({
-            errors: [{
-              status: 500,
-              title: 'Internal Server Error',
-              detail: 'Internal Server Error',
-            }],
-          });
-
-          return;
-        } else if (room === null) {
-          res.status(401).json({
-            errors: [{
-              status: 401,
-              title: 'Not authorized to follow room',
-              detail: 'Your user is not allowed to follow the room',
-            }],
-          });
-
-          return;
-        }
-
-        dbUser.addRoomToUser(decoded.data.userName, room.roomName, (roomErr, user = {}) => {
-          if (roomErr) {
-            res.status(500).json({
-              errors: [{
-                status: 500,
-                title: 'Internal Server Error',
-                detail: 'Internal Server Error',
-              }],
-            });
-
-            return;
-          }
-
-          if (user.socketId) {
-            io.to(user.socketId).emit('follow', { room });
-          }
-
-          res.json({ data: { room: { roomName } } });
-        });
-      });
-    });
-  });
-
-  /**
-   * @api {post} /rooms/unfollow Unfollow a room
-   * @apiVersion 5.0.2
-   * @apiName UnfollowRoom
-   * @apiGroup Rooms
-   *
-   * @apiHeader {String} Authorization Your JSON Web Token
-   *
-   * @apiDescription Unfollow a room
-   *
-   * @apiParam {Object} data
-   * @apiParam {Object} data.room Room
-   * @apiParam {String} data.room.roomName Name of the room to unfollow
-   * @apiParamExample {json} Request-Example:
-   *   {
-   *    "data": {
-   *      "room": {
-   *        "roomName": "bb1"
-   *      }
-   *    }
-   *  }
-   *
-   * @apiSuccess {Object} data
-   * @apiSuccess {Object} data.room Room
-   * @apiSuccess {String} data.room.roomName Name of the room that was unfollowed
-   * @apiSuccessExample {json} Success-Response:
-   *   {
-   *    "data": {
-   *      "room": {
-   *        "roomName": "bb1"
-   *      }
-   *    }
-   *  }
-   */
-  router.post('/unfollow', (req, res) => {
-    if (!objectValidator.isValidData(req.body, { data: { room: { roomName: true } } })) {
-      res.status(400).json({
-        errors: [{
-          status: 400,
-          title: 'Missing data',
-          detail: 'Unable to parse data',
-        }],
-      });
-
-      return;
-    }
-
-    // noinspection JSUnresolvedVariable
-    const auth = req.headers.authorization;
-
-    jwt.verify(auth || '', appConfig.jsonKey, (jwtErr, decoded) => {
-      if (jwtErr) {
-        res.status(500).json({
-          errors: [{
-            status: 500,
-            title: 'Internal Server Error',
-            detail: 'Internal Server Error',
-          }],
-        });
-
-        return;
-      } else if (!decoded && auth) {
-        res.status(401).json({
-          errors: [{
-            status: 401,
-            title: 'Unauthorized',
-            detail: 'Invalid token',
-          }],
-        });
-
-        return;
-      }
-
-      const { roomName } = req.body.data.room;
-
-      dbUser.removeRoomFromUser(decoded.data.userName, roomName, (roomErr, user = {}) => {
-        if (roomErr) {
-          res.status(500).json({
-            errors: [{
-              status: 500,
-              title: 'Internal Server Error',
-              detail: 'Internal Server Error',
-            }],
-          });
-
-          return;
-        }
-
-        if (user.socketId) {
-          io.to(user.socketId).emit('unfollow', { room: { roomName } });
-        }
-
-        res.json({ data: { room: { roomName } } });
       });
     });
   });

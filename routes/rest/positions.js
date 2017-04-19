@@ -99,7 +99,9 @@ function handle(io) {
    */
   router.get('/users', (req, res) => {
     // noinspection JSUnresolvedVariable
-    jwt.verify(req.headers.authorization || '', appConfig.jsonKey, (jwtErr, decoded) => {
+    const auth = req.headers.authorization || '';
+
+    jwt.verify(auth, appConfig.jsonKey, (jwtErr, decoded) => {
       if (jwtErr) {
         res.status(500).json({
           errors: [{
@@ -213,7 +215,9 @@ function handle(io) {
    */
   router.get('/users/:id', (req, res) => {
     // noinspection JSUnresolvedVariable
-    jwt.verify(req.headers.authorization || '', appConfig.jsonKey, (jwtErr, decoded) => {
+    const auth = req.headers.authorization || '';
+
+    jwt.verify(auth, appConfig.jsonKey, (jwtErr, decoded) => {
       if (jwtErr) {
         res.status(500).json({
           errors: [{
@@ -253,7 +257,6 @@ function handle(io) {
       });
     });
   });
-
 
   /**
    * @api {post} /positions/users Set position
@@ -360,7 +363,9 @@ function handle(io) {
     }
 
     // noinspection JSUnresolvedVariable
-    jwt.verify(req.headers.authorization || '', appConfig.jsonKey, (jwtErr, decoded) => {
+    const auth = req.headers.authorization || '';
+
+    jwt.verify(auth, appConfig.jsonKey, (jwtErr, decoded) => {
       if (jwtErr) {
         res.status(500).json({
           errors: [{

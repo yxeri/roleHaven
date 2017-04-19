@@ -67,7 +67,9 @@ function handle() {
    */
   router.get('/', (req, res) => {
     // noinspection JSUnresolvedVariable
-    jwt.verify(req.headers.authorization || '', appConfig.jsonKey, (jwtErr, decoded) => {
+    const auth = req.headers.authorization || '';
+
+    jwt.verify(auth, appConfig.jsonKey, (jwtErr, decoded) => {
       if (jwtErr) {
         res.status(500).json({
           errors: [{
@@ -158,7 +160,9 @@ function handle() {
    */
   router.get('/:id', (req, res) => {
     // noinspection JSUnresolvedVariable
-    jwt.verify(req.headers.authorization || '', appConfig.jsonKey, (jwtErr, decoded) => {
+    const auth = req.headers.authorization || '';
+
+    jwt.verify(a, appConfig.jsonKey, (jwtErr, decoded) => {
       if (jwtErr) {
         res.status(500).json({
           errors: [{

@@ -109,6 +109,7 @@ config.routes = config.routes || [
   { sitePath: '/api/positions', filePath: `${__dirname}/../../routes/rest/positions.js` },
   { sitePath: '/api/docFiles', filePath: `${__dirname}/../../routes/rest/docFiles.js` },
   { sitePath: '/api/messages', filePath: `${__dirname}/../../routes/rest/messages.js` },
+  { sitePath: '/api/broadcasts', filePath: `${__dirname}/../../routes/rest/broadcasts.js` },
   { sitePath: '/api/users', filePath: `${__dirname}/../../routes/rest/users.js` },
   { sitePath: '/api/aliases', filePath: `${__dirname}/../../routes/rest/aliases.js` },
   { sitePath: '/api/transactions', filePath: `${__dirname}/../../routes/rest/transactions.js` },
