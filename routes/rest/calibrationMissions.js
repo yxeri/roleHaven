@@ -109,7 +109,7 @@ function handle(io) {
   });
 
   /**
-   * @api {put} /calibrationMissions/:id/complete Complete a mission
+   * @api {post} /calibrationMissions/:id/complete Complete a mission
    * @apiVersion 5.1.0
    * @apiName CompleteCalibrationMission
    * @apiGroup CalibrationMissions
@@ -153,7 +153,7 @@ function handle(io) {
    *    }
    *  }
    */
-  router.put('/:id/complete', (req, res) => {
+  router.post('/:id/complete', (req, res) => {
     if (!objectValidator.isValidData(req.body, { data: { mission: { stationId: true } } })) {
       res.status(400).json({
         errors: [{
@@ -276,7 +276,7 @@ function handle(io) {
   });
 
   /**
-   * @api {put} /calibrationMissions/:id/cancel Cancel a mission
+   * @api {post} /calibrationMissions/:id/cancel Cancel a mission
    * @apiVersion 5.1.0
    * @apiName CancelCalibrationMission
    * @apiGroup CalibrationMissions
@@ -316,7 +316,7 @@ function handle(io) {
    *    }
    *  }
    */
-  router.put('/:id/cancel', (req, res) => {
+  router.post('/:id/cancel', (req, res) => {
     if (!objectValidator.isValidData(req.body, { data: { mission: { stationId: true } } })) {
       res.status(400).json({
         errors: [{

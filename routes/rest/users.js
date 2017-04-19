@@ -389,7 +389,7 @@ function handle(io) {
   });
 
   /**
-   * @api {put} /:id/follow Follow a room
+   * @api {post} /:id/follow Follow a room
    * @apiVersion 5.1.0
    * @apiName FollowRoom
    * @apiGroup Users
@@ -426,7 +426,7 @@ function handle(io) {
    *    }
    *  }
    */
-  router.put('/:id/follow', (req, res) => {
+  router.post('/:id/follow', (req, res) => {
     if (!objectValidator.isValidData(req.body, { data: { room: { roomName: true } } })) {
       res.status(400).json({
         errors: [{
@@ -516,7 +516,7 @@ function handle(io) {
   });
 
   /**
-   * @api {put} /:id/unfollow Unfollow a room
+   * @api {post} /:id/unfollow Unfollow a room
    * @apiVersion 5.1.0
    * @apiName UnfollowRoom
    * @apiGroup Users
@@ -551,7 +551,7 @@ function handle(io) {
    *    }
    *  }
    */
-  router.put('/:id/unfollow', (req, res) => {
+  router.post('/:id/unfollow', (req, res) => {
     if (!objectValidator.isValidData(req.body, { data: { room: { roomName: true } } })) {
       res.status(400).json({
         errors: [{
