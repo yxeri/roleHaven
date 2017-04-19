@@ -274,7 +274,7 @@ function handle(io) {
   });
 
   /**
-   * @api {post} /calibrationMissions/:id/cancel Cancel a calibration mission
+   * @api {put} /calibrationMissions/:id/cancel Cancel a calibration mission
    * @apiVersion 5.1.0
    * @apiName CancelCalibrationMission
    * @apiGroup CalibrationMissions
