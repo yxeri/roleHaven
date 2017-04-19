@@ -107,24 +107,25 @@ function handle(io) {
   });
 
   /**
-   * @api {post} /calibrationMissions/completeMission Set a mission to completed
+   * @api {put} /calibrationMissions/:id/complete Set a mission to completed
    * @apiVersion 5.1.0
    * @apiName CompleteCalibrationMission
    * @apiGroup CalibrationMissions
    *
-   * @apiHeader {String} Authorization Your JSON Web Token
+   * @apiHeader {string} Authorization Your JSON Web Token
    *
    * @apiDescription Set a mission to completed
    *
+   * @apiParam {string} id Mission code
+   *
    * @apiParam {Object} data
    * @apiParam {Object} data.mission Mission
-   * @apiParam {String} data.mission.code Mission code (8 numbers)
-   * @apiParam {String} data.mission.stationId Number of the station
+   * @apiParam {string} data.mission.code Mission code (8 numbers)
+   * @apiParam {string} data.mission.stationId Number of the station
    * @apiParamExample {json} Request-Example:
    *   {
    *    "data": {
    *      "mission": {
-   *        "code": 12345678,
    *        "stationId": 1
    *      }
    *    }
@@ -150,8 +151,8 @@ function handle(io) {
    *    }
    *  }
    */
-  router.post('/completeMission', (req, res) => {
-    if (!objectValidator.isValidData(req.body, { data: { mission: { code: true, stationId: true } } })) {
+  router.put('/:id/complete', (req, res) => {
+    if (!objectValidator.isValidData(req.body, { data: { mission: { stationId: true } } })) {
       res.status(400).json({
         errors: [{
           status: 400,
@@ -189,9 +190,10 @@ function handle(io) {
         return;
       }
 
-      const { code, stationId } = req.body.data.mission;
+      const mission = req.body.data.mission;
+      mission.code = req.params.id;
 
-      dbCalibrationMission.setMissionCompleted(code, stationId, (err, completedMission) => {
+      dbCalibrationMission.setMissionCompleted(mission.code, mission.stationId, (err, completedMission) => {
         if (err) {
           res.status(500).json({
             errors: [{
@@ -272,7 +274,7 @@ function handle(io) {
   });
 
   /**
-   * @api {post} /calibrationMissions/cancelMission Cancel a calibration mission
+   * @api {post} /calibrationMissions/:id/cancel Cancel a calibration mission
    * @apiVersion 5.1.0
    * @apiName CancelCalibrationMission
    * @apiGroup CalibrationMissions
@@ -280,6 +282,8 @@ function handle(io) {
    * @apiHeader {String} Authorization Your JSON Web Token
    *
    * @apiDescription Cancel a calibration mission. Mission will still be set to completed, but user will receive no reward
+   *
+   * @apiParam {string} id Mission code
    *
    * @apiParam {Object} data
    * @apiParam {Object} data.mission Mission
@@ -289,7 +293,6 @@ function handle(io) {
    *   {
    *    "data": {
    *      "mission": {
-   *        "code": 12345678,
    *        "stationId": 1
    *      }
    *    }
@@ -311,8 +314,8 @@ function handle(io) {
    *    }
    *  }
    */
-  router.post('/cancelMission', (req, res) => {
-    if (!objectValidator.isValidData(req.body, { data: { mission: { code: true, stationId: true } } })) {
+  router.put('/:id/cancel', (req, res) => {
+    if (!objectValidator.isValidData(req.body, { data: { mission: { stationId: true } } })) {
       res.status(400).json({
         errors: [{
           status: 400,
@@ -350,9 +353,10 @@ function handle(io) {
         return;
       }
 
-      const { code, stationId } = req.body.data.mission;
+      const mission = req.body.data.mission;
+      mission.code = req.params.id;
 
-      dbCalibrationMission.setMissionCompleted(code, stationId, (err, completedMission) => {
+      dbCalibrationMission.setMissionCompleted(mission.code, mission.stationId, (err, completedMission) => {
         if (err) {
           res.status(500).json({
             errors: [{
