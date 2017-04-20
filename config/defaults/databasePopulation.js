@@ -48,6 +48,7 @@ function generatePass() {
 config.rooms = config.rooms || {};
 config.commands = config.commands || {};
 config.users = config.users || {};
+config.apiCommands = config.apiCommands || {};
 
 config.accessLevels = config.accessLevels || {
   god: 13,
