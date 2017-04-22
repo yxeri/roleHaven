@@ -27,10 +27,10 @@ try {
   console.log('Did not find modified appConfig. Using defaults');
 }
 
-const userVerifyEnv = textTools.convertToBoolean(process.env.REQUIREVERIFY);
+const userVerifyEnv = textTools.convertToBoolean(process.env.USERVERIFY);
 const forceFullscreenEnv = textTools.convertToBoolean(process.env.FORCEFULLSCREEN);
 const gpsTrackingEnv = textTools.convertToBoolean(process.env.GPSTRACKING);
-const teamVerifyEnv = textTools.convertToBoolean(process.env.REQUIRETEAMVERIFY);
+const teamVerifyEnv = textTools.convertToBoolean(process.env.TEAMVERIFY);
 
 // Title of the site
 config.title = process.env.TITLE || config.title || 'roleHaven';

@@ -132,7 +132,11 @@ function getUserByDevice(deviceCode, callback) {
       });
       callback(err, null);
     } else {
-      const userQuery = { banned: false, verified: true, socketId: device.socketId };
+      const userQuery = { banned: false, socketId: device.socketId };
+
+      if (appConfig.userVerify) {
+        userQuery.verified = true;
+      }
 
       User.findOne(userQuery).lean().exec((userErr, user) => {
         if (userErr || user === null) {
@@ -155,8 +159,12 @@ function getUserByDevice(deviceCode, callback) {
  * @param {Function} callback - Callback
  */
 function getUserById(sentSocketId, callback) {
-  const query = { banned: false, verified: true, socketId: sentSocketId };
+  const query = { banned: false, socketId: sentSocketId };
   const filter = { _id: 0 };
+
+  if (appConfig.userVerify) {
+    query.verified = true;
+  }
 
   User.findOne(query, filter).lean().exec((err, user) => {
     if (err) {
@@ -178,8 +186,12 @@ function getUserById(sentSocketId, callback) {
  * @param {Function} callback - Callback
  */
 function authUser(userName, password, callback) {
-  const query = { banned: false, verified: true, userName, password };
+  const query = { banned: false, userName, password };
   const filter = { password: 0 };
+
+  if (appConfig.userVerify) {
+    query.verified = true;
+  }
 
   User.findOne(query, filter).lean().exec((err, user) => {
     if (err) {
@@ -200,8 +212,12 @@ function authUser(userName, password, callback) {
  * @param {Function} callback - Callback
  */
 function getUser(userName, callback) {
-  const query = { banned: false, verified: true, userName };
+  const query = { banned: false, userName };
   const filter = { password: 0 };
+
+  if (appConfig.userVerify) {
+    query.verified = true;
+  }
 
   User.findOne(query, filter).lean().exec((err, foundUser) => {
     if (err) {
@@ -248,9 +264,25 @@ function createUser(user, callback) {
  * @param {Function} callback - Callback
  */
 function updateUserSocketId(userName, value, callback) {
+  const query = { banned: false, userName };
   const update = { socketId: value, online: true };
+  const options = { new: true };
 
-  updateUserValue(userName, update, callback);
+  if (appConfig.userVerify) {
+    query.verified = true;
+  }
+
+  User.findOneAndUpdate(query, update, options).lean().exec((err, user) => {
+    if (err) {
+      logger.sendErrorMsg({
+        code: logger.ErrorCodes.db,
+        text: ['Failed to update user'],
+        err,
+      });
+    }
+
+    callback(err, user);
+  });
 }
 
 /**
@@ -292,9 +324,13 @@ function verifyAllUsers(callback) {
  * @param {Function} callback - Function to be called on completion
  */
 function getAllUsers(sentUser, callback) {
-  const query = { visibility: { $lte: sentUser.accessLevel }, verified: true, banned: false };
+  const query = { visibility: { $lte: sentUser.accessLevel }, banned: false };
   const sort = { userName: 1 };
   const filter = { _id: 0, password: 0 };
+
+  if (appConfig.userVerify) {
+    query.verified = true;
+  }
 
   User.find(query, filter).sort(sort).lean().exec((err, users) => {
     if (err) {
@@ -315,9 +351,13 @@ function getAllUsers(sentUser, callback) {
  * @param {Function} callback - Function to be called on completion
  */
 function getTeamUsers(sentUser, callback) {
-  const query = { team: sentUser.team, banned: false, verified: true };
+  const query = { team: sentUser.team, banned: false };
   const sort = { userName: 1 };
   const filter = { userName: 1, fullName: 1, online: 1, team: 1, isTracked: 1, _id: 0 };
+
+  if (appConfig.userVerify) {
+    query.verified = true;
+  }
 
   User.find(query, filter).sort(sort).lean().exec((err, users) => {
     if (err) {
@@ -338,9 +378,13 @@ function getTeamUsers(sentUser, callback) {
  * @param {Function} callback - Callback
  */
 function getAllUserPositions(sentUser, callback) {
-  const query = { visibility: { $lte: sentUser.accessLevel }, verified: true, banned: false };
+  const query = { visibility: { $lte: sentUser.accessLevel }, banned: false };
   const sort = { userName: 1 };
   const filter = { _id: 0, userName: 1 };
+
+  if (appConfig.userVerify) {
+    query.verified = true;
+  }
 
   User.find(query, filter).sort(sort).lean().exec((err, users) => {
     if (err) {
@@ -412,8 +456,12 @@ function getUserPositions(sentUser, sentUserName, callback) {
  * @param {Function} callback - Callback
  */
 function getUsersFollowingRoom(roomName, callback) {
-  const query = { rooms: { $in: [roomName] }, banned: false, verified: true };
+  const query = { rooms: { $in: [roomName] }, banned: false };
   const filter = { rooms: 1, socketId: 1 };
+
+  if (appConfig.userVerify) {
+    query.verified = true;
+  }
 
   User.find(query, filter).lean().exec((err, users) => {
     if (err) {
@@ -772,7 +820,6 @@ function matchPartialUser(partialName, user, callback) {
  */
 function getUserByAlias(alias, callback) {
   const query = {
-    verified: true,
     banned: false,
     $or: [
       { userName: alias },
@@ -780,6 +827,10 @@ function getUserByAlias(alias, callback) {
     ],
   };
   const filter = { _id: 0, password: 0 };
+
+  if (appConfig.userVerify) {
+    query.verified = true;
+  }
 
   User.findOne(query, filter).lean().exec((err, user) => {
     if (err) {

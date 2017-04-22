@@ -196,15 +196,11 @@ function handle(socket, io) {
 
           return;
         } else if (authUser === null) {
-          callback({ error: new errorCreator.DoesNotExist({ name: user.userName }) });
-
-          return;
-        } else if (appConfig.userVerify && !authUser.verified) {
-          callback({ error: new errorCreator.NeedsVerification({ name: authUser.userName }) });
-
-          return;
-        } else if (authUser.banned) {
-          callback({ error: new errorCreator.Banned({ name: authUser.userName }) });
+          if (appConfig.userVerify) {
+            callback({ error: new errorCreator.NeedsVerification({ name: user.userName }) });
+          } else {
+            callback({ error: new errorCreator.DoesNotExist({ name: user.userName }) });
+          }
 
           return;
         }
