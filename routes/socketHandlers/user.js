@@ -145,7 +145,11 @@ function handle(socket, io) {
         }
 
         const allRooms = updatedUser.rooms;
-        data.user = updatedUser;
+        data.user = {
+          userName: updatedUser.userName,
+          accessLevel: updatedUser.accessLevel,
+          aliases: updatedUser.aliases,
+        };
 
         manager.joinRooms(allRooms, socket, device.deviceId);
         // TODO Client should send time of the last message it received
