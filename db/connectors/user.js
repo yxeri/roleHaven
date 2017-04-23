@@ -21,6 +21,7 @@ const logger = require('../../utils/logger');
 const databaseConnector = require('../databaseConnector');
 const deviceConnector = require('./device');
 const positionConnector = require('./position');
+const appConfig = require('../../config/defaults/config').app;
 
 // Access levels: Lowest / Lower / Middle / Higher / Highest / God
 // 1 / 3 / 5 / 7 / 9 / 11
