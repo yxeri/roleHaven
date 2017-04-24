@@ -100,6 +100,7 @@ function userIsAllowed(socketId, commandName, callback, userName) {
         userName: user ? user.userName : '',
         accessLevel: user ? user.accessLevel : 0,
         whisperRooms: user ? user.whisperRooms : [],
+        isTracked: user ? user.isTracked : false,
       };
 
       getCommand(commandName, (cmdErr, command) => {

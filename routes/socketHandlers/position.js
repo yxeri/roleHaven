@@ -200,19 +200,15 @@ function handle(socket) {
             break;
           }
           case 'user': {
-            if (user.isTracked) {
-              dbUser.getAllUserPositions(user, (err, userPositions = []) => {
-                if (err) {
-                  callback({ error: new errorCreator.Database() });
+            dbUser.getAllUserPositions(user, (err, userPositions = []) => {
+              if (err) {
+                callback({ error: new errorCreator.Database() });
 
-                  return;
-                }
+                return;
+              }
 
-                getPositions(types.shift(), positions.concat(userPositions));
-              });
-            } else {
-              getPositions(types.shift(), positions);
-            }
+              getPositions(types.shift(), positions.concat(userPositions));
+            });
 
             break;
           }
