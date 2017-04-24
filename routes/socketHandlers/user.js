@@ -19,7 +19,6 @@
 const dbUser = require('../../db/connectors/user');
 const databasePopulation = require('../../config/defaults/config').databasePopulation;
 const manager = require('../../socketHelpers/manager');
-const logger = require('../../utils/logger');
 const appConfig = require('../../config/defaults/config').app;
 const messenger = require('../../socketHelpers/messenger');
 const objectValidator = require('../../utils/objectValidator');

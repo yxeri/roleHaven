@@ -70,13 +70,14 @@ function createDocFile(docFile, callback) {
 function updateDocFile(docFileId, { text, title, visibility, isPublic }, callback) {
   const query = { docFileId };
   const update = { };
+  const options = { new: true };
 
   if (text) { update.text = text; }
   if (title) { update.title = title; }
   if (visibility) { update.visibility = visibility; }
   if (isPublic) { update.isPublic = isPublic; }
 
-  DocFile.findOneAndUpdate(query, update).lean().exec((err, docFile) => {
+  DocFile.findOneAndUpdate(query, update, options).lean().exec((err, docFile) => {
     if (err) {
       logger.sendErrorMsg({
         code: logger.ErrorCodes.db,

@@ -75,13 +75,18 @@ function handle(socket) {
     }
 
     manager.userIsAllowed(socket.id, databasePopulation.commands.docFiles.commandName, (allowErr, allowed, user) => {
-      if (allowErr || !allowed) {
-        callback({ error: new errorCreator.NotAllowed({ used: databasePopulation.commands.docFiles.commandName }) });
+      if (allowErr) {
+        callback({ error: new errorCreator.Database({}) });
+
+        return;
+      } else if (!allowed) {
+        callback({ error: new errorCreator.NotAllowed({ name: 'createDocFile' }) });
 
         return;
       }
 
       docFile.creator = user.userName;
+      docFile.docFileId = docFile.docFileId.toLowerCase();
 
       dbDocFile.createDocFile(docFile, (err, newDocFile) => {
         if (err) {
@@ -105,14 +110,18 @@ function handle(socket) {
 
   socket.on('updateDocFile', ({ docFileId, title, text, visibility, isPublic }, callback = () => {}) => {
     if (!objectValidator.isValidData({ docFileId }, { docFileId: true })) {
-      callback({ error: new errorCreator.InvalidData({}) });
+      callback({ error: new errorCreator.InvalidData({ expected: '{ docFileId }' }) });
 
       return;
     }
 
     manager.userIsAllowed(socket.id, databasePopulation.commands.docFiles.commandName, (allowErr, allowed) => {
-      if (allowErr || !allowed) {
-        callback({ error: new errorCreator.NotAllowed({ used: databasePopulation.commands.docFiles.commandName }) });
+      if (allowErr) {
+        callback({ error: new errorCreator.Database({}) });
+
+        return;
+      } else if (!allowed) {
+        callback({ error: new errorCreator.NotAllowed({ name: 'updateDocFile' }) });
 
         return;
       }
