@@ -25,7 +25,11 @@ const transactionSchema = new mongoose.Schema({
   to: String,
   from: String,
   time: Date,
-  coordinates: {},
+  coordinates: {
+    longitude: Number,
+    latitude: Number,
+    accuracy: Number,
+  },
   note: String,
 }, { collection: 'transactions' });
 
