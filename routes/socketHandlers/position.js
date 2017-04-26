@@ -23,36 +23,12 @@ const databasePopulation = require('../../config/defaults/config').databasePopul
 const objectValidator = require('../../utils/objectValidator');
 const mapCreator = require('../../utils/mapCreator');
 const errorCreator = require('../../objects/error/errorCreator');
+const appConfig = require('../../config/defaults/config').app;
 
 /**
  * @param {Object} socket - Socket.IO socket
  */
 function handle(socket) {
-  socket.on('pingMap', ({ position, pingInfo }, callback = () => {}) => {
-    if (!objectValidator.isValidData({ position, pingInfo }, { position: { coordinates: { longitude: true, latitude: true } }, pingInfo: { pingType: true } })) {
-      callback({ error: new errorCreator.InvalidData({ expected: '{ position: { coordinates: { longitude, latitude } }, pingInfo: { pingType } }' }) });
-
-      return;
-    }
-
-    manager.userIsAllowed(socket.id, databasePopulation.commands.createPosition.commandName, (allowErr, allowed, user) => {
-      if (allowErr) {
-        callback({ error: new errorCreator.Database() });
-
-        return;
-      } else if (!allowed) {
-        callback({ error: new errorCreator.NotAllowed({ name: 'pingMap' }) });
-
-        return;
-      }
-
-      pingInfo.userName = user.userName;
-
-      socket.broadcast.emit('pingMap', { position, pingInfo });
-      callback({ data: { position, pingInfo } });
-    });
-  });
-
   socket.on('updatePosition', ({ position }, callback = () => {}) => {
     if (!objectValidator.isValidData({ position }, { position: { coordinates: { longitude: true, latitude: true }, positionName: true, markerType: true } })) {
       callback({ error: new errorCreator.InvalidData({ expected: '{ position: { coordinates: { longitude, latitude }, positionName, markerType } }' }) });
@@ -82,6 +58,12 @@ function handle(socket) {
             callback({ error: new errorCreator.Database() });
 
             return;
+          }
+
+          if (createdPosition.team && !createdPosition.isPublic) {
+            socket.broadcast.to(`${createdPosition}${appConfig.teamAppend}`).emit('mapPositions', { positions: [position], currentTime: new Date() });
+          } else {
+            socket.broadcast.emit('mapPositions', { positions: [position], currentTime: new Date() });
           }
 
           callback({ data: { position: createdPosition } });
@@ -208,6 +190,19 @@ function handle(socket) {
               }
 
               getPositions(types.shift(), positions.concat(userPositions));
+            });
+
+            break;
+          }
+          case 'ping': {
+            dbPosition.getPings(user, (err, pings = []) => {
+              if (err) {
+                callback({ error: new errorCreator.Database() });
+
+                return;
+              }
+
+              getPositions(types.shift(), positions.concat(pings));
             });
 
             break;

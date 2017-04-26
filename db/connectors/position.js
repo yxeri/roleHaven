@@ -179,8 +179,39 @@ function getCustomPositions(owner, callback) {
   });
 }
 
+/**
+ * Get pings
+ * @param {Object} user Name of the owner of the position
+ * @param {Function} callback Callback
+ */
+function getPings(user, callback) {
+  const query = {
+    $and: [
+      { markerType: 'ping' },
+      { $or: [
+        { isPublic: true },
+        { owner: user.userName },
+        { team: user.team },
+      ] },
+    ],
+  };
+
+  MapPosition.find(query).lean().exec((err, customLocations) => {
+    if (err) {
+      logger.sendErrorMsg({
+        code: logger.ErrorCodes.db,
+        text: ['Failed to get ping positions'],
+        err,
+      });
+    }
+
+    callback(err, customLocations);
+  });
+}
+
 exports.updatePosition = updatePosition;
 exports.getAllStaticPositions = getAllStaticPositions;
 exports.getPosition = getPosition;
 exports.getPositions = getPositions;
 exports.getCustomPositions = getCustomPositions;
+exports.getPings = getPings;
