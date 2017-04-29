@@ -35,23 +35,6 @@ mongoose.connect(dbPath, (err) => {
   }
 });
 
-const teamSchema = new mongoose.Schema({
-  teamName: String,
-  owner: String,
-  admins: [{ type: String, unique: true }],
-  verified: Boolean,
-}, { collection: 'teams' });
-const weatherSchema = new mongoose.Schema({
-  time: { type: Date, unique: true },
-  temperature: Number,
-  windSpeed: Number,
-  precipitation: Number,
-  precipType: Number,
-  coverage: Number,
-  viewDistance: Number,
-  windDirection: Number,
-  thunderRisk: Number,
-}, { collection: 'weather' });
 const invitationListSchema = new mongoose.Schema({
   userName: { type: String, unique: true, index: true },
   invitations: [{
@@ -69,8 +52,6 @@ const gamePasswordSchema = new mongoose.Schema({
   password: { type: String, unique: true },
 }, { collection: 'gamePasswords' });
 
-const Team = mongoose.model('Team', teamSchema);
-const Weather = mongoose.model('Weather', weatherSchema);
 const InvitationList = mongoose.model('InvitationList', invitationListSchema);
 const GameUser = mongoose.model('GameUser', gameUserSchema);
 const GamePassword = mongoose.model('GamePassword', gamePasswordSchema);
@@ -142,39 +123,6 @@ function verifyAllObjects(query, object, objectName, callback) {
     }
 
     callback(err, verified);
-  });
-}
-
-/**
- * Creates and saves weather report to db
- * @param {Object} sentWeather - Weather report
- * @param {Function} callback - Callback
- */
-function createWeather(sentWeather, callback) {
-  const newWeather = new Weather(sentWeather);
-
-  saveObject(newWeather, 'weather', callback);
-}
-
-/**
- * Get weather report based on time
- * @param {Date} sentTime - Time to retrieve reports from (equal to or greater than)
- * @param {Function} callback - Callback
- */
-function getWeather(sentTime, callback) {
-  const query = { time: { $gte: sentTime } };
-  const filter = { _id: 0 };
-
-  Weather.findOne(query, filter).lean().exec((err, foundWeather) => {
-    if (err) {
-      logger.sendErrorMsg({
-        code: logger.ErrorCodes.db,
-        text: ['Failed to get weather'],
-        err,
-      });
-    }
-
-    callback(err, foundWeather);
   });
 }
 
@@ -281,72 +229,6 @@ function getAllGamePasswords(callback) {
 
     callback(err, gamePasswords);
   });
-}
-
-/**
- * Create and save team
- * @param {Object} team - Team
- * @param {Function} callback - Callback
- */
-function createTeam(team, callback) {
-  const newTeam = new Team(team);
-  const query = { teamName: team.teamName };
-
-  Team.findOne(query).lean().exec((err, foundTeam) => {
-    if (err) {
-      logger.sendErrorMsg({
-        code: logger.ErrorCodes.db,
-        text: ['Failed to check if team already exists'],
-        err,
-      });
-    } else if (foundTeam === null) {
-      saveObject(newTeam, 'team', callback);
-    } else {
-      callback(err, null);
-    }
-  });
-}
-
-/**
- * Get team
- * @param {string} teamName - Name of team to retrieve
- * @param {Function} callback - Callback
- */
-function getTeam(teamName, callback) {
-  const query = { teamName };
-  const filter = { _id: 0 };
-
-  Team.findOne(query, filter).lean().exec((err, team) => {
-    if (err) {
-      logger.sendErrorMsg({
-        code: logger.ErrorCodes.db,
-        text: ['Failed to get team'],
-        err,
-      });
-    }
-
-    callback(err, team);
-  });
-}
-
-/**
- * Verify team
- * @param {string} teamName - Name of the team that will be verified
- * @param {Function} callback - Callback
- */
-function verifyTeam(teamName, callback) {
-  const query = { teamName };
-  verifyObject(query, Team, 'team', callback);
-}
-
-/**
- * Verify all teams
- * @param {Function} callback - Callback
- */
-function verifyAllTeams(callback) {
-  const query = { verified: false };
-
-  verifyAllObjects(query, Team, 'teams', callback);
 }
 
 /**
@@ -464,28 +346,6 @@ function removeInvitationTypeFromList(userName, invitationType, callback) {
 }
 
 /**
- * Get all unverified teams
- * @param {Function} callback - Callback
- */
-function getUnverifiedTeams(callback) {
-  const query = { verified: false };
-  const filter = { _id: 0 };
-  const sort = { teamName: 1 };
-
-  Team.find(query, filter).sort(sort).lean().exec((err, teams) => {
-    if (err) {
-      logger.sendErrorMsg({
-        code: logger.ErrorCodes.db,
-        text: ['Failed to get unverified teams'],
-        err,
-      });
-    }
-
-    callback(err, teams);
-  });
-}
-
-/**
  * Match partial name
  * @param {Object} params - Parameters
  * @param {Function} params.callback - Callback
@@ -531,17 +391,10 @@ function matchPartial({ callback, partialName, queryType, filter, sort, user, ty
   });
 }
 
-exports.createTeam = createTeam;
-exports.getTeam = getTeam;
-exports.createWeather = createWeather;
-exports.getWeather = getWeather;
 exports.addInvitationToList = addInvitationToList;
 exports.removeInvitationFromList = removeInvitationFromList;
 exports.getInvitations = getInvitations;
 exports.removeInvitationTypeFromList = removeInvitationTypeFromList;
-exports.verifyTeam = verifyTeam;
-exports.verifyAllTeams = verifyAllTeams;
-exports.getUnverifiedTeams = getUnverifiedTeams;
 exports.createGameUser = createGameUser;
 exports.getGameUser = getGameUser;
 exports.createGamePassword = createGamePassword;

@@ -18,6 +18,7 @@
 
 const dbConnector = require('../../db/databaseConnector');
 const dbUser = require('../../db/connectors/user');
+const dbTeam = require('../../db/connectors/team');
 const databasePopulation = require('../../config/defaults/config').databasePopulation;
 const manager = require('../../socketHelpers/manager');
 const logger = require('../../utils/logger');
@@ -30,66 +31,6 @@ const errorCreator = require('../../objects/error/errorCreator');
  * @param {Object} socket Socket.io socket
  */
 function handle(socket) {
-  // TODO Unused
-  socket.on('inviteToTeam', ({ user: sentUser }, callback = () => {}) => {
-    if (!objectValidator.isValidData({ user: { userName: sentUser.userName } }, { user: { userName: true } })) {
-      callback({ error: new errorCreator.InvalidData({ expected: '{ user: { userName } }' }) });
-
-      return;
-    }
-
-    manager.userIsAllowed(socket.id, databasePopulation.commands.inviteTeam.commandName, (allowErr, allowed, user) => {
-      if (allowErr || !allowed) {
-        return;
-      }
-
-      dbConnector.getTeam(user.team, (err, team) => {
-        if (err) {
-          callback({ error: new errorCreator.Database() });
-
-          return;
-        } else if (team.owner !== user.userName && team.admins.indexOf(user.userName) === -1) {
-          callback({ error: new errorCreator.NotAllowed({ name: 'adding member to team' }) });
-
-          return;
-        }
-
-        dbUser.getUser(sentUser.userName, (userErr, invitedUser) => {
-          if (userErr) {
-            callback({ error: new errorCreator.Database() });
-
-            return;
-          } else if (invitedUser.team) {
-            callback({ error: new errorCreator.AlreadyExists({ name: 'team' }) });
-
-            return;
-          }
-
-          const invitation = {
-            itemName: user.team,
-            time: new Date(),
-            invitationType: 'team',
-            sender: user.userName,
-          };
-
-          dbConnector.addInvitationToList(invitedUser.userName, invitation, (invErr) => {
-            if (invErr) {
-              if (invErr.code === 11000) {
-                callback({ error: new errorCreator.AlreadyExists({ name: 'invitation' }) });
-              } else {
-                callback({ error: new errorCreator.Database() });
-              }
-
-              return;
-            }
-
-            callback({ data: { invitation } });
-          });
-        });
-      });
-    });
-  });
-
   // TODO Unused
   socket.on('teamAnswer', (params) => {
     if (!objectValidator.isValidData(params, { accepted: true, invitation: { itemName: true, sender: true, invitationType: true } })) {

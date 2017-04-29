@@ -222,9 +222,4 @@ config.hackingApiKey = process.env.HACKINGAPIKEY;
  */
 config.hackingApiHost = process.env.HACKINGAPIHOST;
 
-/**
- * Path for API call. Used for BBR events
- */
-config.hackingApiPath = process.env.HACKINGAPIPATH;
-
 module.exports = config;

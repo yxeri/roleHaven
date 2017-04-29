@@ -24,38 +24,35 @@ const manager = require('../../socketHelpers/manager');
 const appConfig = require('../../config/defaults/config').app;
 const databasePopulation = require('../../config/defaults/config').databasePopulation;
 const http = require('http');
-const request = require('request');
+// const request = require('request');
 const gameUserManager = require('../../utils/gameUserManager');
+// const errorCreator = require('../../objects/error/errorCreator');
 
 // TODO Everything needs to be updated
 
-const signalThreshold = 50;
+// const signalThreshold = 50;
 const signalDefault = 100;
-const changePercentage = 0.2;
-const signalMaxChange = 10;
+// const changePercentage = 0.2;
+// const signalMaxChange = 10;
 let resetInterval = null;
 
 /**
  * Post request to external server
- * @param {Object} params - Parameters
  * @param {string} params.host - Host name
  * @param {string} params.path - Path
  * @param {Function} params.callback - Path
- * @param {*} params.data - Data to send
+ * @param {Object} params.data - Data to send
  */
-function postRequest(params) {
-  const host = params.host;
-  const path = params.path;
-  const callback = params.callback;
-  const dataString = JSON.stringify(params.data);
+function postRequest({ host, path, data, callback }) {
+  const dataString = JSON.stringify({ data });
   const options = {
-    host,
-    path,
     headers: {
       'Content-Type': 'application/json',
       'Content-Length': dataString.length,
     },
     method: 'POST',
+    host,
+    path,
   };
 
   const req = http.request(options, (response) => {
@@ -82,7 +79,7 @@ function setResetInterval() {
         return;
       }
 
-      for (const station of stations) {
+      stations.forEach((station) => {
         const signalValue = station.signalValue;
         const stationId = station.stationId;
         let newSignalValue = signalValue;
@@ -100,19 +97,19 @@ function setResetInterval() {
             }
 
             postRequest({
-              host: 'wrecking.bbreloaded.se',
+              host: appConfig.hackingApiHost,
               path: '/reports/set_boost',
               data: {
                 station: stationId,
                 boost: newSignalValue,
-                key: 'hemligt',
+                key: appConfig.hackingApiKey,
               },
               callback: () => {
               },
             });
           });
         }
-      }
+      });
     });
   }
 
@@ -153,25 +150,44 @@ function shuffleArray(array) {
  * @param {Function} callback - Callback
  */
 function retrieveStationStats(callback) {
-  request.get('http://wrecking.bbreloaded.se/public.json', (err, response, body) => {
-    if (err) {
-      console.log('Error request', response, err);
+  // request.get('http://wrecking.bbreloaded.se/public.json', (err, response, body) => {
+  //   if (err) {
+  //     console.log('Error request', response, err);
+  //
+  //     return;
+  //   }
+  //
+  //   if (body) {
+  //     /**
+  //      * @type {{ stations: Object[], teams: Object[], active_round: Object, coming_rounds: Object[] }}
+  //      */
+  //     const stats = JSON.parse(body);
+  //     const stations = stats.stations;
+  //     const teams = stats.teams;
+  //     const currentRound = stats.active_round;
+  //     const futureRounds = stats.coming_rounds;
+  //
+  //     callback(stations, teams, currentRound, futureRounds);
+  //   }
+  // });
 
-      return;
-    }
+  // Temporary until external server is available
+  callback({
+    stations: [{
+      id: 1,
+      location: 'banana',
+      owner: 'Team name',
+    }],
+    teams: [{
+      name: 'Team name',
+      short_name: 'acronym',
+    }],
+    currentRound: {
 
-    if (body) {
-      /**
-       * @type {{ stations: Object[], teams: Object[], active_round: Object, coming_rounds: Object[] }}
-       */
-      const stats = JSON.parse(body);
-      const stations = stats.stations;
-      const teams = stats.teams;
-      const currentRound = stats.active_round;
-      const futureRounds = stats.coming_rounds;
+    },
+    futureRounds: [
 
-      callback(stations, teams, currentRound, futureRounds);
-    }
+    ],
   });
 }
 
@@ -180,64 +196,65 @@ function retrieveStationStats(callback) {
  * @param {number} stationId - Station ID
  * @param {boolean} boostingSignal - Should the signal be increased?
  */
-function updateSignalValue(stationId, boostingSignal) {
-  dbStation.getStation(stationId, (err, station) => {
-    if (err) {
-      return;
-    }
-
-    /**
-     * Set new signalvalue
-     * @private
-     * @param {number} newSignalValue - New value
-     */
-    function setNewValue(newSignalValue) {
-      let ceilSignalValue = Math.ceil(newSignalValue);
-      const minValue = signalDefault - signalThreshold;
-      const maxValue = signalDefault + signalThreshold;
-
-      if (ceilSignalValue > maxValue) {
-        ceilSignalValue = maxValue;
-      } else if (ceilSignalValue < minValue) {
-        ceilSignalValue = minValue;
-      }
-
-      dbStation.updateSignalValue(stationId, ceilSignalValue, (updateErr) => {
-        if (updateErr) {
-          return;
-        }
-        postRequest({
-          host: appConfig.hackingApiHost,
-          path: appConfig.hackingApiPath,
-          data: {
-            station: stationId,
-            boost: ceilSignalValue,
-            key: appConfig.hackingApiKey,
-          },
-          callback: (response) => {
-            console.log(response);
-          },
-        });
-      });
-    }
-    const signalValue = station.signalValue;
-    const difference = Math.abs(signalValue - signalDefault);
-    let signalChange = (signalThreshold - difference) * changePercentage;
-
-    if (boostingSignal && signalValue < signalDefault) {
-      signalChange = signalMaxChange;
-    } else if (!boostingSignal && signalValue > signalDefault) {
-      signalChange = signalMaxChange;
-    }
-
-    setNewValue(signalValue + (boostingSignal ? signalChange : -Math.abs(signalChange)));
-  });
-}
+// function updateSignalValue(stationId, boostingSignal) {
+//   dbStation.getStation(stationId, (err, station) => {
+//     if (err) {
+//       return;
+//     }
+//
+//     /**
+//      * Set new signalvalue
+//      * @private
+//      * @param {number} newSignalValue - New value
+//      */
+//     function setNewValue(newSignalValue) {
+//       const minValue = signalDefault - signalThreshold;
+//       const maxValue = signalDefault + signalThreshold;
+//       let ceilSignalValue = Math.ceil(newSignalValue);
+//
+//       if (ceilSignalValue > maxValue) {
+//         ceilSignalValue = maxValue;
+//       } else if (ceilSignalValue < minValue) {
+//         ceilSignalValue = minValue;
+//       }
+//
+//       dbStation.updateSignalValue(stationId, ceilSignalValue, (updateErr) => {
+//         if (updateErr) {
+//           return;
+//         }
+//         postRequest({
+//           host: appConfig.hackingApiHost,
+//           path: '/reports/set_boost',
+//           data: {
+//             station: stationId,
+//             boost: ceilSignalValue,
+//             key: appConfig.hackingApiKey,
+//           },
+//           callback: (response) => {
+//             console.log(response);
+//           },
+//         });
+//       });
+//     }
+//     const signalValue = station.signalValue;
+//     const difference = Math.abs(signalValue - signalDefault);
+//     let signalChange = (signalThreshold - difference) * changePercentage;
+//
+//     if (boostingSignal && signalValue < signalDefault) {
+//       signalChange = signalMaxChange;
+//     } else if (!boostingSignal && signalValue > signalDefault) {
+//       signalChange = signalMaxChange;
+//     }
+//
+//     setNewValue(signalValue + (boostingSignal ? signalChange : -Math.abs(signalChange)));
+//   });
+// }
 
 /**
  * @param {Object} socket - Socket.IO socket
  */
 function handle(socket) {
+  // TODO Unused
   socket.on('createGameUser', (params) => {
     manager.userIsAllowed(socket.id, databasePopulation.commands.createGameUser.commandName, () => {
     });
@@ -255,6 +272,7 @@ function handle(socket) {
     });
   });
 
+  // TODO Unused
   socket.on('createGamePassword', (params) => {
     manager.userIsAllowed(socket.id, databasePopulation.commands.createGameWord.commandName, () => {
     });
@@ -267,6 +285,7 @@ function handle(socket) {
     });
   });
 
+  // TODO Unused
   socket.on('getAllGamePasswords', () => {
     manager.userIsAllowed(socket.id, databasePopulation.commands.createGameWord.commandName, () => {
     });
@@ -285,6 +304,7 @@ function handle(socket) {
     });
   });
 
+  // TODO Unused
   socket.on('getAllGameUsers', () => {
     manager.userIsAllowed(socket.id, databasePopulation.commands.createGameUser.commandName, () => {
     });
@@ -303,6 +323,7 @@ function handle(socket) {
     });
   });
 
+  // TODO Unused
   socket.on('getStationStats', (params, callback) => {
     retrieveStationStats((stations, teams, currentRound, futureRounds) => {
       dbStation.getActiveStations((err, dbStations) => {
@@ -311,7 +332,7 @@ function handle(socket) {
         }
 
         if (stations) {
-          for (const station of stations) {
+          stations.forEach((station) => {
             const foundStation = dbStations.find(dbs => dbs.stationId === station.id);
 
             if (foundStation) {
@@ -319,7 +340,7 @@ function handle(socket) {
             } else {
               station.signalValue = station.boost;
             }
-          }
+          });
 
           callback({ stations, teams, currentRound, futureRounds, now: new Date() });
         }
@@ -327,124 +348,132 @@ function handle(socket) {
     });
   });
 
-  socket.on('manipulateStation', (params) => {
-    manager.userIsAllowed(socket.id, databasePopulation.commands.hackLantern.commandName, (allowErr, allowed, allowedUser) => {
-      if (allowErr || !allowed) {
-        return;
-      }
+  // TODO Unused
+  // socket.on('manipulateStation', ({ gameUser, choice, stationId }, callback = () => {}) => {
+  //   if (!objectValidator.isValidData({ gameUser, choice, stationId }, { gameUser: true, choice: true, stationId: true })) {
+  //     callback({ error: new errorCreator.InvalidData({ expected: '{ gameUser, choice, stationId }' }) });
+  //
+  //     return;
+  //   }
+  //
+  //   manager.userIsAllowed(socket.id, dbConfig.commands.hackLantern.commandName, (allowErr, allowed, allowedUser) => {
+  //     if (allowErr) {
+  //       callback({ error: new errorCreator.Database() });
+  //
+  //       return;
+  //     } else if (!allowed) {
+  //       callback({ error: new errorCreator.NotAllowed({ name: 'manipulateStation' }) });
+  //
+  //       return;
+  //     }
+  //
+  //     if (users.map(user => user.userName).indexOf(sentUser.userName) === -1) {
+  //       messenger.sendSelfMsg({
+  //         socket,
+  //         message: {
+  //           text: ['User is not authorized to access the LANTERN'],
+  //         },
+  //       });
+  //       socket.emit('commandStep', { reset: true });
+  //
+  //       return;
+  //     }
+  //
+  //     dbConnector.getGameUser(sentUser.userName.toLowerCase(), (err, gameUser) => {
+  //       if (err) {
+  //         socket.emit('commandFail');
+  //
+  //         return;
+  //       } else if (gameUser === null) {
+  //         messenger.sendSelfMsg({
+  //           socket,
+  //           message: {
+  //             text: [`User ${sentUser.userName} does not exist`],
+  //           },
+  //         });
+  //         socket.emit('commandStep', { reset: true });
+  //
+  //         return;
+  //       }
+  //
+  //       if (params.gameUser.password === gameUser.password) {
+  //         const choice = params.choice;
+  //
+  //         switch (choice) {
+  //           case '1': {
+  //             messenger.sendSelfMsg({
+  //               socket,
+  //               message: {
+  //                 text: [
+  //                   'You have been authorized to access the LANTERN',
+  //                   'LSM is fully functional and running',
+  //                   'Amplifying signal output',
+  //                 ],
+  //               },
+  //             });
+  //             socket.emit('commandSuccess', { noStepCall: true });
+  //             updateSignalValue(params.stationId, true);
+  //             messenger.sendMsg({
+  //               socket,
+  //               message: {
+  //                 text: [`LANTERN ${params.stationId}> User ${allowedUser.userName} has amplified the signal of the station. User is part of team: ${allowedUser.team || '-'}`],
+  //                 userName: 'SYSTEM',
+  //               },
+  //               sendTo: `lantern${params.stationId}`,
+  //             });
+  //
+  //             break;
+  //           }
+  //           case '2': {
+  //             messenger.sendSelfMsg({
+  //               socket,
+  //               message: {
+  //                 text: [
+  //                   'You have been authorized to access the LANTERN',
+  //                   'LSM is fully functional and running',
+  //                   'Dampening signal output',
+  //                 ],
+  //               },
+  //             });
+  //             socket.emit('commandSuccess', { noStepCall: true });
+  //             updateSignalValue(params.stationId, false);
+  //             messenger.sendMsg({
+  //               socket,
+  //               message: {
+  //                 text: [`LANTERN ${params.stationId}> WARNING! User ${allowedUser.userName} has dampened the signal of the station. User is part of team: ${allowedUser.team || '-'}`],
+  //                 userName: 'SYSTEM',
+  //               },
+  //               sendTo: `lantern${params.stationId}`,
+  //             });
+  //
+  //             break;
+  //           }
+  //           default: {
+  //             messenger.sendSelfMsg({
+  //               socket,
+  //               message: {
+  //                 text: ['Incorrect choice'],
+  //               },
+  //             });
+  //             socket.emit('commandStep', { reset: true });
+  //
+  //             break;
+  //           }
+  //         }
+  //       } else {
+  //         messenger.sendSelfMsg({
+  //           socket,
+  //           message: {
+  //             text: ['Incorrect password'],
+  //           },
+  //         });
+  //         socket.emit('commandStep', { reset: true });
+  //       }
+  //     });
+  //   });
+  // });
 
-      if (!objectValidator.isValidData(params, { users: true, gameUser: true, choice: true, stationId: true })) {
-        return;
-      }
-
-      const sentUser = params.gameUser;
-
-      if (params.users.map(user => user.userName).indexOf(sentUser.userName) === -1) {
-        messenger.sendSelfMsg({
-          socket,
-          message: {
-            text: ['User is not authorized to access the LANTERN'],
-          },
-        });
-        socket.emit('commandStep', { reset: true });
-
-        return;
-      }
-
-      dbConnector.getGameUser(sentUser.userName.toLowerCase(), (err, gameUser) => {
-        if (err) {
-          socket.emit('commandFail');
-
-          return;
-        } else if (gameUser === null) {
-          messenger.sendSelfMsg({
-            socket,
-            message: {
-              text: [`User ${sentUser.userName} does not exist`],
-            },
-          });
-          socket.emit('commandStep', { reset: true });
-
-          return;
-        }
-
-        if (params.gameUser.password === gameUser.password) {
-          const choice = params.choice;
-
-          switch (choice) {
-            case '1': {
-              messenger.sendSelfMsg({
-                socket,
-                message: {
-                  text: [
-                    'You have been authorized to access the LANTERN',
-                    'LSM is fully functional and running',
-                    'Amplifying signal output',
-                  ],
-                },
-              });
-              socket.emit('commandSuccess', { noStepCall: true });
-              updateSignalValue(params.stationId, true);
-              messenger.sendMsg({
-                socket,
-                message: {
-                  text: [`LANTERN ${params.stationId}> User ${allowedUser.userName} has amplified the signal of the station. User is part of team: ${allowedUser.team || '-'}`],
-                  userName: 'SYSTEM',
-                },
-                sendTo: `lantern${params.stationId}`,
-              });
-
-              break;
-            }
-            case '2': {
-              messenger.sendSelfMsg({
-                socket,
-                message: {
-                  text: [
-                    'You have been authorized to access the LANTERN',
-                    'LSM is fully functional and running',
-                    'Dampening signal output',
-                  ],
-                },
-              });
-              socket.emit('commandSuccess', { noStepCall: true });
-              updateSignalValue(params.stationId, false);
-              messenger.sendMsg({
-                socket,
-                message: {
-                  text: [`LANTERN ${params.stationId}> WARNING! User ${allowedUser.userName} has dampened the signal of the station. User is part of team: ${allowedUser.team || '-'}`],
-                  userName: 'SYSTEM',
-                },
-                sendTo: `lantern${params.stationId}`,
-              });
-
-              break;
-            }
-            default: {
-              messenger.sendSelfMsg({
-                socket,
-                message: {
-                  text: ['Incorrect choice'],
-                },
-              });
-              socket.emit('commandStep', { reset: true });
-
-              break;
-            }
-          }
-        } else {
-          messenger.sendSelfMsg({
-            socket,
-            message: {
-              text: ['Incorrect password'],
-            },
-          });
-          socket.emit('commandStep', { reset: true });
-        }
-      });
-    });
-  });
-
+  // TODO Unused
   socket.on('getGameUsersSelection', (params) => {
     if (!objectValidator.isValidData(params, { userAmount: true })) {
       return;
@@ -476,9 +505,7 @@ function handle(socket) {
           shuffleArray(shuffledPasswords.slice(halfPasswordLength, passwordMaxLength).concat([correctPassword])),
         ];
 
-        for (const user of users) {
-          user.hints = shuffleArray(gameUserManager.createHints(user.password)).slice(0, 2);
-        }
+        users.forEach((user) => { user.hints = shuffleArray(gameUserManager.createHints(user.password)).slice(0, 2); });
 
         socket.emit('commandSuccess', {
           freezeStep: true,
@@ -491,28 +518,20 @@ function handle(socket) {
     });
   });
 
-  socket.on('getActiveStations', () => {
-    retrieveStationStats((stations) => {
-      const activeStations = stations ? stations.filter(station => station.active === true) : [];
+  socket.on('getStations', (params, callback = () => {}) => {
+    retrieveStationStats(({ stations = [] }) => {
+      const activeStations = [];
+      const inactiveStations = stations.filter((station) => {
+        if (station.active) {
+          activeStations.push(station);
 
-      if (activeStations.length > 0) {
-        socket.emit('commandSuccess', { newData: { stations: activeStations } });
-      } else {
-        messenger.sendSelfMsg({
-          socket,
-          message: {
-            text: [
-              '----------------',
-              'LANTERN INACTIVE',
-              '----------------',
-              'There are no active LANTERNs available',
-              'Unable to proceed',
-              'Please wait for the next connection window',
-            ],
-          },
-        });
-        socket.emit('commandFail');
-      }
+          return false;
+        }
+
+        return true;
+      });
+
+      callback({ data: { activeStations, inactiveStations } });
     });
   });
 }

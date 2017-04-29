@@ -348,8 +348,8 @@ function getAllUsers(sentUser, callback) {
 
 /**
  * Gets all users in a team
- * @param {Object} sentUser - User that is retrieving all users
- * @param {Function} callback - Function to be called on completion
+ * @param {Object} sentUser User that is retrieving all users
+ * @param {Function} callback Function to be called on completion
  */
 function getTeamUsers(sentUser, callback) {
   const query = { team: sentUser.team, banned: false };
