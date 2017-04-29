@@ -47,6 +47,10 @@ function handle(socket) {
         return;
       }
 
+      if (position.markerType === 'ping' && position.description.length > 0) {
+        position.description = [position.description[0].slice(0, 20)];
+      }
+
       position.owner = user.userName;
       position.team = user.team;
       position.lastUpdated = new Date();
