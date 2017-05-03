@@ -140,15 +140,11 @@ function getDocFiles(accessLevel, callback) {
 
 /**
  * Get list of docFiles, based on user access level and if docFile is public
- * @param {number} accessLevel - User access level
- * @param {string} userName - User name
+ * @param {number} user User
  * @param {Function} callback - Callback
  */
-function getDocFilesList(accessLevel, userName, callback) {
-  const query = {
-    visibility: { $lte: accessLevel },
-    $or: [{ isPublic: true }, { creator: userName }],
-  };
+function getDocFilesList(user, callback) {
+  const query = { visibility: { $lte: user.accessLevel } };
   const filter = { _id: 0, text: 0 };
 
   DocFile.find(query, filter).lean().exec((err, docFiles) => {

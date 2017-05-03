@@ -19,11 +19,10 @@
 const dbTeam = require('../../db/connectors/team');
 const dbUser = require('../../db/connectors/user');
 const dbRoom = require('../../db/connectors/room');
+const dbConnector = require('../../db/databaseConnector');
 const dbConfig = require('../../config/defaults/config').databasePopulation;
 const manager = require('../../socketHelpers/manager');
-const logger = require('../../utils/logger');
 const objectValidator = require('../../utils/objectValidator');
-const messenger = require('../../socketHelpers/messenger');
 const appConfig = require('../../config/defaults/config').app;
 const errorCreator = require('../../objects/error/errorCreator');
 
@@ -34,7 +33,7 @@ const errorCreator = require('../../objects/error/errorCreator');
  * @param {Object} params.io Socket.IO
  * @param {Function} params.callback Callback
  */
-function addUserTeamRoom({ roomName, userName, io, callback }) {
+function addUserTeamRoom({ roomName, userName, io, callback = () => {} }) {
   dbUser.addRoomToUser(userName, roomName, (roomErr, user) => {
     if (roomErr) {
       callback({ error: new errorCreator.Database() });
@@ -133,7 +132,7 @@ function handle(socket, io) {
         return;
       }
 
-      dbteam.getTeam(user.team, (err, team) => {
+      dbTeam.getTeam(user.team, (err, team) => {
         if (err) {
           callback({ error: new errorCreator.Database() });
         }
@@ -162,7 +161,7 @@ function handle(socket, io) {
           return;
         }
 
-        callback({ users });
+        callback({ data: { users } });
       });
     });
   });
@@ -170,13 +169,12 @@ function handle(socket, io) {
   /**
    * Create a team
    * @param {Object} params.team Team
+   * @param {string} params.team.teamName Full team name
    * @param {string} params.team.shortName Short name (4 chars) for the team
-   * @param {string} params.team.owner Owner of the team
-   * @param {string} params.team.admins Admins of the team
    */
   socket.on('createTeam', ({ team }, callback = () => {}) => {
-    if (!objectValidator.isValidData({ team }, { team: { teamName: true, owner: true, shortName: true } })) {
-      callback({ error: new errorCreator.InvalidData({ expected: '{ team: { teamName, shortName, owner } }' }) });
+    if (!objectValidator.isValidData({ team }, { team: { teamName: true, shortName: true } })) {
+      callback({ error: new errorCreator.InvalidData({ expected: '{ team: { teamName, shortName } }' }) });
 
       return;
     }
@@ -187,7 +185,7 @@ function handle(socket, io) {
 
         return;
       } else if (!allowed) {
-        callback({ error: new errorCreator.NotAllowed({ name: 'getTeam' }) });
+        callback({ error: new errorCreator.NotAllowed({ name: 'createTeam' }) });
 
         return;
       } else if (allowedUser.team) {
@@ -200,20 +198,21 @@ function handle(socket, io) {
         return;
       }
 
-      team.verified = false;
-
-      dbUser.getUser(team.owner, (userErr, user) => {
-        if (userErr) {
+      dbTeam.getTeamByOwner(allowedUser.userName, (ownedErr, ownedTeam) => {
+        if (ownedErr) {
           callback({ error: new errorCreator.Database() });
 
           return;
-        } else if (user === null) {
-          callback({ error: new errorCreator.DoesNotExist({ name: `user ${team.owner}` }) });
+        } else if (ownedTeam) {
+          callback({ error: new errorCreator.AlreadyExists({ name: `team ${ownedTeam.teamName}` }) });
 
           return;
         }
 
-        dbteam.createTeam(team, (err, createdTeam) => {
+        team.owner = allowedUser.userName;
+        team.verified = false;
+
+        dbTeam.createTeam(team, (err, createdTeam) => {
           if (err || createdTeam === null) {
             callback({ error: new errorCreator.Database() });
 
@@ -221,7 +220,7 @@ function handle(socket, io) {
           }
 
           const teamRoom = {
-            roomName: createdTeam.teamName + appConfig.teamAppend,
+            roomName: team.teamName + appConfig.teamAppend,
             accessLevel: dbConfig.accessLevels.superUser,
             visibility: dbConfig.accessLevels.superUser,
           };
@@ -237,7 +236,6 @@ function handle(socket, io) {
               callback({ data: { requiresVerify: appConfig.teamVerify, success: true } });
             } else {
               manager.updateUserTeam({
-                socket,
                 userName: team.owner,
                 teamName: team.teamName,
                 callback: ({ error }) => {
@@ -248,30 +246,14 @@ function handle(socket, io) {
                   }
 
                   addUserTeamRoom({
-                    userName: user.userName,
+                    userName: allowedUser.userName,
                     roomName: teamRoom.roomName,
                     io,
                   });
                   callback({ data: { requiresVerify: false, success: true } });
                 },
+                socket,
               });
-
-              if (team.admins) {
-                team.admins.forEach((admin) => {
-                  manager.updateUserTeam({
-                    socket,
-                    userName: admin,
-                    teamName: team.teamName,
-                    callback: () => {
-                      addUserTeamRoom({
-                        userName: admin,
-                        roomName: teamRoom.roomName,
-                        io,
-                      });
-                    },
-                  });
-                });
-              }
             }
           });
         });
@@ -279,198 +261,113 @@ function handle(socket, io) {
     });
   });
 
-  socket.on('verifyTeam', (params) => {
-    if (!objectValidator.isValidData(params, { team: { teamName: true } })) {
+  socket.on('verifyTeam', ({ team }, callback = () => {}) => {
+    if (!objectValidator.isValidData({ team }, { team: { teamName: true } })) {
+      callback({ error: new errorCreator.InvalidData({ expected: '{ team: { teamName } }' }) });
+
       return;
     }
 
     manager.userIsAllowed(socket.id, dbConfig.commands.verifyTeam.commandName, (allowErr, allowed) => {
-      if (allowErr || !allowed) {
+      if (allowErr) {
+        callback({ error: new errorCreator.Database() });
+
+        return;
+      } else if (!allowed) {
+        callback({ error: new errorCreator.NotAllowed({ name: 'verifyTeam' }) });
+
         return;
       }
 
-      dbteam.verifyTeam(params.team.teamName, (err, team) => {
-        if (err || team === null) {
-          logger.sendSocketErrorMsg({
-            socket,
-            code: logger.ErrorCodes.general,
-            text: ['Failed to verify team'],
-            text_se: ['Misslyckades med att verifiera teamet'],
-            err,
-          });
+      dbTeam.verifyTeam(team.teamName, (err, verifiedTeam) => {
+        if (err) {
+          callback({ error: new errorCreator.Database() });
+
+          return;
+        } else if (!team) {
+          callback({ error: new errorCreator.DoesNotExist({ name: `team ${team.teamName}` }) });
 
           return;
         }
-
-        const teamName = team.teamName;
-        const owner = team.owner;
-        const admins = team.admins;
-        const roomName = teamName + appConfig.teamAppend;
 
         manager.updateUserTeam({
-          userName: owner,
-          socket,
-          teamName,
-        });
-        addUserTeamRoom({
-          userName: owner,
-          io,
-          roomName,
-        });
+          userName: verifiedTeam.owner,
+          teamName: verifiedTeam.teamName,
+          callback: ({ error }) => {
+            if (error) {
+              return;
+            }
 
-        if (admins) {
-          admins.forEach((admin) => {
-            manager.updateUserTeam({
-              userName: admin,
-              socket,
-              teamName,
-            });
             addUserTeamRoom({
-              userName: admin,
+              userName: verifiedTeam.owner,
+              roomName: verifiedTeam.teamName + appConfig.teamAppend,
               io,
-              roomName,
             });
-          });
-        }
-
-        messenger.sendSelfMsg({
-          socket,
-          message: {
-            text: [`Team ${teamName} has been verified`],
-            text_se: [`Teamet ${teamName} har blivit verifierad`],
           },
+          socket,
         });
       });
     });
   });
 
-  socket.on('verifyAllTeams', () => {
+  socket.on('getUnverifiedTeams', (params, callback = () => {}) => {
     manager.userIsAllowed(socket.id, dbConfig.commands.verifyTeam.commandName, (allowErr, allowed) => {
-      if (allowErr || !allowed) {
+      if (allowErr) {
+        callback({ error: new errorCreator.Database() });
+
         return;
-      }
-
-      dbUser.getUnverifiedUsers((err, teams) => {
-        if (err || teams === null) {
-          logger.sendSocketErrorMsg({
-            socket,
-            code: logger.ErrorCodes.general,
-            text: ['Failed to verify all user'],
-            text_se: ['Misslyckades med att verifiera alla användare'],
-            err,
-          });
-
-          return;
-        }
-
-        dbteam.verifyAllTeams((verifyErr) => {
-          if (verifyErr) {
-            logger.sendSocketErrorMsg({
-              socket,
-              code: logger.ErrorCodes.general,
-              text: ['Failed to verify all teams'],
-              text_se: ['Misslyckades med att verifiera alla team'],
-              err: verifyErr,
-            });
-
-            return;
-          }
-
-          messenger.sendSelfMsg({
-            socket,
-            message: {
-              text: ['Teams have been verified'],
-              text_se: ['Teamen har blivit verifierade'],
-            },
-          });
-          // TODO Send message to verified user
-        });
-      });
-    });
-  });
-
-  socket.on('getUnverifiedTeams', () => {
-    manager.userIsAllowed(socket.id, dbConfig.commands.verifyTeam.commandName, (allowErr, allowed) => {
-      if (allowErr || !allowed) {
-        return;
-      }
-
-      dbteam.getUnverifiedTeams((err, teams) => {
-        if (err || teams === null) {
-          logger.sendSocketErrorMsg({
-            socket,
-            code: logger.ErrorCodes.general,
-            text: ['Failed to get unverified teams'],
-            text_se: ['Misslyckades med hämtningen av icke-verifierade team'],
-            err,
-          });
-
-          return;
-        }
-
-        messenger.sendSelfMsg({
-          socket,
-          message: {
-            text: teams.map(team => `Team: ${team.teamName}. Owner: ${team.owner}`),
-          },
-        });
-      });
-    });
-  });
-
-  socket.on('leaveTeam', () => {
-    manager.userIsAllowed(socket.id, dbConfig.commands.leaveTeam.commandName, (allowErr, allowed, user) => {
-      if (allowErr || !allowed) {
-        return;
-      }
-
-      if (!user.team) {
-        messenger.sendSelfMsg({
-          socket,
-          message: {
-            text: ['You are not part of a team'],
-          },
-        });
+      } else if (!allowed) {
+        callback({ error: new errorCreator.NotAllowed({ name: 'getUnverifiedTeams' }) });
 
         return;
       }
 
-      const roomName = `${user.team}-team`;
-
-      dbUser.updateUserTeam(user.userName, '', (err) => {
+      dbTeam.getUnverifiedTeams((err, teams = []) => {
         if (err) {
-          logger.sendSocketErrorMsg({
-            socket,
-            code: logger.ErrorCodes.db,
-            text: ['Failed to leave team'],
-            err,
-          });
+          callback({ error: new errorCreator.Database() });
+
+          return;
+        }
+
+        callback({ data: { teams } });
+      });
+    });
+  });
+
+  socket.on('leaveTeam', (params, callback = () => {}) => {
+    manager.userIsAllowed(socket.id, dbConfig.commands.leaveTeam.commandName, (allowErr, allowed, user) => {
+      if (allowErr) {
+        callback({ error: new errorCreator.Database() });
+
+        return;
+      } else if (!allowed) {
+        callback({ error: new errorCreator.NotAllowed({ name: 'getUnverifiedTeams' }) });
+
+        return;
+      } else if (!user.team) {
+        callback({ error: new errorCreator.DoesNotExist({ name: 'team' }) });
+
+        return;
+      }
+
+      const roomName = user.team + appConfig.teamAppend;
+
+      dbUser.updateUserTeam(user.userName, null, (err) => {
+        if (err) {
+          callback({ error: new errorCreator.Database() });
 
           return;
         }
 
         dbUser.removeRoomFromUser(user.userName, roomName, (roomErr) => {
           if (roomErr) {
-            logger.sendSocketErrorMsg({
-              socket,
-              code: logger.ErrorCodes.db,
-              text: ['Failed to unfollow room'],
-              text_se: ['Misslyckades med att följa rummet'],
-              roomErr,
-            });
+            callback({ error: new errorCreator.Database() });
 
             return;
           }
 
           socket.leave(roomName);
-          socket.emit('unfollow', { room: { roomName }, silent: true });
-          messenger.sendSelfMsg({
-            socket,
-            message: {
-              text: ['You have left the team'],
-            },
-          });
-          socket.emit('reboot');
+          callback({ data: { team: { teamName: user.team } } });
         });
       });
     });

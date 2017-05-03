@@ -345,7 +345,7 @@ config.commands = {
   },
   verifyTeam: config.commands.verifyTeam || {
     commandName: 'verifyTeam',
-    accessLevel: config.accessLevels.admin,
+    accessLevel: config.accessLevels.lowerAdmin,
   },
   getPositions: config.commands.getPositions || {
     commandName: 'getPositions',

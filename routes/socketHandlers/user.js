@@ -148,25 +148,10 @@ function handle(socket, io) {
           userName: updatedUser.userName,
           accessLevel: updatedUser.accessLevel,
           aliases: updatedUser.aliases,
+          team: updatedUser.team,
         };
 
         manager.joinRooms(allRooms, socket, device.deviceId);
-        // TODO Client should send time of the last message it received
-        // manager.getHistory({
-        //   rooms: allRooms,
-        //   lines: Infinity,
-        //   missedMsgs: true,
-        //   lastOnline: lastMsgTime,
-        //   callback: (histErr, missedMessages) => {
-        //     if (histErr) {
-        //       return;
-        //     }
-        //
-        //     data.missedMessages = missedMessages;
-        //
-        //     callback({ data });
-        //   },
-        // });
 
         callback({ data });
       });

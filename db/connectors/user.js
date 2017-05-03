@@ -352,7 +352,10 @@ function getAllUsers(sentUser, callback) {
  * @param {Function} callback Function to be called on completion
  */
 function getTeamUsers(sentUser, callback) {
-  const query = { team: sentUser.team, banned: false };
+  const query = {
+    team: sentUser.team || '',
+    banned: false,
+  };
   const sort = { userName: 1 };
   const filter = { userName: 1, fullName: 1, online: 1, team: 1, isTracked: 1, _id: 0 };
 

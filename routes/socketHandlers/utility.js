@@ -172,17 +172,45 @@ function handle(socket) {
         return;
       }
 
-      dbDocFile.getDocFilesList(user.accessLevel, user.userName, (err, docFiles) => {
+      dbDocFile.getDocFilesList(user, (err, docFiles) => {
         if (err) {
           callback({ error: new errorCreator.Database() });
 
           return;
         }
 
-        const userDocFiles = docFiles.filter(docFile => docFile.creator === user.userName);
-        const publicDocFiles = docFiles.filter(docFile => docFile.creator !== user.userName && docFile.isPublic);
+        const filteredDocFiles = docFiles.map((docFile) => {
+          const filteredDocFile = docFile;
 
-        callback({ data: { userDocFiles, publicDocFiles } });
+          if ((docFile.team && (!user.team || docFile.team !== user.team)) || (docFile.creator !== user.userName && !docFile.isPublic)) {
+            filteredDocFile.docFileId = null;
+          }
+
+          return filteredDocFile;
+        });
+
+        const myDocFiles = [];
+        const myTeamDocFiles = [];
+        const teamDocFiles = [];
+        const userDocFiles = filteredDocFiles.filter((docFile) => {
+          if (!docFile.team && docFile.creator !== user.userName) {
+            return true;
+          }
+
+          if (docFile.creator === user.userName) {
+            myDocFiles.push(docFile);
+          } else if (docFile.team) {
+            if (user.team && user.team === docFile.team) {
+              myTeamDocFiles.push(docFile);
+            } else {
+              teamDocFiles.push(docFile);
+            }
+          }
+
+          return false;
+        });
+
+        callback({ data: { myDocFiles, myTeamDocFiles, userDocFiles, teamDocFiles } });
       });
     });
   });

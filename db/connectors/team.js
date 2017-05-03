@@ -17,7 +17,6 @@
 'use strict';
 
 const mongoose = require('mongoose');
-const appConfig = require('../../config/defaults/config').app;
 const logger = require('../../utils/logger');
 const dbConnector = require('../databaseConnector');
 
@@ -119,8 +118,31 @@ function getUnverifiedTeams(callback) {
   });
 }
 
+/**
+ * Get team by owner
+ * @param {string} owner User name of the team owner
+ * @param {Function} callback Callback
+ */
+function getTeamByOwner(owner, callback) {
+  const query = { owner };
+  const filter = { _id: 0 };
+
+  Team.findOne(query, filter).lean().exec((err, team) => {
+    if (err) {
+      logger.sendErrorMsg({
+        code: logger.ErrorCodes.db,
+        text: ['Failed to get team'],
+        err,
+      });
+    }
+
+    callback(err, team);
+  });
+}
+
 exports.createTeam = createTeam;
 exports.getTeam = getTeam;
 exports.verifyTeam = verifyTeam;
 exports.verifyAllTeams = verifyAllTeams;
 exports.getUnverifiedTeams = getUnverifiedTeams;
+exports.getTeamByOwner = getTeamByOwner;

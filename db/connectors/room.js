@@ -79,21 +79,8 @@ function authUserToRoom(user = { accessLevel: 0 }, roomName, password = '', call
  */
 function createRoom(sentRoom, sentUser, callback) {
   const newRoom = new Room(sentRoom);
-  let query;
+  const query = { roomName: sentRoom.roomName };
 
-  // TODO Remove user check. All users should be able to create multiple rooms
-  if (sentUser && sentUser.accessLevel < 11) {
-    query = {
-      $or: [
-        { roomName: sentRoom.roomName },
-        { owner: sentRoom.owner },
-      ],
-    };
-  } else {
-    query = { roomName: sentRoom.roomName };
-  }
-
-  // Checks if room already exists
   Room.findOne(query).lean().exec((err, room) => {
     if (err) {
       logger.sendErrorMsg({

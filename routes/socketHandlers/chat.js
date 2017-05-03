@@ -39,7 +39,7 @@ function shouldBeHidden(room, socketId) {
     databasePopulation.rooms.bcast.roomName,
   ];
 
-  return hiddenRooms.indexOf(room) >= 0 || room.indexOf(appConfig.whisperAppend) >= 0 || room.indexOf(appConfig.deviceAppend) >= 0 || room.indexOf(appConfig.teamAppend) >= 0;
+  return hiddenRooms.indexOf(room) >= 0 || room.indexOf(appConfig.whisperAppend) >= 0 || room.indexOf(appConfig.deviceAppend) >= 0;
 }
 
 /**
@@ -204,7 +204,9 @@ function handle(socket, io) {
           return;
         }
 
-        if (retrievedRoom && Object.keys(socket.rooms).indexOf(retrievedRoom.roomName) > -1) {
+        const socketRooms = Object.keys(socket.rooms);
+
+        if ((retrievedRoom && Object.keys(socket.rooms).indexOf(retrievedRoom.roomName) > -1) || socketRooms.indexOf(room.roomName) > -1) {
           callback({ data: { allowed: true, room: retrievedRoom } });
         } else {
           callback({ data: { allowed: false, room: retrievedRoom } });
@@ -370,10 +372,6 @@ function handle(socket, io) {
         if (user.userName === '') {
           callback({ data: { rooms: roomNames, followedRooms: followedNames } });
         } else {
-          if (user.team) {
-            followedNames.push('team');
-          }
-
           dbRoom.getOwnedRooms(user, (err, ownedRooms = []) => {
             if (err) {
               callback({ error: new errorCreator.Database() });

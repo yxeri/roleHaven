@@ -101,6 +101,7 @@ function userIsAllowed(socketId, commandName, callback, userName) {
         accessLevel: user ? user.accessLevel : 0,
         whisperRooms: user ? user.whisperRooms : [],
         isTracked: user ? user.isTracked : false,
+        team: user ? user.team : null,
       };
 
       getCommand(commandName, (cmdErr, command) => {
@@ -230,9 +231,7 @@ function joinRooms(rooms, socket, device) {
     allRooms.push(device + appConfig.deviceAppend);
   }
 
-  for (const room of allRooms) {
-    socket.join(room);
-  }
+  allRooms.forEach(room => socket.join(room));
 }
 
 /**
