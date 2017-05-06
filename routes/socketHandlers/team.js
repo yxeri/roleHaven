@@ -43,7 +43,7 @@ function addUserTeamRoom({ roomName, userName, io, callback = () => {} }) {
 
     if (userSocket) {
       userSocket.join(roomName);
-      userSocket.emit('follow', { room: { roomName: 'team' } });
+      userSocket.emit('follow', { room: { roomName } });
     }
 
     callback({ data: { room: { roomName } } });
@@ -238,6 +238,7 @@ function handle(socket, io) {
               manager.updateUserTeam({
                 userName: team.owner,
                 teamName: team.teamName,
+                shortTeamName: team.shortName,
                 callback: ({ error }) => {
                   if (error) {
                     callback({ error: new errorCreator.Database() });
@@ -293,6 +294,7 @@ function handle(socket, io) {
         manager.updateUserTeam({
           userName: verifiedTeam.owner,
           teamName: verifiedTeam.teamName,
+          shortTeamName: verifiedTeam.shortName,
           callback: ({ error }) => {
             if (error) {
               return;
@@ -352,7 +354,7 @@ function handle(socket, io) {
 
       const roomName = user.team + appConfig.teamAppend;
 
-      dbUser.updateUserTeam(user.userName, null, (err) => {
+      dbUser.updateUserTeam(user.userName, null, null, (err) => {
         if (err) {
           callback({ error: new errorCreator.Database() });
 

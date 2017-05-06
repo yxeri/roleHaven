@@ -93,6 +93,10 @@ function handle(socket) {
           callback({ error: new errorCreator.Database({}) });
 
           return;
+        } else if (!newDocFile) {
+          callback({ error: new errorCreator.AlreadyExists({ name: 'document' }) });
+
+          return;
         }
 
         callback({ data: { docFile: newDocFile } });
@@ -184,6 +188,7 @@ function handle(socket) {
 
           if ((docFile.team && (!user.team || docFile.team !== user.team)) || (docFile.creator !== user.userName && !docFile.isPublic)) {
             filteredDocFile.docFileId = null;
+            filteredDocFile.isLocked = true;
           }
 
           return filteredDocFile;
@@ -199,7 +204,9 @@ function handle(socket) {
 
           if (docFile.creator === user.userName) {
             myDocFiles.push(docFile);
-          } else if (docFile.team) {
+          }
+
+          if (docFile.team) {
             if (user.team && user.team === docFile.team) {
               myTeamDocFiles.push(docFile);
             } else {

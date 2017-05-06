@@ -41,6 +41,7 @@ const userSchema = new mongoose.Schema({
   online: { type: Boolean, default: false },
   registerDevice: String,
   team: String,
+  shortTeam: String,
   authGroups: [{ type: String, unique: true }],
   isTracked: Boolean,
   aliases: [{ type: String, unique: true }],
@@ -85,12 +86,14 @@ function updateUserIsTracked(userName, value, callback) {
 
 /**
  * Update user's team
- * @param {string} userName - Name of the user
- * @param {string} value - Name of the team
+ * @param {string} userName Name of the user
+ * @param {string} team Name of the team
+ * @param {string} shortTeam Short name of the team
  * @param {Function} callback - Callback
  */
-function updateUserTeam(userName, value, callback) {
-  const update = { $set: { team: value } };
+function updateUserTeam(userName, team, shortTeam, callback) {
+  console.log(team, shortTeam);
+  const update = { $set: { team, shortTeam } };
 
   updateUserValue(userName, update, callback);
 }

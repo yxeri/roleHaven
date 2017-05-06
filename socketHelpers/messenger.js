@@ -166,6 +166,11 @@ function sendChatMsg({ message, user, callback, io, socket }) {
     message.roomName = user.team + appConfig.teamAppend;
   }
 
+  if (!message.userName || message.userName === user.userName) {
+    message.shortTeam = user.shortTeam;
+    message.team = user.team;
+  }
+
   if (message.userName) {
     dbUser.getUserByAlias(message.userName, (aliasErr, aliasUser) => {
       if (aliasErr) {

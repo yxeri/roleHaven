@@ -27,6 +27,8 @@ const chatHistorySchema = new mongoose.Schema({
     roomName: String,
     extraClass: String,
     customSender: String,
+    team: String,
+    shortTeam: String,
     coordinates: {
       longitude: Number,
       latitude: Number,

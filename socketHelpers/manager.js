@@ -102,6 +102,7 @@ function userIsAllowed(socketId, commandName, callback, userName) {
         whisperRooms: user ? user.whisperRooms : [],
         isTracked: user ? user.isTracked : false,
         team: user ? user.team : null,
+        shortTeam: user ? user.shortTeam : null,
       };
 
       getCommand(commandName, (cmdErr, command) => {
@@ -437,10 +438,11 @@ function authFollowRoom({ socket, room, user, callback }) {
  * @param {Object} params.socket Socket.IO socket
  * @param {string} params.userName Name of the user
  * @param {string} params.teamName Name of the team
+ * @param {string} params.shortTeamName Short name of the team
  * @param {Function} [params.callback] Callback
  */
-function updateUserTeam({ socket, userName, teamName, callback = () => {} }) {
-  dbUser.updateUserTeam(userName, teamName, (err, user) => {
+function updateUserTeam({ socket, userName, teamName, shortTeamName, callback = () => {} }) {
+  dbUser.updateUserTeam(userName, teamName, shortTeamName, (err, user) => {
     if (err) {
       callback({ error: new errorCreator.Database() });
 
