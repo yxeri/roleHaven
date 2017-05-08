@@ -62,6 +62,8 @@ function handle(socket, io) {
       return;
     }
 
+    sentUser.userName = sentUser.userName.toLowerCase();
+
     manager.userIsAllowed(socket.id, dbConfig.commands.inviteTeam.commandName, (allowErr, allowed, user) => {
       if (allowErr) {
         callback({ error: new errorCreator.Database() });
@@ -69,6 +71,10 @@ function handle(socket, io) {
         return;
       } else if (!allowed) {
         callback({ error: new errorCreator.NotAllowed({ name: 'getTeam' }) });
+
+        return;
+      } else if (user.userName === sentUser.userName) {
+        callback({ error: new errorCreator.AlreadyExists({ name: 'your team' }) });
 
         return;
       }
@@ -87,6 +93,10 @@ function handle(socket, io) {
         dbUser.getUser(sentUser.userName, (userErr, invitedUser) => {
           if (userErr) {
             callback({ error: new errorCreator.Database() });
+
+            return;
+          } else if (!invitedUser) {
+            callback({ error: new errorCreator.DoesNotExist({ name: `user ${sentUser.userName}` }) });
 
             return;
           } else if (invitedUser.team) {
@@ -113,6 +123,7 @@ function handle(socket, io) {
               return;
             }
 
+            socket.to(`${user.userName}${appConfig.whisperAppend}`).emit('invitation', { invitation });
             callback({ data: { invitation } });
           });
         });
@@ -138,30 +149,6 @@ function handle(socket, io) {
         }
 
         callback({ data: { team } });
-      });
-    });
-  });
-
-  socket.on('getTeamMembers', (params, callback = () => {}) => {
-    manager.userIsAllowed(socket.id, dbConfig.commands.getTeam.commandName, (allowErr, allowed, user) => {
-      if (allowErr) {
-        callback({ error: new errorCreator.Database() });
-
-        return;
-      } else if (!allowed) {
-        callback({ error: new errorCreator.NotAllowed({ name: 'getTeam' }) });
-
-        return;
-      }
-
-      dbUser.getTeamUsers(user, (err, users = []) => {
-        if (err) {
-          callback({ error: new errorCreator.Database() });
-
-          return;
-        }
-
-        callback({ data: { users } });
       });
     });
   });
@@ -233,7 +220,7 @@ function handle(socket, io) {
             }
 
             if (appConfig.teamVerify) {
-              callback({ data: { requiresVerify: appConfig.teamVerify, success: true } });
+              callback({ data: { requiresVerify: appConfig.teamVerify, team } });
             } else {
               manager.updateUserTeam({
                 userName: team.owner,
@@ -251,7 +238,7 @@ function handle(socket, io) {
                     roomName: teamRoom.roomName,
                     io,
                   });
-                  callback({ data: { requiresVerify: false, success: true } });
+                  callback({ data: { requiresVerify: false, team } });
                 },
                 socket,
               });

@@ -654,6 +654,66 @@ function handle(socket, io) {
       manager.addAlias({ user, alias, callback });
     });
   });
+
+  socket.on('listUsers', ({ team = {} }, callback = () => {}) => {
+    manager.userIsAllowed(socket.id, databasePopulation.commands.listUsers.commandName, (allowErr, allowed, user) => {
+      if (allowErr) {
+        callback({ error: new errorCreator.Database() });
+
+        return;
+      } else if (!allowed) {
+        callback({ error: new errorCreator.NotAllowed({ name: 'listUsers' }) });
+
+        return;
+      }
+
+      dbUser.getAllUsers(user, (userErr, users = []) => {
+        if (userErr) {
+          callback({ error: new errorCreator.Database() });
+
+          return;
+        }
+
+        const { teamName, shouldEqual } = team;
+        const offlineUsers = [];
+        const onlineUsers = [];
+
+        users.filter((currentUser) => {
+          if (teamName) {
+            if (shouldEqual && currentUser.team && currentUser.team === user.team) {
+              return true;
+            } else if (!shouldEqual && ((!currentUser.team && user.team) || currentUser.team !== user.team)) {
+              return true;
+            }
+
+            return false;
+          }
+
+          return true;
+        }).forEach((currentUser) => {
+          if ((!appConfig.userVerify || currentUser.verified) && !currentUser.banned) {
+            const aliases = currentUser.aliases;
+
+            if (currentUser.online) {
+              onlineUsers.push(currentUser.userName);
+            } else {
+              offlineUsers.push(currentUser.userName);
+            }
+
+            if (!teamName && aliases && aliases.length > 0) {
+              if (currentUser.online) {
+                Array.prototype.push.apply(onlineUsers, aliases);
+              } else {
+                Array.prototype.push.apply(offlineUsers, aliases);
+              }
+            }
+          }
+        });
+
+        callback({ data: { onlineUsers, offlineUsers } });
+      });
+    });
+  });
 }
 
 exports.handle = handle;

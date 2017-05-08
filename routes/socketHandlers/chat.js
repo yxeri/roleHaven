@@ -388,55 +388,6 @@ function handle(socket, io) {
     });
   });
 
-  socket.on('listUsers', (params, callback = () => {}) => {
-    manager.userIsAllowed(socket.id, databasePopulation.commands.listUsers.commandName, (allowErr, allowed, user) => {
-      if (allowErr) {
-        callback({ error: new errorCreator.Database() });
-
-        return;
-      } else if (!allowed) {
-        callback({ error: new errorCreator.NotAllowed({ name: 'listUsers' }) });
-
-        return;
-      }
-
-      dbUser.getAllUsers(user, (userErr, users = []) => {
-        if (userErr) {
-          callback({ error: new errorCreator.Database() });
-
-          return;
-        }
-
-        const offlineUsers = [];
-        const onlineUsers = [];
-
-        for (let i = 0; i < users.length; i += 1) {
-          const currentUser = users[i];
-
-          if ((!appConfig.userVerify || currentUser.verified) && !currentUser.banned) {
-            const aliases = currentUser.aliases;
-
-            if (currentUser.online) {
-              onlineUsers.push(currentUser.userName);
-            } else {
-              offlineUsers.push(currentUser.userName);
-            }
-
-            if (aliases && aliases.length > 0) {
-              if (currentUser.online) {
-                Array.prototype.push.apply(onlineUsers, aliases);
-              } else {
-                Array.prototype.push.apply(offlineUsers, aliases);
-              }
-            }
-          }
-        }
-
-        callback({ data: { onlineUsers, offlineUsers } });
-      });
-    });
-  });
-
   socket.on('getHistory', ({ room, startDate, lines, whisperTo }, callback = () => {}) => {
     manager.userIsAllowed(socket.id, databasePopulation.commands.getHistory.commandName, (allowErr, allowed, user) => {
       if (allowErr) {

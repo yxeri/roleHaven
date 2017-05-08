@@ -277,7 +277,7 @@ function addInvitationToList(userName, invitation, callback) {
         });
       }
 
-      callback(invErr, invitationList);
+      callback({ code: 11000 }, invitationList);
     } else {
       const update = { $push: { invitations: invitation } };
       const options = { new: true, upsert: true };

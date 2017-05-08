@@ -186,7 +186,7 @@ function handle(socket) {
         const filteredDocFiles = docFiles.map((docFile) => {
           const filteredDocFile = docFile;
 
-          if ((docFile.team && (!user.team || docFile.team !== user.team)) || (docFile.creator !== user.userName && !docFile.isPublic)) {
+          if ((docFile.team && (!user.team || docFile.team !== user.team)) || (!docFile.team && docFile.creator !== user.userName && !docFile.isPublic)) {
             filteredDocFile.docFileId = null;
             filteredDocFile.isLocked = true;
           }

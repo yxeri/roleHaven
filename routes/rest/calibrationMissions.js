@@ -109,7 +109,7 @@ function handle(io) {
   });
 
   /**
-   * @api {post} /calibrationMissions/:id/complete Complete a mission
+   * @api {post} /calibrationMissions/complete Complete a mission
    * @apiVersion 5.1.0
    * @apiName CompleteCalibrationMission
    * @apiGroup CalibrationMissions
@@ -117,8 +117,6 @@ function handle(io) {
    * @apiHeader {string} Authorization Your JSON Web Token
    *
    * @apiDescription Set a mission to completed
-   *
-   * @apiParam {string} id Mission code
    *
    * @apiParam {Object} data
    * @apiParam {Object} data.mission Mission
@@ -128,7 +126,8 @@ function handle(io) {
    *   {
    *    "data": {
    *      "mission": {
-   *        "stationId": 1
+   *        "stationId": 1,
+   *        "code": 12345678
    *      }
    *    }
    *  }
@@ -153,7 +152,7 @@ function handle(io) {
    *    }
    *  }
    */
-  router.post('/:id/complete', (req, res) => {
+  router.post('/complete', (req, res) => {
     if (!objectValidator.isValidData(req.body, { data: { mission: { stationId: true } } })) {
       res.status(400).json({
         errors: [{
@@ -193,7 +192,6 @@ function handle(io) {
       }
 
       const mission = req.body.data.mission;
-      mission.code = req.params.id;
 
       dbCalibrationMission.setMissionCompleted(mission.code, mission.stationId, (err, completedMission) => {
         if (err) {
@@ -276,7 +274,7 @@ function handle(io) {
   });
 
   /**
-   * @api {post} /calibrationMissions/:id/cancel Cancel a mission
+   * @api {post} /calibrationMissions/cancel Cancel a mission
    * @apiVersion 5.1.0
    * @apiName CancelCalibrationMission
    * @apiGroup CalibrationMissions
@@ -284,8 +282,6 @@ function handle(io) {
    * @apiHeader {String} Authorization Your JSON Web Token
    *
    * @apiDescription Cancel a calibration mission. Mission will still be set to completed, but user will receive no reward
-   *
-   * @apiParam {string} id Mission code
    *
    * @apiParam {Object} data
    * @apiParam {Object} data.mission Mission
@@ -295,7 +291,8 @@ function handle(io) {
    *   {
    *    "data": {
    *      "mission": {
-   *        "stationId": 1
+   *        "stationId": 1,
+   *        "code": 12345678
    *      }
    *    }
    *  }
@@ -316,7 +313,7 @@ function handle(io) {
    *    }
    *  }
    */
-  router.post('/:id/cancel', (req, res) => {
+  router.post('/cancel', (req, res) => {
     if (!objectValidator.isValidData(req.body, { data: { mission: { stationId: true } } })) {
       res.status(400).json({
         errors: [{
@@ -356,7 +353,6 @@ function handle(io) {
       }
 
       const mission = req.body.data.mission;
-      mission.code = req.params.id;
 
       dbCalibrationMission.setMissionCompleted(mission.code, mission.stationId, (err, completedMission) => {
         if (err) {
