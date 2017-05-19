@@ -226,7 +226,6 @@ function handle() {
    *   {
    *    "data": {
    *      "station": {
-   *        "stationId": 1,
    *        "stationName": "North forest",
    *        "isActive": true,
    *      }
