@@ -239,8 +239,8 @@ function getLanternRounds(callback) {
 
 /**
  * Get station
- * @param {number} stationId - Station ID
- * @param {Function} callback - Callback
+ * @param {number} stationId Station ID
+ * @param {Function} callback Callback
  */
 function getStation(stationId, callback) {
   const query = { stationId };
@@ -306,13 +306,25 @@ function createStation(station, callback) {
 
 /**
  * Set new isActive on station
- * @param {number} stationId - ID of station
- * @param {boolean} isActive - Is the station active?
- * @param {Function} callback - Callback
+ * @param {Object} station Lantern station
+ * @param {number} station.stationId ID of station
+ * @param {boolean} station.isActive Is the station active?
+ * @param {string} [station.stationName] Name of the station
+ * @param {Function} callback Callback
  */
-function updateIsActive(stationId, isActive, callback) {
+function updateLanternStation({ stationId, isActive, stationName }, callback) {
+  const set = {};
+
+  if (typeof isActive === 'boolean') {
+    set.isActive = isActive;
+  }
+
+  if (stationName) {
+    set.stationName = stationName;
+  }
+
   const query = { stationId };
-  const update = { $set: { isActive } };
+  const update = { $set: set };
 
   Station.findOneAndUpdate(query, update).lean().exec((err, station) => {
     if (err) {
@@ -573,7 +585,7 @@ exports.updateSignalValue = updateSignalValue;
 exports.getStation = getStation;
 exports.getAllStations = getAllStations;
 exports.createStation = createStation;
-exports.updateIsActive = updateIsActive;
+exports.updateLanternStation = updateLanternStation;
 exports.getActiveStations = getActiveStations;
 exports.removeLanternRound = removeLanternRound;
 exports.updateLanternRound = updateLanternRound;

@@ -114,6 +114,8 @@ config.routes = config.routes || [
   { sitePath: '/api/aliases', filePath: `${__dirname}/../../routes/rest/aliases.js` },
   { sitePath: '/api/transactions', filePath: `${__dirname}/../../routes/rest/transactions.js` },
   { sitePath: '/api/calibrationMissions', filePath: `${__dirname}/../../routes/rest/calibrationMissions.js` },
+  { sitePath: '/api/lanternRounds', filePath: `${__dirname}/../../routes/rest/lanternRounds.js` },
+  { sitePath: '/api/lanternStations', filePath: `${__dirname}/../../routes/rest/lanternStations.js` },
   { sitePath: '*', filePath: `${__dirname}/../../routes/error.js` },
 ];
 
