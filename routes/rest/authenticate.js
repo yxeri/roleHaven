@@ -107,7 +107,7 @@ function handle() {
       };
 
       res.json({
-        data: { token: jwt.sign({ data: jwtUser }, appConfig.jsonKey, { expiresIn: '7d' }) },
+        data: { token: jwt.sign({ data: jwtUser }, appConfig.jsonKey) },
       });
     });
   });

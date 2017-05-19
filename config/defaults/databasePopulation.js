@@ -423,6 +423,9 @@ config.apiCommands = {
   CancelCalibrationMission: config.apiCommands.FollowRoom || { accessLevel: config.accessLevels.lowerAdmin },
   CompleteCalibrationMission: config.apiCommands.FollowRoom || { accessLevel: config.accessLevels.lowerAdmin },
   SendBroadcast: config.apiCommands.SendBroadcast || { accessLevel: config.accessLevels.lowerAdmin },
+  UpdateLanternRound: config.apiCommands.UpdateLanternRound || { accessLevel: config.accessLevels.lowerAdmin },
+  CreateLanternRound: config.apiCommands.CreateLanternRound || { accessLevel: config.accessLevels.lowerAdmin },
+  StartLanternRound: config.apiCommands.StartLanternRound || { accessLevel: config.accessLevels.lowerAdmin },
 };
 
 module.exports = config;

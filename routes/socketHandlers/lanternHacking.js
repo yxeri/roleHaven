@@ -16,24 +16,19 @@
 
 'use strict';
 
-const dbConnector = require('../../db/databaseConnector');
-const dbStation = require('../../db/connectors/station');
-const messenger = require('../../socketHelpers/messenger');
 const objectValidator = require('../../utils/objectValidator');
 const manager = require('../../socketHelpers/manager');
 const appConfig = require('../../config/defaults/config').app;
-const databasePopulation = require('../../config/defaults/config').databasePopulation;
+const dbConfig = require('../../config/defaults/config').databasePopulation;
 const http = require('http');
-// const request = require('request');
-const gameUserManager = require('../../utils/gameUserManager');
-// const errorCreator = require('../../objects/error/errorCreator');
+const request = require('request');
+const errorCreator = require('../../objects/error/errorCreator');
+const dbLanternHack = require('../../db/connectors/lanternhack');
 
-// TODO Everything needs to be updated
-
-// const signalThreshold = 50;
+const signalThreshold = 50;
 const signalDefault = 100;
-// const changePercentage = 0.2;
-// const signalMaxChange = 10;
+const changePercentage = 0.2;
+const signalMaxChange = 10;
 let resetInterval = null;
 
 /**
@@ -74,7 +69,7 @@ function setResetInterval() {
    * @private
    */
   function resetStations() {
-    dbStation.getAllStations((err, stations) => {
+    dbLanternHack.getAllStations((err, stations) => {
       if (err) {
         return;
       }
@@ -91,22 +86,22 @@ function setResetInterval() {
             newSignalValue += 1;
           }
 
-          dbStation.updateSignalValue(stationId, newSignalValue, (signErr) => {
+          dbLanternHack.updateSignalValue(stationId, newSignalValue, (signErr) => {
             if (signErr) {
               return;
             }
 
-            postRequest({
-              host: appConfig.hackingApiHost,
-              path: '/reports/set_boost',
-              data: {
-                station: stationId,
-                boost: newSignalValue,
-                key: appConfig.hackingApiKey,
-              },
-              callback: () => {
-              },
-            });
+            // postRequest({
+            //   host: appConfig.hackingApiHost,
+            //   path: '/reports/set_boost',
+            //   data: {
+            //     station: stationId,
+            //     boost: newSignalValue,
+            //     key: appConfig.hackingApiKey,
+            //   },
+            //   callback: () => {
+            //   },
+            // });
           });
         }
       });
@@ -172,357 +167,316 @@ function retrieveStationStats(callback) {
   // });
 
   // Temporary until external server is available
+  const past = new Date();
+  past.setDate(past.getDate() - 10);
+  const future = new Date();
+  future.setDate(future.getDate() + 10);
+
   callback({
     stations: [{
       id: 1,
-      location: 'banana',
-      owner: 'Team name',
+      location: 'north',
+      owner: 'alpha',
+      active: true,
+      boost: 97,
+    }, {
+      id: 2,
+      location: 'south',
+      owner: 'beta',
+      active: false,
+      boost: 110,
     }],
     teams: [{
-      name: 'Team name',
-      short_name: 'acronym',
+      name: 'Team alpha',
+      short_name: 'alpha',
+      points: 573,
+      active: true,
+    }, {
+      name: 'Team beta',
+      short_name: 'beta',
+      points: 1028,
+      active: false,
     }],
-    currentRound: {
-
+    activeRound: {
+      startTime: past,
+      endTime: future,
     },
-    futureRounds: [
-
-    ],
+    futureRounds: [{
+      startTime: past.setDate(past.getDate() - 1),
+      endTime: future.setDate(future.getDate() + 1),
+    }],
   });
 }
 
 /**
  * Update signal value on a station
- * @param {number} stationId - Station ID
- * @param {boolean} boostingSignal - Should the signal be increased?
+ * @param {number} stationId Station ID
+ * @param {boolean} boostingSignal Should the signal be increased?
+ * @param {Function} callback Callback
  */
-// function updateSignalValue(stationId, boostingSignal) {
-//   dbStation.getStation(stationId, (err, station) => {
-//     if (err) {
-//       return;
-//     }
-//
-//     /**
-//      * Set new signalvalue
-//      * @private
-//      * @param {number} newSignalValue - New value
-//      */
-//     function setNewValue(newSignalValue) {
-//       const minValue = signalDefault - signalThreshold;
-//       const maxValue = signalDefault + signalThreshold;
-//       let ceilSignalValue = Math.ceil(newSignalValue);
-//
-//       if (ceilSignalValue > maxValue) {
-//         ceilSignalValue = maxValue;
-//       } else if (ceilSignalValue < minValue) {
-//         ceilSignalValue = minValue;
-//       }
-//
-//       dbStation.updateSignalValue(stationId, ceilSignalValue, (updateErr) => {
-//         if (updateErr) {
-//           return;
-//         }
-//         postRequest({
-//           host: appConfig.hackingApiHost,
-//           path: '/reports/set_boost',
-//           data: {
-//             station: stationId,
-//             boost: ceilSignalValue,
-//             key: appConfig.hackingApiKey,
-//           },
-//           callback: (response) => {
-//             console.log(response);
-//           },
-//         });
-//       });
-//     }
-//     const signalValue = station.signalValue;
-//     const difference = Math.abs(signalValue - signalDefault);
-//     let signalChange = (signalThreshold - difference) * changePercentage;
-//
-//     if (boostingSignal && signalValue < signalDefault) {
-//       signalChange = signalMaxChange;
-//     } else if (!boostingSignal && signalValue > signalDefault) {
-//       signalChange = signalMaxChange;
-//     }
-//
-//     setNewValue(signalValue + (boostingSignal ? signalChange : -Math.abs(signalChange)));
-//   });
-// }
+function updateSignalValue(stationId, boostingSignal, callback = () => {}) {
+  dbLanternHack.getStation(stationId, (err, station) => {
+    if (err) {
+      callback({ error: new errorCreator.Database() });
+
+      return;
+    }
+
+    /**
+     * Set new signalvalue
+     * @private
+     * @param {number} newSignalValue - New value
+     */
+    function setNewValue(newSignalValue) {
+      const minValue = signalDefault - signalThreshold;
+      const maxValue = signalDefault + signalThreshold;
+      let ceilSignalValue = Math.ceil(newSignalValue);
+
+      if (ceilSignalValue > maxValue) {
+        ceilSignalValue = maxValue;
+      } else if (ceilSignalValue < minValue) {
+        ceilSignalValue = minValue;
+      }
+
+      dbLanternHack.updateSignalValue(stationId, ceilSignalValue, (updateErr) => {
+        if (updateErr) {
+          callback({ error: new errorCreator.Database() });
+
+          return;
+        }
+
+        // TODO Temporary until external server is up
+        callback({ data: { response: 'good' } });
+        // postRequest({
+        //   host: appConfig.hackingApiHost,
+        //   path: '/reports/set_boost',
+        //   data: {
+        //     station: stationId,
+        //     boost: ceilSignalValue,
+        //     key: appConfig.hackingApiKey,
+        //   },
+        //   callback: (response) => {
+        //     callback({ data: { response } });
+        //   },
+        // });
+      });
+    }
+
+    const signalValue = station.signalValue;
+    const difference = Math.abs(signalValue - signalDefault);
+    let signalChange = (signalThreshold - difference) * changePercentage;
+
+    if (boostingSignal && signalValue < signalDefault) {
+      signalChange = signalMaxChange;
+    } else if (!boostingSignal && signalValue > signalDefault) {
+      signalChange = signalMaxChange;
+    }
+
+    setNewValue(signalValue + (boostingSignal ? signalChange : -Math.abs(signalChange)));
+  });
+}
+
+/**
+ * Create client hack data
+ * @param {Object} lanternHack Lantern hack
+ * @param {Function} callback Callback
+ */
+function createHackData({ lanternHack, callback = () => {} }) {
+  dbLanternHack.getAllFakePasswords((errFake, retrievedPasswords) => {
+    if (errFake) {
+      callback({ error: new errorCreator.Database() });
+
+      return;
+    }
+
+    callback({ data: { passwords: shuffleArray(retrievedPasswords.map(password => password.password)).slice(0, 6).concat(lanternHack.gameUsers.map(gameUser => gameUser.password)) } });
+  });
+}
+
+/**
+ * Create lantern hack for user
+ * @param {number} stationId Station id
+ * @param {string} owner User name of the hack owner
+ * @param {Function} callback Callback
+ */
+function createHackLantern({ stationId, owner, callback = () => {} }) {
+  dbLanternHack.getGameUsers({ stationId }, (err, retrievedUsers) => {
+    if (err) {
+      callback({ error: new errorCreator.Database() });
+
+      return;
+    }
+
+    const gameUsers = shuffleArray(retrievedUsers).slice(0, 2).map((gameUser) => {
+      return { userName: gameUser.userName, password: shuffleArray(gameUser.passwords)[0] };
+    });
+
+    // Set first game user + password to the right combination
+    gameUsers[0].isCorrect = true;
+
+    dbLanternHack.updateLanternHack({ owner, gameUsers }, (updateErr, updatedHack) => {
+      if (updateErr) {
+        callback({ error: new errorCreator.Database() });
+
+        return;
+      }
+
+      callback({ data: { lanternHack: updatedHack } });
+    });
+  });
+}
 
 /**
  * @param {Object} socket - Socket.IO socket
  */
 function handle(socket) {
-  // TODO Unused
-  socket.on('createGameUser', (params) => {
-    manager.userIsAllowed(socket.id, databasePopulation.commands.createGameUser.commandName, () => {
-    });
+  socket.on('manipulateStation', ({ password, shouldAmplify }, callback = () => {}) => {
+    if (!objectValidator.isValidData({ password, shouldAmplify }, { password: true, shouldAmplify: true })) {
+      callback({ error: new errorCreator.InvalidData({ expected: '{ password, shouldAmplify }' }) });
 
-    if (!objectValidator.isValidData(params, { userName: true, password: true })) {
       return;
     }
 
-    const gameUser = {
-      userName: params.userName,
-      password: params.password,
-    };
+    manager.userIsAllowed(socket.id, dbConfig.commands.hackLantern.commandName, (allowErr, allowed, allowedUser) => {
+      if (allowErr) {
+        callback({ error: new errorCreator.Database() });
 
-    dbConnector.createGameUser(gameUser, () => {
-    });
-  });
+        return;
+      } else if (!allowed) {
+        callback({ error: new errorCreator.NotAllowed({ name: 'manipulateStation' }) });
 
-  // TODO Unused
-  socket.on('createGamePassword', (params) => {
-    manager.userIsAllowed(socket.id, databasePopulation.commands.createGameWord.commandName, () => {
-    });
-
-    if (!objectValidator.isValidData(params, { password: true })) {
-      return;
-    }
-
-    dbConnector.createGamePassword(params, () => {
-    });
-  });
-
-  // TODO Unused
-  socket.on('getAllGamePasswords', () => {
-    manager.userIsAllowed(socket.id, databasePopulation.commands.createGameWord.commandName, () => {
-    });
-
-    dbConnector.getAllGamePasswords((err, gamePasswords) => {
-      if (err) {
         return;
       }
 
-      messenger.sendSelfMsg({
-        socket,
-        message: {
-          text: [gamePasswords.map(gamePassword => `${gamePassword.password}`).join(' - ')],
-        },
-      });
-    });
-  });
-
-  // TODO Unused
-  socket.on('getAllGameUsers', () => {
-    manager.userIsAllowed(socket.id, databasePopulation.commands.createGameUser.commandName, () => {
-    });
-
-    dbConnector.getAllGameUsers((err, gameUsers) => {
-      if (err) {
-        return;
-      }
-
-      messenger.sendSelfMsg({
-        socket,
-        message: {
-          text: gameUsers.map(gameUser => `Name: ${gameUser.userName}. Pass: ${gameUser.password}`),
-        },
-      });
-    });
-  });
-
-  // TODO Unused
-  socket.on('getStationStats', (params, callback) => {
-    retrieveStationStats((stations, teams, currentRound, futureRounds) => {
-      dbStation.getActiveStations((err, dbStations) => {
+      dbLanternHack.getLanternHack(allowedUser.userName, (err, lanternHack) => {
         if (err) {
+          callback({ error: new errorCreator.Database() });
+
+          return;
+        } else if (!lanternHack) {
+          callback({ error: new errorCreator.DoesNotExist({ name: 'lantern hack' }) });
+
           return;
         }
 
-        if (stations) {
-          stations.forEach((station) => {
-            const foundStation = dbStations.find(dbs => dbs.stationId === station.id);
+        const correctUser = lanternHack.gameUsers.find(gameUser => gameUser.correct);
 
-            if (foundStation) {
-              station.signalValue = foundStation.signalValue;
+        if (correctUser.password === password.toLowerCase() && lanternHack.triesLeft > 0) {
+          updateSignalValue(lanternHack.stationId, shouldAmplify, ({ error }) => {
+            if (error) {
+              callback({ error: new errorCreator.External({ name: 'wrecking' }) });
+
+              return;
+            }
+
+            dbLanternHack.removeLanternHack(allowedUser.userName, (removeErr) => {
+              if (removeErr) {
+                callback({ error: new errorCreator.Database() });
+
+                return;
+              }
+
+              callback({ data: { success: true, amplified: shouldAmplify } });
+            });
+          });
+        } else {
+          dbLanternHack.lowerHackTries(allowedUser.userName, (lowerErr, loweredHack) => {
+            if (lowerErr) {
+              callback({ error: new errorCreator.Database() });
+
+              return;
+            }
+
+            if (loweredHack.triesLeft <= 0) {
+              dbLanternHack.removeLanternHack(allowedUser.userName, (removeErr) => {
+                if (removeErr) {
+                  callback({ error: new errorCreator.Database() });
+
+                  return;
+                }
+
+                callback({ data: { success: false, triesLeft: loweredHack.triesLeft } });
+              });
             } else {
-              station.signalValue = station.boost;
+              callback({ data: { success: false, triesLeft: loweredHack.triesLeft } });
             }
           });
-
-          callback({ stations, teams, currentRound, futureRounds, now: new Date() });
         }
       });
     });
   });
 
-  // TODO Unused
-  // socket.on('manipulateStation', ({ gameUser, choice, stationId }, callback = () => {}) => {
-  //   if (!objectValidator.isValidData({ gameUser, choice, stationId }, { gameUser: true, choice: true, stationId: true })) {
-  //     callback({ error: new errorCreator.InvalidData({ expected: '{ gameUser, choice, stationId }' }) });
-  //
-  //     return;
-  //   }
-  //
-  //   manager.userIsAllowed(socket.id, dbConfig.commands.hackLantern.commandName, (allowErr, allowed, allowedUser) => {
-  //     if (allowErr) {
-  //       callback({ error: new errorCreator.Database() });
-  //
-  //       return;
-  //     } else if (!allowed) {
-  //       callback({ error: new errorCreator.NotAllowed({ name: 'manipulateStation' }) });
-  //
-  //       return;
-  //     }
-  //
-  //     if (users.map(user => user.userName).indexOf(sentUser.userName) === -1) {
-  //       messenger.sendSelfMsg({
-  //         socket,
-  //         message: {
-  //           text: ['User is not authorized to access the LANTERN'],
-  //         },
-  //       });
-  //       socket.emit('commandStep', { reset: true });
-  //
-  //       return;
-  //     }
-  //
-  //     dbConnector.getGameUser(sentUser.userName.toLowerCase(), (err, gameUser) => {
-  //       if (err) {
-  //         socket.emit('commandFail');
-  //
-  //         return;
-  //       } else if (gameUser === null) {
-  //         messenger.sendSelfMsg({
-  //           socket,
-  //           message: {
-  //             text: [`User ${sentUser.userName} does not exist`],
-  //           },
-  //         });
-  //         socket.emit('commandStep', { reset: true });
-  //
-  //         return;
-  //       }
-  //
-  //       if (params.gameUser.password === gameUser.password) {
-  //         const choice = params.choice;
-  //
-  //         switch (choice) {
-  //           case '1': {
-  //             messenger.sendSelfMsg({
-  //               socket,
-  //               message: {
-  //                 text: [
-  //                   'You have been authorized to access the LANTERN',
-  //                   'LSM is fully functional and running',
-  //                   'Amplifying signal output',
-  //                 ],
-  //               },
-  //             });
-  //             socket.emit('commandSuccess', { noStepCall: true });
-  //             updateSignalValue(params.stationId, true);
-  //             messenger.sendMsg({
-  //               socket,
-  //               message: {
-  //                 text: [`LANTERN ${params.stationId}> User ${allowedUser.userName} has amplified the signal of the station. User is part of team: ${allowedUser.team || '-'}`],
-  //                 userName: 'SYSTEM',
-  //               },
-  //               sendTo: `lantern${params.stationId}`,
-  //             });
-  //
-  //             break;
-  //           }
-  //           case '2': {
-  //             messenger.sendSelfMsg({
-  //               socket,
-  //               message: {
-  //                 text: [
-  //                   'You have been authorized to access the LANTERN',
-  //                   'LSM is fully functional and running',
-  //                   'Dampening signal output',
-  //                 ],
-  //               },
-  //             });
-  //             socket.emit('commandSuccess', { noStepCall: true });
-  //             updateSignalValue(params.stationId, false);
-  //             messenger.sendMsg({
-  //               socket,
-  //               message: {
-  //                 text: [`LANTERN ${params.stationId}> WARNING! User ${allowedUser.userName} has dampened the signal of the station. User is part of team: ${allowedUser.team || '-'}`],
-  //                 userName: 'SYSTEM',
-  //               },
-  //               sendTo: `lantern${params.stationId}`,
-  //             });
-  //
-  //             break;
-  //           }
-  //           default: {
-  //             messenger.sendSelfMsg({
-  //               socket,
-  //               message: {
-  //                 text: ['Incorrect choice'],
-  //               },
-  //             });
-  //             socket.emit('commandStep', { reset: true });
-  //
-  //             break;
-  //           }
-  //         }
-  //       } else {
-  //         messenger.sendSelfMsg({
-  //           socket,
-  //           message: {
-  //             text: ['Incorrect password'],
-  //           },
-  //         });
-  //         socket.emit('commandStep', { reset: true });
-  //       }
-  //     });
-  //   });
-  // });
+  socket.on('getLanternHack', ({ stationId }, callback = () => {}) => {
+    if (!objectValidator.isValidData({ stationId }, { stationId: true })) {
+      callback({ error: new errorCreator.InvalidData({ expected: '' }) });
 
-  // TODO Unused
-  socket.on('getGameUsersSelection', (params) => {
-    if (!objectValidator.isValidData(params, { userAmount: true })) {
       return;
     }
 
-    dbConnector.getAllGameUsers((err, gameUsers) => {
-      if (err || gameUsers === null) {
-        socket.emit('commandFail');
+    manager.userIsAllowed(socket.id, dbConfig.commands.hackLantern.commandName, (allowErr, allowed, allowedUser) => {
+      if (allowErr) {
+        callback({ error: new errorCreator.Database() });
+
+        return;
+      } else if (!allowed) {
+        callback({ error: new errorCreator.NotAllowed({ name: 'getLanternHack' }) });
 
         return;
       }
 
-      dbConnector.getAllGamePasswords((passErr, gamePasswords) => {
-        if (passErr || gamePasswords === null) {
-          socket.emit('commandFail');
+      dbLanternHack.getLanternHack(allowedUser.userName, (hackErr, lanternHack) => {
+        /**
+         * Generates a new hack if the chosen station is different from the users previous choice
+         * Different users + passwords are connected to specific stations
+         */
+        if (!lanternHack || lanternHack.stationId !== stationId) {
+          createHackLantern({
+            owner: allowedUser.userName,
+            stationId,
+            callback: ({ error, data }) => {
+              if (error) {
+                callback({ error });
 
-          return;
+                return;
+              }
+
+              createHackData({
+                lanternHack: data.lanternHack,
+                callback: ({ error: hackDataErr, data: hackData }) => {
+                  if (hackDataErr) {
+                    callback({ error: hackDataErr });
+
+                    return;
+                  }
+
+                  callback({ data: { passwords: hackData.passwords } });
+                },
+              });
+            },
+          });
+        } else {
+          createHackData({
+            lanternHack,
+            callback: ({ error: hackDataErr, data: hackData }) => {
+              if (hackDataErr) {
+                callback({ error: hackDataErr });
+
+                return;
+              }
+
+              callback({ data: { passwords: hackData.passwords } });
+            },
+          });
         }
-
-        const userAmount = params.userAmount;
-        const users = shuffleArray(gameUsers).slice(0, userAmount);
-        const correctPassword = users[Math.floor(Math.random() * userAmount)].password;
-        const shuffledPasswords = shuffleArray(gamePasswords.map(password => password.password));
-        const halfPasswordLength = shuffledPasswords.length > 12 ? 6 : shuffledPasswords.length / 2;
-        const passwordMaxLength = shuffledPasswords.length > 12 ? 12 : shuffledPasswords.length;
-
-        const passwords = [
-          shuffleArray(shuffledPasswords.slice(0, halfPasswordLength).concat([correctPassword])),
-          shuffleArray(shuffledPasswords.slice(halfPasswordLength, passwordMaxLength).concat([correctPassword])),
-        ];
-
-        users.forEach((user) => { user.hints = shuffleArray(gameUserManager.createHints(user.password)).slice(0, 2); });
-
-        socket.emit('commandSuccess', {
-          freezeStep: true,
-          newData: {
-            users,
-            passwords,
-          },
-        });
       });
     });
   });
 
   socket.on('getStations', (params, callback = () => {}) => {
-    retrieveStationStats(({ stations = [] }) => {
+    dbLanternHack.getAllStations((err, stations) => {
       const activeStations = [];
       const inactiveStations = stations.filter((station) => {
-        if (station.active) {
+        if (station.isActive) {
           activeStations.push(station);
 
           return false;

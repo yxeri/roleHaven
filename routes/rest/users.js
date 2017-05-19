@@ -205,7 +205,6 @@ function handle(io) {
    *          "userName": "bb6",
    *          "registerDevice": "RESTAPI",
    *          "mode": "cmd",
-   *          "_id": "5815d6df93a4fb3300e14a4f",
    *          "authGroups": [],
    *          "online": false,
    *          "banned": false,

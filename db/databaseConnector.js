@@ -44,17 +44,8 @@ const invitationListSchema = new mongoose.Schema({
     time: Date,
   }],
 }, { collection: 'invitationLists' });
-const gameUserSchema = new mongoose.Schema({
-  userName: { type: String, unique: true },
-  password: String,
-}, { collection: 'gameUsers' });
-const gamePasswordSchema = new mongoose.Schema({
-  password: { type: String, unique: true },
-}, { collection: 'gamePasswords' });
 
 const InvitationList = mongoose.model('InvitationList', invitationListSchema);
-const GameUser = mongoose.model('GameUser', gameUserSchema);
-const GamePassword = mongoose.model('GamePassword', gamePasswordSchema);
 
 /**
  * Saves object to database
@@ -123,111 +114,6 @@ function verifyAllObjects(query, object, objectName, callback) {
     }
 
     callback(err, verified);
-  });
-}
-
-/**
- * Create and save game user
- * @param {Object} gameUser - Game user
- * @param {Function} callback - Callback
- */
-function createGameUser(gameUser, callback) {
-  const newGameUser = new GameUser(gameUser);
-  const query = { userName: gameUser.userName };
-
-  GameUser.findOne(query).lean().exec((err, foundGameUser) => {
-    if (err) {
-      logger.sendErrorMsg({
-        code: logger.ErrorCodes.db,
-        text: ['Failed to check if game user already exists'],
-        err,
-      });
-    } else if (foundGameUser === null) {
-      saveObject(newGameUser, 'gameUser', callback);
-    } else {
-      callback(err, null);
-    }
-  });
-}
-
-/**
- * Get game user
- * @param {string} userName - Game user name to retrieve
- * @param {Function} callback - Callback
- */
-function getGameUser(userName, callback) {
-  const query = { userName };
-
-  GameUser.findOne(query).lean().exec((err, foundGameUser) => {
-    if (err || foundGameUser === null) {
-      logger.sendErrorMsg({
-        code: logger.ErrorCodes.db,
-        text: ['Failed to get game user'],
-        err,
-      });
-    }
-
-    callback(err, foundGameUser);
-  });
-}
-
-/**
- * Get all game users
- * @param {Function} callback - Callback
- */
-function getAllGameUsers(callback) {
-  GameUser.find().lean().exec((err, gameUsers) => {
-    if (err || gameUsers === null) {
-      logger.sendErrorMsg({
-        code: logger.ErrorCodes.db,
-        text: ['Failed to get game users'],
-        err,
-      });
-    }
-
-    callback(err, gameUsers);
-  });
-}
-
-/**
- * Create and save game password
- * @param {Object} gamePassword - Game password
- * @param {Function} callback - Callback
- */
-function createGamePassword(gamePassword, callback) {
-  const newGamePassword = new GamePassword(gamePassword);
-  const query = { password: gamePassword.password };
-
-  GamePassword.findOne(query).lean().exec((err, foundGamePassword) => {
-    if (err) {
-      logger.sendErrorMsg({
-        code: logger.ErrorCodes.db,
-        text: ['Failed to check if game password already exists'],
-        err,
-      });
-    } else if (foundGamePassword === null) {
-      saveObject(newGamePassword, 'gamePassword', callback);
-    } else {
-      callback(err, null);
-    }
-  });
-}
-
-/**
- * Get all game passwords
- * @param {Function} callback - Callback
- */
-function getAllGamePasswords(callback) {
-  GamePassword.find().lean().exec((err, gamePasswords) => {
-    if (err || gamePasswords === null) {
-      logger.sendErrorMsg({
-        code: logger.ErrorCodes.db,
-        text: ['Failed to get game passwords'],
-        err,
-      });
-    }
-
-    callback(err, gamePasswords);
   });
 }
 
@@ -395,11 +281,6 @@ exports.addInvitationToList = addInvitationToList;
 exports.removeInvitationFromList = removeInvitationFromList;
 exports.getInvitations = getInvitations;
 exports.removeInvitationTypeFromList = removeInvitationTypeFromList;
-exports.createGameUser = createGameUser;
-exports.getGameUser = getGameUser;
-exports.createGamePassword = createGamePassword;
-exports.getAllGamePasswords = getAllGamePasswords;
-exports.getAllGameUsers = getAllGameUsers;
 exports.matchPartial = matchPartial;
 exports.saveObject = saveObject;
 exports.verifyObject = verifyObject;
