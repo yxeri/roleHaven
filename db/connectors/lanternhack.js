@@ -308,11 +308,12 @@ function createStation(station, callback) {
  * Set new isActive on station
  * @param {Object} station Lantern station
  * @param {number} station.stationId ID of station
- * @param {boolean} station.isActive Is the station active?
+ * @param {boolean} [station.isActive] Is the station active?
  * @param {string} [station.stationName] Name of the station
+ * @param {string} [station.ownwer] Owner name of the station
  * @param {Function} callback Callback
  */
-function updateLanternStation({ stationId, isActive, stationName }, callback) {
+function updateLanternStation({ stationId, isActive, stationName, owner }, callback) {
   const set = {};
 
   if (typeof isActive === 'boolean') {
@@ -321,6 +322,10 @@ function updateLanternStation({ stationId, isActive, stationName }, callback) {
 
   if (stationName) {
     set.stationName = stationName;
+  }
+
+  if (owner) {
+    set.owner = owner;
   }
 
   const query = { stationId };
