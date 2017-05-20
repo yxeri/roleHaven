@@ -293,7 +293,7 @@ function createHackData({ lanternHack, callback = () => {} }) {
 
     callback({
       data: {
-        passwords: shuffleArray(retrievedPasswords.map(password => password.password)).slice(0, 15).concat(lanternHack.gameUsers.map(gameUser => gameUser.password)),
+        passwords: shuffleArray(retrievedPasswords.map(password => password.password)).slice(0, 13).concat(lanternHack.gameUsers.map(gameUser => gameUser.password)),
         triesLeft: lanternHack.triesLeft,
         userName: correctUser.userName,
         passwordType: correctUser.passwordType,
