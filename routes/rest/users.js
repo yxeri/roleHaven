@@ -249,7 +249,7 @@ function handle(io) {
         });
 
         return;
-      } else if (!decoded) {
+      } else if (!decoded || decoded.data.accessLevel < dbConfig.apiCommands.CreateUser.accessLevel) {
         res.status(401).json({
           errors: [{
             status: 401,

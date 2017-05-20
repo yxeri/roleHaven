@@ -428,6 +428,7 @@ config.apiCommands = {
   StartLanternRound: config.apiCommands.StartLanternRound || { accessLevel: config.accessLevels.lowerAdmin },
   CreateLanternStation: config.apiCommands.CreateLanternStation || { accessLevel: config.accessLevels.lowerAdmin },
   UpdateLanternStation: config.apiCommands.UpdateLanternStation || { accessLevel: config.accessLevels.lowerAdmin },
+  CreateUser: config.apiCommands.CreateUser || { accessLevel: config.accessLevels.lowerAdmin },
 };
 
 module.exports = config;
