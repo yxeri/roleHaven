@@ -119,7 +119,7 @@ function handle() {
    * @apiParam {string} data.station New round
    * @apiParam {number} data.station.stationId Station id
    * @apiParam {string} data.station.stationName Location name of the station
-   * @apiParam {boolean} data.station.isActive Is the station active?
+   * @apiParam {boolean} [data.station.isActive] Is the station active? Defaults to false
    * @apiParamExample {json} Request-Example:
    *   {
    *    "data": {
