@@ -415,6 +415,14 @@ config.commands = {
     commandName: 'aliases',
     accessLevel: config.accessLevels.basic,
   },
+  getSimpleMsgs: config.commands.getSimpleMsgs || {
+    commandName: 'getSimpleMsgs',
+    accessLevel: config.accessLevels.basic,
+  },
+  simpleMsg: config.commands.simpleMsg || {
+    commandName: 'simpleMsg',
+    accessLevel: config.accessLevels.basic,
+  },
 };
 
 config.apiCommands = {

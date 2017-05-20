@@ -19,19 +19,16 @@
 const express = require('express');
 const chatHandler = require('./socketHandlers/chat');
 const userHandler = require('./socketHandlers/user');
-const dbConnector = require('../db/databaseConnector');
 const dbUser = require('../db/connectors/user');
 const teamHandler = require('./socketHandlers/team');
 const hackingHandler = require('./socketHandlers/lanternHacking');
 const utilityHandler = require('./socketHandlers/utility');
 const locationHandler = require('./socketHandlers/position');
-const manager = require('../socketHelpers/manager');
 const appConfig = require('../config/defaults/config').app;
 const databasePopulation = require('../config/defaults/config').databasePopulation;
 const deviceHandler = require('./socketHandlers/device');
 const walletHandler = require('./socketHandlers/wallet');
 const calibrationJobHandler = require('./socketHandlers/calibrationMission');
-const errorCreator = require('../objects/error/errorCreator');
 
 const router = new express.Router();
 

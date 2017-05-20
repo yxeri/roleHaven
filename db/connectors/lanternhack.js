@@ -30,6 +30,11 @@ const lanternHackSchema = new mongoose.Schema({
     userName: String,
     password: String,
     isCorrect: { type: Boolean, default: false },
+    passwordType: String,
+    passwordHint: {
+      index: Number,
+      character: String,
+    },
   }],
 }, { collection: 'lanternHacks' });
 const gameUserSchema = new mongoose.Schema({
@@ -371,9 +376,9 @@ function getActiveStations(callback) {
  * @param {Object} lanternHack Lantern hack
  * @param {Function} callback Callback
  */
-function updateLanternHack({ owner, gameUsers }, callback) {
+function updateLanternHack({ owner, gameUsers, triesLeft }, callback) {
   const query = { owner };
-  const update = { owner, gameUsers };
+  const update = { owner, gameUsers, triesLeft };
   const options = { upsert: true, new: true };
 
   LanternHack.findOneAndUpdate(query, update, options).lean().exec((err, updatedLanternHack) => {

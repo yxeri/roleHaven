@@ -23,6 +23,7 @@ const logger = require('../../utils/logger');
 const http = require('http');
 const objectValidator = require('../../utils/objectValidator');
 const dbDocFile = require('../../db/connectors/docFile');
+const dbSimpleMsg = require('../../db/connectors/simpleMsg');
 const errorCreator = require('../../objects/error/errorCreator');
 
 // FIXME SMHI API changed. Structure needs to be fixed here before usage
@@ -229,6 +230,67 @@ function handle(socket) {
       }
 
       socket.broadcast.emit('reboot');
+    });
+  });
+
+  socket.on('simpleMsg', ({ text }, callback = () => {}) => {
+    if (!objectValidator.isValidData({ text }, { text: true })) {
+      callback({ error: new errorCreator.InvalidData({ expected: '{ text }' }) });
+
+      return;
+    }
+
+    manager.userIsAllowed(socket.id, databasePopulation.commands.simpleMsg.commandName, (allowErr, allowed) => {
+      if (allowErr) {
+        callback({ error: new errorCreator.Database({}) });
+
+        return;
+      } else if (!allowed) {
+        callback({ error: new errorCreator.NotAllowed({ name: 'simpleMsg' }) });
+
+        return;
+      }
+
+      const simpleMsg = {
+        time: new Date(),
+        userName: allowed.userName,
+        text,
+      };
+
+      dbSimpleMsg.createSimpleMsg(simpleMsg, (err, newSimpleMsg) => {
+        if (allowErr || !newSimpleMsg) {
+          callback({ error: new errorCreator.Database({}) });
+
+          return;
+        }
+
+        callback({ data: { simpleMsg } });
+        socket.broadcast.emit('simpleMsg', simpleMsg);
+      });
+    });
+  });
+
+  socket.on('getSimpleMessages', (params, callback = () => {}) => {
+    manager.userIsAllowed(socket.id, databasePopulation.commands.getSimpleMsgs.commandName, (allowErr, allowed) => {
+      if (allowErr) {
+        callback({ error: new errorCreator.Database({}) });
+
+        return;
+      } else if (!allowed) {
+        callback({ error: new errorCreator.NotAllowed({ name: 'getSimpleMsgs' }) });
+
+        return;
+      }
+
+      dbSimpleMsg.getAllSimpleMsgs((err, simpleMsgs = []) => {
+        if (err) {
+          callback({ error: new errorCreator.Database() });
+
+          return;
+        }
+
+        callback({ data: { simpleMsgs } });
+      });
     });
   });
 }

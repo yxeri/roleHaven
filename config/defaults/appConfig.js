@@ -224,4 +224,9 @@ config.hackingApiKey = process.env.HACKINGAPIKEY;
  */
 config.hackingApiHost = process.env.HACKINGAPIHOST;
 
+/**
+ * Amount of hacking tries before the hack fails
+ */
+config.hackingTriesAmount = process.env.HACKINGTRIESAMOUNT || config.hackingTriesAmount || 3;
+
 module.exports = config;

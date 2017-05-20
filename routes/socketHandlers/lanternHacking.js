@@ -289,7 +289,17 @@ function createHackData({ lanternHack, callback = () => {} }) {
       return;
     }
 
-    callback({ data: { passwords: shuffleArray(retrievedPasswords.map(password => password.password)).slice(0, 6).concat(lanternHack.gameUsers.map(gameUser => gameUser.password)) } });
+    const correctUser = lanternHack.gameUsers.find(gameUser => gameUser.isCorrect);
+
+    callback({
+      data: {
+        passwords: shuffleArray(retrievedPasswords.map(password => password.password)).slice(0, 6).concat(lanternHack.gameUsers.map(gameUser => gameUser.password)),
+        triesLeft: lanternHack.triesLeft,
+        userName: correctUser.userName,
+        passwordType: correctUser.passwordType,
+        passwordHint: correctUser.passwordHint,
+      },
+    });
   });
 }
 
@@ -297,9 +307,10 @@ function createHackData({ lanternHack, callback = () => {} }) {
  * Create lantern hack for user
  * @param {number} stationId Station id
  * @param {string} owner User name of the hack owner
+ * @param {number} triesLeft Amount of hacking tries before the hack fails
  * @param {Function} callback Callback
  */
-function createHackLantern({ stationId, owner, callback = () => {} }) {
+function createLanternHack({ stationId, owner, triesLeft, callback = () => {} }) {
   dbLanternHack.getGameUsers({ stationId }, (err, retrievedUsers) => {
     if (err) {
       callback({ error: new errorCreator.Database() });
@@ -308,13 +319,23 @@ function createHackLantern({ stationId, owner, callback = () => {} }) {
     }
 
     const gameUsers = shuffleArray(retrievedUsers).slice(0, 2).map((gameUser) => {
-      return { userName: gameUser.userName, password: shuffleArray(gameUser.passwords)[0] };
+      const passwordRand = Math.floor(Math.random() * (gameUser.passwords.length));
+      const password = gameUser.passwords[passwordRand];
+      const randomIndex = Math.floor(Math.random() * password.length);
+
+      return {
+        userName: gameUser.userName,
+        // 97 === a
+        passwordType: String.fromCharCode(97 + passwordRand).toUpperCase(),
+        passwordHint: { index: randomIndex, character: password.charAt(randomIndex) },
+        password,
+      };
     });
 
     // Set first game user + password to the right combination
     gameUsers[0].isCorrect = true;
 
-    dbLanternHack.updateLanternHack({ owner, gameUsers }, (updateErr, updatedHack) => {
+    dbLanternHack.updateLanternHack({ owner, gameUsers, triesLeft }, (updateErr, updatedHack) => {
       if (updateErr) {
         callback({ error: new errorCreator.Database() });
 
@@ -430,8 +451,9 @@ function handle(socket) {
          * Different users + passwords are connected to specific stations
          */
         if (!lanternHack || lanternHack.stationId !== stationId) {
-          createHackLantern({
+          createLanternHack({
             owner: allowedUser.userName,
+            triesLeft: appConfig.hackingTriesAmount,
             stationId,
             callback: ({ error, data }) => {
               if (error) {
@@ -449,7 +471,7 @@ function handle(socket) {
                     return;
                   }
 
-                  callback({ data: { passwords: hackData.passwords } });
+                  callback({ data: hackData });
                 },
               });
             },
@@ -464,7 +486,7 @@ function handle(socket) {
                 return;
               }
 
-              callback({ data: { passwords: hackData.passwords } });
+              callback({ data: hackData });
             },
           });
         }
