@@ -293,7 +293,7 @@ function createHackData({ lanternHack, callback = () => {} }) {
 
     callback({
       data: {
-        passwords: shuffleArray(retrievedPasswords.map(password => password.password)).slice(0, 6).concat(lanternHack.gameUsers.map(gameUser => gameUser.password)),
+        passwords: shuffleArray(retrievedPasswords.map(password => password.password)).slice(0, 15).concat(lanternHack.gameUsers.map(gameUser => gameUser.password)),
         triesLeft: lanternHack.triesLeft,
         userName: correctUser.userName,
         passwordType: correctUser.passwordType,
@@ -420,7 +420,10 @@ function handle(socket) {
                 callback({ data: { success: false, triesLeft: loweredHack.triesLeft } });
               });
             } else {
-              callback({ data: { success: false, triesLeft: loweredHack.triesLeft } });
+              const sentPassword = Array.from(password.toLowerCase());
+              const matches = sentPassword.filter(char => correctUser.password.indexOf(char) === sentPassword.indexOf(char));
+
+              callback({ data: { success: false, triesLeft: loweredHack.triesLeft, matches: { amount: matches.length } } });
             }
           });
         }

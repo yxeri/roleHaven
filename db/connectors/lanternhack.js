@@ -26,6 +26,7 @@ const databaseConnector = require('../databaseConnector');
 const lanternHackSchema = new mongoose.Schema({
   owner: { type: String, unique: true },
   triesLeft: { type: Number, default: 3 },
+  stationId: Number,
   gameUsers: [{
     userName: String,
     password: String,
@@ -376,9 +377,9 @@ function getActiveStations(callback) {
  * @param {Object} lanternHack Lantern hack
  * @param {Function} callback Callback
  */
-function updateLanternHack({ owner, gameUsers, triesLeft }, callback) {
+function updateLanternHack({ stationId, owner, gameUsers, triesLeft }, callback) {
   const query = { owner };
-  const update = { owner, gameUsers, triesLeft };
+  const update = { stationId, owner, gameUsers, triesLeft };
   const options = { upsert: true, new: true };
 
   LanternHack.findOneAndUpdate(query, update, options).lean().exec((err, updatedLanternHack) => {
@@ -452,7 +453,7 @@ function lowerHackTries(owner, callback) {
 function getLanternHack(owner, callback) {
   const query = { owner };
 
-  GameUser.findOne(query).lean().exec((err, foundGameUser) => {
+  LanternHack.findOne(query).lean().exec((err, foundHack) => {
     if (err) {
       logger.sendErrorMsg({
         code: logger.ErrorCodes.db,
@@ -461,7 +462,7 @@ function getLanternHack(owner, callback) {
       });
     }
 
-    callback(err, foundGameUser);
+    callback(err, foundHack);
   });
 }
 
