@@ -71,37 +71,38 @@ function createCoordsCollection(coords) {
 
 /**
  * Create and return a position with a position from Google Maps as base
- * @param {Object} placemark - Google Maps position
- * @param {string} placemark.name - Google Maps position name
- * @param {string} [placemark.description] - Google Maps position description
- * @param {Object} [placemark.Polygon] - Google Maps position polygon
- * @param {string} placemark.Polygon.outerBoundaryIs.LinearRing.coordinates - Google Maps polygon coordinates
- * @param {Object} [placemark.LineString] - Google Maps position line
- * @param {string} placemark.LineString.coordinates - Google Maps line coordinates
- * @param {Object} [placemark.Point] - Google Maps position point
+ * @param {Object} params.position Google Maps position
+ * @param {string} params.position.name Google Maps position name
+ * @param {string} [params.position.description] Google Maps position description
+ * @param {Object} [params.position.Polygon] Google Maps position polygon
+ * @param {string} params.position.Polygon.outerBoundaryIs.LinearRing.coordinates Google Maps polygon coordinates
+ * @param {Object} [params.position.LineString] Google Maps position line
+ * @param {string} params.position.LineString.coordinates Google Maps line coordinates
+ * @param {Object} [params.position.Point] Google Maps position point
+ * @param {string} params.layerName Name of the layer
  * @returns {{positionName: string, position: Object, isStatic: boolean, type: string, geometry: string, description: string[]}} New position
  */
-function createPosition(placemark) {
+function createPosition({ position, layerName }) {
   const coordinates = {};
   let geometry = '';
 
-  if (placemark.Polygon) {
-    coordinates.coordsCollection = createCoordsCollection(parseGoogleCoords(placemark.Polygon.outerBoundaryIs.LinearRing.coordinates));
+  if (position.Polygon) {
+    coordinates.coordsCollection = createCoordsCollection(parseGoogleCoords(position.Polygon.outerBoundaryIs.LinearRing.coordinates));
     geometry = 'polygon';
-  } else if (placemark.LineString) {
-    coordinates.coordsCollection = createCoordsCollection(parseGoogleCoords(placemark.LineString.coordinates));
+  } else if (position.LineString) {
+    coordinates.coordsCollection = createCoordsCollection(parseGoogleCoords(position.LineString.coordinates));
     geometry = 'line';
-  } else if (placemark.Point) {
-    coordinates.latitude = placemark.Point.coordinates.split(',')[1];
-    coordinates.longitude = placemark.Point.coordinates.split(',')[0];
+  } else if (position.Point) {
+    coordinates.latitude = position.Point.coordinates.split(',')[1];
+    coordinates.longitude = position.Point.coordinates.split(',')[0];
     geometry = 'point';
   }
 
   return {
-    positionName: placemark.name,
+    positionName: position.name,
     isStatic: true,
-    markerType: 'world',
-    description: placemark.description ? placemark.description.replace(/<img .+?\/>/g, '').split(/<br>/) : ['No information'],
+    markerType: layerName.toLowerCase(),
+    description: position.description ? position.description.replace(/<img .+?\/>/g, '').split(/<br>/) : ['No information'],
     coordinates,
     geometry,
   };
@@ -131,23 +132,11 @@ function getGooglePositions(callback) {
      */
     const layers = convertToJson(body).kml.Document.Folder;
 
-    for (const layerKey of Object.keys(layers)) {
-      /**
-       * @type {{ Placemark: Object }}
-       */
-      const layer = layers[layerKey];
-
-      // Placemark can be either an object or an array with objects
-      if (layer.Placemark) {
-        if (layer.Placemark.length > 0) {
-          for (let i = 0; i < layer.Placemark.length; i += 1) {
-            positions.push(createPosition(layer.Placemark[i]));
-          }
-        } else {
-          positions.push(createPosition(layer.Placemark));
-        }
-      }
-    }
+    layers.forEach((layer) => {
+      layer.Placemark.forEach((position) => {
+        positions.push(createPosition({ position, layerName: layer.name }));
+      });
+    });
 
     callback(err, positions);
   });
