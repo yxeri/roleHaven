@@ -298,6 +298,7 @@ function createHackData({ lanternHack, callback = () => {} }) {
         userName: correctUser.userName,
         passwordType: correctUser.passwordType,
         passwordHint: correctUser.passwordHint,
+        stationId: lanternHack.stationId,
       },
     });
   });
@@ -324,9 +325,9 @@ function createLanternHack({ stationId, owner, triesLeft, callback = () => {} })
       const randomIndex = Math.floor(Math.random() * password.length);
 
       return {
-        userName: gameUser.userName,
         // 97 === a
         passwordType: String.fromCharCode(97 + passwordRand).toUpperCase(),
+        userName: gameUser.userName,
         passwordHint: { index: randomIndex, character: password.charAt(randomIndex) },
         password,
       };
@@ -335,7 +336,7 @@ function createLanternHack({ stationId, owner, triesLeft, callback = () => {} })
     // Set first game user + password to the right combination
     gameUsers[0].isCorrect = true;
 
-    dbLanternHack.updateLanternHack({ owner, gameUsers, triesLeft }, (updateErr, updatedHack) => {
+    dbLanternHack.updateLanternHack({ stationId, owner, gameUsers, triesLeft }, (updateErr, updatedHack) => {
       if (updateErr) {
         callback({ error: new errorCreator.Database() });
 
@@ -380,7 +381,7 @@ function handle(socket) {
           return;
         }
 
-        const correctUser = lanternHack.gameUsers.find(gameUser => gameUser.correct);
+        const correctUser = lanternHack.gameUsers.find(gameUser => gameUser.isCorrect);
 
         if (correctUser.password === password.toLowerCase() && lanternHack.triesLeft > 0) {
           updateSignalValue(lanternHack.stationId, shouldAmplify, ({ error }) => {
