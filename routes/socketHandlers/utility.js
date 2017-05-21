@@ -24,6 +24,7 @@ const dbDocFile = require('../../db/connectors/docFile');
 const errorCreator = require('../../objects/error/errorCreator');
 const dbGameCode = require('../../db/connectors/gameCode');
 const textTools = require('../../utils/textTools');
+const dbUser = require('../../db/connectors/user');
 
 /**
  * Creates game code
@@ -238,7 +239,44 @@ function handle(socket, io) {
     });
   });
 
-  socket.on('getGameCode', ({ codeType }, callback) => {
+  socket.on('createGameCode', ({ gameCode: { codeType } }, callback = () => {}) => {
+    if (!objectValidator.isValidData({ codeType }, { codeType: true })) {
+      callback({ error: new errorCreator.InvalidData({ expected: '{ codeType }' }) });
+
+      return;
+    }
+
+    manager.userIsAllowed(socket.id, dbConfig.commands.createGameCode.commandName, (allowErr, allowed, user) => {
+      if (allowErr) {
+        callback({ error: new errorCreator.Database({}) });
+
+        return;
+      } else if (!allowed) {
+        callback({ error: new errorCreator.NotAllowed({ name: 'createGameCode' }) });
+
+        return;
+      } else if (codeType === 'profile') {
+        callback({ error: new errorCreator.NotAllowed({ name: 'createGameCode profile' }) });
+      }
+
+      dbGameCode.updateGameCode({
+        owner: user.userName,
+        renewable: false,
+        code: createGameCode(),
+        codeType,
+      }, (err, newGameCode) => {
+        if (err) {
+          callback({ error: new errorCreator.Database({}) });
+
+          return;
+        }
+
+        callback({ data: { gameCode: newGameCode } });
+      });
+    });
+  });
+
+  socket.on('getGameCode', ({ codeType }, callback = () => {}) => {
     if (!objectValidator.isValidData({ codeType }, { codeType: true })) {
       callback({ error: new errorCreator.InvalidData({ expected: '{ codeType }' }) });
 
@@ -270,7 +308,7 @@ function handle(socket, io) {
                 return;
               }
 
-              callback({ data: { gameCode: newGameCode.code } });
+              callback({ data: { gameCode: newGameCode } });
             });
 
             return;
@@ -281,7 +319,7 @@ function handle(socket, io) {
           return;
         }
 
-        callback({ data: { gameCode: gameCode.code } });
+        callback({ data: { gameCode } });
       });
     });
   });
@@ -340,7 +378,7 @@ function handle(socket, io) {
           });
 
           if (retrievedGameCode.renewable) {
-            dbGameCode.updateGameCode({ owner: retrievedGameCode.owner, code: createGameCode(), codeType: retrievedGameCode.codeType }, (updateErr) => {
+            dbGameCode.updateGameCode({ owner: retrievedGameCode.owner, code: createGameCode(), codeType: retrievedGameCode.codeType, renewable: true }, (updateErr, newGameCode) => {
               if (updateErr) {
                 callback({ error: new errorCreator.Database({}) });
 
@@ -348,6 +386,16 @@ function handle(socket, io) {
               }
 
               callback({ data: { success: true } });
+
+              dbUser.getUserByAlias(retrievedGameCode.owner, (userErr, retrievedUser) => {
+                if (userErr) {
+                  callback({ error: new errorCreator.Database({}) });
+
+                  return;
+                }
+
+                socket.to(retrievedUser.socketId).emit('gameCode', { gameCode: newGameCode });
+              });
             });
 
             return;
