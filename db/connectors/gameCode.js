@@ -55,7 +55,7 @@ function updateGameCode({ owner, code, codeType, renewable }, callback) {
 }
 
 /**
- * Get profile game code
+ * Get game code
  * @param {string} owner Owner of the game code
  * @param {Function} callback Callback
  */
@@ -63,7 +63,6 @@ function getGameCodeByUserName({ owner, codeType }, callback) {
   const query = { owner, codeType };
 
   GameCode.findOne(query).lean().exec((err, gameCode) => {
-    console.log(gameCode);
     if (err) {
       logger.sendErrorMsg({
         code: logger.ErrorCodes.db,
@@ -73,6 +72,27 @@ function getGameCodeByUserName({ owner, codeType }, callback) {
     }
 
     callback(err, gameCode);
+  });
+}
+
+/**
+ * Get game codes
+ * @param {string} owner Owner of the game code
+ * @param {Function} callback Callback
+ */
+function getGameCodesByUserName({ owner, codeType }, callback) {
+  const query = { owner, codeType };
+
+  GameCode.find(query).lean().exec((err, gameCodes) => {
+    if (err) {
+      logger.sendErrorMsg({
+        code: logger.ErrorCodes.db,
+        text: [`Failed to get game codes for ${owner} ${codeType}`],
+        err,
+      });
+    }
+
+    callback(err, gameCodes);
   });
 }
 
@@ -124,3 +144,4 @@ exports.getGameCodeByUserName = getGameCodeByUserName;
 exports.getGameCodeByCode = getGameCodeByCode;
 exports.updateGameCode = updateGameCode;
 exports.removeGameCode = removeGameCode;
+exports.getGameCodesByUserName = getGameCodesByUserName;

@@ -30,7 +30,7 @@ const dbUser = require('../../db/connectors/user');
  * Creates game code
  * @returns {string} numerical game code
  */
-function createGameCode() {
+function generateGameCode() {
   return textTools.shuffleArray(['0', '1', '2', '3', '4', '5', '6', '7', '8', '9']).slice(0, 6).join('');
 }
 
@@ -239,7 +239,7 @@ function handle(socket, io) {
     });
   });
 
-  socket.on('createGameCode', ({ gameCode: { codeType } }, callback = () => {}) => {
+  socket.on('createGameCode', ({ codeType }, callback = () => {}) => {
     if (!objectValidator.isValidData({ codeType }, { codeType: true })) {
       callback({ error: new errorCreator.InvalidData({ expected: '{ codeType }' }) });
 
@@ -262,7 +262,7 @@ function handle(socket, io) {
       dbGameCode.updateGameCode({
         owner: user.userName,
         renewable: false,
-        code: createGameCode(),
+        code: generateGameCode(),
         codeType,
       }, (err, newGameCode) => {
         if (err) {
@@ -272,6 +272,39 @@ function handle(socket, io) {
         }
 
         callback({ data: { gameCode: newGameCode } });
+      });
+    });
+  });
+
+  socket.on('getGameCodes', ({ codeType }, callback = () => {}) => {
+    if (!objectValidator.isValidData({ codeType }, { codeType: true })) {
+      callback({ error: new errorCreator.InvalidData({ expected: '{ codeType }' }) });
+
+      return;
+    }
+
+    console.log('type', codeType);
+
+    manager.userIsAllowed(socket.id, dbConfig.commands.getGameCode.commandName, (allowErr, allowed, user) => {
+      if (allowErr) {
+        callback({ error: new errorCreator.Database({}) });
+
+        return;
+      } else if (!allowed) {
+        callback({ error: new errorCreator.NotAllowed({ name: 'getGameCodes' }) });
+
+        return;
+      }
+
+      dbGameCode.getGameCodesByUserName({ owner: user.userName, codeType }, (err, gameCodes) => {
+        if (err) {
+          callback({ error: new errorCreator.Database({}) });
+
+          return;
+        }
+
+        console.log('codes', gameCodes);
+        callback({ data: { gameCodes } });
       });
     });
   });
@@ -301,7 +334,7 @@ function handle(socket, io) {
           return;
         } else if (!gameCode) {
           if (codeType === 'profile') {
-            dbGameCode.updateGameCode({ owner: user.userName, code: createGameCode(), codeType: 'profile', renewable: true }, (codeErr, newGameCode) => {
+            dbGameCode.updateGameCode({ owner: user.userName, code: generateGameCode(), codeType: 'profile', renewable: true }, (codeErr, newGameCode) => {
               if (codeErr) {
                 callback({ error: new errorCreator.Database({}) });
 
@@ -378,7 +411,7 @@ function handle(socket, io) {
           });
 
           if (retrievedGameCode.renewable) {
-            dbGameCode.updateGameCode({ owner: retrievedGameCode.owner, code: createGameCode(), codeType: retrievedGameCode.codeType, renewable: true }, (updateErr, newGameCode) => {
+            dbGameCode.updateGameCode({ owner: retrievedGameCode.owner, code: generateGameCode(), codeType: retrievedGameCode.codeType, renewable: true }, (updateErr, newGameCode) => {
               if (updateErr) {
                 callback({ error: new errorCreator.Database({}) });
 

@@ -431,6 +431,10 @@ config.commands = {
     commandName: 'useGameCode',
     accessLevel: config.accessLevels.basic,
   },
+  createGameCode: config.commands.createGameCode || {
+    commandName: 'createameCode',
+    accessLevel: config.accessLevels.basic,
+  },
 };
 
 config.apiCommands = {
