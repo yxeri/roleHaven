@@ -162,9 +162,25 @@ function handle(socket) {
           callback({ error: new errorCreator.Database({}) });
 
           return;
+        } else if (!docFile) {
+          callback({ error: new errorCreator.DoesNotExist('docFile') });
+
+          return;
         }
 
-        callback({ data: { docFile } });
+        if (!docFile.accessUsers || docFile.accessUsers.indexOf(user.userName) === -1) {
+          dbDocFile.addAccessUser(docFile.docFileId, user.userName, (accessErr) => {
+            if (accessErr) {
+              callback({ error: new errorCreator.Database({}) });
+
+              return;
+            }
+
+            callback({ data: { docFile } });
+          });
+        } else {
+          callback({ data: { docFile } });
+        }
       });
     });
   });
@@ -187,9 +203,11 @@ function handle(socket) {
         const filteredDocFiles = docFiles.map((docFile) => {
           const filteredDocFile = docFile;
 
-          if ((docFile.team && (!user.team || docFile.team !== user.team)) || (!docFile.team && docFile.creator !== user.userName && !docFile.isPublic)) {
-            filteredDocFile.docFileId = null;
-            filteredDocFile.isLocked = true;
+          if ((docFile.team && user.team && docFile.team !== user.team) || (!docFile.isPublic && docFile.creator !== user.userName)) {
+            if (!docFile.accessUsers || docFile.accessUsers.indexOf(user.userName) === -1) {
+              filteredDocFile.docFileId = null;
+              filteredDocFile.isLocked = true;
+            }
           }
 
           return filteredDocFile;
@@ -223,74 +241,13 @@ function handle(socket) {
     });
   });
 
-  socket.on('rebootAll', () => {
+  socket.on('rebootAll', (params, callback = () => {}) => {
     manager.userIsAllowed(socket.id, databasePopulation.commands.rebootAll.commandName, (allowErr, allowed) => {
       if (allowErr || !allowed) {
         return;
       }
 
       socket.broadcast.emit('reboot');
-    });
-  });
-
-  socket.on('simpleMsg', ({ text }, callback = () => {}) => {
-    if (!objectValidator.isValidData({ text }, { text: true })) {
-      callback({ error: new errorCreator.InvalidData({ expected: '{ text }' }) });
-
-      return;
-    }
-
-    manager.userIsAllowed(socket.id, databasePopulation.commands.simpleMsg.commandName, (allowErr, allowed) => {
-      if (allowErr) {
-        callback({ error: new errorCreator.Database({}) });
-
-        return;
-      } else if (!allowed) {
-        callback({ error: new errorCreator.NotAllowed({ name: 'simpleMsg' }) });
-
-        return;
-      }
-
-      const simpleMsg = {
-        time: new Date(),
-        userName: allowed.userName,
-        text,
-      };
-
-      dbSimpleMsg.createSimpleMsg(simpleMsg, (err, newSimpleMsg) => {
-        if (allowErr || !newSimpleMsg) {
-          callback({ error: new errorCreator.Database({}) });
-
-          return;
-        }
-
-        callback({ data: { simpleMsg } });
-        socket.broadcast.emit('simpleMsg', simpleMsg);
-      });
-    });
-  });
-
-  socket.on('getSimpleMessages', (params, callback = () => {}) => {
-    manager.userIsAllowed(socket.id, databasePopulation.commands.getSimpleMsgs.commandName, (allowErr, allowed) => {
-      if (allowErr) {
-        callback({ error: new errorCreator.Database({}) });
-
-        return;
-      } else if (!allowed) {
-        callback({ error: new errorCreator.NotAllowed({ name: 'getSimpleMsgs' }) });
-
-        return;
-      }
-
-      dbSimpleMsg.getAllSimpleMsgs((err, simpleMsgs = []) => {
-        if (err) {
-          callback({ error: new errorCreator.Database() });
-
-          return;
-        }
-
-        callback({ data: { simpleMsgs } });
-      });
     });
   });
 }

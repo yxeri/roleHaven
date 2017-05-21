@@ -28,6 +28,7 @@ const docFileSchema = new mongoose.Schema({
   title: String,
   creator: { type: String, default: 'SYSTEM' },
   team: String,
+  accessUsers: [String],
 }, { collection: 'docFiles' });
 
 const DocFile = mongoose.model('DocFile', docFileSchema);
@@ -76,6 +77,30 @@ function updateDocFile(docFileId, { text, title, visibility, isPublic }, callbac
   if (title) { update.title = title; }
   if (visibility) { update.visibility = visibility; }
   if (isPublic) { update.isPublic = isPublic; }
+
+  DocFile.findOneAndUpdate(query, update, options).lean().exec((err, docFile) => {
+    if (err) {
+      logger.sendErrorMsg({
+        code: logger.ErrorCodes.db,
+        text: ['Failed to update docFile'],
+        err,
+      });
+    }
+
+    callback(err, docFile);
+  });
+}
+
+/**
+ * Add a user that is allowed access to a document
+ * @param {string} docFileId ID of the document to update
+ * @param {string} userName User name of the user with access to the document
+ * @param {Function} callback Callback
+ */
+function addAccessUser(docFileId, userName, callback) {
+  const query = { docFileId };
+  const update = { $push: { accessUsers: userName } };
+  const options = { new: true };
 
   DocFile.findOneAndUpdate(query, update, options).lean().exec((err, docFile) => {
     if (err) {
@@ -165,3 +190,4 @@ exports.getDocFile = getDocFile;
 exports.getDocFiles = getDocFiles;
 exports.getDocFilesList = getDocFilesList;
 exports.updateDocFile = updateDocFile;
+exports.addAccessUser = addAccessUser;
