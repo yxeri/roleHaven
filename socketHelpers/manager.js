@@ -322,12 +322,13 @@ function getAllUserTransactions({ userName, callback = () => {} }) {
 
 /**
  *
- * @param {Object} transaction - New transaction
- * @param {Function} callback - Callback
- * @param {Object} user - User creating the transaction
- * @param {Object} io - Socket.io io
+ * @param {Object} params.transaction New transaction
+ * @param {Object} params.user User creating the transaction
+ * @param {Object} params.io Socket.io io
+ * @param {boolean} params.emitToSender Should event be emitted to sender?
+ * @param {Function} [params.callback] Callback
  */
-function createTransaction({ transaction, callback, user, io }) {
+function createTransaction({ transaction, user, io, emitToSender, callback = () => {} }) {
   transaction.amount = Math.abs(transaction.amount);
   transaction.time = new Date();
   transaction.from = user.userName;
@@ -373,6 +374,18 @@ function createTransaction({ transaction, callback, user, io }) {
 
             if (receiver.socketId !== '') {
               io.to(receiver.socketId).emit('transaction', { transaction, wallet: increasedWallet });
+            }
+
+            if (emitToSender) {
+              dbUser.getUserByAlias(user.userName, (senderErr, sender) => {
+                if (senderErr) {
+                  return;
+                }
+
+                if (sender.socketId) {
+                  io.to(sender.socketId).emit('transaction', { transaction, wallet: decreasedWallet });
+                }
+              });
             }
           });
         });

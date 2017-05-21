@@ -229,4 +229,9 @@ config.hackingApiHost = process.env.HACKINGAPIHOST;
  */
 config.hackingTriesAmount = process.env.HACKINGTRIESAMOUNT || config.hackingTriesAmount || 3;
 
+/**
+ * Amount of credits transferred when a game code is used
+ */
+config.gameCodeAmount = process.env.GAMECODEAMOUNT || config.gameCodeAmount || 5;
+
 module.exports = config;

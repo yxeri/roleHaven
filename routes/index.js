@@ -29,6 +29,7 @@ const databasePopulation = require('../config/defaults/config').databasePopulati
 const deviceHandler = require('./socketHandlers/device');
 const walletHandler = require('./socketHandlers/wallet');
 const calibrationJobHandler = require('./socketHandlers/calibrationMission');
+const simpleMessageHandler = require('./socketHandlers/simpleMsg');
 
 const router = new express.Router();
 
@@ -88,6 +89,7 @@ function handle(io) {
     locationHandler.handle(socket, io);
     walletHandler.handle(socket, io);
     calibrationJobHandler.handle(socket, io);
+    simpleMessageHandler.handle(socket, io);
   });
 
   return router;

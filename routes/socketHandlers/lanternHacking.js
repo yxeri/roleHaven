@@ -24,6 +24,7 @@ const http = require('http');
 const request = require('request');
 const errorCreator = require('../../objects/error/errorCreator');
 const dbLanternHack = require('../../db/connectors/lanternhack');
+const textTools = require('../../utils/textTools');
 
 const signalThreshold = 50;
 const signalDefault = 100;
@@ -116,28 +117,6 @@ function setResetInterval() {
       resetInterval = setInterval(resetStations, appConfig.signalResetInterval);
     }
   }
-}
-
-/**
- * @private
- * @param {string[]} array - Array to be shuffled
- * @returns {string[]} Shuffled array
- */
-function shuffleArray(array) {
-  const shuffledArray = array;
-  let currentIndex = array.length;
-  let tempVal;
-  let randIndex;
-
-  while (currentIndex !== 0) {
-    randIndex = Math.floor(Math.random() * currentIndex);
-    currentIndex -= 1;
-    tempVal = array[currentIndex];
-    shuffledArray[currentIndex] = array[randIndex];
-    shuffledArray[randIndex] = tempVal;
-  }
-
-  return shuffledArray;
 }
 
 /**
@@ -293,7 +272,7 @@ function createHackData({ lanternHack, callback = () => {} }) {
 
     callback({
       data: {
-        passwords: shuffleArray(retrievedPasswords.map(password => password.password)).slice(0, 13).concat(lanternHack.gameUsers.map(gameUser => gameUser.password)),
+        passwords: textTools.shuffleArray(retrievedPasswords.map(password => password.password)).slice(0, 13).concat(lanternHack.gameUsers.map(gameUser => gameUser.password)),
         triesLeft: lanternHack.triesLeft,
         userName: correctUser.userName,
         passwordType: correctUser.passwordType,
@@ -319,7 +298,7 @@ function createLanternHack({ stationId, owner, triesLeft, callback = () => {} })
       return;
     }
 
-    const gameUsers = shuffleArray(retrievedUsers).slice(0, 2).map((gameUser) => {
+    const gameUsers = textTools.shuffleArray(retrievedUsers).slice(0, 2).map((gameUser) => {
       const passwordRand = Math.floor(Math.random() * (gameUser.passwords.length));
       const password = gameUser.passwords[passwordRand];
       const randomIndex = Math.floor(Math.random() * password.length);

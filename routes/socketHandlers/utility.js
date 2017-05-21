@@ -17,46 +17,33 @@
 'use strict';
 
 const manager = require('../../socketHelpers/manager');
-const databasePopulation = require('../../config/defaults/config').databasePopulation;
+const dbConfig = require('../../config/defaults/config').databasePopulation;
 const appConfig = require('../../config/defaults/config').app;
-const logger = require('../../utils/logger');
-const http = require('http');
 const objectValidator = require('../../utils/objectValidator');
 const dbDocFile = require('../../db/connectors/docFile');
-const dbSimpleMsg = require('../../db/connectors/simpleMsg');
 const errorCreator = require('../../objects/error/errorCreator');
+const dbGameCode = require('../../db/connectors/gameCode');
+const textTools = require('../../utils/textTools');
 
-// FIXME SMHI API changed. Structure needs to be fixed here before usage
 /**
- * Prepare a weather report from the retrieved json object
- * @param {Object} jsonObj - JSON object retrieved from external source
- * @returns {Object} Weather report
+ * Creates game code
+ * @returns {string} numerical game code
  */
-function createWeatherReport(jsonObj) {
-  const weatherRep = jsonObj;
-
-  // weatherRep.time = new Date(jsonObj.validTime);
-  // weatherRep.temperature = jsonObj.parameters.find((group) => group.name === 't');
-  // weatherRep.visibility = jsonObj.parameters.find((group) => group.name === 'vis');
-  // weatherRep.windDirection = jsonObj.parameters.find((group) => group.name === 'wd');
-  // weatherRep.thunder = jsonObj.parameters.find((group) => group.name === 'tstm');
-  // weatherRep.gust = jsonObj.parameters.find((group) => group.name === 'gust');
-  // weatherRep.cloud = jsonObj.parameters.find((group) => group.name === 'tcc_mean');
-  // weatherRep.precipitation = jsonObj.parameters.find((group) => group.name === 'pcat');
-
-  return weatherRep;
+function createGameCode() {
+  return textTools.shuffleArray(['0', '1', '2', '3', '4', '5', '6', '7', '8', '9']).slice(0, 6).join('');
 }
 
 /**
- * @param {Object} socket - Socket.IO socket
+ * @param {Object} socket Socket.IO socket
+ * @param {Object} io Socket.io
  */
-function handle(socket) {
+function handle(socket, io) {
   /**
    * Time command. Returns current date
    * Emits time
    */
   socket.on('time', (params, callback = () => {}) => {
-    manager.userIsAllowed(socket.id, databasePopulation.commands.time.commandName, (allowErr, allowed) => {
+    manager.userIsAllowed(socket.id, dbConfig.commands.time.commandName, (allowErr, allowed) => {
       if (allowErr || !allowed) {
         return;
       }
@@ -75,7 +62,7 @@ function handle(socket) {
       return;
     }
 
-    manager.userIsAllowed(socket.id, databasePopulation.commands.docFiles.commandName, (allowErr, allowed, user) => {
+    manager.userIsAllowed(socket.id, dbConfig.commands.docFiles.commandName, (allowErr, allowed, user) => {
       if (allowErr) {
         callback({ error: new errorCreator.Database({}) });
 
@@ -120,7 +107,7 @@ function handle(socket) {
       return;
     }
 
-    manager.userIsAllowed(socket.id, databasePopulation.commands.docFiles.commandName, (allowErr, allowed) => {
+    manager.userIsAllowed(socket.id, dbConfig.commands.docFiles.commandName, (allowErr, allowed) => {
       if (allowErr) {
         callback({ error: new errorCreator.Database({}) });
 
@@ -150,9 +137,9 @@ function handle(socket) {
       return;
     }
 
-    manager.userIsAllowed(socket.id, databasePopulation.commands.getDocFile.commandName, (allowErr, allowed, user) => {
+    manager.userIsAllowed(socket.id, dbConfig.commands.getDocFile.commandName, (allowErr, allowed, user) => {
       if (allowErr || !allowed) {
-        callback({ error: new errorCreator.NotAllowed({ used: databasePopulation.commands.getDocFile.commandName }) });
+        callback({ error: new errorCreator.NotAllowed({ used: dbConfig.commands.getDocFile.commandName }) });
 
         return;
       }
@@ -186,9 +173,9 @@ function handle(socket) {
   });
 
   socket.on('getDocFilesList', (params, callback = () => {}) => {
-    manager.userIsAllowed(socket.id, databasePopulation.commands.getDocFiles.commandName, (allowErr, allowed, user) => {
+    manager.userIsAllowed(socket.id, dbConfig.commands.getDocFiles.commandName, (allowErr, allowed, user) => {
       if (allowErr || !allowed) {
-        callback({ error: new errorCreator.NotAllowed({ used: databasePopulation.commands.getDocFiles.commandName }) });
+        callback({ error: new errorCreator.NotAllowed({ used: dbConfig.commands.getDocFiles.commandName }) });
 
         return;
       }
@@ -241,13 +228,134 @@ function handle(socket) {
     });
   });
 
-  socket.on('rebootAll', (params, callback = () => {}) => {
-    manager.userIsAllowed(socket.id, databasePopulation.commands.rebootAll.commandName, (allowErr, allowed) => {
+  socket.on('rebootAll', () => {
+    manager.userIsAllowed(socket.id, dbConfig.commands.rebootAll.commandName, (allowErr, allowed) => {
       if (allowErr || !allowed) {
         return;
       }
 
       socket.broadcast.emit('reboot');
+    });
+  });
+
+  socket.on('getGameCode', ({ codeType }, callback) => {
+    if (!objectValidator.isValidData({ codeType }, { codeType: true })) {
+      callback({ error: new errorCreator.InvalidData({ expected: '{ codeType }' }) });
+
+      return;
+    }
+
+    manager.userIsAllowed(socket.id, dbConfig.commands.getGameCode.commandName, (allowErr, allowed, user) => {
+      if (allowErr) {
+        callback({ error: new errorCreator.Database({}) });
+
+        return;
+      } else if (!allowed) {
+        callback({ error: new errorCreator.NotAllowed({ name: 'getGameCode' }) });
+
+        return;
+      }
+
+      dbGameCode.getGameCodeByUserName({ owner: user.userName, codeType }, (err, gameCode) => {
+        if (err) {
+          callback({ error: new errorCreator.Database({}) });
+
+          return;
+        } else if (!gameCode) {
+          if (codeType === 'profile') {
+            dbGameCode.updateGameCode({ owner: user.userName, code: createGameCode(), codeType: 'profile', renewable: true }, (codeErr, newGameCode) => {
+              if (codeErr) {
+                callback({ error: new errorCreator.Database({}) });
+
+                return;
+              }
+
+              callback({ data: { gameCode: newGameCode.code } });
+            });
+
+            return;
+          }
+
+          callback({ error: new errorCreator.DoesNotExist({ name: 'game code' }) });
+
+          return;
+        }
+
+        callback({ data: { gameCode: gameCode.code } });
+      });
+    });
+  });
+
+  socket.on('useGameCode', ({ gameCode }, callback = {}) => {
+    if (!objectValidator.isValidData({ gameCode }, { gameCode: true })) {
+      callback({ error: new errorCreator.InvalidData({ expected: '{ gameCode }' }) });
+
+      return;
+    }
+
+    manager.userIsAllowed(socket.id, dbConfig.commands.useGameCode.commandName, (allowErr, allowed, user) => {
+      if (allowErr) {
+        callback({ error: new errorCreator.Database({}) });
+
+        return;
+      } else if (!allowed) {
+        callback({ error: new errorCreator.NotAllowed({ name: 'useGameCode' }) });
+
+        return;
+      }
+
+      dbGameCode.getGameCodeByCode(gameCode, (err, retrievedGameCode) => {
+        if (err) {
+          callback({ error: new errorCreator.Database({}) });
+
+          return;
+        } else if (!retrievedGameCode) {
+          callback({ error: new errorCreator.DoesNotExist({ name: 'gameCode' }) });
+
+          return;
+        } else if (retrievedGameCode.owner === user.userName) {
+          callback({ error: new errorCreator.NotAllowed({ name: 'useGameCode on yourself' }) });
+
+          return;
+        }
+
+        dbGameCode.removeGameCode(retrievedGameCode.code, (removeErr) => {
+          if (removeErr) {
+            callback({ error: new errorCreator.Database({}) });
+
+            return;
+          }
+
+          const victim = { userName: retrievedGameCode.owner, accessLevel: dbConfig.users.system.accessLevel };
+
+          manager.createTransaction({
+            transaction: {
+              to: user.userName,
+              from: retrievedGameCode.owner,
+              amount: appConfig.gameCodeAmount,
+            },
+            emitToSender: true,
+            user: victim,
+            io,
+          });
+
+          if (retrievedGameCode.renewable) {
+            dbGameCode.updateGameCode({ owner: retrievedGameCode.owner, code: createGameCode(), codeType: retrievedGameCode.codeType }, (updateErr) => {
+              if (updateErr) {
+                callback({ error: new errorCreator.Database({}) });
+
+                return;
+              }
+
+              callback({ data: { success: true } });
+            });
+
+            return;
+          }
+
+          callback({ data: { success: true } });
+        });
+      });
     });
   });
 }

@@ -1,5 +1,6 @@
 const alphaNumbericRegex = /^[\w\d]+$/g;
 const fullTextRegex = /^[\w\d\såäöÅÄÖ\-]+$/g;
+const numerical = '1234567890';
 
 /**
  * Does the string contain only alphanumeric values?
@@ -75,9 +76,31 @@ function convertToInt(int) {
   return isNaN(parsedInt) ? 0 : parsedInt;
 }
 
+/**
+ * @param {string[]} array - Array to be shuffled
+ * @returns {string[]} Shuffled array
+ */
+function shuffleArray(array) {
+  const shuffledArray = array;
+  let currentIndex = array.length;
+  let tempVal;
+  let randIndex;
+
+  while (currentIndex !== 0) {
+    randIndex = Math.floor(Math.random() * currentIndex);
+    currentIndex -= 1;
+    tempVal = array[currentIndex];
+    shuffledArray[currentIndex] = array[randIndex];
+    shuffledArray[randIndex] = tempVal;
+  }
+
+  return shuffledArray;
+}
+
 exports.isAlphaNumeric = isAlphaNumeric;
 exports.isAllowedFull = isAllowedFull;
 exports.cleanText = cleanText;
 exports.convertToBoolean = convertToBoolean;
 exports.convertToFloat = convertToFloat;
 exports.convertToInt = convertToInt;
+exports.shuffleArray = shuffleArray;

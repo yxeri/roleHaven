@@ -167,7 +167,7 @@ config.users = {
     userName: 'system',
     password: generatePass(),
     verified: false,
-    accessLevel: config.accessLevels.anonymous,
+    accessLevel: config.accessLevels.admin,
     visibility: config.accessLevels.god,
     rooms: [],
   },
@@ -421,6 +421,14 @@ config.commands = {
   },
   simpleMsg: config.commands.simpleMsg || {
     commandName: 'simpleMsg',
+    accessLevel: config.accessLevels.basic,
+  },
+  getGameCode: config.commands.getGameCode || {
+    commandName: 'getGameCode',
+    accessLevel: config.accessLevels.basic,
+  },
+  useGameCode: config.commands.useGameCode || {
+    commandName: 'useGameCode',
     accessLevel: config.accessLevels.basic,
   },
 };
