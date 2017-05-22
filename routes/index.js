@@ -65,6 +65,7 @@ function handle(io) {
       defaultZoomLevel: appConfig.defaultZoomLevel,
       radioChannels: appConfig.radioChannels,
       yearModification: appConfig.yearModification,
+      mode: appConfig.mode,
     });
 
     socket.on('disconnect', () => {
