@@ -417,7 +417,7 @@ config.commands = {
   },
   getSimpleMsgs: config.commands.getSimpleMsgs || {
     commandName: 'getSimpleMsgs',
-    accessLevel: config.accessLevels.basic,
+    accessLevel: config.accessLevels.anonymous,
   },
   simpleMsg: config.commands.simpleMsg || {
     commandName: 'simpleMsg',
