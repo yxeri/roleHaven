@@ -234,4 +234,14 @@ config.hackingTriesAmount = process.env.HACKINGTRIESAMOUNT || config.hackingTrie
  */
 config.gameCodeAmount = process.env.GAMECODEAMOUNT || config.gameCodeAmount || 5;
 
+/**
+ * Amount of credits transferred when a game code is used
+ */
+config.signalBlockRadius = process.env.SIGNALBLOCKRADIUS || config.signalBlockRadius || 60;
+
+/**
+ * Amount of credits transferred when a game code is used
+ */
+config.signalBlockTime = process.env.SIGNALBLOCKTIME || config.signalBlockTime || 30000;
+
 module.exports = config;

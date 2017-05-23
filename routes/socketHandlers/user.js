@@ -149,6 +149,7 @@ function handle(socket, io) {
           accessLevel: updatedUser.accessLevel,
           aliases: updatedUser.aliases,
           team: updatedUser.team,
+          blockedBy: updatedUser.blockedBy,
         };
 
         manager.joinRooms(allRooms, socket, device.deviceId);

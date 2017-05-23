@@ -27,6 +27,7 @@ const mapPositionSchema = new mongoose.Schema({
     speed: Number,
     accuracy: Number,
     heading: Number,
+    radius: Number,
   },
   isStatic: { type: Boolean, default: false },
   isPublic: { type: Boolean, default: false },
@@ -159,6 +160,26 @@ function getAllStaticPositions(callback) {
 }
 
 /**
+ * Get all user positions
+ * @param {Function} callback Callback
+ */
+function getUserPositions(callback) {
+  const query = { markerType: 'user' };
+
+  MapPosition.find(query).lean().exec((err, userPositions) => {
+    if (err) {
+      logger.sendErrorMsg({
+        code: logger.ErrorCodes.db,
+        text: ['Failed to get static positions'],
+        err,
+      });
+    }
+
+    callback(err, userPositions);
+  });
+}
+
+/**
  * Get all custom positions
  * @param {string} owner Name of the owner of the position
  * @param {Function} callback Callback
@@ -209,9 +230,35 @@ function getPings(user, callback) {
   });
 }
 
+/**
+ * Remove position
+ * @param {string} params.positionName Name of the position
+ * @param {string} params.markerType Position type
+ * @param {Function} params.callback Callback
+ */
+function removePosition({ positionName, markerType, callback }) {
+  const query = { positionName, markerType };
+
+  MapPosition.findOneAndRemove(query).lean().exec((err) => {
+    if (err) {
+      logger.sendErrorMsg({
+        code: logger.ErrorCodes.db,
+        text: ['Failed to remove game code'],
+        err,
+      });
+
+      return;
+    }
+
+    callback(err);
+  });
+}
+
 exports.updatePosition = updatePosition;
 exports.getAllStaticPositions = getAllStaticPositions;
 exports.getPosition = getPosition;
 exports.getPositions = getPositions;
 exports.getCustomPositions = getCustomPositions;
 exports.getPings = getPings;
+exports.getUserPositions = getUserPositions;
+exports.removePosition = removePosition;

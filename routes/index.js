@@ -21,7 +21,7 @@ const chatHandler = require('./socketHandlers/chat');
 const userHandler = require('./socketHandlers/user');
 const dbUser = require('../db/connectors/user');
 const teamHandler = require('./socketHandlers/team');
-const hackingHandler = require('./socketHandlers/lanternHacking');
+const lanternHackingHandler = require('./socketHandlers/lanternHacking');
 const utilityHandler = require('./socketHandlers/utility');
 const locationHandler = require('./socketHandlers/position');
 const appConfig = require('../config/defaults/config').app;
@@ -30,6 +30,7 @@ const deviceHandler = require('./socketHandlers/device');
 const walletHandler = require('./socketHandlers/wallet');
 const calibrationJobHandler = require('./socketHandlers/calibrationMission');
 const simpleMessageHandler = require('./socketHandlers/simpleMsg');
+const hackingHandler = require('./socketHandlers/hacking');
 
 const router = new express.Router();
 
@@ -85,12 +86,13 @@ function handle(io) {
     chatHandler.handle(socket, io);
     deviceHandler.handle(socket, io);
     teamHandler.handle(socket, io);
-    hackingHandler.handle(socket, io);
+    lanternHackingHandler.handle(socket, io);
     utilityHandler.handle(socket, io);
     locationHandler.handle(socket, io);
     walletHandler.handle(socket, io);
     calibrationJobHandler.handle(socket, io);
     simpleMessageHandler.handle(socket, io);
+    hackingHandler.handle(socket, io);
   });
 
   return router;

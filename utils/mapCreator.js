@@ -142,4 +142,23 @@ function getGooglePositions(callback) {
   });
 }
 
+/**
+ * Checks distane between two points
+ * @param {Object} p1 Point 1 coordinates
+ * @param {Object} p2 Point 2 coordiantes
+ * @returns {number} Returns distance in meters
+ */
+function getDistance(p1, p2) {
+  const radiusFunc = (x) => { return (x * Math.PI) / 180; };
+
+  const earthRadius = 6378137; // Earth’s mean radius in meter
+  const latDistance = radiusFunc(p2.latitude - p1.latitude);
+  const longDistance = radiusFunc(p2.longitude - p1.longitude);
+  const a = (Math.sin(latDistance / 2) * Math.sin(latDistance / 2)) + (Math.cos(radiusFunc(p1.latitude)) * Math.cos(radiusFunc(p2.latitude)) * Math.sin(longDistance / 2) * Math.sin(longDistance / 2));
+  const c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
+
+  return earthRadius * c; // returns the distance in meter
+}
+
 exports.getGooglePositions = getGooglePositions;
+exports.getDistance = getDistance;

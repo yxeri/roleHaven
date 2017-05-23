@@ -120,14 +120,12 @@ function handle(socket) {
               callback({ error: new errorCreator.Database() });
             }
 
-            for (const socketUser of allUsers) {
-              if (socketUser.socketId && socket.id !== socketUser.socketId && socketUser.isTracked) {
-                socket.broadcast.to(socketUser.socketId).emit('mapPositions', {
-                  positions: [createdPosition],
-                  currentTime: (new Date()),
-                });
-              }
-            }
+            allUsers.forEach((socketUser) => {
+              socket.broadcast.to(socketUser.userName + appConfig.whisperAppend).emit('mapPositions', {
+                positions: [createdPosition],
+                currentTime: (new Date()),
+              });
+            });
           });
         },
       });

@@ -435,6 +435,10 @@ config.commands = {
     commandName: 'createameCode',
     accessLevel: config.accessLevels.basic,
   },
+  signalBlock: config.commands.signalBlock || {
+    commandName: 'signalBlock',
+    accessLevel: config.accessLevels.basic,
+  },
 };
 
 config.apiCommands = {

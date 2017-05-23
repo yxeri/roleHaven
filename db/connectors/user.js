@@ -45,6 +45,8 @@ const userSchema = new mongoose.Schema({
   authGroups: [{ type: String, unique: true }],
   isTracked: Boolean,
   aliases: [{ type: String, unique: true }],
+  lootable: { type: Boolean, default: false },
+  blockedBy: String,
 }, { collection: 'users' });
 
 const User = mongoose.model('User', userSchema);
@@ -800,6 +802,18 @@ function updateUserPassword(userName, value, callback) {
 }
 
 /**
+ * Set blocked by blocker
+ * @param {string} userName Name of the user
+ * @param {string} value User name blocking
+ * @param {Function} callback Callback
+ */
+function updateUserBlockedBy(userName, value, callback) {
+  const update = { $set: { blockedBy: value } };
+
+  updateUserValue(userName, update, callback);
+}
+
+/**
  * Match partial use rname
  * @param {string} partialName - Partial user name
  * @param {Object} user - User doing the matching
@@ -922,3 +936,4 @@ exports.updateUserIsTracked = updateUserIsTracked;
 exports.getUserByAlias = getUserByAlias;
 exports.addAlias = addAlias;
 exports.getTeamUsers = getTeamUsers;
+exports.updateUserBlockedBy = updateUserBlockedBy;

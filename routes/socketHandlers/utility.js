@@ -283,8 +283,6 @@ function handle(socket, io) {
       return;
     }
 
-    console.log('type', codeType);
-
     manager.userIsAllowed(socket.id, dbConfig.commands.getGameCode.commandName, (allowErr, allowed, user) => {
       if (allowErr) {
         callback({ error: new errorCreator.Database({}) });
@@ -303,7 +301,6 @@ function handle(socket, io) {
           return;
         }
 
-        console.log('codes', gameCodes);
         callback({ data: { gameCodes } });
       });
     });
