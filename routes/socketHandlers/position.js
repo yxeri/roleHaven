@@ -183,6 +183,19 @@ function handle(socket) {
 
             break;
           }
+          case 'signalBlock': {
+            dbPosition.getSignalBlockPositions((err, signalBlockPositions = []) => {
+              if (err) {
+                callback({ error: new errorCreator.Database() });
+
+                return;
+              }
+
+              getPositions(types.shift(), positions.concat(signalBlockPositions));
+            });
+
+            break;
+          }
           case 'user': {
             dbUser.getAllUserPositions(user, (err, userPositions = []) => {
               if (err) {

@@ -24,11 +24,16 @@ const dbPosition = require('../../db/connectors/position');
 const mapCreator = require('../../utils/mapCreator');
 const appConfig = require('../../config/defaults/config').app;
 
+dbPosition.removePositions({
+  markerType: 'signalBlock',
+  callback: () => {},
+});
+
 /**
  * @param {object} socket - Socket.IO socket
  */
 function handle(socket) {
-  socket.on('signalBlock', (params, callback = () => {}) => {
+  socket.on('signalBlock', ({ description }, callback = () => {}) => {
     manager.userIsAllowed(socket.id, databasePopulation.commands.signalBlock.commandName, (allowErr, allowed, user) => {
       if (allowErr || !allowed) {
         callback({ error: new errorCreator.NotAllowed({ name: 'signalBlock' }) });
@@ -55,8 +60,8 @@ function handle(socket) {
           owner: user.userName,
           markerType: 'signalBlock',
           isPublic: true,
-          description: ['AREA JAMMED'],
           lastUpdated: new Date(),
+          description: [description[0] + user.userName],
           coordinates,
         };
 
@@ -91,15 +96,15 @@ function handle(socket) {
                   }
 
                   const accuracy = position.coordinates.accuracy;
-                  const accuracyAdjustment = accuracy > 60 ? 60 : accuracy;
+                  const accuracyAdjustment = accuracy > appConfig.signalBlockBufferArea ? appConfig.signalBlockBufferArea : accuracy;
 
                   if (mapCreator.getDistance(userPosition.coordinates, position.coordinates) - accuracyAdjustment < appConfig.signalBlockRadius) {
                     blockedUsers.push(hackedUser);
 
                     if (hackedUser.userName !== user.userName) {
-                      socket.to(hackedUser.userName + appConfig.whisperAppend).emit('signalBlock', { hackerName: user.userName, position: newPosition });
+                      socket.to(hackedUser.userName + appConfig.whisperAppend).emit('signalBlock', { blockedBy: user.userName, position: newPosition });
                     } else {
-                      socket.emit('signalBlock', { hackerName: user.userName, position: newPosition });
+                      socket.emit('signalBlock', { blockedBy: user.userName, position: newPosition });
                     }
 
                     dbUser.updateUserBlockedBy(hackedUser.userName, user.userName, () => {});
@@ -130,12 +135,12 @@ function handle(socket) {
                           return;
                         }
 
-                        dbUser.updateUserBlockedBy(removeUser.userName, '', () => {});
+                        dbUser.removeUserBlockedBy(removeUser.userName, () => {});
 
                         if (removeUser.userName !== user.userName) {
-                          socket.to(removeUser.userName + appConfig.whisperAppend).emit('signalBlock', { hackerName: user.userName, removeBlocker: true });
+                          socket.to(removeUser.userName + appConfig.whisperAppend).emit('signalBlock', { blockedBy: user.userName, removeBlocker: true });
                         } else {
-                          socket.emit('signalBlock', { hackerName: user.userName, removeBlocker: true });
+                          socket.emit('signalBlock', { blockedBy: user.userName, removeBlocker: true });
                         }
                       });
                     });

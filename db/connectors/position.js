@@ -180,6 +180,26 @@ function getUserPositions(callback) {
 }
 
 /**
+ * Get all signal block positions
+ * @param {Function} callback Callback
+ */
+function getSignalBlockPositions(callback) {
+  const query = { markerType: 'signalBlock' };
+
+  MapPosition.find(query).lean().exec((err, signalBlockPositions) => {
+    if (err) {
+      logger.sendErrorMsg({
+        code: logger.ErrorCodes.db,
+        text: ['Failed to get signal block positions'],
+        err,
+      });
+    }
+
+    callback(err, signalBlockPositions);
+  });
+}
+
+/**
  * Get all custom positions
  * @param {string} owner Name of the owner of the position
  * @param {Function} callback Callback
@@ -254,6 +274,29 @@ function removePosition({ positionName, markerType, callback }) {
   });
 }
 
+/**
+ * Remove positions based on marker type
+ * @param {string} params.markerType Marker type
+ * @param {Function} params.callback Callback
+ */
+function removePositions({ markerType, callback }) {
+  const query = { markerType };
+
+  MapPosition.remove(query).lean().exec((err) => {
+    if (err) {
+      logger.sendErrorMsg({
+        code: logger.ErrorCodes.db,
+        text: ['Failed to remove game code'],
+        err,
+      });
+
+      return;
+    }
+
+    callback(err);
+  });
+}
+
 exports.updatePosition = updatePosition;
 exports.getAllStaticPositions = getAllStaticPositions;
 exports.getPosition = getPosition;
@@ -262,3 +305,5 @@ exports.getCustomPositions = getCustomPositions;
 exports.getPings = getPings;
 exports.getUserPositions = getUserPositions;
 exports.removePosition = removePosition;
+exports.removePositions = removePositions;
+exports.getSignalBlockPositions = getSignalBlockPositions;

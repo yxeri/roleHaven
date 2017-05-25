@@ -814,6 +814,34 @@ function updateUserBlockedBy(userName, value, callback) {
 }
 
 /**
+ * Set blocked by blocker
+ * @param {Function} callback Callback
+ */
+function removeAllUserBlockedBy(callback) {
+  const query = { blockedBy: { $exists: true } };
+  const update = { $unset: { blockedBy: '' } };
+  const options = { multi: true };
+
+  User.update(query, update, options).lean().exec((err) => {
+    callback(err);
+  });
+}
+
+/**
+ * Remove blockedBy from user
+ * @param {string} userName User name
+ * @param {Function} callback Callback
+ */
+function removeUserBlockedBy(userName, callback) {
+  const query = { userName };
+  const update = { $unset: { blockedBy: '' } };
+
+  User.findOneAndUpdate(query, update).lean().exec((err) => {
+    callback(err);
+  });
+}
+
+/**
  * Match partial use rname
  * @param {string} partialName - Partial user name
  * @param {Object} user - User doing the matching
@@ -937,3 +965,5 @@ exports.getUserByAlias = getUserByAlias;
 exports.addAlias = addAlias;
 exports.getTeamUsers = getTeamUsers;
 exports.updateUserBlockedBy = updateUserBlockedBy;
+exports.removeAllUserBlockedBy = removeAllUserBlockedBy;
+exports.removeUserBlockedBy = removeUserBlockedBy;
