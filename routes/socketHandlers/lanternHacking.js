@@ -33,38 +33,9 @@ const signalMaxChange = 10;
 let resetInterval = null;
 
 /**
- * Post request to external server
- * @param {string} params.host - Host name
- * @param {string} params.path - Path
- * @param {Function} params.callback - Path
- * @param {Object} params.data - Data to send
- */
-function postRequest({ host, path, data, callback }) {
-  const dataString = JSON.stringify({ data });
-  const options = {
-    headers: {
-      'Content-Type': 'application/json',
-      'Content-Length': dataString.length,
-    },
-    method: 'POST',
-    host,
-    path,
-  };
-
-  const req = http.request(options, (response) => {
-    response.on('end', () => {
-      callback(response.statusCode);
-    });
-  });
-
-  req.write(dataString);
-  req.end();
-}
-
-/**
  * Create signal value reset interval
  */
-function setResetInterval() {
+(function setResetInterval() {
   /**
    * Lower/increase signal value on all stations towards default value
    * @private
@@ -117,6 +88,35 @@ function setResetInterval() {
       resetInterval = setInterval(resetStations, appConfig.signalResetInterval);
     }
   }
+}).call();
+
+/**
+ * Post request to external server
+ * @param {string} params.host - Host name
+ * @param {string} params.path - Path
+ * @param {Function} params.callback - Path
+ * @param {Object} params.data - Data to send
+ */
+function postRequest({ host, path, data, callback }) {
+  const dataString = JSON.stringify({ data });
+  const options = {
+    headers: {
+      'Content-Type': 'application/json',
+      'Content-Length': dataString.length,
+    },
+    method: 'POST',
+    host,
+    path,
+  };
+
+  const req = http.request(options, (response) => {
+    response.on('end', () => {
+      callback(response.statusCode);
+    });
+  });
+
+  req.write(dataString);
+  req.end();
 }
 
 /**
@@ -196,7 +196,7 @@ function retrieveStationStats(callback) {
 function updateSignalValue(stationId, boostingSignal, callback = () => {}) {
   dbLanternHack.getStation(stationId, (err, station) => {
     if (err) {
-      callback({ error: new errorCreator.Database() });
+      callback({ error: new errorCreator.Database({}) });
 
       return;
     }
@@ -219,7 +219,7 @@ function updateSignalValue(stationId, boostingSignal, callback = () => {}) {
 
       dbLanternHack.updateSignalValue(stationId, ceilSignalValue, (updateErr) => {
         if (updateErr) {
-          callback({ error: new errorCreator.Database() });
+          callback({ error: new errorCreator.Database({}) });
 
           return;
         }
@@ -263,7 +263,7 @@ function updateSignalValue(stationId, boostingSignal, callback = () => {}) {
 function createHackData({ lanternHack, callback = () => {} }) {
   dbLanternHack.getAllFakePasswords((errFake, retrievedPasswords) => {
     if (errFake) {
-      callback({ error: new errorCreator.Database() });
+      callback({ error: new errorCreator.Database({}) });
 
       return;
     }
@@ -293,7 +293,7 @@ function createHackData({ lanternHack, callback = () => {} }) {
 function createLanternHack({ stationId, owner, triesLeft, callback = () => {} }) {
   dbLanternHack.getGameUsers({ stationId }, (err, retrievedUsers) => {
     if (err) {
-      callback({ error: new errorCreator.Database() });
+      callback({ error: new errorCreator.Database({}) });
 
       return;
     }
@@ -317,7 +317,7 @@ function createLanternHack({ stationId, owner, triesLeft, callback = () => {} })
 
     dbLanternHack.updateLanternHack({ stationId, owner, gameUsers, triesLeft }, (updateErr, updatedHack) => {
       if (updateErr) {
-        callback({ error: new errorCreator.Database() });
+        callback({ error: new errorCreator.Database({}) });
 
         return;
       }
@@ -331,149 +331,155 @@ function createLanternHack({ stationId, owner, triesLeft, callback = () => {} })
  * @param {Object} socket - Socket.IO socket
  */
 function handle(socket) {
-  socket.on('manipulateStation', ({ password, shouldAmplify }, callback = () => {}) => {
+  socket.on('manipulateStation', ({ password, shouldAmplify, token }, callback = () => {}) => {
     if (!objectValidator.isValidData({ password, shouldAmplify }, { password: true, shouldAmplify: true })) {
       callback({ error: new errorCreator.InvalidData({ expected: '{ password, shouldAmplify }' }) });
 
       return;
     }
 
-    manager.userIsAllowed(socket.id, dbConfig.commands.hackLantern.commandName, (allowErr, allowed, allowedUser) => {
-      if (allowErr) {
-        callback({ error: new errorCreator.Database() });
-
-        return;
-      } else if (!allowed) {
-        callback({ error: new errorCreator.NotAllowed({ name: 'manipulateStation' }) });
-
-        return;
-      }
-
-      dbLanternHack.getLanternHack(allowedUser.userName, (err, lanternHack) => {
-        if (err) {
-          callback({ error: new errorCreator.Database() });
-
-          return;
-        } else if (!lanternHack) {
-          callback({ error: new errorCreator.DoesNotExist({ name: 'lantern hack' }) });
+    manager.userIsAllowed({
+      token,
+      commandName: dbConfig.commands.hackLantern.commandName,
+      callback: ({ error, allowedUser }) => {
+        if (error) {
+          callback({ error });
 
           return;
         }
 
-        const correctUser = lanternHack.gameUsers.find(gameUser => gameUser.isCorrect);
+        dbLanternHack.getLanternHack(allowedUser.userName, (err, lanternHack) => {
+          if (err) {
+            callback({ error: new errorCreator.Database({}) });
 
-        if (correctUser.password === password.toLowerCase() && lanternHack.triesLeft > 0) {
-          updateSignalValue(lanternHack.stationId, shouldAmplify, ({ error }) => {
-            if (error) {
-              callback({ error: new errorCreator.External({ name: 'wrecking' }) });
+            return;
+          } else if (!lanternHack) {
+            callback({ error: new errorCreator.DoesNotExist({ name: 'lantern hack' }) });
 
-              return;
-            }
+            return;
+          }
 
-            dbLanternHack.removeLanternHack(allowedUser.userName, (removeErr) => {
-              if (removeErr) {
-                callback({ error: new errorCreator.Database() });
+          const correctUser = lanternHack.gameUsers.find(gameUser => gameUser.isCorrect);
+
+          if (correctUser.password === password.toLowerCase() && lanternHack.triesLeft > 0) {
+            updateSignalValue(lanternHack.stationId, shouldAmplify, ({ error: updateError }) => {
+              if (updateError) {
+                callback({ error: new errorCreator.External({ name: 'wrecking' }) });
 
                 return;
               }
 
-              callback({ data: { success: true, amplified: shouldAmplify } });
-            });
-          });
-        } else {
-          dbLanternHack.lowerHackTries(allowedUser.userName, (lowerErr, loweredHack) => {
-            if (lowerErr) {
-              callback({ error: new errorCreator.Database() });
-
-              return;
-            }
-
-            if (loweredHack.triesLeft <= 0) {
               dbLanternHack.removeLanternHack(allowedUser.userName, (removeErr) => {
                 if (removeErr) {
-                  callback({ error: new errorCreator.Database() });
+                  callback({ error: new errorCreator.Database({}) });
 
                   return;
                 }
 
-                callback({ data: { success: false, triesLeft: loweredHack.triesLeft } });
+                callback({ data: { success: true, amplified: shouldAmplify } });
               });
-            } else {
-              const sentPassword = Array.from(password.toLowerCase());
-              const matches = sentPassword.filter(char => correctUser.password.indexOf(char) === sentPassword.indexOf(char));
-
-              callback({ data: { success: false, triesLeft: loweredHack.triesLeft, matches: { amount: matches.length } } });
-            }
-          });
-        }
-      });
-    });
-  });
-
-  socket.on('getLanternHack', ({ stationId }, callback = () => {}) => {
-    if (!objectValidator.isValidData({ stationId }, { stationId: true })) {
-      callback({ error: new errorCreator.InvalidData({ expected: '' }) });
-
-      return;
-    }
-
-    manager.userIsAllowed(socket.id, dbConfig.commands.hackLantern.commandName, (allowErr, allowed, allowedUser) => {
-      if (allowErr) {
-        callback({ error: new errorCreator.Database() });
-
-        return;
-      } else if (!allowed) {
-        callback({ error: new errorCreator.NotAllowed({ name: 'getLanternHack' }) });
-
-        return;
-      }
-
-      dbLanternHack.getLanternHack(allowedUser.userName, (hackErr, lanternHack) => {
-        /**
-         * Generates a new hack if the chosen station is different from the users previous choice
-         * Different users + passwords are connected to specific stations
-         */
-        if (!lanternHack || lanternHack.stationId !== stationId) {
-          createLanternHack({
-            owner: allowedUser.userName,
-            triesLeft: appConfig.hackingTriesAmount,
-            stationId,
-            callback: ({ error, data }) => {
-              if (error) {
-                callback({ error });
+            });
+          } else {
+            dbLanternHack.lowerHackTries(allowedUser.userName, (lowerErr, loweredHack) => {
+              if (lowerErr) {
+                callback({ error: new errorCreator.Database({}) });
 
                 return;
               }
 
-              createHackData({
-                lanternHack: data.lanternHack,
-                callback: ({ error: hackDataErr, data: hackData }) => {
-                  if (hackDataErr) {
-                    callback({ error: hackDataErr });
+              if (loweredHack.triesLeft <= 0) {
+                dbLanternHack.removeLanternHack(allowedUser.userName, (removeErr) => {
+                  if (removeErr) {
+                    callback({ error: new errorCreator.Database({}) });
 
                     return;
                   }
 
-                  callback({ data: hackData });
-                },
-              });
-            },
-          });
-        } else {
-          createHackData({
-            lanternHack,
-            callback: ({ error: hackDataErr, data: hackData }) => {
-              if (hackDataErr) {
-                callback({ error: hackDataErr });
+                  callback({ data: { success: false, triesLeft: loweredHack.triesLeft } });
+                });
+              } else {
+                const sentPassword = Array.from(password.toLowerCase());
+                const matches = sentPassword.filter(char => correctUser.password.indexOf(char) === sentPassword.indexOf(char));
 
-                return;
+                callback({
+                  data: {
+                    success: false,
+                    triesLeft: loweredHack.triesLeft,
+                    matches: { amount: matches.length },
+                  },
+                });
               }
+            });
+          }
+        });
+      },
+    });
+  });
 
-              callback({ data: hackData });
-            },
-          });
+  socket.on('getLanternHack', ({ stationId, token }, callback = () => {}) => {
+    if (!objectValidator.isValidData({ stationId }, { stationId: true })) {
+      callback({ error: new errorCreator.InvalidData({ expected: '{ stationId }' }) });
+
+      return;
+    }
+
+    manager.userIsAllowed({
+      token,
+      commandName: dbConfig.commands.hackLantern.commandName,
+      callback: ({ error, allowedUser }) => {
+        if (error) {
+          callback({ error: new errorCreator.Database({}) });
+
+          return;
         }
-      });
+
+        dbLanternHack.getLanternHack(allowedUser.userName, (hackErr, lanternHack) => {
+          /**
+           * Generates a new hack if the chosen station is different from the users previous choice
+           * Different users + passwords are connected to specific stations
+           */
+          if (!lanternHack || lanternHack.stationId !== stationId) {
+            createLanternHack({
+              stationId,
+              owner: allowedUser.userName,
+              triesLeft: appConfig.hackingTriesAmount,
+              callback: ({ error: createError, data }) => {
+                if (createError) {
+                  callback({ error: createError });
+
+                  return;
+                }
+
+                createHackData({
+                  lanternHack: data.lanternHack,
+                  callback: ({ error: hackDataErr, data: hackData }) => {
+                    if (hackDataErr) {
+                      callback({ error: hackDataErr });
+
+                      return;
+                    }
+
+                    callback({ data: hackData });
+                  },
+                });
+              },
+            });
+          } else {
+            createHackData({
+              lanternHack,
+              callback: ({ error: hackDataErr, data: hackData }) => {
+                if (hackDataErr) {
+                  callback({ error: hackDataErr });
+
+                  return;
+                }
+
+                callback({ data: hackData });
+              },
+            });
+          }
+        });
+      },
     });
   });
 
@@ -494,7 +500,5 @@ function handle(socket) {
     });
   });
 }
-
-setResetInterval();
 
 exports.handle = handle;

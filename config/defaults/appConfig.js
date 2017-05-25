@@ -244,4 +244,14 @@ config.signalBlockRadius = process.env.SIGNALBLOCKRADIUS || config.signalBlockRa
  */
 config.signalBlockTime = process.env.SIGNALBLOCKTIME || config.signalBlockTime || 30000;
 
+/**
+ * Max user accuracy that will be used to calculate if the user is within affected area
+ */
+config.signalBlockBufferArea = process.env.SIGNALBLOCKBUFFERAREA || config.signalBlockBufferArea || 40;
+
+/**
+ * Should users be able to register? Does not block register through rest api
+ */
+config.disallowUserRegister = process.env.DISALLOWUSERREGISTER || config.disallowUserRegister || false;
+
 module.exports = config;

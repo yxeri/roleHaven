@@ -39,401 +39,422 @@ function generateGameCode() {
  * @param {Object} io Socket.io
  */
 function handle(socket, io) {
-  /**
-   * Time command. Returns current date
-   * Emits time
-   */
+  // TODO Not used
   socket.on('time', (params, callback = () => {}) => {
-    manager.userIsAllowed(socket.id, dbConfig.commands.time.commandName, (allowErr, allowed) => {
-      if (allowErr || !allowed) {
-        return;
-      }
+    const now = new Date();
+    now.setFullYear(now.getFullYear() + appConfig.yearModification);
 
-      const now = new Date();
-
-      now.setFullYear(now.getFullYear() + appConfig.yearModification);
-      callback({ time: now });
-    });
+    callback({ time: now });
   });
 
-  socket.on('createDocFile', (docFile, callback = () => {}) => {
-    if (!objectValidator.isValidData(docFile, { docFileId: true, text: true, title: true })) {
-      callback({ error: new errorCreator.InvalidData({}) });
+  socket.on('createDocFile', ({ docFile, token }, callback = () => {}) => {
+    if (!objectValidator.isValidData({ docFile }, { docFileId: true, text: true, title: true })) {
+      callback({ error: new errorCreator.InvalidData({ expected: '{ docFile: { docFileId, text, title } }' }) });
 
       return;
     }
 
-    manager.userIsAllowed(socket.id, dbConfig.commands.docFiles.commandName, (allowErr, allowed, user) => {
-      if (allowErr) {
-        callback({ error: new errorCreator.Database({}) });
-
-        return;
-      } else if (!allowed) {
-        callback({ error: new errorCreator.NotAllowed({ name: 'createDocFile' }) });
-
-        return;
-      }
-
-      docFile.creator = user.userName;
-      docFile.docFileId = docFile.docFileId.toLowerCase();
-
-      dbDocFile.createDocFile(docFile, (err, newDocFile) => {
-        if (err) {
-          callback({ error: new errorCreator.Database({}) });
-
-          return;
-        } else if (!newDocFile) {
-          callback({ error: new errorCreator.AlreadyExists({ name: 'document' }) });
+    manager.userIsAllowed({
+      token,
+      commandName: dbConfig.commands.docFiles.commandName,
+      callback: ({ error, allowedUser }) => {
+        if (error) {
+          callback({ error });
 
           return;
         }
 
-        callback({ data: { docFile: newDocFile } });
+        docFile.creator = allowedUser.userName;
+        docFile.docFileId = docFile.docFileId.toLowerCase();
 
-        if (newDocFile.isPublic) {
-          socket.broadcast.emit('docFile', { docFile: newDocFile });
-        } else if (newDocFile.team && newDocFile.team !== '') {
-          const teamRoom = newDocFile.team + appConfig.teamAppend;
+        dbDocFile.createDocFile(docFile, (err, newDocFile) => {
+          if (err) {
+            callback({ error: new errorCreator.Database({}) });
 
-          socket.broadcast.to(teamRoom).emit('docFile', { docFile: newDocFile });
-        }
-      });
+            return;
+          } else if (!newDocFile) {
+            callback({ error: new errorCreator.AlreadyExists({ name: 'document' }) });
+
+            return;
+          }
+
+          callback({ data: { docFile: newDocFile } });
+
+          if (newDocFile.isPublic) {
+            socket.broadcast.emit('docFile', { docFile: newDocFile });
+          } else if (newDocFile.team && newDocFile.team !== '') {
+            const teamRoom = newDocFile.team + appConfig.teamAppend;
+
+            socket.broadcast.to(teamRoom).emit('docFile', { docFile: newDocFile });
+          }
+        });
+      },
     });
   });
 
-  socket.on('updateDocFile', ({ docFileId, title, text, visibility, isPublic }, callback = () => {}) => {
+  socket.on('updateDocFile', ({ docFileId, title, text, visibility, isPublic, token }, callback = () => {}) => {
     if (!objectValidator.isValidData({ docFileId }, { docFileId: true })) {
       callback({ error: new errorCreator.InvalidData({ expected: '{ docFileId }' }) });
 
       return;
     }
 
-    manager.userIsAllowed(socket.id, dbConfig.commands.docFiles.commandName, (allowErr, allowed) => {
-      if (allowErr) {
-        callback({ error: new errorCreator.Database({}) });
-
-        return;
-      } else if (!allowed) {
-        callback({ error: new errorCreator.NotAllowed({ name: 'updateDocFile' }) });
-
-        return;
-      }
-
-      dbDocFile.updateDocFile(docFileId, { title, text, visibility, isPublic }, (err, docFile) => {
-        if (err) {
-          callback({ error: new errorCreator.Database({}) });
+    manager.userIsAllowed({
+      token,
+      commandName: dbConfig.commands.docFiles.commandName,
+      callback: ({ error }) => {
+        if (error) {
+          callback({ error });
 
           return;
         }
 
-        callback({ data: { docFile } });
-      });
-    });
-  });
+        dbDocFile.updateDocFile(docFileId, { title, text, visibility, isPublic }, (err, docFile) => {
+          if (err) {
+            callback({ error: new errorCreator.Database({}) });
 
-  socket.on('getDocFile', ({ docFileId }, callback = () => {}) => {
-    if (!objectValidator.isValidData({ docFileId }, { docFileId: true })) {
-      callback({ error: new errorCreator.InvalidData({}) });
+            return;
+          }
 
-      return;
-    }
-
-    manager.userIsAllowed(socket.id, dbConfig.commands.getDocFile.commandName, (allowErr, allowed, user) => {
-      if (allowErr || !allowed) {
-        callback({ error: new errorCreator.NotAllowed({ used: dbConfig.commands.getDocFile.commandName }) });
-
-        return;
-      }
-
-      dbDocFile.getDocFile(docFileId.toLowerCase(), user.accessLevel, (err, docFile) => {
-        if (err) {
-          callback({ error: new errorCreator.Database({}) });
-
-          return;
-        } else if (!docFile) {
-          callback({ error: new errorCreator.DoesNotExist('docFile') });
-
-          return;
-        }
-
-        if (!docFile.accessUsers || docFile.accessUsers.indexOf(user.userName) === -1) {
-          dbDocFile.addAccessUser(docFile.docFileId, user.userName, (accessErr) => {
-            if (accessErr) {
-              callback({ error: new errorCreator.Database({}) });
-
-              return;
-            }
-
-            callback({ data: { docFile } });
-          });
-        } else {
           callback({ data: { docFile } });
-        }
-      });
-    });
-  });
-
-  socket.on('getDocFilesList', (params, callback = () => {}) => {
-    manager.userIsAllowed(socket.id, dbConfig.commands.getDocFiles.commandName, (allowErr, allowed, user) => {
-      if (allowErr || !allowed) {
-        callback({ error: new errorCreator.NotAllowed({ used: dbConfig.commands.getDocFiles.commandName }) });
-
-        return;
-      }
-
-      dbDocFile.getDocFilesList(user, (err, docFiles) => {
-        if (err) {
-          callback({ error: new errorCreator.Database() });
-
-          return;
-        }
-
-        const filteredDocFiles = docFiles.map((docFile) => {
-          const filteredDocFile = docFile;
-
-          if ((docFile.team && user.team && docFile.team !== user.team) || (!docFile.isPublic && docFile.creator !== user.userName)) {
-            if (!docFile.accessUsers || docFile.accessUsers.indexOf(user.userName) === -1) {
-              filteredDocFile.docFileId = null;
-              filteredDocFile.isLocked = true;
-            }
-          }
-
-          return filteredDocFile;
         });
-
-        const myDocFiles = [];
-        const myTeamDocFiles = [];
-        const teamDocFiles = [];
-        const userDocFiles = filteredDocFiles.filter((docFile) => {
-          if (!docFile.team && docFile.creator !== user.userName) {
-            return true;
-          }
-
-          if (docFile.creator === user.userName) {
-            myDocFiles.push(docFile);
-          }
-
-          if (docFile.team) {
-            if (user.team && user.team === docFile.team) {
-              myTeamDocFiles.push(docFile);
-            } else {
-              teamDocFiles.push(docFile);
-            }
-          }
-
-          return false;
-        });
-
-        callback({ data: { myDocFiles, myTeamDocFiles, userDocFiles, teamDocFiles } });
-      });
+      },
     });
   });
 
-  socket.on('rebootAll', () => {
-    manager.userIsAllowed(socket.id, dbConfig.commands.rebootAll.commandName, (allowErr, allowed) => {
-      if (allowErr || !allowed) {
-        return;
-      }
-
-      socket.broadcast.emit('reboot');
-    });
-  });
-
-  socket.on('createGameCode', ({ codeType }, callback = () => {}) => {
-    if (!objectValidator.isValidData({ codeType }, { codeType: true })) {
-      callback({ error: new errorCreator.InvalidData({ expected: '{ codeType }' }) });
+  socket.on('getDocFile', ({ docFileId, token }, callback = () => {}) => {
+    if (!objectValidator.isValidData({ docFileId }, { docFileId: true })) {
+      callback({ error: new errorCreator.InvalidData({ expected: '{ docFileId' }) });
 
       return;
     }
 
-    manager.userIsAllowed(socket.id, dbConfig.commands.createGameCode.commandName, (allowErr, allowed, user) => {
-      if (allowErr) {
-        callback({ error: new errorCreator.Database({}) });
-
-        return;
-      } else if (!allowed) {
-        callback({ error: new errorCreator.NotAllowed({ name: 'createGameCode' }) });
-
-        return;
-      } else if (codeType === 'profile') {
-        callback({ error: new errorCreator.NotAllowed({ name: 'createGameCode profile' }) });
-      }
-
-      dbGameCode.updateGameCode({
-        owner: user.userName,
-        renewable: false,
-        code: generateGameCode(),
-        codeType,
-      }, (err, newGameCode) => {
-        if (err) {
-          callback({ error: new errorCreator.Database({}) });
+    manager.userIsAllowed({
+      token,
+      commandName: dbConfig.commands.getDocFile.commandName,
+      callback: ({ error, allowedUser }) => {
+        if (error) {
+          callback({ error });
 
           return;
         }
 
-        callback({ data: { gameCode: newGameCode } });
-      });
-    });
-  });
+        dbDocFile.getDocFile(docFileId.toLowerCase(), allowedUser.accessLevel, (err, docFile) => {
+          if (err) {
+            callback({ error: new errorCreator.Database({}) });
 
-  socket.on('getGameCodes', ({ codeType }, callback = () => {}) => {
-    if (!objectValidator.isValidData({ codeType }, { codeType: true })) {
-      callback({ error: new errorCreator.InvalidData({ expected: '{ codeType }' }) });
+            return;
+          } else if (!docFile) {
+            callback({ error: new errorCreator.DoesNotExist('docFile') });
 
-      return;
-    }
+            return;
+          }
 
-    manager.userIsAllowed(socket.id, dbConfig.commands.getGameCode.commandName, (allowErr, allowed, user) => {
-      if (allowErr) {
-        callback({ error: new errorCreator.Database({}) });
-
-        return;
-      } else if (!allowed) {
-        callback({ error: new errorCreator.NotAllowed({ name: 'getGameCodes' }) });
-
-        return;
-      }
-
-      dbGameCode.getGameCodesByUserName({ owner: user.userName, codeType }, (err, gameCodes) => {
-        if (err) {
-          callback({ error: new errorCreator.Database({}) });
-
-          return;
-        }
-
-        callback({ data: { gameCodes } });
-      });
-    });
-  });
-
-  socket.on('getGameCode', ({ codeType }, callback = () => {}) => {
-    if (!objectValidator.isValidData({ codeType }, { codeType: true })) {
-      callback({ error: new errorCreator.InvalidData({ expected: '{ codeType }' }) });
-
-      return;
-    }
-
-    manager.userIsAllowed(socket.id, dbConfig.commands.getGameCode.commandName, (allowErr, allowed, user) => {
-      if (allowErr) {
-        callback({ error: new errorCreator.Database({}) });
-
-        return;
-      } else if (!allowed) {
-        callback({ error: new errorCreator.NotAllowed({ name: 'getGameCode' }) });
-
-        return;
-      }
-
-      dbGameCode.getGameCodeByUserName({ owner: user.userName, codeType }, (err, gameCode) => {
-        if (err) {
-          callback({ error: new errorCreator.Database({}) });
-
-          return;
-        } else if (!gameCode) {
-          if (codeType === 'profile') {
-            dbGameCode.updateGameCode({ owner: user.userName, code: generateGameCode(), codeType: 'profile', renewable: true }, (codeErr, newGameCode) => {
-              if (codeErr) {
+          if (!docFile.accessUsers || docFile.accessUsers.indexOf(allowedUser.userName) === -1) {
+            dbDocFile.addAccessUser(docFile.docFileId, allowedUser.userName, (accessErr) => {
+              if (accessErr) {
                 callback({ error: new errorCreator.Database({}) });
 
                 return;
               }
 
-              callback({ data: { gameCode: newGameCode } });
+              callback({ data: { docFile } });
             });
-
-            return;
+          } else {
+            callback({ data: { docFile } });
           }
+        });
+      },
+    });
+  });
 
-          callback({ error: new errorCreator.DoesNotExist({ name: 'game code' }) });
+  socket.on('getDocFilesList', ({ token }, callback = () => {}) => {
+    manager.userIsAllowed({
+      token,
+      commandName: dbConfig.commands.getDocFiles.commandName,
+      callback: ({ error, allowedUser }) => {
+        if (error) {
+          callback({ error });
 
           return;
         }
 
-        callback({ data: { gameCode } });
-      });
+        dbDocFile.getDocFilesList(allowedUser, (err, docFiles) => {
+          if (err) {
+            callback({ error: new errorCreator.Database({}) });
+
+            return;
+          }
+
+          const filteredDocFiles = docFiles.map((docFile) => {
+            const filteredDocFile = docFile;
+
+            if ((docFile.team && allowedUser.team && docFile.team !== allowedUser.team) || (!docFile.isPublic && docFile.creator !== allowedUser.userName)) {
+              if (!docFile.accessUsers || docFile.accessUsers.indexOf(allowedUser.userName) === -1) {
+                filteredDocFile.docFileId = null;
+                filteredDocFile.isLocked = true;
+              }
+            }
+
+            return filteredDocFile;
+          });
+
+          const myDocFiles = [];
+          const myTeamDocFiles = [];
+          const teamDocFiles = [];
+          const userDocFiles = filteredDocFiles.filter((docFile) => {
+            if (!docFile.team && docFile.creator !== allowedUser.userName) {
+              return true;
+            }
+
+            if (docFile.creator === allowedUser.userName) {
+              myDocFiles.push(docFile);
+            }
+
+            if (docFile.team) {
+              if (allowedUser.team && allowedUser.team === docFile.team) {
+                myTeamDocFiles.push(docFile);
+              } else {
+                teamDocFiles.push(docFile);
+              }
+            }
+
+            return false;
+          });
+
+          callback({ data: { myDocFiles, myTeamDocFiles, userDocFiles, teamDocFiles } });
+        });
+      },
     });
   });
 
-  socket.on('useGameCode', ({ gameCode }, callback = {}) => {
+  socket.on('rebootAll', ({ token }, callback = () => {}) => {
+    manager.userIsAllowed({
+      token,
+      commandName: dbConfig.commands.rebootAll.commandName,
+      callback: ({ error }) => {
+        if (error) {
+          callback({ error });
+
+          return;
+        }
+
+        socket.broadcast.emit('reboot');
+        callback({ data: { success: true } });
+      },
+    });
+  });
+
+  socket.on('createGameCode', ({ codeType, token }, callback = () => {}) => {
+    if (!objectValidator.isValidData({ codeType }, { codeType: true })) {
+      callback({ error: new errorCreator.InvalidData({ expected: '{ codeType }' }) });
+
+      return;
+    } else if (codeType === 'profile') {
+      callback({ error: new errorCreator.InvalidData({ expected: 'codeType !== profile' }) });
+    }
+
+    manager.userIsAllowed({
+      token,
+      commandName: dbConfig.commands.createGameCode.commandName,
+      callback: ({ error, allowedUser }) => {
+        if (error) {
+          callback({ error });
+
+          return;
+        }
+
+        dbGameCode.updateGameCode({
+          codeType,
+          owner: allowedUser.userName,
+          renewable: false,
+          code: generateGameCode(),
+        }, (err, newGameCode) => {
+          if (err) {
+            callback({ error: new errorCreator.Database({}) });
+
+            return;
+          }
+
+          callback({ data: { gameCode: newGameCode } });
+        });
+      },
+    });
+  });
+
+  socket.on('getGameCodes', ({ codeType, token }, callback = () => {}) => {
+    if (!objectValidator.isValidData({ codeType }, { codeType: true })) {
+      callback({ error: new errorCreator.InvalidData({ expected: '{ codeType }' }) });
+
+      return;
+    }
+
+    manager.userIsAllowed({
+      token,
+      commandName: dbConfig.commands.getGameCode.commandName,
+      callback: ({ error, allowedUser }) => {
+        if (error) {
+          callback({ error });
+
+          return;
+        }
+
+        dbGameCode.getGameCodesByUserName({ owner: allowedUser.userName, codeType }, (err, gameCodes) => {
+          if (err) {
+            callback({ error: new errorCreator.Database({}) });
+
+            return;
+          }
+
+          callback({ data: { gameCodes } });
+        });
+      },
+    });
+  });
+
+  socket.on('getGameCode', ({ codeType, token }, callback = () => {}) => {
+    if (!objectValidator.isValidData({ codeType }, { codeType: true })) {
+      callback({ error: new errorCreator.InvalidData({ expected: '{ codeType }' }) });
+
+      return;
+    }
+
+    manager.userIsAllowed({
+      token,
+      commandName: dbConfig.commands.getGameCode.commandName,
+      callback: ({ error, allowedUser }) => {
+        if (error) {
+          callback({ error });
+
+          return;
+        }
+
+        dbGameCode.getGameCodeByUserName({ owner: allowedUser.userName, codeType }, (err, gameCode) => {
+          if (err) {
+            callback({ error: new errorCreator.Database({}) });
+
+            return;
+          }
+
+          if (!gameCode) {
+            if (codeType === 'profile') {
+              dbGameCode.updateGameCode({
+                owner: allowedUser.userName,
+                code: generateGameCode(),
+                codeType: 'profile',
+                renewable: true,
+              }, (codeErr, newGameCode) => {
+                if (codeErr) {
+                  callback({ error: new errorCreator.Database({}) });
+
+                  return;
+                }
+
+                callback({ data: { gameCode: newGameCode } });
+              });
+
+              return;
+            }
+
+            callback({ error: new errorCreator.DoesNotExist({ name: 'game code' }) });
+
+            return;
+          }
+
+          callback({ data: { gameCode } });
+        });
+      },
+    });
+  });
+
+  socket.on('useGameCode', ({ gameCode, token }, callback = {}) => {
     if (!objectValidator.isValidData({ gameCode }, { gameCode: true })) {
       callback({ error: new errorCreator.InvalidData({ expected: '{ gameCode }' }) });
 
       return;
     }
 
-    manager.userIsAllowed(socket.id, dbConfig.commands.useGameCode.commandName, (allowErr, allowed, user) => {
-      if (allowErr) {
-        callback({ error: new errorCreator.Database({}) });
-
-        return;
-      } else if (!allowed) {
-        callback({ error: new errorCreator.NotAllowed({ name: 'useGameCode' }) });
-
-        return;
-      }
-
-      dbGameCode.getGameCodeByCode(gameCode, (err, retrievedGameCode) => {
-        if (err) {
+    manager.userIsAllowed({
+      token,
+      commandName: dbConfig.commands.useGameCode.commandName,
+      callback: ({ error, allowedUser }) => {
+        if (error) {
           callback({ error: new errorCreator.Database({}) });
-
-          return;
-        } else if (!retrievedGameCode) {
-          callback({ error: new errorCreator.DoesNotExist({ name: 'gameCode' }) });
-
-          return;
-        } else if (retrievedGameCode.owner === user.userName) {
-          callback({ error: new errorCreator.NotAllowed({ name: 'useGameCode on yourself' }) });
 
           return;
         }
 
-        dbGameCode.removeGameCode(retrievedGameCode.code, (removeErr) => {
-          if (removeErr) {
+        dbGameCode.getGameCodeByCode(gameCode, (err, retrievedGameCode) => {
+          if (err) {
             callback({ error: new errorCreator.Database({}) });
+
+            return;
+          } else if (!retrievedGameCode) {
+            callback({ error: new errorCreator.DoesNotExist({ name: 'gameCode' }) });
+
+            return;
+          } else if (retrievedGameCode.owner === allowedUser.userName) {
+            callback({ error: new errorCreator.NotAllowed({ name: 'useGameCode on yourself' }) });
 
             return;
           }
 
-          const victim = { userName: retrievedGameCode.owner, accessLevel: dbConfig.users.system.accessLevel };
+          dbGameCode.removeGameCode(retrievedGameCode.code, (removeErr) => {
+            if (removeErr) {
+              callback({ error: new errorCreator.Database({}) });
 
-          manager.createTransaction({
-            transaction: {
-              to: user.userName,
-              from: retrievedGameCode.owner,
-              amount: appConfig.gameCodeAmount,
-            },
-            emitToSender: true,
-            user: victim,
-            io,
-          });
+              return;
+            }
 
-          if (retrievedGameCode.renewable) {
-            dbGameCode.updateGameCode({ owner: retrievedGameCode.owner, code: generateGameCode(), codeType: retrievedGameCode.codeType, renewable: true }, (updateErr, newGameCode) => {
-              if (updateErr) {
-                callback({ error: new errorCreator.Database({}) });
+            const victim = {
+              userName: retrievedGameCode.owner,
+              accessLevel: dbConfig.users.system.accessLevel,
+            };
 
-                return;
-              }
+            manager.createTransaction({
+              io,
+              transaction: {
+                to: allowedUser.userName,
+                from: retrievedGameCode.owner,
+                amount: appConfig.gameCodeAmount,
+              },
+              emitToSender: true,
+              user: victim,
+            });
 
-              callback({ data: { success: true } });
-
-              dbUser.getUserByAlias(retrievedGameCode.owner, (userErr, retrievedUser) => {
-                if (userErr) {
+            if (retrievedGameCode.renewable) {
+              dbGameCode.updateGameCode({
+                owner: retrievedGameCode.owner,
+                code: generateGameCode(),
+                codeType: retrievedGameCode.codeType,
+                renewable: true,
+              }, (updateErr, newGameCode) => {
+                if (updateErr) {
                   callback({ error: new errorCreator.Database({}) });
 
                   return;
                 }
 
-                socket.to(retrievedUser.socketId).emit('gameCode', { gameCode: newGameCode });
+                callback({ data: { success: true } });
+
+                dbUser.getUserByAlias(retrievedGameCode.owner, (userErr, retrievedUser) => {
+                  if (userErr) {
+                    callback({ error: new errorCreator.Database({}) });
+
+                    return;
+                  }
+
+                  socket.to(retrievedUser.socketId).emit('gameCode', { gameCode: newGameCode });
+                });
               });
-            });
 
-            return;
-          }
+              return;
+            }
 
-          callback({ data: { success: true } });
+            callback({ data: { success: true } });
+          });
         });
-      });
+      },
     });
   });
 }

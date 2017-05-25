@@ -26,64 +26,64 @@ const errorCreator = require('../../objects/error/errorCreator');
  * @param {Object} socket - Socket.IO socket
  */
 function handle(socket) {
-  socket.on('simpleMsg', ({ text }, callback = () => {}) => {
+  socket.on('simpleMsg', ({ text, token }, callback = () => {}) => {
     if (!objectValidator.isValidData({ text }, { text: true })) {
       callback({ error: new errorCreator.InvalidData({ expected: '{ text }' }) });
 
       return;
     }
 
-    manager.userIsAllowed(socket.id, databasePopulation.commands.simpleMsg.commandName, (allowErr, allowed) => {
-      if (allowErr) {
-        callback({ error: new errorCreator.Database({}) });
-
-        return;
-      } else if (!allowed) {
-        callback({ error: new errorCreator.NotAllowed({ name: 'simpleMsg' }) });
-
-        return;
-      }
-
-      const simpleMsg = {
-        time: new Date(),
-        userName: allowed.userName,
-        text,
-      };
-
-      dbSimpleMsg.createSimpleMsg(simpleMsg, (err, newSimpleMsg) => {
-        if (allowErr || !newSimpleMsg) {
-          callback({ error: new errorCreator.Database({}) });
+    manager.userIsAllowed({
+      token,
+      commandName: databasePopulation.commands.simpleMsg.commandName,
+      callback: ({ error, allowedUser }) => {
+        if (error) {
+          callback({ error });
 
           return;
         }
 
-        callback({ data: { simpleMsg } });
-        socket.broadcast.emit('simpleMsg', simpleMsg);
-      });
+        const simpleMsg = {
+          text,
+          time: new Date(),
+          userName: allowedUser.userName,
+        };
+
+        dbSimpleMsg.createSimpleMsg(simpleMsg, (err, newSimpleMsg) => {
+          if (error || !newSimpleMsg) {
+            callback({ error: new errorCreator.Database({}) });
+
+            return;
+          }
+
+          callback({ data: { simpleMsg } });
+          socket.broadcast.emit('simpleMsg', simpleMsg);
+        });
+      },
     });
   });
 
-  socket.on('getSimpleMessages', (params, callback = () => {}) => {
-    manager.userIsAllowed(socket.id, databasePopulation.commands.getSimpleMsgs.commandName, (allowErr, allowed) => {
-      if (allowErr) {
-        callback({ error: new errorCreator.Database({}) });
-
-        return;
-      } else if (!allowed) {
-        callback({ error: new errorCreator.NotAllowed({ name: 'getSimpleMsgs' }) });
-
-        return;
-      }
-
-      dbSimpleMsg.getAllSimpleMsgs((err, simpleMsgs = []) => {
-        if (err) {
-          callback({ error: new errorCreator.Database() });
+  socket.on('getSimpleMessages', ({ token }, callback = () => {}) => {
+    manager.userIsAllowed({
+      token,
+      commandName: databasePopulation.commands.getSimpleMsgs.commandName,
+      callback: ({ error }) => {
+        if (error) {
+          callback({ error });
 
           return;
         }
 
-        callback({ data: { simpleMsgs } });
-      });
+        dbSimpleMsg.getAllSimpleMsgs((err, simpleMsgs = []) => {
+          if (err) {
+            callback({ error: new errorCreator.Database({}) });
+
+            return;
+          }
+
+          callback({ data: { simpleMsgs } });
+        });
+      },
     });
   });
 }

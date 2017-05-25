@@ -18,7 +18,7 @@
 
 const dbDevice = require('../../db/connectors/device');
 const manager = require('../../socketHelpers/manager');
-const databasePopulation = require('../../config/defaults/config').databasePopulation;
+const dbConfig = require('../../config/defaults/config').databasePopulation;
 const objectValidator = require('../../utils/objectValidator');
 const appConfig = require('../../config/defaults/config').app;
 const errorCreator = require('../../objects/error/errorCreator');
@@ -27,27 +27,31 @@ const errorCreator = require('../../objects/error/errorCreator');
  * @param {Object} socket Socket.IO socket
  */
 function handle(socket) {
-  socket.on('listDevices', (params, callback = () => {}) => {
-    manager.userIsAllowed(socket.id, databasePopulation.commands.listDevices.commandName, (allowErr, allowed) => {
-      if (allowErr) {
-        callback({ error: new errorCreator.Database() });
-
-        return;
-      } else if (!allowed) {
-        callback({ error: new errorCreator.NotAllowed({ name: 'listDevices' }) });
-
-        return;
-      }
-
-      dbDevice.getAllDevices((devErr, devices) => {
-        if (devErr) {
-          callback({ error: new errorCreator.Database() });
+  socket.on('listDevices', ({ token }, callback = () => {}) => {
+    manager.userIsAllowed({
+      token,
+      commandName: dbConfig.commands.listDevices.commandName,
+      callback: ({ error }) => {
+        if (error) {
+          callback({ error });
 
           return;
         }
 
-        callback({ data: { devices } });
-      });
+        dbDevice.getAllDevices((devErr, devices) => {
+          if (devErr) {
+            callback({ error: new errorCreator.Database({}) });
+
+            return;
+          }
+
+          callback({
+            data: {
+              devices,
+            },
+          });
+        });
+      },
     });
   });
 
@@ -60,64 +64,69 @@ function handle(socket) {
 
     dbDevice.updateDeviceLastAlive(device.deviceId, new Date(), (err, updatedDevice) => {
       if (err) {
-        callback({ error: new errorCreator.Database() });
+        callback({ error: new errorCreator.Database({}) });
 
         return;
       }
 
-      callback({ data: { device: updatedDevice } });
+      callback({
+        data: {
+          device: updatedDevice,
+        },
+      });
     });
   });
 
-  socket.on('updateDevice', ({ device, field, value }, callback = () => {}) => {
+  socket.on('updateDevice', ({ device, field, value, token }, callback = () => {}) => {
     if (!objectValidator.isValidData({ device }, { device: { deviceId: true }, field: true, value: true })) {
       callback({ error: new errorCreator.InvalidData({ expected: '{ field, value, device: { deviceId } }' }) });
 
       return;
     }
 
-    manager.userIsAllowed(socket.id, databasePopulation.commands.updateDevice.commandName, (allowErr, allowed) => {
-      if (allowErr) {
-        callback({ error: new errorCreator.Database() });
-
-        return;
-      } else if (!allowed) {
-        callback({ error: new errorCreator.NotAllowed({ name: 'updateDevice' }) });
-
-        return;
-      }
-
-      const deviceId = device.deviceId;
-      const updateCallback = (err, updatedDevice) => {
-        if (err) {
-          callback({ error: new errorCreator.Database() });
-
-          return;
-        } else if (!updatedDevice) {
-          callback({ error: new errorCreator.DoesNotExist({ name: 'device' }) });
+    manager.userIsAllowed({
+      token,
+      commandName: dbConfig.commands.updateDevice.commandName,
+      callback: ({ error }) => {
+        if (error) {
+          callback({ error });
 
           return;
         }
 
-        callback({ data: { device: updatedDevice } });
-      };
+        const deviceId = device.deviceId;
+        const updateCallback = (err, updatedDevice) => {
+          if (err) {
+            callback({ error: new errorCreator.Database({}) });
 
-      switch (field) {
-        case 'alias': {
-          dbDevice.updateDeviceAlias(deviceId, value, updateCallback);
+            return;
+          } else if (!updatedDevice) {
+            callback({ error: new errorCreator.DoesNotExist({ name: 'device' }) });
 
-          break;
+            return;
+          }
+
+          callback({ data: { device: updatedDevice } });
+        };
+
+        switch (field) {
+          case 'alias': {
+            dbDevice.updateDeviceAlias(deviceId, value, updateCallback);
+
+            break;
+          }
+          default: {
+            callback({ error: new errorCreator.Incorrect({ name: 'field' }) });
+
+            break;
+          }
         }
-        default: {
-          callback({ error: new errorCreator.Incorrect({ name: 'field' }) });
-
-          break;
-        }
-      }
+      },
     });
   });
 
-  socket.on('verifyDevice', ({ device }, callback = () => {}) => {
+  // TODO Unused
+  socket.on('verifyDevice', ({ device, token }, callback = () => {}) => {
     // TODO Check if either device.alias or device.deviceId is set
     if (!objectValidator.isValidData({ device }, { device: { deviceId: true } })) {
       callback({ error: new errorCreator.InvalidData({ expected: '{ device: { deviceId } }' }) });
@@ -125,21 +134,34 @@ function handle(socket) {
       return;
     }
 
-    dbDevice.getDevice(device.deviceId, (err, foundDevice) => {
-      if (err) {
-        callback({ error: new errorCreator.Database() });
+    manager.userIsAllowed({
+      token,
+      commandName: dbConfig.commands.updateDevice.commandName,
+      callback: ({ error }) => {
+        if (error) {
+          callback({ error });
 
-        return;
-      } else if (!foundDevice) {
-        callback({ error: new errorCreator.DoesNotExist({ name: `device ${device.deviceId}` }) });
+          return;
+        }
 
-        return;
-      }
+        dbDevice.getDevice(device.deviceId, (err, foundDevice) => {
+          if (err) {
+            callback({ error: new errorCreator.Database({}) });
 
-      callback({ data: { device: foundDevice } });
+            return;
+          } else if (!foundDevice) {
+            callback({ error: new errorCreator.DoesNotExist({ name: `device ${device.deviceId}` }) });
+
+            return;
+          }
+
+          callback({ data: { device: foundDevice } });
+        });
+      },
     });
   });
 
+  // TODO Unused
   // TODO Should leave previous device room
   socket.on('updateDeviceSocketId', ({ user, device }, callback = () => {}) => {
     if (!objectValidator.isValidData({ user, device }, { user: { userName: true }, device: { deviceId: true } })) {

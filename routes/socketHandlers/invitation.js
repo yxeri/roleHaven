@@ -18,7 +18,6 @@
 
 const dbConnector = require('../../db/databaseConnector');
 const dbUser = require('../../db/connectors/user');
-const dbTeam = require('../../db/connectors/team');
 const databasePopulation = require('../../config/defaults/config').databasePopulation;
 const manager = require('../../socketHelpers/manager');
 const logger = require('../../utils/logger');
@@ -32,215 +31,225 @@ const errorCreator = require('../../objects/error/errorCreator');
  */
 function handle(socket) {
   // TODO Unused
-  socket.on('teamAnswer', (params) => {
-    if (!objectValidator.isValidData(params, { accepted: true, invitation: { itemName: true, sender: true, invitationType: true } })) {
+  socket.on('teamAnswer', ({ token, accepted, invitation }, callback = () => {}) => {
+    if (!objectValidator.isValidData({ accepted, invitation }, { accepted: true, invitation: { itemName: true, sender: true, invitationType: true } })) {
       return;
     }
 
-    manager.userIsAllowed(socket.id, databasePopulation.commands.invitations.commandName, (allowErr, allowed, allowedUser) => {
-      if (allowErr || !allowed) {
-        return;
-      }
+    manager.userIsAllowed({
+      token,
+      commandName: databasePopulation.commands.invitations.commandName,
+      callback: ({ error, allowedUser }) => {
+        if (error) {
+          callback({ error });
 
-      const userName = allowedUser.userName;
-      const invitation = params.invitation;
-      const roomName = params.invitation.itemName + appConfig.teamAppend;
-      invitation.time = new Date();
+          return;
+        }
 
-      if (params.accepted) {
-        manager.updateUserTeam({
-          socket,
-          userName,
-          teamName: invitation.itemName,
-          callback: (err, user) => {
-            if (err || user === null) {
-              return;
-            }
+        const userName = allowedUser.userName;
+        const roomName = invitation.itemName + appConfig.teamAppend;
+        invitation.time = new Date();
 
-            dbUser.addRoomToUser(userName, roomName, (errRoom) => {
-              if (errRoom) {
+        if (accepted) {
+          manager.updateUserTeam({
+            socket,
+            userName,
+            teamName: invitation.itemName,
+            callback: (err, user) => {
+              if (err || user === null) {
                 return;
               }
 
+              dbUser.addRoomToUser(userName, roomName, (errRoom) => {
+                if (errRoom) {
+                  return;
+                }
+
+                messenger.sendSelfMsg({
+                  socket,
+                  message: {
+                    text: [`Joined team ${invitation.itemName}`],
+                    text_se: [`Gick med i team ${invitation.itemName}`],
+                  },
+                });
+
+                dbConnector.removeInvitationTypeFromList(userName, invitation.invitationType, (teamErr) => {
+                  if (teamErr) {
+                    logger.sendErrorMsg({
+                      code: logger.ErrorCodes.db,
+                      text: [`Failed to remove all invitations of type ${invitation.invitationType}`],
+                      text_se: [`Misslyckades med att ta bort alla inbjudan av typen ${invitation.invitationType}`],
+                      err: teamErr,
+                    });
+                  }
+                });
+
+                socket.join(roomName);
+                socket.emit('follow', { room: { roomName: 'team' } });
+              });
+            },
+          });
+        } else {
+          dbConnector.removeInvitationFromList(userName, invitation.itemName, invitation.invitationType, (err, list) => {
+            if (err || list === null) {
               messenger.sendSelfMsg({
                 socket,
                 message: {
-                  text: [`Joined team ${invitation.itemName}`],
-                  text_se: [`Gick med i team ${invitation.itemName}`],
+                  text: ['Failed to decline invitation'],
+                  text_se: ['Misslyckades med att avböja inbjudan'],
                 },
               });
 
-              dbConnector.removeInvitationTypeFromList(userName, invitation.invitationType, (teamErr) => {
-                if (teamErr) {
-                  logger.sendErrorMsg({
-                    code: logger.ErrorCodes.db,
-                    text: [`Failed to remove all invitations of type ${invitation.invitationType}`],
-                    text_se: [`Misslyckades med att ta bort alla inbjudan av typen ${invitation.invitationType}`],
-                    err: teamErr,
-                  });
-                }
-              });
+              return;
+            }
 
-              socket.join(roomName);
-              socket.emit('follow', { room: { roomName: 'team' } });
-            });
-          },
-        });
-      } else {
-        dbConnector.removeInvitationFromList(userName, invitation.itemName, invitation.invitationType, (err, list) => {
-          if (err || list === null) {
+            // TODO Send message to sender of invitation
+
             messenger.sendSelfMsg({
               socket,
               message: {
-                text: ['Failed to decline invitation'],
-                text_se: ['Misslyckades med att avböja inbjudan'],
+                text: ['Successfully declined invitation'],
+                text_se: ['Lyckades avböja inbjudan'],
               },
             });
-
-            return;
-          }
-
-          // TODO Send message to sender of invitation
-
-          messenger.sendSelfMsg({
-            socket,
-            message: {
-              text: ['Successfully declined invitation'],
-              text_se: ['Lyckades avböja inbjudan'],
-            },
           });
-        });
-      }
+        }
+      },
     });
   });
 
   // TODO Unused
-  socket.on('roomInviteAnswer', ({ invitation, accepted }, callback = () => {}) => {
+  socket.on('roomInviteAnswer', ({ invitation, accepted, token }, callback = () => {}) => {
     if (!objectValidator.isValidData({ invitation, accepted }, { accepted: true, invitation: { itemName: true, sender: true, invitationType: true } })) {
       callback({ error: new errorCreator.InvalidData({ expected: '{ accepted, invitation: { itemName, sender, invitationType } }' }) });
 
       return;
     }
 
-    manager.userIsAllowed(socket.id, databasePopulation.commands.invitations.commandName, (allowErr, allowed, allowedUser) => {
-      if (allowErr) {
-        callback({ error: new errorCreator.Database() });
+    manager.userIsAllowed({
+      token,
+      commandName: databasePopulation.commands.invitations.commandName,
+      callback: ({ error, allowedUser }) => {
+        if (error) {
+          callback({ error });
 
-        return;
-      } else if (!allowed) {
-        callback({ error: new errorCreator.NotAllowed({ name: 'roomInviteAnswer' }) });
+          return;
+        }
 
-        return;
-      }
+        const userName = allowedUser.userName;
+        const roomName = invitation.itemName;
+        invitation.time = new Date();
 
-      const userName = allowedUser.userName;
-      const roomName = invitation.itemName;
-      invitation.time = new Date();
+        if (accepted) {
+          dbUser.addRoomToUser(userName, roomName, (roomErr) => {
+            if (roomErr) {
+              callback({ error: new errorCreator.Database({}) });
 
-      if (accepted) {
-        dbUser.addRoomToUser(userName, roomName, (roomErr) => {
-          if (roomErr) {
-            callback({ error: new errorCreator.Database() });
+              return;
+            }
 
-            return;
-          }
-
-          manager.followRoom({ room: { roomName }, socket, userName, callback });
-          dbConnector.removeInvitationFromList(userName, roomName, invitation.invitationType, () => {
+            manager.followRoom({ room: { roomName }, socket, userName, callback });
+            dbConnector.removeInvitationFromList(userName, roomName, invitation.invitationType, () => {
+            });
           });
-        });
-      } else {
-        dbConnector.removeInvitationFromList(userName, invitation.itemName, invitation.invitationType, (err) => {
-          if (err) {
-            callback({ error: new errorCreator.Database() });
+        } else {
+          dbConnector.removeInvitationFromList(userName, invitation.itemName, invitation.invitationType, (err) => {
+            if (err) {
+              callback({ error: new errorCreator.Database({}) });
 
-            return;
-          }
+              return;
+            }
 
-          callback({ data: { success: true } });
-        });
-      }
+            callback({ data: { success: true } });
+          });
+        }
+      },
     });
   });
 
   // TODO Unused
-  socket.on('inviteToRoom', ({ user, room }, callback = () => {}) => {
+  socket.on('inviteToRoom', ({ user, room, token }, callback = () => {}) => {
     if (!objectValidator.isValidData({ user, room }, { user: { userName: true }, room: { roomName: true } })) {
       callback({ error: new errorCreator.InvalidData({ expected: '{ user: { userName }, room: { roomName } }' }) });
 
       return;
     }
 
-    manager.userIsAllowed(socket.id, databasePopulation.commands.inviteRoom.commandName, (allowErr, allowed, allowedUser) => {
-      if (allowErr) {
-        callback({ error: new errorCreator.Database() });
-
-        return;
-      } else if (!allowed) {
-        callback({ error: new errorCreator.NotAllowed({ name: 'inviteToRoom' }) });
-
-        return;
-      }
-
-      const userName = user.userName.toLowerCase();
-      const roomName = room.roomName.toLowerCase();
-
-      dbUser.getUser(userName, (userErr, invitedUser) => {
-        if (userErr) {
-          callback({ error: new errorCreator.Database() });
-
-          return;
-        } else if (!invitedUser) {
-          callback({ error: new errorCreator.DoesNotExist({ name: userName }) });
-
-          return;
-        } else if (invitedUser.rooms.indexOf(roomName) > -1) {
-          callback({ error: new errorCreator.AlreadyExists({ name: invitedUser.userName }) });
+    manager.userIsAllowed({
+      token,
+      commandName: databasePopulation.commands.inviteRoom.commandName,
+      callback: ({ error, allowedUser }) => {
+        if (error) {
+          callback({ error });
 
           return;
         }
 
-        const invitation = {
-          itemName: roomName,
-          time: new Date(),
-          invitationType: 'room',
-          sender: allowedUser.userName,
-        };
+        const userName = user.userName.toLowerCase();
+        const roomName = room.roomName.toLowerCase();
 
-        dbConnector.addInvitationToList(userName, invitation, (invErr) => {
-          if (invErr) {
-            if (invErr.code === 11000) {
-              callback({ error: new errorCreator.AlreadyExists({ name: 'invitation' }) });
-            } else {
-              callback({ error: new errorCreator.Database() });
-            }
+        dbUser.getUser(userName, (userErr, invitedUser) => {
+          if (userErr) {
+            callback({ error: new errorCreator.Database({}) });
+
+            return;
+          } else if (!invitedUser) {
+            callback({ error: new errorCreator.DoesNotExist({ name: userName }) });
+
+            return;
+          } else if (invitedUser.rooms.indexOf(roomName) > -1) {
+            callback({ error: new errorCreator.AlreadyExists({ name: invitedUser.userName }) });
 
             return;
           }
 
-          callback({ data: { user: invitedUser } });
+          const invitation = {
+            itemName: roomName,
+            time: new Date(),
+            invitationType: 'room',
+            sender: allowedUser.userName,
+          };
+
+          dbConnector.addInvitationToList(userName, invitation, (invErr) => {
+            if (invErr) {
+              if (invErr.code === 11000) {
+                callback({ error: new errorCreator.AlreadyExists({ name: 'invitation' }) });
+              } else {
+                callback({ error: new errorCreator.Database({}) });
+              }
+
+              return;
+            }
+
+            callback({ data: { user: invitedUser } });
+          });
         });
-      });
+      },
     });
   });
 
-  socket.on('getInvitations', (params, callback = () => {}) => {
-    manager.userIsAllowed(socket.id, databasePopulation.commands.invitations.commandName, (allowErr, allowed, user) => {
-      if (allowErr || !allowed) {
-        callback({ error: new errorCreator.Database() });
-
-        return;
-      }
-
-      dbConnector.getInvitations(user.userName, (err, list = []) => {
-        if (err) {
-          callback({ error: new errorCreator.Database() });
+  // TODO Unused
+  socket.on('getInvitations', ({ token }, callback = () => {}) => {
+    manager.userIsAllowed({
+      token,
+      commandName: databasePopulation.commands.invitations.commandName,
+      callback: ({ error, allowedUser }) => {
+        if (error) {
+          callback({ error });
 
           return;
         }
 
-        callback({ data: { invitations: list.invitations }});
-      });
+        dbConnector.getInvitations(allowedUser.userName, (err, list = []) => {
+          if (err) {
+            callback({ error: new errorCreator.Database({}) });
+
+            return;
+          }
+
+          callback({ data: { invitations: list.invitations } });
+        });
+      },
     });
   });
 }

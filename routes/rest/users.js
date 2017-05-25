@@ -20,7 +20,7 @@ const express = require('express');
 const appConfig = require('../../config/defaults/config').app;
 const jwt = require('jsonwebtoken');
 const objectValidator = require('../../utils/objectValidator');
-const databasePopulation = require('../../config/defaults/config').databasePopulation;
+const dbConfig = require('../../config/defaults/config').databasePopulation;
 const dbUser = require('../../db/connectors/user');
 const dbRoom = require('../../db/connectors/room');
 const manager = require('../../socketHelpers/manager');
@@ -272,8 +272,8 @@ function handle(io) {
         registerDevice: 'RESTAPI',
         verified: false,
         rooms: [
-          databasePopulation.rooms.public.roomName,
-          databasePopulation.rooms.bcast.roomName,
+          dbConfig.rooms.public.roomName,
+          dbConfig.rooms.bcast.roomName,
         ],
       };
       const wallet = {
@@ -305,8 +305,8 @@ function handle(io) {
 
         const whisperRoom = {
           roomName: newUser.userName + appConfig.whisperAppend,
-          visibility: databasePopulation.accessLevels.superUser,
-          accessLevel: databasePopulation.accessLevels.superUser,
+          visibility: dbConfig.accessLevels.superUser,
+          accessLevel: dbConfig.accessLevels.superUser,
         };
 
         manager.createRoom(whisperRoom, user, () => {});
@@ -452,7 +452,7 @@ function handle(io) {
         });
 
         return;
-      } else if (!decoded || (req.params.id !== decoded.data.userName && decoded.data.accessLevel < databasePopulation.apiCommands.FollowRoom.accessLevel)) {
+      } else if (!decoded || (req.params.id !== decoded.data.userName && decoded.data.accessLevel < dbConfig.apiCommands.FollowRoom.accessLevel)) {
         res.status(401).json({
           errors: [{
             status: 401,
@@ -577,7 +577,7 @@ function handle(io) {
         });
 
         return;
-      } else if (!decoded || (req.params.id !== decoded.data.userName && decoded.data.accessLevel < databasePopulation.apiCommands.UnfollowRoom.accessLevel)) {
+      } else if (!decoded || (req.params.id !== decoded.data.userName && decoded.data.accessLevel < dbConfig.apiCommands.UnfollowRoom.accessLevel)) {
         res.status(401).json({
           errors: [{
             status: 401,

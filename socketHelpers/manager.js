@@ -27,6 +27,7 @@ const dbConfig = require('../config/defaults/config').databasePopulation;
 const errorCreator = require('../objects/error/errorCreator');
 const dbTransaction = require('../db/connectors/transaction');
 const messenger = require('../socketHelpers/messenger');
+const jwt = require('jsonwebtoken');
 
 /**
  * Does string contain valid characters?
@@ -34,7 +35,7 @@ const messenger = require('../socketHelpers/messenger');
  * @returns {boolean} Does string contain valid characters?
  */
 function isTextAllowed(text) {
-  return /^[\w\d\såäöÅÄÖ\-]+$/g.test(text);
+  return /^[\w\d\såäöÅÄÖ-]+$/g.test(text);
 }
 
 /*
@@ -49,17 +50,6 @@ const messageSort = (a, b) => {
 
   return 0;
 };
-
-/**
- * Gets user by sent socket ID from socket.io
- * @param {string} socketId - Users ID in the socket from socket.io
- * @param {Function} callback - callback
- */
-function getUserById(socketId, callback) {
-  dbUser.getUserById(socketId, (err, user) => {
-    callback(err, user);
-  });
-}
 
 /**
  * Gets user by user name
@@ -85,51 +75,58 @@ function getCommand(commandName, callback) {
 
 /**
  * Checks if the user is allowed to use the command
- * @param {string} socketId - The users socket ID from socket.io
- * @param {string} commandName - Name of the command
- * @param {Function} callback - callback
- * @param {string} [userName] - Name of the user trying to use the command
+ * @param {string} params.token Json web token
+ * @param {string} params.commandName Name of the command
+ * @param {Function} params.callback callback
  */
-function userIsAllowed(socketId, commandName, callback, userName) {
-  let isAllowed = false;
+function userIsAllowed({ token = '', commandName, callback = () => {} }) {
   const callbackFunc = (err, user) => {
     if (err) {
-      callback(err);
-    } else {
-      const commandUser = {
-        userName: user ? user.userName : '',
-        accessLevel: user ? user.accessLevel : 0,
-        whisperRooms: user ? user.whisperRooms : [],
-        isTracked: user ? user.isTracked : false,
-        team: user ? user.team : null,
-        shortTeam: user ? user.shortTeam : null,
-      };
+      callback({ error: new errorCreator.Database({}) });
 
-      getCommand(commandName, (cmdErr, command) => {
-        if (cmdErr) {
-          callback(cmdErr);
-        } else {
-          const commandLevel = command.accessLevel;
-
-          if (commandUser.accessLevel >= commandLevel) {
-            isAllowed = true;
-          }
-        }
-
-        if (isAllowed) {
-          dbCommand.incrementCommandUsage(commandName);
-        }
-
-        callback(cmdErr, isAllowed, commandUser);
-      });
+      return;
     }
+
+    const commandUser = {
+      userName: user ? user.userName : '',
+      accessLevel: user ? user.accessLevel : 0,
+      visibility: user ? user.visibility : 0,
+      whisperRooms: user ? user.whisperRooms : [],
+      isTracked: user ? user.isTracked : false,
+      team: user ? user.team : null,
+      shortTeam: user ? user.shortTeam : null,
+    };
+
+    getCommand(commandName, (cmdErr, command) => {
+      if (cmdErr) {
+        callback({ error: new errorCreator.Database({}) });
+
+        return;
+      } else if (commandUser.accessLevel < command.accessLevel) {
+        callback({ error: new errorCreator.NotAllowed({ name: commandName }) });
+
+        return;
+      }
+
+      dbCommand.incrementCommandUsage(commandName);
+
+      callback({ allowedUser: commandUser });
+    });
   };
 
-  if (socketId !== '') {
-    getUserById(socketId, callbackFunc);
-  } else {
-    getUserByName(userName, callbackFunc);
-  }
+  jwt.verify(token, appConfig.jsonKey, (jwtErr, decoded) => {
+    if (jwtErr) {
+      callback({ error: new errorCreator.Database({}) });
+
+      return;
+    } else if (!decoded) {
+      callback({ error: new errorCreator.NotAllowed({ name: commandName }) });
+
+      return;
+    }
+
+    getUserByName(decoded.data.userName, callbackFunc);
+  });
 }
 
 /**
@@ -142,10 +139,10 @@ function userIsAllowed(socketId, commandName, callback, userName) {
  * @param {Function} callback - callback
  */
 function getHistory({ lastOnline = new Date(), rooms, lines, missedMsgs, whisperTo, callback }) {
-  dbChatHistory.getHistoryFromRooms(rooms, (err, history) => {
+  dbChatHistory.getHistoryFromRooms(rooms, (err, histories) => {
     let historyMessages = [];
 
-    if (err || history === null) {
+    if (err || histories === null) {
       logger.sendErrorMsg({
         code: logger.ErrorCodes.db,
         text: ['Failed to get getHistory'],
@@ -154,9 +151,7 @@ function getHistory({ lastOnline = new Date(), rooms, lines, missedMsgs, whisper
     } else {
       const maxLines = lines === null || isNaN(lines) ? appConfig.historyLines : lines;
 
-      for (const roomHistory of history) {
-        historyMessages = historyMessages.concat(roomHistory.messages);
-      }
+      histories.forEach(history => historyMessages.concat(history.messages));
 
       if (whisperTo) {
         historyMessages = historyMessages.filter(message => message.roomName === `${whisperTo}${appConfig.whisperAppend}` || message.userName === whisperTo);
@@ -181,7 +176,7 @@ function getHistory({ lastOnline = new Date(), rooms, lines, missedMsgs, whisper
       }
     }
 
-    callback(err, historyMessages, history[0].anonymous);
+    callback(err, historyMessages, histories[0].anonymous);
   });
 }
 
@@ -252,7 +247,7 @@ function addAlias({ user, alias, callback }) {
 
   dbUser.addAlias(user.userName, aliasLower, (err, aliasUser) => {
     if (err || aliasUser === null) {
-      callback({ error: new errorCreator.Database() });
+      callback({ error: new errorCreator.Database({}) });
 
       return;
     }
@@ -266,7 +261,7 @@ function addAlias({ user, alias, callback }) {
 
     createRoom(room, user, (createErr, createdRoom) => {
       if (createErr || !createdRoom) {
-        callback({ error: new errorCreator.Database() });
+        callback({ error: new errorCreator.Database({}) });
 
         return;
       }
@@ -284,7 +279,7 @@ function addAlias({ user, alias, callback }) {
 function createWallet(wallet, callback) {
   dbWallet.createWallet(wallet, (error) => {
     if (error) {
-      callback({ error: new errorCreator.Database() });
+      callback({ error: new errorCreator.Database({}) });
 
       return;
     }
@@ -301,7 +296,7 @@ function createWallet(wallet, callback) {
 function getAllUserTransactions({ userName, callback = () => {} }) {
   dbTransaction.getAllUserTransactions(userName, (err, transactions) => {
     if (err) {
-      callback({ err: new errorCreator.Database() });
+      callback({ err: new errorCreator.Database({}) });
 
       return;
     }
@@ -335,7 +330,7 @@ function createTransaction({ transaction, user, io, emitToSender, callback = () 
 
   dbWallet.getWallet(transaction.from, (walletErr, userWallet) => {
     if (walletErr) {
-      callback({ error: new errorCreator.Database() });
+      callback({ error: new errorCreator.Database({}) });
 
       return;
     } else if (userWallet.amount - transaction.amount < 0) {
@@ -346,21 +341,21 @@ function createTransaction({ transaction, user, io, emitToSender, callback = () 
 
     dbTransaction.createTransaction(transaction, (transErr) => {
       if (transErr) {
-        callback({ error: new errorCreator.Database() });
+        callback({ error: new errorCreator.Database({}) });
 
         return;
       }
 
       dbWallet.decreaseAmount(user.userName, user.accessLevel, transaction.from, transaction.amount, (errDecrease, decreasedWallet) => {
         if (errDecrease) {
-          callback({ error: new errorCreator.Database() });
+          callback({ error: new errorCreator.Database({}) });
 
           return;
         }
 
         dbWallet.increaseAmount(transaction.to, transaction.amount, (err, increasedWallet) => {
           if (err) {
-            callback({ error: new errorCreator.Database() });
+            callback({ error: new errorCreator.Database({}) });
 
             return;
           }
@@ -425,7 +420,7 @@ function authFollowRoom({ socket, room, user, callback }) {
 
   dbRoom.authUserToRoom(user, room.roomName, room.password, (err, authRoom) => {
     if (err) {
-      callback({ error: new errorCreator.Database() });
+      callback({ error: new errorCreator.Database({}) });
 
       return;
     } else if (authRoom === null) {
@@ -436,7 +431,7 @@ function authFollowRoom({ socket, room, user, callback }) {
 
     dbUser.addRoomToUser(user.userName, room.roomName, (roomErr) => {
       if (roomErr) {
-        callback({ error: new errorCreator.Database() });
+        callback({ error: new errorCreator.Database({}) });
 
         return;
       }
@@ -457,7 +452,7 @@ function authFollowRoom({ socket, room, user, callback }) {
 function updateUserTeam({ socket, userName, teamName, shortTeamName, callback = () => {} }) {
   dbUser.updateUserTeam(userName, teamName, shortTeamName, (err, user) => {
     if (err) {
-      callback({ error: new errorCreator.Database() });
+      callback({ error: new errorCreator.Database({}) });
 
       return;
     }

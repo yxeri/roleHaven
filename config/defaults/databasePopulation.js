@@ -439,6 +439,14 @@ config.commands = {
     commandName: 'signalBlock',
     accessLevel: config.accessLevels.basic,
   },
+  updateId: config.commands.updateId || {
+    commandName: 'updateId',
+    accessLevel: config.accessLevels.basic,
+  },
+  verifyDevice: config.commands.verifyDevice || {
+    commandName: 'verifyDevice',
+    accessLevel: config.accessLevels.lowerAdmin,
+  },
 };
 
 config.apiCommands = {

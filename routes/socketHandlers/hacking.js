@@ -33,124 +33,136 @@ dbPosition.removePositions({
  * @param {object} socket - Socket.IO socket
  */
 function handle(socket) {
-  socket.on('signalBlock', ({ description }, callback = () => {}) => {
-    manager.userIsAllowed(socket.id, databasePopulation.commands.signalBlock.commandName, (allowErr, allowed, user) => {
-      if (allowErr || !allowed) {
-        callback({ error: new errorCreator.NotAllowed({ name: 'signalBlock' }) });
-
-        return;
-      }
-
-      dbPosition.getPosition(user.userName, (err, userPosition) => {
-        if (err) {
-          callback({ error: new errorCreator.Database() });
-
-          return;
-        } else if (!userPosition) {
-          callback({ error: new errorCreator.DoesNotExist({ name: `${user.userName} position` }) });
+  socket.on('signalBlock', ({ description, token }, callback = () => {}) => {
+    manager.userIsAllowed({
+      token,
+      commandName: databasePopulation.commands.signalBlock.commandName,
+      callback: ({ error, allowedUser }) => {
+        if (error) {
+          callback({ error });
 
           return;
         }
 
-        const coordinates = userPosition.coordinates;
-        coordinates.radius = appConfig.signalBlockRadius;
+        dbPosition.getPosition(allowedUser.userName, (err, userPosition) => {
+          if (err) {
+            callback({ error: new errorCreator.Database({}) });
 
-        const blockPosition = {
-          positionName: `signalBlock-${user.userName}`,
-          owner: user.userName,
-          markerType: 'signalBlock',
-          isPublic: true,
-          lastUpdated: new Date(),
-          description: [description[0] + user.userName],
-          coordinates,
-        };
+            return;
+          } else if (!userPosition) {
+            callback({ error: new errorCreator.DoesNotExist({ name: `${allowedUser.userName} position` }) });
 
-        if (user.team) {
-          blockPosition.team = user.team;
-        }
+            return;
+          }
 
-        dbPosition.updatePosition({
-          position: blockPosition,
-          callback: (errUpdate, newPosition) => {
-            if (errUpdate) {
-              callback({ error: new errorCreator.Database() });
+          const coordinates = userPosition.coordinates;
+          coordinates.radius = appConfig.signalBlockRadius;
 
-              return;
-            }
+          const blockPosition = {
+            coordinates,
+            positionName: `signalBlock-${allowedUser.userName}`,
+            owner: allowedUser.userName,
+            markerType: 'signalBlock',
+            isPublic: true,
+            lastUpdated: new Date(),
+            description: [description[0] + allowedUser.userName],
+          };
 
-            dbPosition.getUserPositions((userErr, positions = []) => {
-              if (err) {
-                callback({ error: new errorCreator.Database() });
+          if (allowedUser.team) {
+            blockPosition.team = allowedUser.team;
+          }
+
+          dbPosition.updatePosition({
+            position: blockPosition,
+            callback: (errUpdate, newPosition) => {
+              if (errUpdate) {
+                callback({ error: new errorCreator.Database({}) });
 
                 return;
               }
 
-              const blockedUsers = [];
+              dbPosition.getUserPositions((userErr, positions = []) => {
+                if (err) {
+                  callback({ error: new errorCreator.Database({}) });
 
-              positions.forEach((position) => {
-                dbUser.getUser(position.owner, (hackErr, hackedUser) => {
-                  if (hackErr) {
-                    callback({ error: new errorCreator.Database() });
+                  return;
+                }
 
-                    return;
-                  }
+                const blockedUsers = [];
 
-                  const accuracy = position.coordinates.accuracy;
-                  const accuracyAdjustment = accuracy > appConfig.signalBlockBufferArea ? appConfig.signalBlockBufferArea : accuracy;
+                positions.forEach((position) => {
+                  dbUser.getUser(position.owner, (hackErr, hackedUser) => {
+                    if (hackErr) {
+                      callback({ error: new errorCreator.Database({}) });
 
-                  if (mapCreator.getDistance(userPosition.coordinates, position.coordinates) - accuracyAdjustment < appConfig.signalBlockRadius) {
-                    blockedUsers.push(hackedUser);
-
-                    if (hackedUser.userName !== user.userName) {
-                      socket.to(hackedUser.userName + appConfig.whisperAppend).emit('signalBlock', { blockedBy: user.userName, position: newPosition });
-                    } else {
-                      socket.emit('signalBlock', { blockedBy: user.userName, position: newPosition });
+                      return;
                     }
 
-                    dbUser.updateUserBlockedBy(hackedUser.userName, user.userName, () => {});
-                  }
-                });
-              });
+                    const accuracy = position.coordinates.accuracy;
+                    const accuracyAdjustment = accuracy > appConfig.signalBlockBufferArea ? appConfig.signalBlockBufferArea : accuracy;
 
-              socket.broadcast.to(databasePopulation.rooms.public.roomName).emit('mapPositions', {
-                positions: [newPosition],
-                currentTime: (new Date()),
-              });
+                    if (mapCreator.getDistance(userPosition.coordinates, position.coordinates) - accuracyAdjustment < appConfig.signalBlockRadius) {
+                      blockedUsers.push(hackedUser);
 
-              callback({ data: { position: newPosition } });
+                      if (hackedUser.userName !== allowedUser.userName) {
+                        socket.to(hackedUser.userName + appConfig.whisperAppend).emit('signalBlock', {
+                          blockedBy: allowedUser.userName,
+                          position: newPosition,
+                        });
+                      } else {
+                        socket.emit('signalBlock', { blockedBy: allowedUser.userName, position: newPosition });
+                      }
 
-              setTimeout(() => {
-                dbPosition.removePosition({
-                  markerType: blockPosition.markerType,
-                  positionName: blockPosition.positionName,
-                  callback: () => {
-                    socket.broadcast.to(databasePopulation.rooms.public.roomName).emit('mapPositions', {
-                      positions: [newPosition],
-                      shouldRemove: true,
-                    });
-
-                    blockedUsers.forEach((blockedUser) => {
-                      dbUser.getUser(blockedUser.userName, (removeErr, removeUser) => {
-                        if (removeErr) {
-                          return;
-                        }
-
-                        dbUser.removeUserBlockedBy(removeUser.userName, () => {});
-
-                        if (removeUser.userName !== user.userName) {
-                          socket.to(removeUser.userName + appConfig.whisperAppend).emit('signalBlock', { blockedBy: user.userName, removeBlocker: true });
-                        } else {
-                          socket.emit('signalBlock', { blockedBy: user.userName, removeBlocker: true });
-                        }
+                      dbUser.updateUserBlockedBy(hackedUser.userName, allowedUser.userName, () => {
                       });
-                    });
-                  },
+                    }
+                  });
                 });
-              }, appConfig.signalBlockTime);
-            });
-          },
+
+                socket.broadcast.to(databasePopulation.rooms.public.roomName).emit('mapPositions', {
+                  positions: [newPosition],
+                  currentTime: (new Date()),
+                });
+
+                callback({ data: { position: newPosition } });
+
+                setTimeout(() => {
+                  dbPosition.removePosition({
+                    markerType: blockPosition.markerType,
+                    positionName: blockPosition.positionName,
+                    callback: () => {
+                      socket.broadcast.to(databasePopulation.rooms.public.roomName).emit('mapPositions', {
+                        positions: [newPosition],
+                        shouldRemove: true,
+                      });
+
+                      blockedUsers.forEach((blockedUser) => {
+                        dbUser.getUser(blockedUser.userName, (removeErr, removeUser) => {
+                          if (removeErr) {
+                            return;
+                          }
+
+                          dbUser.removeUserBlockedBy(removeUser.userName, () => {
+                          });
+
+                          if (removeUser.userName !== allowedUser.userName) {
+                            socket.to(removeUser.userName + appConfig.whisperAppend).emit('signalBlock', {
+                              blockedBy: allowedUser.userName,
+                              removeBlocker: true,
+                            });
+                          } else {
+                            socket.emit('signalBlock', { blockedBy: allowedUser.userName, removeBlocker: true });
+                          }
+                        });
+                      });
+                    },
+                  });
+                }, appConfig.signalBlockTime);
+              });
+            },
+          });
         });
-      });
+      },
     });
   });
 }

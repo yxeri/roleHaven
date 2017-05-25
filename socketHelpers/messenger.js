@@ -105,7 +105,7 @@ function sendMsg({ socket, message, io }) {
 function sendAndStoreChatMsg({ user, callback, message, io, socket }) {
   dbUser.getUser(user.userName, (userErr, foundUser) => {
     if (userErr || foundUser === null) {
-      callback({ error: new errorCreator.Database() });
+      callback({ error: new errorCreator.Database({}) });
 
       return;
     } else if (!isUserFollowingRoom(foundUser, message.roomName)) {
@@ -123,7 +123,7 @@ function sendAndStoreChatMsg({ user, callback, message, io, socket }) {
 
     addMsgToHistory(message.roomName, message, (err) => {
       if (err) {
-        callback({ error: new errorCreator.Database() });
+        callback({ error: new errorCreator.Database({}) });
 
         return;
       }
@@ -157,7 +157,7 @@ function sendAndStoreChatMsg({ user, callback, message, io, socket }) {
  */
 function sendChatMsg({ message, user, callback, io, socket }) {
   if (!objectValidator.isValidData({ message, user, callback, io }, { user: { userName: true }, message: { text: true, roomName: true }, io: true })) {
-    callback({ error: new errorCreator.InvalidData() });
+    callback({ error: new errorCreator.InvalidData({ expected: '{ user: { userName }, message: { text, roomName }, io }' }) });
 
     return;
   }
@@ -174,7 +174,7 @@ function sendChatMsg({ message, user, callback, io, socket }) {
   if (message.userName) {
     dbUser.getUserByAlias(message.userName, (aliasErr, aliasUser) => {
       if (aliasErr) {
-        callback({ error: new errorCreator.Database() });
+        callback({ error: new errorCreator.Database({}) });
 
         return;
       } else if (aliasUser === null || aliasUser.userName !== user.userName) {
@@ -210,14 +210,14 @@ function sendChatMsg({ message, user, callback, io, socket }) {
  */
 function sendWhisperMsg({ io, user, message, socket, callback }) {
   if (!objectValidator.isValidData({ message, io }, { message: { text: true, roomName: true, userName: true }, io: true })) {
-    callback({ error: {} });
+    callback({ error: new errorCreator.InvalidData({ expected: '{ message: { text, roomName, userName }, io }' }) });
 
     return;
   }
 
   dbUser.getUserByAlias(message.userName, (aliasErr, aliasUser) => {
     if (aliasErr) {
-      callback({ error: {} });
+      callback({ error: new errorCreator.Database({}) });
 
       return;
     } else if (aliasUser === null || aliasUser.userName !== user.userName) {
@@ -246,7 +246,7 @@ function sendWhisperMsg({ io, user, message, socket, callback }) {
     // TODO Message should be removed if db fails to store it at senders
     addMsgToHistory(message.roomName, message, (err) => {
       if (err) {
-        callback({ error: {} });
+        callback({ error: new errorCreator.Database({}) });
 
         return;
       }
@@ -255,7 +255,7 @@ function sendWhisperMsg({ io, user, message, socket, callback }) {
 
       addMsgToHistory(senderRoomName, message, (senderErr) => {
         if (senderErr) {
-          callback({ error: {} });
+          callback({ error: new errorCreator.Database({}) });;
 
           return;
         }
@@ -277,12 +277,13 @@ function sendWhisperMsg({ io, user, message, socket, callback }) {
  * Sends a message with broadcastMsg class to all connected sockets
  * It is stored in a separate broadcast history
  * Emits message
- * @param {Object} message - Message to be sent
- * @param {Object} socket - Socket.io socket
- * @param {Object} io - Socket.io. Used by API, when no socket is available
- * @param {Function} callback - Client callback
+ * @param {Object} message Message to be sent
+ * @param {Object} socket Socket.io socket
+ * @param {Object} io Socket.io. Used by API, when no socket is available
+ * @param {string} token jwt token
+ * @param {Function} callback Client callback
  */
-function sendBroadcastMsg({ message, socket, callback, io, user }) {
+function sendBroadcastMsg({ message, socket, callback, io, token }) {
   const allowCallback = (allowErr, allowed) => {
     if (allowErr || !allowed) {
       callback({ error: new errorCreator.NotAllowed({ used: 'broadcast' }) });
@@ -290,7 +291,7 @@ function sendBroadcastMsg({ message, socket, callback, io, user }) {
       return;
     }
     if (!objectValidator.isValidData({ message, socket, callback }, { message: { text: true }, io: true })) {
-      callback({ error: {} });
+      callback({ error: new errorCreator.InvalidData({ expected: '{ message: { text }, io }' }) });
 
       return;
     }
@@ -308,7 +309,7 @@ function sendBroadcastMsg({ message, socket, callback, io, user }) {
 
     addMsgToHistory(data.message.roomName, data.message, (err) => {
       if (err) {
-        callback({ error: {} });
+        callback({ error: new errorCreator.Database({}) });
 
         return;
       }
@@ -325,7 +326,12 @@ function sendBroadcastMsg({ message, socket, callback, io, user }) {
 
   const socketId = socket ? socket.id : '';
 
-  manager.userIsAllowed(socketId, databasePopulation.commands.broadcast.commandName, allowCallback, user.userName);
+  manager.userIsAllowed({
+    token,
+    socketId,
+    commandName: databasePopulation.commands.broadcast.commandName,
+    callback: allowCallback,
+  });
 }
 
 exports.sendChatMsg = sendChatMsg;

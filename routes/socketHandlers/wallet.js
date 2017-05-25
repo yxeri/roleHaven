@@ -17,7 +17,7 @@
 'use strict';
 
 const dbWallet = require('../../db/connectors/wallet');
-const databasePopulation = require('../../config/defaults/config').databasePopulation;
+const dbConfig = require('../../config/defaults/config').databasePopulation;
 const manager = require('../../socketHelpers/manager');
 const objectValidator = require('../../utils/objectValidator');
 const errorCreator = require('../../objects/error/errorCreator');
@@ -27,52 +27,52 @@ const errorCreator = require('../../objects/error/errorCreator');
  * @param {object} io - Socket.io io
  */
 function handle(socket, io) {
-  socket.on('getWallet', (params, callback = () => {}) => {
-    manager.userIsAllowed(socket.id, databasePopulation.commands.getWallet.commandName, (allowErr, allowed, user) => {
-      if (allowErr) {
-        callback({ error: new errorCreator.Database() });
-
-        return;
-      } else if (!allowed) {
-        callback({ error: new errorCreator.NotAllowed({ name: 'getWallet' }) });
-
-        return;
-      }
-
-      dbWallet.getWallet(user.userName, (err, wallet) => {
-        if (err) {
-          callback({ error: new errorCreator.Database() });
+  socket.on('getWallet', ({ token }, callback = () => {}) => {
+    manager.userIsAllowed({
+      token,
+      commandName: dbConfig.commands.getWallet.commandName,
+      callback: ({ error, allowedUser }) => {
+        if (error) {
+          callback({ error });
 
           return;
         }
 
-        callback({ data: { wallet } });
-      });
+        dbWallet.getWallet(allowedUser.userName, (err, wallet) => {
+          if (err) {
+            callback({ error: new errorCreator.Database({}) });
+
+            return;
+          }
+
+          callback({ data: { wallet } });
+        });
+      },
     });
   });
 
-  socket.on('getAllTransactions', (params, callback = () => {}) => {
-    manager.userIsAllowed(socket.id, databasePopulation.commands.getWallet.commandName, (allowErr, allowed, user) => {
-      if (allowErr) {
-        callback({ error: new errorCreator.Database() });
+  socket.on('getAllTransactions', ({ token }, callback = () => {}) => {
+    manager.userIsAllowed({
+      token,
+      commandName: dbConfig.commands.getWallet.commandName,
+      callback: ({ error, allowedUser }) => {
+        if (error) {
+          callback({ error });
 
-        return;
-      } else if (!allowed) {
-        callback({ error: new errorCreator.NotAllowed({ name: 'getAllTransactions' }) });
+          return;
+        }
 
-        return;
-      }
-
-      manager.getAllUserTransactions({
-        userName: user.userName,
-        callback: ({ error, data }) => {
-          callback({ error, data });
-        },
-      });
+        manager.getAllUserTransactions({
+          userName: allowedUser.userName,
+          callback: (params) => {
+            callback(params);
+          },
+        });
+      },
     });
   });
 
-  socket.on('createTransaction', ({ transaction }, callback = () => {}) => {
+  socket.on('createTransaction', ({ transaction, token }, callback = () => {}) => {
     if (!objectValidator.isValidData({ transaction }, { transaction: { to: true, amount: true } })) {
       callback({ error: new errorCreator.InvalidData({ expected: '{ transaction: { to, amount } }' }) });
 
@@ -83,25 +83,26 @@ function handle(socket, io) {
       return;
     }
 
-    manager.userIsAllowed(socket.id, databasePopulation.commands.getWallet.commandName, (allowErr, allowed, user) => {
-      if (allowErr) {
-        callback({ error: new errorCreator.Database() });
+    manager.userIsAllowed({
+      token,
+      socketId: socket.id,
+      commandName: dbConfig.commands.getWallet.commandName,
+      callback: ({ error, allowedUser }) => {
+        if (error) {
+          callback({ error });
 
-        return;
-      } else if (!allowed) {
-        callback({ error: new errorCreator.NotAllowed({ name: 'createTransaction' }) });
+          return;
+        }
 
-        return;
-      }
-
-      manager.createTransaction({
-        transaction,
-        user,
-        io,
-        callback: ({ error, data }) => {
-          callback({ error, data });
-        },
-      });
+        manager.createTransaction({
+          transaction,
+          allowedUser,
+          io,
+          callback: (params) => {
+            callback(params);
+          },
+        });
+      },
     });
   });
 }

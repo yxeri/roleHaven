@@ -25,7 +25,7 @@ const teamSchema = new mongoose.Schema({
   shortName: { type: String, unique: true },
   owner: String,
   admins: [{ type: String, unique: true }],
-  verified: Boolean,
+  verified: { type: Boolean, default: false },
 }, { collection: 'teams' });
 
 const Team = mongoose.model('Team', teamSchema);

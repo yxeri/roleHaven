@@ -25,7 +25,6 @@ class Database extends GeneralError.create {
     super({
       type: GeneralError.ErrorTypes.DATABASE,
       text: ['Failed to save/retrieve data'],
-      errorObject,
     });
   }
 }
