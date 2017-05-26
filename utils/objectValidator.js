@@ -54,9 +54,11 @@ function checkKeys(data, expected) {
  * Calls checkKeys to check if the data has the expected structure
  * @param {Object} data - Sent object
  * @param {Object} expected - Expected structure of the object
+ * @param {Object} options Options
+ * @param {boolean} verbose Should errors be printed?
  * @returns {boolean} Does the data have the expected structure?
  */
-function isValidData(data, expected) {
+function isValidData(data, expected, options = {}) {
   if ((!data || data === null) || (!expected || expected === null)) {
     logger.sendErrorMsg({
       code: logger.ErrorCodes.general,
@@ -68,7 +70,7 @@ function isValidData(data, expected) {
 
   const isValid = checkKeys(data, expected);
 
-  if (!isValid) {
+  if (!isValid && options.verbose) {
     logger.sendErrorMsg({
       code: logger.ErrorCodes.general,
       text: [`Expected: ${JSON.stringify(expected)}`],
