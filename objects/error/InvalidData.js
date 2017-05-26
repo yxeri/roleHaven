@@ -24,12 +24,12 @@ class InvalidDataError extends GeneralError.create {
    */
   constructor({ expected = '-', errorObject }) {
     super({
+      errorObject,
       type: GeneralError.ErrorTypes.INVALIDDATA,
       text: [
         'Invalid data sent',
         `Expected: ${expected}`,
       ],
-      errorObject,
     });
   }
 }

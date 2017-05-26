@@ -23,6 +23,7 @@ class Database extends GeneralError.create {
    */
   constructor({ errorObject }) {
     super({
+      errorObject,
       type: GeneralError.ErrorTypes.DATABASE,
       text: ['Failed to save/retrieve data'],
     });

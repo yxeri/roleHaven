@@ -171,14 +171,26 @@ function handle(socket) {
               break;
             }
             case 'custom': {
-              dbPosition.getCustomPositions(allowedUser.userName, (err, customPositions = []) => {
-                if (err) {
-                  callback({ error: new errorCreator.Database({}) });
+              manager.userIsAllowed({
+                token,
+                commandName: dbConfig.commands.getCustomPositions.commandName,
+                callback: ({ error: allowedErr }) => {
+                  if (allowedErr) {
+                    getPositions(types.shift(), positions.concat([]));
 
-                  return;
-                }
+                    return;
+                  }
 
-                getPositions(types.shift(), positions.concat(customPositions));
+                  dbPosition.getCustomPositions(allowedUser.userName, (err, customPositions = []) => {
+                    if (err) {
+                      callback({ error: new errorCreator.Database({}) });
+
+                      return;
+                    }
+
+                    getPositions(types.shift(), positions.concat(customPositions));
+                  });
+                },
               });
 
               break;
@@ -197,14 +209,26 @@ function handle(socket) {
               break;
             }
             case 'user': {
-              dbUser.getAllUserPositions(allowedUser, (err, userPositions = []) => {
-                if (err) {
-                  callback({ error: new errorCreator.Database({}) });
+              manager.userIsAllowed({
+                token,
+                commandName: dbConfig.commands.getUserPositions.commandName,
+                callback: ({ error: allowedErr }) => {
+                  if (allowedErr) {
+                    getPositions(types.shift(), positions.concat([]));
 
-                  return;
-                }
+                    return;
+                  }
 
-                getPositions(types.shift(), positions.concat(userPositions));
+                  dbUser.getAllUserPositions(allowedUser, (err, userPositions = []) => {
+                    if (err) {
+                      callback({ error: new errorCreator.Database({}) });
+
+                      return;
+                    }
+
+                    getPositions(types.shift(), positions.concat(userPositions));
+                  });
+                },
               });
 
               break;

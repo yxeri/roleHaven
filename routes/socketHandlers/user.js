@@ -95,7 +95,7 @@ function handle(socket, io) {
   });
 
   socket.on('updateId', ({ token, device }, callback = () => {}) => {
-    if (!objectValidator.isValidData({ token, device }, { token: true, device: { deviceId: true } })) {
+    if (!objectValidator.isValidData({ token, device }, { token: true, device: { deviceId: true } }, { verbose: false })) {
       callback({ error: new errorCreator.InvalidData({ expected: '{ user: { userName, password, registerDevice } }' }) });
 
       return;
@@ -119,7 +119,6 @@ function handle(socket, io) {
           }
 
           const data = {
-            welcomeMessage: appConfig.welcomeMessage,
             user: {
               userName: updatedUser.userName,
               accessLevel: updatedUser.accessLevel,

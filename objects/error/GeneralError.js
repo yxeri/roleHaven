@@ -29,6 +29,18 @@ const ErrorTypes = {
   INSUFFICIENT: 'insufficient',
 };
 
+/**
+ * Prints error
+ * @param {Object} errorObject error
+ */
+function printError(errorObject) {
+  if (errorObject) {
+    console.log(errorObject.name);
+    console.log(errorObject.message);
+    console.log(errorObject.stack)
+  }
+}
+
 class GeneralError {
   /**
    * Create a general error
@@ -36,10 +48,11 @@ class GeneralError {
    * @param {string} [params.type] Type of error
    * @param {Error} [params.errorObject] Error object
    */
-  constructor({ text = ['Something went wrong'], type = ErrorTypes.GENERAL, errorObject = {} }) {
+  constructor({ text = ['Something went wrong'], type = ErrorTypes.GENERAL, errorObject }) {
     this.text = text;
     this.type = type;
-    this.errorObject = errorObject;
+
+    printError(errorObject);
   }
 }
 

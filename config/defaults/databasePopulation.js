@@ -447,6 +447,14 @@ config.commands = {
     commandName: 'verifyDevice',
     accessLevel: config.accessLevels.lowerAdmin,
   },
+  getUserPositions: config.commands.getUserPositions || {
+    commandName: 'getUserPositions',
+    accessLevel: config.accessLevels.basic,
+  },
+  getCustomPositions: config.commands.getCustomPositions || {
+    commandName: 'getCustomPositions',
+    accessLevel: config.accessLevels.basic,
+  },
 };
 
 config.apiCommands = {

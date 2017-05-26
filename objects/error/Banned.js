@@ -24,9 +24,9 @@ class Banned extends GeneralError.create {
    */
   constructor({ name = '', errorObject }) {
     super({
+      errorObject,
       type: GeneralError.ErrorTypes.BANNED,
       text: [`${name} is banned`],
-      errorObject,
     });
   }
 }

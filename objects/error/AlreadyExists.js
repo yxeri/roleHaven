@@ -24,9 +24,9 @@ class AlreadyExists extends GeneralError.create {
    */
   constructor({ name = '', errorObject }) {
     super({
+      errorObject,
       type: GeneralError.ErrorTypes.ALREADYEXISTS,
       text: [`${name} already exists`],
-      errorObject,
     });
   }
 }

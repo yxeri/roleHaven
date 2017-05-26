@@ -44,12 +44,10 @@ app.use(morgan(appConfig.logLevel));
 // Serve files from public path
 app.use(express.static(appConfig.publicBase));
 
-/*
- * Add all request paths and corresponding file paths to Express
- */
-for (const route of appConfig.routes) {
-  app.use(route.sitePath, require(path.resolve(route.filePath))(app.io)); // eslint-disable-line import/no-dynamic-require, global-require
-}
+
+appConfig.routes.forEach((route) => {
+  app.use(route.sitePath, require(path.resolve(route.filePath))(app.io)); // eslint-disable-line import/no-dynamic-require, global-require)
+});
 
 require('./db/connectors/user').populateDbUsers(databasePopulation.users);
 require('./db/connectors/room').populateDbRooms(databasePopulation.rooms, databasePopulation.users.superuser);

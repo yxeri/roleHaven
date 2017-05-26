@@ -25,9 +25,9 @@ class External extends GeneralError.create {
    */
   constructor({ name = '-', errorObject }) {
     super({
+      errorObject,
       type: GeneralError.ErrorTypes.EXTERNAL,
       text: [`Failed to retrieve data from ${name}`],
-      errorObject,
     });
   }
 }

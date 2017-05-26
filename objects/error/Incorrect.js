@@ -24,9 +24,9 @@ class Incorrect extends GeneralError.create {
    */
   constructor({ name = '-', errorObject }) {
     super({
+      errorObject,
       type: GeneralError.ErrorTypes.INCORRECT,
       text: [`Incorrect ${name}`],
-      errorObject,
     });
   }
 }

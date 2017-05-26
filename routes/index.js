@@ -67,6 +67,7 @@ function handle(io) {
       radioChannels: appConfig.radioChannels,
       yearModification: appConfig.yearModification,
       mode: appConfig.mode,
+      welcomeMessage: appConfig.welcomeMessage,
     });
 
     socket.on('disconnect', () => {

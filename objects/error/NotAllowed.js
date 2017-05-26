@@ -24,12 +24,12 @@ class NotAllowedError extends GeneralError.create {
    */
   constructor({ name, errorObject }) {
     super({
+      errorObject,
       type: GeneralError.ErrorTypes.NOTALLOWED,
       text: [
         'Insufficient permissions',
         `Tried to access ${name}`,
       ],
-      errorObject,
     });
   }
 }
