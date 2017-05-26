@@ -79,7 +79,7 @@ config.port = process.env.PORT || config.port || 8888;
  * Note! Android 2.2 fails when using cdn
  */
 config.socketPath = (process.env.SOCKETPATH === 'cdn' || config.socketPath === 'cdn') ?
-  'https://cdn.socket.io/socket.io-1.4.5.js' : (process.env.SOCKETPATH || config.socketPath || '/scripts/socket.io-1.4.5.js');
+  'https://cdnjs.cloudflare.com/ajax/libs/socket.io/2.0.1/socket.io.slim.js' : (process.env.SOCKETPATH || config.socketPath || '/scripts/socket.io.js');
 
 /**
  * Server mode. Options:
