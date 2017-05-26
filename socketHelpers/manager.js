@@ -79,30 +79,38 @@ function getCommand(commandName, callback) {
  * @param {string} params.commandName Name of the command
  * @param {Function} params.callback callback
  */
-function userIsAllowed({ token = '', commandName, callback = () => {} }) {
+function userIsAllowed({ token, commandName, callback = () => {} }) {
+  const anonUser = {
+    userName: '',
+    accessLevel: 0,
+    visibility: 0,
+    whisperRooms: [],
+    isTracked: false,
+    team: null,
+    shortTeam: null,
+  };
+
+  if (!token) {
+    callback({ allowedUser: anonUser });
+
+    return;
+  }
+
   const callbackFunc = (err, user) => {
     if (err) {
-      callback({ error: new errorCreator.Database({}) });
+      callback({ error: new errorCreator.Database({ errorObject: err }) });
 
       return;
+    } else if (user.banned || (appConfig.userVerify && !user.verified)) {
+      callback({ error: new errorCreator.NotAllowed({ name: commandName }) });
     }
-
-    const commandUser = {
-      userName: user ? user.userName : '',
-      accessLevel: user ? user.accessLevel : 0,
-      visibility: user ? user.visibility : 0,
-      whisperRooms: user ? user.whisperRooms : [],
-      isTracked: user ? user.isTracked : false,
-      team: user ? user.team : null,
-      shortTeam: user ? user.shortTeam : null,
-    };
 
     getCommand(commandName, (cmdErr, command) => {
       if (cmdErr) {
         callback({ error: new errorCreator.Database({}) });
 
         return;
-      } else if (commandUser.accessLevel < command.accessLevel) {
+      } else if (user.accessLevel < command.accessLevel) {
         callback({ error: new errorCreator.NotAllowed({ name: commandName }) });
 
         return;
@@ -110,19 +118,17 @@ function userIsAllowed({ token = '', commandName, callback = () => {} }) {
 
       dbCommand.incrementCommandUsage(commandName);
 
-      callback({ allowedUser: commandUser });
+      callback({ allowedUser: user });
     });
   };
 
   jwt.verify(token, appConfig.jsonKey, (jwtErr, decoded) => {
     if (jwtErr) {
-      callback({ error: new errorCreator.Database({}) });
+      callback({ error: new errorCreator.Database({ errorObject: jwtErr }) });
 
       return;
     } else if (!decoded) {
       callback({ error: new errorCreator.NotAllowed({ name: commandName }) });
-
-      return;
     }
 
     getUserByName(decoded.data.userName, callbackFunc);
@@ -151,7 +157,7 @@ function getHistory({ lastOnline = new Date(), rooms, lines, missedMsgs, whisper
     } else {
       const maxLines = lines === null || isNaN(lines) ? appConfig.historyLines : lines;
 
-      histories.forEach(history => historyMessages.concat(history.messages));
+      histories.forEach(history => historyMessages = historyMessages.concat(history.messages));
 
       if (whisperTo) {
         historyMessages = historyMessages.filter(message => message.roomName === `${whisperTo}${appConfig.whisperAppend}` || message.userName === whisperTo);
