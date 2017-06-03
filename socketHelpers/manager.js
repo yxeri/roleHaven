@@ -84,6 +84,7 @@ function userIsAllowed({ token, commandName, callback = () => {} }) {
     userName: '',
     accessLevel: 0,
     visibility: 0,
+    aliases: [],
     rooms: [],
     whisperRooms: [],
     isTracked: false,

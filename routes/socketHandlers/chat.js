@@ -19,7 +19,7 @@
 const dbRoom = require('../../db/connectors/room');
 const dbUser = require('../../db/connectors/user');
 const manager = require('../../socketHelpers/manager');
-const databasePopulation = require('../../config/defaults/config').databasePopulation;
+const dbConfig = require('../../config/defaults/config').databasePopulation;
 const appConfig = require('../../config/defaults/config').app;
 const messenger = require('../../socketHelpers/messenger');
 const objectValidator = require('../../utils/objectValidator');
@@ -36,7 +36,7 @@ const textTools = require('../../utils/textTools');
 function shouldBeHidden(room, socketId) {
   const hiddenRooms = [
     socketId,
-    databasePopulation.rooms.bcast.roomName,
+    dbConfig.rooms.bcast.roomName,
   ];
 
   return hiddenRooms.indexOf(room) >= 0 || room.indexOf(appConfig.whisperAppend) >= 0 || room.indexOf(appConfig.deviceAppend) >= 0;
@@ -56,7 +56,7 @@ function handle(socket, io) {
 
     manager.userIsAllowed({
       token,
-      commandName: databasePopulation.commands.chatMsg.commandName,
+      commandName: dbConfig.commands.chatMsg.commandName,
       callback: ({ error, allowedUser }) => {
         if (error) {
           callback({ error });
@@ -113,7 +113,7 @@ function handle(socket, io) {
 
     manager.userIsAllowed({
       token,
-      commandName: databasePopulation.commands.whisper.commandName,
+      commandName: dbConfig.commands.whisper.commandName,
       callback: ({ error, allowedUser }) => {
         if (error) {
           callback({ error });
@@ -144,7 +144,7 @@ function handle(socket, io) {
 
     manager.userIsAllowed({
       token,
-      commandName: databasePopulation.commands.broadcast.commandName,
+      commandName: dbConfig.commands.broadcast.commandName,
       callback: ({ error, allowedUser }) => {
         if (error) {
           callback({ error });
@@ -168,7 +168,7 @@ function handle(socket, io) {
 
     manager.userIsAllowed({
       token,
-      commandName: databasePopulation.commands.createRoom.commandName,
+      commandName: dbConfig.commands.createRoom.commandName,
       callback: ({ error, allowedUser }) => {
         if (error) {
           callback({ error });
@@ -210,7 +210,7 @@ function handle(socket, io) {
 
     manager.userIsAllowed({
       token,
-      commandName: databasePopulation.commands.getHistory.commandName,
+      commandName: dbConfig.commands.getHistory.commandName,
       callback: ({ error, allowedUser }) => {
         if (error) {
           callback({ error });
@@ -246,7 +246,7 @@ function handle(socket, io) {
 
     manager.userIsAllowed({
       token,
-      commandName: databasePopulation.commands.follow.commandName,
+      commandName: dbConfig.commands.follow.commandName,
       callback: ({ error, allowedUser }) => {
         if (error) {
           callback({ error });
@@ -255,36 +255,6 @@ function handle(socket, io) {
         }
 
         dbUser.addWhisperRoomToUser(allowedUser.userName, room.roomName, (dbErr) => {
-          if (dbErr) {
-            callback({ error: new errorCreator.Database({}) });
-
-            return;
-          }
-
-          callback({ data: { room } });
-        });
-      },
-    });
-  });
-
-  socket.on('unfollowWhisper', ({ room, token }, callback = () => {}) => {
-    if (!objectValidator.isValidData({ room }, { room: { roomName: true } })) {
-      callback({ error: new errorCreator.InvalidData({ expected: '{ room: { roomName } }' }) });
-
-      return;
-    }
-
-    manager.userIsAllowed({
-      token,
-      commandName: databasePopulation.commands.unfollow.commandName,
-      callback: ({ error, allowedUser }) => {
-        if (error) {
-          callback({ error });
-
-          return;
-        }
-
-        dbUser.removeWhisperRoomFromUser(allowedUser.userName, room.roomName, (dbErr) => {
           if (dbErr) {
             callback({ error: new errorCreator.Database({}) });
 
@@ -306,7 +276,7 @@ function handle(socket, io) {
 
     manager.userIsAllowed({
       token,
-      commandName: databasePopulation.commands.follow.commandName,
+      commandName: dbConfig.commands.follow.commandName,
       callback: ({ error, allowedUser }) => {
         if (error) {
           callback({ error });
@@ -324,7 +294,6 @@ function handle(socket, io) {
     });
   });
 
-  // TODO Unused
   socket.on('unfollow', ({ room, token }, callback = () => {}) => {
     if (!objectValidator.isValidData({ room }, { room: { roomName: true } })) {
       callback({ error: new errorCreator.InvalidData({ expected: '{ room: { roomName } }' }) });
@@ -332,44 +301,52 @@ function handle(socket, io) {
       return;
     }
 
+    const roomName = room.roomName.toLowerCase();
+
     manager.userIsAllowed({
       token,
-      commandName: databasePopulation.commands.unfollow.commandName,
+      commandName: dbConfig.commands.unfollow.commandName,
       callback: ({ error, allowedUser }) => {
         if (error) {
-          callback({ error: new errorCreator.Database({}) });
+          callback({ error });
 
           return;
-        }
-
-        const roomName = room.roomName.toLowerCase();
-
-        if (Object.keys(socket.rooms).indexOf(roomName) === -1) {
+        } else if (Object.keys(socket.rooms).indexOf(roomName) === -1) {
           callback({ error: new errorCreator.NotAllowed({ name: 'unfollow room that is not followed' }) });
+
+          return;
+        } else if (roomName === dbConfig.rooms.public.roomName) {
+          callback({ error: new errorCreator.NotAllowed({ name: 'unfollow room public' }) });
+
+          return;
+        } else if (roomName !== allowedUser.userName + appConfig.whisperAppend && allowedUser.aliases.map(alias => alias + appConfig.whisperAppend).indexOf(roomName) === -1) {
+          callback({ error: new errorCreator.NotAllowed({ name: 'unfollow whisper room' }) });
 
           return;
         }
 
         const userName = allowedUser.userName;
+        const isWhisperRoom = roomName.indexOf(appConfig.whisperAppend) > -1;
 
-        /*
-         * User should not be able to unfollow its own room
-         * That room is for private messaging between users
-         */
-        if (roomName !== userName) {
-          dbUser.removeRoomFromUser(userName, roomName, (err) => {
+        dbUser.removeRoomFromUser({
+          userName,
+          roomName,
+          isWhisperRoom,
+          callback: (err) => {
             if (err) {
-              callback({ error: new errorCreator.Database({}) });
+              callback({ error: new errorCreator.Database({ errorObject: err }) });
 
               return;
             }
 
-            socket.broadcast.to(roomName).emit('roomFollower', { userName, roomName, isFollowing: false });
-            socket.leave(roomName);
+            if (!isWhisperRoom) {
+              socket.broadcast.to(roomName).emit('roomFollower', { userName, roomName, isFollowing: false });
+              socket.leave(roomName);
+            }
 
             callback({ data: { room } });
-          });
-        }
+          },
+        });
       },
     });
   });
@@ -377,17 +354,17 @@ function handle(socket, io) {
   socket.on('listRooms', ({ token }, callback = () => {}) => {
     manager.userIsAllowed({
       token,
-      commandName: databasePopulation.commands.listRooms.commandName,
+      commandName: dbConfig.commands.listRooms.commandName,
       callback: ({ error, allowedUser }) => {
         if (error) {
-          callback({ error: new errorCreator.Database({}) });
+          callback({ error });
 
           return;
         }
 
         dbRoom.getAllRooms(allowedUser, (roomErr, rooms = []) => {
           if (roomErr) {
-            callback({ error: new errorCreator.Database({}) });
+            callback({ error: new errorCreator.Database({ errorObject: roomErr }) });
 
             return;
           }
@@ -406,7 +383,7 @@ function handle(socket, io) {
           } else {
             dbRoom.getOwnedRooms(allowedUser, (err, ownedRooms = []) => {
               if (err) {
-                callback({ error: new errorCreator.Database({}) });
+                callback({ error: new errorCreator.Database({ errorObject: err }) });
 
                 return;
               }
@@ -431,10 +408,10 @@ function handle(socket, io) {
   socket.on('getHistory', ({ room, startDate, lines, whisperTo, token }, callback = () => {}) => {
     manager.userIsAllowed({
       token,
-      commandName: databasePopulation.commands.getHistory.commandName,
+      commandName: dbConfig.commands.getHistory.commandName,
       callback: ({ error, allowedUser }) => {
         if (error) {
-          callback({ error: new errorCreator.Database({}) });
+          callback({ error });
 
           return;
         }
@@ -462,7 +439,7 @@ function handle(socket, io) {
           lastOnline: startDate || new Date(),
           callback: (histErr, historyMessages = [], anonymous) => {
             if (histErr) {
-              callback({ error: new errorCreator.Database({}) });
+              callback({ error: new errorCreator.Database({ errorObject: histErr }) });
 
               return;
             }
@@ -502,7 +479,7 @@ function handle(socket, io) {
 
     manager.userIsAllowed({
       token,
-      commandName: databasePopulation.commands.removeRoom.commandName,
+      commandName: dbConfig.commands.removeRoom.commandName,
       callback: ({ error, allowedUser }) => {
         if (error) {
           callback({ error });
@@ -559,7 +536,7 @@ function handle(socket, io) {
 
     manager.userIsAllowed({
       token,
-      commandName: databasePopulation.commands.updateRoom.commandName,
+      commandName: dbConfig.commands.updateRoom.commandName,
       callback: ({ error }) => {
         if (error) {
           callback({ error });
@@ -610,7 +587,7 @@ function handle(socket, io) {
 
     manager.userIsAllowed({
       token,
-      commandName: databasePopulation.commands.listRooms.commandName,
+      commandName: dbConfig.commands.listRooms.commandName,
       callback: ({ error, allowedUser }) => {
         if (error) {
           callback({ error });
@@ -639,7 +616,7 @@ function handle(socket, io) {
 
     manager.userIsAllowed({
       token,
-      commandName: databasePopulation.commands.listRooms.commandName,
+      commandName: dbConfig.commands.listRooms.commandName,
       callback: ({ error, allowedUser }) => {
         if (error) {
           callback({ error });

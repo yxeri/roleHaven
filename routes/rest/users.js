@@ -592,24 +592,28 @@ function handle(io) {
       const userName = req.params.id;
       const { roomName } = req.body.data.room;
 
-      dbUser.removeRoomFromUser(userName, roomName, (roomErr, user = {}) => {
-        if (roomErr) {
-          res.status(500).json({
-            errors: [{
-              status: 500,
-              title: 'Internal Server Error',
-              detail: 'Internal Server Error',
-            }],
-          });
+      dbUser.removeRoomFromUser({
+        userName,
+        roomName,
+        callback: (roomErr, user = {}) => {
+          if (roomErr) {
+            res.status(500).json({
+              errors: [{
+                status: 500,
+                title: 'Internal Server Error',
+                detail: 'Internal Server Error',
+              }],
+            });
 
-          return;
-        }
+            return;
+          }
 
-        if (user.socketId) {
-          io.to(user.socketId).emit('unfollow', { room: { roomName } });
-        }
+          if (user.socketId) {
+            io.to(user.socketId).emit('unfollow', { room: { roomName } });
+          }
 
-        res.json({ data: { room: { roomName } } });
+          res.json({ data: { room: { roomName } } });
+        },
       });
     });
   });

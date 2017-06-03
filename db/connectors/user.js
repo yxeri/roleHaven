@@ -556,13 +556,14 @@ function addRoomToUser(userName, roomName, callback) {
 
 /**
  * Remove room from user
- * @param {string} userName - Name of the user
- * @param {string} roomName - Name of the room
- * @param {Function} callback - Callback
+ * @param {string} userName Name of the user
+ * @param {string} roomName Name of the room
+ * @param {boolean} isWhisperRoom Is the room being removed a whisper room?
+ * @param {Function} callback Callback
  */
-function removeRoomFromUser(userName, roomName, callback) {
+function removeRoomFromUser({ userName, roomName, isWhisperRoom, callback }) {
   const query = { userName };
-  const update = { $pull: { rooms: roomName } };
+  const update = isWhisperRoom ? { $pull: { whisperRooms: roomName } } : { $pull: { rooms: roomName } };
 
   User.findOneAndUpdate(query, update).lean().exec((err, user) => {
     if (err) {
@@ -592,29 +593,6 @@ function addWhisperRoomToUser(userName, roomName, callback) {
       logger.sendErrorMsg({
         code: logger.ErrorCodes.db,
         text: ['Failed to add room to user'],
-        err,
-      });
-    }
-
-    callback(err, user);
-  });
-}
-
-/**
- * Remove whisper room from user
- * @param {string} userName - Name of the user
- * @param {string} roomName - Name of the room
- * @param {Function} callback - Callback
- */
-function removeWhisperRoomFromUser(userName, roomName, callback) {
-  const query = { userName };
-  const update = { $pull: { whisperRooms: roomName } };
-
-  User.findOneAndUpdate(query, update).lean().exec((err, user) => {
-    if (err) {
-      logger.sendErrorMsg({
-        code: logger.ErrorCodes.db,
-        text: [`Failed to remove room ${roomName} from user`],
         err,
       });
     }
@@ -986,7 +964,6 @@ exports.getUserPosition = getUserPositions;
 exports.addRoomToUser = addRoomToUser;
 exports.removeRoomFromUser = removeRoomFromUser;
 exports.addWhisperRoomToUser = addWhisperRoomToUser;
-exports.removeWhisperRoomFromUser = removeWhisperRoomFromUser;
 exports.setUserLastOnline = setUserLastOnline;
 exports.updateUserPassword = updateUserPassword;
 exports.verifyUser = verifyUser;

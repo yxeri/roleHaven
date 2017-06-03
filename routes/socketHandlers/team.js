@@ -36,7 +36,7 @@ const errorCreator = require('../../objects/error/errorCreator');
 function addUserTeamRoom({ roomName, userName, io, callback = () => {} }) {
   dbUser.addRoomToUser(userName, roomName, (roomErr, user) => {
     if (roomErr) {
-      callback({ error: new errorCreator.Database({}) });
+      callback({ error: new errorCreator.Database({ errorObject: roomErr }) });
 
       return;
     }
@@ -82,7 +82,7 @@ function handle(socket, io) {
 
         dbTeam.getTeam(allowedUser.team, (err, team) => {
           if (err) {
-            callback({ error: new errorCreator.Database({}) });
+            callback({ error: new errorCreator.Database({ errorObject: err }) });
 
             return;
           } else if (team.owner !== allowedUser.userName && team.admins.indexOf(allowedUser.userName) === -1) {
@@ -93,7 +93,7 @@ function handle(socket, io) {
 
           dbUser.getUser(user.userName, (userErr, invitedUser) => {
             if (userErr) {
-              callback({ error: new errorCreator.Database({}) });
+              callback({ error: new errorCreator.Database({ errorObject: userErr }) });
 
               return;
             } else if (!invitedUser) {
@@ -118,7 +118,7 @@ function handle(socket, io) {
                 if (invErr.code === 11000) {
                   callback({ error: new errorCreator.AlreadyExists({ name: 'invitation' }) });
                 } else {
-                  callback({ error: new errorCreator.Database({}) });
+                  callback({ error: new errorCreator.Database({ errorObject: invErr }) });
                 }
 
                 return;
@@ -189,7 +189,7 @@ function handle(socket, io) {
 
         dbTeam.getTeamByOwner(allowedUser.userName, (ownedErr, ownedTeam) => {
           if (ownedErr) {
-            callback({ error: new errorCreator.Database({}) });
+            callback({ error: new errorCreator.Database({ errorObject: ownedErr }) });
 
             return;
           } else if (ownedTeam) {
@@ -203,7 +203,7 @@ function handle(socket, io) {
 
           dbTeam.createTeam(team, (err, createdTeam) => {
             if (err || createdTeam === null) {
-              callback({ error: new errorCreator.Database({}) });
+              callback({ error: new errorCreator.Database({ errorObject: err }) });
 
               return;
             }
@@ -231,7 +231,7 @@ function handle(socket, io) {
                   shortTeamName: team.shortName,
                   callback: ({ error: updateError }) => {
                     if (updateError) {
-                      callback({ error: new errorCreator.Database({}) });
+                      callback({ error: new errorCreator.Database({  errorObject: updateError }) });
 
                       return;
                     }
@@ -292,6 +292,8 @@ function handle(socket, io) {
             shortTeamName: verifiedTeam.shortName,
             callback: ({ error: updateError }) => {
               if (updateError) {
+                callback({ error: new errorCreator.Database({ errorObject: updateError }) });
+
                 return;
               }
 
@@ -320,7 +322,7 @@ function handle(socket, io) {
 
         dbTeam.getUnverifiedTeams((err, teams = []) => {
           if (err) {
-            callback({ error: new errorCreator.Database({}) });
+            callback({ error: new errorCreator.Database({ errorObject: err }) });
 
             return;
           }
@@ -384,15 +386,19 @@ function handle(socket, io) {
                 return;
               }
 
-              dbUser.removeRoomFromUser(allowedUser.userName, roomName, (roomErr) => {
-                if (roomErr) {
-                  callback({ error: new errorCreator.Database({ errorObject: roomErr }) });
+              dbUser.removeRoomFromUser({
+                roomName,
+                userName: allowedUser.userName,
+                callback: (roomErr) => {
+                  if (roomErr) {
+                    callback({ error: new errorCreator.Database({ errorObject: roomErr }) });
 
-                  return;
-                }
+                    return;
+                  }
 
-                socket.leave(roomName);
-                callback({ data: { team, room } });
+                  socket.leave(roomName);
+                  callback({ data: { team, room } });
+                },
               });
             });
           }
