@@ -47,8 +47,8 @@ function handle(socket, io) {
     callback({ time: now });
   });
 
-  socket.on('createDocFile', ({ docFile, token }, callback = () => {}) => {
-    if (!objectValidator.isValidData({ docFile }, { docFileId: true, text: true, title: true })) {
+  socket.on('createDocFile', ({ docFile, updateExisting, token }, callback = () => {}) => {
+    if (!objectValidator.isValidData({ docFile }, { docFile: { docFileId: true, text: true, title: true } })) {
       callback({ error: new errorCreator.InvalidData({ expected: '{ docFile: { docFileId, text, title } }' }) });
 
       return;
@@ -64,60 +64,56 @@ function handle(socket, io) {
           return;
         }
 
-        docFile.creator = allowedUser.userName;
-        docFile.docFileId = docFile.docFileId.toLowerCase();
+        if (updateExisting) {
+          const { title, text, visibility, isPublic, docFileId } = docFile;
 
-        dbDocFile.createDocFile(docFile, (err, newDocFile) => {
-          if (err) {
-            callback({ error: new errorCreator.Database({}) });
+          dbDocFile.getDocFile(docFileId, allowedUser.accessLevel, (err, retrievedDocFile) => {
+            if (err) {
+              callback({ error: new errorCreator.Database({}) });
 
-            return;
-          } else if (!newDocFile) {
-            callback({ error: new errorCreator.AlreadyExists({ name: 'document' }) });
+              return;
+            } else if (retrievedDocFile.creator !== allowedUser.userName) {
+              callback({ error: new errorCreator.NotAllowed({ name: 'update not owned doc file' }) });
 
-            return;
-          }
+              return;
+            }
 
-          callback({ data: { docFile: newDocFile } });
+            dbDocFile.updateDocFile(docFileId, { title, text, visibility, isPublic }, (updateErr, updatedDocFile) => {
+              if (updateErr) {
+                callback({ error: new errorCreator.Database({}) });
 
-          if (newDocFile.isPublic) {
-            socket.broadcast.emit('docFile', { docFile: newDocFile });
-          } else if (newDocFile.team && newDocFile.team !== '') {
-            const teamRoom = newDocFile.team + appConfig.teamAppend;
+                return;
+              }
 
-            socket.broadcast.to(teamRoom).emit('docFile', { docFile: newDocFile });
-          }
-        });
-      },
-    });
-  });
+              callback({ data: { docFile: updatedDocFile } });
+            });
+          });
+        } else {
+          docFile.creator = allowedUser.userName;
+          docFile.docFileId = docFile.docFileId.toLowerCase();
 
-  socket.on('updateDocFile', ({ docFileId, title, text, visibility, isPublic, token }, callback = () => {}) => {
-    if (!objectValidator.isValidData({ docFileId }, { docFileId: true })) {
-      callback({ error: new errorCreator.InvalidData({ expected: '{ docFileId }' }) });
+          dbDocFile.createDocFile(docFile, (err, newDocFile) => {
+            if (err) {
+              callback({ error: new errorCreator.Database({}) });
 
-      return;
-    }
+              return;
+            } else if (!newDocFile) {
+              callback({ error: new errorCreator.AlreadyExists({ name: 'document' }) });
 
-    manager.userIsAllowed({
-      token,
-      commandName: dbConfig.commands.docFiles.commandName,
-      callback: ({ error }) => {
-        if (error) {
-          callback({ error });
+              return;
+            }
 
-          return;
+            callback({ data: { docFile: newDocFile } });
+
+            if (newDocFile.isPublic) {
+              socket.broadcast.emit('docFile', { docFile: newDocFile });
+            } else if (newDocFile.team && newDocFile.team !== '') {
+              const teamRoom = newDocFile.team + appConfig.teamAppend;
+
+              socket.broadcast.to(teamRoom).emit('docFile', { docFile: newDocFile });
+            }
+          });
         }
-
-        dbDocFile.updateDocFile(docFileId, { title, text, visibility, isPublic }, (err, docFile) => {
-          if (err) {
-            callback({ error: new errorCreator.Database({}) });
-
-            return;
-          }
-
-          callback({ data: { docFile } });
-        });
       },
     });
   });
