@@ -84,6 +84,7 @@ function userIsAllowed({ token, commandName, callback = () => {} }) {
     userName: '',
     accessLevel: 0,
     visibility: 0,
+    rooms: [],
     whisperRooms: [],
     isTracked: false,
     team: null,
@@ -107,7 +108,7 @@ function userIsAllowed({ token, commandName, callback = () => {} }) {
 
     getCommand(commandName, (cmdErr, command) => {
       if (cmdErr) {
-        callback({ error: new errorCreator.Database({}) });
+        callback({ error: new errorCreator.Database({ errorObject: cmdErr }) });
 
         return;
       } else if (user.accessLevel < command.accessLevel) {

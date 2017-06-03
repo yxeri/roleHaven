@@ -19,6 +19,9 @@
 const mongoose = require('mongoose');
 const logger = require('../../utils/logger');
 const dbConnector = require('../databaseConnector');
+const dbUser = require('./user');
+const dbRoom = require('./room');
+const appConfig = require('../../config/defaults/config').app;
 
 const teamSchema = new mongoose.Schema({
   teamName: { type: String, unique: true },
@@ -140,9 +143,44 @@ function getTeamByOwner(owner, callback) {
   });
 }
 
+/**
+ * Remove team
+ * @param {string} Name of the team to remove
+ * @param {Object} user User trying to remove the team
+ */
+function removeTeam(teamName, user, callback) {
+  const query = { teamName };
+
+  Team.findOneAndRemove(query).lean().exec((err) => {
+    if (err) {
+      callback(err, null);
+
+      return;
+    }
+
+    dbUser.removeAllUserTeam(teamName, (userErr) => {
+      if (userErr) {
+        callback(userErr, null);
+
+        return;
+      }
+      dbRoom.removeRoom(teamName + appConfig.teamAppend, (teamErr) => {
+        if (teamErr) {
+          callback(userErr, null);
+
+          return;
+        }
+
+        callback(null, { success: true });
+      });
+    });
+  });
+}
+
 exports.createTeam = createTeam;
 exports.getTeam = getTeam;
 exports.verifyTeam = verifyTeam;
 exports.verifyAllTeams = verifyAllTeams;
 exports.getUnverifiedTeams = getUnverifiedTeams;
 exports.getTeamByOwner = getTeamByOwner;
+exports.removeTeam = removeTeam;

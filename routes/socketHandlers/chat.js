@@ -498,6 +498,8 @@ function handle(socket, io) {
       return;
     }
 
+    room.roomName = room.roomName.toLowerCase();
+
     manager.userIsAllowed({
       token,
       commandName: databasePopulation.commands.removeRoom.commandName,
@@ -508,36 +510,40 @@ function handle(socket, io) {
           return;
         }
 
-        room.roomName = room.roomName.toLowerCase();
-
-        dbRoom.removeRoom(room.roomName, allowedUser, (err) => {
-          if (err) {
-            callback({ error: new errorCreator.Database({}) });
+        dbRoom.getRoom(room.roomName, allowedUser, (getErr, retrievedRoom) => {
+          if (getErr) {
+            callback({ error: new errorCreator.Database({ errorObject: getErr }) });
 
             return;
+          } else if (retrievedRoom.owner !== allowedUser.userName) {
+            callback({ error: new errorCreator.NotAllowed({ name: 'not owner of room' }) })
           }
 
-          dbUser.removeRoomFromAllUsers(room.roomName, (roomErr) => {
-            if (roomErr) {
-              callback({ error: new errorCreator.Database({}) });
+          dbRoom.removeRoom(room.roomName, (err) => {
+            if (err) {
+              callback({ error: new errorCreator.Database({ errorObject: err }) });
 
               return;
             }
 
-            const connectedIds = Object.keys(io.sockets.adapter.rooms[room.roomName].sockets);
-            const allSockets = io.sockets.connected;
+            dbUser.removeRoomFromAllUsers(room.roomName, (roomErr) => {
+              if (roomErr) {
+                callback({ error: new errorCreator.Database({ errorObject: roomErr }) });
 
-            for (let i = 0; i < connectedIds.length; i += 1) {
-              const userSocket = allSockets[connectedIds[i]];
+                return;
+              }
 
-              userSocket.leave(room.roomName);
-            }
+              const connectedIds = Object.keys(io.sockets.adapter.rooms[room.roomName].sockets);
+              const allSockets = io.sockets.connected;
 
-            socket.broadcast.to(room.roomName).emit('unfollow', { room });
+              socket.broadcast.to(room.roomName).emit('unfollow', { room });
+
+              connectedIds.forEach(connectedId => allSockets[connectedId].leave(room.roomName));
+            });
+
+            // TODO Send message to all users that were following the room
+            callback({ data: { room } });
           });
-
-          // TODO Send message to all users that were following the room
-          callback({ data: { room } });
         });
       },
     });

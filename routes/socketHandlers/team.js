@@ -147,7 +147,7 @@ function handle(socket, io) {
 
         dbTeam.getTeam(allowedUser.team, (err, team) => {
           if (err) {
-            callback({ error: new errorCreator.Database({}) });
+            callback({ error: new errorCreator.Database({ errorObject: err }) });
           }
 
           callback({ data: { team } });
@@ -346,25 +346,56 @@ function handle(socket, io) {
           return;
         }
 
-        const roomName = allowedUser.team + appConfig.teamAppend;
-
-        dbUser.updateUserTeam(allowedUser.userName, null, null, (err) => {
-          if (err) {
-            callback({ error: new errorCreator.Database({}) });
+        dbTeam.getTeam(allowedUser.team, (retrieveErr, retrievedTeam) => {
+          if (retrieveErr) {
+            callback({ error: new errorCreator.Database({ errorObject: retrieveErr }) });
 
             return;
           }
 
-          dbUser.removeRoomFromUser(allowedUser.userName, roomName, (roomErr) => {
-            if (roomErr) {
-              callback({ error: new errorCreator.Database({}) });
+          const roomName = allowedUser.team + appConfig.teamAppend;
+          const room = { roomName };
+          const team = { teamName: allowedUser.team };
 
-              return;
-            }
+          if (retrievedTeam.owner === allowedUser.userName) {
+            dbTeam.removeTeam(allowedUser.team, allowedUser, (err) => {
+              if (err) {
+                callback({ error: new errorCreator.Database({ errorObject: err }) });
 
-            socket.leave(roomName);
-            callback({ data: { team: { teamName: allowedUser.team } } });
-          });
+                return;
+              }
+
+              const connectedIds = Object.keys(io.sockets.adapter.rooms[roomName].sockets);
+              const allSockets = io.sockets.connected;
+
+              socket.broadcast.to(roomName).emit('leaveTeam', { team, room });
+
+              connectedIds.forEach((connectedId) => {
+                allSockets[connectedId].leave(roomName);
+              });
+
+              callback({ data: { team, room } });
+            });
+          } else {
+            dbUser.removeUserTeam(allowedUser.userName, (err) => {
+              if (err) {
+                callback({ error: new errorCreator.Database({ errorObject: err }) });
+
+                return;
+              }
+
+              dbUser.removeRoomFromUser(allowedUser.userName, roomName, (roomErr) => {
+                if (roomErr) {
+                  callback({ error: new errorCreator.Database({ errorObject: roomErr }) });
+
+                  return;
+                }
+
+                socket.leave(roomName);
+                callback({ data: { team, room } });
+              });
+            });
+          }
         });
       },
     });

@@ -91,13 +91,59 @@ function updateUserIsTracked(userName, value, callback) {
  * @param {string} userName Name of the user
  * @param {string} team Name of the team
  * @param {string} shortTeam Short name of the team
- * @param {Function} callback - Callback
+ * @param {Function} callback Callback
  */
 function updateUserTeam(userName, team, shortTeam, callback) {
-  console.log(team, shortTeam);
   const update = { $set: { team, shortTeam } };
 
   updateUserValue(userName, update, callback);
+}
+
+/**
+ * Remove team from user
+ * @param {string} userName Name of the user
+ * @param {string} team Name of the team
+ * @param {Function} callback Callback
+ */
+function removeUserTeam(userName, callback) {
+  const query = { userName };
+  const update = { $unset: { team: '', shortTeam: '' } };
+
+  User.update(query, update).lean().exec((err, user) => {
+    if (err) {
+      logger.sendErrorMsg({
+        code: logger.ErrorCodes.db,
+        text: ['Failed to remove user team'],
+        err,
+      });
+    }
+
+    callback(err, user);
+  });
+}
+
+/**
+ * Remove team from all users
+ * @param {string} team Name of the team
+ * @param {string} shortTeam Short name of the team
+ * @param {Function} callback Callback
+ */
+function removeAllUserTeam(team, callback) {
+  const query = { team };
+  const update = { $unset: { team: '', shortTeam: '' } };
+  const options = { multi: true };
+
+  User.update(query, update, options).lean().exec((err, users) => {
+    if (err) {
+      logger.sendErrorMsg({
+        code: logger.ErrorCodes.db,
+        text: ['Failed to remove users team'],
+        err,
+      });
+    }
+
+    callback(err, users);
+  });
 }
 
 /**
@@ -967,3 +1013,5 @@ exports.getTeamUsers = getTeamUsers;
 exports.updateUserBlockedBy = updateUserBlockedBy;
 exports.removeAllUserBlockedBy = removeAllUserBlockedBy;
 exports.removeUserBlockedBy = removeUserBlockedBy;
+exports.removeAllUserTeam = removeAllUserTeam;
+exports.removeUserTeam = removeUserTeam;

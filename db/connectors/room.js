@@ -20,6 +20,7 @@ const mongoose = require('mongoose');
 const logger = require('../../utils/logger');
 const databaseConnector = require('../databaseConnector');
 const chatHistoryConnector = require('./chatHistory');
+const dbUser = require('./user');
 
 const roomSchema = new mongoose.Schema({
   roomName: { type: String, unique: true },
@@ -227,48 +228,48 @@ function unbanUserFromRoom(userName, roomName, callback) {
 
 /**
  * Remove room
- * @param {string} roomName - Name of the room
- * @param {Object} user - User who is trying to remove the room
- * @param {Function} callback - Callback
+ * @param {string} roomName Name of the room
+ * @param {Function} callback Callback
  */
-function removeRoom(roomName, user, callback) {
-  let query;
-
-  if (user.accessLevel >= 11) {
-    query = { roomName };
-  } else {
-    query = {
-      $and: [
-        { owner: user.userName },
-        { roomName },
-      ],
-    };
-  }
+function removeRoom(roomName, callback) {
+  const query = { roomName };
 
   Room.findOneAndRemove(query).lean().exec((err, room) => {
-    if (err) {
+    if (err || !room) {
       logger.sendErrorMsg({
         code: logger.ErrorCodes.db,
         text: ['Failed to remove room'],
         err,
       });
-    } else if (room !== null) {
-      chatHistoryConnector.removeHistory(roomName, (histErr, history) => {
-        if (histErr) {
-          logger.sendErrorMsg({
-            code: logger.ErrorCodes.db,
-            text: ['Failed to remove history'],
-            err: histErr,
-          });
-        } else if (history !== null) {
-          callback(histErr, history);
-        } else {
-          callback(histErr, null);
-        }
-      });
-    } else {
+
       callback(err, null);
+
+      return;
     }
+
+    chatHistoryConnector.removeHistory(roomName, (histErr) => {
+      if (histErr) {
+        logger.sendErrorMsg({
+          code: logger.ErrorCodes.db,
+          text: ['Failed to remove history'],
+          err: histErr,
+        });
+
+        callback(histErr, null);
+
+        return;
+      }
+
+      dbUser.removeRoomFromAllUsers(roomName, (roomErr) => {
+        if (roomErr) {
+          callback(roomErr, null);
+
+          return
+        }
+
+        callback(null, { success: true });
+      });
+    });
   });
 }
 
