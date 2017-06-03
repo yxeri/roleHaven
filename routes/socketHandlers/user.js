@@ -41,8 +41,10 @@ function handle(socket, io) {
       callback({ error: new errorCreator.InvalidCharacters({ name: `User name: ${user.userName}` }) });
 
       return;
-    } else if (!appConfig.disallowUserRegister) {
+    } else if (appConfig.disallowUserRegister) {
       callback({ error: new errorCreator.NotAllowed({ name: 'register disallowed' }) });
+
+      return;
     }
 
     const userName = user.userName.toLowerCase();
@@ -62,7 +64,7 @@ function handle(socket, io) {
 
     dbUser.createUser(userObj, (err, createdUser) => {
       if (err) {
-        callback({ error: new errorCreator.Database({}) });
+        callback({ error: new errorCreator.Database({ errorObject: err }) });
 
         return;
       } else if (createdUser === null) {
