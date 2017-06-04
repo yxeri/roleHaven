@@ -386,7 +386,7 @@ function handle(socket, io) {
 
         dbGameCode.getGameCodeByCode(gameCode, (err, retrievedGameCode) => {
           if (err) {
-            callback({ error: new errorCreator.Database({}) });
+            callback({ error: new errorCreator.Database({ errorObject: err }) });
 
             return;
           } else if (!retrievedGameCode) {
@@ -401,7 +401,7 @@ function handle(socket, io) {
 
           dbGameCode.removeGameCode(retrievedGameCode.code, (removeErr) => {
             if (removeErr) {
-              callback({ error: new errorCreator.Database({}) });
+              callback({ error: new errorCreator.Database({ errorObject: removeErr }) });
 
               return;
             }

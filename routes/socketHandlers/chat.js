@@ -181,7 +181,7 @@ function handle(socket, io) {
 
         manager.createRoom(room, allowedUser, (createErr, createdRoom) => {
           if (createErr) {
-            callback({ error: new errorCreator.Database({}) });
+            callback({ error: new errorCreator.Database({ errorObject: createErr }) });
 
             return;
           } else if (!createdRoom) {
@@ -190,6 +190,12 @@ function handle(socket, io) {
             return;
           }
 
+          socket.broadcast.emit('room', {
+            room: {
+              roomName: room.roomName,
+            },
+            isProtected: typeof room.password !== 'undefined' && room.password !== '',
+          });
           manager.followRoom({
             callback,
             socket,
