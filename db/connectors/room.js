@@ -165,9 +165,8 @@ function getOwnedRooms(user, callback) {
 function getAllRooms(user, callback) {
   const query = { visibility: { $lte: user.accessLevel } };
   const sort = { roomName: 1 };
-  const filter = { password: 0 };
 
-  Room.find(query, filter).sort(sort).lean().exec((err, rooms) => {
+  Room.find(query).sort(sort).lean().exec((err, rooms) => {
     if (err) {
       logger.sendErrorMsg({
         code: logger.ErrorCodes.db,

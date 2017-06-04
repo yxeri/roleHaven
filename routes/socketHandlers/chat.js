@@ -372,6 +372,7 @@ function handle(socket, io) {
           const socketRooms = Object.keys(socket.rooms);
           const roomNames = rooms.filter(room => socketRooms.indexOf(room.roomName) < 0).map(room => room.roomName);
           const followedNames = socketRooms.filter(roomName => !shouldBeHidden(roomName, socket.id));
+          const protectedNames = rooms.filter(room => room.password).map(room => room.roomName);
 
           if (allowedUser.userName === '') {
             callback({
@@ -396,6 +397,7 @@ function handle(socket, io) {
                   followedRooms: followedNames,
                   ownedRooms: ownedNames,
                   whisperRooms: allowedUser.whisperRooms,
+                  protectedRooms: protectedNames,
                 },
               });
             });
