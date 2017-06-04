@@ -263,4 +263,10 @@ config.docFileTitleMaxLength = process.env.DOCFILETITLEMAXLENGTH || config.docFi
 
 config.docFileIdMaxLength = process.env.DOCFILEIDMAXLENGTH || config.docFileIdMaxLength || 20;
 
+config.userNameMaxLength = process.env.USERNAMEMAXLENGTH || config.userNameMaxLength || 10;
+
+config.passwordMaxLength = process.env.PASSWORDMAXLENGTH || config.passwordMaxLength || 200;
+
+config.deviceIdLength = process.env.DEVICEIDLENGTH || config.deviceIdLength || 16;
+
 module.exports = config;

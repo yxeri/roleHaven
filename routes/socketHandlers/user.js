@@ -37,12 +37,16 @@ function handle(socket, io) {
       callback({ error: new errorCreator.InvalidData({ expected: '{ user: { userName, password, registerDevice } }' }) });
 
       return;
+    } else if (appConfig.disallowUserRegister) {
+      callback({ error: new errorCreator.NotAllowed({ name: 'register disallowed' }) });
+
+      return;
     } else if (!textTools.isAllowedFull(user.userName.toLowerCase())) {
       callback({ error: new errorCreator.InvalidCharacters({ name: `User name: ${user.userName}` }) });
 
       return;
-    } else if (appConfig.disallowUserRegister) {
-      callback({ error: new errorCreator.NotAllowed({ name: 'register disallowed' }) });
+    } else if (user.userName.length > appConfig.userNameMaxLength || user.password.length > appConfig.passwordMaxLength || user.registerDevice.length > appConfig.deviceIdLength) {
+      callback({ error: new errorCreator.InvalidCharacters({ name: `User name length: ${appConfig.userNameMaxLength} Password length: ${appConfig.userNameMaxLength} Device length: ${appConfig.deviceIdLength}` }) });
 
       return;
     }

@@ -53,7 +53,7 @@ function handle(socket, io) {
 
       return;
     } else if (docFile.text.join('').length > appConfig.docFileMaxLength || docFile.title.length > appConfig.docFileTitleMaxLength || docFile.docFileId.length > appConfig.docFileIdMaxLength) {
-      callback({ error: new errorCreator.InvalidCharacters({ expected: 'text length: 1400, title length: 100, id length: 20' }) });
+      callback({ error: new errorCreator.InvalidCharacters({ expected: `text length: ${appConfig.docFileMaxLength}, title length: ${appConfig.docFileTitleMaxLength}, id length: ${appConfig.docFileIdMaxLength}` }) });
 
       return;
     }
