@@ -52,6 +52,10 @@ function handle(socket, io) {
       callback({ error: new errorCreator.InvalidData({ expected: '{ docFile: { docFileId, text, title } }' }) });
 
       return;
+    } else if (docFile.text.join('').length > appConfig.docFileMaxLength || docFile.title.length > appConfig.docFileTitleMaxLength || docFile.docFileId.length > appConfig.docFileIdMaxLength) {
+      callback({ error: new errorCreator.InvalidCharacters({ expected: 'text length: 1400, title length: 100, id length: 20' }) });
+
+      return;
     }
 
     manager.userIsAllowed({

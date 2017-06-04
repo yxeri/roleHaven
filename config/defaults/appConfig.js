@@ -254,4 +254,13 @@ config.signalBlockBufferArea = process.env.SIGNALBLOCKBUFFERAREA || config.signa
  */
 config.disallowUserRegister = process.env.DISALLOWUSERREGISTER || config.disallowUserRegister || false;
 
+/**
+ * Maximum amount of characters in a document
+ */
+config.docFileMaxLength = process.env.DOCFILEMAXLENGTH || config.docFileMaxLength || 8000;
+
+config.docFileTitleMaxLength = process.env.DOCFILETITLEMAXLENGTH || config.docFileTitleMaxLength || 100;
+
+config.docFileIdMaxLength = process.env.DOCFILEIDMAXLENGTH || config.docFileIdMaxLength || 20;
+
 module.exports = config;
