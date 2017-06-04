@@ -64,7 +64,6 @@ function handle(socket, io) {
         dbConfig.rooms.bcast.roomName,
       ],
     };
-    const wallet = { owner: userName };
 
     dbUser.createUser(userObj, (err, createdUser) => {
       if (err) {
@@ -83,6 +82,7 @@ function handle(socket, io) {
         accessLevel: dbConfig.accessLevels.superUser,
       };
       const requiresVerification = appConfig.userVerify;
+      const wallet = { owner: userName };
 
       manager.createRoom(newRoom, createdUser, () => {});
       manager.createWallet(wallet, () => {});
@@ -130,6 +130,7 @@ function handle(socket, io) {
               accessLevel: updatedUser.accessLevel,
               aliases: updatedUser.aliases,
               team: updatedUser.team,
+              shortTeam: updatedUser.shortTeam,
               blockedBy: updatedUser.blockedBy,
             },
           };

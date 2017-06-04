@@ -90,8 +90,8 @@ function handle(io) {
         return;
       }
 
-      manager.getAllUserTransactions({
-        userName: decoded.data.userName,
+      manager.getAllTransactions({
+        owner: decoded.data.userName,
         callback: ({ error, data }) => {
           if (error) {
             res.status(500).json({

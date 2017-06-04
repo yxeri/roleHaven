@@ -297,12 +297,12 @@ function createWallet(wallet, callback) {
 }
 
 /**
- * Get all user's transactions
- * @param {string} userName - Name of the user
- * @param {Function} callback - Callback
+ * Get all user/team transactions
+ * @param {string} owner Name of the user or team
+ * @param {Function} callback Callback
  */
-function getAllUserTransactions({ userName, callback = () => {} }) {
-  dbTransaction.getAllUserTransactions(userName, (err, transactions) => {
+function getAllTransactions({ owner, callback = () => {} }) {
+  dbTransaction.getAllTransactions(owner, (err, transactions) => {
     if (err) {
       callback({ err: new errorCreator.Database({}) });
 
@@ -312,8 +312,8 @@ function getAllUserTransactions({ userName, callback = () => {} }) {
     const data = {};
 
     if (transactions && transactions.length > 0) {
-      data.toTransactions = transactions.filter(transaction => transaction.to === userName);
-      data.fromTransactions = transactions.filter(transaction => transaction.from === userName);
+      data.toTransactions = transactions.filter(transaction => transaction.to === owner);
+      data.fromTransactions = transactions.filter(transaction => transaction.from === owner);
     } else {
       data.toTransactions = [];
       data.fromTransactions = [];
@@ -329,12 +329,19 @@ function getAllUserTransactions({ userName, callback = () => {} }) {
  * @param {Object} params.user User creating the transaction
  * @param {Object} params.io Socket.io io
  * @param {boolean} params.emitToSender Should event be emitted to sender?
+ * @param {boolean} params.fromTeam Is the transaction made by a team?
  * @param {Function} [params.callback] Callback
  */
-function createTransaction({ transaction, user, io, emitToSender, callback = () => {} }) {
+function createTransaction({ transaction, user, io, emitToSender, fromTeam, callback = () => {} }) {
+  if (fromTeam && !user.team) {
+    callback({ error: new errorCreator.DoesNotExist({ name: 'not part of team' }) });
+
+    return;
+  }
+
   transaction.amount = Math.abs(transaction.amount);
   transaction.time = new Date();
-  transaction.from = user.userName;
+  transaction.from = fromTeam ? user.team + appConfig.teamAppend : user.userName;
 
   dbWallet.getWallet(transaction.from, (walletErr, userWallet) => {
     if (walletErr) {
@@ -354,7 +361,7 @@ function createTransaction({ transaction, user, io, emitToSender, callback = () 
         return;
       }
 
-      dbWallet.decreaseAmount(user.userName, user.accessLevel, transaction.from, transaction.amount, (errDecrease, decreasedWallet) => {
+      dbWallet.decreaseAmount(transaction.from, transaction.amount, (errDecrease, decreasedWallet) => {
         if (errDecrease) {
           callback({ error: new errorCreator.Database({}) });
 
@@ -370,27 +377,32 @@ function createTransaction({ transaction, user, io, emitToSender, callback = () 
 
           callback({ data: { transaction, wallet: decreasedWallet } });
 
-          dbUser.getUserByAlias(transaction.to, (aliasErr, receiver) => {
-            if (aliasErr) {
-              return;
-            }
+          if (!fromTeam) {
+            dbUser.getUserByAlias(transaction.to, (aliasErr, receiver) => {
+              if (aliasErr) {
+                return;
+              }
 
-            if (receiver.socketId !== '') {
-              io.to(receiver.socketId).emit('transaction', { transaction, wallet: increasedWallet });
-            }
+              if (receiver.socketId !== '') {
+                io.to(receiver.socketId).emit('transaction', { transaction, wallet: increasedWallet });
+              }
 
-            if (emitToSender) {
-              dbUser.getUserByAlias(user.userName, (senderErr, sender) => {
-                if (senderErr) {
-                  return;
-                }
+              if (emitToSender) {
+                dbUser.getUserByAlias(user.userName, (senderErr, sender) => {
+                  if (senderErr) {
+                    return;
+                  }
 
-                if (sender.socketId) {
-                  io.to(sender.socketId).emit('transaction', { transaction, wallet: decreasedWallet });
-                }
-              });
-            }
-          });
+                  if (sender.socketId) {
+                    io.to(sender.socketId).emit('transaction', { transaction, wallet: decreasedWallet });
+                  }
+                });
+              }
+            });
+          } else {
+            io.to(transaction.to).emit('transaction', { transaction, wallet: increasedWallet });
+            io.to(transaction.from).emit('transaction', { transaction, wallet: decreasedWallet });
+          }
         });
       });
     });
@@ -497,7 +509,7 @@ exports.createRoom = createRoom;
 exports.joinRooms = joinRooms;
 exports.addAlias = addAlias;
 exports.createWallet = createWallet;
-exports.getAllUserTransactions = getAllUserTransactions;
+exports.getAllTransactions = getAllTransactions;
 exports.createTransaction = createTransaction;
 exports.authFollowRoom = authFollowRoom;
 exports.followRoom = followRoom;

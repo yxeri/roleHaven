@@ -37,9 +37,9 @@ const Transaction = mongoose.model('transaction', transactionSchema);
 
 /**
  * Get transactions
- * @param {string} to - Receiver
- * @param {string} from - Sender
- * @param {Function} callback - Callback
+ * @param {string} to Receiver
+ * @param {string} from Sender
+ * @param {Function} callback Callback
  */
 function getTransactions(to, from, callback) {
   const query = { $and: [{ to }, { from }] };
@@ -58,12 +58,12 @@ function getTransactions(to, from, callback) {
 }
 
 /**
- * Get all transactions made by a user
- * @param {string} userName - Name of the user
- * @param {Function} callback - Callback
+ * Get all transactions made by a user/team
+ * @param {string} owner Name of the user/team
+ * @param {Function} callback Callback
  */
-function getAllUserTransactions(userName, callback) {
-  const query = { $or: [{ to: userName }, { from: userName }] };
+function getAllTransactions(owner, callback) {
+  const query = { $or: [{ to: owner }, { from: owner }] };
 
   Transaction.find(query).lean().exec((err, transactions) => {
     if (err) {
@@ -99,5 +99,5 @@ function createTransaction(transaction, callback) {
 
 exports.createTransaction = createTransaction;
 exports.getTransactions = getTransactions;
-exports.getAllUserTransactions = getAllUserTransactions;
+exports.getAllTransactions = getAllTransactions;
 

@@ -25,6 +25,7 @@ const walletSchema = new mongoose.Schema({
   amount: { type: Number, default: 0 },
   accessLevel: { type: Number, default: 1 },
   protected: { type: Boolean, default: false },
+  team: String,
 }, { collection: 'wallets' });
 
 const Wallet = mongoose.model('Wallet', walletSchema);
@@ -101,21 +102,12 @@ function increaseAmount(owner, value, callback) {
 
 /**
  * Decrease amount in wallet
- * @param {string} userName - Name of the user decreasing amount
- * @param {number} userAccessLevel - Access level of the user changing the amount
- * @param {string} owner - Owner name
- * @param {number} value - Amount to decrease with
- * @param {Function} callback - Callback
+ * @param {string} owner Owner name
+ * @param {number} value Amount to decrease with
+ * @param {Function} callback Callback
  */
-function decreaseAmount(userName, userAccessLevel, owner, value, callback) {
-  const query = {
-    $and: [
-      { owner }, {
-        $or: [
-          { owner: userName },
-          { accessLevel: { $lt: userAccessLevel } },
-        ] },
-    ] };
+function decreaseAmount(owner, value, callback) {
+  const query = { owner };
   const update = { $inc: { amount: -Math.abs(value) } };
   const options = { new: true };
 

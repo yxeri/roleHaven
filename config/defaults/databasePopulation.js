@@ -210,6 +210,10 @@ config.commands = {
     commandName: 'listRooms',
     accessLevel: config.accessLevels.anonymous,
   },
+  listTeams: config.commands.listTeams || {
+    commandName: 'listTeams',
+    accessLevel: config.accessLevels.anonymous,
+  },
   listDevices: config.commands.listDevices || {
     commandName: 'listDevices',
     accessLevel: config.accessLevels.lowerAdmin,

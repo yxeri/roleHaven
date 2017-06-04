@@ -27,7 +27,7 @@ const errorCreator = require('../../objects/error/errorCreator');
  * @param {object} io - Socket.io io
  */
 function handle(socket, io) {
-  socket.on('getWallet', ({ token }, callback = () => {}) => {
+  socket.on('getWallet', ({ isTeam, token }, callback = () => {}) => {
     manager.userIsAllowed({
       token,
       commandName: dbConfig.commands.getWallet.commandName,
@@ -36,9 +36,15 @@ function handle(socket, io) {
           callback({ error });
 
           return;
+        } else if (isTeam && !allowedUser.team) {
+          callback({ error: new errorCreator.DoesNotExist({ name: 'not part of team' }) });
+
+          return;
         }
 
-        dbWallet.getWallet(allowedUser.userName, (err, wallet) => {
+        const walletOwner = isTeam ? allowedUser.team : allowedUser.userName;
+
+        dbWallet.getWallet(walletOwner, (err, wallet) => {
           if (err) {
             callback({ error: new errorCreator.Database({}) });
 
@@ -51,7 +57,7 @@ function handle(socket, io) {
     });
   });
 
-  socket.on('getAllTransactions', ({ token }, callback = () => {}) => {
+  socket.on('getAllTransactions', ({ isTeam, token }, callback = () => {}) => {
     manager.userIsAllowed({
       token,
       commandName: dbConfig.commands.getWallet.commandName,
@@ -60,10 +66,14 @@ function handle(socket, io) {
           callback({ error });
 
           return;
+        } else if (isTeam && !allowedUser.team) {
+          callback({ error: new errorCreator.DoesNotExist({ name: 'not part of team' }) });
+
+          return;
         }
 
-        manager.getAllUserTransactions({
-          userName: allowedUser.userName,
+        manager.getAllTransactions({
+          owner: allowedUser.userName,
           callback: (params) => {
             callback(params);
           },
@@ -72,7 +82,7 @@ function handle(socket, io) {
     });
   });
 
-  socket.on('createTransaction', ({ transaction, token }, callback = () => {}) => {
+  socket.on('createTransaction', ({ transaction, fromTeam, token }, callback = () => {}) => {
     if (!objectValidator.isValidData({ transaction }, { transaction: { to: true, amount: true } })) {
       callback({ error: new errorCreator.InvalidData({ expected: '{ transaction: { to, amount } }' }) });
 
@@ -95,9 +105,10 @@ function handle(socket, io) {
         }
 
         manager.createTransaction({
+          fromTeam,
           transaction,
-          allowedUser,
           io,
+          user: allowedUser,
           callback: (params) => {
             callback(params);
           },

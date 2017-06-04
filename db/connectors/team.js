@@ -79,6 +79,14 @@ function getTeam(teamName, callback) {
   });
 }
 
+function getAllTeams(callback) {
+  const query = {};
+
+  Team.find(query).lean().exec((err, teams) => {
+    callback(err, teams);
+  });
+}
+
 /**
  * Verify team
  * @param {string} teamName - Name of the team that will be verified
@@ -184,3 +192,4 @@ exports.verifyAllTeams = verifyAllTeams;
 exports.getUnverifiedTeams = getUnverifiedTeams;
 exports.getTeamByOwner = getTeamByOwner;
 exports.removeTeam = removeTeam;
+exports.getAllTeams = getAllTeams;

@@ -213,6 +213,12 @@ function handle(socket, io) {
               accessLevel: dbConfig.accessLevels.superUser,
               visibility: dbConfig.accessLevels.superUser,
             };
+            const wallet = {
+              owner: team.teamName + appConfig.teamAppend,
+              team: team.teamName,
+            };
+
+            manager.createWallet(wallet, () => {});
 
             dbRoom.createRoom(teamRoom, dbConfig.users.superuser, (errRoom, room) => {
               if (errRoom || room === null) {
@@ -328,6 +334,36 @@ function handle(socket, io) {
           }
 
           callback({ data: { teams } });
+        });
+      },
+    });
+  });
+
+  socket.on('listTeams', ({ token }, callback = () => {}) => {
+    manager.userIsAllowed({
+      token,
+      commandName: dbConfig.commands.listTeams.commandName,
+      callback: ({ error }) => {
+        if (error) {
+          callback({ error });
+
+          return;
+        }
+
+        dbTeam.getAllTeams((allErr, teams) => {
+          if (allErr) {
+            callback({ error: new Database({ errorObject: allErr }) });
+
+            return;
+          }
+
+          callback({
+            data: {
+              teams: teams.map((team) => {
+                return { teamName: team.teamName, shortName: team.shortName };
+              }),
+            },
+          });
         });
       },
     });
