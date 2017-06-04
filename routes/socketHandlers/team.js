@@ -227,6 +227,8 @@ function handle(socket, io) {
                 return;
               }
 
+              socket.broadcast.emit('team', { team: { teamName: team.teamName } });
+
               if (appConfig.teamVerify) {
                 callback({ data: { requiresVerify: appConfig.teamVerify, team } });
               } else {
@@ -237,7 +239,7 @@ function handle(socket, io) {
                   shortTeamName: team.shortName,
                   callback: ({ error: updateError }) => {
                     if (updateError) {
-                      callback({ error: new errorCreator.Database({  errorObject: updateError }) });
+                      callback({ error: new errorCreator.Database({ errorObject: updateError }) });
 
                       return;
                     }
@@ -352,7 +354,7 @@ function handle(socket, io) {
 
         dbTeam.getAllTeams((allErr, teams) => {
           if (allErr) {
-            callback({ error: new Database({ errorObject: allErr }) });
+            callback({ error: new errorCreator.Database({ errorObject: allErr }) });
 
             return;
           }

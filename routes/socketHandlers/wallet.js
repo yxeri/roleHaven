@@ -18,6 +18,7 @@
 
 const dbWallet = require('../../db/connectors/wallet');
 const dbConfig = require('../../config/defaults/config').databasePopulation;
+const appConfig = require('../../config/defaults/config').app;
 const manager = require('../../socketHelpers/manager');
 const objectValidator = require('../../utils/objectValidator');
 const errorCreator = require('../../objects/error/errorCreator');
@@ -42,7 +43,7 @@ function handle(socket, io) {
           return;
         }
 
-        const walletOwner = isTeam ? allowedUser.team : allowedUser.userName;
+        const walletOwner = isTeam ? allowedUser.team + appConfig.teamAppend : allowedUser.userName;
 
         dbWallet.getWallet(walletOwner, (err, wallet) => {
           if (err) {
@@ -72,8 +73,10 @@ function handle(socket, io) {
           return;
         }
 
+        const owner = isTeam ? allowedUser.team + appConfig.teamAppend : allowedUser.userName;
+
         manager.getAllTransactions({
-          owner: allowedUser.userName,
+          owner,
           callback: (params) => {
             callback(params);
           },

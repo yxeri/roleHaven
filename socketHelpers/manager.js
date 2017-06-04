@@ -378,14 +378,8 @@ function createTransaction({ transaction, user, io, emitToSender, fromTeam, call
           callback({ data: { transaction, wallet: decreasedWallet } });
 
           if (!fromTeam) {
-            dbUser.getUserByAlias(transaction.to, (aliasErr, receiver) => {
-              if (aliasErr) {
-                return;
-              }
-
-              if (receiver.socketId !== '') {
-                io.to(receiver.socketId).emit('transaction', { transaction, wallet: increasedWallet });
-              }
+            if (transaction.to.indexOf(appConfig.teamAppend) > -1) {
+              io.to(transaction.to).emit('transaction', { transaction, wallet: increasedWallet });
 
               if (emitToSender) {
                 dbUser.getUserByAlias(user.userName, (senderErr, sender) => {
@@ -398,7 +392,29 @@ function createTransaction({ transaction, user, io, emitToSender, fromTeam, call
                   }
                 });
               }
-            });
+            } else {
+              dbUser.getUserByAlias(transaction.to, (aliasErr, receiver) => {
+                if (aliasErr) {
+                  return;
+                }
+
+                if (receiver.socketId !== '') {
+                  io.to(receiver.socketId).emit('transaction', { transaction, wallet: increasedWallet });
+                }
+
+                if (emitToSender) {
+                  dbUser.getUserByAlias(user.userName, (senderErr, sender) => {
+                    if (senderErr) {
+                      return;
+                    }
+
+                    if (sender.socketId) {
+                      io.to(sender.socketId).emit('transaction', { transaction, wallet: decreasedWallet });
+                    }
+                  });
+                }
+              });
+            }
           } else {
             io.to(transaction.to).emit('transaction', { transaction, wallet: increasedWallet });
             io.to(transaction.from).emit('transaction', { transaction, wallet: decreasedWallet });
