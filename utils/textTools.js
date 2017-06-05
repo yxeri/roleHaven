@@ -1,5 +1,5 @@
-const alphaNumbericRegex = /^[\w\d]+$/g;
-const fullTextRegex = /^[\w\d\såäöÅÄÖ\-]+$/g;
+const alphaNumbericRegex = /^[\w\d]+$/;
+const fullTextRegex = /^[\w\d\såäöÅÄÖ\-]+$/;
 const numerical = '1234567890';
 
 /**

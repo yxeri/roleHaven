@@ -269,4 +269,6 @@ config.passwordMaxLength = process.env.PASSWORDMAXLENGTH || config.passwordMaxLe
 
 config.deviceIdLength = process.env.DEVICEIDLENGTH || config.deviceIdLength || 16;
 
+config.roomNameMaxLength = process.env.ROOMNAMEMAXLENGTH || config.roomNameMaxLength || 10;
+
 module.exports = config;

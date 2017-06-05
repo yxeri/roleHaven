@@ -164,6 +164,10 @@ function handle(socket, io) {
       callback({ error: new errorCreator.InvalidData({ expected: '{ room: { roomName } }' }) });
 
       return;
+    } else if (room.roomName.length > appConfig.roomNameMaxLength || !textTools.isAlphaNumeric(room.roomName)) {
+      callback({ error: new errorCreator.InvalidCharacters({ expected: 'a-z 0-9 length: 10' }) });
+
+      return;
     }
 
     manager.userIsAllowed({
