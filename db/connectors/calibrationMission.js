@@ -79,7 +79,7 @@ function getInactiveMissions(owner, callback) {
  * @param {Function} callback - Callback
  */
 function createMission(mission, callback) {
-  const newUser = new CalibrationMission(mission);
+  const newMission = new CalibrationMission(mission);
 
   getActiveMission(mission.owner, (err, foundMission) => {
     if (err) {
@@ -91,7 +91,7 @@ function createMission(mission, callback) {
 
       callback(err, null);
     } else if (foundMission === null) {
-      databaseConnector.saveObject(newUser, 'calibrationMission', callback);
+      databaseConnector.saveObject(newMission, 'calibrationMission', callback);
     } else {
       callback(err, null);
     }
