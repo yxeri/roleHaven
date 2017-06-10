@@ -21,6 +21,7 @@ const jwt = require('jsonwebtoken');
 const dbUser = require('../../db/connectors/user');
 const appConfig = require('../../config/defaults/config').app;
 const objectValidator = require('../../utils/objectValidator');
+const errorCreator = require('../../objects/error/errorCreator');
 
 const router = new express.Router();
 
@@ -74,41 +75,49 @@ function handle() {
 
     const { userName, password } = req.body.data.user;
 
-    dbUser.authUser(userName, password, (err, authUser) => {
-      if (err) {
-        res.status(500).json({
-          errors: [{
-            status: 500,
-            title: 'Internal Server Error',
-            detail: 'Internal Server Error',
-          }],
+    dbUser.authUser({
+      userName,
+      password,
+      callback: ({ error, data }) => {
+        if (error) {
+          if (error.type === errorCreator.ErrorTypes.DOESNOTEXIST) {
+            res.status(401).json({
+              errors: [{
+                status: 401,
+                title: 'Unauthorized user',
+                detail: 'Incorrect username and/or password or user does not exist, is banned or has not been verified',
+              }],
+            });
+
+            return;
+          }
+
+          res.status(500).json({
+            errors: [{
+              status: 500,
+              title: 'Internal Server Error',
+              detail: 'Internal Server Error',
+            }],
+          });
+
+          return;
+        }
+
+        const { authUser } = data;
+
+        const jwtUser = {
+          _id: authUser._id, // eslint-disable-line no-underscore-dangle
+          userName: authUser.userName,
+          accessLevel: authUser.accessLevel,
+          visibility: authUser.visibility,
+          verified: authUser.verified,
+          banned: authUser.banned,
+        };
+
+        res.json({
+          data: { token: jwt.sign({ data: jwtUser }, appConfig.jsonKey) },
         });
-
-        return;
-      } else if (authUser === null) {
-        res.status(401).json({
-          errors: [{
-            status: 401,
-            title: 'Unauthorized user',
-            detail: 'Incorrect user name and/or password',
-          }],
-        });
-
-        return;
-      }
-
-      const jwtUser = {
-        _id: authUser._id, // eslint-disable-line no-underscore-dangle
-        userName: authUser.userName,
-        accessLevel: authUser.accessLevel,
-        visibility: authUser.visibility,
-        verified: authUser.verified,
-        banned: authUser.banned,
-      };
-
-      res.json({
-        data: { token: jwt.sign({ data: jwtUser }, appConfig.jsonKey) },
-      });
+      },
     });
   });
 

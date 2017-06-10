@@ -17,7 +17,7 @@
 'use strict';
 
 const mongoose = require('mongoose');
-const logger = require('../../utils/logger');
+const errorCreator = require('../../objects/error/errorCreator');
 
 const commandSchema = new mongoose.Schema({
   commandName: String,
@@ -32,144 +32,51 @@ const Command = mongoose.model('Command', commandSchema);
 
 /**
  * Increment command usage
- * @param {string} commandName - Name of the command
+ * @param {string} params.commandName Name of the command
  */
-function incrementCommandUsage(commandName) {
+function incrementCommandUsage({ commandName }) {
   const query = { commandName };
   const update = { $inc: { timesUsed: 1 } };
 
-  Command.findOneAndUpdate(query, update).lean().exec((err) => {
-    if (err) {
-      logger.sendErrorMsg({
-        code: logger.ErrorCodes.db,
-        text: ['Failed to increment command usage'],
-        err,
-      });
-    }
-  });
-}
-
-/**
- * Update command visibility
- * @param {string} cmdName - Name of the command
- * @param {number} value - New visibility value
- * @param {Function} callback - Callback
- */
-function updateCommandVisibility(cmdName, value, callback) {
-  const query = { commandName: cmdName };
-  const update = { $set: { visibility: value } };
-  const options = { new: true };
-
-  Command.findOneAndUpdate(query, update, options).lean().exec(
-    (err, cmd) => {
-      if (err) {
-        logger.sendErrorMsg({
-          code: logger.ErrorCodes.db,
-          text: ['Failed to update command visibility'],
-          err,
-        });
-      }
-
-      callback(err, cmd);
-    }
-  );
-}
-
-/**
- * Update command access level
- * @param {string} cmdName - Name of the command
- * @param {number} value - New access level value
- * @param {Function} callback - Callback
- */
-function updateCommandAccessLevel(cmdName, value, callback) {
-  const query = { commandName: cmdName };
-  const update = { $set: { accessLevel: value } };
-  const options = { new: true };
-
-  Command.findOneAndUpdate(query, update, options).lean().exec(
-    (err, cmd) => {
-      if (err) {
-        logger.sendErrorMsg({
-          code: logger.ErrorCodes.db,
-          text: ['Failed to update command access level'],
-          err,
-        });
-      }
-
-      callback(err, cmd);
-    }
-  );
-}
-
-/**
- * Get all commands
- * @param {Function} callback - Callback
- */
-function getAllCommands(callback) {
-  const filter = { _id: 0 };
-
-  Command.find({}, filter).lean().exec((err, commands) => {
-    if (err || commands === null) {
-      logger.sendErrorMsg({
-        code: logger.ErrorCodes.db,
-        text: ['Failed to get all command'],
-        err,
-      });
-    }
-
-    callback(err, commands);
-  });
+  Command.findOneAndUpdate(query, update).lean().exec();
 }
 
 /**
  * Updates all commands. Creates new ones if they don't already exist
- * @param {Object} sentCommands - New commands
+ * @param {Object} params.commands New commands
  */
-function populateDbCommands(sentCommands) {
-  const cmdKeys = Object.keys(sentCommands);
-  const callback = (err) => {
-    if (err) {
-      logger.sendErrorMsg({
-        code: logger.ErrorCodes.db,
-        text: ['PopulateDb: [failure] Failed to update command'],
-        err,
-      });
-    }
-  };
+function populateDbCommands({ commands }) {
+  console.log('Adding commands, if needed');
 
-  for (let i = 0; i < cmdKeys.length; i += 1) {
-    const command = sentCommands[cmdKeys[i]];
-    const query = { commandName: command.commandName };
+  const cmdKeys = Object.keys(commands);
+  cmdKeys.forEach((commandName) => {
+    const query = { commandName };
+    const command = commands[commandName];
     const options = { upsert: true };
 
-    Command.findOneAndUpdate(query, command, options).lean().exec(callback);
-  }
+    Command.findOneAndUpdate(query, command, options).lean().exec();
+  });
 }
 
 /**
  * Get command
- * @param {string} commandName - Name of the command
- * @param {Function} callback - Callback
+ * @param {string} params.commandName Name of the command
+ * @param {Function} params.callback Callback
  */
-function getCommand(commandName, callback) {
+function getCommand({ commandName, callback }) {
   const query = { commandName };
 
   Command.findOne(query).lean().exec((err, command) => {
     if (err) {
-      logger.sendErrorMsg({
-        code: logger.ErrorCodes.db,
-        text: ['Failed to get command'],
-        err,
-      });
+      callback({ error: new errorCreator.Database({ errorObject: err, name: 'getCommand' }) });
+
+      return;
     }
 
-    callback(err, command);
+    callback({ data: { command } });
   });
 }
 
 exports.getCommand = getCommand;
-exports.updateCommandVisibility = updateCommandVisibility;
-exports.updateCommandAccessLevel = updateCommandAccessLevel;
-exports.getAllCommands = getAllCommands;
 exports.populateDbCommands = populateDbCommands;
 exports.incrementCommandUsage = incrementCommandUsage;

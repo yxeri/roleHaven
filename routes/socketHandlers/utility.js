@@ -71,51 +71,63 @@ function handle(socket, io) {
         if (updateExisting) {
           const { title, text, visibility, isPublic, docFileId } = docFile;
 
-          dbDocFile.getDocFile(docFileId, allowedUser.accessLevel, (err, retrievedDocFile) => {
-            if (err) {
-              callback({ error: new errorCreator.Database({}) });
+          dbDocFile.getDocFile({
+            docFileId,
+            accessLevel: allowedUser.accessLevel,
+            callback: ({ error: getError, data }) => {
+              if (getError) {
+                callback({ error: getError });
 
-              return;
-            } else if (retrievedDocFile.creator !== allowedUser.userName) {
-              callback({ error: new errorCreator.NotAllowed({ name: 'update not owned doc file' }) });
-
-              return;
-            }
-
-            dbDocFile.updateDocFile(docFileId, { title, text, visibility, isPublic }, (updateErr, updatedDocFile) => {
-              if (updateErr) {
-                callback({ error: new errorCreator.Database({}) });
+                return;
+              } else if (data.docFile.creator !== allowedUser.userName) {
+                callback({ error: new errorCreator.NotAllowed({ name: `${allowedUser.userName} updating doc owned by other user` }) });
 
                 return;
               }
 
-              callback({ data: { docFile: updatedDocFile } });
-            });
+              dbDocFile.updateDocFile({
+                docFileId,
+                title,
+                text,
+                visibility,
+                isPublic,
+                callback: ({ error: updateError, data: updateData }) => {
+                  if (updateError) {
+                    callback({ error: updateError });
+
+                    return;
+                  }
+
+                  callback({ data: { docFile: updateData.docFile } });
+                },
+              });
+            },
           });
         } else {
           docFile.creator = allowedUser.userName;
           docFile.docFileId = docFile.docFileId.toLowerCase();
 
-          dbDocFile.createDocFile(docFile, (err, newDocFile) => {
-            if (err) {
-              callback({ error: new errorCreator.Database({}) });
+          dbDocFile.createDocFile({
+            docFile,
+            callback: ({ error: docError, data }) => {
+              if (docError) {
+                callback({ error: docError });
 
-              return;
-            } else if (!newDocFile) {
-              callback({ error: new errorCreator.AlreadyExists({ name: 'document' }) });
+                return;
+              }
 
-              return;
-            }
+              const { docFile: newDocFile } = data;
 
-            callback({ data: { docFile: newDocFile } });
+              callback({ data: { docFile: newDocFile } });
 
-            if (newDocFile.isPublic) {
-              socket.broadcast.emit('docFile', { docFile: newDocFile });
-            } else if (newDocFile.team && newDocFile.team !== '') {
-              const teamRoom = newDocFile.team + appConfig.teamAppend;
+              if (newDocFile.isPublic) {
+                socket.broadcast.emit('docFile', { docFile: newDocFile });
+              } else if (newDocFile.team && newDocFile.team !== '') {
+                const teamRoom = newDocFile.team + appConfig.teamAppend;
 
-              socket.broadcast.to(teamRoom).emit('docFile', { docFile: newDocFile });
-            }
+                socket.broadcast.to(teamRoom).emit('docFile', { docFile: newDocFile });
+              }
+            },
           });
         }
       },
@@ -139,30 +151,38 @@ function handle(socket, io) {
           return;
         }
 
-        dbDocFile.getDocFile(docFileId.toLowerCase(), allowedUser.accessLevel, (err, docFile) => {
-          if (err) {
-            callback({ error: new errorCreator.Database({}) });
+        dbDocFile.getDocFile({
+          docFileId: docFileId.toLowerCase(),
+          accessLevel: allowedUser.accessLevel,
+          callback: ({ error: getError, data }) => {
+            if (getError) {
+              callback({ error: getError });
 
-            return;
-          } else if (!docFile) {
-            callback({ error: new errorCreator.DoesNotExist('docFile') });
+              return;
+            }
 
-            return;
-          }
+            const { docFile } = data;
 
-          if (!docFile.accessUsers || docFile.accessUsers.indexOf(allowedUser.userName) === -1) {
-            dbDocFile.addAccessUser(docFile.docFileId, allowedUser.userName, (accessErr) => {
-              if (accessErr) {
-                callback({ error: new errorCreator.Database({}) });
+            if (!docFile.accessUsers || docFile.accessUsers.indexOf(allowedUser.userName) === -1) {
+              dbDocFile.addAccessUser({
+                docFileId: docFile.docFileId,
+                userName: allowedUser.userName,
+                callback: ({ error: accessError }) => {
+                  if (accessError) {
+                    callback({ error: accessError });
 
-                return;
-              }
+                    return;
+                  }
 
-              callback({ data: { docFile } });
-            });
-          } else {
+                  callback({ data: { docFile } });
+                },
+              });
+
+              return;
+            }
+
             callback({ data: { docFile } });
-          }
+          },
         });
       },
     });
@@ -179,50 +199,56 @@ function handle(socket, io) {
           return;
         }
 
-        dbDocFile.getDocFilesList(allowedUser, (err, docFiles) => {
-          if (err) {
-            callback({ error: new errorCreator.Database({}) });
+        dbDocFile.getDocFilesList({
+          accessLevel: allowedUser.accessLevel,
+          userName: allowedUser.userName,
+          callback: ({ error: getError, data }) => {
+            if (getError) {
+              callback({ error: getError });
 
-            return;
-          }
+              return;
+            }
 
-          const filteredDocFiles = docFiles.map((docFile) => {
-            const filteredDocFile = docFile;
+            const { docFiles } = data;
 
-            if ((docFile.team && allowedUser.team && docFile.team !== allowedUser.team) || (!docFile.isPublic && docFile.creator !== allowedUser.userName)) {
-              if (!docFile.accessUsers || docFile.accessUsers.indexOf(allowedUser.userName) === -1) {
-                filteredDocFile.docFileId = null;
-                filteredDocFile.isLocked = true;
+            const filteredDocFiles = docFiles.map((docFile) => {
+              const filteredDocFile = docFile;
+
+              if ((docFile.team && allowedUser.team && docFile.team !== allowedUser.team) || (!docFile.isPublic && docFile.creator !== allowedUser.userName)) {
+                if (!docFile.accessUsers || docFile.accessUsers.indexOf(allowedUser.userName) === -1) {
+                  filteredDocFile.docFileId = null;
+                  filteredDocFile.isLocked = true;
+                }
               }
-            }
 
-            return filteredDocFile;
-          });
+              return filteredDocFile;
+            });
 
-          const myDocFiles = [];
-          const myTeamDocFiles = [];
-          const teamDocFiles = [];
-          const userDocFiles = filteredDocFiles.filter((docFile) => {
-            if (!docFile.team && docFile.creator !== allowedUser.userName) {
-              return true;
-            }
-
-            if (docFile.creator === allowedUser.userName) {
-              myDocFiles.push(docFile);
-            }
-
-            if (docFile.team) {
-              if (allowedUser.team && allowedUser.team === docFile.team) {
-                myTeamDocFiles.push(docFile);
-              } else {
-                teamDocFiles.push(docFile);
+            const myDocFiles = [];
+            const myTeamDocFiles = [];
+            const teamDocFiles = [];
+            const userDocFiles = filteredDocFiles.filter((docFile) => {
+              if (!docFile.team && docFile.creator !== allowedUser.userName) {
+                return true;
               }
-            }
 
-            return false;
-          });
+              if (docFile.creator === allowedUser.userName) {
+                myDocFiles.push(docFile);
+              }
 
-          callback({ data: { myDocFiles, myTeamDocFiles, userDocFiles, teamDocFiles } });
+              if (docFile.team) {
+                if (allowedUser.team && allowedUser.team === docFile.team) {
+                  myTeamDocFiles.push(docFile);
+                } else {
+                  teamDocFiles.push(docFile);
+                }
+              }
+
+              return false;
+            });
+
+            callback({ data: { myDocFiles, myTeamDocFiles, userDocFiles, teamDocFiles } });
+          },
         });
       },
     });
@@ -269,14 +295,17 @@ function handle(socket, io) {
           owner: allowedUser.userName,
           renewable: false,
           code: generateGameCode(),
-        }, (err, newGameCode) => {
-          if (err) {
-            callback({ error: new errorCreator.Database({}) });
+          callback: ({ error: updateError, data }) => {
+            if (updateError) {
+              callback({ error: updateError });
 
-            return;
-          }
+              return;
+            }
 
-          callback({ data: { gameCode: newGameCode } });
+            const { gameCode } = data;
+
+            callback({ data: { gameCode } });
+          },
         });
       },
     });
@@ -299,14 +328,19 @@ function handle(socket, io) {
           return;
         }
 
-        dbGameCode.getGameCodesByUserName({ owner: allowedUser.userName, codeType }, (err, gameCodes) => {
-          if (err) {
-            callback({ error: new errorCreator.Database({}) });
+        dbGameCode.getGameCodesByUserName({
+          owner: allowedUser.userName,
+          callback: ({ error: getError, data }) => {
+            if (getError) {
+              callback({ error: getError });
 
-            return;
-          }
+              return;
+            }
 
-          callback({ data: { gameCodes } });
+            const { gameCodes } = data;
+
+            callback({ data: { gameCodes } });
+          },
         });
       },
     });
@@ -329,47 +363,48 @@ function handle(socket, io) {
           return;
         }
 
-        dbGameCode.getGameCodeByUserName({ owner: allowedUser.userName, codeType }, (err, gameCode) => {
-          if (err) {
-            callback({ error: new errorCreator.Database({}) });
+        dbGameCode.getGameCodeByUserName({
+          owner: allowedUser.userName,
+          codeType,
+          callback: ({ error: getError, data }) => {
+            if (getError) {
+              if (getError.type === errorCreator.ErrorTypes.DOESNOTEXIST) {
+                dbGameCode.updateGameCode({
+                  codeType,
+                  owner: allowedUser.userName,
+                  code: generateGameCode(),
+                  renewable: codeType === 'profile',
+                  callback: ({ error: updateError, data: updateData }) => {
+                    if (updateError) {
+                      callback({ error: updateError });
 
-            return;
-          }
+                      return;
+                    }
 
-          if (!gameCode) {
-            if (codeType === 'profile') {
-              dbGameCode.updateGameCode({
-                owner: allowedUser.userName,
-                code: generateGameCode(),
-                codeType: 'profile',
-                renewable: true,
-              }, (codeErr, newGameCode) => {
-                if (codeErr) {
-                  callback({ error: new errorCreator.Database({}) });
+                    callback({ data: { gameCode: updateData.gameCode } });
+                  },
+                });
 
-                  return;
-                }
+                return;
+              }
 
-                callback({ data: { gameCode: newGameCode } });
-              });
+              callback({ error: getError });
 
               return;
             }
 
-            callback({ error: new errorCreator.DoesNotExist({ name: 'game code' }) });
+            const { gameCode } = data;
 
-            return;
-          }
-
-          callback({ data: { gameCode } });
+            callback({ data: { gameCode } });
+          },
         });
       },
     });
   });
 
-  socket.on('useGameCode', ({ gameCode, token }, callback = {}) => {
-    if (!objectValidator.isValidData({ gameCode }, { gameCode: true })) {
-      callback({ error: new errorCreator.InvalidData({ expected: '{ gameCode }' }) });
+  socket.on('useGameCode', ({ code, token }, callback = {}) => {
+    if (!objectValidator.isValidData({ code }, { code: true })) {
+      callback({ error: new errorCreator.InvalidData({ expected: '{ code }' }) });
 
       return;
     }
@@ -379,80 +414,88 @@ function handle(socket, io) {
       commandName: dbConfig.commands.useGameCode.commandName,
       callback: ({ error, allowedUser }) => {
         if (error) {
-          callback({ error: new errorCreator.Database({}) });
+          callback({ error: new errorCreator.Database({ errorObject: error, name: 'useGameCode' }) });
 
           return;
         }
 
-        dbGameCode.getGameCodeByCode(gameCode, (err, retrievedGameCode) => {
-          if (err) {
-            callback({ error: new errorCreator.Database({ errorObject: err }) });
+        dbGameCode.getGameCodeByCode({
+          code,
+          callback: ({ error: codeError, data }) => {
+            if (codeError) {
+              callback({ error: codeError });
 
-            return;
-          } else if (!retrievedGameCode) {
-            callback({ error: new errorCreator.DoesNotExist({ name: 'gameCode' }) });
-
-            return;
-          } else if (retrievedGameCode.owner === allowedUser.userName) {
-            callback({ error: new errorCreator.NotAllowed({ name: 'useGameCode on yourself' }) });
-
-            return;
-          }
-
-          dbGameCode.removeGameCode(retrievedGameCode.code, (removeErr) => {
-            if (removeErr) {
-              callback({ error: new errorCreator.Database({ errorObject: removeErr }) });
+              return;
+            } else if (data.gameCode.owner === allowedUser.userName) {
+              callback({ error: new errorCreator.NotAllowed({ name: 'useGameCode on yourself' }) });
 
               return;
             }
 
-            const victim = {
-              userName: retrievedGameCode.owner,
-              accessLevel: dbConfig.users.system.accessLevel,
-            };
+            const { gameCode } = data;
 
-            manager.createTransaction({
-              io,
-              transaction: {
-                to: allowedUser.userName,
-                from: retrievedGameCode.owner,
-                amount: appConfig.gameCodeAmount,
-              },
-              emitToSender: true,
-              user: victim,
-            });
+            dbGameCode.removeGameCode({
+              code: gameCode.code,
+              callback: ({ error: removeError }) => {
+                if (removeError) {
+                  callback({ error: removeError });
 
-            if (retrievedGameCode.renewable) {
-              dbGameCode.updateGameCode({
-                owner: retrievedGameCode.owner,
-                code: generateGameCode(),
-                codeType: retrievedGameCode.codeType,
-                renewable: true,
-              }, (updateErr, newGameCode) => {
-                if (updateErr) {
-                  callback({ error: new errorCreator.Database({}) });
+                  return;
+                }
+
+                const victim = {
+                  userName: gameCode.owner,
+                  accessLevel: dbConfig.users.system.accessLevel,
+                };
+
+                manager.createTransaction({
+                  io,
+                  transaction: {
+                    to: allowedUser.userName,
+                    from: gameCode.owner,
+                    amount: appConfig.gameCodeAmount,
+                  },
+                  emitToSender: true,
+                  user: victim,
+                });
+
+                if (gameCode.renewable) {
+                  dbGameCode.updateGameCode({
+                    owner: gameCode.owner,
+                    code: generateGameCode(),
+                    codeType: gameCode.codeType,
+                    renewable: true,
+                    callback: ({ error: updateError, data: newCodeData }) => {
+                      if (updateError) {
+                        callback({ error: updateError });
+
+                        return;
+                      }
+
+                      callback({ data: { success: true } });
+
+                      dbUser.getUserByAlias({
+                        alias: gameCode.owner,
+                        callback: ({ error: userError, data: userData }) => {
+                          if (userError) {
+                            callback({ error: userError });
+
+                            return;
+                          }
+
+                          socket.to(userData.user.socketId).emit('gameCode', { gameCode: newCodeData.gameCode });
+                        },
+                      });
+                    },
+                  });
 
                   return;
                 }
 
                 callback({ data: { success: true } });
-
-                dbUser.getUserByAlias(retrievedGameCode.owner, (userErr, retrievedUser) => {
-                  if (userErr) {
-                    callback({ error: new errorCreator.Database({}) });
-
-                    return;
-                  }
-
-                  socket.to(retrievedUser.socketId).emit('gameCode', { gameCode: newGameCode });
-                });
-              });
-
-              return;
-            }
-
-            callback({ data: { success: true } });
-          });
+              },
+            });
+          },
         });
       },
     });

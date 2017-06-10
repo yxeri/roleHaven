@@ -1,6 +1,5 @@
 const alphaNumbericRegex = /^[\w\d]+$/;
-const fullTextRegex = /^[\w\d\såäöÅÄÖ\-]+$/;
-const numerical = '1234567890';
+const fullTextRegex = /^[\w\d\såäöÅÄÖ-]+$/;
 
 /**
  * Does the string contain only alphanumeric values?

@@ -17,11 +17,12 @@
 'use strict';
 
 const mongoose = require('mongoose');
-const logger = require('../../utils/logger');
 const databaseConnector = require('../databaseConnector');
 const deviceConnector = require('./device');
 const positionConnector = require('./position');
 const appConfig = require('../../config/defaults/config').app;
+const dbConfig = require('../../config/defaults/config').databasePopulation;
+const errorCreator = require('../../objects/error/errorCreator');
 
 // Access levels: Lowest / Lower / Middle / Higher / Highest / God
 // 1 / 3 / 5 / 7 / 9 / 11
@@ -33,8 +34,8 @@ const userSchema = new mongoose.Schema({
   socketId: String,
   accessLevel: { type: Number, default: 1 },
   visibility: { type: Number, default: 1 },
-  rooms: [{ type: String, unique: true }],
-  whisperRooms: [{ type: String, unique: true }],
+  rooms: [String],
+  whisperRooms: [String],
   lastOnline: Date,
   verified: { type: Boolean, default: false },
   banned: { type: Boolean, default: false },
@@ -42,9 +43,9 @@ const userSchema = new mongoose.Schema({
   registerDevice: String,
   team: String,
   shortTeam: String,
-  authGroups: [{ type: String, unique: true }],
+  authGroups: [String],
   isTracked: Boolean,
-  aliases: [{ type: String, unique: true }],
+  aliases: [String],
   lootable: { type: Boolean, default: false },
   blockedBy: String,
 }, { collection: 'users' });
@@ -53,165 +54,176 @@ const User = mongoose.model('User', userSchema);
 
 /**
  * Update user field
- * @param {string} userName - Name of the user
- * @param {Object} update - Update
- * @param {Function} callback - Callback
+ * @param {string} params.userName Name of the user
+ * @param {Object} params.update Update
+ * @param {Function} params.callback Callback
  */
-function updateUserValue(userName, update, callback) {
+function updateUserValue({ userName, update, callback }) {
   const query = { userName };
   const options = { new: true };
 
   User.findOneAndUpdate(query, update, options).lean().exec((err, user) => {
     if (err) {
-      logger.sendErrorMsg({
-        code: logger.ErrorCodes.db,
-        text: ['Failed to update user'],
-        err,
-      });
+      callback({ error: new errorCreator.Database({ errorObject: err, name: 'updateuserValue' }) });
+
+      return;
+    } else if (!user) {
+      callback({ error: new errorCreator.DoesNotExist({ name: `user ${userName} to change value for` }) });
+
+      return;
     }
 
-    callback(err, user);
+    callback({ data: { user } });
   });
 }
 
 /**
  * Update if user is tracked
- * @param {string} userName - Name of the user
- * @param {boolean} value - Is the user being tracked?
- * @param {Function} callback - Callback
+ * @param {string} params.userName Name of the user
+ * @param {boolean} params.isTracked Is the user being tracked?
+ * @param {Function} params.callback Callback
  */
-function updateUserIsTracked(userName, value, callback) {
-  const update = { $set: { isTracked: value } };
+function updateUserIsTracked({ userName, isTracked, callback }) {
+  const update = { $set: { isTracked } };
 
-  updateUserValue(userName, update, callback);
+  updateUserValue({ userName, update, callback });
 }
 
 /**
  * Update user's team
- * @param {string} userName Name of the user
- * @param {string} team Name of the team
- * @param {string} shortTeam Short name of the team
- * @param {Function} callback Callback
+ * @param {string} params.userName Name of the user
+ * @param {string} params.team Name of the team
+ * @param {string} params.shortTeam Short name of the team
+ * @param {Function} params.callback Callback
  */
-function updateUserTeam(userName, team, shortTeam, callback) {
+function updateUserTeam({ userName, team, shortTeam, callback }) {
   const update = { $set: { team, shortTeam } };
 
-  updateUserValue(userName, update, callback);
+  updateUserValue({ userName, update, callback });
 }
 
 /**
  * Remove team from user
- * @param {string} userName Name of the user
- * @param {string} team Name of the team
- * @param {Function} callback Callback
+ * @param {string} params.userName Name of the user
+ * @param {Function} params.callback Callback
  */
-function removeUserTeam(userName, callback) {
+function removeUserTeam({ userName, callback }) {
   const query = { userName };
   const update = { $unset: { team: '', shortTeam: '' } };
 
   User.update(query, update).lean().exec((err, user) => {
     if (err) {
-      logger.sendErrorMsg({
-        code: logger.ErrorCodes.db,
-        text: ['Failed to remove user team'],
-        err,
-      });
+      callback({ error: new errorCreator.Database({ errorObject: err, name: 'removeUserTeam' }) });
+
+      return;
+    } else if (!user) {
+      callback({ error: new errorCreator.DoesNotExist({ name: `user ${userName} to remove team` }) });
+
+      return;
     }
 
-    callback(err, user);
+    callback({ data: { user } });
   });
 }
 
 /**
  * Remove team from all users
- * @param {string} team Name of the team
- * @param {string} shortTeam Short name of the team
- * @param {Function} callback Callback
+ * @param {string} params.team Name of the team
+ * @param {string} params.shortTeam Short name of the team
+ * @param {Function} params.callback Callback
  */
-function removeAllUserTeam(team, callback) {
+function removeAllUserTeam({ team, callback }) {
   const query = { team };
   const update = { $unset: { team: '', shortTeam: '' } };
   const options = { multi: true };
 
-  User.update(query, update, options).lean().exec((err, users) => {
+  User.update(query, update, options).lean().exec((err, users = []) => {
     if (err) {
-      logger.sendErrorMsg({
-        code: logger.ErrorCodes.db,
-        text: ['Failed to remove users team'],
-        err,
-      });
+      callback({ error: new errorCreator.Database({ errorObject: err, name: 'removeAllUserTeam' }) });
+
+      return;
     }
 
-    callback(err, users);
+    callback({ data: { users } });
   });
 }
 
 /**
  * Set new group to user
- * @param {string} userName - Name of the user
- * @param {string} group - Name of the group
- * @param {Function} callback - Callback
+ * @param {string} params.userName Name of the user
+ * @param {string} params.group Name of the group
+ * @param {Function} params.callback Callback
  */
-function addGroupToUser(userName, group, callback) {
+function addGroupToUser({ userName, group, callback }) {
   const query = { userName };
   const update = { $push: { group } };
 
   User.findOneAndUpdate(query, update).lean().exec((err, user) => {
     if (err) {
-      logger.sendErrorMsg({
-        code: logger.ErrorCodes.db,
-        text: ['Failed to update user'],
-        err,
-      });
+      callback({ error: new errorCreator.Database({ errorObject: err, name: 'addGroupTouser' }) });
+
+      return;
+    } else if (!user) {
+      callback({ error: new errorCreator.DoesNotExist({ name: `user ${userName} to add group` }) });
+
+      return;
     }
 
-    callback(err, user);
+    callback({ data: { user } });
   });
 }
 
 /**
  * Get user by device ID or device alias
- * @param {string} deviceCode - Device ID OR device alias
- * @param {Function} callback - Callback
+ * @param {string} params.deviceCode Device ID OR device alias
+ * @param {Function} params.callback Callback
  */
-function getUserByDevice(deviceCode, callback) {
-  deviceConnector.getDevice(deviceCode, (err, device) => {
-    if (err || device === null) {
-      logger.sendErrorMsg({
-        code: logger.ErrorCodes.db,
-        text: ['Failed to get device'],
-        err,
-      });
-      callback(err, null);
-    } else {
-      const userQuery = { banned: false, socketId: device.socketId };
+function getUserByDevice({ deviceCode, callback }) {
+  deviceConnector.getDevice({
+    deviceCode,
+    callback: ({ error, data }) => {
+      if (error) {
+        callback({ error });
 
-      if (appConfig.userVerify) {
-        userQuery.verified = true;
+        return;
+      } else if (!data.device) {
+        callback({ error: new errorCreator.DoesNotExist({ name: `device ${deviceCode}` }) });
+
+        return;
       }
 
+      const { device } = data;
+      const userQuery = {
+        banned: false,
+        socketId: device.socketId,
+      };
+
+      if (appConfig.userVerify) { userQuery.verified = true; }
+
       User.findOne(userQuery).lean().exec((userErr, user) => {
-        if (userErr || user === null) {
-          logger.sendErrorMsg({
-            code: logger.ErrorCodes.db,
-            text: ['Failed to get user by device'],
-            err: userErr,
-          });
+        if (userErr) {
+          callback({ error: new errorCreator.Database({ errorObject: userErr, name: 'getUserByDevice' }) });
+
+          return;
+        } else if (!user) {
+          callback({ error: new errorCreator.DoesNotExist({ name: `${deviceCode} user` }) });
+
+          return;
         }
 
-        callback(userErr, user);
+        callback({ data: { user } });
       });
-    }
+    },
   });
 }
 
 /**
  * Get user by socket ID
- * @param {string} sentSocketId - Socket ID
- * @param {Function} callback - Callback
+ * @param {string} params.socketId Socket ID
+ * @param {Function} params.callback Callback
  */
-function getUserById(sentSocketId, callback) {
-  const query = { banned: false, socketId: sentSocketId };
+function getUserById({ socketId, callback }) {
+  const query = { socketId, banned: false };
   const filter = { _id: 0 };
 
   if (appConfig.userVerify) {
@@ -220,25 +232,27 @@ function getUserById(sentSocketId, callback) {
 
   User.findOne(query, filter).lean().exec((err, user) => {
     if (err) {
-      logger.sendErrorMsg({
-        code: logger.ErrorCodes.db,
-        text: ['Failed to get user'],
-        err,
-      });
+      callback({ error: new errorCreator.Database({ errorObject: err, name: 'getUserById' }) });
+
+      return;
+    } else if (!user) {
+      callback({ error: new errorCreator.DoesNotExist({ name: `user by socket ${socketId}` }) });
+
+      return;
     }
 
-    callback(err, user);
+    callback({ data: { user } });
   });
 }
 
 /**
  * Authorize user
- * @param {string} userName - Name of the user
- * @param {string} password - Password of the user
- * @param {Function} callback - Callback
+ * @param {string} params.userName Name of the user
+ * @param {string} params.password Password of the user
+ * @param {Function} params.callback Callback
  */
-function authUser(userName, password, callback) {
-  const query = { banned: false, userName, password };
+function authUser({ userName, password, callback }) {
+  const query = { userName, password, banned: false };
   const filter = { password: 0 };
 
   if (appConfig.userVerify) {
@@ -247,24 +261,26 @@ function authUser(userName, password, callback) {
 
   User.findOne(query, filter).lean().exec((err, user) => {
     if (err) {
-      logger.sendErrorMsg({
-        code: logger.ErrorCodes.db,
-        text: ['Failed to login'],
-        err,
-      });
+      callback({ error: new errorCreator.Database({ errorObject: err, name: 'authuser' }) });
+
+      return;
+    } else if (!user) {
+      callback({ error: new errorCreator.DoesNotExist({ name: `auth user ${userName}` }) });
+
+      return;
     }
 
-    callback(err, user);
+    callback({ data: { user } });
   });
 }
 
 /**
  * Get user
- * @param {string} userName - User name
- * @param {Function} callback - Callback
+ * @param {string} params.userName User name
+ * @param {Function} params.callback Callback
  */
-function getUser(userName, callback) {
-  const query = { banned: false, userName };
+function getUser({ userName, callback }) {
+  const query = { userName, banned: false };
   const filter = { password: 0 };
 
   if (appConfig.userVerify) {
@@ -273,51 +289,56 @@ function getUser(userName, callback) {
 
   User.findOne(query, filter).lean().exec((err, foundUser) => {
     if (err) {
-      logger.sendErrorMsg({
-        code: logger.ErrorCodes.db,
-        text: ['Failed to find user'],
-        err,
-      });
+      callback({ error: new errorCreator.Database({ errorObject: err, name: 'getUser' }) });
+
+      return;
+    } else if (!foundUser) {
+      callback({ error: new errorCreator.DoesNotExist({ name: `user ${userName}` }) });
+
+      return;
     }
 
-    callback(err, foundUser);
+    callback({ data: { user: foundUser } });
   });
 }
 
 /**
  * Create and save user
- * @param {Object} user - New user
- * @param {Function} callback - Callback
+ * @param {Object} params.user New user
+ * @param {Function} params.callback Callback
  */
-function createUser(user, callback) {
+function createUser({ user, callback }) {
   const newUser = new User(user);
+  const query = { userName: user.userName };
 
-  getUser(user.userName, (err, foundUser) => {
+  User.findOne(query).lean().exec((err, foundUser) => {
     if (err) {
-      logger.sendErrorMsg({
-        code: logger.ErrorCodes.db,
-        text: ['Failed to check if user exists'],
-        err,
-      });
+      callback({ error: new errorCreator.Database({ errorObject: err, name: 'createUser' }) });
 
-      callback(err, null);
-    } else if (foundUser === null) {
-      databaseConnector.saveObject(newUser, 'user', callback);
-    } else {
-      callback(err, null);
+      return;
+    } else if (foundUser) {
+      callback({ error: new errorCreator.AlreadyExists({ name: `user ${user.userName}` }) });
+
+      return;
     }
+
+    databaseConnector.saveObject({
+      callback,
+      object: newUser,
+      objectType: 'user',
+    });
   });
 }
 
 /**
  * Update user's socket ID
- * @param {string} userName - Name of the user
- * @param {string} value - New socket ID
- * @param {Function} callback - Callback
+ * @param {string} params.userName Name of the user
+ * @param {string} params.socketId New socket ID
+ * @param {Function} params.callback Callback
  */
-function updateUserSocketId(userName, value, callback) {
+function updateUserSocketId({ userName, socketId, callback }) {
   const query = { banned: false, userName };
-  const update = { socketId: value, online: true };
+  const update = { $set: { socketId, online: true } };
   const options = { new: true };
 
   if (appConfig.userVerify) {
@@ -326,85 +347,90 @@ function updateUserSocketId(userName, value, callback) {
 
   User.findOneAndUpdate(query, update, options).lean().exec((err, user) => {
     if (err) {
-      logger.sendErrorMsg({
-        code: logger.ErrorCodes.db,
-        text: ['Failed to update user'],
-        err,
-      });
+      callback({ error: new errorCreator.Database({ errorObject: err, name: 'updateUserSocketId' }) });
+
+      return;
+    } else if (!user) {
+      callback({ error: new errorCreator.DoesNotExist({ name: `user ${userName}` }) });
+
+      return;
     }
 
-    callback(err, user);
+    callback({ data: { user } });
   });
 }
 
 /**
  * Set user online
- * @param {string} userName - Name of the user
- * @param {boolean} value Is the user online?
- * @param {Function} callback - Callback
+ * @param {string} params.userName - Name of the user
+ * @param {boolean} params.online Is the user online?
+ * @param {Function} params.callback Callback
  */
-function updateUserOnline(userName, value, callback) {
-  const update = { online: value };
+function updateUserOnline({ userName, online, callback }) {
+  const update = { $set: { online } };
 
-  updateUserValue(userName, update, callback);
+  updateUserValue({ userName, update, callback });
 }
 
 /**
  * Verify user
- * @param {string} userName - Name of the user
- * @param {Function} callback - Callback
+ * @param {string} params.userName Name of the user
+ * @param {Function} params.callback Callback
  */
-function verifyUser(userName, callback) {
+function verifyUser({ userName, callback }) {
   const query = { userName };
 
-  databaseConnector.verifyObject(query, User, 'user', callback);
+  databaseConnector.verifyObject({ query, object: User, callback });
 }
 
 /**
  * Verify all users
- * @param {Function} callback - Callback
+ * @param {Function} params.callback Callback
  */
-function verifyAllUsers(callback) {
+function verifyAllUsers({ callback }) {
   const query = { verified: false };
 
-  databaseConnector.verifyAllObjects(query, User, 'users', callback);
+  databaseConnector.verifyAllObjects({ query, object: User, callback });
 }
 
 /**
  * Gets all user
- * @param {Object} sentUser - User that is retrieving all users
- * @param {Function} callback - Function to be called on completion
+ * @param {Object} params.user User that is retrieving all users
+ * @param {boolean} params.includeInactive Include users that are banned or unverified
+ * @param {Function} params.callback Function to be called on completion
  */
-function getAllUsers(sentUser, callback) {
-  const query = { visibility: { $lte: sentUser.accessLevel }, banned: false };
+function getAllUsers({ user, includeInactive, callback }) {
+  const query = { visibility: { $lte: user.accessLevel } };
   const sort = { userName: 1 };
   const filter = { _id: 0, password: 0 };
 
-  if (appConfig.userVerify) {
-    query.verified = true;
+  if (!includeInactive) {
+    query.banned = false;
+
+    if (appConfig.userVerify) {
+      query.verified = true;
+    }
   }
 
-  User.find(query, filter).sort(sort).lean().exec((err, users) => {
+  User.find(query, filter).sort(sort).lean().exec((err, users = []) => {
     if (err) {
-      logger.sendErrorMsg({
-        code: logger.ErrorCodes.db,
-        text: ['Failed to list users'],
-        err,
-      });
+      callback({ error: new errorCreator.Database({ errorObject: err, name: 'getAllUsers' }) });
+
+      return;
     }
 
-    callback(err, users);
+    callback({ data: { users } });
   });
 }
 
 /**
  * Gets all users in a team
- * @param {Object} sentUser User that is retrieving all users
- * @param {Function} callback Function to be called on completion
+ * @param {Object} params.user User that is retrieving all users
+ * @param {Function} params.callback Function to be called on completion
  */
-function getTeamUsers(sentUser, callback) {
+function getTeamUsers({ user, callback }) {
   const query = {
-    team: sentUser.team || '',
+    team: user.team || '',
     banned: false,
   };
   const sort = { userName: 1 };
@@ -416,24 +442,22 @@ function getTeamUsers(sentUser, callback) {
 
   User.find(query, filter).sort(sort).lean().exec((err, users) => {
     if (err) {
-      logger.sendErrorMsg({
-        code: logger.ErrorCodes.db,
-        text: ['Failed to list users'],
-        err,
-      });
+      callback({ error: new errorCreator.Database({ errorObject: err, name: 'getTeamusers' }) });
+
+      return;
     }
 
-    callback(err, users);
+    callback({ data: { users } });
   });
 }
 
 /**
  * Get positions for all users, based on user's access level
- * @param {Object} sentUser - User who is retrieving positions
- * @param {Function} callback - Callback
+ * @param {Object} params.user User who is retrieving positions
+ * @param {Function} params.callback Callback
  */
-function getAllUserPositions(sentUser, callback) {
-  const query = { visibility: { $lte: sentUser.accessLevel }, banned: false };
+function getAllUserPositions({ user, callback }) {
+  const query = { visibility: { $lte: user.accessLevel }, banned: false };
   const sort = { userName: 1 };
   const filter = { _id: 0, userName: 1 };
 
@@ -441,76 +465,72 @@ function getAllUserPositions(sentUser, callback) {
     query.verified = true;
   }
 
-  User.find(query, filter).sort(sort).lean().exec((err, users) => {
+  User.find(query, filter).sort(sort).lean().exec((err, users = []) => {
     if (err) {
-      logger.sendErrorMsg({
-        code: logger.ErrorCodes.db,
-        text: ['Failed to get all users and positions'],
-        err,
-      });
+      callback({ error: new errorCreator.Database({ errorObject: err, name: 'getAllUserPositions' }) });
 
-      callback(err, null);
-    } else if (users !== null) {
-      const userNames = users.map(user => user.userName);
+      return;
+    }
 
-      positionConnector.getPositions(userNames, (mapErr, userPositions) => {
-        if (mapErr) {
-          logger.sendErrorMsg({
-            code: logger.ErrorCodes.db,
-            text: ['Failed to get all user positions'],
-            err,
-          });
+    const userNames = users.map(userObj => userObj.userName);
+
+    positionConnector.getPositions({
+      userNames,
+      callback: ({ error, data }) => {
+        if (error) {
+          callback({ error });
+
+          return;
         }
 
-        callback(err, userPositions);
-      });
-    } else {
-      callback(err, null);
-    }
+        callback({ data: { positions: data.positions } });
+      },
+    });
   });
 }
 
 /**
  * Get positions for a user, based on the access level of the user retrieving the positions
- * @param {Object} sentUser - User retrieving the positions
- * @param {string} sentUserName - Name of the user
- * @param {Function} callback - Callback
+ * @param {Object} params.user User retrieving the positions
+ * @param {string} params.userName Name of the user
+ * @param {Function} params.callback Callback
  */
-function getUserPositions(sentUser, sentUserName, callback) {
-  const query = { visibility: { $lte: sentUser.accessLevel }, userName: sentUserName };
+function getUserPositions({ user, userName, callback }) {
+  const query = { visibility: { $lte: user.accessLevel }, userName };
   const filter = { _id: 0 };
 
-  User.findOne(query, filter).lean().exec((err, user) => {
+  User.findOne(query, filter).lean().exec((err, foundUser) => {
     if (err) {
-      logger.sendErrorMsg({
-        code: logger.ErrorCodes.db,
-        text: ['Failed to get user and positions'],
-        err,
-      });
-    } else if (user !== null) {
-      positionConnector.getPosition(sentUserName, (mapErr, mapPosition) => {
-        if (mapErr) {
-          logger.sendErrorMsg({
-            code: logger.ErrorCodes.db,
-            text: ['Failed to get user position'],
-            err,
-          });
+      callback({ error: new errorCreator.Database({ errorObject: err, name: 'getUserPositions' }) });
+
+      return;
+    } else if (!foundUser) {
+      callback({ error: new errorCreator.DoesNotExist({ name: `user ${userName}` }) });
+
+      return;
+    }
+
+    positionConnector.getPosition({
+      userName,
+      callback: ({ error, data }) => {
+        if (error) {
+          callback({ error });
+
+          return;
         }
 
-        callback(mapErr, mapPosition);
-      });
-    } else {
-      callback(err, null);
-    }
+        callback({ data });
+      },
+    });
   });
 }
 
 /**
  * Get all users following a room
- * @param {string} roomName - Name of the room
- * @param {Function} callback - Callback
+ * @param {string} params.roomName Name of the room
+ * @param {Function} params.callback Callback
  */
-function getUsersFollowingRoom(roomName, callback) {
+function getUsersFollowingRoom({ roomName, callback }) {
   const query = { rooms: { $in: [roomName] }, banned: false };
   const filter = { rooms: 1, socketId: 1 };
 
@@ -520,46 +540,46 @@ function getUsersFollowingRoom(roomName, callback) {
 
   User.find(query, filter).lean().exec((err, users) => {
     if (err) {
-      logger.sendErrorMsg({
-        code: logger.ErrorCodes.db,
-        text: [`Failed to get users following room ${roomName}`],
-        err,
-      });
+      callback({ error: new errorCreator.Database({ errorObject: err, name: 'getUsersFollowingRoom' }) });
+
+      return;
     }
 
-    callback(err, users);
+    callback({ data: { users } });
   });
 }
 
 /**
  * Add room to user
- * @param {string} userName - Name of the user
- * @param {string} roomName - Name of the room
- * @param {Function} callback - Callback
+ * @param {string} params.userName Name of the user
+ * @param {string} params.roomName Name of the room
+ * @param {Function} params.callback Callback
  */
-function addRoomToUser(userName, roomName, callback) {
+function addRoomToUser({ userName, roomName, callback }) {
   const query = { userName };
   const update = { $addToSet: { rooms: roomName } };
 
   User.findOneAndUpdate(query, update).lean().exec((err, user) => {
-    if (err || user === null) {
-      logger.sendErrorMsg({
-        code: logger.ErrorCodes.db,
-        text: ['Failed to add room to user'],
-        err,
-      });
+    if (err) {
+      callback({ error: new errorCreator.Database({ errorObject: err, name: 'addRoomToUser' }) });
+
+      return;
+    } else if (!user) {
+      callback({ error: new errorCreator.DoesNotExist({ name: `add room ${roomName} user ${userName}` }) });
+
+      return;
     }
 
-    callback(err, user);
+    callback({ data: { user } });
   });
 }
 
 /**
  * Remove room from user
- * @param {string} userName Name of the user
- * @param {string} roomName Name of the room
- * @param {boolean} isWhisperRoom Is the room being removed a whisper room?
- * @param {Function} callback Callback
+ * @param {string} params.userName Name of the user
+ * @param {string} params.roomName Name of the room
+ * @param {boolean} params.isWhisperRoom Is the room being removed a whisper room?
+ * @param {Function} params.callback Callback
  */
 function removeRoomFromUser({ userName, roomName, isWhisperRoom, callback }) {
   const query = { userName };
@@ -567,331 +587,337 @@ function removeRoomFromUser({ userName, roomName, isWhisperRoom, callback }) {
 
   User.findOneAndUpdate(query, update).lean().exec((err, user) => {
     if (err) {
-      logger.sendErrorMsg({
-        code: logger.ErrorCodes.db,
-        text: [`Failed to remove room ${roomName} from user`],
-        err,
-      });
+      callback({ error: new errorCreator.Database({ errorObject: err, name: 'removeRoomFromuser' }) });
+
+      return;
+    } else if (!user) {
+      callback({ error: new errorCreator.DoesNotExist({ name: `remove room ${roomName} user ${userName}` }) });
+
+      return;
     }
 
-    callback(err, user);
+    callback({ data: { user } });
   });
 }
 
 /**
  * Add whisper room to user
- * @param {string} userName - Name of the user
- * @param {string} roomName - Name of the room
- * @param {Function} callback - Callback
+ * @param {string} params.userName Name of the user
+ * @param {string} params.roomName Name of the room
+ * @param {Function} params.callback Callback
  */
-function addWhisperRoomToUser(userName, roomName, callback) {
+function addWhisperRoomToUser({ userName, roomName, callback }) {
   const query = { userName };
   const update = { $addToSet: { whisperRooms: roomName } };
 
   User.findOneAndUpdate(query, update).lean().exec((err, user) => {
-    if (err || user === null) {
-      logger.sendErrorMsg({
-        code: logger.ErrorCodes.db,
-        text: ['Failed to add room to user'],
-        err,
-      });
+    if (err) {
+      callback({ error: new errorCreator.Database({ errorObject: err, name: 'addWhisperRoomToUser' }) });
+
+      return;
+    } else if (!user) {
+      callback({ error: new errorCreator.DoesNotExist({ name: `add whisper ${userName}` }) });
+
+      return;
     }
 
-    callback(err, user);
+    callback({ data: { user } });
   });
 }
 
 /**
  * Remove room from all users following it
- * @param {string} roomName - Name of the room
- * @param {Function} callback - Callback
+ * @param {string} params.roomName Name of the room
+ * @param {Function} params.callback Callback
  */
-function removeRoomFromAllUsers(roomName, callback) {
+function removeRoomFromAllUsers({ roomName, callback }) {
   const query = { rooms: { $in: [roomName] } };
   const update = { $pull: { rooms: roomName } };
   const options = { multi: true };
 
-  User.update(query, update, options).lean().exec((err, users) => {
+  User.update(query, update, options).lean().exec((err, users = []) => {
     if (err) {
-      logger.sendErrorMsg({
-        code: logger.ErrorCodes.db,
-        text: [`Failed to remove room ${roomName} from all users`],
-        err,
-      });
+      callback({ error: new errorCreator.Database({ errorObject: err, name: 'removeRoomFromAllUsers' }) });
+
+      return;
     }
 
-    callback(err, users);
+    callback({ data: { users } });
   });
 }
 
 /**
  * Set user last seen
- * @param {string} userName - Name of the user
- * @param {Date} date - Last seen
- * @param {Function} callback - Callback
+ * @param {string} params.userName Name of the user
+ * @param {Date} params.date Last seen
+ * @param {Function} params.callback Callback
  */
-function setUserLastOnline(userName, date, callback) {
+function setUserLastOnline({ userName, date, callback }) {
   const query = { userName };
-  const update = { lastOnline: date };
+  const update = { $set: { lastOnline: date } };
+  const options = { new: true };
 
-  User.findOneAndUpdate(query, update).lean().exec((err, user) => {
+  User.findOneAndUpdate(query, update, options).lean().exec((err, user) => {
     if (err) {
-      logger.sendErrorMsg({
-        code: logger.ErrorCodes.db,
-        text: [`Failed to update last online on ${userName}`],
-        err,
-      });
+      callback({ error: new errorCreator.Database({ errorObject: err, name: 'setUserLastOnline' }) });
+
+      return;
+    } else if (!user) {
+      callback({ error: new errorCreator.DoesNotExist({ name: `last seen ${userName}` }) });
+
+      return;
     }
 
-    callback(err, user);
+    callback({ data: { user } });
   });
 }
 
 /**
  * Get all unverified users
- * @param {Function} callback - Callback
+ * @param {Function} params.callback Callback
  */
-function getUnverifiedUsers(callback) {
+function getUnverifiedUsers({ callback }) {
   const query = { verified: false, banned: false };
   const filter = { _id: 0, userName: 1 };
   const sort = { userName: 1 };
 
-  User.find(query, filter).sort(sort).lean().exec((err, users) => {
+  User.find(query, filter).sort(sort).lean().exec((err, users = []) => {
     if (err) {
-      logger.sendErrorMsg({
-        code: logger.ErrorCodes.db,
-        text: ['Failed to get unverified users'],
-        err,
-      });
+      callback({ error: new errorCreator.Database({ errorObject: err, name: 'getUnverifiedUsers' }) });
+
+      return;
     }
 
-    callback(err, users);
+    callback({ data: { users } });
   });
 }
 
 /**
  * Ban user
- * @param {string} userName - Name of the user
- * @param {Function} callback - Callback
+ * @param {string} params.userName Name of the user
+ * @param {Function} params.callback Callback
  */
-function banUser(userName, callback) {
+function banUser({ userName, callback }) {
   const query = { userName };
-  const update = { banned: true, socketId: '' };
+  const update = { $set: { banned: true, socketId: '' } };
 
   User.findOneAndUpdate(query, update).lean().exec((err, user) => {
     if (err) {
-      logger.sendErrorMsg({
-        code: logger.ErrorCodes.db,
-        text: ['Failed to ban user'],
-        err,
-      });
+      callback({ error: new errorCreator.Database({ errorObject: err, name: 'banUser' }) });
+
+      return;
+    } else if (!user) {
+      callback({ error: new errorCreator.DoesNotExist({ name: `ban ${userName}` }) });
+
+      return;
     }
 
-    callback(err, user);
+    callback({ data: { user } });
   });
 }
 
 /**
  * Unban user
- * @param {string} userName - Name of the user
- * @param {Function} callback - Callback
+ * @param {string} params.userName Name of the user
+ * @param {Function} params.callback Callback
  */
-function unbanUser(userName, callback) {
+function unbanUser({ userName, callback }) {
   const query = { userName };
-  const update = { banned: false };
+  const update = { $set: { banned: false } };
 
   User.findOneAndUpdate(query, update).lean().exec((err, user) => {
     if (err) {
-      logger.sendErrorMsg({
-        code: logger.ErrorCodes.db,
-        text: ['Failed to unban user'],
-        err,
-      });
+      callback({ error: new errorCreator.Database({ errorObject: err, name: 'unbanUser' }) });
+
+      return;
+    } else if (!user) {
+      callback({ error: new errorCreator.DoesNotExist({ name: `unban ${userName}` }) });
+
+      return;
     }
 
-    callback(err, user);
+    callback({ data: { user } });
   });
 }
 
 /**
  * Get all banned users
- * @param {Function} callback - Callback
+ * @param {Function} params.callback Callback
  */
-function getBannedUsers(callback) {
+function getBannedUsers({ callback }) {
   const query = { banned: true };
   const filter = { userName: 1, _id: 0 };
   const sort = { userName: 1 };
 
-  User.find(query, filter).sort(sort).lean().exec((err, users) => {
+  User.find(query, filter).sort(sort).lean().exec((err, users = []) => {
     if (err) {
-      logger.sendErrorMsg({
-        code: logger.ErrorCodes.db,
-        text: ['Failed to get banned users'],
-        err,
-      });
+      callback({ error: new errorCreator.Database({ errorObject: err, name: 'getBannedUsers' }) });
+
+      return;
     }
 
-    callback(err, users);
+    callback({ data: { users } });
   });
 }
 
 /**
  * Add users to the db
- * @param {Object} users - New users
+ * @param {Object} params.users New users
+ * @param {Function} params.callback Callback
  */
-function populateDbUsers(users) {
-  User.count({}).exec((err, userCount) => {
-    if (err) {
-      logger.sendErrorMsg({
-        code: logger.ErrorCodes.db,
-        text: ['PopulateDb: [failure] Failed to count users'],
-        err,
-      });
-    } else if (userCount < 1) {
-      const userKeys = Object.keys(users);
-      const callback = (userErr, user) => {
-        if (userErr || user === null) {
-          logger.sendErrorMsg({
-            code: logger.ErrorCodes.db,
-            text: ['PopulateDb: [failure] Failed to create user'],
-            err: userErr,
-          });
-        } else {
-          logger.sendInfoMsg('PopulateDb: [success] Created user', user.userName);
-        }
-      };
+function populateDbUsers({ users }) {
+  console.log('Creating default users, if needed');
 
-      logger.sendErrorMsg({
-        code: logger.ErrorCodes.db,
-        text: ['PopulateDb: [failure] There are no users'],
-      });
-      logger.sendInfoMsg('PopulateDb: Creating users from defaults');
-
-      for (let i = 0; i < userKeys.length; i += 1) {
-        const user = users[userKeys[i]];
-
-        createUser(user, callback);
+  getAllUsers({
+    user: {
+      accessLevel: dbConfig.accessLevels.god,
+      banned: false,
+      verified: true,
+    },
+    callback: (usersData) => {
+      if (usersData.error) {
+        return;
       }
-    } else {
-      logger.sendInfoMsg('PopulateDb: [success] DB has at least one user');
-    }
+
+      const { users: retrievedUsers } = usersData.data;
+      const userNames = retrievedUsers.map(user => user.userName);
+
+      Object.keys(users).forEach((userName) => {
+        if (userNames.indexOf(userName) > -1) {
+          return;
+        }
+
+        createUser({
+          user: users[userName],
+          callback: ({ error }) => {
+            if (error) {
+              return;
+            }
+
+            console.log(`Created default user ${userName}`);
+          },
+        });
+      });
+    },
   });
 }
 
 /**
  * Set new user visibility
- * @param {string} userName - Name of the user
- * @param {number} value - New visibility
- * @param {Function} callback - Callback
+ * @param {string} params.userName - Name of the user
+ * @param {number} params.visibility New visibility
+ * @param {Function} params.callback Callback
  */
-function updateUserVisibility(userName, value, callback) {
-  const update = { visibility: value };
+function updateUserVisibility({ userName, visibility, callback }) {
+  const update = { $set: { visibility } };
 
-  updateUserValue(userName, update, callback);
+  updateUserValue({ userName, update, callback });
 }
 
 /**
  * Set new user access level
- * @param {string} userName - Name of the user
- * @param {number} value - New access level
- * @param {Function} callback - Callback
+ * @param {string} params.userName Name of the user
+ * @param {number} params.accessLevel New access level
+ * @param {Function} params.callback Callback
  */
-function updateUserAccessLevel(userName, value, callback) {
-  const query = { userName };
-  const update = { accessLevel: value };
+function updateUserAccessLevel({ userName, accessLevel, callback }) {
+  const update = { $set: { accessLevel } };
 
-  User.findOneAndUpdate(query, update).lean().exec((err, user) => {
-    if (err) {
-      logger.sendErrorMsg({
-        code: logger.ErrorCodes.db,
-        text: ['Failed to update user'],
-        err,
-      });
-    }
-
-    callback(err, user);
-  });
+  updateUserValue({ userName, update, callback });
 }
 
 /**
  * Set new password for user
- * @param {string} userName - Name of the user
- * @param {string} value - New password
- * @param {Function} callback - Callback
+ * @param {string} params.userName Name of the user
+ * @param {string} params.password New password
+ * @param {Function} params.callback Callback
  */
-function updateUserPassword(userName, value, callback) {
-  const update = { password: value };
+function updateUserPassword({ userName, password, callback }) {
+  const update = { $set: { password } };
 
-  updateUserValue(userName, update, callback);
+  updateUserValue({ userName, update, callback });
 }
 
 /**
  * Set blocked by blocker
- * @param {string} userName Name of the user
- * @param {string} value User name blocking
- * @param {Function} callback Callback
+ * @param {string} params.userName Name of the user
+ * @param {string} params.blockedBy User name blocking
+ * @param {Function} params.callback Callback
  */
-function updateUserBlockedBy(userName, value, callback) {
-  const update = { $set: { blockedBy: value } };
+function updateUserBlockedBy({ userName, blockedBy, callback }) {
+  const update = { $set: { blockedBy } };
 
-  updateUserValue(userName, update, callback);
+  updateUserValue({ userName, update, callback });
 }
 
 /**
  * Set blocked by blocker
- * @param {Function} callback Callback
+ * @param {Function} params.callback Callback
  */
-function removeAllUserBlockedBy(callback) {
+function removeAllUserBlockedBy({ callback }) {
   const query = { blockedBy: { $exists: true } };
   const update = { $unset: { blockedBy: '' } };
   const options = { multi: true };
 
   User.update(query, update, options).lean().exec((err) => {
-    callback(err);
+    if (err) {
+      callback({ error: new errorCreator.Database({ errorObject: err, name: 'removeAllUserBlockedBy' }) });
+    }
   });
 }
 
 /**
  * Remove blockedBy from user
- * @param {string} userName User name
- * @param {Function} callback Callback
+ * @param {string} params.userName User name
+ * @param {Function} params.callback Callback
  */
-function removeUserBlockedBy(userName, callback) {
+function removeUserBlockedBy({ userName, callback }) {
   const query = { userName };
   const update = { $unset: { blockedBy: '' } };
+  const options = { new: true };
 
-  User.findOneAndUpdate(query, update).lean().exec((err) => {
-    callback(err);
+  User.findOneAndUpdate(query, update, options).lean().exec((err, user) => {
+    if (err) {
+      callback({ error: new errorCreator.Database({ errorObject: err, name: 'removeUserBlockedBy' }) });
+
+      return;
+    } else if (!user) {
+      callback({ error: new errorCreator.DoesNotExist({ name: `blockedBy on ${userName}` }) });
+
+      return;
+    }
+
+    callback({ data: { user } });
   });
 }
 
 /**
- * Match partial use rname
- * @param {string} partialName - Partial user name
- * @param {Object} user - User doing the matching
- * @param {Function} callback - Callback
+ * Match partial user name
+ * @param {string} params.partialName Partial user name
+ * @param {Object} params.user User doing the matching
+ * @param {Function} params.callback Callback
  */
-function matchPartialUser(partialName, user, callback) {
+function matchPartialUser({ partialName, user, callback }) {
   const filter = { _id: 0, userName: 1 };
   const sort = { userName: 1 };
 
   databaseConnector.matchPartial({
-    type: 'userName',
-    queryType: User,
     filter,
     sort,
     partialName,
     user,
     callback,
+    type: 'userName',
+    queryType: User,
   });
 }
 
 /**
  * Get user by alias
- * @param {string} alias - User alias
- * @param {Function} callback - Callback
+ * @param {string} params.alias User alias
+ * @param {Function} params.callback Callback
  */
-function getUserByAlias(alias, callback) {
+function getUserByAlias({ alias, callback }) {
   const query = {
     banned: false,
     $or: [
@@ -907,50 +933,43 @@ function getUserByAlias(alias, callback) {
 
   User.findOne(query, filter).lean().exec((err, user) => {
     if (err) {
-      logger.sendErrorMsg({
-        code: logger.ErrorCodes.db,
-        text: ['Failed to get user by alias'],
-        err,
-      });
+      callback({ error: new errorCreator.Database({ errorObject: err, name: 'getUserByAlias' }) });
+
+      return;
+    } else if (!user) {
+      callback({ error: new errorCreator.DoesNotExist({ name: `alias ${alias}` }) });
+
+      return;
     }
 
-    callback(err, user);
+    callback({ data: { user } });
   });
 }
 
 /**
  * Add an alias to the user, if a user with the alias or a matching user name doesn't already exist
- * @param {string} userName - Name of the user to update
- * @param {string} alias - User alias
- * @param {Function} callback - Callback
+ * @param {string} params.userName Name of the user to update
+ * @param {string} params.alias User alias
+ * @param {Function} params.callback Callback
  */
-function addAlias(userName, alias, callback) {
-  getUser(alias, (err, user) => {
-    if (err) {
-      callback(err, null);
-
-      return;
-    } else if (user !== null) {
-      callback({ error: { text: ['User with alias name exists'] } }, null);
-
-      return;
-    }
-
-    getUserByAlias(alias, (aliasErr, aliasUser) => {
-      if (aliasErr) {
-        callback(aliasErr, null);
+function addAlias({ userName, alias, callback }) {
+  getUserByAlias({
+    alias,
+    callback: ({ error: aliasError, data }) => {
+      if (aliasError) {
+        callback({ error: aliasError });
 
         return;
-      } else if (aliasUser !== null) {
-        callback({ error: { text: ['Alias already exists'] } });
+      } else if (data.user !== null) {
+        callback({ error: new errorCreator.AlreadyExists({ name: `alias ${alias}` }) });
 
         return;
       }
 
       const update = { $push: { aliases: alias } };
 
-      updateUserValue(userName, update, callback);
-    });
+      updateUserValue({ userName, update, callback });
+    },
   });
 }
 

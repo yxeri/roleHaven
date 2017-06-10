@@ -65,44 +65,43 @@ function handle(socket, io) {
       ],
     };
 
-    dbUser.createUser(userObj, (err, createdUser) => {
-      if (err) {
-        callback({ error: new errorCreator.Database({ errorObject: err }) });
+    dbUser.createUser({
+      user: userObj,
+      callback: (userData) => {
+        if (userData.error) {
+          callback({ error: userData.error });
 
-        return;
-      } else if (createdUser === null) {
-        callback({ error: new errorCreator.AlreadyExists({ name: `user ${userName}` }) });
+          return;
+        }
 
-        return;
-      }
+        const newRoom = {
+          roomName: userObj.userName + appConfig.whisperAppend,
+          visibility: dbConfig.accessLevels.superUser,
+          accessLevel: dbConfig.accessLevels.superUser,
+        };
+        const requiresVerification = appConfig.userVerify;
+        const wallet = { owner: userName };
 
-      const newRoom = {
-        roomName: createdUser.userName + appConfig.whisperAppend,
-        visibility: dbConfig.accessLevels.superUser,
-        accessLevel: dbConfig.accessLevels.superUser,
-      };
-      const requiresVerification = appConfig.userVerify;
-      const wallet = { owner: userName };
+        manager.createRoom({ room: newRoom, user: userObj, callback: () => {} });
+        manager.createWallet({ wallet, callback: () => {} });
 
-      manager.createRoom(newRoom, createdUser, () => {});
-      manager.createWallet(wallet, () => {});
+        if (requiresVerification) {
+          // TODO Send event to admin
+        }
 
-      if (requiresVerification) {
-        // TODO Send event to admin
-      }
-
-      callback({
-        data: {
-          requiresVerification,
-          user: createdUser,
-        },
-      });
+        callback({
+          data: {
+            requiresVerification,
+            success: true,
+          },
+        });
+      },
     });
   });
 
   socket.on('updateId', ({ token, device }, callback = () => {}) => {
     if (!objectValidator.isValidData({ token, device }, { token: true, device: { deviceId: true } }, { verbose: false })) {
-      callback({ error: new errorCreator.InvalidData({ expected: '{ user: { userName, password, registerDevice } }' }) });
+      callback({ error: new errorCreator.InvalidData({ expected: '{ token, device: { deviceId } }', verbose: false }) });
 
       return;
     }
@@ -117,27 +116,37 @@ function handle(socket, io) {
           return;
         }
 
-        dbUser.updateUserSocketId(allowedUser.userName, socket.id, (idErr, updatedUser) => {
-          if (idErr) {
-            callback({ error: new errorCreator.Database({}) });
+        dbUser.updateUserSocketId({
+          userName: allowedUser.userName,
+          socketId: socket.id,
+          callback: (userData) => {
+            if (userData.error) {
+              callback({ error: userData.error });
 
-            return;
-          }
+              return;
+            }
 
-          const data = {
-            user: {
-              userName: updatedUser.userName,
-              accessLevel: updatedUser.accessLevel,
-              aliases: updatedUser.aliases,
-              team: updatedUser.team,
-              shortTeam: updatedUser.shortTeam,
-              blockedBy: updatedUser.blockedBy,
-            },
-          };
+            const { user: updatedUser } = userData.data;
 
-          manager.joinRooms(updatedUser.rooms, socket, device.deviceId);
+            const data = {
+              user: {
+                userName: updatedUser.userName,
+                accessLevel: updatedUser.accessLevel,
+                aliases: updatedUser.aliases,
+                team: updatedUser.team,
+                shortTeam: updatedUser.shortTeam,
+                blockedBy: updatedUser.blockedBy,
+              },
+            };
 
-          callback({ data });
+            manager.joinRooms({
+              socket,
+              rooms: updatedUser.rooms,
+              deviceId: device.deviceId,
+            });
+
+            callback({ data });
+          },
         });
       },
     });
@@ -150,58 +159,66 @@ function handle(socket, io) {
       return;
     }
 
-    dbUser.authUser(user.userName, user.password, (err, authUser) => {
-      if (err) {
-        callback({ error: new errorCreator.Database({}) });
-
-        return;
-      } else if (authUser === null) {
-        if (appConfig.userVerify) {
-          callback({ error: new errorCreator.NeedsVerification({ name: user.userName }) });
-        } else {
-          callback({ error: new errorCreator.DoesNotExist({ name: user.userName }) });
-        }
-
-        return;
-      }
-
-      dbUser.updateUserSocketId(user.userName, socket.id, (idErr) => {
-        if (idErr) {
-          callback({ error: new errorCreator.Database({}) });
+    dbUser.authUser({
+      userName: user.userName,
+      password: user.password,
+      callback: (authData) => {
+        if (authData.error) {
+          callback({ error: authData.error });
 
           return;
         }
 
-        const oldSocket = io.sockets.connected[authUser.socketId];
-        const jwtUser = {
-          _id: authUser._id, // eslint-disable-line no-underscore-dangle
+        const { user: authUser } = authData.data;
+
+        dbUser.updateUserSocketId({
           userName: authUser.userName,
-          accessLevel: authUser.accessLevel,
-          visibility: authUser.visibility,
-          verified: authUser.verified,
-          banned: authUser.banned,
-        };
+          socketId: socket.id,
+          callback: (socketData) => {
+            if (socketData.error) {
+              callback({ error: socketData.error });
 
-        if (oldSocket) {
-          manager.leaveSocketRooms({ socket });
-          oldSocket.emit('logout');
-        }
+              return;
+            }
 
-        manager.joinRooms(authUser.rooms, socket);
+            const oldSocket = io.sockets.connected[authUser.socketId];
+            const jwtUser = {
+              _id: authUser._id, // eslint-disable-line no-underscore-dangle
+              userName: authUser.userName,
+              accessLevel: authUser.accessLevel,
+              visibility: authUser.visibility,
+              verified: authUser.verified,
+              banned: authUser.banned,
+            };
 
-        callback({
-          data: {
-            token: jwt.sign({ data: jwtUser }, appConfig.jsonKey),
-            user: authUser,
+            if (oldSocket) {
+              manager.leaveSocketRooms({ socket });
+              oldSocket.emit('logout');
+            }
+
+            manager.joinRooms({ rooms: authUser.rooms, socket });
+
+            dbUser.setUserLastOnline({
+              userName: user.userName,
+              date: new Date(),
+              callback: (userData) => {
+                if (userData.error) {
+                  callback({ error: userData.error });
+
+                  return;
+                }
+
+                callback({
+                  data: {
+                    token: jwt.sign({ data: jwtUser }, appConfig.jsonKey),
+                    user: authUser,
+                  },
+                });
+              },
+            });
           },
         });
-
-        dbUser.setUserLastOnline(user.userName, new Date(), (userOnlineErr, onlineUser) => {
-          if (userOnlineErr || onlineUser === null) {
-            console.log('Failed to set last online');
-          }
-        });
-      });
+      },
     });
   });
 
@@ -218,7 +235,7 @@ function handle(socket, io) {
       commandName: dbConfig.commands.password.commandName,
       callback: (allowErr, allowed, allowedUser) => {
         if (allowErr) {
-          callback({ error: new errorCreator.Database({}) });
+          callback({ error: new errorCreator.Database({ errorObject: allowErr, name: 'changePassword' }) });
 
           return;
         } else if (!allowed) {
@@ -227,26 +244,30 @@ function handle(socket, io) {
           return;
         }
 
-        dbUser.authUser(allowedUser.userName, oldPassword, (err, authUser) => {
-          if (err) {
-            callback({ error: new errorCreator.Database({}) });
-
-            return;
-          } else if (authUser === null) {
-            callback({ error: new errorCreator.NotAllowed({ name: 'changePassword' }) });
-
-            return;
-          }
-
-          dbUser.updateUserPassword(authUser.userName, newPassword, (userErr) => {
-            if (userErr) {
-              callback({ error: new errorCreator.Database({}) });
+        dbUser.authUser({
+          userName: allowedUser.userName,
+          password: oldPassword,
+          callback: (authData) => {
+            if (authData.error) {
+              callback({ error: authData.error });
 
               return;
             }
 
-            callback({ data: { success: true } });
-          });
+            dbUser.updateUserPassword({
+              userName: authData.data.user.userName,
+              password: newPassword,
+              callback: (passwordData) => {
+                if (passwordData.error) {
+                  callback({ error: passwordData.error });
+
+                  return;
+                }
+
+                callback({ data: { success: true } });
+              },
+            });
+          },
         });
       },
     });
@@ -263,29 +284,36 @@ function handle(socket, io) {
           return;
         }
 
-        dbUser.updateUserSocketId(allowedUser.userName, '', (err) => {
-          if (err) {
-            callback({ error: new errorCreator.Database({}) });
-
-            return;
-          }
-
-          dbUser.updateUserOnline(allowedUser.userName, false, (userErr) => {
-            if (userErr) {
-              callback({ error: new errorCreator.Database({}) });
+        dbUser.updateUserSocketId({
+          userName: allowedUser.userName,
+          socketId: '',
+          callback: (socketData) => {
+            if (socketData.error) {
+              callback({ error: socketData.error });
 
               return;
             }
 
-            manager.leaveSocketRooms({ socket });
-            callback({ data: { success: true } });
-          });
+            dbUser.updateUserOnline({
+              userName: allowedUser.userName,
+              online: false,
+              callback: (onlineData) => {
+                if (onlineData.error) {
+                  callback({ error: onlineData.error });
+
+                  return;
+                }
+
+                manager.leaveSocketRooms({ socket });
+                callback({ data: { success: true } });
+              },
+            });
+          },
         });
       },
     });
   });
 
-  // TODO Not used
   socket.on('verifyUser', ({ user, token }, callback = () => {}) => {
     if (!objectValidator.isValidData({ user }, { user: { userName: true } })) {
       callback({ error: new errorCreator.InvalidData({ expected: '{ user }' }) });
@@ -306,18 +334,17 @@ function handle(socket, io) {
         const userName = user.userName.toLowerCase();
 
         if (userName !== undefined) {
-          dbUser.verifyUser(userName, (err) => {
-            if (err) {
-              callback({ error: new errorCreator.Database({}) });
+          dbUser.verifyUser({
+            userName,
+            callback: (verifyData) => {
+              if (verifyData.error) {
+                callback({ error: verifyData.error });
 
-              return;
-            } else if (user === null) {
-              callback({ error: new errorCreator.DoesNotExist({ name: userName }) });
+                return;
+              }
 
-              return;
-            }
-
-            callback({ data: { user: [user] } });
+              callback({ data: { user: [user] } });
+            },
           });
         }
       },
@@ -336,16 +363,20 @@ function handle(socket, io) {
           return;
         }
 
-        dbUser.verifyAllUsers((verifyErr, users = []) => {
-          if (verifyErr) {
-            callback({ error: new errorCreator.Database({}) });
+        dbUser.verifyAllUsers({
+          callback: (verifyData) => {
+            if (verifyData.error) {
+              callback({ error: verifyData.error });
 
-            return;
-          }
+              return;
+            }
 
-          callback({ data: { users } });
+            const { users } = verifyData.data;
 
-          // TODO Send message to registered device
+            callback({ data: { users } });
+
+            // TODO Send message to registered device
+          },
         });
       },
     });
@@ -363,21 +394,24 @@ function handle(socket, io) {
           return;
         }
 
-        dbUser.getUnverifiedUsers((err, users = []) => {
-          if (err) {
-            callback({ error: new errorCreator.Database({}) });
+        dbUser.getUnverifiedUsers({
+          callback: (unverifiedData) => {
+            if (unverifiedData.error) {
+              callback({ error: unverifiedData.error });
 
-            return;
-          }
+              return;
+            }
 
-          callback({ data: { users: users.map(user => user.userName) } });
+            const { users } = unverifiedData.data;
+
+            callback({ data: { users: users.map(user => user.userName) } });
+          },
         });
       },
     });
   });
 
-  // TODO Not used
-  socket.on('ban', ({ user, token }, callback = () => {}) => {
+  socket.on('ban', ({ user, token, shouldBan = true }, callback = () => {}) => {
     if (!objectValidator.isValidData({ user }, { user: { userName: true } })) {
       callback({ error: new errorCreator.InvalidData({ expected: '{ user: { userName } }' }) });
 
@@ -396,69 +430,44 @@ function handle(socket, io) {
 
         const userName = user.userName.toLowerCase();
 
-        dbUser.banUser(userName, (err, bannedUser) => {
-          if (err) {
-            callback({ error: new errorCreator.Database({}) });
+        if (shouldBan) {
+          dbUser.banUser({
+            userName,
+            callback: (bannedData) => {
+              if (bannedData.error) {
+                callback({ error: bannedData.error });
 
-            return;
-          } else if (bannedUser === null) {
-            callback({ error: new errorCreator.DoesNotExist({ name: `user ${userName}` }) });
+                return;
+              }
 
-            return;
-          }
+              const bannedSocketId = user.socketId;
 
-          const bannedSocketId = user.socketId;
+              dbUser.updateUserSocketId({
+                userName,
+                socketId: '',
+                callback: (updateData) => {
+                  if (updateData.error) {
+                    callback({ error: updateData.error });
 
-          dbUser.updateUserSocketId(userName, '', (userErr) => {
-            if (userErr) {
-              callback({ error: new errorCreator.Database({}) });
+                    return;
+                  }
 
-              return;
-            }
+                  socket.to(bannedSocketId).emit('ban');
+                  manager.leaveSocketRooms({ socket });
 
-            socket.to(bannedSocketId).emit('ban');
-            manager.leaveSocketRooms({ socket });
-
-            callback({ data: { success: true } });
+                  callback({ data: { success: true } });
+                },
+              });
+            },
           });
-        });
-      },
-    });
-  });
+        } else {
+          dbUser.unbanUser({
+            userName,
+            callback: () => {
 
-  // TODO Not used
-  socket.on('unban', ({ user, token }, callback = () => {}) => {
-    if (!objectValidator.isValidData({ user }, { user: { userName: true } })) {
-      callback({ error: new errorCreator.InvalidData({ expected: '{ user: { userName } }' }) });
-
-      return;
-    }
-
-    manager.userIsAllowed({
-      token,
-      commandName: dbConfig.commands.unbanUser.commandName,
-      callback: ({ error }) => {
-        if (error) {
-          callback({ error });
-
-          return;
+            },
+          });
         }
-
-        const userName = user.userName.toLowerCase();
-
-        dbUser.unbanUser(userName, (err, unbannedUser) => {
-          if (err) {
-            callback({ error: new errorCreator.Database({}) });
-
-            return;
-          } else if (unbannedUser === null) {
-            callback({ error: new errorCreator.DoesNotExist({ name: `user ${userName}` }) });
-
-            return;
-          }
-
-          callback({ data: { success: true } });
-        });
       },
     });
   });
@@ -475,78 +484,23 @@ function handle(socket, io) {
           return;
         }
 
-        dbUser.getBannedUsers((err, users = []) => {
-          if (err) {
-            callback({ error: new errorCreator.Database({}) });
+        dbUser.getBannedUsers({
+          callback: (usersData) => {
+            if (usersData.error) {
+              callback({ error: usersData.error });
 
-            return;
-          }
+              return;
+            }
 
-          callback({
-            data: {
-              users: users.map(user => user.userName),
-            },
-          });
+            const { users } = usersData.data;
+
+            callback({
+              data: {
+                users: users.map(user => user.userName),
+              },
+            });
+          },
         });
-      },
-    });
-  });
-
-  // TODO Not used
-  socket.on('updateUser', ({ user, field, value, token }, callback = () => {}) => {
-    if (!objectValidator.isValidData({ user, field, value }, { user: { userName: true }, field: true, value: true })) {
-      callback({ error: new errorCreator.InvalidData({ expected: '{ user: { userName }, field, value }' }) });
-
-      return;
-    }
-
-    manager.userIsAllowed({
-      token,
-      commandName: dbConfig.commands.updateUser.commandName,
-      callback: ({ error }) => {
-        if (error) {
-          callback({ error });
-
-          return;
-        }
-
-        const userName = user.userName.toLowerCase();
-        const updateCallback = (err, updatedUser) => {
-          if (err) {
-            callback({ error: new errorCreator.Database({}) });
-
-            return;
-          } else if (updatedUser === null) {
-            callback({ error: new errorCreator.DoesNotExist({ name: `user ${userName}` }) });
-
-            return;
-          }
-
-          callback({ data: { success: true } });
-        };
-
-        switch (field) {
-          case 'visibility': {
-            dbUser.updateUserVisibility(userName, value, updateCallback);
-
-            break;
-          }
-          case 'accesslevel': {
-            dbUser.updateUserAccessLevel(userName, value, updateCallback);
-
-            break;
-          }
-          case 'password': {
-            dbUser.updateUserPassword(userName, value, updateCallback);
-
-            break;
-          }
-          default: {
-            callback({ error: new errorCreator.InvalidData({ expected: 'visibility || accessLevel || password' }) });
-
-            break;
-          }
-        }
       },
     });
   });
@@ -565,14 +519,20 @@ function handle(socket, io) {
           return;
         }
 
-        dbUser.matchPartialUser(partialName, allowedUser, (err, users) => {
-          if (err) {
-            callback({ error: new errorCreator.Database({}) });
+        dbUser.matchPartialUser({
+          partialName,
+          user: allowedUser,
+          callback: (usersData) => {
+            if (usersData.error) {
+              callback({ error: usersData.error });
 
-            return;
-          }
+              return;
+            }
 
-          callback({ matches: Object.keys(users).map(userKey => users[userKey].userName) });
+            const { users } = usersData.data;
+
+            callback({ matches: Object.keys(users).map(userKey => users[userKey].userName) });
+          },
         });
       },
     });
@@ -633,7 +593,41 @@ function handle(socket, io) {
     });
   });
 
-  socket.on('listUsers', ({ team = {}, token }, callback = () => {}) => {
+  socket.on('listAliases', ({ includeInactive, token }, callback = () => {}) => {
+    manager.userIsAllowed({
+      token,
+      commandName: dbConfig.commands.listAliases.commandName,
+      callback: ({ error, allowedUser }) => {
+        if (error) {
+          callback({ error });
+
+          return;
+        }
+
+        dbUser.getAllUsers({
+          includeInactive: includeInactive && allowedUser.accessLevel >= dbConfig.accessLevels.lowerAdmin,
+          user: allowedUser,
+          callback: (usersData) => {
+            if (usersData.error) {
+              callback({ error: usersData.error });
+
+              return;
+            }
+
+            const aliases = [];
+
+            usersData.data.users.forEach((user) => {
+              Array.prototype.push.apply(aliases, user.aliases || []);
+            });
+
+            callback({ data: { aliases } });
+          },
+        });
+      },
+    });
+  });
+
+  socket.on('listUsers', ({ team = {}, includeInactive, token }, callback = () => {}) => {
     manager.userIsAllowed({
       token,
       commandName: dbConfig.commands.listUsers.commandName,
@@ -644,50 +638,66 @@ function handle(socket, io) {
           return;
         }
 
-        dbUser.getAllUsers(allowedUser, (userErr, users = []) => {
-          if (userErr) {
-            callback({ error: new errorCreator.Database({}) });
+        dbUser.getAllUsers({
+          includeInactive: includeInactive && allowedUser.accessLevel >= dbConfig.accessLevels.lowerAdmin,
+          user: allowedUser,
+          callback: (usersData) => {
+            if (usersData.error) {
+              callback({ error: usersData.error });
 
-            return;
-          }
-
-          const { teamName, shouldEqual } = team;
-          const offlineUsers = [];
-          const onlineUsers = [];
-
-          users.filter((currentUser) => {
-            if (teamName) {
-              if (shouldEqual && currentUser.team && currentUser.team === allowedUser.team) {
-                return true;
-              } else if (!shouldEqual && ((!currentUser.team && allowedUser.team) || currentUser.team !== allowedUser.team)) {
-                return true;
-              }
-
-              return false;
+              return;
             }
 
-            return true;
-          }).forEach((currentUser) => {
-            if ((!appConfig.userVerify || currentUser.verified) && !currentUser.banned) {
-              const aliases = currentUser.aliases;
+            const { users } = usersData.data;
+            const { teamName, shouldEqual } = team;
+            const offlineUsers = [];
+            const onlineUsers = [];
 
-              if (currentUser.online) {
-                onlineUsers.push(currentUser.userName);
-              } else {
-                offlineUsers.push(currentUser.userName);
+            users.filter((currentUser) => {
+              if (teamName) {
+                if (shouldEqual && currentUser.team && currentUser.team === allowedUser.team) {
+                  return true;
+                } else if (!shouldEqual && ((!currentUser.team && allowedUser.team) || currentUser.team !== allowedUser.team)) {
+                  return true;
+                }
+
+                return false;
               }
 
-              if (!teamName && aliases && aliases.length > 0) {
+              return true;
+            }).forEach((currentUser) => {
+              if (includeInactive || ((!appConfig.userVerify || currentUser.verified) && (!currentUser.banned))) {
+                const aliases = currentUser.aliases.map((alias) => {
+                  return { userName: alias };
+                });
+                const filteredUser = {
+                  userName: currentUser.userName,
+                };
+
+                if (allowedUser.accessLevel >= dbConfig.accessLevels.lowerAdmin) {
+                  filteredUser.verified = currentUser.verified;
+                  filteredUser.banned = currentUser.banned;
+                  filteredUser.fullName = currentUser.fullName;
+                }
+
                 if (currentUser.online) {
-                  Array.prototype.push.apply(onlineUsers, aliases);
+                  onlineUsers.push(filteredUser);
                 } else {
-                  Array.prototype.push.apply(offlineUsers, aliases);
+                  offlineUsers.push(filteredUser);
+                }
+
+                if (!teamName && aliases && aliases.length > 0) {
+                  if (currentUser.online) {
+                    Array.prototype.push.apply(onlineUsers, aliases);
+                  } else {
+                    Array.prototype.push.apply(offlineUsers, aliases);
+                  }
                 }
               }
-            }
-          });
+            });
 
-          callback({ data: { onlineUsers, offlineUsers } });
+            callback({ data: { onlineUsers, offlineUsers } });
+          },
         });
       },
     });

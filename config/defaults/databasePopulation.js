@@ -72,6 +72,7 @@ config.rooms = {
     visibility: config.accessLevels.anonymous,
     accessLevel: config.accessLevels.anonymous,
     writeLevel: config.accessLevels.basic,
+    owner: 'superuser',
   },
 
   /**
@@ -82,6 +83,7 @@ config.rooms = {
     roomName: 'broadcast',
     visibility: config.accessLevels.superUser,
     accessLevel: config.accessLevels.superUser,
+    owner: 'superuser',
   },
 
   /**
@@ -92,6 +94,7 @@ config.rooms = {
     roomName: 'hqroom',
     visibility: config.accessLevels.admin,
     accessLevel: config.accessLevels.admin,
+    owner: 'superuser',
   },
 
   /**
@@ -102,6 +105,7 @@ config.rooms = {
     roomName: 'team',
     visibility: config.accessLevels.superUser,
     accessLevel: config.accessLevels.superUser,
+    owner: 'superuser',
   },
 
   /**
@@ -112,6 +116,7 @@ config.rooms = {
     roomName: 'whisper',
     visibility: config.accessLevels.superUser,
     accessLevel: config.accessLevels.superUser,
+    owner: 'superuser',
   },
 
   // TODO Move outside of defaults
@@ -120,6 +125,7 @@ config.rooms = {
     visibility: config.accessLevels.anonymous,
     accessLevel: config.accessLevels.anonymous,
     anonymous: true,
+    owner: 'superuser',
   },
 };
 
@@ -313,7 +319,7 @@ config.commands = {
   },
   updateDevice: config.commands.updateDevice || {
     commandName: 'updateDevice',
-    accessLevel: config.accessLevels.admin,
+    accessLevel: config.accessLevels.anonymous,
   },
   updateRoom: config.commands.updateRoom || {
     commandName: 'updateRoom',
@@ -353,7 +359,7 @@ config.commands = {
   },
   getPositions: config.commands.getPositions || {
     commandName: 'getPositions',
-    accessLevel: config.accessLevels.basic,
+    accessLevel: config.accessLevels.anonymous,
   },
   docFiles: config.commands.docFiles || {
     commandName: 'docFiles',
@@ -390,6 +396,10 @@ config.commands = {
   updateUserPosition: config.commands.updateUserPosition || {
     commandName: 'updateUserPosition',
     accessLevel: config.accessLevels.basic,
+  },
+  updateDevicePosition: config.commands.updateDevicePosition || {
+    commandName: 'updateDevicePosition',
+    accessLevel: config.accessLevels.anonymous,
   },
   createPosition: config.commands.createPosition || {
     commandName: 'createPosition',
@@ -453,11 +463,23 @@ config.commands = {
   },
   getUserPositions: config.commands.getUserPositions || {
     commandName: 'getUserPositions',
-    accessLevel: config.accessLevels.basic,
+    accessLevel: config.accessLevels.anonymous,
   },
   getCustomPositions: config.commands.getCustomPositions || {
     commandName: 'getCustomPositions',
+    accessLevel: config.accessLevels.anonymous,
+  },
+  getSources: config.commands.getSources || {
+    commandName: 'getSources',
     accessLevel: config.accessLevels.basic,
+  },
+  updateDeviceAlias: config.commands.updateDeviceAlias || {
+    commandName: 'updateDeviceAlias',
+    accessLevel: config.accessLevels.lowerAdmin,
+  },
+  listAliases: config.commands.listAliases || {
+    commandName: 'listAliases',
+    accessLevel: config.accessLevels.lowerAdmin,
   },
 };
 

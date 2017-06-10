@@ -15,7 +15,8 @@
  */
 
 const mongoose = require('mongoose');
-const logger = require('../../utils/logger');
+const errorCreator = require('../../objects/error/errorCreator');
+const dbConnector = require('../databaseConnector');
 
 const chatHistorySchema = new mongoose.Schema({
   roomName: { type: String, unique: true },
@@ -46,119 +47,100 @@ const ChatHistory = mongoose.model('ChatHistory', chatHistorySchema);
 
 /**
  * Add message to room history
- * @param {string} roomName - Name of the room
- * @param {object} message - Message to add
- * @param {Function} callback - Callback
+ * @param {string} params.roomName Name of the room
+ * @param {object} params.message Message to add
+ * @param {Function} params.callback Callback
  */
-function addMsgToHistory(roomName, message, callback) {
+function addMsgToHistory({ roomName, message, callback }) {
   const query = { roomName };
   const update = { $push: { messages: message } };
   const options = { upsert: true, new: true };
 
   ChatHistory.findOneAndUpdate(query, update, options).lean().exec((err, history) => {
     if (err) {
-      logger.sendErrorMsg({
-        code: logger.ErrorCodes.db,
-        text: ['Failed to add message to history'],
-        err,
-      });
+      callback({ error: new errorCreator.Database({ errorObject: err, name: 'addMsgToHistory' }) });
+
+      return;
+    } else if (!history) {
+      callback({ error: new errorCreator.DoesNotExist({ name: `history ${roomName}` }) });
+
+      return;
     }
 
-    callback(err, history);
-  });
-}
-
-/**
- * Get room history
- * @param {string} roomName - Name of the room
- * @param {Function} callback - Callback
- */
-function getHistoryFromRoom(roomName, callback) {
-  const query = { roomName };
-  const filter = { 'messages._id': 0, _id: 0 };
-
-  ChatHistory.find(query, filter).lean().exec((err, history) => {
-    if (err) {
-      logger.sendErrorMsg({
-        code: logger.ErrorCodes.db,
-        text: ['Failed to get history'],
-        err,
-      });
-    }
-
-    callback(err, history);
+    callback({ data: { history } });
   });
 }
 
 /**
  * Get room history from multiple rooms
- * @param {string[]} rooms - Name of the rooms
- * @param {Function} callback - Callback
+ * @param {string[]} params.rooms Name of the rooms
+ * @param {Function} params.callback Callback
  */
-function getHistoryFromRooms(rooms, callback) {
+function getHistoryFromRooms({ rooms, callback }) {
   const query = { roomName: { $in: rooms } };
   const filter = { 'messages._id': 0, _id: 0 };
 
-  ChatHistory.find(query, filter).lean().exec((err, history) => {
+  ChatHistory.find(query, filter).lean().exec((err, histories) => {
     if (err) {
-      logger.sendErrorMsg({
-        code: logger.ErrorCodes.db,
-        text: ['Failed to retrieve all history from rooms'],
-        err,
-      });
+      callback({ error: new errorCreator.Database({ errorObject: err, name: 'getHistoryFromRooms' }) });
+
+      return;
     }
 
-    callback(err, history);
+    callback({ data: { histories } });
   });
 }
 
 /**
  * Create and save room history
- * @param {string} roomName - Name of the room
- * @param {boolean} anonymous - Should retrieved messages be anonymous?
- * @param {Function} callback - Callback
+ * @param {string} params.roomName Name of the room
+ * @param {boolean} params.anonymous Should retrieved messages be anonymous?
+ * @param {Function} params.callback Callback
  */
-function createHistory(roomName, anonymous, callback) {
+function createHistory({ roomName, anonymous, callback }) {
+  const newHistory = new ChatHistory({ roomName, anonymous });
   const query = { roomName };
 
   // Checks if history for room already exists
   ChatHistory.findOne(query).lean().exec((histErr, history) => {
     if (histErr) {
-      logger.sendErrorMsg({
-        code: logger.ErrorCodes.db,
-        text: [`Failed to find if history for ${roomName} already exists`],
-        err: histErr,
-      });
+      callback({ error: new errorCreator.Database({ errorObject: histErr, name: 'createHistory' }) });
 
-      callback(histErr, history);
-      // History doesn't exist in the collection, so let's add it and the room!
-    } else if (history === null) {
-      const newHistory = new ChatHistory({ roomName, anonymous });
+      return;
+    } else if (history !== null) {
+      callback({ error: new errorCreator.AlreadyExists({ name: `history ${roomName}` }) });
 
-      newHistory.save(callback);
-    } else {
-      logger.sendErrorMsg({
-        code: logger.ErrorCodes.db,
-        text: [`History for room ${roomName} already exists`],
-        err: histErr,
-      });
-
-      callback(histErr, history);
+      return;
     }
+
+    dbConnector.saveObject({
+      callback,
+      object: newHistory,
+      objectType: 'ChatHistory',
+    });
   });
 }
 
 /**
  * Remove room history
- * @param {string} roomName - Name of the room
- * @param {Function} callback - Callback
+ * @param {string} params.roomName Name of the room
+ * @param {Function} params.callback Callback
  */
-function removeHistory(roomName, callback) {
-  ChatHistory.findOneAndRemove({ roomName }).lean().exec(callback);
+function removeHistory({ roomName, callback }) {
+  const query = { roomName };
+
+  ChatHistory.findOneAndRemove(query).lean().exec((err) => {
+    if (err) {
+      callback({ error: new errorCreator.Database({ errorObject: err, name: 'removeHistory' }) });
+
+      return;
+    }
+
+    callback({ success: true });
+  });
 }
 
 exports.addMsgToHistory = addMsgToHistory;
-exports.getHistoryFromRoom = getHistoryFromRoom;
 exports.getHistoryFromRooms = getHistoryFromRooms;
 exports.createHistory = createHistory;
 exports.removeHistory = removeHistory;

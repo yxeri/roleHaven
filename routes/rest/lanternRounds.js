@@ -22,6 +22,7 @@ const jwt = require('jsonwebtoken');
 const objectValidator = require('../../utils/objectValidator');
 const dbConfig = require('../../config/defaults/config').databasePopulation;
 const dbLanternHack = require('../../db/connectors/lanternhack');
+const errorCreator = require('../../objects/error/errorCreator');
 
 const router = new express.Router();
 
@@ -83,8 +84,8 @@ function handle() {
         return;
       }
 
-      dbLanternHack.getLanternRounds((err, lanternRounds = []) => {
-        if (err) {
+      dbLanternHack.getLanternRounds(({ error, data }) => {
+        if (error) {
           res.status(500).json({
             errors: [{
               status: 500,
@@ -97,7 +98,7 @@ function handle() {
         }
 
         const currentTime = new Date();
-        const rounds = lanternRounds.filter(round => currentTime >= new Date(round.endTime));
+        const rounds = data.rounds.filter(round => currentTime >= new Date(round.endTime));
 
         res.json({ data: { rounds } });
       });
@@ -182,25 +183,28 @@ function handle() {
         return;
       }
 
-      const round = req.body.data.round;
+      const { roundId, startTime, endTime } = req.body.data.round;
 
-      dbLanternHack.updateLanternRound(round, (err, newLanternRound) => {
-        if (err || !newLanternRound) {
-          res.status(500).json({
-            errors: [{
-              status: 500,
-              title: 'Internal Server Error',
-              detail: 'Internal Server Error',
-            }],
-          });
+      dbLanternHack.updateLanternRound({
+        roundId,
+        startTime,
+        endTime,
+        callback: ({ error, data }) => {
+          if (error) {
+            res.status(500).json({
+              errors: [{
+                status: 500,
+                title: 'Internal Server Error',
+                detail: 'Internal Server Error',
+              }],
+            });
 
-          return;
-        }
+            return;
+          }
 
-        // TODO Push to clients, if next round
-        res.json({
-          data: { round: newLanternRound },
-        });
+          // TODO Push to clients, if next round
+          res.json({ data: { round: data.round } });
+        },
       });
     });
   });
@@ -281,8 +285,20 @@ function handle() {
 
       const round = req.body.data.round;
 
-      dbLanternHack.getActiveLanternRound((err, activeRound) => {
-        if (err) {
+      dbLanternHack.getActiveLanternRound(({ error }) => {
+        if (error) {
+          if (error.type === errorCreator.ErrorTypes.ALREADYEXISTS) {
+            res.status(404).json({
+              errors: [{
+                status: 404,
+                title: 'Active round already exists',
+                detail: 'Active round already exists',
+              }],
+            });
+
+            return;
+          }
+
           res.status(500).json({
             errors: [{
               status: 500,
@@ -292,36 +308,39 @@ function handle() {
           });
 
           return;
-        } else if (!activeRound) {
-          res.status(402).json({
-            errors: [{
-              status: 402,
-              title: 'Active round already exists',
-              detail: 'Active round already exists',
-            }],
-          });
-
-          return;
         }
 
-        dbLanternHack.startLanternRound(round.roundId, (activeErr, updatedRound) => {
-          if (activeErr) {
-            res.status(500).json({
-              errors: [{
-                status: 500,
-                title: 'Internal Server Error',
-                detail: 'Internal Server Error',
-              }],
-            });
+        dbLanternHack.startLanternRound({
+          roundId: round.roundId,
+          callback: ({ error: startError, data }) => {
+            if (startError) {
+              if (startError.type === errorCreator.ErrorTypes.DoesNotExist) {
+                res.status(404).json({
+                  errors: [{
+                    status: 404,
+                    title: 'Active round does not exists',
+                    detail: 'Active round does not exists',
+                  }],
+                });
 
-            return;
-          }
+                return;
+              }
 
-          // TODO Emit to clients
+              res.status(500).json({
+                errors: [{
+                  status: 500,
+                  title: 'Internal Server Error',
+                  detail: 'Internal Server Error',
+                }],
+              });
 
-          res.json({
-            data: { round: updatedRound },
-          });
+              return;
+            }
+
+            // TODO Emit to clients
+
+            res.json({ data: { round: data.round } });
+          },
         });
       });
     });
@@ -338,15 +357,11 @@ function handle() {
    * @apiDescription End active lantern round
    *
    * @apiSuccess {Object} data
-   * @apiSuccess {Object[]} data.round Round created
+   * @apiSuccess {Object[]} data.success Did the round end properly?
    * @apiSuccessExample {json} Success-Response:
    *   {
    *    "data": {
-   *      "round": {
-   *        "roundId": 1,
-   *        "startTime": "2016-10-14T09:54:18.694Z",
-   *        "endTime": "2016-10-14T11:54:18.694Z",
-   *      }
+   *      "success": true
    *    }
    *  }
    */
@@ -377,8 +392,20 @@ function handle() {
         return;
       }
 
-      dbLanternHack.getActiveLanternRound((err, activeRound) => {
-        if (err) {
+      dbLanternHack.getActiveLanternRound(({ error }) => {
+        if (error) {
+          if (error.type === errorCreator.ErrorTypes.DOESNOTEXIST) {
+            res.status(404).json({
+              errors: [{
+                status: 404,
+                title: 'Active round does not exist',
+                detail: 'Active round does not exist',
+              }],
+            });
+
+            return;
+          }
+
           res.status(500).json({
             errors: [{
               status: 500,
@@ -388,20 +415,22 @@ function handle() {
           });
 
           return;
-        } else if (!activeRound) {
-          res.status(402).json({
-            errors: [{
-              status: 402,
-              title: 'Active round already exists',
-              detail: 'Active round already exists',
-            }],
-          });
-
-          return;
         }
 
-        dbLanternHack.endLanternRound((activeErr, updatedRound) => {
-          if (activeErr) {
+        dbLanternHack.endLanternRound(({ error: endError }) => {
+          if (endError) {
+            if (endError.type === errorCreator.ErrorTypes.DOESNOTEXIST) {
+              res.status(404).json({
+                errors: [{
+                  status: 404,
+                  title: 'Active round does not exist',
+                  detail: 'Active round does not exist',
+                }],
+              });
+
+              return;
+            }
+
             res.status(500).json({
               errors: [{
                 status: 500,
@@ -415,9 +444,7 @@ function handle() {
 
           // TODO Emit to clients
 
-          res.json({
-            data: { round: updatedRound },
-          });
+          res.json({ data: { success: true } });
         });
       });
     });
@@ -503,34 +530,25 @@ function handle() {
         return;
       }
 
-      const round = req.body.data.round;
-      round.roundId = req.params.id;
+      const { startTime, endTime } = req.body.data.round;
+      const roundId = req.params.id;
 
-      dbLanternHack.getLanternRound(round.roundId, (err, foundRound) => {
-        if (err) {
-          res.status(500).json({
-            errors: [{
-              status: 500,
-              title: 'Internal Server Error',
-              detail: 'Internal Server Error',
-            }],
-          });
+      dbLanternHack.getLanternRound({
+        roundId,
+        callback: ({ error }) => {
+          if (error) {
+            if (error.type === errorCreator.ErrorTypes.DOESNOTEXIST) {
+              res.status(404).json({
+                errors: [{
+                  status: 404,
+                  title: 'Failed to update lantern round',
+                  detail: 'Lantern round does not exist',
+                }],
+              });
 
-          return;
-        } else if (!foundRound) {
-          res.status(402).json({
-            errors: [{
-              status: 402,
-              title: 'Failed to update lantern round',
-              detail: 'Lantern round does not exist',
-            }],
-          });
+              return;
+            }
 
-          return;
-        }
-
-        dbLanternHack.updateLanternRound(round, (updateErr, updatedRound) => {
-          if (updateErr || !updatedRound) {
             res.status(500).json({
               errors: [{
                 status: 500,
@@ -542,12 +560,30 @@ function handle() {
             return;
           }
 
-          // TODO Push to clients, if next round
+          dbLanternHack.updateLanternRound({
+            roundId,
+            startTime,
+            endTime,
+            callback: ({ error: updateError, data }) => {
+              if (updateError) {
+                res.status(500).json({
+                  errors: [{
+                    status: 500,
+                    title: 'Internal Server Error',
+                    detail: 'Internal Server Error',
+                  }],
+                });
 
-          res.json({
-            data: { round: updatedRound },
+                return;
+              }
+
+              const { round } = data;
+
+              // TODO Push to clients, if next round
+              res.json({ data: { round } });
+            },
           });
-        });
+        },
       });
     });
   });

@@ -20,38 +20,36 @@ const dbChatHistory = require('./../db/connectors/chatHistory');
 const dbUser = require('./../db/connectors/user');
 const databasePopulation = require('./../config/defaults/config').databasePopulation;
 const appConfig = require('./../config/defaults/config').app;
-const logger = require('./../utils/logger');
 const objectValidator = require('./../utils/objectValidator');
 const errorCreator = require('../objects/error/errorCreator');
 const manager = require('../socketHelpers/manager');
 
 /**
  * Add a sent message to a room's getHistory in the database
- * @param {string} roomName - Name of the room
- * @param {Object} message - Message to be added
- * @param {Function} callback - callback
+ * @param {string} params.roomName Name of the room
+ * @param {Object} params.message Message to be added
+ * @param {Function} params.callback callback
  */
-function addMsgToHistory(roomName, message, callback) {
-  dbChatHistory.addMsgToHistory(roomName, message, (err, history) => {
-    if (err || history === null) {
-      logger.sendErrorMsg({
-        code: logger.ErrorCodes.db,
-        text: ['Failed to add message to getHistory'],
-        err,
-      });
-      callback(err || {});
-    } else {
-      message.anonymous = history.anonymous;
+function addMsgToHistory({ roomName, message, callback }) {
+  dbChatHistory.addMsgToHistory({
+    roomName,
+    message,
+    callback: ({ error, data }) => {
+      if (error) {
+        callback({ error });
+      }
 
-      callback(err, message);
-    }
+      message.anonymous = data.history.anonymous;
+
+      callback({ data: { message } });
+    },
   });
 }
 
 /**
  * Sends multiple message to the user's socket
- * @param {{text: string[]}[]} messages - Messages to send
- * @param {Object} socket - Socket.io socket
+ * @param {{text: string[]}[]} params.messages - Messages to send
+ * @param {Object} params.socket Socket.io socket
  */
 function sendSelfMsg({ messages, socket }) {
   if (!objectValidator.isValidData({ messages, socket }, { socket: true, messages: true })) {
@@ -63,11 +61,11 @@ function sendSelfMsg({ messages, socket }) {
 
 /**
  * Checks if the user is following a room
- * @param {Object} user - User to check
- * @param {string} roomName - Name of the room
+ * @param {Object} params.user User to check
+ * @param {string} params.roomName Name of the room
  * @returns {boolean} Is the socket following the room?
  */
-function isUserFollowingRoom(user, roomName) {
+function isUserFollowingRoom({ user, roomName }) {
   return user.rooms.indexOf(roomName) > -1;
 }
 
@@ -96,64 +94,71 @@ function sendMsg({ socket, message, io }) {
 
 /**
  * Store message in history and send to connected clients
- * @param {Object} params.user - User sending the message
- * @param {Function} params.callback - Callback
- * @param {Object} params.message - Message to send
- * @param {Object} params.io - Socket.io. Used by API, when no socket is available
- * @param {Object} params.socket - Socket.io socket
+ * @param {Object} params.user User sending the message
+ * @param {Function} params.callback Callback
+ * @param {Object} params.message Message to send
+ * @param {Object} params.io Socket.io. Used by API, when no socket is available
+ * @param {Object} params.socket Socket.io socket
  */
 function sendAndStoreChatMsg({ user, callback, message, io, socket }) {
-  dbUser.getUser(user.userName, (userErr, foundUser) => {
-    if (userErr || foundUser === null) {
-      callback({ error: new errorCreator.Database({}) });
+  dbUser.getUser({
+    userName: user.userName,
+    callback: (userData) => {
+      if (userData.error) {
+        callback({ error: userData.error });
 
-      return;
-    } else if (!isUserFollowingRoom(foundUser, message.roomName)) {
-      callback({ error: new errorCreator.NotAllowed({ used: `send message to ${message.roomName}` }) });
-
-      return;
-    }
-
-    message.time = new Date();
-
-    const data = {
-      messages: [message],
-      room: { roomName: message.roomName },
-    };
-
-    addMsgToHistory(message.roomName, message, (err) => {
-      if (err) {
-        callback({ error: new errorCreator.Database({}) });
+        return;
+      } else if (!isUserFollowingRoom({ user: userData.data.user, roomName: message.roomName })) {
+        callback({ error: new errorCreator.NotAllowed({ used: `send message to ${message.roomName}` }) });
 
         return;
       }
 
-      if (message.anonymous) {
-        message.userName = 'anonymous';
-        message.time.setHours(0);
-        message.time.setMinutes(0);
-        message.time.setSeconds(0);
-      }
+      message.time = new Date();
 
-      if (socket) {
-        socket.broadcast.to(message.roomName).emit('chatMsgs', data);
-      } else {
-        io.to(message.roomName).emit('chatMsgs', data);
-      }
+      addMsgToHistory({
+        message,
+        roomName: message.roomName,
+        callback: ({ error }) => {
+          if (error) {
+            callback({ error });
 
-      callback({ data });
-    });
+            return;
+          }
+
+          const data = {
+            messages: [message],
+            room: { roomName: message.roomName },
+          };
+
+          if (message.anonymous) {
+            message.userName = 'anonymous';
+            message.time.setHours(0);
+            message.time.setMinutes(0);
+            message.time.setSeconds(0);
+          }
+
+          if (socket) {
+            socket.broadcast.to(message.roomName).emit('chatMsgs', data);
+          } else {
+            io.to(message.roomName).emit('chatMsgs', data);
+          }
+
+          callback({ data });
+        },
+      });
+    },
   });
 }
 
 /**
  * Sends a message to a room and stores it in history
  * Emits message
- * @param {Object} message - Message to be sent
- * @param {Object} user - User sending the message
- * @param {Object} params.io - Socket.io. Used by API, when no socket is available
- * @param {Object} params.socket - Socket.io socket
- * @param {Function} callback - Client callback
+ * @param {Object} params.message Message to be sent
+ * @param {Object} params.user User sending the message
+ * @param {Object} params.io Socket.io. Used by API, when no socket is available
+ * @param {Object} params.socket Socket.io socket
+ * @param {Function} params.callback Client callback
  */
 function sendChatMsg({ message, user, callback, io, socket }) {
   if (!objectValidator.isValidData({ message, user, callback, io }, { user: { userName: true }, message: { text: true, roomName: true }, io: true })) {
@@ -172,25 +177,21 @@ function sendChatMsg({ message, user, callback, io, socket }) {
   }
 
   if (message.userName) {
-    dbUser.getUserByAlias(message.userName, (aliasErr, aliasUser) => {
-      if (aliasErr) {
-        callback({ error: new errorCreator.Database({}) });
+    dbUser.getUserByAlias({
+      alias: message.userName,
+      callback: (aliasData) => {
+        if (aliasData.error) {
+          callback({ error: aliasData.error });
 
-        return;
-      } else if (aliasUser === null || aliasUser.userName !== user.userName) {
-        callback({
-          error: {
-            called: sendChatMsg.name,
-            message: {
-              text: ['User name does not match user trying to send the message'],
-            },
-          },
-        });
+          return;
+        } else if (aliasData.data.user.userName !== user.userName) {
+          callback({ error: new errorCreator.NotAllowed({ name: 'alias does not match with user name' }) });
 
-        return;
-      }
+          return;
+        }
 
-      sendAndStoreChatMsg({ io, message, user, callback, socket });
+        sendAndStoreChatMsg({ io, message, user, callback, socket });
+      },
     });
   } else {
     message.userName = user.userName;
@@ -202,11 +203,11 @@ function sendChatMsg({ message, user, callback, io, socket }) {
 /**
  * Sends a message to a whisper room (*user name*-whisper), which is followed by a single user, and stores it in history
  * Emits message
- * @param {Object} message - Message to be sent
- * @param {Object} user - User who sent the message
- * @param {Object} socket - Socket.io socket
- * @param {Object} io - Socket.io. Used by API, when no socket is available
- * @param {Function} callback - Client callback
+ * @param {Object} params.message Message to be sent
+ * @param {Object} params.user User who sent the message
+ * @param {Object} params.io Socket.io. Used by API, when no socket is available
+ * @param {Object} [params.socket] Socket.io socket
+ * @param {Function} params.callback Client callback
  */
 function sendWhisperMsg({ io, user, message, socket, callback }) {
   if (!objectValidator.isValidData({ message, io }, { message: { text: true, roomName: true, userName: true }, io: true })) {
@@ -215,61 +216,65 @@ function sendWhisperMsg({ io, user, message, socket, callback }) {
     return;
   }
 
-  dbUser.getUserByAlias(message.userName, (aliasErr, aliasUser) => {
-    if (aliasErr) {
-      callback({ error: new errorCreator.Database({}) });
+  dbUser.getUserByAlias({
+    alias: message.userName,
+    callback: ({ error, data }) => {
+      if (error) {
+        callback({ error });
 
-      return;
-    } else if (aliasUser === null || aliasUser.userName !== user.userName) {
-      callback({
-        error: {
-          called: sendChatMsg.name,
-          message: {
-            text: ['User name does not match user trying to send the message'],
-          },
-        },
-      });
-
-      return;
-    }
-
-    message.roomName += appConfig.whisperAppend;
-    message.extraClass = 'whisperMsg';
-    message.time = new Date();
-
-    const data = {
-      messages: [message],
-      room: { roomName: message.roomName },
-      whisper: true,
-    };
-
-    // TODO Message should be removed if db fails to store it at senders
-    addMsgToHistory(message.roomName, message, (err) => {
-      if (err) {
-        callback({ error: new errorCreator.Database({}) });
+        return;
+      } else if (data.user.userName !== user.userName) {
+        callback({ error: new errorCreator.NotAllowed({ name: 'user names do not match' }) });
 
         return;
       }
 
-      const senderRoomName = message.userName + appConfig.whisperAppend;
+      message.roomName += appConfig.whisperAppend;
+      message.extraClass = 'whisperMsg';
+      message.time = new Date();
 
-      addMsgToHistory(senderRoomName, message, (senderErr) => {
-        if (senderErr) {
-          callback({ error: new errorCreator.Database({}) });;
+      // TODO Message should be removed if db fails to store it at senders
+      addMsgToHistory({
+        message,
+        roomName: message.roomName,
+        callback: ({ error: historyError }) => {
+          if (historyError) {
+            callback({ error: historyError });
 
-          return;
-        }
+            return;
+          }
 
-        if (socket) {
-          socket.broadcast.to(message.roomName).emit('chatMsgs', data);
-        } else {
-          io.to(message.roomName).emit('chatMsgs', data);
-        }
+          const senderRoomName = message.userName + appConfig.whisperAppend;
+
+          addMsgToHistory({
+            message,
+            roomName: senderRoomName,
+            callback: ({ error: sendError }) => {
+              if (sendError) {
+                callback({ error: sendError });
+
+                return;
+              }
+
+              const sendData = {
+                messages: [message],
+                room: { roomName: message.roomName },
+                whisper: true,
+              };
+
+              if (socket) {
+                socket.broadcast.to(message.roomName).emit('chatMsgs', sendData);
+              } else {
+                io.to(message.roomName).emit('chatMsgs', sendData);
+              }
 
 
-        callback({ data });
+              callback({ data: sendData });
+            },
+          });
+        },
       });
-    });
+    },
   });
 }
 
@@ -277,60 +282,56 @@ function sendWhisperMsg({ io, user, message, socket, callback }) {
  * Sends a message with broadcastMsg class to all connected sockets
  * It is stored in a separate broadcast history
  * Emits message
- * @param {Object} message Message to be sent
- * @param {Object} socket Socket.io socket
- * @param {Object} io Socket.io. Used by API, when no socket is available
- * @param {string} token jwt token
- * @param {Function} callback Client callback
+ * @param {Object} params.message Message to be sent
+ * @param {Object} [params.socket] Socket.io socket
+ * @param {Object} params.io Socket.io. Used by API, when no socket is available
+ * @param {string} params.token jwt token
+ * @param {Function} params.callback Client callback
  */
 function sendBroadcastMsg({ message, socket, callback, io, token }) {
-  const allowCallback = (allowErr, allowed) => {
-    if (allowErr || !allowed) {
-      callback({ error: new errorCreator.NotAllowed({ used: 'broadcast' }) });
+  manager.userIsAllowed({
+    token,
+    commandName: databasePopulation.commands.broadcast.commandName,
+    callback: ({ error }) => {
+      if (error) {
+        callback({ error });
 
-      return;
-    }
-    if (!objectValidator.isValidData({ message, socket, callback }, { message: { text: true }, io: true })) {
-      callback({ error: new errorCreator.InvalidData({ expected: '{ message: { text }, io }' }) });
-
-      return;
-    }
-
-    const data = {
-      message,
-    };
-    data.message.extraClass = 'broadcastMsg';
-    data.message.roomName = databasePopulation.rooms.bcast.roomName;
-    data.message.time = new Date();
-
-    if (!data.message.userName) {
-      data.message.userName = 'SYSTEM';
-    }
-
-    addMsgToHistory(data.message.roomName, data.message, (err) => {
-      if (err) {
-        callback({ error: new errorCreator.Database({}) });
+        return;
+      } else if (!objectValidator.isValidData({ message, socket, callback }, { message: { text: true }, io: true })) {
+        callback({ error: new errorCreator.InvalidData({ expected: '{ message: { text }, io }' }) });
 
         return;
       }
 
-      if (socket) {
-        socket.broadcast.to(data.message.roomName).emit('bcastMsg', data);
-      } else {
-        io.to(data.message.roomName).emit('bcastMsg', data);
+      const data = { message };
+      data.message.extraClass = 'broadcastMsg';
+      data.message.roomName = databasePopulation.rooms.bcast.roomName;
+      data.message.time = new Date();
+
+      if (!data.message.userName) {
+        data.message.userName = 'SYSTEM';
       }
 
-      callback({ data });
-    });
-  };
+      addMsgToHistory({
+        roomName: data.message.roomName,
+        message: data.message,
+        callback: (historyData) => {
+          if (historyData.error) {
+            callback({ error: historyData.error });
 
-  const socketId = socket ? socket.id : '';
+            return;
+          }
 
-  manager.userIsAllowed({
-    token,
-    socketId,
-    commandName: databasePopulation.commands.broadcast.commandName,
-    callback: allowCallback,
+          if (socket) {
+            socket.broadcast.to(data.message.roomName).emit('bcastMsg', data);
+          } else {
+            io.to(data.message.roomName).emit('bcastMsg', data);
+          }
+
+          callback({ data });
+        },
+      });
+    },
   });
 }
 

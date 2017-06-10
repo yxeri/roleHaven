@@ -16,25 +16,22 @@
 
 'use strict';
 
-const logger = require('./logger');
-
 /**
  * Checks if the sent object has the expected structure. It will returns false if it doesn't
  * @param {Object} data - The object that was sent
  * @param {Object} expected - The expected structure of the object
+ * @param {Object} options Options
+ * @param {boolean} options.verbose Should error messages be printed?
  * @returns {boolean} Does the data have the correct structure?
  */
-function checkKeys(data, expected) {
+function checkKeys(data, expected, options) {
   const expectedKeys = Object.keys(expected);
 
   for (let i = 0; i < expectedKeys.length; i += 1) {
     const expectedKey = expectedKeys[i];
 
     if ((!data[expectedKey] || data[expectedKey] === null) && typeof data[expectedKey] !== 'boolean') {
-      logger.sendErrorMsg({
-        code: logger.ErrorCodes.general,
-        text: [`Key missing: ${expectedKey}`],
-      });
+      if (options.verbose) { console.log('Validation error', `Key missing: ${expectedKey}`); }
 
       return false;
     }
@@ -43,7 +40,7 @@ function checkKeys(data, expected) {
     const expectedDataObj = expected[expectedKey];
 
     if (!(expectedDataObj instanceof Array) && typeof expectedDataObj === 'object') {
-      return checkKeys(dataObj, expected[expectedKey]);
+      return checkKeys(dataObj, expected[expectedKey], options);
     }
   }
 
@@ -53,28 +50,24 @@ function checkKeys(data, expected) {
 /**
  * Calls checkKeys to check if the data has the expected structure
  * @param {Object} data - Sent object
- * @param {Object} expected - Expected structure of the object
+ * @param {Object} expected Expected structure of the object
  * @param {Object} options Options
- * @param {boolean} verbose Should errors be printed?
+ * @param {boolean} options.verbose Should error messages be printed?
  * @returns {boolean} Does the data have the expected structure?
  */
 function isValidData(data, expected, options = {}) {
+  options.verbose = typeof options.verbose === 'undefined' ? true : options.verbose;
+
   if ((!data || data === null) || (!expected || expected === null)) {
-    logger.sendErrorMsg({
-      code: logger.ErrorCodes.general,
-      text: ['Data and expected structure have to be set'],
-    });
+    if (options.verbose) { console.log('Validation error', 'Data and expected structure have to be set'); }
 
     return false;
   }
 
-  const isValid = checkKeys(data, expected);
+  const isValid = checkKeys(data, expected, options);
 
   if (!isValid && options.verbose) {
-    logger.sendErrorMsg({
-      code: logger.ErrorCodes.general,
-      text: [`Expected: ${JSON.stringify(expected)}`],
-    });
+    console.log('Validation error', `Expected: ${JSON.stringify(expected)}`);
   }
 
   return isValid;

@@ -18,7 +18,7 @@
 
 const mongoose = require('mongoose');
 const databaseConnector = require('../databaseConnector');
-const logger = require('../../utils/logger');
+const errorCreator = require('../../objects/error/errorCreator');
 
 const transactionSchema = new mongoose.Schema({
   amount: Number,
@@ -37,63 +37,67 @@ const Transaction = mongoose.model('transaction', transactionSchema);
 
 /**
  * Get transactions
- * @param {string} to Receiver
- * @param {string} from Sender
- * @param {Function} callback Callback
+ * @param {string} params.to Receiver
+ * @param {string} params.from Sender
+ * @param {Function} params.callback Callback
  */
-function getTransactions(to, from, callback) {
+function getTransactions({ to, from, callback }) {
   const query = { $and: [{ to }, { from }] };
 
   Transaction.find(query).lean().exec((err, transaction) => {
     if (err) {
-      logger.sendErrorMsg({
-        code: logger.ErrorCodes.db,
-        text: ['Failed to get wallet'],
-        err,
-      });
+      callback({ error: new errorCreator.Database({ errorObject: err, name: 'getTransactions' }) });
+
+      return;
+    } else if (!transaction) {
+      callback({ error: new errorCreator.DoesNotExist({ name: `transaction ${to} ${from}` }) });
+
+      return;
     }
 
-    callback(err, transaction);
+    callback({ data: { transaction } });
   });
 }
 
 /**
  * Get all transactions made by a user/team
- * @param {string} owner Name of the user/team
- * @param {Function} callback Callback
+ * @param {string} params.owner Name of the user/team
+ * @param {Function} params.callback Callback
  */
-function getAllTransactions(owner, callback) {
+function getAllTransactions({ owner, callback }) {
   const query = { $or: [{ to: owner }, { from: owner }] };
 
-  Transaction.find(query).lean().exec((err, transactions) => {
+  Transaction.find(query).lean().exec((err, transactions = []) => {
     if (err) {
-      logger.sendErrorMsg({
-        code: logger.ErrorCodes.db,
-        text: ['Failed to get wallet'],
-        err,
-      });
+      callback({ error: new errorCreator.Database({ errorObject: err, name: 'getAllTransactions' }) });
+
+      return;
     }
 
-    callback(err, transactions);
+    callback({ data: { transactions } });
   });
 }
 
 /**
  * Create and save transaction
- * @param {Object} transaction - New transaction
- * @param {Function} callback - Callback
+ * @param {Object} params.transaction New transaction
+ * @param {Function} params.callback Callback
  */
-function createTransaction(transaction, callback) {
+function createTransaction({ transaction, callback }) {
   const newTransaction = new Transaction(transaction);
 
-  databaseConnector.saveObject(newTransaction, 'transaction', (err, trans) => {
-    if (err) {
-      callback(err, null);
+  databaseConnector.saveObject({
+    object: newTransaction,
+    objectType: 'transaction',
+    callback: ({ error }) => {
+      if (error) {
+        callback({ error });
 
-      return;
-    }
+        return;
+      }
 
-    callback(err, trans);
+      callback({ data: { success: true } });
+    },
   });
 }
 

@@ -22,6 +22,7 @@ const appConfig = require('../../config/defaults/config').app;
 const jwt = require('jsonwebtoken');
 const manager = require('../../socketHelpers/manager');
 const objectValidator = require('../../utils/objectValidator');
+const errorCreator = require('../../objects/error/errorCreator');
 
 const router = new express.Router();
 
@@ -81,20 +82,23 @@ function handle() {
 
       const user = auth ? decoded.data : { accessLevel: 0 };
 
-      dbRoom.getAllRooms(user, (roomErr, rooms) => {
-        if (roomErr) {
-          res.status(500).json({
-            errors: [{
-              status: 500,
-              title: 'Internal Server Error',
-              detail: 'Internal Server Error',
-            }],
-          });
+      dbRoom.getAllRooms({
+        user,
+        callback: ({ error, data }) => {
+          if (error) {
+            res.status(500).json({
+              errors: [{
+                status: 500,
+                title: 'Internal Server Error',
+                detail: 'Internal Server Error',
+              }],
+            });
 
-          return;
-        }
+            return;
+          }
 
-        res.json({ rooms: rooms.map(room => room.roomName) });
+          res.json({ rooms: data.rooms.map(room => room.roomName) });
+        },
       });
     });
   });
@@ -164,20 +168,36 @@ function handle() {
 
       const user = auth ? decoded.data : { accessLevel: 0 };
 
-      dbRoom.getRoom(req.params.id, user, (roomErr, room) => {
-        if (roomErr) {
-          res.status(500).json({
-            errors: [{
-              status: 500,
-              title: 'Internal Server Error',
-              detail: 'Internal Server Error',
-            }],
-          });
+      dbRoom.getRoom({
+        user,
+        roomName: req.params.id,
+        callback: ({ error, data }) => {
+          if (error) {
+            if (error.type === errorCreator.ErrorTypes.DOESNOTEXIST) {
+              res.status(404).json({
+                errors: [{
+                  status: 404,
+                  title: 'Room does not exist',
+                  detail: 'Room does not exist',
+                }],
+              });
 
-          return;
-        }
+              return;
+            }
 
-        res.json({ data: { rooms: [room] } });
+            res.status(500).json({
+              errors: [{
+                status: 500,
+                title: 'Internal Server Error',
+                detail: 'Internal Server Error',
+              }],
+            });
+
+            return;
+          }
+
+          res.json({ data: { rooms: [data.room] } });
+        },
       });
     });
   });
@@ -269,20 +289,36 @@ function handle() {
       newRoom.roomName = newRoom.roomName.toLowerCase();
       newRoom.owner = decoded.data.userName.toLowerCase();
 
-      manager.createRoom(newRoom, decoded.data, (errRoom, room) => {
-        if (errRoom || room === null) {
-          res.status(500).json({
-            errors: [{
-              status: 500,
-              title: 'Internal Server Error',
-              detail: 'Internal Server Error',
-            }],
-          });
+      manager.createRoom({
+        room: newRoom,
+        user: decoded.data,
+        callback: ({ error, data }) => {
+          if (error) {
+            if (error.type === errorCreator.ErrorTypes.ALREADYEXISTS) {
+              res.status(403).json({
+                errors: [{
+                  status: 403,
+                  title: 'Room already exists',
+                  detail: 'Room already exists',
+                }],
+              });
 
-          return;
-        }
+              return;
+            }
 
-        res.json({ data: { room } });
+            res.status(500).json({
+              errors: [{
+                status: 500,
+                title: 'Internal Server Error',
+                detail: 'Internal Server Error',
+              }],
+            });
+
+            return;
+          }
+
+          res.json({ data });
+        },
       });
     });
   });

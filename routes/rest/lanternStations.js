@@ -22,6 +22,7 @@ const jwt = require('jsonwebtoken');
 const objectValidator = require('../../utils/objectValidator');
 const dbConfig = require('../../config/defaults/config').databasePopulation;
 const dbLanternHack = require('../../db/connectors/lanternhack');
+const errorCreator = require('../../objects/error/errorCreator');
 
 const router = new express.Router();
 
@@ -87,20 +88,24 @@ function handle() {
         return;
       }
 
-      dbLanternHack.getAllStations((err, stations = []) => {
-        if (err) {
-          res.status(500).json({
-            errors: [{
-              status: 500,
-              title: 'Internal Server Error',
-              detail: 'Internal Server Error',
-            }],
-          });
+      dbLanternHack.getAllStations({
+        callback: ({ error, data }) => {
+          if (error) {
+            res.status(500).json({
+              errors: [{
+                status: 500,
+                title: 'Internal Server Error',
+                detail: 'Internal Server Error',
+              }],
+            });
 
-          return;
-        }
+            return;
+          }
 
-        res.json({ data: { stations } });
+          const { stations } = data;
+
+          res.json({ data: { stations } });
+        },
       });
     });
   });
@@ -185,23 +190,38 @@ function handle() {
 
       const station = req.body.data.station;
 
-      dbLanternHack.createStation(station, (err, newStation) => {
-        if (err || !newStation) {
-          res.status(500).json({
-            errors: [{
-              status: 500,
-              title: 'Internal Server Error',
-              detail: 'Internal Server Error',
-            }],
+      dbLanternHack.createStation({
+        station,
+        callback: ({ error, data }) => {
+          if (error) {
+            if (error.type === errorCreator.ErrorTypes.ALREADYEXISTS) {
+              res.status(404).json({
+                errors: [{
+                  status: 404,
+                  title: 'Station already exists',
+                  detail: `Station with id ${station.stationId} already exists`,
+                }],
+              });
+
+              return;
+            }
+
+            res.status(500).json({
+              errors: [{
+                status: 500,
+                title: 'Internal Server Error',
+                detail: 'Internal Server Error',
+              }],
+            });
+
+            return;
+          }
+
+          // TODO Push to clients, if next round
+          res.json({
+            data: { station: data.station },
           });
-
-          return;
-        }
-
-        // TODO Push to clients, if next round
-        res.json({
-          data: { station: newStation },
-        });
+        },
       });
     });
   });
@@ -219,7 +239,7 @@ function handle() {
    * @apiParam {Object} id Lantern station id
    *
    * @apiParam {Object} data
-   * @apiParam {string} data.station New round
+   * @apiParam {string} data.station Station
    * @apiParam {string} [data.station.stationName] Location name of the station
    * @apiParam {boolean} [data.station.isActive] Is the station active?
    * @apiParam {boolean} [data.station.owner] Owner name of the station
@@ -285,34 +305,25 @@ function handle() {
         return;
       }
 
-      const station = req.body.data.round;
+      const station = req.body.data.station;
       station.stationId = req.params.id;
 
-      dbLanternHack.getStation(station.stationId, (err, foundStation) => {
-        if (err) {
-          res.status(500).json({
-            errors: [{
-              status: 500,
-              title: 'Internal Server Error',
-              detail: 'Internal Server Error',
-            }],
-          });
+      dbLanternHack.getStation({
+        stationId: station.stationId,
+        callback: ({ error }) => {
+          if (error) {
+            if (error.type === errorCreator.ErrorTypes.DOESNOTEXIST) {
+              res.status(404).json({
+                errors: [{
+                  status: 404,
+                  title: 'Failed to update lantern station',
+                  detail: 'Lantern station does not exist',
+                }],
+              });
 
-          return;
-        } else if (!foundStation) {
-          res.status(402).json({
-            errors: [{
-              status: 402,
-              title: 'Failed to update lantern station',
-              detail: 'Lantern station does not exist',
-            }],
-          });
+              return;
+            }
 
-          return;
-        }
-
-        dbLanternHack.updateLanternRound(station, (updateErr, updatedStation) => {
-          if (updateErr || !updatedStation) {
             res.status(500).json({
               errors: [{
                 status: 500,
@@ -324,12 +335,32 @@ function handle() {
             return;
           }
 
-          // TODO Push to clients, if next round
+          const { stationId, isActive, stationName, owner } = station;
 
-          res.json({
-            data: { round: updatedStation },
+          dbLanternHack.updateLanternStation({
+            stationId,
+            isActive,
+            stationName,
+            owner,
+            callback: ({ error: updateError, data: updateData }) => {
+              if (updateError) {
+                res.status(500).json({
+                  errors: [{
+                    status: 500,
+                    title: 'Internal Server Error',
+                    detail: 'Internal Server Error',
+                  }],
+                });
+
+                return;
+              }
+
+              // TODO Push to clients, if next round
+
+              res.json({ data: { station: updateData.station } });
+            },
           });
-        });
+        },
       });
     });
   });

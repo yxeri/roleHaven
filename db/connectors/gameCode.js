@@ -17,7 +17,7 @@
 'use strict';
 
 const mongoose = require('mongoose');
-const logger = require('../../utils/logger');
+const errorCreator = require('../../objects/error/errorCreator');
 
 const gameCodeSchema = new mongoose.Schema({
   owner: String,
@@ -34,109 +34,110 @@ const GameCode = mongoose.model('GameCode', gameCodeSchema);
  * @param {string} params.code Game code
  * @param {string} params.codeType Type of game code
  * @param {boolean} params.renewable Should a new game code be created after usage?
- * @param {Function} callback - Callback
+ * @param {Function} params.callback Callback
  */
-function updateGameCode({ owner, code, codeType, renewable }, callback) {
+function updateGameCode({ owner, code, codeType, renewable, callback }) {
   const query = { owner, codeType, code };
   const update = { $set: { owner, code, codeType, renewable } };
   const options = { new: true, upsert: true };
 
   GameCode.findOneAndUpdate(query, update, options).lean().exec((err, gameCode) => {
     if (err) {
-      logger.sendErrorMsg({
-        code: logger.ErrorCodes.db,
-        text: ['Failed to update docFile'],
-        err,
-      });
+      callback({ error: new errorCreator.Database({ errorObject: err, name: 'updateGameCode' }) });
+
+      return;
     }
 
-    callback(err, gameCode);
+    callback({ data: { gameCode } });
   });
 }
 
 /**
  * Get game code
- * @param {string} owner Owner of the game code
- * @param {Function} callback Callback
+ * @param {string} params.owner Owner of the game code
+ * @param {string} params.codeType Type of game code
+ * @param {Function} params.callback Callback
  */
-function getGameCodeByUserName({ owner, codeType }, callback) {
+function getGameCodeByUserName({ owner, codeType, callback }) {
   const query = { owner, codeType };
 
   GameCode.findOne(query).lean().exec((err, gameCode) => {
     if (err) {
-      logger.sendErrorMsg({
-        code: logger.ErrorCodes.db,
-        text: [`Failed to get game code for ${owner} ${codeType}`],
-        err,
-      });
+      callback({ error: new errorCreator.Database({ errorObject: err, name: 'getGameCodeByUserName' }) });
+
+      return;
+    } else if (!gameCode) {
+      callback({ error: new errorCreator.DoesNotExist({ name: `game code for ${owner} typr ${codeType}` }) });
+
+      return;
     }
 
-    callback(err, gameCode);
+    callback({ data: { gameCode } });
   });
 }
 
 /**
  * Get game codes
- * @param {string} owner Owner of the game code
- * @param {Function} callback Callback
+ * @param {string} params.owner Owner of the game code
+ * @param {Function} params.callback Callback
  */
-function getGameCodesByUserName({ owner, codeType }, callback) {
-  const query = { owner, codeType };
+function getGameCodesByUserName({ owner, callback }) {
+  const query = { owner };
 
   GameCode.find(query).lean().exec((err, gameCodes) => {
     if (err) {
-      logger.sendErrorMsg({
-        code: logger.ErrorCodes.db,
-        text: [`Failed to get game codes for ${owner} ${codeType}`],
-        err,
-      });
+      callback({ error: new errorCreator.Database({ errorObject: err, name: 'getGameCodesByUserName' }) });
+
+      return;
+    } else if (!gameCodes) {
+      callback({ error: new errorCreator.DoesNotExist({ name: `game codes for ${owner}` }) });
+
+      return;
     }
 
-    callback(err, gameCodes);
+    callback({ data: { gameCodes } });
   });
 }
 
 /**
  * Get game code by code
- * @param {string} code Game code
- * @param {Function} callback Callback
+ * @param {string} params.code Game code
+ * @param {Function} params.callback Callback
  */
-function getGameCodeByCode(code, callback) {
+function getGameCodeByCode({ code, callback }) {
   const query = { code };
 
   GameCode.findOne(query).lean().exec((err, gameCode) => {
     if (err) {
-      logger.sendErrorMsg({
-        code: logger.ErrorCodes.db,
-        text: ['Failed to get game code'],
-        err,
-      });
+      callback({ error: new errorCreator.Database({ errorObject: err, name: 'getGameCodeByCode' }) });
+
+      return;
+    } else if (!gameCode) {
+      callback({ error: new errorCreator.DoesNotExist({ name: `game code ${code}` }) });
+
+      return;
     }
 
-    callback(err, gameCode);
+    callback({ data: { gameCode } });
   });
 }
 
 /**
  * Remove game code
- * @param {string} code Game code
- * @param {Function} callback Callback
+ * @param {string} params.code Game code
+ * @param {Function} params.callback Callback
  */
-function removeGameCode(code, callback) {
+function removeGameCode({ code, callback }) {
   const query = { code };
 
   GameCode.findOneAndRemove(query).lean().exec((err) => {
     if (err) {
-      logger.sendErrorMsg({
-        code: logger.ErrorCodes.db,
-        text: ['Failed to remove game code'],
-        err,
-      });
+      callback({ error: new errorCreator.Database({ errorObject: err, name: 'removeGameCode' }) });
 
       return;
     }
 
-    callback(err);
+    callback({ data: { success: true } });
   });
 }
 

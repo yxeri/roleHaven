@@ -21,6 +21,7 @@ const manager = require('../../socketHelpers/manager');
 const appConfig = require('../../config/defaults/config').app;
 const dbUser = require('../../db/connectors/user');
 const jwt = require('jsonwebtoken');
+const errorCreator = require('../../objects/error/errorCreator');
 
 const router = new express.Router();
 
@@ -92,37 +93,52 @@ function handle() {
         return;
       }
 
-      dbUser.getUser(decoded.data.userName, (userErr, user) => {
-        if (userErr) {
-          res.status(500).json({
-            errors: [{
-              status: 500,
-              title: 'Internal Server Error',
-              detail: 'Internal Server Error',
-            }],
-          });
-
-          return;
-        }
-
-        manager.getHistory({
-          rooms: user.rooms,
-          callback: (historyErr, messages) => {
-            if (historyErr) {
-              res.status(500).json({
+      dbUser.getUser({
+        userName: decoded.data.userName,
+        callback: ({ error, data }) => {
+          if (error) {
+            if (error.type === errorCreator.ErrorTypes.DoesNotExist) {
+              res.status(404).json({
                 errors: [{
-                  status: 500,
-                  title: 'Internal Server Error',
-                  detail: 'Internal Server Error',
+                  status: 404,
+                  title: 'User does not exist',
+                  detail: 'User does not exist',
                 }],
               });
 
               return;
             }
 
-            res.json({ data: { timeZoneOffset: new Date().getTimezoneOffset(), messages } });
-          },
-        });
+            res.status(500).json({
+              errors: [{
+                status: 500,
+                title: 'Internal Server Error',
+                detail: 'Internal Server Error',
+              }],
+            });
+
+            return;
+          }
+
+          manager.getHistory({
+            rooms: data.user.rooms,
+            callback: ({ error: historyError, data: messageData }) => {
+              if (historyError) {
+                res.status(500).json({
+                  errors: [{
+                    status: 500,
+                    title: 'Internal Server Error',
+                    detail: 'Internal Server Error',
+                  }],
+                });
+
+                return;
+              }
+
+              res.json({ data: messageData });
+            },
+          });
+        },
       });
     });
   });
@@ -162,7 +178,7 @@ function handle() {
     // noinspection JSUnresolvedVariable
     const auth = req.headers.authorization || '';
 
-    jwt.verify(a, appConfig.jsonKey, (jwtErr, decoded) => {
+    jwt.verify(auth, appConfig.jsonKey, (jwtErr, decoded) => {
       if (jwtErr) {
         res.status(500).json({
           errors: [{
@@ -187,50 +203,63 @@ function handle() {
 
       const roomName = req.params.id;
 
-      dbUser.getUser(decoded.data.userName, (userErr, user) => {
-        if (userErr) {
-          res.status(500).json({
-            errors: [{
-              status: 500,
-              title: 'Internal Server Error',
-              detail: 'Internal Server Error',
-            }],
-          });
-
-          return;
-        } else if (user.rooms.indexOf(roomName) === -1) {
-          res.status(400).json({
-            errors: [{
-              status: 400,
-              title: 'User is not following room',
-              detail: 'The user has to follow the room to be able to retrieve history from it',
-            }],
-          });
-
-          return;
-        }
-
-        manager.getHistory({
-          rooms: [roomName],
-          lines: appConfig.historyLines,
-          missedMsgs: false,
-          lastOnline: new Date(),
-          callback: (histErr, messages = []) => {
-            if (histErr) {
-              res.status(500).json({
+      dbUser.getUser({
+        userName: decoded.data.userName,
+        callback: ({ error, data }) => {
+          if (error) {
+            if (error.type === errorCreator.ErrorTypes.DoesNotExist) {
+              res.status(404).json({
                 errors: [{
-                  status: 500,
-                  title: 'Internal Server Error',
-                  detail: 'Internal Server Error',
+                  status: 404,
+                  title: 'User does not exist',
+                  detail: 'User does not exist',
                 }],
               });
 
               return;
             }
 
-            res.json({ data: { timeZoneOffset: new Date().getTimezoneOffset(), messages } });
-          },
-        });
+            res.status(500).json({
+              errors: [{
+                status: 500,
+                title: 'Internal Server Error',
+                detail: 'Internal Server Error',
+              }],
+            });
+
+            return;
+          } else if (data.user.rooms.indexOf(roomName) === -1) {
+            res.status(400).json({
+              errors: [{
+                status: 400,
+                title: 'User is not following room',
+                detail: 'The user has to follow the room to be able to retrieve history from it',
+              }],
+            });
+
+            return;
+          }
+
+          manager.getHistory({
+            rooms: [roomName],
+            lines: appConfig.historyLines,
+            callback: ({ error: historyError, data: messageData }) => {
+              if (historyError) {
+                res.status(500).json({
+                  errors: [{
+                    status: 500,
+                    title: 'Internal Server Error',
+                    detail: 'Internal Server Error',
+                  }],
+                });
+
+                return;
+              }
+
+              res.json({ data: messageData });
+            },
+          });
+        },
       });
     });
   });

@@ -17,7 +17,7 @@
 'use strict';
 
 const mongoose = require('mongoose');
-const logger = require('../../utils/logger');
+const errorCreator = require('../../objects/error/errorCreator');
 const databaseConnector = require('../databaseConnector');
 
 const docFileSchema = new mongoose.Schema({
@@ -35,42 +35,44 @@ const DocFile = mongoose.model('DocFile', docFileSchema);
 
 /**
  * Create and save docFile
- * @param {Object} docFile - New docFile
- * @param {Function} callback - Callback
+ * @param {Object} params.docFile New docFile
+ * @param {Function} params.callback Callback
  */
-function createDocFile(docFile, callback) {
+function createDocFile({ docFile, callback }) {
+  const newDocFile = new DocFile(docFile);
   const query = { docFileId: docFile.docFileId };
 
   DocFile.findOne(query).lean().exec((err, foundDocFile) => {
     if (err) {
-      logger.sendErrorMsg({
-        code: logger.ErrorCodes.db,
-        text: ['Failed to check if user exists'],
-        err,
-      });
-    } else if (foundDocFile === null) {
-      const newDocFile = new DocFile(docFile);
+      callback({ error: new errorCreator.Database({ errorObject: err, name: 'createDocFile' }) });
 
-      databaseConnector.saveObject(newDocFile, 'docFile', callback);
-    } else {
-      callback(err, null);
+      return;
+    } else if (foundDocFile) {
+      callback({ error: new errorCreator.AlreadyExists({ name: `docfile ${docFile.docFileId}` }) });
+
+      return;
     }
+
+    databaseConnector.saveObject({
+      callback,
+      object: newDocFile,
+      objectType: 'docFile',
+    });
   });
 }
 
 /**
  * Set text on docFile
- * @param {string} docFileId - ID of docFile
- * @param {Object} params - Properties to change in the docFile
- * @param {string[]} params.text - Array with text
- * @param {string} params.title - Title
- * @param {number} params.visibility - Access level required to access the document
- * @param {boolean} params.isPublic - Is the document visible to the public?
- * @param {Function} callback - Callback
+ * @param {string} params.docFileId ID of docFile
+ * @param {string[]} [params.text] Array with text
+ * @param {string} [params.title] Title
+ * @param {number} [params.visibility] Access level required to access the document
+ * @param {boolean} [params.isPublic] Is the document visible to the public?
+ * @param {Function} params.callback Callback
  */
-function updateDocFile(docFileId, { text, title, visibility, isPublic }, callback) {
+function updateDocFile({ docFileId, text, title, visibility, isPublic, callback }) {
   const query = { docFileId };
-  const update = { };
+  const update = {};
   const options = { new: true };
 
   if (text) { update.text = text; }
@@ -80,48 +82,44 @@ function updateDocFile(docFileId, { text, title, visibility, isPublic }, callbac
 
   DocFile.findOneAndUpdate(query, update, options).lean().exec((err, docFile) => {
     if (err) {
-      logger.sendErrorMsg({
-        code: logger.ErrorCodes.db,
-        text: ['Failed to update docFile'],
-        err,
-      });
+      callback({ error: new errorCreator.Database({ errorObject: err, name: 'updateDocFile' }) });
+
+      return;
     }
 
-    callback(err, docFile);
+    callback({ data: { docFile } });
   });
 }
 
 /**
  * Add a user that is allowed access to a document
- * @param {string} docFileId ID of the document to update
- * @param {string} userName User name of the user with access to the document
- * @param {Function} callback Callback
+ * @param {string} params.docFileId ID of the document to update
+ * @param {string} params.userName User name of the user with access to the document
+ * @param {Function} params.callback Callback
  */
-function addAccessUser(docFileId, userName, callback) {
+function addAccessUser({ docFileId, userName, callback }) {
   const query = { docFileId };
   const update = { $push: { accessUsers: userName } };
   const options = { new: true };
 
   DocFile.findOneAndUpdate(query, update, options).lean().exec((err, docFile) => {
     if (err) {
-      logger.sendErrorMsg({
-        code: logger.ErrorCodes.db,
-        text: ['Failed to update docFile'],
-        err,
-      });
+      callback({ error: new errorCreator.Database({ errorObject: err, name: 'addAccessUser' }) });
+
+      return;
     }
 
-    callback(err, docFile);
+    callback({ data: { docFile } });
   });
 }
 
 /**
  * Get docFile by docFile ID and user access level
- * @param {string} docFileId - ID of docFile
- * @param {number} accessLevel - User access level
- * @param {Function} callback - Callback
+ * @param {string} params.docFileId ID of docFile
+ * @param {number} params.accessLevel User access level
+ * @param {Function} params.callback Callback
  */
-function getDocFile(docFileId, accessLevel, callback) {
+function getDocFile({ docFileId, accessLevel, callback }) {
   const query = {
     $and: [
       { visibility: { $lte: accessLevel } },
@@ -131,63 +129,46 @@ function getDocFile(docFileId, accessLevel, callback) {
 
   DocFile.findOne(query).lean().exec((err, docFile) => {
     if (err) {
-      logger.sendErrorMsg({
-        code: logger.ErrorCodes.db,
-        text: [`Failed to get archive with id ${docFileId}`],
-        err,
-      });
+      callback({ error: new errorCreator.Database({ errorObject: err, name: 'getDocFile' }) });
+
+      return;
+    } else if (!docFile) {
+      callback({ error: new errorCreator.DoesNotExist({ name: `docfile ${docFileId}` }) });
+
+      return;
     }
 
-    callback(err, docFile);
+    callback({ data: { docFile } });
   });
 }
 
 /**
- * Get all docFiles based on user access level
- * @param {number} accessLevel - User access level
- * @param {Function} callback - Callback
+ * Get list of docFiles, based on user access level
+ * @param {number} params.accessLevel Access level
+ * @param {Function} params.callback Callback
  */
-function getDocFiles(accessLevel, callback) {
-  const query = { accessLevel: { $lte: accessLevel } };
-
-  DocFile.find(query).lean().exec((err, docFile) => {
-    if (err) {
-      logger.sendErrorMsg({
-        code: logger.ErrorCodes.db,
-        text: ['Failed to get docFiles'],
-        err,
-      });
-    }
-
-    callback(err, docFile);
-  });
-}
-
-/**
- * Get list of docFiles, based on user access level and if docFile is public
- * @param {number} user User
- * @param {Function} callback - Callback
- */
-function getDocFilesList(user, callback) {
-  const query = { visibility: { $lte: user.accessLevel } };
+function getDocFilesList({ accessLevel, userName, callback }) {
+  const query = {
+    $or: [
+      { visibility: { $lte: accessLevel } },
+      { owner: userName },
+    ],
+  };
   const filter = { _id: 0, text: 0 };
 
   DocFile.find(query, filter).lean().exec((err, docFiles) => {
     if (err) {
-      logger.sendErrorMsg({
-        code: logger.ErrorCodes.db,
-        text: ['Failed to get docFiles list'],
-        err,
-      });
+      callback({ error: new errorCreator.Database({ errorObject: err, name: 'getDocFilesList' }) });
+
+      return;
     }
 
-    callback(err, docFiles);
+    callback({ data: { docFiles } });
   });
 }
 
 exports.createDocFile = createDocFile;
 exports.getDocFile = getDocFile;
-exports.getDocFiles = getDocFiles;
 exports.getDocFilesList = getDocFilesList;
 exports.updateDocFile = updateDocFile;
 exports.addAccessUser = addAccessUser;

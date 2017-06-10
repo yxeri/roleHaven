@@ -22,6 +22,7 @@ const jwt = require('jsonwebtoken');
 const objectValidator = require('../../utils/objectValidator');
 const manager = require('../../socketHelpers/manager');
 const dbUser = require('../../db/connectors/user');
+const errorCreator = require('../../objects/error/errorCreator');
 
 const router = new express.Router();
 
@@ -78,22 +79,37 @@ function handle() {
         return;
       }
 
-      dbUser.getUser(decoded.data.userName, (err, user) => {
-        if (err) {
-          res.status(500).json({
-            errors: [{
-              status: 500,
-              title: 'Internal Server Error',
-              detail: 'Internal Server Error',
-            }],
-          });
+      dbUser.getUser({
+        userName: decoded.data.userName,
+        callback: ({ error, data }) => {
+          if (error) {
+            if (error.type === errorCreator.ErrorTypes.DOESNOTEXIST) {
+              res.status(404).json({
+                errors: [{
+                  status: 404,
+                  title: 'User does not exist',
+                  detail: 'User does not exist',
+                }],
+              });
 
-          return;
-        }
+              return;
+            }
 
-        const aliases = user.aliases || [];
+            res.status(500).json({
+              errors: [{
+                status: 500,
+                title: 'Internal Server Error',
+                detail: 'Internal Server Error',
+              }],
+            });
 
-        res.json({ data: { aliases, user: { userName: decoded.data.userName } } });
+            return;
+          }
+
+          const aliases = data.user.aliases || [];
+
+          res.json({ data: { aliases, user: { userName: decoded.data.userName } } });
+        },
       });
     });
   });
@@ -169,7 +185,19 @@ function handle() {
         user: decoded.data,
         alias: req.body.data.alias,
         callback: ({ error, data }) => {
-          if (error || !data.alias) {
+          if (error) {
+            if (error.type === errorCreator.ErrorTypes.ALREADYEXISTS) {
+              res.status(403).json({
+                errors: [{
+                  status: 403,
+                  title: 'Alias already exists',
+                  detail: 'Alias already exists',
+                }],
+              });
+
+              return;
+            }
+
             res.status(500).json({
               errors: [{
                 status: 500,

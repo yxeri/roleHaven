@@ -26,7 +26,7 @@ class DoesNotExist extends GeneralError.create {
     super({
       errorObject,
       type: GeneralError.ErrorTypes.DOESNOTEXIST,
-      text: [`${name} does not exists`],
+      text: [`${name} does not exist`],
     });
   }
 }

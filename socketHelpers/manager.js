@@ -21,21 +21,19 @@ const dbCommand = require('./../db/connectors/command');
 const dbRoom = require('./../db/connectors/room');
 const dbChatHistory = require('./../db/connectors/chatHistory');
 const dbWallet = require('../db/connectors/wallet');
-const logger = require('./../utils/logger.js');
 const appConfig = require('./../config/defaults/config').app;
 const dbConfig = require('../config/defaults/config').databasePopulation;
 const errorCreator = require('../objects/error/errorCreator');
 const dbTransaction = require('../db/connectors/transaction');
-const messenger = require('../socketHelpers/messenger');
 const jwt = require('jsonwebtoken');
 
 /**
  * Does string contain valid characters?
- * @param {string} text - String to check
+ * @param {string} text String to check
  * @returns {boolean} Does string contain valid characters?
  */
 function isTextAllowed(text) {
-  return /^[\w\d\såäöÅÄÖ-]+$/g.test(text);
+  return /^[\w\d\såäöÅÄÖ-]+$/.test(text);
 }
 
 /*
@@ -52,34 +50,12 @@ const messageSort = (a, b) => {
 };
 
 /**
- * Gets user by user name
- * @param {string} userName - User name
- * @param {Function} callback - callback
- */
-function getUserByName(userName, callback) {
-  dbUser.getUserByAlias(userName, (err, user) => {
-    callback(err, user);
-  });
-}
-
-/**
- * Gets a command
- * @param {string} commandName - Name of the command to retrieve
- * @param {Function} callback - callback
- */
-function getCommand(commandName, callback) {
-  dbCommand.getCommand(commandName, (err, command) => {
-    callback(err, command);
-  });
-}
-
-/**
  * Checks if the user is allowed to use the command
  * @param {string} params.token Json web token
  * @param {string} params.commandName Name of the command
  * @param {Function} params.callback callback
  */
-function userIsAllowed({ token, commandName, callback = () => {} }) {
+function userIsAllowed({ commandName, token, callback = () => {} }) {
   const anonUser = {
     userName: '',
     accessLevel: 0,
@@ -92,147 +68,165 @@ function userIsAllowed({ token, commandName, callback = () => {} }) {
     shortTeam: null,
   };
 
-  if (!token) {
-    callback({ allowedUser: anonUser });
-
-    return;
-  }
-
-  const callbackFunc = (err, user) => {
-    if (err) {
-      callback({ error: new errorCreator.Database({ errorObject: err }) });
-
-      return;
-    } else if (user.banned || (appConfig.userVerify && !user.verified)) {
-      callback({ error: new errorCreator.NotAllowed({ name: commandName }) });
-    }
-
-    getCommand(commandName, (cmdErr, command) => {
-      if (cmdErr) {
-        callback({ error: new errorCreator.Database({ errorObject: cmdErr }) });
+  dbCommand.getCommand({
+    commandName,
+    callback: (commandData) => {
+      if (commandData.error) {
+        callback({ error: commandData.error });
 
         return;
-      } else if (user.accessLevel < command.accessLevel) {
-        callback({ error: new errorCreator.NotAllowed({ name: commandName }) });
+      } else if (!token) {
+        if (commandData.data.command.accessLevel > anonUser.accessLevel) {
+          callback({ error: new errorCreator.NotAllowed({ name: commandName }) });
+
+          return;
+        }
+
+        dbCommand.incrementCommandUsage({ commandName });
+        callback({ allowedUser: anonUser });
 
         return;
       }
 
-      dbCommand.incrementCommandUsage(commandName);
+      jwt.verify(token, appConfig.jsonKey, (jwtErr, decoded) => {
+        if (jwtErr) {
+          callback({ error: new errorCreator.Database({ errorObject: jwtErr, name: 'jwt' }) });
 
-      callback({ allowedUser: user });
-    });
-  };
+          return;
+        } else if (!decoded) {
+          callback({ error: new errorCreator.NotAllowed({ name: commandName }) });
 
-  jwt.verify(token, appConfig.jsonKey, (jwtErr, decoded) => {
-    if (jwtErr) {
-      callback({ error: new errorCreator.Database({ errorObject: jwtErr }) });
+          return;
+        }
 
-      return;
-    } else if (!decoded) {
-      callback({ error: new errorCreator.NotAllowed({ name: commandName }) });
-    }
+        dbUser.getUserByAlias({
+          alias: decoded.data.userName,
+          callback: (aliasData) => {
+            if (aliasData.error) {
+              callback({ error: aliasData.error });
 
-    getUserByName(decoded.data.userName, callbackFunc);
+              return;
+            } else if (commandData.data.command.accessLevel > aliasData.data.user.accessLevel) {
+              callback({ error: new errorCreator.NotAllowed({ name: commandName }) });
+
+              return;
+            }
+
+            callback({ allowedUser: aliasData.data.user });
+          },
+        });
+      });
+    },
   });
 }
 
 /**
  * Gets getHistory (messages) from one or more rooms
- * @param {string[]} rooms - The rooms to retrieve the getHistory from
- * @param {number} [lines] - How many message to retrieve
- * @param {boolean} [missedMsgs] - Set to true if only the messages since the users last connection should be returned
- * @param {Date} [lastOnline] - Date of the last time the user was online
- * @param {string} [whisperTo] - User name whispered to
- * @param {Function} callback - callback
+ * @param {string[]} params.rooms The rooms to retrieve the getHistory from
+ * @param {string} [params.whisperTo] User name whispered to
+ * @param {Function} params.callback Callback
  */
-function getHistory({ lastOnline = new Date(), rooms, lines, missedMsgs, whisperTo, callback }) {
-  dbChatHistory.getHistoryFromRooms(rooms, (err, histories) => {
-    let historyMessages = [];
+function getHistory({ rooms, whisperTo, callback }) {
+  dbChatHistory.getHistoryFromRooms({
+    rooms,
+    callback: ({ error, data }) => {
+      if (error) {
+        callback({ error });
 
-    if (err || histories === null) {
-      logger.sendErrorMsg({
-        code: logger.ErrorCodes.db,
-        text: ['Failed to get getHistory'],
-        err,
+        return;
+      }
+
+      const allMessages = [];
+
+      data.histories.forEach((history) => {
+        Array.prototype.push.apply(allMessages, history.messages);
       });
-    } else {
-      const maxLines = lines === null || isNaN(lines) ? appConfig.historyLines : lines;
 
-      histories.forEach(history => historyMessages = historyMessages.concat(history.messages));
-
-      if (whisperTo) {
-        historyMessages = historyMessages.filter(message => message.roomName === `${whisperTo}${appConfig.whisperAppend}` || message.userName === whisperTo);
-      }
-
-      historyMessages.sort(messageSort);
-
-      if (maxLines !== '*') {
-        historyMessages = historyMessages.slice(-maxLines);
-      }
-
-      if (missedMsgs) {
-        for (let i = historyMessages.length - 1; i > 0; i -= 1) {
-          const message = historyMessages[i];
-
-          if (lastOnline > message.time) {
-            historyMessages = historyMessages.slice(i + 1);
-
-            break;
+      const isAnonymous = data.histories[0].anonymous;
+      const filteredMessages = allMessages
+        .filter((message) => {
+          if (whisperTo) {
+            return (message.roomName === `${whisperTo}${appConfig.whisperAppend}` || message.userName === whisperTo);
           }
-        }
-      }
-    }
 
-    callback(err, historyMessages, histories[0].anonymous);
+          return true;
+        })
+        .map((message) => {
+          if (isAnonymous) {
+            const anonMessage = message;
+
+            anonMessage.time = new Date();
+            anonMessage.time.setHours(0);
+            anonMessage.time.setMinutes(0);
+            anonMessage.time.setSeconds(0);
+            anonMessage.userName = 'anonymous';
+
+            return anonMessage;
+          }
+
+          return message;
+        })
+        .sort(messageSort);
+
+      // TODO Should send earliest date in each history
+      // TODO Separate chat histories should be sent
+      callback({
+        data: {
+          messages: filteredMessages,
+          anonymous: isAnonymous,
+          timeZoneOffset: new Date().getTimezoneOffset(),
+        },
+      });
+    },
   });
 }
 
 /**
  * Creates a new chat room and adds the user who created it to it
- * @param {Object} sentRoom - New room
- * @param {Object} user User who is creating the new room
- * @param {Function} callback - callback
+ * @param {Object} params.room New room
+ * @param {Object} params.user User who is creating the new room
+ * @param {Function} params.callback callback
  */
-function createRoom(sentRoom, user, callback) {
-  const newRoom = sentRoom;
-  newRoom.roomName = sentRoom.roomName.toLowerCase();
+function createRoom({ room, user, callback }) {
+  room.roomName = room.roomName.toLowerCase();
 
-  dbRoom.createRoom(newRoom, null, (err, room) => {
-    if (err || room === null) {
-      logger.sendErrorMsg({
-        code: logger.ErrorCodes.db,
-        text: [`Failed to create room for user ${user.userName}`],
-        err,
-      });
-      callback(err);
-    } else {
-      dbUser.addRoomToUser(user.userName, room.roomName, (roomErr) => {
-        if (roomErr) {
-          logger.sendErrorMsg({
-            code: logger.ErrorCodes.db,
-            text: [`Failed to add user ${user.userName} to its room`],
-            err: roomErr,
-          });
-        }
+  dbRoom.createRoom({
+    room,
+    callback: ({ error }) => {
+      if (error) {
+        callback({ error });
 
-        callback(roomErr, room);
+        return;
+      }
+
+      dbUser.addRoomToUser({
+        userName: user.userName,
+        roomName: room.roomName,
+        callback: ({ error: addError }) => {
+          if (addError) {
+            callback({ error: addError });
+
+            return;
+          }
+
+          callback({ data: { room } });
+        },
       });
-    }
+    },
   });
 }
 
 /**
  * Joins the user's socket to all sent rooms and added standard rooms
- * @param {string[]} rooms - Rooms for the user to join
- * @param {Object} socket - socket.io socket
- * @param {string} [device] - DeviceID of the user
+ * @param {string[]} params.rooms Rooms for the user to join
+ * @param {Object} params.socket socket.io socket
+ * @param {string} [params.device] DeviceID of the user
  */
-function joinRooms(rooms, socket, device) {
+function joinRooms({ rooms, socket, deviceId }) {
   const allRooms = rooms;
 
-  if (device) {
-    allRooms.push(device + appConfig.deviceAppend);
+  if (deviceId) {
+    allRooms.push(deviceId + appConfig.deviceAppend);
   }
 
   allRooms.forEach(room => socket.join(room));
@@ -240,9 +234,9 @@ function joinRooms(rooms, socket, device) {
 
 /**
  * Add alias to users
- * @param {Object} user - User that will get a new alias
- * @param {string} alias - Alias to add
- * @param {Function} callback - Callback
+ * @param {Object} params.user User that will get a new alias
+ * @param {string} params.alias Alias to add
+ * @param {Function} params.callback Callback
  */
 function addAlias({ user, alias, callback }) {
   if (!isTextAllowed(alias)) {
@@ -253,73 +247,88 @@ function addAlias({ user, alias, callback }) {
 
   const aliasLower = alias.toLowerCase();
 
-  dbUser.addAlias(user.userName, aliasLower, (err, aliasUser) => {
-    if (err || aliasUser === null) {
-      callback({ error: new errorCreator.Database({}) });
-
-      return;
-    }
-
-    const room = {
-      owner: user.userName,
-      roomName: alias + appConfig.whisperAppend,
-      accessLevel: dbConfig.accessLevels.superUser,
-      visibility: dbConfig.accessLevels.superUser,
-    };
-
-    createRoom(room, user, (createErr, createdRoom) => {
-      if (createErr || !createdRoom) {
-        callback({ error: new errorCreator.Database({}) });
+  dbUser.addAlias({
+    userName: user.userName,
+    alias: aliasLower,
+    callback: (aliasData) => {
+      if (aliasData.error) {
+        callback({ error: aliasData.error });
 
         return;
       }
 
-      callback({ data: { alias: aliasLower } });
-    });
+      const room = {
+        owner: user.userName,
+        roomName: alias + appConfig.whisperAppend,
+        accessLevel: dbConfig.accessLevels.superUser,
+        visibility: dbConfig.accessLevels.superUser,
+      };
+
+      createRoom({
+        room,
+        user,
+        callback: (roomData) => {
+          if (roomData.error) {
+            callback({ error: roomData.error });
+
+            return;
+          }
+
+          callback({ data: { alias: aliasLower } });
+        },
+      });
+    },
   });
 }
 
 /**
  * Creates a new wallet
- * @param {Object} wallet - New wallet
- * @param {Function} callback - callback
+ * @param {Object} params.wallet New wallet
+ * @param {Function} params.callback callback
  */
-function createWallet(wallet, callback) {
-  dbWallet.createWallet(wallet, (error) => {
-    if (error) {
-      callback({ error: new errorCreator.Database({}) });
+function createWallet({ wallet, callback }) {
+  dbWallet.createWallet({
+    wallet,
+    callback: (walletData) => {
+      if (walletData.error) {
+        callback({ error: walletData.error });
 
-      return;
-    }
+        return;
+      }
 
-    callback({ data: { wallet } });
+      callback({ data: { wallet } });
+    },
   });
 }
 
 /**
  * Get all user/team transactions
- * @param {string} owner Name of the user or team
- * @param {Function} callback Callback
+ * @param {string} params.owner Name of the user or team
+ * @param {Function} params.callback Callback
  */
 function getAllTransactions({ owner, callback = () => {} }) {
-  dbTransaction.getAllTransactions(owner, (err, transactions) => {
-    if (err) {
-      callback({ err: new errorCreator.Database({}) });
+  dbTransaction.getAllTransactions({
+    owner,
+    callback: (transactionsData) => {
+      if (transactionsData.error) {
+        callback({ err: transactionsData.error });
 
-      return;
-    }
+        return;
+      }
 
-    const data = {};
+      const { transactions } = transactionsData.data;
+      const data = {};
 
-    if (transactions && transactions.length > 0) {
-      data.toTransactions = transactions.filter(transaction => transaction.to === owner);
-      data.fromTransactions = transactions.filter(transaction => transaction.from === owner);
-    } else {
-      data.toTransactions = [];
-      data.fromTransactions = [];
-    }
+      if (transactions.length > 0) {
+        data.toTransactions = transactions.filter(transaction => transaction.to === owner);
+        data.fromTransactions = transactions.filter(transaction => transaction.from === owner);
+      } else {
+        data.toTransactions = [];
+        data.fromTransactions = [];
+      }
 
-    callback({ data });
+      callback({ data });
+    },
   });
 }
 
@@ -343,85 +352,123 @@ function createTransaction({ transaction, user, io, emitToSender, fromTeam, call
   transaction.time = new Date();
   transaction.from = fromTeam ? user.team + appConfig.teamAppend : user.userName;
 
-  dbWallet.getWallet(transaction.from, (walletErr, userWallet) => {
-    if (walletErr) {
-      callback({ error: new errorCreator.Database({}) });
+  dbWallet.getWallet({
+    owner: transaction.from,
+    callback: (walletData) => {
+      if (walletData.error) {
+        callback({ error: walletData.error });
 
-      return;
-    } else if (userWallet.amount - transaction.amount < 0) {
-      callback({ error: new errorCreator.NotAllowed({ name: 'transfer too much' }) });
-
-      return;
-    }
-
-    dbTransaction.createTransaction(transaction, (transErr) => {
-      if (transErr) {
-        callback({ error: new errorCreator.Database({}) });
+        return;
+      } else if (walletData.data.wallet.amount - transaction.amount < 0) {
+        callback({ error: new errorCreator.NotAllowed({ name: 'transfer too much' }) });
 
         return;
       }
 
-      dbWallet.decreaseAmount(transaction.from, transaction.amount, (errDecrease, decreasedWallet) => {
-        if (errDecrease) {
-          callback({ error: new errorCreator.Database({}) });
-
-          return;
-        }
-
-        dbWallet.increaseAmount(transaction.to, transaction.amount, (err, increasedWallet) => {
-          if (err) {
-            callback({ error: new errorCreator.Database({}) });
+      dbTransaction.createTransaction({
+        transaction,
+        callback: (transactionData) => {
+          if (transactionData.error) {
+            callback({ error: transactionData.error });
 
             return;
           }
 
-          callback({ data: { transaction, wallet: decreasedWallet } });
+          dbWallet.decreaseAmount({
+            owner: transaction.from,
+            amount: transaction.amount,
+            callback: (decreasedWalletData) => {
+              if (decreasedWalletData.error) {
+                callback({ error: decreasedWalletData.error });
 
-          if (!fromTeam) {
-            if (transaction.to.indexOf(appConfig.teamAppend) > -1) {
-              io.to(transaction.to).emit('transaction', { transaction, wallet: increasedWallet });
+                return;
+              }
 
-              if (emitToSender) {
-                dbUser.getUserByAlias(user.userName, (senderErr, sender) => {
-                  if (senderErr) {
+              dbWallet.increaseAmount({
+                owner: transaction.to,
+                amount: transaction.amount,
+                callback: (increasedWalletData) => {
+                  if (increasedWalletData.error) {
+                    callback({ error: increasedWalletData.error });
+
                     return;
                   }
 
-                  if (sender.socketId) {
-                    io.to(sender.socketId).emit('transaction', { transaction, wallet: decreasedWallet });
+                  const { wallet: increasedWallet } = increasedWalletData.data;
+                  const { wallet: decreasedWallet } = decreasedWalletData.data;
+
+                  if (!fromTeam) {
+                    if (transaction.to.indexOf(appConfig.teamAppend) > -1) {
+                      io.to(transaction.to).emit('transaction', { transaction, wallet: increasedWallet });
+
+                      if (emitToSender) {
+                        dbUser.getUserByAlias({
+                          alias: user.userName,
+                          callback: (senderData) => {
+                            if (senderData.error) {
+                              callback({ error: senderData.error });
+
+                              return;
+                            }
+
+                            const { user: sender } = senderData.data;
+
+                            if (sender.socketId) {
+                              io.to(sender.socketId).emit('transaction', { transaction, wallet: decreasedWallet });
+                            }
+
+                            callback({ data: { transaction, wallet: decreasedWallet } });
+                          },
+                        });
+                      }
+                    } else {
+                      dbUser.getUserByAlias({
+                        alias: transaction.to,
+                        callback: (aliasData) => {
+                          if (aliasData.error) {
+                            callback({ error: aliasData.error });
+
+                            return;
+                          }
+
+                          const { user: receiver } = aliasData.data;
+
+                          if (receiver.socketId !== '') {
+                            io.to(receiver.socketId).emit('transaction', { transaction, wallet: increasedWallet });
+                          }
+
+                          if (emitToSender) {
+                            dbUser.getUserByAlias({
+                              alias: user.userName,
+                              callback: (senderData) => {
+                                if (senderData.error) {
+                                  callback({ error: senderData.error });
+
+                                  return;
+                                }
+
+                                const { user: sender } = senderData.data;
+
+                                if (sender.socketId) {
+                                  io.to(sender.socketId).emit('transaction', { transaction, wallet: decreasedWallet });
+                                }
+                              },
+                            });
+                          }
+                        },
+                      });
+                    }
+                  } else {
+                    io.to(transaction.to).emit('transaction', { transaction, wallet: increasedWallet });
+                    io.to(transaction.from).emit('transaction', { transaction, wallet: decreasedWallet });
                   }
-                });
-              }
-            } else {
-              dbUser.getUserByAlias(transaction.to, (aliasErr, receiver) => {
-                if (aliasErr) {
-                  return;
-                }
-
-                if (receiver.socketId !== '') {
-                  io.to(receiver.socketId).emit('transaction', { transaction, wallet: increasedWallet });
-                }
-
-                if (emitToSender) {
-                  dbUser.getUserByAlias(user.userName, (senderErr, sender) => {
-                    if (senderErr) {
-                      return;
-                    }
-
-                    if (sender.socketId) {
-                      io.to(sender.socketId).emit('transaction', { transaction, wallet: decreasedWallet });
-                    }
-                  });
-                }
+                },
               });
-            }
-          } else {
-            io.to(transaction.to).emit('transaction', { transaction, wallet: increasedWallet });
-            io.to(transaction.from).emit('transaction', { transaction, wallet: decreasedWallet });
-          }
-        });
+            },
+          });
+        },
       });
-    });
+    },
   });
 }
 
@@ -454,56 +501,60 @@ function authFollowRoom({ socket, room, user, callback }) {
   room.roomName = room.roomName.toLowerCase();
   room.password = room.password || '';
 
-  dbRoom.authUserToRoom(user, room.roomName, room.password, (err, authRoom) => {
-    if (err) {
-      callback({ error: new errorCreator.Database({}) });
-
-      return;
-    } else if (authRoom === null) {
-      callback({ error: new errorCreator.NotAllowed({ name: `follow room ${room.roomName}` }) });
-
-      return;
-    }
-
-    dbUser.addRoomToUser(user.userName, room.roomName, (roomErr) => {
-      if (roomErr) {
-        callback({ error: new errorCreator.Database({}) });
+  dbRoom.authUserToRoom({
+    user,
+    roomName: room.roomName,
+    password: room.password,
+    callback: (authData) => {
+      if (authData.error) {
+        callback({ error: authData.error });
 
         return;
       }
 
-      followRoom({ userName: user.userName, room, callback, socket });
-    });
+      dbUser.addRoomToUser({
+        userName: user.userName,
+        roomName: room.roomName,
+        callback: (userData) => {
+          if (userData.error) {
+            callback({ error: userData.error });
+
+            return;
+          }
+
+          followRoom({
+            room,
+            callback,
+            socket,
+            userName: user.userName,
+          });
+        },
+      });
+    },
   });
 }
 
 /**
  * Update user's team
- * @param {Object} params.socket Socket.IO socket
  * @param {string} params.userName Name of the user
  * @param {string} params.teamName Name of the team
  * @param {string} params.shortTeamName Short name of the team
  * @param {Function} [params.callback] Callback
  */
-function updateUserTeam({ socket, userName, teamName, shortTeamName, callback = () => {} }) {
-  dbUser.updateUserTeam(userName, teamName, shortTeamName, (err, user) => {
-    if (err) {
-      callback({ error: new errorCreator.Database({}) });
+function updateUserTeam({ userName, teamName, shortTeamName, callback = () => {} }) {
+  dbUser.updateUserTeam({
+    userName,
+    team: teamName,
+    shortTeam: shortTeamName,
+    callback: (userData) => {
+      if (userData.error) {
+        callback({ error: userData.error });
 
-      return;
-    }
+        return;
+      }
 
-    messenger.sendMsg({
-      socket,
-      message: {
-        text: [`You have been added to the team ${teamName}`],
-        text_se: [`Ni har blivit tillagd i teamet ${teamName}`],
-        userName: 'SYSTEM',
-      },
-      sendTo: userName + appConfig.whisperAppend,
-    });
-
-    callback({ data: { user } });
+      callback({ data: { user: userData.data.user } });
+    },
   });
 }
 

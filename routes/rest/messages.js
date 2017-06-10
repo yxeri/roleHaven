@@ -21,6 +21,7 @@ const appConfig = require('../../config/defaults/config').app;
 const jwt = require('jsonwebtoken');
 const messenger = require('../../socketHelpers/messenger');
 const objectValidator = require('../../utils/objectValidator');
+const errorCreator = require('../../objects/error/errorCreator');
 
 const router = new express.Router();
 
@@ -75,92 +76,6 @@ function handle(io) {
    *    }
    *  }
    */
-  /**
-   * @api {post} /messages Send a message
-   * @apiVersion 5.0.2
-   * @apiName SendMessage
-   * @apiGroup Messages
-   *
-   * @apiHeader {String} Authorization Your JSON Web Token
-   *
-   * @apiDescription Create and send a message to a room
-   *
-   * @apiParam {Object} data
-   * @apiParam {Object} data.message Message
-   * @apiParam {String} data.message.roomName Name of the room to send the message to
-   * @apiParam {String} [data.message.userName] Name of the sender. Default is your user name. You can instead set it to one of your user's aliases
-   * @apiParam {String[]} data.message.text Content of the message
-   * @apiParamExample {json} Request-Example:
-   *   {
-   *    "data": {
-   *      "message": {
-   *        "roomName": "bb1",
-   *        "userName": "rez",
-   *        "text": [
-   *          "Hello world!"
-   *        ]
-   *      }
-   *    }
-   *  }
-   *
-   * @apiSuccess {Object} data
-   * @apiSuccess {Object[]} data.message Message sent
-   * @apiSuccessExample {json} Success-Response:
-   *   {
-   *    "data": {
-   *      "message": [{
-   *        "roomName": "bb1",
-   *        "text": [
-   *          "Hello world!"
-   *        ],
-   *        "userName": "rez",
-   *        "time": "2016-10-28T22:42:06.262Z"
-   *      }]
-   *    }
-   *  }
-   */
-  /**
-   * @api {post} /messages Send a message
-   * @apiVersion 5.0.1
-   * @apiName SendMessage
-   * @apiGroup Messages
-   *
-   * @apiHeader {String} Authorization Your JSON Web Token
-   *
-   * @apiDescription Send a message to a room
-   *
-   * @apiParam {Object} data
-   * @apiParam {Object} data.message Message
-   * @apiParam {String} data.message.roomName Name of the room to send the message to
-   * @apiParam {String[]} data.message.text Content of the message
-   * @apiParamExample {json} Request-Example:
-   *   {
-   *    "data": {
-   *      "message": {
-   *        "roomName": "bb1",
-   *        "text": [
-   *          "Hello world!"
-   *        ]
-   *      }
-   *    }
-   *  }
-   *
-   * @apiSuccess {Object} data
-   * @apiSuccess {Object} data.message Sent message
-   * @apiSuccessExample {json} Success-Response:
-   *   {
-   *    "data": {
-   *      "message": {
-   *        "roomName": "bb1",
-   *        "text": [
-   *          "Hello world!"
-   *        ],
-   *        "userName": "rez",
-   *        "time": "2016-10-28T22:42:06.262Z"
-   *      }
-   *    }
-   *  }
-   */
   router.post('/', (req, res) => {
     if (!objectValidator.isValidData(req.body, { data: { message: { roomName: true, text: true } } })) {
       res.status(400).json({
@@ -204,7 +119,7 @@ function handle(io) {
       const whisper = req.body.data.whisper;
       const callback = ({ error, data }) => {
         if (error) {
-          if (error.type && error.type === 'Not allowed') {
+          if (error.type === errorCreator.ErrorTypes.NOTALLOWED) {
             res.status(401).json({
               errors: [{
                 status: 401,
@@ -212,15 +127,17 @@ function handle(io) {
                 detail: 'Not following room',
               }],
             });
-          } else {
-            res.status(500).json({
-              errors: [{
-                status: 500,
-                title: 'Internal Server Error',
-                detail: 'Internal Server Error',
-              }],
-            });
+
+            return;
           }
+
+          res.status(500).json({
+            errors: [{
+              status: 500,
+              title: 'Internal Server Error',
+              detail: 'Internal Server Error',
+            }],
+          });
 
           return;
         }
@@ -233,16 +150,16 @@ function handle(io) {
 
         messenger.sendWhisperMsg({
           io,
-          user: decoded.data,
           message,
           callback,
+          user: decoded.data,
         });
       } else {
         messenger.sendChatMsg({
           io,
           message,
-          user: decoded.data,
           callback,
+          user: decoded.data,
         });
       }
     });

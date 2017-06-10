@@ -22,6 +22,7 @@ const appConfig = require('../../config/defaults/config').app;
 const dbUser = require('../../db/connectors/user');
 const jwt = require('jsonwebtoken');
 const dbPosition = require('../../db/connectors/position');
+const errorCreator = require('../../objects/error/errorCreator');
 
 const router = new express.Router();
 
@@ -63,40 +64,6 @@ function handle(io) {
    *    }
    *  }
    */
-  /**
-   * @api {get} /positions/users Retrieve all user positions
-   * @apiVersion 5.0.1
-   * @apiName GetUserPositions
-   * @apiGroup Positions
-   *
-   * @apiHeader {String} Authorization Your JSON Web Token
-   *
-   * @apiDescription Retrieve the positions from all users
-   *
-   * @apiSuccess {Object} data
-   * @apiSuccess {Object[]} data.positions Found user positions
-   * @apiSuccessExample {json} Success-Response:
-   *   {
-   *    "data": {
-   *      "positions": [
-   *        {
-   *          "_id": "580cd329720ed46986af64f9",
-   *          "positionName": "rez",
-   *          "lastUpdated": "2016-10-25T16:55:34.309Z",
-   *          "type": "user",
-   *          "position": {
-   *            "latitude": "42.3625069",
-   *            "longitude": "22.0114096",
-   *            "speed": null,
-   *            "accuracy": "1889",
-   *            "heading": null,
-   *            "timestamp": "1477414497796"
-   *          }
-   *        }
-   *      ]
-   *    }
-   *  }
-   */
   router.get('/users', (req, res) => {
     // noinspection JSUnresolvedVariable
     const auth = req.headers.authorization || '';
@@ -124,21 +91,23 @@ function handle(io) {
         return;
       }
 
-      dbUser.getAllUserPositions(decoded.data, (posErr, positions) => {
-        console.log(posErr);
-        if (posErr) {
-          res.status(500).json({
-            errors: [{
-              status: 500,
-              title: 'Internal Server Error',
-              detail: 'Internal Server Error',
-            }],
-          });
+      dbUser.getAllUserPositions({
+        user: decoded.data,
+        callback: ({ error, data }) => {
+          if (error) {
+            res.status(500).json({
+              errors: [{
+                status: 500,
+                title: 'Internal Server Error',
+                detail: 'Internal Server Error',
+              }],
+            });
 
-          return;
-        }
+            return;
+          }
 
-        res.json({ data: { positions } });
+          res.json({ data: { positions: data.positions } });
+        },
       });
     });
   });
@@ -177,42 +146,6 @@ function handle(io) {
    *    }
    *  }
    */
-  /**
-   * @api {get} /positions/users Retrieve specific user position
-   * @apiVersion 5.0.1
-   * @apiName GetUserPosition
-   * @apiGroup Positions
-   *
-   * @apiHeader {String} Authorization Your JSON Web Token
-   *
-   * @apiDescription Retrieve the position for a specific user
-   *
-   * @apiParam {String} id Name of the user
-   *
-   * @apiSuccess {Object} data
-   * @apiSuccess {Object[]} data.positions Found user position
-   * @apiSuccessExample {json} Success-Response:
-   *   {
-   *    "data": {
-   *      "positions": [
-   *        {
-   *          "_id": "580cd329720ed46986af64f9",
-   *          "positionName": "rez",
-   *          "lastUpdated": "2016-10-25T16:55:34.309Z",
-   *          "type": "user",
-   *          "position": {
-   *            "latitude": "42.3625069",
-   *            "longitude": "22.0114096",
-   *            "speed": null,
-   *            "accuracy": "1889",
-   *            "heading": null,
-   *            "timestamp": "1477414497796"
-   *          }
-   *        }
-   *      ]
-   *    }
-   *  }
-   */
   router.get('/users/:id', (req, res) => {
     // noinspection JSUnresolvedVariable
     const auth = req.headers.authorization || '';
@@ -240,20 +173,36 @@ function handle(io) {
         return;
       }
 
-      dbUser.getUserPosition(decoded.data, req.params.id, (posErr, position) => {
-        if (posErr) {
-          res.status(500).json({
-            errors: [{
-              status: 500,
-              title: 'Internal Server Error',
-              detail: 'Internal Server Error',
-            }],
-          });
+      dbUser.getUserPosition({
+        user: decoded.data,
+        userName: req.params.id,
+        callback: ({ error, data }) => {
+          if (error) {
+            if (error.type === errorCreator.ErrorTypes.DOESNOTEXIST) {
+              res.status(404).json({
+                errors: [{
+                  status: 404,
+                  title: 'User position not found',
+                  detail: 'User position not found',
+                }],
+              });
 
-          return;
-        }
+              return;
+            }
 
-        res.json({ data: { positions: [position] } });
+            res.status(500).json({
+              errors: [{
+                status: 500,
+                title: 'Internal Server Error',
+                detail: 'Internal Server Error',
+              }],
+            });
+
+            return;
+          }
+
+          res.json({ data: { positions: [data.position] } });
+        },
       });
     });
   });
@@ -311,44 +260,6 @@ function handle(io) {
    *    }
    *  }
    */
-  /**
-   * @api {post} /positions/users Set position
-   * @apiVersion 5.0.1
-   * @apiName SetPosition
-   * @apiGroup Positions
-   *
-   * @apiHeader {String} Authorization Your JSON Web Token
-   *
-   * @apiDescription Set a new position for the user, based on the authorization token
-   *
-   * @apiParam {Object} data
-   * @apiParam {Object} data.position
-   * @apiParam {Object} data.position.position
-   * @apiParam {Number} data.position.position.longitude
-   * @apiParam {Number} data.position.position.latitude
-   * @apiParamExample {json} Request-Example:
-   *   {
-   *    "data": {
-   *      "position": {
-   *        "position": {
-   *          "longitude": 55.401,
-   *          "latitude": 12.0041
-   *        }
-   *      }
-   *    }
-   *  }
-   *
-   * @apiSuccess {Object} data
-   * @apiSuccess {Object} data.positions New position for the user
-   * @apiSuccessExample {json} Success-Response:
-   *   {
-   *    "data": {
-   *      "positions": [
-   *        {}
-   *      ]
-   *    }
-   *  }
-   */
   router.post('/users', (req, res) => {
     if (!objectValidator.isValidData(req.body, { data: { position: { coordinates: { longitude: true, latitude: true } } } })) {
       res.status(400).json({
@@ -396,8 +307,8 @@ function handle(io) {
 
       dbPosition.updatePosition({
         position,
-        callback: (posErr, newPosition) => {
-          if (posErr) {
+        callback: ({ error, data }) => {
+          if (error) {
             res.status(500).json({
               errors: [{
                 status: 500,
@@ -408,6 +319,8 @@ function handle(io) {
 
             return;
           }
+
+          const { position: newPosition } = data;
 
           // TODO Only to users that have tracking on?
           io.emit('mapPositions', {

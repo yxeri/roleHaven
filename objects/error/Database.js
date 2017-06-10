@@ -21,11 +21,11 @@ class Database extends GeneralError.create {
    * Creates a database error
    * @param {Error} [params.errorObject] Error object
    */
-  constructor({ errorObject }) {
+  constructor({ errorObject, name = '' }) {
     super({
       errorObject,
       type: GeneralError.ErrorTypes.DATABASE,
-      text: ['Failed to save/retrieve data'],
+      text: [`Failed to save/retrieve data ${name}`],
     });
   }
 }

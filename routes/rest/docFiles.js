@@ -21,11 +21,12 @@ const objectValidator = require('../../utils/objectValidator');
 const appConfig = require('../../config/defaults/config').app;
 const dbDocFile = require('../../db/connectors/docFile');
 const jwt = require('jsonwebtoken');
+const errorCreator = require('../../objects/error/errorCreator');
 
 const router = new express.Router();
 
 /**
- * @param {object} io - Socket.IO
+ * @param {object} io Socket.IO
  * @returns {Object} Router
  */
 function handle(io) {
@@ -88,20 +89,26 @@ function handle(io) {
         return;
       }
 
-      dbDocFile.getDocFilesList(decoded.data.accessLevel, decoded.data.userName, (docFileErr, docFiles) => {
-        if (docFileErr) {
-          res.status(500).json({
-            errors: [{
-              status: 500,
-              title: 'Internal Server Error',
-              detail: 'Internal Server Error',
-            }],
-          });
+      dbDocFile.getDocFilesList({
+        accessLevel: decoded.data.accessLevel,
+        userName: decoded.data.userName,
+        callback: ({ error, data }) => {
+          if (error) {
+            res.status(500).json({
+              errors: [{
+                status: 500,
+                title: 'Internal Server Error',
+                detail: 'Internal Server Error',
+              }],
+            });
 
-          return;
-        }
+            return;
+          }
 
-        res.json({ data: { docFiles } });
+          const { docFiles } = data;
+
+          res.json({ data: { docFiles } });
+        },
       });
     });
   });
@@ -167,20 +174,38 @@ function handle(io) {
         return;
       }
 
-      dbDocFile.getDocFile(req.params.id, decoded.data.accessLevel, (docFileErr, docFile) => {
-        if (docFileErr) {
-          res.status(500).json({
-            errors: [{
-              status: 500,
-              title: 'Internal Server Error',
-              detail: 'Internal Server Error',
-            }],
-          });
+      dbDocFile.getDocFile({
+        docFileId: req.params.id,
+        accessLevel: decoded.data.accessLevel,
+        callback: ({ error, data }) => {
+          if (error) {
+            if (error.type === errorCreator.ErrorTypes.DOESNOTEXIST) {
+              res.status(404).json({
+                errors: [{
+                  status: 404,
+                  title: 'Not found',
+                  detail: 'DocFile not found',
+                }],
+              });
 
-          return;
-        }
+              return;
+            }
 
-        res.json({ data: { docFiles: [docFile] } });
+            res.status(500).json({
+              errors: [{
+                status: 500,
+                title: 'Internal Server Error',
+                detail: 'Internal Server Error',
+              }],
+            });
+
+            return;
+          }
+
+          const { docFile } = data;
+
+          res.json({ data: { docFiles: [docFile] } });
+        },
       });
     });
   });
@@ -281,38 +306,45 @@ function handle(io) {
       newDocFile.creator = decoded.data.userName;
       newDocFile.docFileId = newDocFile.docFileId.toLowerCase();
 
-      dbDocFile.createDocFile(newDocFile, (docFileErr, docFile) => {
-        if (docFileErr) {
-          res.status(500).json({
-            errors: [{
-              status: 500,
-              title: 'Internal Server Error',
-              detail: 'Internal Server Error',
-            }],
-          });
+      dbDocFile.createDocFile({
+        docFile: newDocFile,
+        callback: ({ error, data }) => {
+          if (error) {
+            if (error.type === errorCreator.ErrorTypes.ALREADYEXISTS) {
+              res.status(403).json({
+                errors: [{
+                  status: 403,
+                  title: 'DocFile already exists',
+                  detail: `DocFile with ID ${newDocFile.docFileId} already exists`,
+                }],
+              });
 
-          return;
-        } else if (docFile === null) {
-          res.status(402).json({
-            errors: [{
-              status: 402,
-              title: 'DocFile already exists',
-              detail: `DocFile with ID ${newDocFile.docFileId} already exists`,
-            }],
-          });
+              return;
+            }
 
-          return;
-        }
+            res.status(500).json({
+              errors: [{
+                status: 500,
+                title: 'Internal Server Error',
+                detail: 'Internal Server Error',
+              }],
+            });
 
-        if (docFile.isPublic) {
-          io.emit('docFile', { docFile });
-        } else if (docFile.team && docFile.team !== '') {
-          const teamRoom = newDocFile.team + appConfig.teamAppend;
+            return;
+          }
 
-          io.to(teamRoom).emit('docFile', { docFile });
-        }
+          const { docFile } = data;
 
-        res.json({ data: { docFile } });
+          if (docFile.isPublic) {
+            io.emit('docFile', { docFile });
+          } else if (docFile.team && docFile.team !== '') {
+            const teamRoom = newDocFile.team + appConfig.teamAppend;
+
+            io.to(teamRoom).emit('docFile', { docFile });
+          }
+
+          res.json({ data: { docFile } });
+        },
       });
     });
   });

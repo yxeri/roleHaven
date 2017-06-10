@@ -17,7 +17,7 @@
 'use strict';
 
 const mongoose = require('mongoose');
-const logger = require('../../utils/logger');
+const errorCreator = require('../../objects/error/errorCreator');
 const databaseConnector = require('../databaseConnector');
 
 // Access levels: Lowest / Lower / Middle / Higher / Highest / God
@@ -66,520 +66,516 @@ const LanternRound = mongoose.model('Lantern', lanternRoundSchema);
 
 /**
  * Update lantern round. Create a new one if none exist
- * @param {Object} lanternRound Lantern round
- * @param {number} lanternRound.roundId Id of the round
- * @param {Date} lanternRound.startTime Start time of the round
- * @param {Date} lanternRound.endTime End time of the round
- * @param {Function} callback Callback
+ * @param {number} params.roundId Id of the round
+ * @param {Date} params.startTime Start time of the round
+ * @param {Date} params.endTime End time of the round
+ * @param {Function} params.callback Callback
  */
-function updateLanternRound({ roundId, startTime, endTime }, callback) {
+function updateLanternRound({ roundId, startTime, endTime, callback }) {
   const query = { roundId };
-  const update = { startTime, endTime };
+  const update = { $set: { startTime, endTime } };
   const options = { upsert: true, new: true };
 
   LanternRound.findOneAndUpdate(query, update, options).lean().exec((err, updatedRound) => {
     if (err) {
-      logger.sendErrorMsg({
-        code: logger.ErrorCodes.db,
-        text: ['Failed to check if lantern round exists'],
-        err,
-      });
+      callback({ error: new errorCreator.Database({ errorObject: err, name: 'updateLanternRound' }) });
+
+      return;
     }
 
-    callback(err, updatedRound);
+    callback({ data: { round: updatedRound } });
   });
 }
 
 /**
  * Remove lantern hack
- * @param {number} roundId Id of the round
- * @param {Function} callback Callback
+ * @param {number} params.roundId Id of the round
+ * @param {Function} params.callback Callback
  */
-function removeLanternRound(roundId, callback) {
+function removeLanternRound({ roundId, callback }) {
   const query = { roundId };
 
   LanternRound.findOneAndRemove(query).lean().exec((err) => {
     if (err) {
-      logger.sendErrorMsg({
-        code: logger.ErrorCodes.db,
-        text: ['Failed to remove lantern round'],
-        err,
-      });
+      callback({ error: new errorCreator.Database({ errorObject: err, name: 'removeLanternRound' }) });
 
       return;
     }
 
-    callback(err);
+    callback({ data: { success: true } });
   });
 }
 
 /**
  * Update signal value on station
- * @param {number} stationId - Station ID
- * @param {number} signalValue - New signal value
- * @param {Function} callback - Callback
+ * @param {number} params.stationId Station ID
+ * @param {number} params.signalValue New signal value
+ * @param {Function} params.callback Callback
  */
-function updateSignalValue(stationId, signalValue, callback) {
+function updateSignalValue({ stationId, signalValue, callback }) {
   const query = { stationId };
   const update = { $set: { signalValue } };
+  const options = { new: true };
 
-  Station.findOneAndUpdate(query, update).lean().exec((err, station) => {
+  Station.findOneAndUpdate(query, update, options).lean().exec((err, station) => {
     if (err) {
-      logger.sendErrorMsg({
-        code: logger.ErrorCodes.db,
-        text: [`Failed to set signal value on station ${stationId}`],
-        err,
-      });
+      callback({ error: new errorCreator.Database({ errorObject: err, name: 'updateSignalValue' }) });
+
+      return;
+    } else if (!station) {
+      callback({ error: new errorCreator.DoesNotExist({ name: `station ${stationId}` }) });
+
+      return;
     }
 
-    callback(err, station);
+    callback({ data: { station } });
   });
 }
 
 /**
  * Start lantern round
- * @param {number} roundId ID of the round
- * @param {Function} callback - Callback
+ * @param {number} params.roundId ID of the round
+ * @param {Function} params.callback Callback
  */
-function startLanternRound(roundId, callback) {
+function startLanternRound({ roundId, callback }) {
   const query = { roundId };
   const update = { $set: { isActive: true } };
 
   LanternRound.findOneAndUpdate(query, update).lean().exec((err, updatedRound) => {
     if (err) {
-      logger.sendErrorMsg({
-        code: logger.ErrorCodes.db,
-        text: ['Failed to set new active round'],
-        err,
-      });
+      callback({ error: new errorCreator.Database({ errorObject: err, name: 'startLanternRound' }) });
+
+      return;
+    } else if (!updatedRound) {
+      callback({ error: new errorCreator.DoesNotExist({ name: 'active round' }) });
+
+      return;
     }
 
-    callback(err, updatedRound);
+    callback({ data: { round: updatedRound } });
   });
 }
 
 /**
  * End lantern round
- * @param {Function} callback - Callback
+ * @param {Function} params.callback Callback
  */
-function endLanternRound(callback) {
+function endLanternRound({ callback }) {
   const query = { isActive: true };
   const update = { $set: { isActive: false } };
 
   LanternRound.findOneAndUpdate(query, update).lean().exec((err, updatedRound) => {
     if (err) {
-      logger.sendErrorMsg({
-        code: logger.ErrorCodes.db,
-        text: ['Failed to set new active round'],
-        err,
-      });
+      callback({ error: new errorCreator.Database({ errorObject: err, name: 'endLanternRound' }) });
+
+      return;
+    } else if (!updatedRound) {
+      callback({ error: new errorCreator.DoesNotExist({ name: 'active round' }) });
+
+      return;
     }
 
-    callback(err, updatedRound);
+    callback({ data: { success: true } });
   });
 }
 
 /**
  * Get lantern round
- * @param {Function} callback Callback
+ * @param {Function} params.callback Callback
  */
-function getActiveLanternRound(callback) {
+function getActiveLanternRound({ callback }) {
   const query = { isActive: true };
   const filter = { _id: 0 };
 
   LanternRound.findOne(query, filter).lean().exec((err, foundRound) => {
     if (err) {
-      logger.sendErrorMsg({
-        code: logger.ErrorCodes.db,
-        text: ['Failed to find lantern rounds'],
-        err,
-      });
+      callback({ error: new errorCreator.Database({ errorObject: err, name: 'getActiveLanternRound' }) });
+
+      return;
+    } else if (!foundRound) {
+      callback({ error: new errorCreator.DoesNotExist({ name: 'active round' }) });
+
+      return;
     }
 
-    callback(err, foundRound);
+    callback({ data: { round: foundRound } });
   });
 }
 
 /**
  * Get lantern round
- * @param {number} roundId Lantern round Id
- * @param {Function} callback Callback
+ * @param {number} params.roundId Lantern round Id
+ * @param {Function} params.callback Callback
  */
-function getLanternRound(roundId, callback) {
+function getLanternRound({ roundId, callback }) {
   const query = { roundId };
   const filter = { _id: 0 };
 
   LanternRound.findOne(query, filter).lean().exec((err, foundRound) => {
     if (err) {
-      logger.sendErrorMsg({
-        code: logger.ErrorCodes.db,
-        text: ['Failed to find lantern rounds'],
-        err,
-      });
+      callback({ error: new errorCreator.Database({ errorObject: err, name: 'getLanternRound' }) });
+
+      return;
+    } else if (!foundRound) {
+      callback({ error: new errorCreator.DoesNotExist({ name: `${roundId} round does not exist` }) });
+
+      return;
     }
 
-    callback(err, foundRound);
+    callback({ data: { round: foundRound } });
   });
 }
 
 /**
  * Get lantern rounds
- * @param {Function} callback Callback
+ * @param {Function} params.allback Callback
  */
-function getLanternRounds(callback) {
+function getLanternRounds({ callback }) {
   const query = {};
   const filter = { _id: 0 };
 
-  LanternRound.find(query, filter).lean().exec((err, foundRounds) => {
+  LanternRound.find(query, filter).lean().exec((err, foundRounds = []) => {
     if (err) {
-      logger.sendErrorMsg({
-        code: logger.ErrorCodes.db,
-        text: ['Failed to find lantern rounds'],
-        err,
-      });
+      callback({ error: new errorCreator.Database({ errorObject: err, name: 'getLanternRounds' }) });
+
+      return;
+    } else if (!foundRounds) {
+      callback({ error: new errorCreator.DoesNotExist({ name: 'rounds' }) });
+
+      return;
     }
 
-    callback(err, foundRounds);
+    callback({ data: { rounds: foundRounds } });
   });
 }
 
 /**
  * Get station
- * @param {number} stationId Station ID
- * @param {Function} callback Callback
+ * @param {number} params.stationId Station ID
+ * @param {Function} params.callback Callback
  */
-function getStation(stationId, callback) {
+function getStation({ stationId, callback }) {
   const query = { stationId };
   const filter = { _id: 0 };
 
   Station.findOne(query, filter).lean().exec((err, foundStation) => {
     if (err) {
-      logger.sendErrorMsg({
-        code: logger.ErrorCodes.db,
-        text: ['Failed to find station'],
-        err,
-      });
+      callback({ error: new errorCreator.Database({ errorObject: err, name: 'getStation' }) });
+
+      return;
+    } else if (!foundStation) {
+      callback({ error: new errorCreator.DoesNotExist({ name: `${stationId} station` }) });
+
+      return;
     }
 
-    callback(err, foundStation);
+    callback({ data: { station: foundStation } });
   });
 }
 
 /**
  * Get all stations. Sorted on station ID
- * @param {Function} callback - Callback
+ * @param {Function} params.callback Callback
  */
-function getAllStations(callback) {
+function getAllStations({ callback }) {
   const query = {};
   const sort = { stationId: 1 };
   const filter = { _id: 0 };
 
-  Station.find(query, filter).sort(sort).lean().exec((err, stations) => {
+  Station.find(query, filter).sort(sort).lean().exec((err, stations = []) => {
     if (err) {
-      logger.sendErrorMsg({
-        code: logger.ErrorCodes.db,
-        text: ['Failed to get stations'],
-        err,
-      });
+      callback({ error: new errorCreator.Database({ errorObject: err, name: 'getAllStations' }) });
+
+      return;
     }
 
-    callback(err, stations);
+    callback({ data: { stations } });
   });
 }
 
 /**
  * Create and save station
- * @param {Object} station - New station
- * @param {Function} callback - Callback
+ * @param {Object} params.station New station
+ * @param {Function} params.callback Callback
  */
-function createStation(station, callback) {
+function createStation({ station, callback }) {
   const newStation = new Station(station);
+  const query = { stationId: station.stationId };
 
-  getStation(station.stationId, (err, foundStation) => {
+  Station.findOne(query).lean().exec((err, foundStation) => {
     if (err) {
-      logger.sendErrorMsg({
-        code: logger.ErrorCodes.db,
-        text: ['Failed to check if user exists'],
-        err,
-      });
-    } else if (foundStation === null) {
-      databaseConnector.saveObject(newStation, 'station', callback);
-    } else {
-      callback(err, null);
+      callback({ error: new errorCreator.Database({ errorObject: err, name: 'createStation' }) });
+
+      return;
+    } else if (foundStation) {
+      callback({ error: new errorCreator.AlreadyExists({ name: `Station ${station.stationId}` }) });
+
+      return;
     }
+
+    databaseConnector.saveObject({
+      callback,
+      object: newStation,
+      objectType: 'Station',
+    });
   });
 }
 
 /**
  * Set new isActive on station
- * @param {Object} station Lantern station
- * @param {number} station.stationId ID of station
- * @param {boolean} [station.isActive] Is the station active?
- * @param {string} [station.stationName] Name of the station
- * @param {string} [station.ownwer] Owner name of the station
- * @param {Function} callback Callback
+ * @param {Object} params.station Lantern station
+ * @param {number} params.station.stationId ID of station
+ * @param {boolean} [params.station.isActive] Is the station active?
+ * @param {string} [params.station.stationName] Name of the station
+ * @param {string} [params.station.owner] Owner name of the station
+ * @param {Function} params.callback Callback
  */
-function updateLanternStation({ stationId, isActive, stationName, owner }, callback) {
+function updateLanternStation({ stationId, isActive, stationName, owner, callback }) {
   const set = {};
 
-  if (typeof isActive === 'boolean') {
-    set.isActive = isActive;
-  }
-
-  if (stationName) {
-    set.stationName = stationName;
-  }
-
-  if (owner) {
-    set.owner = owner;
-  }
+  if (typeof isActive === 'boolean') { set.isActive = isActive; }
+  if (stationName) { set.stationName = stationName; }
+  if (owner) { set.owner = owner; }
 
   const query = { stationId };
   const update = { $set: set };
 
   Station.findOneAndUpdate(query, update).lean().exec((err, station) => {
     if (err) {
-      logger.sendErrorMsg({
-        code: logger.ErrorCodes.db,
-        text: [`Failed to set active on station ${stationId}`],
-        err,
-      });
+      callback({ error: new errorCreator.Database({ errorObject: err, name: 'updateLanternStation' }) });
+
+      return;
+    } else if (!station) {
+      callback({ error: new errorCreator.DoesNotExist({ name: `${stationId} station` }) });
+
+      return;
     }
 
-    callback(err, station);
+    callback({ data: { station } });
   });
 }
 
 /**
  * Get active stations
- * @param {Function} callback - Callback
+ * @param {Function} params.callback Callback
  */
-function getActiveStations(callback) {
+function getActiveStations({ callback }) {
   const query = { isActive: true };
   const sort = { stationId: 1 };
   const filter = { _id: 0 };
 
-  Station.find(query, filter).sort(sort).lean().exec((err, stations) => {
+  Station.find(query, filter).sort(sort).lean().exec((err, stations = []) => {
     if (err) {
-      logger.sendErrorMsg({
-        code: logger.ErrorCodes.db,
-        text: ['Failed to get stations'],
-        err,
-      });
+      callback({ error: new errorCreator.Database({ errorObject: err }) });
+
+      return;
     }
 
-    callback(err, stations);
+    callback({ data: { stations } });
   });
 }
 
 /**
  * Update lantern hack. Create a new one if none exist
- * @param {Object} lanternHack Lantern hack
- * @param {Function} callback Callback
+ * @param {string} params.stationId Station id assigned to hack
+ * @param {string} params.owner Owner of the hack
+ * @param {string} params.gameUsers Game users used in the hack
+ * @param {string} params.triesLeft Amount of guesses before the hack fails
+ * @param {Function} params.callback Callback
  */
-function updateLanternHack({ stationId, owner, gameUsers, triesLeft }, callback) {
+function updateLanternHack({ stationId, owner, gameUsers, triesLeft, callback }) {
   const query = { owner };
   const update = { stationId, owner, gameUsers, triesLeft };
   const options = { upsert: true, new: true };
 
   LanternHack.findOneAndUpdate(query, update, options).lean().exec((err, updatedLanternHack) => {
     if (err) {
-      logger.sendErrorMsg({
-        code: logger.ErrorCodes.db,
-        text: ['Failed to check if game user already exists'],
-        err,
-      });
+      callback({ error: new errorCreator.Database({ errorObject: err }) });
+
+      return;
+    } else if (!updatedLanternHack) {
+      callback({ error: new errorCreator.AlreadyExists({ name: `lantern hack for ${stationId} station, owner ${owner}` }) });
+
+      return;
     }
 
-    callback(err, updatedLanternHack);
+    callback({ data: { lanternHack: updatedLanternHack } });
   });
 }
 
 /**
  * Remove lantern hack
- * @param {string} owner Owner user name of hack
- * @param {Function} callback Callback
+ * @param {string} params.owner Owner user name of hack
+ * @param {Function} params.callback Callback
  */
-function removeLanternHack(owner, callback) {
+function removeLanternHack({ owner, callback }) {
   const query = { owner };
 
   LanternHack.findOneAndRemove(query).lean().exec((err) => {
     if (err) {
-      logger.sendErrorMsg({
-        code: logger.ErrorCodes.db,
-        text: ['Failed to remove room'],
-        err,
-      });
+      callback({ error: new errorCreator.Database({ errorObject: err }) });
 
       return;
     }
 
-    callback(err);
+    callback({ data: { success: true } });
   });
 }
 
 /**
  * Lower amount of hack tries by 1
- * @param {string} owner Hack owner user name
- * @param {Function} callback Callback
+ * @param {string} params.owner Hack owner user name
+ * @param {Function} params.callback Callback
  */
-function lowerHackTries(owner, callback) {
+function lowerHackTries({ owner, callback }) {
   const query = { owner };
   const update = { $inc: { triesLeft: -1 } };
   const options = { new: true };
 
   LanternHack.findOneAndUpdate(query, update, options).lean().exec((err, lanternHack) => {
     if (err) {
-      logger.sendErrorMsg({
-        code: logger.ErrorCodes.db,
-        text: ['Failed to increment command usage'],
-        err,
-      });
+      callback({ error: new errorCreator.Database({ errorObject: err }) });
 
-      callback(err, null);
+      return;
+    } else if (!lanternHack) {
+      callback({ error: new errorCreator.AlreadyExists({ name: `lantern hack try for owner ${owner}` }) });
 
       return;
     }
 
-    callback(err, lanternHack);
+    callback({ data: { lanternHack } });
   });
 }
 
 /**
  * Get lantern hack
- * @param {string} owner Owner of the hack
- * @param {Function} callback Callback
+ * @param {string} params.owner Owner of the hack
+ * @param {Function} params.callback Callback
  */
-function getLanternHack(owner, callback) {
+function getLanternHack({ owner, callback }) {
   const query = { owner };
 
   LanternHack.findOne(query).lean().exec((err, foundHack) => {
     if (err) {
-      logger.sendErrorMsg({
-        code: logger.ErrorCodes.db,
-        text: ['Failed to get game user'],
-        err,
-      });
+      callback({ error: new errorCreator.Database({ errorObject: err }) });
+
+      return;
+    } else if (!foundHack) {
+      callback({ error: new errorCreator.DoesNotExist({ name: `get lantern hack for owner ${owner}` }) });
+
+      return;
     }
 
-    callback(err, foundHack);
+    callback({ data: { lanternHack: foundHack } });
   });
 }
 
 /**
  * Create and save game user
- * @param {Object} gameUser - Game user
- * @param {Function} callback - Callback
+ * @param {Object} params.gameUser Game user
+ * @param {Function} params.callback Callback
  */
-function createGameUser(gameUser, callback) {
+function createGameUser({ gameUser, callback }) {
   const newGameUser = new GameUser(gameUser);
   const query = { userName: gameUser.userName };
 
   GameUser.findOne(query).lean().exec((err, foundGameUser) => {
     if (err) {
-      logger.sendErrorMsg({
-        code: logger.ErrorCodes.db,
-        text: ['Failed to check if game user already exists'],
-        err,
-      });
+      callback({ error: new errorCreator.Database({ errorObject: err }) });
 
-      callback(err, null);
-    } else if (foundGameUser === null) {
-      databaseConnector.saveObject(newGameUser, 'gameUser', callback);
-    } else {
-      callback(err, null);
+      return;
+    } else if (foundGameUser) {
+      callback({ error: new errorCreator.AlreadyExists({ name: `game user ${gameUser.userName}` }) });
     }
+
+    databaseConnector.saveObject({ object: newGameUser, objectType: 'gameUser', callback });
   });
 }
 
 /**
  * Get game user
- * @param {string} userName Game user to retrieve
- * @param {Function} callback Callback
+ * @param {string} params.userName Game user to retrieve
+ * @param {Function} params.callback Callback
  */
-function getGameUser(userName, callback) {
+function getGameUser({ userName, callback }) {
   const query = { userName };
   const filter = { _id: 0 };
 
   GameUser.findOne(query, filter).lean().exec((err, foundGameUser) => {
-    if (err || foundGameUser === null) {
-      logger.sendErrorMsg({
-        code: logger.ErrorCodes.db,
-        text: ['Failed to get game user'],
-        err,
-      });
+    if (err) {
+      callback({ error: new errorCreator.Database({ errorObject: err }) });
+
+      return;
+    } else if (!foundGameUser) {
+      callback({ error: new errorCreator.DoesNotExist({ name: `get game user ${userName}` }) });
+
+      return;
     }
 
-    callback(err, foundGameUser);
+    callback({ data: { gameUser: foundGameUser } });
   });
 }
 
 /**
  * Get all game users
  * @param {number} params.stationId Station ID
- * @param {Function} callback Callback
+ * @param {Function} params.callback Callback
  */
-function getGameUsers({ stationId }, callback) {
+function getGameUsers({ stationId, callback }) {
   const query = { stationId };
   const filter = { _id: 0 };
 
-  GameUser.find(query, filter).lean().exec((err, gameUsers) => {
-    if (err || gameUsers === null) {
-      logger.sendErrorMsg({
-        code: logger.ErrorCodes.db,
-        text: ['Failed to get game users'],
-        err,
-      });
+  GameUser.find(query, filter).lean().exec((err, gameUsers = []) => {
+    if (err) {
+      callback({ error: new errorCreator.Database({ errorObject: err }) });
+
+      return;
     }
 
-    callback(err, gameUsers);
+    callback({ data: { gameUsers } });
   });
 }
 
 /**
  * Create and save fake password
- * @param {Object} fakePassword Fake password
- * @param {Function} callback Callback
+ * @param {Object} params.fakePassword Fake password
+ * @param {Function} params.callback Callback
  */
-function createFakePassword(fakePassword, callback) {
+function createFakePassword({ fakePassword, callback }) {
   const newFakePassword = new FakePassword(fakePassword);
   const query = { password: fakePassword.password };
 
   FakePassword.findOne(query).lean().exec((err, foundFakePassword) => {
     if (err) {
-      logger.sendErrorMsg({
-        code: logger.ErrorCodes.db,
-        text: ['Failed to check if fake password already exists'],
-        err,
-      });
+      callback({ error: new errorCreator.Database({ errorObject: err }) });
 
-      callback(err, null);
-    } else if (foundFakePassword === null) {
-      databaseConnector.saveObject(newFakePassword, 'fakePassword', callback);
-    } else {
-      callback(err, null);
+      return;
+    } else if (foundFakePassword) {
+      callback({ error: new errorCreator.AlreadyExists({ name: `create ${fakePassword.password}` }) });
+
+      return;
     }
+
+    databaseConnector.saveObject({ object: newFakePassword, objectType: 'fakePassword', callback });
   });
 }
 
 /**
  * Get all fake passwords
- * @param {Function} callback Callback
+ * @param {Function} params.callback Callback
  */
-function getAllFakePasswords(callback) {
+function getAllFakePasswords({ callback }) {
   const query = {};
   const filter = { _id: 0 };
 
-  FakePassword.find(query, filter).lean().exec((err, fakePasswords) => {
-    if (err || fakePasswords === null) {
-      logger.sendErrorMsg({
-        code: logger.ErrorCodes.db,
-        text: ['Failed to get fake passwords'],
-        err,
-      });
+  FakePassword.find(query, filter).lean().exec((err, fakePasswords = []) => {
+    if (err) {
+      callback({ error: new errorCreator.Database({ errorObject: err }) });
+
+      return;
     }
 
-    callback(err, fakePasswords);
+    callback({ data: { fakePasswords } });
   });
 }
 

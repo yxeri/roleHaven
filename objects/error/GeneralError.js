@@ -35,9 +35,9 @@ const ErrorTypes = {
  */
 function printError(errorObject) {
   if (errorObject) {
-    console.log(errorObject.name);
-    console.log(errorObject.message);
-    console.log(errorObject.stack)
+    if (errorObject.name) { console.log(errorObject.name); }
+    if (errorObject.message) { console.log(errorObject.message); }
+    if (errorObject.stack) { console.log(errorObject.stack); }
   }
 }
 
@@ -47,12 +47,16 @@ class GeneralError {
    * @param {string} [params.text] Human-readable text to send back with the error
    * @param {string} [params.type] Type of error
    * @param {Error} [params.errorObject] Error object
+   * @param {boolean} verbose Should error messages be printed?
    */
-  constructor({ text = ['Something went wrong'], type = ErrorTypes.GENERAL, errorObject }) {
+  constructor({ text = ['Something went wrong'], type = ErrorTypes.GENERAL, errorObject, verbose = true }) {
     this.text = text;
     this.type = type;
 
-    printError(errorObject);
+    if (verbose) {
+      console.log(`Error Type: ${type}. `, text.join(' '));
+      printError(errorObject);
+    }
   }
 }
 

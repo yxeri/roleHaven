@@ -29,17 +29,17 @@ const textTools = require('../../utils/textTools');
 
 /**
  * Should the room be hidden?
- * @param {string} room - Room name
- * @param {string} socketId - ID of the socket
+ * @param {string} roomName Room name
+ * @param {string} socketId ID of the socket
  * @returns {boolean} Should the room be hidden?
  */
-function shouldBeHidden(room, socketId) {
+function shouldBeHidden({ roomName, socketId }) {
   const hiddenRooms = [
     socketId,
     dbConfig.rooms.bcast.roomName,
   ];
 
-  return hiddenRooms.indexOf(room) >= 0 || room.indexOf(appConfig.whisperAppend) >= 0 || room.indexOf(appConfig.deviceAppend) >= 0;
+  return hiddenRooms.indexOf(roomName) >= 0 || roomName.indexOf(appConfig.whisperAppend) >= 0 || roomName.indexOf(appConfig.deviceAppend) >= 0;
 }
 
 /**
@@ -71,14 +71,14 @@ function handle(socket, io) {
 
           fs.writeFile(`${appConfig.publicBase}/images/${fileName}`, image.source.replace(/data:image\/((png)|(jpeg));base64,/, ''), { encoding: 'base64' }, (err) => {
             if (err) {
-              callback({ error: new errorCreator.Database({}) });
+              callback({ error: new errorCreator.Database({ errorObject: err, name: 'writeFile image' }) });
 
               return;
             }
 
             message.image = {
-              imageName: image.imageName,
               fileName,
+              imageName: image.imageName,
               width: image.width,
               height: image.height,
             };
@@ -183,29 +183,28 @@ function handle(socket, io) {
         room.owner = allowedUser.userName;
         room.roomName = room.roomName.toLowerCase();
 
-        manager.createRoom(room, allowedUser, (createErr, createdRoom) => {
-          if (createErr) {
-            callback({ error: new errorCreator.Database({ errorObject: createErr }) });
+        manager.createRoom({
+          room,
+          user: allowedUser,
+          callback: ({ error: createError, data }) => {
+            if (createError) {
+              callback({ error: createError });
 
-            return;
-          } else if (!createdRoom) {
-            callback({ error: new errorCreator.AlreadyExists({ name: 'room' }) });
+              return;
+            }
 
-            return;
-          }
+            socket.broadcast.emit('room', {
+              room: { roomName: room.roomName },
+              isProtected: typeof room.password !== 'undefined' && room.password !== '',
+            });
 
-          socket.broadcast.emit('room', {
-            room: {
-              roomName: room.roomName,
-            },
-            isProtected: typeof room.password !== 'undefined' && room.password !== '',
-          });
-          manager.followRoom({
-            callback,
-            socket,
-            userName: allowedUser.userName,
-            room: createdRoom,
-          });
+            manager.followRoom({
+              callback,
+              socket,
+              userName: allowedUser.userName,
+              room: data.room,
+            });
+          },
         });
       },
     });
@@ -228,26 +227,31 @@ function handle(socket, io) {
           return;
         }
 
-        dbRoom.getRoom(room.roomName, allowedUser, (err, retrievedRoom) => {
-          if (err) {
-            callback({ error: new errorCreator.Database({}) });
+        dbRoom.getRoom({
+          roomName: room.roomName,
+          user: allowedUser,
+          callback: ({ error: getError, data }) => {
+            if (getError) {
+              callback({ error: getError });
 
-            return;
-          }
+              return;
+            }
 
-          const socketRooms = Object.keys(socket.rooms);
+            const { room: retrievedRoom } = data;
+            const socketRooms = Object.keys(socket.rooms);
 
-          if ((retrievedRoom && Object.keys(socket.rooms).indexOf(retrievedRoom.roomName) > -1) || socketRooms.indexOf(room.roomName) > -1) {
-            callback({ data: { allowed: true, room: retrievedRoom } });
-          } else {
-            callback({ data: { allowed: false, room: retrievedRoom } });
-          }
+            if ((retrievedRoom && Object.keys(socket.rooms).indexOf(retrievedRoom.roomName) > -1) || socketRooms.indexOf(room.roomName) > -1) {
+              callback({ data: { allowed: true, room: retrievedRoom } });
+            } else {
+              callback({ data: { allowed: false, room: retrievedRoom } });
+            }
+          },
         });
       },
     });
   });
 
-  socket.on('followWhisper', ({ room, token }, callback = () => {}) => {
+  socket.on('followWhisper', ({ whisperTo, room, token }, callback = () => {}) => {
     if (!objectValidator.isValidData({ room }, { room: { roomName: true } })) {
       callback({ error: new errorCreator.InvalidData({ expected: '{ room: { roomName } }' }) });
 
@@ -264,14 +268,39 @@ function handle(socket, io) {
           return;
         }
 
-        dbUser.addWhisperRoomToUser(allowedUser.userName, room.roomName, (dbErr) => {
-          if (dbErr) {
-            callback({ error: new errorCreator.Database({}) });
+        dbUser.addWhisperRoomToUser({
+          userName: allowedUser.userName,
+          roomName: room.roomName,
+          callback: ({ error: whisperError }) => {
+            if (whisperError) {
+              callback({ error: whisperError });
 
-            return;
-          }
+              return;
+            }
 
-          callback({ data: { room } });
+            const whisperToRoomName = `${whisperTo}-whisper-${allowedUser.userName}`;
+
+            dbUser.addWhisperRoomToUser({
+              userName: whisperTo,
+              roomName: whisperToRoomName,
+              callback: (whisperData) => {
+                if (whisperData.error) {
+                  callback({ error: whisperData.error });
+
+                  return;
+                }
+
+                socket.to(`${whisperTo}${appConfig.whisperAppend}`).emit('follow', {
+                  whisperTo: allowedUser.userName,
+                  data: whisperToRoomName,
+                  room: { roomName: whisperToRoomName },
+                  whisper: true,
+                });
+
+                callback({ data: { room } });
+              },
+            });
+          },
         });
       },
     });
@@ -326,11 +355,11 @@ function handle(socket, io) {
 
           return;
         } else if (roomName === dbConfig.rooms.public.roomName) {
-          callback({ error: new errorCreator.NotAllowed({ name: 'unfollow room public' }) });
+          callback({ error: new errorCreator.NotAllowed({ name: 'unfollow protected room' }) });
 
           return;
         } else if (roomName !== allowedUser.userName + appConfig.whisperAppend && allowedUser.aliases.map(alias => alias + appConfig.whisperAppend).indexOf(roomName) === -1) {
-          callback({ error: new errorCreator.NotAllowed({ name: 'unfollow whisper room' }) });
+          callback({ error: new errorCreator.NotAllowed({ name: 'unfollow protected room' }) });
 
           return;
         }
@@ -342,9 +371,9 @@ function handle(socket, io) {
           userName,
           roomName,
           isWhisperRoom,
-          callback: (err) => {
-            if (err) {
-              callback({ error: new errorCreator.Database({ errorObject: err }) });
+          callback: ({ error: removeError }) => {
+            if (removeError) {
+              callback({ error: removeError });
 
               return;
             }
@@ -372,52 +401,64 @@ function handle(socket, io) {
           return;
         }
 
-        dbRoom.getAllRooms(allowedUser, (roomErr, rooms = []) => {
-          if (roomErr) {
-            callback({ error: new errorCreator.Database({ errorObject: roomErr }) });
+        dbRoom.getAllRooms({
+          user: allowedUser,
+          callback: ({ error: getError, data }) => {
+            if (getError) {
+              callback({ error: getError });
 
-            return;
-          }
+              return;
+            }
 
-          const socketRooms = Object.keys(socket.rooms);
-          const roomNames = rooms.filter(room => socketRooms.indexOf(room.roomName) < 0).map(room => room.roomName);
-          const followedNames = socketRooms.filter(roomName => !shouldBeHidden(roomName, socket.id));
-          const protectedNames = rooms.filter(room => room.password).map(room => room.roomName);
-
-          if (allowedUser.userName === '') {
-            callback({
-              data: {
-                rooms: roomNames,
-                followedRooms: followedNames,
-              },
+            const { rooms: retrievedRooms } = data;
+            const filteredRooms = retrievedRooms.map((room) => {
+              return {
+                roomName: room.roomName,
+                password: room.password !== '',
+              };
             });
-          } else {
-            dbRoom.getOwnedRooms(allowedUser, (err, ownedRooms = []) => {
-              if (err) {
-                callback({ error: new errorCreator.Database({ errorObject: err }) });
 
-                return;
-              }
+            const socketRooms = Object.keys(socket.rooms);
+            const rooms = filteredRooms.filter(room => socketRooms.indexOf(room.roomName) < 0);
+            const followedRooms = socketRooms.filter(roomName => !shouldBeHidden({ roomName, socketId: socket.id })).map((roomName) => { return { roomName }; });
+            const protectedRooms = filteredRooms.filter(room => room.password);
 
-              const ownedNames = ownedRooms.map(room => room.roomName);
-
+            if (allowedUser.userName === '') {
               callback({
                 data: {
-                  rooms: roomNames,
-                  followedRooms: followedNames,
-                  ownedRooms: ownedNames,
-                  whisperRooms: allowedUser.whisperRooms,
-                  protectedRooms: protectedNames,
+                  rooms,
+                  followedRooms,
                 },
               });
-            });
-          }
+            } else {
+              dbRoom.getOwnedRooms({
+                user: allowedUser,
+                callback: ({ error: ownedError, data: roomsData }) => {
+                  if (ownedError) {
+                    callback({ error: ownedError });
+
+                    return;
+                  }
+
+                  callback({
+                    data: {
+                      rooms,
+                      followedRooms,
+                      protectedRooms,
+                      ownedRooms: roomsData.rooms,
+                      whisperRooms: allowedUser.whisperRooms.map((roomName) => { return { roomName }; }),
+                    },
+                  });
+                },
+              });
+            }
+          },
         });
       },
     });
   });
 
-  socket.on('getHistory', ({ room, startDate, lines, whisperTo, token }, callback = () => {}) => {
+  socket.on('getHistory', ({ room, whisperTo, token }, callback = () => {}) => {
     manager.userIsAllowed({
       token,
       commandName: dbConfig.commands.getHistory.commandName,
@@ -428,51 +469,36 @@ function handle(socket, io) {
           return;
         }
 
-        if (allowedUser.team && room.roomName === 'team') {
-          room.roomName = allowedUser.team + appConfig.teamAppend;
-        } else if (whisperTo) {
-          room.roomName += appConfig.whisperAppend;
-        }
+        if (room && room.roomName) {
+          if (allowedUser.team && room.roomName === 'team') {
+            room.roomName = allowedUser.team + appConfig.teamAppend;
+          } else if (whisperTo) {
+            room.roomName += appConfig.whisperAppend;
+          }
 
-        if (Object.keys(socket.rooms).indexOf(room.roomName) === -1) {
-          callback({ error: new errorCreator.NotAllowed({ name: `retrieve history from ${room.roomName}` }) });
+          if (Object.keys(socket.rooms).indexOf(room.roomName) === -1) {
+            callback({ error: new errorCreator.NotAllowed({ name: `retrieve history from ${room.roomName}` }) });
 
-          return;
+            return;
+          }
         }
 
         const allRooms = room ? [room.roomName] : Object.keys(socket.rooms);
-        const historyLines = lines > appConfig.maxHistoryLines ? appConfig.maxHistoryLines : lines;
 
         manager.getHistory({
           whisperTo,
           rooms: allRooms,
-          lines: historyLines,
-          missedMsgs: false,
-          lastOnline: startDate || new Date(),
-          callback: (histErr, historyMessages = [], anonymous) => {
-            if (histErr) {
-              callback({ error: new errorCreator.Database({ errorObject: histErr }) });
+          callback: ({ error: histError, data }) => {
+            if (histError) {
+              callback({ error: histError });
 
               return;
             }
 
-            const data = { following: room && Object.keys(socket.rooms).indexOf(room.roomName) > -1 };
+            const newData = data;
+            newData.following = room && Object.keys(socket.rooms).indexOf(room.roomName) > -1;
 
-            if (anonymous) {
-              data.messages = historyMessages.map((message) => {
-                message.time = new Date();
-                message.time.setHours(0);
-                message.time.setMinutes(0);
-                message.time.setSeconds(0);
-                message.userName = 'anonymous';
-
-                return message;
-              });
-            } else {
-              data.messages = historyMessages;
-            }
-
-            callback({ data });
+            callback({ data: newData });
           },
         });
       },
@@ -499,96 +525,49 @@ function handle(socket, io) {
           return;
         }
 
-        dbRoom.getRoom(room.roomName, allowedUser, (getErr, retrievedRoom) => {
-          if (getErr) {
-            callback({ error: new errorCreator.Database({ errorObject: getErr }) });
-
-            return;
-          } else if (retrievedRoom.owner !== allowedUser.userName) {
-            callback({ error: new errorCreator.NotAllowed({ name: 'not owner of room' }) })
-          }
-
-          dbRoom.removeRoom(room.roomName, (err) => {
-            if (err) {
-              callback({ error: new errorCreator.Database({ errorObject: err }) });
+        dbRoom.getRoom({
+          roomName: room.roomName,
+          user: allowedUser,
+          callback: ({ error: getError, data }) => {
+            if (getError) {
+              callback({ error: getError });
 
               return;
+            } else if (data.room.owner !== allowedUser.userName) {
+              callback({ error: new errorCreator.NotAllowed({ name: 'not owner of room' }) });
             }
 
-            dbUser.removeRoomFromAllUsers(room.roomName, (roomErr) => {
-              if (roomErr) {
-                callback({ error: new errorCreator.Database({ errorObject: roomErr }) });
+            dbRoom.removeRoom({
+              roomName: data.room.roomName,
+              callback: ({ error: removeError }) => {
+                if (removeError) {
+                  callback({ error: removeError });
 
-                return;
-              }
+                  return;
+                }
 
-              const connectedIds = Object.keys(io.sockets.adapter.rooms[room.roomName].sockets);
-              const allSockets = io.sockets.connected;
+                dbUser.removeRoomFromAllUsers({
+                  roomName: room.roomName,
+                  callback: ({ error: allError }) => {
+                    if (allError) {
+                      callback({ error: allError });
 
-              socket.broadcast.to(room.roomName).emit('unfollow', { room });
+                      return;
+                    }
 
-              connectedIds.forEach(connectedId => allSockets[connectedId].leave(room.roomName));
+                    const connectedIds = Object.keys(io.sockets.adapter.rooms[room.roomName].sockets);
+                    const allSockets = io.sockets.connected;
+
+                    socket.broadcast.to(room.roomName).emit('unfollow', { room });
+                    connectedIds.forEach(connectedId => allSockets[connectedId].leave(room.roomName));
+
+                    callback({ data: { room } });
+                  },
+                });
+              },
             });
-
-            // TODO Send message to all users that were following the room
-            callback({ data: { room } });
-          });
+          },
         });
-      },
-    });
-  });
-
-  // TODO Unused
-  socket.on('updateRoom', ({ field, value, room, token }, callback = () => {}) => {
-    if (!objectValidator.isValidData({ field, value, room }, { room: { roomName: true }, field: true, value: true })) {
-      callback({ error: new errorCreator.InvalidData({ expected: '{ field, value, room: { roomName } }' }) });
-
-      return;
-    }
-
-    manager.userIsAllowed({
-      token,
-      commandName: dbConfig.commands.updateRoom.commandName,
-      callback: ({ error }) => {
-        if (error) {
-          callback({ error });
-
-          return;
-        }
-
-        room.roomName = room.roomName.toLowerCase();
-
-        const updateRoomCallback = (err, updatedRoom) => {
-          if (err) {
-            callback({ error: new errorCreator.Database({}) });
-
-            return;
-          } else if (updatedRoom === null) {
-            callback({ error: new errorCreator.DoesNotExist({ name: `room ${room.roomName}` }) });
-
-            return;
-          }
-
-          callback({ data: { success: true } });
-        };
-
-        switch (field) {
-          case 'visibility': {
-            dbRoom.updateRoomVisibility(room.roomName, value, updateRoomCallback);
-
-            break;
-          }
-          case 'accesslevel': {
-            dbRoom.updateRoomAccessLevel(room.roomName, value, updateRoomCallback);
-
-            break;
-          }
-          default: {
-            callback({ error: new errorCreator.InvalidData({ expected: 'visibility || accessLevel' }) });
-
-            break;
-          }
-        }
       },
     });
   });
@@ -607,16 +586,14 @@ function handle(socket, io) {
           return;
         }
 
-        const rooms = allowedUser.rooms.filter(room => !shouldBeHidden(room, socket.id) && (!partialName || room.indexOf(partialName) === 0));
+        const rooms = allowedUser.rooms.filter(room => !shouldBeHidden({ room, socketId: socket.id }) && (!partialName || room.indexOf(partialName) === 0));
 
         if (allowedUser.team) {
           rooms.push('team');
         }
 
         callback({
-          data: {
-            matched: rooms,
-          },
+          data: { matched: rooms },
         });
       },
     });
@@ -636,18 +613,20 @@ function handle(socket, io) {
           return;
         }
 
-        dbRoom.matchPartialRoom(partialName, allowedUser, (err, rooms) => {
-          if (err) {
-            callback({ error: new errorCreator.Database({}) });
+        dbRoom.matchPartialRoom({
+          partialName,
+          user: allowedUser,
+          callback: ({ error: partialError, data }) => {
+            if (partialError) {
+              callback({ error: partialError });
 
-            return;
-          }
+              return;
+            }
 
-          callback({
-            data: {
-              matched: rooms.map(room => room.roomName),
-            },
-          });
+            callback({
+              data: { matched: data.rooms.map(room => room.roomName) },
+            });
+          },
         });
       },
     });

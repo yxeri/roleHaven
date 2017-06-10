@@ -19,7 +19,6 @@
 const manager = require('../../socketHelpers/manager');
 const databasePopulation = require('../../config/defaults/config').databasePopulation;
 const dbCalibrationMission = require('../../db/connectors/calibrationMission');
-const errorCreator = require('../../objects/error/errorCreator');
 
 /**
  * @param {object} socket - Socket.IO socket
@@ -36,59 +35,64 @@ function handle(socket) {
           return;
         }
 
-        dbCalibrationMission.getActiveMission(allowedUser.userName, (activeErr, activeMission) => {
-          if (activeErr) {
-            callback({ error: new errorCreator.Database({}) });
+        dbCalibrationMission.getActiveMission({
+          owner: allowedUser.userName,
+          callback: ({ error: activeErr, data }) => {
+            if (activeErr) {
+              callback({ error: activeErr });
 
-            return;
-          } else if (!activeMission) {
-            dbCalibrationMission.getInactiveMissions(allowedUser.userName, (inactiveErr, inactiveMissions) => {
-              if (inactiveErr) {
-                callback({ error: new errorCreator.Database({}) });
+              return;
+            }
 
-                return;
-              }
+            const { mission } = data;
 
-              const stationIds = [1, 2, 3, 4]; // TODO This is just for testing purposes. Remove when organisers have their backend ready
+            if (mission) {
+              callback({ data: { mission } });
 
-              if (inactiveMissions && inactiveMissions.length > 0) {
-                const previousStationId = inactiveMissions[inactiveMissions.length - 1].stationId;
+              return;
+            }
 
-                stationIds.splice(stationIds.indexOf(previousStationId), 1);
-              }
-
-              const newStationId = stationIds[Math.floor(Math.random() * (stationIds.length))];
-              const newCode = Math.floor(Math.random() * (((99999999 - 10000000) + 1) + 10000000));
-              const mission = {
-                owner: allowedUser.userName,
-                stationId: newStationId,
-                code: newCode,
-              };
-
-              dbCalibrationMission.createMission(mission, (newErr, newMission) => {
-                if (newErr) {
-                  callback({ error: new errorCreator.Database({}) });
+            dbCalibrationMission.getInactiveMissions({
+              owner: allowedUser.userName,
+              callback: ({ error: inactiveErr, data: inactiveData }) => {
+                if (inactiveErr) {
+                  callback({ error: inactiveErr });
 
                   return;
                 }
 
-                callback({
-                  data: {
-                    mission: newMission,
-                    isNew: true,
+                const { missions: inactiveMissions } = inactiveData;
+                const stationIds = [1, 2, 3, 4]; // TODO This is just for testing purposes. Remove when organisers have their backend ready
+
+                if (inactiveMissions && inactiveMissions.length > 0) {
+                  const previousStationId = inactiveMissions[inactiveMissions.length - 1].stationId;
+
+                  stationIds.splice(stationIds.indexOf(previousStationId), 1);
+                }
+
+                const newStationId = stationIds[Math.floor(Math.random() * (stationIds.length))];
+                const newCode = Math.floor(Math.random() * (((99999999 - 10000000) + 1) + 10000000));
+                const newMission = {
+                  owner: allowedUser.userName,
+                  stationId: newStationId,
+                  code: newCode,
+                };
+
+                dbCalibrationMission.createMission({
+                  mission: newMission,
+                  callback: (newErr) => {
+                    if (newErr) {
+                      callback({ error: newErr });
+
+                      return;
+                    }
+
+                    callback({ data: { mission: newMission, isNew: true } });
                   },
                 });
-              });
+              },
             });
-
-            return;
-          }
-
-          callback({
-            data: {
-              mission: activeMission,
-            },
-          });
+          },
         });
       },
     });

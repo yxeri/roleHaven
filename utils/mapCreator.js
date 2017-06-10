@@ -19,6 +19,7 @@
 const appConfig = require('../config/defaults/config').app;
 const request = require('request');
 const xml2json = require('xml2json');
+const errorCreator = require('../objects/error/errorCreator');
 
 /**
  * Convert xml to json
@@ -102,7 +103,7 @@ function createPosition({ position, layerName }) {
     positionName: position.name,
     isStatic: true,
     markerType: layerName.toLowerCase(),
-    description: position.description ? position.description.replace(/<img .+?\/>/g, '').split(/<br>/) : ['No information'],
+    description: position.description ? position.description.replace(/<img .+?\/>/, '').split(/<br>/) : ['No information'],
     coordinates,
     geometry,
   };
@@ -110,18 +111,18 @@ function createPosition({ position, layerName }) {
 
 /**
  * Get Google Maps positions
- * @param {Function} callback - Callback
+ * @param {Function} params.callback Callback
  */
-function getGooglePositions(callback) {
+function getGooglePositions({ callback }) {
   if (!appConfig.mapLayersPath) {
-    callback(null, []);
+    callback({ error: new errorCreator.General({ name: 'No map layers set' }) });
 
     return;
   }
 
   request.get(appConfig.mapLayersPath, (err, response, body) => {
     if (err || response.statusCode !== 200) {
-      callback(err || true);
+      callback({ error: new errorCreator.External({ errorObject: err, name: 'Unable to retrieve Google maps layer' }) });
 
       return;
     }
@@ -138,7 +139,7 @@ function getGooglePositions(callback) {
       });
     });
 
-    callback(err, positions);
+    callback({ data: { positions } });
   });
 }
 

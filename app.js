@@ -49,9 +49,9 @@ appConfig.routes.forEach((route) => {
   app.use(route.sitePath, require(path.resolve(route.filePath))(app.io)); // eslint-disable-line import/no-dynamic-require, global-require)
 });
 
-require('./db/connectors/user').populateDbUsers(databasePopulation.users);
-require('./db/connectors/room').populateDbRooms(databasePopulation.rooms, databasePopulation.users.superuser);
-require('./db/connectors/command').populateDbCommands(databasePopulation.commands);
+require('./db/connectors/user').populateDbUsers({ users: databasePopulation.users });
+require('./db/connectors/room').populateDbRooms({ rooms: databasePopulation.rooms });
+require('./db/connectors/command').populateDbCommands({ commands: databasePopulation.commands });
 
 /*
  * Catches all exceptions and keeps the server running

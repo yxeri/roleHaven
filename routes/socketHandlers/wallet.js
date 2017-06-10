@@ -45,14 +45,19 @@ function handle(socket, io) {
 
         const walletOwner = isTeam ? allowedUser.team + appConfig.teamAppend : allowedUser.userName;
 
-        dbWallet.getWallet(walletOwner, (err, wallet) => {
-          if (err) {
-            callback({ error: new errorCreator.Database({}) });
+        dbWallet.getWallet({
+          owner: walletOwner,
+          callback: (walletData) => {
+            if (walletData.error) {
+              callback({ error: walletData.error });
 
-            return;
-          }
+              return;
+            }
 
-          callback({ data: { wallet } });
+            const { wallet } = walletData.data;
+
+            callback({ data: { wallet } });
+          },
         });
       },
     });
@@ -77,8 +82,14 @@ function handle(socket, io) {
 
         manager.getAllTransactions({
           owner,
-          callback: (params) => {
-            callback(params);
+          callback: (transactionData) => {
+            if (transactionData.error) {
+              callback({ error: transactionData.error });
+
+              return;
+            }
+
+            callback(transactionData);
           },
         });
       },
@@ -112,8 +123,14 @@ function handle(socket, io) {
           transaction,
           io,
           user: allowedUser,
-          callback: (params) => {
-            callback(params);
+          callback: (transactionData) => {
+            if (transactionData.error) {
+              callback({ error: transactionData.error });
+
+              return;
+            }
+
+            callback(transactionData);
           },
         });
       },

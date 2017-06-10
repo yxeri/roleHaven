@@ -49,15 +49,18 @@ function handle(socket) {
           userName: allowedUser.userName,
         };
 
-        dbSimpleMsg.createSimpleMsg(simpleMsg, (err, newSimpleMsg) => {
-          if (error || !newSimpleMsg) {
-            callback({ error: new errorCreator.Database({}) });
+        dbSimpleMsg.createSimpleMsg({
+          simpleMsg,
+          callback: (simpleMsgData) => {
+            if (simpleMsgData.error) {
+              callback({ error: simpleMsgData.error });
 
-            return;
-          }
+              return;
+            }
 
-          callback({ data: { simpleMsg } });
-          socket.broadcast.emit('simpleMsg', simpleMsg);
+            callback({ data: { simpleMsg } });
+            socket.broadcast.emit('simpleMsg', simpleMsg);
+          },
         });
       },
     });
@@ -74,14 +77,18 @@ function handle(socket) {
           return;
         }
 
-        dbSimpleMsg.getAllSimpleMsgs((err, simpleMsgs = []) => {
-          if (err) {
-            callback({ error: new errorCreator.Database({}) });
+        dbSimpleMsg.getAllSimpleMsgs({
+          callback: (simpleMsgsData) => {
+            if (simpleMsgsData.error) {
+              callback({ error: simpleMsgsData.error });
 
-            return;
-          }
+              return;
+            }
 
-          callback({ data: { simpleMsgs } });
+            const { simpleMsgs } = simpleMsgsData.data;
+
+            callback({ data: { simpleMsgs } });
+          },
         });
       },
     });

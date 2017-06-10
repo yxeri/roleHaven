@@ -17,8 +17,7 @@
 'use strict';
 
 const mongoose = require('mongoose');
-const logger = require('../../utils/logger');
-const databaseConnector = require('../databaseConnector');
+const errorCreator = require('../../objects/error/errorCreator');
 
 const deviceSchema = new mongoose.Schema({
   deviceId: { type: String, unique: true },
@@ -31,143 +30,80 @@ const deviceSchema = new mongoose.Schema({
 const Device = mongoose.model('Device', deviceSchema);
 
 /**
- * Update socket.IO ID and user connected to device
- * @param {string} deviceId - ID of the device
- * @param {string} socketId - socket.IO ID
- * @param {string} user - User name of the user that was latest active on this device
- * @param {Function} callback - Callback
+ * Update device properties. Creates a new device if one doesn't exist with sent deviceId
+ * @param {Object} params.device Properties to update in device
+ * @param {string} params.device.deviceId Device ID
+ * @param {string} [params.device.deviceAlias] Alias for device
+ * @param {string} [params.device.lastUser] Last user name logged in on device
+ * @param {string} [params.device.socketId] Socket.IO socket ID
+ * @param {Function} params.callback Callback
  */
-function updateDeviceSocketId(deviceId, socketId, user, callback) {
+function updateDevice({ device, callback }) {
+  const { deviceId, deviceAlias, lastUser, socketId } = device;
   const query = { deviceId };
-  const update = {
-    $set: {
-      socketId,
-      lastUser: user,
-    },
+  const toSet = {
+    lastAlive: new Date(),
   };
-  const options = { new: true };
 
-  Device.findOneAndUpdate(query, update, options).lean().exec(
-    (err, device) => {
-      if (err) {
-        logger.sendErrorMsg({
-          code: logger.ErrorCodes.db,
-          text: ['Failed to update device socket Id'],
-          err,
-        });
-        callback(err, null);
-      } else if (device === null) {
-        const newDevice = new Device({
-          deviceId,
-          socketId,
-          lastUser: user,
-          deviceAlias: deviceId,
-        });
+  if (deviceAlias) { toSet.deviceAlias = deviceAlias; }
+  if (lastUser) { toSet.lastUser = lastUser; }
+  if (socketId) { toSet.socketId = socketId; }
 
-        databaseConnector.saveObject(newDevice, 'device', callback);
-      } else {
-        callback(err, device);
-      }
+  const update = { $set: toSet };
+  const options = {
+    new: true,
+    upsert: true,
+  };
+
+  Device.findOneAndUpdate(query, update, options).lean().exec((err, updatedDevice) => {
+    if (err) {
+      callback({ error: new errorCreator.Database({ errorObject: err, name: 'updateDevice' }) });
+
+      return;
     }
-  );
-}
 
-/**
- * Update last alive (last seen) for device
- * @param {string} deviceId - ID of device
- * @param {Date} value - Date when last seen
- * @param {Function} callback - Callback
- */
-function updateDeviceLastAlive(deviceId, value, callback) {
-  const query = { deviceId };
-  const update = { $set: { lastAlive: value } };
-  const options = { new: true };
-
-  Device.findOneAndUpdate(query, update, options).lean().exec(
-    (err, device) => {
-      if (err) {
-        logger.sendErrorMsg({
-          code: logger.ErrorCodes.db,
-          text: ['Failed to update device Id'],
-          err,
-        });
-      }
-
-      callback(err, device);
-    }
-  );
-}
-
-/**
- * Update alias of device
- * @param {string} deviceId - ID of device
- * @param {string} value - New alias
- * @param {Function} callback - Callback
- */
-function updateDeviceAlias(deviceId, value, callback) {
-  const query = { deviceId };
-  const update = { $set: { deviceAlias: value } };
-  const options = { new: true };
-
-  Device.findOneAndUpdate(query, update, options).lean().exec(
-    (err, device) => {
-      if (err) {
-        logger.sendErrorMsg({
-          code: logger.ErrorCodes.db,
-          text: ['Failed to update device Id'],
-          err,
-        });
-      }
-
-      callback(err, device);
-    }
-  );
+    callback({ data: { device: updatedDevice } });
+  });
 }
 
 /**
  * Get device based on device ID or alias
- * @param {string} deviceCode - Device ID OR device alias
- * @param {Function} callback - Callback
+ * @param {string} params.deviceCode Device ID OR device alias
+ * @param {Function} params.callback Callback
  */
-function getDevice(deviceCode, callback) {
+function getDevice({ deviceCode, callback }) {
   const query = { $or: [{ deviceId: deviceCode }, { deviceAlias: deviceCode }] };
 
   Device.findOne(query).lean().exec((err, device) => {
-    if (err || device === null) {
-      logger.sendErrorMsg({
-        code: logger.ErrorCodes.db,
-        text: ['Failed to get device'],
-        err,
-      });
+    if (err) {
+      callback({ error: new errorCreator.Database({ errorObject: err, name: 'getDevice' }) });
+
+      return;
     }
 
-    callback(err, device);
+    callback({ data: { device } });
   });
 }
 
 /**
  * Get all devices
- * @param {Function} callback - Callback
+ * @param {Function} params.callback Callback
  */
-function getAllDevices(callback) {
+function getAllDevices({ callback }) {
   const query = {};
   const filter = { _id: 0, socketId: 0 };
 
   Device.find(query, filter).lean().exec((err, devices) => {
     if (err) {
-      logger.sendErrorMsg({
-        code: logger.ErrorCodes.db,
-        text: ['Failed to get all devices'],
-        err,
-      });
+      callback({ error: new errorCreator.Database({ errorObject: err, name: 'getAllDevices' }) });
+
+      return;
     }
 
-    callback(err, devices);
+    callback({ data: { devices } });
   });
 }
 
-exports.updateDeviceAlias = updateDeviceAlias;
-exports.updateDeviceSocketId = updateDeviceSocketId;
+exports.updateDevice = updateDevice;
 exports.getDevice = getDevice;
 exports.getAllDevices = getAllDevices;
-exports.updateDeviceLastAlive = updateDeviceLastAlive;

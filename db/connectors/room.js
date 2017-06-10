@@ -17,10 +17,11 @@
 'use strict';
 
 const mongoose = require('mongoose');
-const logger = require('../../utils/logger');
 const databaseConnector = require('../databaseConnector');
 const chatHistoryConnector = require('./chatHistory');
 const dbUser = require('./user');
+const errorCreator = require('../../objects/error/errorCreator');
+const dbConfig = require('../../config/defaults/config').databasePopulation;
 
 const roomSchema = new mongoose.Schema({
   roomName: { type: String, unique: true },
@@ -33,8 +34,8 @@ const roomSchema = new mongoose.Schema({
     accessLevel: Number,
     requireAdmin: Boolean,
   }],
-  admins: [{ type: String, unique: true }],
-  bannedUsers: [{ type: String, unique: true }],
+  admins: [String],
+  bannedUsers: [String],
   owner: String,
   team: String,
   anonymous: { type: Boolean, default: false },
@@ -44,241 +45,239 @@ const Room = mongoose.model('Room', roomSchema);
 
 /**
  * Authorize the user to the room, by checking if the password is correct and the user has high enough access level
- * @param {Object} user - User to authorize
- * @param {string} roomName - Name of the room
- * @param {string} password - Password of the room
- * @param {Function} callback - Callback
+ * @param {Object} params.user User to authorize
+ * @param {string} params.roomName Name of the room
+ * @param {string} [params.password] Password of the room
+ * @param {Function} params.callback Callback
  */
-function authUserToRoom(user = { accessLevel: 0 }, roomName, password = '', callback) {
+function authUserToRoom({ user, roomName, callback, password = '' }) {
   const query = {
     $and: [
-      { accessLevel: { $lte: user.accessLevel } },
       { roomName },
       { password },
+      { accessLevel: { $lte: user.accessLevel } },
     ],
   };
   const filter = { password: 0 };
 
   Room.findOne(query, filter).lean().exec((err, room) => {
     if (err) {
-      logger.sendErrorMsg({
-        code: logger.ErrorCodes.db,
-        text: ['Failed to check auth against room'],
-        err,
-      });
+      callback({ error: new errorCreator.Database({ errorObject: err, name: 'authUserToRoom' }) });
+
+      return;
+    } else if (!room) {
+      callback({ error: new errorCreator.NotAllowed({ name: `Room ${roomName}` }) });
+
+      return;
     }
 
-    callback(err, room);
+    callback({ data: { room } });
   });
 }
 
 /**
  * Create and save room
- * @param {Object} sentRoom - New room
- * @param {Object} sentUser - User that created the room
- * @param {Function} callback - Callback
+ * @param {Object} params.room New room
+ * @param {Function} params.callback Callback
  */
-function createRoom(sentRoom, sentUser, callback) {
-  const newRoom = new Room(sentRoom);
-  const query = { roomName: sentRoom.roomName };
+function createRoom({ room, callback }) {
+  const newRoom = new Room(room);
+  const query = { roomName: room.roomName };
 
-  Room.findOne(query).lean().exec((err, room) => {
+  Room.findOne(query).lean().exec((err, foundRoom) => {
     if (err) {
-      logger.sendErrorMsg({
-        code: logger.ErrorCodes.db,
-        text: ['Failed to find if room already exists'],
-        err,
-      });
-      // Room doesn't exist in the collection, so let's add it!
-    } else if (room === null) {
-      chatHistoryConnector.createHistory(sentRoom.roomName, sentRoom.anonymous, (saveErr, saveHistory) => {
-        if (saveErr || saveHistory === null) {
-          logger.sendErrorMsg({
-            code: logger.ErrorCodes.db,
-            text: ['Failed to save history'],
-            err: saveErr,
-          });
-        } else {
-          databaseConnector.saveObject(newRoom, 'room', callback);
-        }
-      });
-    } else {
-      callback(err, null);
+      callback({ error: new errorCreator.Database({ errorObject: err, name: 'createRoom' }) });
+
+      return;
+    } else if (foundRoom !== null) {
+      callback({ error: new errorCreator.AlreadyExists({ name: `room ${room.roomName}` }) });
+
+      return;
     }
+
+    chatHistoryConnector.createHistory({
+      roomName: room.roomName,
+      anonymous: room.anonymous,
+      callback: ({ error }) => {
+        if (error) {
+          callback({ error });
+
+          return;
+        }
+
+        databaseConnector.saveObject({ object: newRoom, objectType: 'room', callback });
+      },
+    });
   });
 }
 
 /**
  * Get room
- * @param {string} roomName - Name of the room
- * @param {Object} user - User retrieving the room
- * @param {Function} callback - Callback
+ * @param {string} params.roomName - Name of the room
+ * @param {Object} params.user User retrieving the room
+ * @param {Function} params.callback Callback
  */
-function getRoom(roomName, user, callback) {
+function getRoom({ roomName, user, callback }) {
   const query = { roomName, accessLevel: { $lte: user.accessLevel } };
 
   Room.findOne(query).lean().exec((err, room) => {
     if (err) {
-      logger.sendErrorMsg({
-        code: logger.ErrorCodes.db,
-        text: [`Failed to get room ${roomName}`],
-        err,
-      });
+      callback({ error: new errorCreator.Database({ errorObject: err, name: 'getRoom' }) });
+
+      return;
+    } else if (!room) {
+      callback({ error: new errorCreator.DoesNotExist({ name: `room ${roomName}` }) });
+
+      return;
     }
 
-    if (room && room.password && room.password !== '') {
+    if (room.password && room.password !== '') {
       room.password = true;
     }
 
-    callback(err, room);
+    callback({ data: { room } });
   });
 }
 
 /**
  * Get rooms owned by user
- * @param {Object} user - Owner
- * @param {Function} callback - Callback
+ * @param {Object} params.user Owner
+ * @param {Function} params.callback Callback
  */
-function getOwnedRooms(user, callback) {
+function getOwnedRooms({ user, callback }) {
   const query = { owner: user.userName };
   const sort = { roomName: 1 };
   const filter = { password: 0 };
 
-  Room.find(query, filter).sort(sort).lean().exec((err, rooms) => {
+  Room.find(query, filter).sort(sort).lean().exec((err, rooms = []) => {
     if (err) {
-      logger.sendErrorMsg({
-        code: logger.ErrorCodes.db,
-        text: ['Failed to get owned rooms'],
-        err,
-      });
+      callback({ error: new errorCreator.Database({ errorObject: err, name: 'getOwnedRooms' }) });
+
+      return;
     }
 
-    callback(err, rooms);
+    callback({ data: { rooms } });
   });
 }
 
 /**
  * Get all rooms, based on user's access level
- * @param {Object} user - User
- * @param {Function} callback - Callback
+ * @param {Object} params.user User retrieving the rooms
+ * @param {Function} params.callback Callback
  */
-function getAllRooms(user, callback) {
+function getAllRooms({ user, callback }) {
   const query = { visibility: { $lte: user.accessLevel } };
   const sort = { roomName: 1 };
 
-  Room.find(query).sort(sort).lean().exec((err, rooms) => {
+  Room.find(query).sort(sort).lean().exec((err, rooms = []) => {
     if (err) {
-      logger.sendErrorMsg({
-        code: logger.ErrorCodes.db,
-        text: ['Failed to list rooms'],
-        err,
-      });
+      callback({ error: new errorCreator.Database({ errorObject: err, name: 'getAllRooms' }) });
+
+      return;
     }
 
-    callback(err, rooms);
+    callback({ data: { rooms } });
   });
 }
 
 /**
  * Ban user from room
- * @param {string} userName - Name of the user
- * @param {string} roomName - Name of the room
- * @param {Function} callback - Callback
+ * @param {string} params.userName Name of the user
+ * @param {string} params.roomName Name of the room
+ * @param {Function} params.callback Callback
  */
-function banUserFromRoom(userName, roomName, callback) {
+function banUserFromRoom({ userName, roomName, callback }) {
   const query = { roomName };
   const update = { $addToSet: { bannedUsers: userName } };
 
   Room.findOneAndUpdate(query, update).lean().exec((err, room) => {
     if (err) {
-      logger.sendErrorMsg({
-        code: logger.ErrorCodes.db,
-        text: [`Failed to ban user ${userName} from room ${roomName}`],
-        err,
-      });
+      callback({ error: new errorCreator.Database({ errorObject: err, name: 'banUserFromRoom' }) });
+
+      return;
+    } else if (!room) {
+      callback({ error: new errorCreator.DoesNotExist({ name: `room ${roomName}` }) });
+
+      return;
     }
 
-    callback(err, room);
+    callback({ data: { room } });
   });
 }
 
 /**
  * Unban user from room
- * @param {string} userName - Name of the user
- * @param {string} roomName - Name of the room
- * @param {Function} callback - Callback
+ * @param {string} params.userName Name of the user
+ * @param {string} params.roomName Name of the room
+ * @param {Function} params.callback Callback
  */
-function unbanUserFromRoom(userName, roomName, callback) {
+function unbanUserFromRoom({ userName, roomName, callback }) {
   const query = { roomName };
   const update = { $pull: { bannedUsers: userName } };
 
   Room.findOneAndUpdate(query, update).lean().exec((err, room) => {
     if (err) {
-      logger.sendErrorMsg({
-        code: logger.ErrorCodes.db,
-        text: [`Failed to unban user ${userName} from room ${roomName}`],
-        err,
-      });
+      callback({ error: new errorCreator.Database({ errorObject: err, name: 'unbanuserFromRoom' }) });
+
+      return;
+    } else if (!room) {
+      callback({ error: new errorCreator.DoesNotExist({ name: `room ${roomName}` }) });
+
+      return;
     }
 
-    callback(err, room);
+    callback({ data: { room } });
   });
 }
 
 /**
  * Remove room
- * @param {string} roomName Name of the room
- * @param {Function} callback Callback
+ * @param {string} params.roomName Name of the room
+ * @param {Function} params.callback Callback
  */
-function removeRoom(roomName, callback) {
+function removeRoom({ roomName, callback }) {
   const query = { roomName };
 
-  Room.findOneAndRemove(query).lean().exec((err, room) => {
-    if (err || !room) {
-      logger.sendErrorMsg({
-        code: logger.ErrorCodes.db,
-        text: ['Failed to remove room'],
-        err,
-      });
-
-      callback(err, null);
+  Room.findOneAndRemove(query).lean().exec((err) => {
+    if (err) {
+      callback({ error: new errorCreator.Database({ errorObject: err, name: 'removeRoom' }) });
 
       return;
     }
 
-    chatHistoryConnector.removeHistory(roomName, (histErr) => {
-      if (histErr) {
-        logger.sendErrorMsg({
-          code: logger.ErrorCodes.db,
-          text: ['Failed to remove history'],
-          err: histErr,
-        });
+    chatHistoryConnector.removeHistory({
+      roomName,
+      callback: ({ error }) => {
+        if (error) {
+          callback({ error });
 
-        callback(histErr, null);
-
-        return;
-      }
-
-      dbUser.removeRoomFromAllUsers(roomName, (roomErr) => {
-        if (roomErr) {
-          callback(roomErr, null);
-
-          return
+          return;
         }
 
-        callback(null, { success: true });
-      });
+        dbUser.removeRoomFromAllUsers({
+          roomName,
+          callback: ({ error: userError }) => {
+            if (userError) {
+              callback({ error: userError });
+
+              return;
+            }
+
+            callback({ data: { success: true } });
+          },
+        });
+      },
     });
   });
 }
 
 /**
  * Match partial room name
- * @param {string} partialName - Partial room name
- * @param {Object} user - User
- * @param {Function} callback - Callback
+ * @param {string} params.partialName Partial room name
+ * @param {Object} params.user User
+ * @param {Function} params.callback Callback
  */
-function matchPartialRoom(partialName, user, callback) {
+function matchPartialRoom({ partialName, user, callback }) {
   const filter = { _id: 0, roomName: 1 };
   const sort = { roomName: 1 };
 
@@ -287,84 +286,95 @@ function matchPartialRoom(partialName, user, callback) {
     sort,
     partialName,
     user,
-    queryType: Room,
     callback,
+    queryType: Room,
     type: 'roomName',
   });
 }
 
 /**
  * Add rooms to db
- * @param {Object} rooms - Rooms to be added
- * @param {Object} user - User that will be the owner
+ * @param {Object} params.rooms Rooms to be added
+ * @param {Function} params.callback Callback
  */
-function populateDbRooms(rooms, user) {
-  const roomCallback = (err, room) => {
-    if (err) {
-      logger.sendErrorMsg({
-        code: logger.ErrorCodes.db,
-        text: ['PopulateDb: [failure] Failed to create room'],
-        err,
+function populateDbRooms({ rooms }) {
+  console.log('Creating default rooms, if needed');
+
+  getAllRooms({
+    user: {
+      accessLevel: dbConfig.accessLevels.god,
+      banned: false,
+      verified: true,
+    },
+    callback: ({ error, data }) => {
+      if (error) {
+        return;
+      }
+
+      const { rooms: retrievedRooms } = data;
+      const roomNames = retrievedRooms.map(room => room.roomName);
+
+      Object.keys(rooms).map(roomKey => rooms[roomKey].roomName).forEach((roomName) => {
+        if (roomNames.indexOf(roomName) > -1) {
+          return;
+        }
+
+        const room = rooms[roomName];
+
+        createRoom({
+          room,
+          callback: (createData) => {
+            if (createData.error) {
+              return;
+            }
+
+            console.log(`Created room ${roomName}`);
+          },
+        });
       });
-    } else if (room !== null) {
-      logger.sendInfoMsg(`PopulateDb: [success] Created room ${room.roomName}`);
-    }
-  };
-
-  const roomKeys = Object.keys(rooms);
-
-  logger.sendInfoMsg('PopulateDb: Creating rooms from defaults, if needed');
-
-  for (let i = 0; i < roomKeys.length; i += 1) {
-    const room = rooms[roomKeys[i]];
-
-    createRoom(room, user, roomCallback);
-  }
+    },
+  });
 }
 
 /**
  * Set new room visibiity
- * @param {string} roomName - Name of the room
- * @param {number} value - New visibility
- * @param {Function} callback - Callback
+ * @param {string} params.roomName Name of the room
+ * @param {number} params.visibility New visibility
+ * @param {Function} params.callback Callback
  */
-function updateRoomVisibility(roomName, value, callback) {
+function updateRoomVisibility({ roomName, visibility, callback }) {
   const query = { roomName };
-  const update = { visibility: value };
+  const update = { $set: { visibility } };
 
-  Room.findOneAndUpdate(query, update).lean().exec((err, user) => {
+  Room.findOneAndUpdate(query, update).lean().exec((err, room) => {
     if (err) {
-      logger.sendErrorMsg({
-        code: logger.ErrorCodes.db,
-        text: ['Failed to update room'],
-        err,
-      });
+      callback({ error: new errorCreator.Database({ errorObject: err, name: 'updateRoomVisibility' }) });
+
+      return;
     }
 
-    callback(err, user);
+    callback({ data: { room } });
   });
 }
 
 /**
  * Set new room access level
- * @param {string} roomName - Name of the room
- * @param {number} value - New access level
- * @param {Function} callback - Callback
+ * @param {string} params.roomName Name of the room
+ * @param {number} params.accessLevel New access level
+ * @param {Function} params.callback Callback
  */
-function updateRoomAccessLevel(roomName, value, callback) {
+function updateRoomAccessLevel({ roomName, accessLevel, callback }) {
   const query = { roomName };
-  const update = { accessLevel: value };
+  const update = { $set: { accessLevel } };
 
-  Room.findOneAndUpdate(query, update).lean().exec((err, user) => {
+  Room.findOneAndUpdate(query, update).lean().exec((err, room) => {
     if (err) {
-      logger.sendErrorMsg({
-        code: logger.ErrorCodes.db,
-        text: ['Failed to update room'],
-        err,
-      });
+      callback({ error: new errorCreator.Database({ errorObject: err, name: 'updateRoomAccessLevel' }) });
+
+      return;
     }
 
-    callback(err, user);
+    callback({ data: { room } });
   });
 }
 

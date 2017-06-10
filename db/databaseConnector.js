@@ -17,21 +17,18 @@
 'use strict';
 
 const mongoose = require('mongoose');
-const appConfig = require('./../config/defaults/config').app;
-const logger = require('./../utils/logger');
+const appConfig = require('../config/defaults/config').app;
 const objectValidator = require('./../utils/objectValidator');
+const errorCreator = require('../objects/error/errorCreator');
 
 const dbPath = `mongodb://${appConfig.dbHost}:${appConfig.dbPort}/${appConfig.dbName}`;
 
 mongoose.connect(dbPath, (err) => {
   if (err) {
-    logger.sendErrorMsg({
-      code: logger.ErrorCodes.db,
-      text: ['Failed to connect to database'],
-      err,
-    });
+    console.log('Failed to connect to the database');
   } else {
-    logger.sendInfoMsg('Connection established to database');
+    // TODO Trigger non-database version of app
+    console.log('Connection established to database');
   }
 });
 
@@ -49,102 +46,98 @@ const InvitationList = mongoose.model('InvitationList', invitationListSchema);
 
 /**
  * Saves object to database
- * @param {Object} object - Object to save
- * @param {string} objectName - Object type name
- * @param {Function} callback - Callback
+ * @param {Object} params.object Object to save
+ * @param {string} params.objectName Object type name
+ * @param {Function} params.callback Callback
  */
-function saveObject(object, objectName, callback) {
-  object.save((saveErr, savedObj) => {
+function saveObject({ object, objectType, callback }) {
+  object.save((saveErr) => {
     if (saveErr) {
-      logger.sendErrorMsg({
-        code: logger.ErrorCodes.db,
-        text: [`Failed to save ${objectName}`],
-        err: saveErr,
-      });
+      callback({ error: new errorCreator.Database({ errorObject: saveErr, name: `saveObject ${objectType} ${object}` }) });
+
+      return;
     }
 
-    const filteredObject = savedObj;
-    filteredObject.password = savedObj.password && savedObj.password !== '';
-
-    callback(saveErr, filteredObject);
+    callback({ data: { success: true, objectType } });
   });
 }
 
 /**
  * Verifies object
- * @param {Object} query - Search query
- * @param {Object} object - Type of object that will be modified
- * @param {string} objectName - Object type name
- * @param {Function} callback - Callback
+ * @param {Object} params.query Search query
+ * @param {Object} params.object Type of object that will be modified
+ * @param {Function} params.callback Callback
  */
-function verifyObject(query, object, objectName, callback) {
+function verifyObject({ query, object, callback }) {
   const update = { $set: { verified: true } };
+  const options = { new: true };
 
-  object.findOneAndUpdate(query, update).lean().exec((err, verified) => {
+  object.findOneAndUpdate(query, update, options).lean().exec((err, verified) => {
     if (err) {
-      logger.sendErrorMsg({
-        code: logger.ErrorCodes.db,
-        text: [`Failed to verify ${objectName}`],
-        err,
-      });
+      callback({ error: new errorCreator.Database({ errorObject: err, name: 'verifyObject' }) });
+
+      return;
+    } else if (!verified) {
+      callback({ error: new errorCreator.DoesNotExist({ name: 'verify' }) });
+
+      return;
     }
 
-    callback(err, verified);
+    callback({ data: { verified } });
   });
 }
 
 /**
  * Verifies all object
- * @param {Object} query - Search query
- * @param {Object} object - Type of object that will be modified
- * @param {string} objectName - Object type name
- * @param {Function} callback - Callback
+ * @param {Object} params.query Search query
+ * @param {Object} params.object Type of object that will be modified
+ * @param {Function} params.callback Callback
  */
-function verifyAllObjects(query, object, objectName, callback) {
+function verifyAllObjects({ query, object, callback }) {
   const update = { $set: { verified: true } };
   const options = { multi: true, new: true };
 
-  object.update(query, update, options).lean().exec((err, verified) => {
+  object.update(query, update, options).lean().exec((err, verified = []) => {
     if (err) {
-      logger.sendErrorMsg({
-        code: logger.ErrorCodes.db,
-        text: [`Failed to verify all ${objectName}`],
-        err,
-      });
+      callback({ error: new errorCreator.Database({ errorObject: err, name: 'verifyAllObjects' }) });
+
+      return;
     }
 
-    callback(err, verified);
+    callback({ data: { verified } });
   });
 }
 
 /**
  * Get invitation list
- * @param {string} userName - Name of the owner of the list
- * @param {Function} callback - Callback
+ * @param {string} params.userName Name of the owner of the list
+ * @param {Function} params.callback Callback
  */
-function getInvitations(userName, callback) {
+function getInvitations({ userName, callback }) {
   const query = { userName };
 
   InvitationList.findOne(query).lean().exec((err, list) => {
     if (err) {
-      logger.sendErrorMsg({
-        code: logger.ErrorCodes.db,
-        text: [`Failed to get invitations for ${userName}`],
-        err,
-      });
+      callback({ error: new errorCreator.Database({ errorObject: err, name: 'getInvitations' }) });
+
+      return;
+    } else if (!list) {
+      callback({ error: new errorCreator.DoesNotExist({ name: `${userName} invitations` }) });
+
+      return;
     }
 
-    callback(err, list);
+    callback({ data: { list } });
   });
 }
 
 /**
  * Add invitation
- * @param {string} userName - Name of owner
- * @param {Object} invitation - Invitation
- * @param {Function} callback - Callback
+ * @param {string} params.userName Name of owner
+ * @param {Object} params.invitation Invitation
+ * @param {Function} params.callback Callback
  */
-function addInvitationToList(userName, invitation, callback) {
+function addInvitationToList({ userName, invitation, callback }) {
   const query = {
     $and: [
       { userName },
@@ -154,98 +147,98 @@ function addInvitationToList(userName, invitation, callback) {
   };
 
   InvitationList.findOne(query).lean().exec((invErr, invitationList) => {
-    if (invErr || invitationList) {
-      if (invErr && (!invErr.code || invErr.code !== 11000)) {
-        logger.sendErrorMsg({
-          code: logger.ErrorCodes.db,
-          text: [`Failed to find invitation list to add invitation to user ${userName}`],
-          err: invErr,
-        });
+    if (invErr) {
+      callback({ error: new errorCreator.Database({ errorObject: invErr, name: 'addInvitationToList' }) });
+
+      return;
+    } else if (!invitationList) {
+      callback({ error: new errorCreator.DoesNotExist({ name: `${userName} invitations` }) });
+
+      return;
+    }
+
+    const update = { $push: { invitations: invitation } };
+    const options = { new: true, upsert: true };
+
+    InvitationList.update({ userName }, update, options).lean().exec((updErr) => {
+      if (updErr) {
+        callback({ error: new errorCreator.Database({ errorObject: updErr, name: 'addInvitationToList' }) });
+
+        return;
       }
 
-      callback({ code: 11000 }, invitationList);
-    } else {
-      const update = { $push: { invitations: invitation } };
-      const options = { new: true, upsert: true };
-
-      InvitationList.update({ userName }, update, options).lean().exec((updErr) => {
-        if (updErr) {
-          logger.sendErrorMsg({
-            code: logger.ErrorCodes.db,
-            text: [`Failed to add invitation to user ${userName} list`],
-            err: invErr,
-          });
-        }
-
-        callback(updErr, invitationList);
-      });
-    }
+      callback({ data: { list: invitationList } });
+    });
   });
 }
 
 /**
  * Remove invitation
- * @param {string} userName - Name of owner
- * @param {string} itemName - Name of invitation
- * @param {string} invitationType - Type of invitation
- * @param {Function} callback - Callback
+ * @param {string} params.userName Name of owner
+ * @param {string} params.itemName Name of invitation
+ * @param {string} params.invitationType Type of invitation
+ * @param {Function} params.callback Callback
  */
-function removeInvitationFromList(userName, itemName, invitationType, callback) {
+function removeInvitationFromList({ userName, itemName, invitationType, callback }) {
   const query = { userName };
   const update = { $pull: { invitations: { itemName, invitationType } } };
+  const options = { new: true };
 
-  InvitationList.findOneAndUpdate(query, update).lean().exec((err, invitationList) => {
+  InvitationList.findOneAndUpdate(query, update, options).lean().exec((err, invitationList) => {
     if (err) {
-      logger.sendErrorMsg({
-        code: logger.ErrorCodes.db,
-        text: [`Failed to remove invitation from ${itemName} of type ${invitationType} to ${userName}`],
-        err,
-      });
+      callback({ error: new errorCreator.Database({ errorObject: err, name: 'removeInvitationFromList' }) });
+
+      return;
+    } else if (!invitationList) {
+      callback({ error: new errorCreator.DoesNotExist({ name: `${userName} invitations removal` }) });
+
+      return;
     }
 
-    callback(err, invitationList);
+    callback({ data: { list: invitationList } });
   });
 }
 
 /**
  * Remove all invitations of a type
- * @param {string} userName - Name of owner
- * @param {string} invitationType - Type of invitation
- * @param {Function} callback - Callback
+ * @param {string} params.userName Name of owner
+ * @param {string} params.invitationType Type of invitation
+ * @param {Function} params.callback Callback
  */
-function removeInvitationTypeFromList(userName, invitationType, callback) {
+function removeInvitationTypeFromList({ userName, invitationType, callback }) {
   const query = { userName };
   const update = { $pull: { invitations: { invitationType } } };
   const options = { multi: true };
 
   InvitationList.update(query, update, options).lean().exec((err, invitationList) => {
     if (err) {
-      logger.sendErrorMsg({
-        code: logger.ErrorCodes.db,
-        text: [`Failed to remove invitations of type ${invitationType}`],
-        err,
-      });
+      callback({ error: new errorCreator.Database({ errorObject: err, name: 'removeInvitationTypeFromList' }) });
+
+      return;
+    } else if (!invitationList) {
+      callback({ error: new errorCreator.DoesNotExist({ name: `${userName} invitations type` }) });
+
+      return;
     }
 
-    callback(err, invitationList);
+    callback({ data: { list: invitationList } });
   });
 }
 
 /**
  * Match partial name
- * @param {Object} params - Parameters
- * @param {Function} params.callback - Callback
- * @param {string} params.partialName - Partial name
- * @param {Object} params.queryType - Database query
- * @param {Object} params.filter - Result filter
- * @param {Object} params.sort - Result sorting
- * @param {Object} params.user - User
- * @param {string} params.type - Type of object to match against
+ * @param {Function} params.callback Callback
+ * @param {string} params.partialName Partial name
+ * @param {Object} params.queryType Database query
+ * @param {Object} params.filter Result filter
+ * @param {Object} params.sort Result sorting
+ * @param {Object} params.user User
+ * @param {string} params.type Type of object to match against
  * @param {Function} params.callback - Callback
  */
 function matchPartial({ callback, partialName, queryType, filter, sort, user, type }) {
   if (!objectValidator.isValidData({ callback, partialName, queryType, filter, sort, user, type }, { filter: true, sort: true, user: true, queryType: true, callback: true, type: true })) {
-    callback(null, null);
+    callback({ error: new errorCreator.InvalidData({ expected: '{ callback, partialName, queryType, filter, sort, user, type }' }) });
 
     return;
   }
@@ -254,7 +247,11 @@ function matchPartial({ callback, partialName, queryType, filter, sort, user, ty
 
   if (partialName) {
     if (type === 'userName') {
-      query.$and = [{ banned: false }, { verified: true }, { userName: { $regex: `^${partialName}.*` } }];
+      query.$and = [
+        { banned: false },
+        { verified: true },
+        { userName: { $regex: `^${partialName}.*` } },
+      ];
     } else if (type === 'roomName') {
       query.$and = [{ roomName: { $regex: `^${partialName}.*` } }];
     }
@@ -266,14 +263,12 @@ function matchPartial({ callback, partialName, queryType, filter, sort, user, ty
 
   queryType.find(query, filter).sort(sort).lean().exec((err, matches) => {
     if (err) {
-      logger.sendErrorMsg({
-        code: logger.ErrorCodes.db,
-        text: ['matchPartial'],
-        err,
-      });
+      callback({ error: new errorCreator.Database({ errorObject: err, name: 'matchPartialName' }) });
+
+      return;
     }
 
-    callback(err, matches);
+    callback({ data: { matches } });
   });
 }
 

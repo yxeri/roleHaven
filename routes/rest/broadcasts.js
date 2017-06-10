@@ -22,6 +22,7 @@ const jwt = require('jsonwebtoken');
 const messenger = require('../../socketHelpers/messenger');
 const objectValidator = require('../../utils/objectValidator');
 const dbConfig = require('../../config/defaults/config').databasePopulation;
+const errorCreator = require('../../objects/error/errorCreator');
 
 const router = new express.Router();
 
@@ -113,25 +114,25 @@ function handle(io) {
       const message = req.body.data.message;
       const callback = ({ error, data }) => {
         if (error) {
-          if (error.type && error.type === 'Not allowed') {
+          if (error.type && error.type === errorCreator.ErrorTypes.NOTALLOWED) {
             res.status(401).json({
               errors: [{
                 status: 401,
-                title: 'Unauthorized',
-                detail: 'Not allowed to send broadcast',
+                title: 'Unauthorized user',
+                detail: 'User not allowed to use feature',
               }],
             });
-          } else {
-            res.status(500).json({
-              errors: [{
-                status: 500,
-                title: 'Internal Server Error',
-                detail: 'Internal Server Error',
-              }],
-            });
+
+            return;
           }
 
-          return;
+          res.status(500).json({
+            errors: [{
+              status: 500,
+              title: 'Internal Server Error',
+              detail: 'Internal Server Error',
+            }],
+          });
         }
 
         res.json({ data: { message: data.message } });

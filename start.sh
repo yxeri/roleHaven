@@ -13,11 +13,14 @@ cp -r ./private/fonts/* ./public/fonts/
 
 cp -r ./private/sounds/* ./public/sounds
 
-# Transpiles code to es5 and outputs it to public
-./node_modules/browserify/bin/cmd.js private/scripts/* -t [ babelify --presets [ es2015 ] --compact='false' ] -o ./public/scripts/bundle.js
+# Transpiles code to es5
+for file in ./private/scripts/*
+do
+  ./node_modules/browserify/bin/cmd.js "$file" -t [ babelify --presets [ es2015 ] --compact='false' ] -o ./public/scripts/$(basename "$file")
 
-# Minifies transpiled code and outputs it to public
-./node_modules/uglify-js/bin/uglifyjs --compress --mangle --output ./public/scripts/bundle.min.js -- ./public/scripts/bundle.js
+  # Minifies transpiled code
+  ./node_modules/uglifyjs/bin/uglifyjs --compress --mangle --output ./public/scripts/$(basename "$file") -- ./public/scripts/$(basename "$file")
+done
 
 # Compiles and compresses sass to css and moves them to public
 for file in ./private/styles/*

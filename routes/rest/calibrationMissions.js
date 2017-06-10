@@ -25,6 +25,7 @@ const dbCalibrationMission = require('../../db/connectors/calibrationMission');
 const dbWallet = require('../../db/connectors/wallet');
 const dbUser = require('../../db/connectors/user');
 const dbTransaction = require('../../db/connectors/transaction');
+const errorCreator = require('../../objects/error/errorCreator');
 
 const router = new express.Router();
 
@@ -84,26 +85,30 @@ function handle(io) {
         return;
       }
 
-      dbCalibrationMission.getActiveMission(decoded.data.userName, (err, activeMission) => {
-        if (err) {
-          res.status(500).json({
-            errors: [{
-              status: 500,
-              title: 'Internal Server Error',
-              detail: 'Internal Server Error',
-            }],
-          });
+      dbCalibrationMission.getActiveMission({
+        owner: decoded.data.userName,
+        callback: ({ error, data }) => {
+          if (error) {
+            res.status(500).json({
+              errors: [{
+                status: 500,
+                title: 'Internal Server Error',
+                detail: 'Internal Server Error',
+              }],
+            });
 
-          return;
-        }
+            return;
+          }
 
-        const missions = [];
+          const { mission } = data;
+          const missions = [];
 
-        if (activeMission) {
-          missions.push(activeMission);
-        }
+          if (mission) {
+            missions.push(mission);
+          }
 
-        res.json({ data: { missions } });
+          res.json({ data: { missions } });
+        },
       });
     });
   });
@@ -193,39 +198,23 @@ function handle(io) {
 
       const mission = req.body.data.mission;
 
-      dbCalibrationMission.setMissionCompleted(mission.code, mission.stationId, (err, completedMission) => {
-        if (err) {
-          res.status(500).json({
-            errors: [{
-              status: 500,
-              title: 'Internal Server Error',
-              detail: 'Internal Server Error',
-            }],
-          });
+      dbCalibrationMission.setMissionCompleted({
+        code: mission.code,
+        stationId: mission.stationId,
+        callback: ({ error, data }) => {
+          if (error) {
+            if (error.type === errorCreator.ErrorTypes.DOESNOTEXIST) {
+              res.status(404).json({
+                errors: [{
+                  status: 404,
+                  title: 'Not found',
+                  detail: 'Mission not found',
+                }],
+              });
 
-          return;
-        } else if (!completedMission) {
-          res.status(404).json({
-            errors: [{
-              status: 404,
-              title: 'Not found',
-              detail: 'Mission not found',
-            }],
-          });
+              return;
+            }
 
-          return;
-        }
-
-        const transaction = {
-          to: completedMission.owner,
-          from: 'SYSTEM',
-          amount: 50,
-          time: new Date(),
-          note: `CALIBRATION OF STATION ${completedMission.stationId}`,
-        };
-
-        dbTransaction.createTransaction(transaction, (transErr) => {
-          if (transErr) {
             res.status(500).json({
               errors: [{
                 status: 500,
@@ -237,38 +226,77 @@ function handle(io) {
             return;
           }
 
-          dbWallet.increaseAmount(completedMission.owner, transaction.amount, (walletErr, increasedWallet) => {
-            if (walletErr) {
-              res.status(500).json({
-                errors: [{
-                  status: 500,
-                  title: 'Internal Server Error',
-                  detail: 'Internal Server Error',
-                }],
-              });
+          const transaction = {
+            to: data.mission.owner,
+            from: 'SYSTEM',
+            amount: 50,
+            time: new Date(),
+            note: `CALIBRATION OF STATION ${data.mission.stationId}`,
+          };
 
-              return;
-            }
+          dbTransaction.createTransaction({
+            transaction,
+            callback: ({ error: createError }) => {
+              if (createError) {
+                res.status(500).json({
+                  errors: [{
+                    status: 500,
+                    title: 'Internal Server Error',
+                    detail: 'Internal Server Error',
+                  }],
+                });
 
-            dbUser.getUserByAlias(transaction.to, (aliasErr, receiver) => {
-              if (aliasErr) {
                 return;
               }
 
-              if (receiver.socketId !== '') {
-                io.to(receiver.socketId).emit('transaction', { transaction, wallet: increasedWallet });
-                io.to(receiver.socketId).emit('terminal', { mission: { missionType: 'calibrationMission', completed: true } });
-              }
-            });
+              dbWallet.increaseAmount({
+                owner: mission.owner,
+                amount: transaction.amount,
+                callback: ({ error: walletError, data: walletData }) => {
+                  if (walletError) {
+                    res.status(500).json({
+                      errors: [{
+                        status: 500,
+                        title: 'Internal Server Error',
+                        detail: 'Internal Server Error',
+                      }],
+                    });
 
-            res.json({
-              data: {
-                mission: completedMission,
-                transaction,
-              },
-            });
+                    return;
+                  }
+
+                  dbUser.getUserByAlias({
+                    alias: transaction.to,
+                    callback: ({ error: aliasError, data: aliasData }) => {
+                      if (aliasError) {
+                        res.status(500).json({
+                          errors: [{
+                            status: 500,
+                            title: 'Internal Server Error',
+                            detail: 'Internal Server Error',
+                          }],
+                        });
+
+                        return;
+                      }
+
+                      const { receiver } = aliasData;
+
+                      if (receiver.socketId !== '') {
+                        io.to(receiver.socketId).emit('transaction', { transaction, wallet: walletData.wallet });
+                        io.to(receiver.socketId).emit('terminal', { mission: { missionType: 'calibrationMission', completed: true } });
+                      }
+
+                      res.json({
+                        data: { mission, transaction },
+                      });
+                    },
+                  });
+                },
+              });
+            },
           });
-        });
+        },
       });
     });
   });
@@ -354,40 +382,61 @@ function handle(io) {
 
       const mission = req.body.data.mission;
 
-      dbCalibrationMission.setMissionCompleted(mission.code, mission.stationId, (err, completedMission) => {
-        if (err) {
-          res.status(500).json({
-            errors: [{
-              status: 500,
-              title: 'Internal Server Error',
-              detail: 'Internal Server Error',
-            }],
-          });
+      dbCalibrationMission.setMissionCompleted({
+        code: mission.code,
+        stationId: mission.stationId,
+        callback: ({ error, data }) => {
+          if (error) {
+            if (error.type === errorCreator.ErrorTypes.DOESNOTEXIST) {
+              res.status(404).json({
+                errors: [{
+                  status: 404,
+                  title: 'Not found',
+                  detail: 'Mission not found',
+                }],
+              });
 
-          return;
-        } else if (!completedMission) {
-          res.status(404).json({
-            errors: [{
-              status: 404,
-              title: 'Not found',
-              detail: 'Mission not found',
-            }],
-          });
+              return;
+            }
 
-          return;
-        }
+            res.status(500).json({
+              errors: [{
+                status: 500,
+                title: 'Internal Server Error',
+                detail: 'Internal Server Error',
+              }],
+            });
 
-        dbUser.getUserByAlias(completedMission.owner, (aliasErr, user) => {
-          if (aliasErr) {
             return;
           }
 
-          if (user.socketId !== '') {
-            io.to(user.socketId).emit('terminal', { mission: { missionType: 'calibrationMission', cancelled: true } });
-          }
-        });
+          const { mission: updatedMission } = data;
 
-        res.json({ data: { mission: completedMission, cancelled: true } });
+          dbUser.getUserByAlias({
+            alias: updatedMission.owner,
+            callback: ({ error: aliasError, data: aliasData }) => {
+              if (aliasError) {
+                res.status(500).json({
+                  errors: [{
+                    status: 500,
+                    title: 'Internal Server Error',
+                    detail: 'Internal Server Error',
+                  }],
+                });
+
+                return;
+              }
+
+              const { user } = aliasData;
+
+              if (user.socketId !== '') {
+                io.to(user.socketId).emit('terminal', { mission: { missionType: 'calibrationMission', cancelled: true } });
+              }
+
+              res.json({ data: { mission: updatedMission, cancelled: true } });
+            },
+          });
+        },
       });
     });
   });

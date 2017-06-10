@@ -202,7 +202,7 @@ if (config.gpsTracking === undefined) {
  * Amount of milliseconds between each increment/decrement of signal value (BBR game feature)
  * @type {number}
  */
-config.signalResetInterval = process.env.SIGNALRESETINTERVAL || config.signalResetInterval || 0;
+config.signalResetTimeout = process.env.SIGNALRESETINTERVAL || config.signalResetTimeout || 0;
 
 /**
  * Message that will be sent to client and can be printed
@@ -257,18 +257,22 @@ config.disallowUserRegister = process.env.DISALLOWUSERREGISTER || config.disallo
 /**
  * Maximum amount of characters in a document
  */
-config.docFileMaxLength = process.env.DOCFILEMAXLENGTH || config.docFileMaxLength || 8000;
+config.docFileMaxLength = process.env.DOCFILEMAXLENGTH || config.docFileMaxLength || 6000;
 
 config.docFileTitleMaxLength = process.env.DOCFILETITLEMAXLENGTH || config.docFileTitleMaxLength || 100;
 
 config.docFileIdMaxLength = process.env.DOCFILEIDMAXLENGTH || config.docFileIdMaxLength || 20;
 
-config.userNameMaxLength = process.env.USERNAMEMAXLENGTH || config.userNameMaxLength || 10;
+config.userNameMaxLength = process.env.USERNAMEMAXLENGTH || config.userNameMaxLength || 20;
 
-config.passwordMaxLength = process.env.PASSWORDMAXLENGTH || config.passwordMaxLength || 200;
+config.teamNameMaxLength = process.env.TEAMNAMEMAXLENGTH || config.teamNameMaxLength || 20;
+
+config.shortTeamMaxLength = process.env.SHORTEAMMAXLENGTH || config.shortTeamMaxLength || 5;
+
+config.passwordMaxLength = process.env.PASSWORDMAXLENGTH || config.passwordMaxLength || 100;
 
 config.deviceIdLength = process.env.DEVICEIDLENGTH || config.deviceIdLength || 16;
 
-config.roomNameMaxLength = process.env.ROOMNAMEMAXLENGTH || config.roomNameMaxLength || 10;
+config.roomNameMaxLength = process.env.ROOMNAMEMAXLENGTH || config.roomNameMaxLength || 20;
 
 module.exports = config;

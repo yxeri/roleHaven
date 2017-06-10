@@ -18,7 +18,7 @@
 
 const mongoose = require('mongoose');
 const databaseConnector = require('../databaseConnector');
-const logger = require('../../utils/logger');
+const errorCreator = require('../../objects/error/errorCreator');
 
 const walletSchema = new mongoose.Schema({
   owner: { type: String, unique: true },
@@ -32,95 +32,100 @@ const Wallet = mongoose.model('Wallet', walletSchema);
 
 /**
  * Get wallet
- * @param {string} owner - Owner of wallet
- * @param {Function} callback - Callback
+ * @param {string} params.owner Owner of wallet
+ * @param {Function} params.callback Callback
  */
-function getWallet(owner, callback) {
+function getWallet({ owner, callback }) {
   const query = { owner };
 
   Wallet.findOne(query).lean().exec((err, wallet) => {
     if (err) {
-      logger.sendErrorMsg({
-        code: logger.ErrorCodes.db,
-        text: ['Failed to get wallet'],
-        err,
-      });
+      callback({ error: new errorCreator.Database({ errorObject: err, name: 'getWallet' }) });
+
+      return;
+    } else if (!wallet) {
+      callback({ error: new errorCreator.DoesNotExist({ name: `wallet ${owner}` }) });
+
+      return;
     }
 
-    callback(err, wallet);
+    callback({ data: { wallet } });
   });
 }
 
 /**
  * Create and save wallet
- * @param {Object} wallet - New wallet
- * @param {Function} callback - Callback
+ * @param {Object} params.wallet New wallet
+ * @param {Function} params.callback Callback
  */
-function createWallet(wallet, callback) {
+function createWallet({ wallet, callback }) {
   const newWallet = new Wallet(wallet);
+  const query = { owner: wallet.owner };
 
-  getWallet(wallet.owner, (err, foundWallet) => {
+  Wallet.findOne(query).lean().exec((err, foundWallet) => {
     if (err) {
-      logger.sendErrorMsg({
-        code: logger.ErrorCodes.db,
-        text: ['Failed to check if wallet exists'],
-        err,
-      });
+      callback({ error: new errorCreator.Database({ errorObject: err, name: 'createWallet' }) });
 
-      callback(err, null);
-    } else if (foundWallet === null) {
-      databaseConnector.saveObject(newWallet, 'wallet', callback);
-    } else {
-      callback(err, null);
+      return;
+    } else if (foundWallet) {
+      callback({ error: new errorCreator.AlreadyExists({ name: `Wallet ${wallet.owner}` }) });
+
+      return;
     }
+
+    databaseConnector.saveObject({ object: newWallet, objectType: 'wallet', callback });
   });
 }
 
 /**
  * Increase amount in wallet
- * @param {string} owner - Owner name
- * @param {number} value - Amount to increase with
- * @param {Function} callback - Callback
+ * @param {string} params.owner Owner name
+ * @param {number} params.amount Amount to increase with
+ * @param {Function} params.callback Callback
  */
-function increaseAmount(owner, value, callback) {
+function increaseAmount({ owner, amount, callback }) {
   const query = { owner };
-  const update = { $inc: { amount: Math.abs(value) } };
+  const update = { $inc: { amount: Math.abs(amount) } };
   const options = { new: true };
 
   Wallet.findOneAndUpdate(query, update, options).lean().exec((err, wallet) => {
     if (err) {
-      logger.sendErrorMsg({
-        code: logger.ErrorCodes.db,
-        text: ['Failed to increase amount in wallet'],
-        err,
-      });
+      callback({ error: new errorCreator.Database({ errorObject: err, name: 'increaseAmount' }) });
+
+      return;
+    } else if (!wallet) {
+      callback({ error: new errorCreator.DoesNotExist({ name: `wallet ${owner}` }) });
+
+      return;
     }
 
-    callback(err, wallet);
+    callback({ data: { wallet } });
   });
 }
 
 /**
  * Decrease amount in wallet
- * @param {string} owner Owner name
- * @param {number} value Amount to decrease with
- * @param {Function} callback Callback
+ * @param {string} params.owner Owner name
+ * @param {number} params.amount Amount to decrease with
+ * @param {Function} params.callback Callback
  */
-function decreaseAmount(owner, value, callback) {
+function decreaseAmount({ owner, amount, callback }) {
   const query = { owner };
-  const update = { $inc: { amount: -Math.abs(value) } };
+  const update = { $inc: { amount: -Math.abs(amount) } };
   const options = { new: true };
 
   Wallet.findOneAndUpdate(query, update, options).lean().exec((err, wallet) => {
     if (err) {
-      logger.sendErrorMsg({
-        code: logger.ErrorCodes.db,
-        text: ['Failed to decrease amount in wallet'],
-        err,
-      });
+      callback({ error: new errorCreator.Database({ errorObject: err, name: 'decreaseAmount' }) });
+
+      return;
+    } else if (!wallet) {
+      callback({ error: new errorCreator.DoesNotExist({ name: `wallet ${owner}` }) });
+
+      return;
     }
 
-    callback(err, wallet);
+    callback({ data: { wallet } });
   });
 }
 

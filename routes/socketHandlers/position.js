@@ -60,12 +60,14 @@ function handle(socket) {
 
         dbPosition.updatePosition({
           position,
-          callback: (err, createdPosition) => {
-            if (err) {
-              callback({ error: new errorCreator.Database({}) });
+          callback: ({ error: updateError, data }) => {
+            if (updateError) {
+              callback({ error: updateError });
 
               return;
             }
+
+            const createdPosition = data.position;
 
             if (createdPosition.team && !createdPosition.isPublic) {
               socket.broadcast.to(`${createdPosition}${appConfig.teamAppend}`).emit('mapPositions', {
@@ -86,9 +88,75 @@ function handle(socket) {
     });
   });
 
+  socket.on('updateDevicePosition', ({ position }, callback = () => {}) => {
+    if (!objectValidator.isValidData({ position }, { position: { deviceId: true, coordinates: { latitude: true, longitude: true, accuracy: true } } })) {
+      callback({ error: new errorCreator.InvalidData({ expected: '{ position: { deviceId, coordinates: { latitude, longitude, accuracy } } }' }) });
+
+      return;
+    }
+
+    manager.userIsAllowed({
+      commandName: dbConfig.commands.updateUserPosition.commandName,
+      callback: ({ error }) => {
+        if (error) {
+          callback({ error });
+
+          return;
+        }
+
+        position.positionName = position.deviceId;
+        position.markerType = 'device';
+        position.owner = position.deviceId;
+        position.lastUpdated = new Date();
+
+        dbPosition.updatePosition({
+          position,
+          callback: ({ error: updateError, data }) => {
+            if (updateError) {
+              callback({ error: updateError });
+
+              return;
+            }
+
+            const callbackBroadcast = () => {
+              socket.broadcast.to(dbConfig.rooms.public.roomName).emit('mapPositions', {
+                positions: [data.position],
+                currentTime: (new Date()),
+              });
+              callback({ data: { position: data.position } });
+            };
+
+            dbPosition.getUserPositionByDeviceId({
+              deviceId: position.deviceId,
+              callback: (positionData) => {
+                if (positionData.error) {
+                  if (positionData.error.type === errorCreator.ErrorTypes.DOESNOTEXIST) {
+                    callbackBroadcast();
+
+                    return;
+                  }
+
+                  callback({ error: positionData.error });
+
+                  return;
+                } else if (!positionData.data.position.socketId || positionData.data.position.socketId === '') {
+                  callbackBroadcast();
+
+                  return;
+                }
+
+                callback({ data: { position: data.data.position } });
+              },
+            });
+          },
+        });
+      },
+    });
+  });
+
   socket.on('updateUserPosition', ({ position, token }, callback = () => {}) => {
-    if (!objectValidator.isValidData({ position }, { position: { coordinates: { latitude: true, longitude: true, accuracy: true } } })) {
-      callback({ error: new errorCreator.InvalidData({ expected: '{ position: { coordinates: { latitude, longitude, accuracy } } }' }) });
+    if (!objectValidator.isValidData({ position }, { position: { deviceId: true, coordinates: { latitude: true, longitude: true, accuracy: true } } })) {
+      callback({ error: new errorCreator.InvalidData({ expected: '{ position: { deviceId, coordinates: { latitude, longitude, accuracy } } }' }) });
 
       return;
     }
@@ -109,28 +177,25 @@ function handle(socket) {
         position.team = allowedUser.team;
         position.lastUpdated = new Date();
 
-        dbUser.updateUserIsTracked(allowedUser.userName, true, () => {});
+        dbUser.updateUserIsTracked({
+          userName: allowedUser.userName,
+          isTracked: true,
+          callback: () => {},
+        });
         dbPosition.updatePosition({
           position,
-          callback: (err, createdPosition) => {
-            if (err) {
-              callback({ error: new errorCreator.Database({}) });
+          callback: ({ error: updateError, data }) => {
+            if (updateError) {
+              callback({ error: updateError });
 
               return;
             }
 
-            dbUser.getAllUsers(allowedUser, (usersErr, allUsers) => {
-              if (usersErr) {
-                callback({ error: new errorCreator.Database({}) });
-              }
-
-              allUsers.forEach((socketUser) => {
-                socket.broadcast.to(socketUser.userName + appConfig.whisperAppend).emit('mapPositions', {
-                  positions: [createdPosition],
-                  currentTime: (new Date()),
-                });
-              });
+            socket.broadcast.to(dbConfig.rooms.public.roomName).emit('mapPositions', {
+              positions: [data.position],
+              currentTime: (new Date()),
             });
+            callback({ data: { position: data.position } });
           },
         });
       },
@@ -149,27 +214,29 @@ function handle(socket) {
       commandName: dbConfig.commands.getPositions.commandName,
       callback: ({ error, allowedUser }) => {
         if (error) {
-          callback({ error: new errorCreator.Database({}) });
+          callback({ error });
 
           return;
         }
 
         /**
          * Get and send positions
-         * @param {string} type Position type
-         * @param {Object[]} positions All positions
+         * @param {string} params.type Position type
+         * @param {Object[]} params.positions All positions
          */
-        function getPositions(type, positions) {
+        function getPositions({ type, positions }) {
           switch (type) {
             case 'google': {
-              mapCreator.getGooglePositions((err, googlePositions) => {
-                if (err) {
-                  callback({ error: new errorCreator.Database({}) });
+              mapCreator.getGooglePositions({
+                callback: (googleData) => {
+                  if (googleData.error) {
+                    callback({ error });
 
-                  return;
-                }
+                    return;
+                  }
 
-                getPositions(types.shift(), positions.concat(googlePositions));
+                  getPositions({ type: types.shift(), positions: positions.concat(googleData.data.positions) });
+                },
               });
 
               break;
@@ -180,19 +247,22 @@ function handle(socket) {
                 commandName: dbConfig.commands.getCustomPositions.commandName,
                 callback: ({ error: allowedErr }) => {
                   if (allowedErr) {
-                    getPositions(types.shift(), positions.concat([]));
+                    getPositions({ type: types.shift(), positions: positions.concat([]) });
 
                     return;
                   }
 
-                  dbPosition.getCustomPositions(allowedUser.userName, (err, customPositions = []) => {
-                    if (err) {
-                      callback({ error: new errorCreator.Database({}) });
+                  dbPosition.getCustomPositions({
+                    userName: allowedUser.userName,
+                    callback: (customData) => {
+                      if (customData.error) {
+                        callback({ error: customData.error });
 
-                      return;
-                    }
+                        return;
+                      }
 
-                    getPositions(types.shift(), positions.concat(customPositions));
+                      getPositions({ type: types.shift(), positions: positions.concat(customData.data.positions) });
+                    },
                   });
                 },
               });
@@ -200,14 +270,16 @@ function handle(socket) {
               break;
             }
             case 'signalBlock': {
-              dbPosition.getSignalBlockPositions((err, signalBlockPositions = []) => {
-                if (err) {
-                  callback({ error: new errorCreator.Database({}) });
+              dbPosition.getSignalBlockPositions({
+                callback: (blockData) => {
+                  if (blockData.error) {
+                    callback({ error: blockData.error });
 
-                  return;
-                }
+                    return;
+                  }
 
-                getPositions(types.shift(), positions.concat(signalBlockPositions));
+                  getPositions({ type: types.shift(), positions: positions.concat(blockData.data.positions) });
+                },
               });
 
               break;
@@ -218,19 +290,24 @@ function handle(socket) {
                 commandName: dbConfig.commands.getUserPositions.commandName,
                 callback: ({ error: allowedErr }) => {
                   if (allowedErr) {
-                    getPositions(types.shift(), positions.concat([]));
+                    callback({ error: allowedErr });
 
                     return;
                   }
 
-                  dbUser.getAllUserPositions(allowedUser, (err, userPositions = []) => {
-                    if (err) {
-                      callback({ error: new errorCreator.Database({}) });
+                  if (allowedUser.accessLevel === 0) { allowedUser.accessLevel += 1; }
 
-                      return;
-                    }
+                  dbUser.getAllUserPositions({
+                    user: allowedUser,
+                    callback: (userData) => {
+                      if (userData.error) {
+                        callback({ error: userData.error });
 
-                    getPositions(types.shift(), positions.concat(userPositions));
+                        return;
+                      }
+
+                      getPositions({ type: types.shift(), positions: positions.concat(userData.data.positions) });
+                    },
                   });
                 },
               });
@@ -238,14 +315,17 @@ function handle(socket) {
               break;
             }
             case 'ping': {
-              dbPosition.getPings(allowedUser, (err, pings = []) => {
-                if (err) {
-                  callback({ error: new errorCreator.Database({}) });
+              dbPosition.getPings({
+                user: allowedUser,
+                callback: (pingsData) => {
+                  if (pingsData.error) {
+                    callback({ error: pingsData.error });
 
-                  return;
-                }
+                    return;
+                  }
 
-                getPositions(types.shift(), positions.concat(pings));
+                  getPositions({ type: types.shift(), positions: positions.concat(pingsData.data.positions) });
+                },
               });
 
               break;
@@ -264,7 +344,7 @@ function handle(socket) {
           }
         }
 
-        getPositions(types.shift(), []);
+        getPositions({ type: types.shift(), positions: [] });
       },
     });
   });

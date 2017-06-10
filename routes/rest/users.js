@@ -24,6 +24,7 @@ const dbConfig = require('../../config/defaults/config').databasePopulation;
 const dbUser = require('../../db/connectors/user');
 const dbRoom = require('../../db/connectors/room');
 const manager = require('../../socketHelpers/manager');
+const errorCreator = require('../../objects/error/errorCreator');
 
 const router = new express.Router();
 
@@ -88,32 +89,35 @@ function handle(io) {
         return;
       }
 
-      dbUser.getAllUsers(decoded.data, (userErr, users) => {
-        if (userErr || users === null) {
-          res.status(500).json({
-            errors: [{
-              status: 500,
-              title: 'Internal Server Error',
-              detail: 'Internal Server Error',
-            }],
+      dbUser.getAllUsers({
+        user: decoded.data,
+        callback: ({ error, data }) => {
+          if (error) {
+            res.status(500).json({
+              errors: [{
+                status: 500,
+                title: 'Internal Server Error',
+                detail: 'Internal Server Error',
+              }],
+            });
+
+            return;
+          }
+
+          res.json({
+            data: {
+              users: data.users.map((user) => {
+                const userObj = {
+                  userName: user.userName,
+                  team: user.team,
+                  online: user.online,
+                };
+
+                return userObj;
+              }),
+            },
           });
-
-          return;
-        }
-
-        res.json({
-          data: {
-            users: users.map((user) => {
-              const userObj = {
-                userName: user.userName,
-                team: user.team,
-                online: user.online,
-              };
-
-              return userObj;
-            }),
-          },
-        });
+        },
       });
     });
   });
@@ -163,57 +167,6 @@ function handle(io) {
    *          "rooms": [
    *            "public",
    *            "broadcast"
-   *          ],
-   *          "visibility": "1",
-   *          "accessLevel": "1"
-   *        }
-   *      ]
-   *    }
-   *  }
-   */
-  /**
-   * @api {post} /users Create a user
-   * @apiVersion 5.0.1
-   * @apiName CreateUser
-   * @apiGroup Users
-   *
-   * @apiHeader {String} Authorization Your JSON Web Token
-   *
-   * @apiDescription Create a user
-   *
-   * @apiParam {Object} data
-   * @apiParam {Object} data.user User
-   * @apiParam {String} data.user.userName - Name of the user
-   * @apiParam {String} data.user.password - Password of the user
-   * @apiParamExample {json} Request-Example:
-   *   {
-   *    "data": {
-   *      "user": {
-   *        "userName": "rez",
-   *        "password": "password"
-   *      }
-   *    }
-   *  }
-   *
-   * @apiSuccess {Object} data
-   * @apiSuccess {Object[]} data.users User created
-   * @apiSuccessExample {json} Success-Response:
-   *   {
-   *    "data": {
-   *      "users": [
-   *        {
-   *          "userName": "bb6",
-   *          "registerDevice": "RESTAPI",
-   *          "mode": "cmd",
-   *          "authGroups": [],
-   *          "online": false,
-   *          "banned": false,
-   *          "verified": false,
-   *          "rooms": [
-   *            "public",
-   *            "important",
-   *            "broadcast",
-   *            "morse"
    *          ],
    *          "visibility": "1",
    *          "accessLevel": "1"
@@ -280,39 +233,44 @@ function handle(io) {
         owner: newUser.userName,
       };
 
-      dbUser.createUser(newUser, (userErr, createdUser) => {
-        if (userErr) {
-          res.status(500).json({
-            errors: [{
-              status: 500,
-              title: 'Internal Server Error',
-              detail: 'Internal Server Error',
-            }],
-          });
+      dbUser.createUser({
+        user: newUser,
+        callback: ({ error }) => {
+          if (error) {
+            if (error.type === errorCreator.ErrorTypes.ALREADYEXISTS) {
+              res.status(403).json({
+                errors: [{
+                  status: 403,
+                  title: 'User already exists',
+                  detail: `User with user name ${newUser.userName} already exists`,
+                }],
+              });
 
-          return;
-        } else if (createdUser === null) {
-          res.status(402).json({
-            errors: [{
-              status: 402,
-              title: 'User already exists',
-              detail: `User with user name ${newUser.userName} already exists`,
-            }],
-          });
+              return;
+            }
 
-          return;
-        }
+            res.status(500).json({
+              errors: [{
+                status: 500,
+                title: 'Internal Server Error',
+                detail: 'Internal Server Error',
+              }],
+            });
 
-        const whisperRoom = {
-          roomName: newUser.userName + appConfig.whisperAppend,
-          visibility: dbConfig.accessLevels.superUser,
-          accessLevel: dbConfig.accessLevels.superUser,
-        };
+            return;
+          }
 
-        manager.createRoom(whisperRoom, user, () => {});
-        manager.createWallet(wallet, () => {});
+          const whisperRoom = {
+            roomName: newUser.userName + appConfig.whisperAppend,
+            visibility: dbConfig.accessLevels.superUser,
+            accessLevel: dbConfig.accessLevels.superUser,
+          };
 
-        res.json({ data: { users: [user] } });
+          manager.createRoom({ room: whisperRoom, user: newUser, callback: () => {} });
+          manager.createWallet({ wallet, callback: () => {} });
+
+          res.json({ data: { users: [newUser] } });
+        },
       });
     });
   });
@@ -351,6 +309,8 @@ function handle(io) {
             detail: 'Internal Server Error',
           }],
         });
+
+        return;
       } else if (!decoded) {
         res.status(401).json({
           errors: [{
@@ -359,9 +319,26 @@ function handle(io) {
             detail: 'Invalid token',
           }],
         });
-      } else {
-        dbUser.getUser(req.params.id, (userErr, user) => {
-          if (userErr) {
+
+        return;
+      }
+
+      dbUser.getUser({
+        userName: req.params.id,
+        callback: ({ error, data }) => {
+          if (error) {
+            if (error.type === errorCreator.ErrorTypes.DOESNOTEXIST) {
+              res.status(404).json({
+                errors: [{
+                  status: 404,
+                  title: 'Failed to retrieve user',
+                  detail: 'Unable to retrieve user, due it it not existing or your user not having high enough access level',
+                }],
+              });
+
+              return;
+            }
+
             res.status(500).json({
               errors: [{
                 status: 500,
@@ -369,21 +346,25 @@ function handle(io) {
                 detail: 'Internal Server Error',
               }],
             });
-          } else if (user === null || user.userName !== decoded.data.userName) {
-            res.status(402).json({
+
+            return;
+          } else if (decoded.data.accessLevel <= data.user.accessLevel || decoded.data.accessLevel <= data.user.visibility) {
+            res.status(404).json({
               errors: [{
-                status: 402,
+                status: 404,
                 title: 'Failed to retrieve user',
                 detail: 'Unable to retrieve user, due it it not existing or your user not having high enough access level',
               }],
             });
-          } else {
-            res.json({
-              data: { users: [user] },
-            });
+
+            return;
           }
-        });
-      }
+
+          res.json({
+            data: { users: [data.user] },
+          });
+        },
+      });
     });
   });
 
@@ -468,31 +449,24 @@ function handle(io) {
       const userName = req.params.id;
 
       // Checks that the user trying to add a user to a room has access to it
-      dbRoom.authUserToRoom(decoded.data, roomName, password, (errRoom, room) => {
-        if (errRoom) {
-          res.status(500).json({
-            errors: [{
-              status: 500,
-              title: 'Internal Server Error',
-              detail: 'Internal Server Error',
-            }],
-          });
+      dbRoom.authUserToRoom({
+        roomName,
+        password,
+        user: decoded.data,
+        callback: ({ error, data }) => {
+          if (error) {
+            if (error.type === errorCreator.ErrorTypes.NOTALLOWED) {
+              res.status(401).json({
+                errors: [{
+                  status: 401,
+                  title: 'Not authorized to follow room',
+                  detail: 'Your user is not allowed to follow the room',
+                }],
+              });
 
-          return;
-        } else if (room === null) {
-          res.status(401).json({
-            errors: [{
-              status: 401,
-              title: 'Not authorized to follow room',
-              detail: 'Your user is not allowed to follow the room',
-            }],
-          });
+              return;
+            }
 
-          return;
-        }
-
-        dbUser.addRoomToUser(userName, room.roomName, (roomErr, user = {}) => {
-          if (roomErr) {
             res.status(500).json({
               errors: [{
                 status: 500,
@@ -504,12 +478,34 @@ function handle(io) {
             return;
           }
 
-          if (user.socketId) {
-            io.to(user.socketId).emit('follow', { room });
-          }
+          const { room } = data;
 
-          res.json({ data: { room: { roomName } } });
-        });
+          dbUser.addRoomToUser({
+            userName,
+            roomName: room.roomName,
+            callback: ({ error: addError, data: userData }) => {
+              if (addError) {
+                res.status(500).json({
+                  errors: [{
+                    status: 500,
+                    title: 'Internal Server Error',
+                    detail: 'Internal Server Error',
+                  }],
+                });
+
+                return;
+              }
+
+              const { user } = userData;
+
+              if (user.socketId) {
+                io.to(user.socketId).emit('follow', { room });
+              }
+
+              res.json({ data: { room: { roomName } } });
+            },
+          });
+        },
       });
     });
   });
@@ -595,8 +591,8 @@ function handle(io) {
       dbUser.removeRoomFromUser({
         userName,
         roomName,
-        callback: (roomErr, user = {}) => {
-          if (roomErr) {
+        callback: ({ error, data }) => {
+          if (error) {
             res.status(500).json({
               errors: [{
                 status: 500,
@@ -607,6 +603,8 @@ function handle(io) {
 
             return;
           }
+
+          const { user } = data;
 
           if (user.socketId) {
             io.to(user.socketId).emit('unfollow', { room: { roomName } });

@@ -39,12 +39,22 @@ const router = new express.Router();
  * @returns {Object} Router
  */
 function handle(io) {
+  router.get('/control', (req, res) => {
+    res.render('control', {
+      title: appConfig.title,
+      gMapsKey: appConfig.gMapsKey,
+      socketPath: appConfig.socketPath,
+      mainJs: 'scripts/control.js',
+      mainCss: !isNaN(req.query.style) ? `styles/${req.query.style}.css` : 'styles/control.css',
+    });
+  });
+
   router.get('/', (req, res) => {
     res.render('index', {
       title: appConfig.title,
       gMapsKey: appConfig.gMapsKey,
       socketPath: appConfig.socketPath,
-      mainJs: appConfig.mode === 'dev' ? 'scripts/bundle.js' : 'scripts/bundle.min.js',
+      mainJs: 'scripts/main.js',
       mainCss: !isNaN(req.query.style) ? `styles/${req.query.style}.css` : 'styles/main.css',
     });
   });
@@ -70,16 +80,39 @@ function handle(io) {
       welcomeMessage: appConfig.welcomeMessage,
     });
 
-    socket.on('disconnect', () => {
-      dbUser.getUserById(socket.id, (err, user) => {
-        if (err || user === null) {
-          return;
-        }
+    socket.on('disconnect', (params, callback = () => {}) => {
+      dbUser.getUserById({
+        socketId: socket.id,
+        callback: ({ error, data }) => {
+          if (error) {
+            callback({ error });
 
-        dbUser.updateUserSocketId(user.userName, '', () => {});
-        dbUser.setUserLastOnline(user.userName, new Date(), () => {});
-        dbUser.updateUserOnline(user.userName, false, () => {});
-        dbUser.updateUserIsTracked(user.userName, false, () => {});
+            return;
+          }
+
+          const { user } = data;
+
+          dbUser.updateUserSocketId({
+            userName: user.userName,
+            socketId: '',
+            callback: () => {},
+          });
+          dbUser.setUserLastOnline({
+            userName: user.userName,
+            date: new Date(),
+            callback: () => {},
+          });
+          dbUser.updateUserOnline({
+            userName: user.userName,
+            online: false,
+            callback: () => {},
+          });
+          dbUser.updateUserIsTracked({
+            userName: user.userName,
+            isTracked: false,
+            callback: () => {},
+          });
+        },
       });
     });
 

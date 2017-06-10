@@ -212,23 +212,11 @@ function handle(io) {
       const transaction = req.body.data.transaction;
 
       manager.createTransaction({
-        user: decoded.data,
         transaction,
         io,
+        user: decoded.data,
         callback: ({ error, data }) => {
           if (error) {
-            if (error.type && error.type === 'Missing value') {
-              res.status(403).json({
-                errors: [{
-                  status: 403,
-                  title: 'Not enough currency',
-                  detail: 'Not enough currency in the wallet',
-                }],
-              });
-
-              return;
-            }
-
             res.status(500).json({
               errors: [{
                 status: 500,
