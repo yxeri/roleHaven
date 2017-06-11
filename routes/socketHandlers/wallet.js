@@ -22,6 +22,7 @@ const appConfig = require('../../config/defaults/config').app;
 const manager = require('../../socketHelpers/manager');
 const objectValidator = require('../../utils/objectValidator');
 const errorCreator = require('../../objects/error/errorCreator');
+const dbPosition = require('../../db/connectors/position');
 
 /**
  * @param {object} socket - Socket.IO socket
@@ -78,10 +79,25 @@ function handle(socket, io) {
           return;
         }
 
-        const owner = isTeam ? allowedUser.team + appConfig.teamAppend : allowedUser.userName;
+        const getTeamTransactions = ({ toTransactions, fromTransactions }) => {
+          manager.getAllTransactions({
+            owner: allowedUser.team + appConfig.teamAppend,
+            callback: (transactionData) => {
+              if (transactionData.error) {
+                callback({ error: transactionData.error });
+
+                return;
+              }
+
+              const { toTransactions: teamToTransactions, fromTransactions: teamFromTransactions } = transactionData.data;
+
+              callback({ data: { toTransactions: toTransactions.concat(teamToTransactions), fromTransactions: fromTransactions.concat(teamFromTransactions) } });
+            },
+          });
+        };
 
         manager.getAllTransactions({
-          owner,
+          owner: allowedUser.userName,
           callback: (transactionData) => {
             if (transactionData.error) {
               callback({ error: transactionData.error });
@@ -89,7 +105,11 @@ function handle(socket, io) {
               return;
             }
 
-            callback(transactionData);
+            if (!isTeam) {
+              callback(transactionData);
+            } else {
+              getTeamTransactions(transactionData.data);
+            }
           },
         });
       },
@@ -107,6 +127,24 @@ function handle(socket, io) {
       return;
     }
 
+    const transactionCallback = (params) => {
+      manager.createTransaction({
+        fromTeam: params.fromTeam,
+        transaction: params.transaction,
+        io: params.io,
+        user: params.user,
+        callback: (transactionData) => {
+          if (transactionData.error) {
+            callback({ error: transactionData.error });
+
+            return;
+          }
+
+          callback(transactionData);
+        },
+      });
+    };
+
     manager.userIsAllowed({
       token,
       socketId: socket.id,
@@ -118,19 +156,25 @@ function handle(socket, io) {
           return;
         }
 
-        manager.createTransaction({
-          fromTeam,
-          transaction,
-          io,
-          user: allowedUser,
-          callback: (transactionData) => {
-            if (transactionData.error) {
-              callback({ error: transactionData.error });
+        dbPosition.getUserPosition({
+          userName: allowedUser.userName,
+          callback: (positionData) => {
+            console.log('pos', positionData);
+            if (positionData.error) {
+              if (positionData.type === errorCreator.ErrorTypes.DOESNOTEXIST) {
+                transactionCallback({ user: allowedUser, fromTeam, transaction, io });
+
+                return;
+              }
+
+              callback({ error: positionData.error });
 
               return;
             }
 
-            callback(transactionData);
+            transaction.coordinates = positionData.data.position.coordinates;
+
+            transactionCallback({ user: allowedUser, fromTeam, transaction, io });
           },
         });
       },

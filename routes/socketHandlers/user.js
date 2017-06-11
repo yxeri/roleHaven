@@ -160,7 +160,7 @@ function handle(socket, io) {
     }
 
     dbUser.authUser({
-      userName: user.userName,
+      userName: user.userName.toLowerCase(),
       password: user.password,
       callback: (authData) => {
         if (authData.error) {
@@ -199,7 +199,7 @@ function handle(socket, io) {
             manager.joinRooms({ rooms: authUser.rooms, socket });
 
             dbUser.setUserLastOnline({
-              userName: user.userName,
+              userName: authUser.userName,
               date: new Date(),
               callback: (userData) => {
                 if (userData.error) {

@@ -185,6 +185,29 @@ function getAllStaticPositions({ callback }) {
 }
 
 /**
+ * Get user position
+ * @param {string} params.userName User name
+ * @param {Function} params.callback Callback
+ */
+function getUserPosition({ userName, callback }) {
+  const query = { positionName: userName, markerType: 'user' };
+
+  MapPosition.findOne(query).lean().exec((err, position) => {
+    if (err) {
+      callback({ error: new errorCreator.Database({ errorObject: err }) });
+
+      return;
+    } else if (!position) {
+      callback({ error: new errorCreator.DoesNotExist({ name: `user position ${userName}` } ) });
+
+      return;
+    }
+
+    callback({ data: { position } });
+  });
+}
+
+/**
  * Get all user positions
  * @param {Function} params.callback Callback
  */
@@ -317,3 +340,4 @@ exports.removePosition = removePosition;
 exports.removePositions = removePositions;
 exports.getSignalBlockPositions = getSignalBlockPositions;
 exports.getUserPositionByDeviceId = getUserPositionByDeviceId;
+exports.getUserPosition = getUserPosition;

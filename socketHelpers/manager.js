@@ -397,6 +397,8 @@ function createTransaction({ transaction, user, io, emitToSender, fromTeam, call
                   const { wallet: increasedWallet } = increasedWalletData.data;
                   const { wallet: decreasedWallet } = decreasedWalletData.data;
 
+                  callback({ data: { transaction, wallet: decreasedWallet } });
+
                   if (!fromTeam) {
                     if (transaction.to.indexOf(appConfig.teamAppend) > -1) {
                       io.to(transaction.to).emit('transaction', { transaction, wallet: increasedWallet });
@@ -416,8 +418,6 @@ function createTransaction({ transaction, user, io, emitToSender, fromTeam, call
                             if (sender.socketId) {
                               io.to(sender.socketId).emit('transaction', { transaction, wallet: decreasedWallet });
                             }
-
-                            callback({ data: { transaction, wallet: decreasedWallet } });
                           },
                         });
                       }
