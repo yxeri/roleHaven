@@ -275,4 +275,10 @@ config.deviceIdLength = process.env.DEVICEIDLENGTH || config.deviceIdLength || 1
 
 config.roomNameMaxLength = process.env.ROOMNAMEMAXLENGTH || config.roomNameMaxLength || 20;
 
+config.maxUserWarnings = process.env.MAXUSERWARNINGS || config.maxUserWarnings || 2;
+
+config.minimumPositionAccuracy = process.env.MINIMUMPOSITIONACCURACY || config.minimumPositionAccuracy || 70;
+
+config.maxPositionAge = process.env.MAXPOSITIONAGE || config.maxPositionAge || 2;
+
 module.exports = config;

@@ -22,6 +22,8 @@ const dbUser = require('../../db/connectors/user');
 const dbPosition = require('../../db/connectors/position');
 const mapCreator = require('../../utils/mapCreator');
 const appConfig = require('../../config/defaults/config').app;
+const errorCreator = require('../../objects/error/errorCreator');
+const textTools = require('../../utils/textTools');
 
 dbPosition.removePositions({
   markerType: 'signalBlock',
@@ -50,9 +52,17 @@ function handle(socket) {
               callback({ error: getPosition.error });
 
               return;
+            } else if (getPosition.data.position.coordinates.accuracy > appConfig.minimumPositionAccuracy) {
+              callback({ error: new errorCreator.Insufficient({ name: 'accuracy' }) });
+
+              return;
+            } else if (textTools.calculateMinutesDifference({ firstDate: new Date(getPosition.data.position.lastUpdated), secondDate: new Date() }) > appConfig.maxPositionAge) {
+              callback({ error: new errorCreator.Insufficient({ name: 'age' }) });
+
+              return;
             }
 
-            const { userPosition } = getPosition.data;
+            const { position: userPosition } = getPosition.data;
 
             const coordinates = userPosition.coordinates;
             coordinates.radius = appConfig.signalBlockRadius;
@@ -82,101 +92,103 @@ function handle(socket) {
 
                 const newPosition = updatePosition.data.position;
 
-                dbPosition.getUserPositions((getUserPositions) => {
-                  if (getUserPositions.error) {
-                    callback({ error: getUserPositions.error });
+                dbPosition.getUserPositions({
+                  callback: (getUserPositions) => {
+                    if (getUserPositions.error) {
+                      callback({ error: getUserPositions.error });
 
-                    return;
-                  }
+                      return;
+                    }
 
-                  const { positions } = getUserPositions.data;
-                  const blockedUsers = [];
+                    const { positions } = getUserPositions.data;
+                    const blockedUsers = [];
 
-                  positions.forEach((position) => {
-                    dbUser.getUser({
-                      userName: position.owner,
-                      callback: (getUser) => {
-                        if (getUser.error) {
-                          callback({ error: getUser.error });
+                    positions.forEach((position) => {
+                      dbUser.getUser({
+                        userName: position.owner,
+                        callback: (getUser) => {
+                          if (getUser.error) {
+                            callback({ error: getUser.error });
 
-                          return;
-                        }
-
-                        const hackedUser = getUser.data.user;
-                        const accuracy = position.coordinates.accuracy;
-                        const accuracyAdjustment = accuracy > appConfig.signalBlockBufferArea ? appConfig.signalBlockBufferArea : accuracy;
-
-                        if (mapCreator.getDistance(userPosition.coordinates, position.coordinates) - accuracyAdjustment < appConfig.signalBlockRadius) {
-                          blockedUsers.push(hackedUser);
-
-                          if (hackedUser.userName !== allowedUser.userName) {
-                            socket.to(hackedUser.userName + appConfig.whisperAppend).emit('signalBlock', {
-                              blockedBy: allowedUser.userName,
-                              position: newPosition,
-                            });
-                          } else {
-                            socket.emit('signalBlock', { blockedBy: allowedUser.userName, position: newPosition });
+                            return;
                           }
 
-                          dbUser.updateUserBlockedBy({
-                            userName: hackedUser.userName,
-                            blockedBy: allowedUser.userName,
-                            callback: () => {},
-                          });
-                        }
-                      },
-                    });
-                  });
+                          const hackedUser = getUser.data.user;
+                          const accuracy = position.coordinates.accuracy;
+                          const accuracyAdjustment = accuracy > appConfig.signalBlockBufferArea ? appConfig.signalBlockBufferArea : accuracy;
 
-                  socket.broadcast.to(databasePopulation.rooms.public.roomName).emit('mapPositions', {
-                    positions: [newPosition],
-                    currentTime: new Date(),
-                  });
+                          if (mapCreator.getDistance(userPosition.coordinates, position.coordinates) - accuracyAdjustment < appConfig.signalBlockRadius) {
+                            blockedUsers.push(hackedUser);
 
-                  callback({ data: { position: newPosition } });
-
-                  setTimeout(() => {
-                    dbPosition.removePosition({
-                      markerType: blockPosition.markerType,
-                      positionName: blockPosition.positionName,
-                      callback: () => {
-                        socket.broadcast.to(databasePopulation.rooms.public.roomName).emit('mapPositions', {
-                          positions: [newPosition],
-                          shouldRemove: true,
-                        });
-
-                        blockedUsers.forEach((blockedUser) => {
-                          dbUser.getUser({
-                            userName: blockedUser.userName,
-                            callback: (blockedData) => {
-                              if (blockedData.error) {
-                                return;
-                              }
-
-                              const { user: removeUser } = blockedData.data;
-
-                              dbUser.removeUserBlockedBy({
-                                userName: removeUser.userName,
-                                callback: () => {},
+                            if (hackedUser.userName !== allowedUser.userName) {
+                              socket.to(hackedUser.userName + appConfig.whisperAppend).emit('signalBlock', {
+                                blockedBy: allowedUser.userName,
+                                position: newPosition,
                               });
+                            } else {
+                              socket.emit('signalBlock', { blockedBy: allowedUser.userName, position: newPosition });
+                            }
 
-                              if (removeUser.userName !== allowedUser.userName) {
-                                socket.to(removeUser.userName + appConfig.whisperAppend).emit('signalBlock', {
-                                  blockedBy: allowedUser.userName,
-                                  removeBlocker: true,
-                                });
-                              } else {
-                                socket.emit('signalBlock', {
-                                  blockedBy: allowedUser.userName,
-                                  removeBlocker: true,
-                                });
-                              }
-                            },
-                          });
-                        });
-                      },
+                            dbUser.updateUserBlockedBy({
+                              userName: hackedUser.userName,
+                              blockedBy: allowedUser.userName,
+                              callback: () => {},
+                            });
+                          }
+                        },
+                      });
                     });
-                  }, appConfig.signalBlockTime);
+
+                    socket.broadcast.to(databasePopulation.rooms.public.roomName).emit('mapPositions', {
+                      positions: [newPosition],
+                      currentTime: new Date(),
+                    });
+
+                    callback({ data: { position: newPosition } });
+
+                    setTimeout(() => {
+                      dbPosition.removePosition({
+                        markerType: blockPosition.markerType,
+                        positionName: blockPosition.positionName,
+                        callback: () => {
+                          socket.broadcast.to(databasePopulation.rooms.public.roomName).emit('mapPositions', {
+                            positions: [newPosition],
+                            shouldRemove: true,
+                          });
+
+                          blockedUsers.forEach((blockedUser) => {
+                            dbUser.getUser({
+                              userName: blockedUser.userName,
+                              callback: (blockedData) => {
+                                if (blockedData.error) {
+                                  return;
+                                }
+
+                                const { user: removeUser } = blockedData.data;
+
+                                dbUser.removeUserBlockedBy({
+                                  userName: removeUser.userName,
+                                  callback: () => {},
+                                });
+
+                                if (removeUser.userName !== allowedUser.userName) {
+                                  socket.to(removeUser.userName + appConfig.whisperAppend).emit('signalBlock', {
+                                    blockedBy: allowedUser.userName,
+                                    removeBlocker: true,
+                                  });
+                                } else {
+                                  socket.emit('signalBlock', {
+                                    blockedBy: allowedUser.userName,
+                                    removeBlocker: true,
+                                  });
+                                }
+                              },
+                            });
+                          });
+                        },
+                      });
+                    }, appConfig.signalBlockTime);
+                  },
                 });
               },
             });

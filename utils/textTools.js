@@ -96,6 +96,10 @@ function shuffleArray(array) {
   return shuffledArray;
 }
 
+function calculateMinutesDifference({ firstDate, secondDate }) {
+  return Math.floor(Math.abs(new Date(firstDate) - secondDate) / 1000 / 60);
+}
+
 exports.isAlphaNumeric = isAlphaNumeric;
 exports.isAllowedFull = isAllowedFull;
 exports.cleanText = cleanText;
@@ -103,3 +107,4 @@ exports.convertToBoolean = convertToBoolean;
 exports.convertToFloat = convertToFloat;
 exports.convertToInt = convertToInt;
 exports.shuffleArray = shuffleArray;
+exports.calculateMinutesDifference = calculateMinutesDifference;

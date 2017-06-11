@@ -447,6 +447,12 @@ function handle(socket, io) {
                 socketId: '',
                 callback: (updateData) => {
                   if (updateData.error) {
+                    if (updateData.error.type === errorCreator.ErrorTypes.DOESNOTEXIST) {
+                      callback({ data: { success: true } });
+
+                      return;
+                    }
+
                     callback({ error: updateData.error });
 
                     return;
@@ -678,6 +684,7 @@ function handle(socket, io) {
                   filteredUser.verified = currentUser.verified;
                   filteredUser.banned = currentUser.banned;
                   filteredUser.fullName = currentUser.fullName;
+                  filteredUser.warnings = currentUser.warnings;
                 }
 
                 if (currentUser.online) {

@@ -30,12 +30,16 @@ const appConfig = require('../../config/defaults/config').app;
  */
 function handle(socket) {
   socket.on('updatePosition', ({ position, token }, callback = () => {}) => {
-    if (!objectValidator.isValidData({ position }, { position: { coordinates: { longitude: true, latitude: true }, positionName: true, markerType: true } })) {
+    if (!objectValidator.isValidData({ position }, { position: { coordinates: { longitude: true, latitude: true, accuracy: true }, positionName: true, markerType: true } })) {
       callback({ error: new errorCreator.InvalidData({ expected: '{ position: { coordinates: { longitude, latitude }, positionName, markerType } }' }) });
 
       return;
     } else if (position.positionName.length > appConfig.docFileTitleMaxLength || (position.description && position.description.join('').length > appConfig.docFileMaxLength)) {
       callback({ error: new errorCreator.InvalidCharacters({ expected: `text length: ${appConfig.docFileMaxLength}, title length: ${appConfig.docFileTitleMaxLength}` }) });
+
+      return;
+    } else if (position.coordinates.accuracy > appConfig.minimumPositionAccuracy) {
+      callback({ error: new errorCreator.Insufficient({ name: 'accuracy' }) });
 
       return;
     }
@@ -96,7 +100,7 @@ function handle(socket) {
     }
 
     manager.userIsAllowed({
-      commandName: dbConfig.commands.updateUserPosition.commandName,
+      commandName: dbConfig.commands.updateDevicePosition.commandName,
       callback: ({ error }) => {
         if (error) {
           callback({ error });
@@ -157,6 +161,10 @@ function handle(socket) {
   socket.on('updateUserPosition', ({ position, token }, callback = () => {}) => {
     if (!objectValidator.isValidData({ position }, { position: { deviceId: true, coordinates: { latitude: true, longitude: true, accuracy: true } } })) {
       callback({ error: new errorCreator.InvalidData({ expected: '{ position: { deviceId, coordinates: { latitude, longitude, accuracy } } }' }) });
+
+      return;
+    } else if (position.coordinates.accuracy > appConfig.minimumPositionAccuracy) {
+      callback({ error: new errorCreator.Insufficient({ name: 'accuracy' }) });
 
       return;
     }
