@@ -32,18 +32,6 @@ mongoose.connect(dbPath, (err) => {
   }
 });
 
-const invitationListSchema = new mongoose.Schema({
-  userName: { type: String, unique: true, index: true },
-  invitations: [{
-    invitationType: String,
-    itemName: String,
-    sender: String,
-    time: Date,
-  }],
-}, { collection: 'invitationLists' });
-
-const InvitationList = mongoose.model('InvitationList', invitationListSchema);
-
 /**
  * Saves object to database
  * @param {Object} params.object Object to save
@@ -109,123 +97,6 @@ function verifyAllObjects({ query, object, callback }) {
 }
 
 /**
- * Get invitation list
- * @param {string} params.userName Name of the owner of the list
- * @param {Function} params.callback Callback
- */
-function getInvitations({ userName, callback }) {
-  const query = { userName };
-
-  InvitationList.findOne(query).lean().exec((err, list) => {
-    if (err) {
-      callback({ error: new errorCreator.Database({ errorObject: err, name: 'getInvitations' }) });
-
-      return;
-    } else if (!list) {
-      callback({ error: new errorCreator.DoesNotExist({ name: `${userName} invitations` }) });
-
-      return;
-    }
-
-    callback({ data: { list } });
-  });
-}
-
-/**
- * Add invitation
- * @param {string} params.userName Name of owner
- * @param {Object} params.invitation Invitation
- * @param {Function} params.callback Callback
- */
-function addInvitationToList({ userName, invitation, callback }) {
-  const query = {
-    $and: [
-      { userName },
-      { 'invitations.itemName': invitation.itemName },
-      { 'invitations.invitationType': invitation.invitationType },
-    ],
-  };
-
-  InvitationList.findOne(query).lean().exec((invErr, invitationList) => {
-    if (invErr) {
-      callback({ error: new errorCreator.Database({ errorObject: invErr, name: 'addInvitationToList' }) });
-
-      return;
-    } else if (!invitationList) {
-      callback({ error: new errorCreator.DoesNotExist({ name: `${userName} invitations` }) });
-
-      return;
-    }
-
-    const update = { $push: { invitations: invitation } };
-    const options = { new: true, upsert: true };
-
-    InvitationList.update({ userName }, update, options).lean().exec((updErr) => {
-      if (updErr) {
-        callback({ error: new errorCreator.Database({ errorObject: updErr, name: 'addInvitationToList' }) });
-
-        return;
-      }
-
-      callback({ data: { list: invitationList } });
-    });
-  });
-}
-
-/**
- * Remove invitation
- * @param {string} params.userName Name of owner
- * @param {string} params.itemName Name of invitation
- * @param {string} params.invitationType Type of invitation
- * @param {Function} params.callback Callback
- */
-function removeInvitationFromList({ userName, itemName, invitationType, callback }) {
-  const query = { userName };
-  const update = { $pull: { invitations: { itemName, invitationType } } };
-  const options = { new: true };
-
-  InvitationList.findOneAndUpdate(query, update, options).lean().exec((err, invitationList) => {
-    if (err) {
-      callback({ error: new errorCreator.Database({ errorObject: err, name: 'removeInvitationFromList' }) });
-
-      return;
-    } else if (!invitationList) {
-      callback({ error: new errorCreator.DoesNotExist({ name: `${userName} invitations removal` }) });
-
-      return;
-    }
-
-    callback({ data: { list: invitationList } });
-  });
-}
-
-/**
- * Remove all invitations of a type
- * @param {string} params.userName Name of owner
- * @param {string} params.invitationType Type of invitation
- * @param {Function} params.callback Callback
- */
-function removeInvitationTypeFromList({ userName, invitationType, callback }) {
-  const query = { userName };
-  const update = { $pull: { invitations: { invitationType } } };
-  const options = { multi: true };
-
-  InvitationList.update(query, update, options).lean().exec((err, invitationList) => {
-    if (err) {
-      callback({ error: new errorCreator.Database({ errorObject: err, name: 'removeInvitationTypeFromList' }) });
-
-      return;
-    } else if (!invitationList) {
-      callback({ error: new errorCreator.DoesNotExist({ name: `${userName} invitations type` }) });
-
-      return;
-    }
-
-    callback({ data: { list: invitationList } });
-  });
-}
-
-/**
  * Match partial name
  * @param {Function} params.callback Callback
  * @param {string} params.partialName Partial name
@@ -272,10 +143,6 @@ function matchPartial({ callback, partialName, queryType, filter, sort, user, ty
   });
 }
 
-exports.addInvitationToList = addInvitationToList;
-exports.removeInvitationFromList = removeInvitationFromList;
-exports.getInvitations = getInvitations;
-exports.removeInvitationTypeFromList = removeInvitationTypeFromList;
 exports.matchPartial = matchPartial;
 exports.saveObject = saveObject;
 exports.verifyObject = verifyObject;

@@ -229,10 +229,13 @@ function handle(socket, io) {
 
         dbRoom.getRoom({
           roomName: room.roomName,
-          user: allowedUser,
           callback: ({ error: getError, data }) => {
             if (getError) {
               callback({ error: getError });
+
+              return;
+            } else if (data.room.accessLevel > allowedUser.accessLevel && data.room.roomName.indexOf(appConfig.teamAppend) < 0) {
+              callback({ error: new errorCreator.NotAllowed({ name: `${allowedUser.userName} not allowed room ${data.room.roomName}` }) });
 
               return;
             }
@@ -527,7 +530,6 @@ function handle(socket, io) {
 
         dbRoom.getRoom({
           roomName: room.roomName,
-          user: allowedUser,
           callback: ({ error: getError, data }) => {
             if (getError) {
               callback({ error: getError });

@@ -19,7 +19,6 @@
 const dbTeam = require('../../db/connectors/team');
 const dbUser = require('../../db/connectors/user');
 const dbRoom = require('../../db/connectors/room');
-const dbConnector = require('../../db/databaseConnector');
 const dbConfig = require('../../config/defaults/config').databasePopulation;
 const manager = require('../../socketHelpers/manager');
 const objectValidator = require('../../utils/objectValidator');
@@ -27,118 +26,10 @@ const appConfig = require('../../config/defaults/config').app;
 const errorCreator = require('../../objects/error/errorCreator');
 
 /**
- * Add user to team's room
- * @param {string} params.userName Name of the user
- * @param {string} params.roomName Name of the room
- * @param {Object} params.io Socket.IO
- * @param {Function} params.callback Callback
- */
-function addUserTeamRoom({ roomName, userName, io, callback = () => {} }) {
-  dbUser.addRoomToUser({
-    userName,
-    roomName,
-    callback: ({ error, data }) => {
-      if (error) {
-        callback({ error });
-
-        return;
-      }
-
-      const userSocket = io.sockets.connected[data.user.socketId];
-
-      if (userSocket) {
-        userSocket.join(roomName);
-        userSocket.emit('follow', { room: { roomName } });
-      }
-
-      callback({ data: { room: { roomName } } });
-    },
-  });
-}
-
-/**
  * @param {object} socket - Socket.IO socket
  * @param {object} io - Socket.IO
  */
 function handle(socket, io) {
-  socket.on('inviteToTeam', ({ user, token }, callback = () => {}) => {
-    if (!objectValidator.isValidData({ user }, { user: { userName: true } })) {
-      callback({ error: new errorCreator.InvalidData({ expected: '{ user: { userName } }' }) });
-
-      return;
-    }
-
-    user.userName = user.userName.toLowerCase();
-
-    manager.userIsAllowed({
-      token,
-      commandName: dbConfig.commands.inviteTeam.commandName,
-      callback: ({ error, allowedUser }) => {
-        if (error) {
-          callback({ error });
-
-          return;
-        } else if (allowedUser.userName === user.userName) {
-          callback({ error: new errorCreator.AlreadyExists({ name: 'your team' }) });
-
-          return;
-        }
-
-        dbTeam.getTeam({
-          teamName: allowedUser.team,
-          callback: (teamData) => {
-            if (teamData.error) {
-              callback({ error: teamData.error });
-
-              return;
-            } else if (teamData.data.team.owner !== allowedUser.userName && teamData.data.team.admins.indexOf(allowedUser.userName) === -1) {
-              callback({ error: new errorCreator.NotAllowed({ name: 'adding member to team' }) });
-
-              return;
-            }
-
-            dbUser.getUser({
-              userName: user.userName,
-              callback: (userData) => {
-                if (userData.error) {
-                  callback({ error: userData.error });
-
-                  return;
-                } else if (userData.data.user.team) {
-                  callback({ error: new errorCreator.AlreadyExists({ name: 'team' }) });
-
-                  return;
-                }
-
-                const invitation = {
-                  itemName: allowedUser.team,
-                  time: new Date(),
-                  invitationType: 'team',
-                  sender: allowedUser.userName,
-                };
-
-                dbConnector.addInvitationToList({
-                  invitation,
-                  userName: userData.data.user.userName,
-                  callback: ({ error: inviteError }) => {
-                    if (inviteError) {
-                      callback({ error: inviteError });
-
-                      return;
-                    }
-
-                    socket.to(`${allowedUser.userName}${appConfig.whisperAppend}`).emit('invitation', { invitation });
-                    callback({ data: { invitation } });
-                  },
-                });
-              },
-            });
-          },
-        });
-      },
-    });
-  });
-
   socket.on('getTeam', ({ token }, callback = () => {}) => {
     manager.userIsAllowed({
       token,
@@ -244,29 +135,19 @@ function handle(socket, io) {
                         if (appConfig.teamVerify) {
                           callback({ data: { requiresVerify: appConfig.teamVerify, team } });
                         } else {
-                          manager.updateUserTeam({
+                          manager.addUserToTeam({
                             socket,
-                            userName: team.owner,
-                            teamName: team.teamName,
-                            shortTeamName: team.shortName,
-                            callback: ({ error: updateError }) => {
-                              if (updateError) {
-                                callback({ error: new errorCreator.Database({ errorObject: updateError, name: 'create team update user' }) });
+                            io,
+                            team,
+                            user: allowedUser,
+                            callback: (addUserData) => {
+                              if (addUserData.error) {
+                                callback({ error: addUserData.error });
 
                                 return;
                               }
 
-                              addUserTeamRoom({
-                                io,
-                                userName: allowedUser.userName,
-                                roomName: teamRoom.roomName,
-                              });
-                              callback({
-                                data: {
-                                  team,
-                                  requiresVerify: false,
-                                },
-                              });
+                              callback({ data: addUserData.data });
                             },
                           });
                         }
@@ -316,23 +197,19 @@ function handle(socket, io) {
 
             const { team: verifiedTeam } = verifyData.data;
 
-            manager.updateUserTeam({
+            manager.addUserToTeam({
               socket,
-              userName: verifiedTeam.owner,
-              teamName: verifiedTeam.teamName,
-              shortTeamName: verifiedTeam.shortName,
-              callback: ({ error: updateError }) => {
-                if (updateError) {
-                  callback({ error: updateError });
+              io,
+              team: verifiedTeam,
+              user: { userName: verifiedTeam.owner },
+              callback: (addUserData) => {
+                if (addUserData.error) {
+                  callback({ error: addUserData.error });
 
                   return;
                 }
 
-                addUserTeamRoom({
-                  io,
-                  userName: verifiedTeam.owner,
-                  roomName: verifiedTeam.teamName + appConfig.teamAppend,
-                });
+                callback({ data: addUserData.data });
               },
             });
           },

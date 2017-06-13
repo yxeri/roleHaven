@@ -113,12 +113,11 @@ function createRoom({ room, callback }) {
 
 /**
  * Get room
- * @param {string} params.roomName - Name of the room
- * @param {Object} params.user User retrieving the room
+ * @param {string} params.roomName Name of the room
  * @param {Function} params.callback Callback
  */
-function getRoom({ roomName, user, callback }) {
-  const query = { roomName, accessLevel: { $lte: user.accessLevel } };
+function getRoom({ roomName, callback }) {
+  const query = { roomName };
 
   Room.findOne(query).lean().exec((err, room) => {
     if (err) {

@@ -52,6 +52,10 @@ function handle(socket, io) {
       callback({ error: new errorCreator.InvalidData({ expected: '{ docFile: { docFileId, text, title } }' }) });
 
       return;
+    } else if (textTools.isAlphaNumeric(docFile.docFileId)) {
+      callback({ error: new errorCreator.InvalidCharacters({ expected: `alphanumeric ${docFile.docFileId}` }) });
+
+      return;
     } else if (docFile.text.join('').length > appConfig.docFileMaxLength || docFile.title.length > appConfig.docFileTitleMaxLength || docFile.docFileId.length > appConfig.docFileIdMaxLength) {
       callback({ error: new errorCreator.InvalidCharacters({ expected: `text length: ${appConfig.docFileMaxLength}, title length: ${appConfig.docFileTitleMaxLength}, id length: ${appConfig.docFileIdMaxLength}` }) });
 

@@ -31,6 +31,7 @@ const walletHandler = require('./socketHandlers/wallet');
 const calibrationJobHandler = require('./socketHandlers/calibrationMission');
 const simpleMessageHandler = require('./socketHandlers/simpleMsg');
 const hackingHandler = require('./socketHandlers/hacking');
+const invitationHandler = require('./socketHandlers/invitation');
 
 const router = new express.Router();
 
@@ -127,6 +128,7 @@ function handle(io) {
     calibrationJobHandler.handle(socket, io);
     simpleMessageHandler.handle(socket, io);
     hackingHandler.handle(socket, io);
+    invitationHandler.handle(socket, io);
   });
 
   return router;

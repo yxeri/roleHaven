@@ -169,7 +169,6 @@ function handle() {
       const user = auth ? decoded.data : { accessLevel: 0 };
 
       dbRoom.getRoom({
-        user,
         roomName: req.params.id,
         callback: ({ error, data }) => {
           if (error) {
@@ -179,6 +178,16 @@ function handle() {
                   status: 404,
                   title: 'Room does not exist',
                   detail: 'Room does not exist',
+                }],
+              });
+
+              return;
+            } else if (user.accessLevel < data.room.accessLevel) {
+              res.status(401).json({
+                errors: [{
+                  status: 401,
+                  title: 'Unauthorized',
+                  detail: '',
                 }],
               });
 

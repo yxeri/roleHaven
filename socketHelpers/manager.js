@@ -570,6 +570,68 @@ function leaveSocketRooms({ socket }) {
   });
 }
 
+/**
+ * Add user to team's room
+ * @param {string} params.userName Name of the user
+ * @param {string} params.roomName Name of the room
+ * @param {Object} params.io Socket.IO
+ * @param {Function} params.callback Callback
+ */
+function addUserTeamRoom({ roomName, userName, io, callback = () => {} }) {
+  dbUser.addRoomToUser({
+    userName,
+    roomName,
+    callback: ({ error, data }) => {
+      if (error) {
+        callback({ error });
+
+        return;
+      }
+
+      const userSocket = io.sockets.connected[data.user.socketId];
+
+      if (userSocket) {
+        userSocket.join(roomName);
+        userSocket.emit('follow', { room: { roomName } });
+      }
+
+      callback({ data: { room: { roomName } } });
+    },
+  });
+}
+
+/**
+ * Add user to team
+ * @param {Object} team Team
+ * @param {Object} user User
+ * @param {Object} io Socket io
+ * @param {Object} socket Socket io
+ * @param {Function} callback Callback
+ */
+function addUserToTeam({ team, user, io, socket, callback }) {
+  updateUserTeam({
+    socket,
+    userName: user.userName,
+    teamName: team.teamName,
+    shortTeamName: team.shortName,
+    callback: ({ error: updateError }) => {
+      if (updateError) {
+        callback({ error: updateError });
+
+        return;
+      }
+
+      addUserTeamRoom({
+        io,
+        userName: user.userName,
+        roomName: team.teamName + appConfig.teamAppend,
+      });
+
+      callback({ data: { success: true }});
+    },
+  });
+}
+
 exports.userIsAllowed = userIsAllowed;
 exports.getHistory = getHistory;
 exports.createRoom = createRoom;
@@ -582,3 +644,5 @@ exports.authFollowRoom = authFollowRoom;
 exports.followRoom = followRoom;
 exports.updateUserTeam = updateUserTeam;
 exports.leaveSocketRooms = leaveSocketRooms;
+exports.addUserTeamRoom = addUserTeamRoom;
+exports.addUserToTeam = addUserToTeam;

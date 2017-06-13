@@ -27,7 +27,7 @@ const teamSchema = new mongoose.Schema({
   teamName: { type: String, unique: true },
   shortName: { type: String, unique: true },
   owner: String,
-  admins: [{ type: String, unique: true }],
+  admins: [String],
   verified: { type: Boolean, default: false },
 }, { collection: 'teams' });
 

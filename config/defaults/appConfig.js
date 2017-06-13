@@ -31,6 +31,7 @@ const userVerifyEnv = textTools.convertToBoolean(process.env.USERVERIFY);
 const forceFullscreenEnv = textTools.convertToBoolean(process.env.FORCEFULLSCREEN);
 const gpsTrackingEnv = textTools.convertToBoolean(process.env.GPSTRACKING);
 const teamVerifyEnv = textTools.convertToBoolean(process.env.TEAMVERIFY);
+const disallowRegisterEnv = textTools.convertToBoolean(process.env.DISALLOWUSERREGISTER);
 
 // Title of the site
 config.title = process.env.TITLE || config.title || 'roleHaven';
@@ -158,6 +159,33 @@ if (config.teamVerify === undefined) {
 }
 
 /**
+ * Should the frontend force full screen on click?
+ */
+config.forceFullscreen = forceFullscreenEnv !== undefined ? forceFullscreenEnv : config.forceFullscreen;
+
+if (config.forceFullscreen === undefined) {
+  config.forceFullscreen = true;
+}
+
+/**
+ * Should the frontend ask for user tracking?
+ */
+config.gpsTracking = gpsTrackingEnv !== undefined ? gpsTrackingEnv : config.gpsTracking;
+
+if (config.gpsTracking === undefined) {
+  config.gpsTracking = true;
+}
+
+/**
+ * Should users be able to register? Does not block register through rest api
+ */
+config.disallowUserRegister = disallowRegisterEnv !== undefined ? disallowRegisterEnv : config.disallowUserRegister;
+
+if (config.disallowUserRegister === undefined) {
+  config.disallowUserRegister = false;
+}
+
+/**
  * Appended to the user name to create a room which is used to store private
  * messages sent to a user (e.g user1-whisper)
  */
@@ -179,24 +207,6 @@ config.teamAppend = '-team';
  * The number of years that will be subtracted/added to the current year
  */
 config.yearModification = process.env.YEARMODIFICATION || config.yearModification || 0;
-
-/**
- * Should the frontend force full screen on click?
- */
-config.forceFullscreen = forceFullscreenEnv !== undefined ? forceFullscreenEnv : config.forceFullscreen;
-
-if (config.forceFullscreen === undefined) {
-  config.forceFullscreen = true;
-}
-
-/**
- * Should the frontend ask for user tracking?
- */
-config.gpsTracking = gpsTrackingEnv !== undefined ? gpsTrackingEnv : config.gpsTracking;
-
-if (config.gpsTracking === undefined) {
-  config.gpsTracking = true;
-}
 
 /**
  * Amount of milliseconds between each increment/decrement of signal value (BBR game feature)
@@ -242,17 +252,12 @@ config.signalBlockRadius = process.env.SIGNALBLOCKRADIUS || config.signalBlockRa
 /**
  * Amount of credits transferred when a game code is used
  */
-config.signalBlockTime = process.env.SIGNALBLOCKTIME || config.signalBlockTime || 30000;
+config.signalBlockTime = process.env.SIGNALBLOCKTIME || config.signalBlockTime || 120000;
 
 /**
  * Max user accuracy that will be used to calculate if the user is within affected area
  */
 config.signalBlockBufferArea = process.env.SIGNALBLOCKBUFFERAREA || config.signalBlockBufferArea || 40;
-
-/**
- * Should users be able to register? Does not block register through rest api
- */
-config.disallowUserRegister = process.env.DISALLOWUSERREGISTER || config.disallowUserRegister || false;
 
 /**
  * Maximum amount of characters in a document
