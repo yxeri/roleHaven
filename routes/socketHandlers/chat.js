@@ -168,7 +168,7 @@ function handle(socket, io) {
       callback({ error: new errorCreator.InvalidCharacters({ expected: 'a-z 0-9 length: 10' }) });
 
       return;
-    } else if (room.roomName.indexOf(appConfig.whisperAppend) > -1 || room.roomName.indexOf(appConfig.teamAppend)) {
+    } else if (room.roomName.indexOf(appConfig.whisperAppend) > -1 || room.roomName.indexOf(appConfig.teamAppend) > -1) {
       callback({ error: new errorCreator.InvalidCharacters({ expected: 'not protected words' }) });
 
       return;
