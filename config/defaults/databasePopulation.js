@@ -101,7 +101,7 @@ config.rooms = {
    * Blocking name for users
    * Not used as an ordinary chat room
    */
-  team: {
+  team: config.rooms.team || {
     roomName: 'team',
     visibility: config.accessLevels.superUser,
     accessLevel: config.accessLevels.superUser,
@@ -112,7 +112,7 @@ config.rooms = {
    * Blocking name for users
    * Not used as an ordinary chat room
    */
-  whisper: {
+  whisper: config.rooms.whisper || {
     roomName: 'whisper',
     visibility: config.accessLevels.superUser,
     accessLevel: config.accessLevels.superUser,
@@ -120,11 +120,39 @@ config.rooms = {
   },
 
   // TODO Move outside of defaults
-  dead: {
+  dead: config.rooms.dead || {
     roomName: 'd34d',
     visibility: config.accessLevels.anonymous,
     accessLevel: config.accessLevels.anonymous,
     anonymous: true,
+    owner: 'superuser',
+  },
+
+  important: config.rooms.important || {
+    roomName: 'important',
+    visibility: config.accessLevels.superUser,
+    accessLevel: config.accessLevels.superUser,
+    owner: 'superuser',
+  },
+
+  news: config.rooms.news || {
+    roomName: 'news',
+    visibility: config.accessLevels.superUser,
+    accessLevel: config.accessLevels.superUser,
+    owner: 'superuser',
+  },
+
+  schedule: config.rooms.schedule || {
+    roomName: 'schedule',
+    visibility: config.accessLevels.superUser,
+    accessLevel: config.accessLevels.superUser,
+    owner: 'superuser',
+  },
+
+  user: config.rooms.user || {
+    roomName: 'user',
+    visibility: config.accessLevels.superUser,
+    accessLevel: config.accessLevels.superUser,
     owner: 'superuser',
   },
 };
@@ -133,6 +161,10 @@ config.requiredRooms = [
   config.rooms.team.roomName,
   config.rooms.bcast.roomName,
   config.rooms.public.roomName,
+  config.rooms.important.roomName,
+  config.rooms.news.roomName,
+  config.rooms.schedule.roomName,
+  config.rooms.user.roomName,
 ];
 
 /**

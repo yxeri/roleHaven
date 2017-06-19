@@ -52,7 +52,7 @@ function handle(socket, io) {
       callback({ error: new errorCreator.InvalidData({ expected: '{ docFile: { docFileId, text, title } }' }) });
 
       return;
-    } else if (textTools.isAlphaNumeric(docFile.docFileId)) {
+    } else if (!textTools.isAlphaNumeric(docFile.docFileId)) {
       callback({ error: new errorCreator.InvalidCharacters({ expected: `alphanumeric ${docFile.docFileId}` }) });
 
       return;

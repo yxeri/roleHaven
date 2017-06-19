@@ -633,10 +633,10 @@ function addUserToTeam({ team, user, io, socket, callback }) {
 }
 
 function isRequiredRoom({ roomName, socketId, user }) {
-  const isAliasWhisperRoom = user.aliases ? user.aliases.map(alias => alias + appConfig.whisperAppend).indexOf(roomName) === -1 : false;
-  const isRequired = dbConfig.requiredRooms.indexOf > -1;
+  const isAliasWhisperRoom = user.aliases ? user.aliases.map(alias => alias + appConfig.whisperAppend).indexOf(roomName) > -1 : false;
+  const isRequired = dbConfig.requiredRooms.indexOf(roomName) > -1;
   const isSocketRoom = socketId && roomName === socketId;
-  const isWhisperRoom = roomName !== user.userName + appConfig.whisperAppend;
+  const isWhisperRoom = roomName === user.userName + appConfig.whisperAppend;
 
   return isAliasWhisperRoom || isRequired || isSocketRoom || isWhisperRoom;
 }

@@ -3,7 +3,7 @@ const fullTextRegex = /^[\w\d\såäöÅÄÖ-]+$/;
 
 /**
  * Does the string contain only alphanumeric values?
- * @param {string} text - String to check
+ * @param {string} text String to check
  * @returns {boolean} Does the string contain only alphanumeric values?
  */
 function isAlphaNumeric(text) {

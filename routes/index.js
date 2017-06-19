@@ -58,6 +58,7 @@ function handle(io) {
       socketPath: appConfig.socketPath,
       mainJs: 'scripts/main.js',
       mainCss: !isNaN(req.query.style) ? `styles/${req.query.style}.css` : 'styles/main.css',
+      dyslexic: req.query.dyslexic,
     });
   });
 
