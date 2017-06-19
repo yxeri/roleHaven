@@ -49,13 +49,18 @@ function updateDevice({ device, callback }) {
   if (lastUser) { toSet.lastUser = lastUser; }
   if (socketId) { toSet.socketId = socketId; }
 
-  const update = { $set: toSet };
+  const update = {
+    $set: toSet,
+    $setOnInsert: { deviceAlias: device.deviceId },
+  };
   const options = {
     new: true,
     upsert: true,
   };
 
   Device.findOneAndUpdate(query, update, options).lean().exec((err, updatedDevice) => {
+    console.log(updatedDevice);
+
     if (err) {
       callback({ error: new errorCreator.Database({ errorObject: err, name: 'updateDevice' }) });
 
@@ -63,6 +68,29 @@ function updateDevice({ device, callback }) {
     }
 
     callback({ data: { device: updatedDevice } });
+  });
+}
+
+/**
+ * Gets device by socket id
+ * @param {string} socketId Socket io socket
+ * @param {Function} callback Callback
+ */
+function getDeviceBySocketId({ socketId, callback }) {
+  const query = { socketId };
+
+  Device.findOne(query).lean().exec((err, device) => {
+    if (err) {
+      callback({ error: new errorCreator.Database({ errorObject: err, name: 'getDeviceBySocketId' }) });
+
+      return;
+    } else if (!device) {
+      callback({ error: new errorCreator.DoesNotExist({ name: `device socket id ${socketId}` }) });
+
+      return;
+    }
+
+    callback({ data: { device } });
   });
 }
 
@@ -107,3 +135,4 @@ function getAllDevices({ callback }) {
 exports.updateDevice = updateDevice;
 exports.getDevice = getDevice;
 exports.getAllDevices = getAllDevices;
+exports.getDeviceBySocketId = getDeviceBySocketId;

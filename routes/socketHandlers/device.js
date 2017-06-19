@@ -75,6 +75,9 @@ function handle(socket) {
           return;
         }
 
+        device.socketId = socket.id;
+        device.lastUser = allowedUser.userName;
+
         dbDevice.updateDevice({
           device,
           callback: ({ error: updateError, data }) => {

@@ -24,6 +24,7 @@ const objectValidator = require('../../utils/objectValidator');
 const errorCreator = require('../../objects/error/errorCreator');
 const textTools = require('../../utils/textTools');
 const jwt = require('jsonwebtoken');
+const dbDevice = require('../../db/connectors/device');
 
 dbUser.removeAllUserBlockedBy(() => {});
 
@@ -152,8 +153,8 @@ function handle(socket, io) {
     });
   });
 
-  socket.on('login', ({ user }, callback = () => {}) => {
-    if (!objectValidator.isValidData({ user }, { user: { userName: true, password: true } })) {
+  socket.on('login', ({ user, device }, callback = () => {}) => {
+    if (!objectValidator.isValidData({ user, device }, { user: { userName: true, password: true }, device: { deviceId: true } })) {
       callback({ error: new errorCreator.InvalidData({ expected: '{ user: { userName, password } }' }) });
 
       return;
@@ -180,6 +181,14 @@ function handle(socket, io) {
 
               return;
             }
+
+            device.lastUser = authUser.userName;
+            device.socketId = socket.id;
+
+            dbDevice.updateDevice({
+              device,
+              callback: () => {},
+            });
 
             const oldSocket = io.sockets.connected[authUser.socketId];
             const jwtUser = {
@@ -273,7 +282,13 @@ function handle(socket, io) {
     });
   });
 
-  socket.on('logout', ({ token }, callback = () => {}) => {
+  socket.on('logout', ({ device, token }, callback = () => {}) => {
+    if (!objectValidator.isValidData({ device }, { device: { deviceId: true } })) {
+      callback({ error: new errorCreator.InvalidData({ expected: '{ device: { deviceId } }' }) });
+
+      return;
+    }
+
     manager.userIsAllowed({
       token,
       commandName: dbConfig.commands.logout.commandName,
@@ -294,6 +309,14 @@ function handle(socket, io) {
               return;
             }
 
+            device.lastUser = allowedUser.userName;
+            device.socketId = '';
+
+            dbDevice.updateDevice({
+              device,
+              callback: () => {},
+            });
+
             dbUser.updateUserOnline({
               userName: allowedUser.userName,
               online: false,
@@ -303,6 +326,22 @@ function handle(socket, io) {
 
                   return;
                 }
+
+                dbUser.getUserPosition({
+                  user: allowedUser,
+                  userName: allowedUser.userName,
+                  callback: (positionData) => {
+                    if (positionData.error) {
+                      return;
+                    }
+
+                    socket.broadcast.to(dbConfig.rooms.public.roomName).emit('mapPositions', {
+                      positions: [positionData.data.position],
+                      currentTime: new Date(),
+                      shouldRemove: true,
+                    });
+                  },
+                });
 
                 manager.leaveSocketRooms({ socket });
                 callback({ data: { success: true } });

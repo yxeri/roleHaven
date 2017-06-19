@@ -129,6 +129,12 @@ config.rooms = {
   },
 };
 
+config.requiredRooms = [
+  config.rooms.team.roomName,
+  config.rooms.bcast.roomName,
+  config.rooms.public.roomName,
+];
+
 /**
  * Users to be created on first run
  * superuser should always be created. The rest are optional
@@ -462,7 +468,7 @@ config.commands = {
     accessLevel: config.accessLevels.lowerAdmin,
   },
   getUserPositions: config.commands.getUserPositions || {
-    commandName: 'getUserPositions',
+    commandName: 'getUserPosition',
     accessLevel: config.accessLevels.anonymous,
   },
   getCustomPositions: config.commands.getCustomPositions || {

@@ -491,18 +491,18 @@ function getAllUserPositions({ user, callback }) {
 }
 
 /**
- * Get positions for a user, based on the access level of the user retrieving the positions
+ * Get position for a user
  * @param {Object} params.user User retrieving the positions
  * @param {string} params.userName Name of the user
  * @param {Function} params.callback Callback
  */
-function getUserPositions({ user, userName, callback }) {
+function getUserPosition({ user, userName, callback }) {
   const query = { visibility: { $lte: user.accessLevel }, userName };
   const filter = { _id: 0 };
 
   User.findOne(query, filter).lean().exec((err, foundUser) => {
     if (err) {
-      callback({ error: new errorCreator.Database({ errorObject: err, name: 'getUserPositions' }) });
+      callback({ error: new errorCreator.Database({ errorObject: err, name: 'getUserPosition' }) });
 
       return;
     } else if (!foundUser) {
@@ -980,7 +980,7 @@ exports.createUser = createUser;
 exports.updateUserSocketId = updateUserSocketId;
 exports.getAllUsers = getAllUsers;
 exports.getAllUserPositions = getAllUserPositions;
-exports.getUserPosition = getUserPositions;
+exports.getUserPosition = getUserPosition;
 exports.addRoomToUser = addRoomToUser;
 exports.removeRoomFromUser = removeRoomFromUser;
 exports.addWhisperRoomToUser = addWhisperRoomToUser;

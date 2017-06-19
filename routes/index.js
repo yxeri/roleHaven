@@ -32,6 +32,7 @@ const calibrationJobHandler = require('./socketHandlers/calibrationMission');
 const simpleMessageHandler = require('./socketHandlers/simpleMsg');
 const hackingHandler = require('./socketHandlers/hacking');
 const invitationHandler = require('./socketHandlers/invitation');
+const dbDevice = require('../db/connectors/device');
 
 const router = new express.Router();
 
@@ -82,6 +83,24 @@ function handle(io) {
     });
 
     socket.on('disconnect', (params, callback = () => {}) => {
+      dbDevice.getDeviceBySocketId({
+        socketId: socket.id,
+        callback: (deviceData) => {
+          if (deviceData.error) {
+            return;
+          }
+
+          const device = {
+            deviceId: deviceData.data.device.deviceId,
+            socketId: '',
+          };
+
+          dbDevice.updateDevice({
+            device,
+            callback: () => {},
+          });
+        },
+      });
       dbUser.getUserById({
         socketId: socket.id,
         callback: ({ error, data }) => {

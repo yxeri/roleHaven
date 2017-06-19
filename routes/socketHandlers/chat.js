@@ -336,7 +336,7 @@ function handle(socket, io) {
     });
   });
 
-  socket.on('unfollow', ({ room, token }, callback = () => {}) => {
+  socket.on('unfollow', ({ room, isWhisperRoom, token }, callback = () => {}) => {
     if (!objectValidator.isValidData({ room }, { room: { roomName: true } })) {
       callback({ error: new errorCreator.InvalidData({ expected: '{ room: { roomName } }' }) });
 
@@ -357,18 +357,13 @@ function handle(socket, io) {
           callback({ error: new errorCreator.NotAllowed({ name: 'unfollow room that is not followed' }) });
 
           return;
-        } else if (roomName === dbConfig.rooms.public.roomName) {
-          callback({ error: new errorCreator.NotAllowed({ name: 'unfollow protected room' }) });
-
-          return;
-        } else if (roomName !== allowedUser.userName + appConfig.whisperAppend && allowedUser.aliases.map(alias => alias + appConfig.whisperAppend).indexOf(roomName) === -1) {
+        } else if (manager.isRequiredRoom({ roomName, socketId: socket.id, user: allowedUser })) {
           callback({ error: new errorCreator.NotAllowed({ name: 'unfollow protected room' }) });
 
           return;
         }
 
         const userName = allowedUser.userName;
-        const isWhisperRoom = roomName.indexOf(appConfig.whisperAppend) > -1;
 
         dbUser.removeRoomFromUser({
           userName,
