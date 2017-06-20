@@ -47,20 +47,6 @@ function handle(socket, io) {
           return;
         }
 
-        const removeInvitations = ({ userName, invitationType }) => {
-          dbInvitation.removeInvitationTypeFromList({
-            userName,
-            invitationType,
-            callback: (removeData) => {
-              if (removeData.error) {
-                callback({ error });
-              }
-
-              callback({ data: { invitations: removeData.data.list.invitations } });
-            },
-          });
-        };
-
         dbInvitation.getInvitations({
           userName: allowedUser.userName,
           callback: (invitationData) => {
@@ -101,17 +87,19 @@ function handle(socket, io) {
                           return;
                         }
 
-                        removeInvitations({
+                        dbInvitation.removeInvitationTypeFromList({
                           userName: allowedUser.userName,
                           invitationType: retrievedInvitation.invitationType,
                           callback: (removeData) => {
                             if (removeData.error) {
-                              callback({ error: removeData.error });
+                              callback({ error });
 
                               return;
                             }
 
                             callback({ data: addUserData.data });
+
+                            socket.broadcast.to(`${addUserData.data.team.teamName}${appConfig.teamAppend}`).emit('teamMember', { user: allowedUser });
                           },
                         });
                       },

@@ -627,7 +627,7 @@ function addUserToTeam({ team, user, io, socket, callback }) {
         roomName: team.teamName + appConfig.teamAppend,
       });
 
-      callback({ data: { success: true } });
+      callback({ data: { team: { teamName: team.teamName, shortName: team.shortName } } });
     },
   });
 }
