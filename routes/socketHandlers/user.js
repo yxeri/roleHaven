@@ -90,8 +90,8 @@ function handle(socket, io) {
         manager.createRoom({ room: newRoom, user: userObj, callback: () => {} });
         manager.createWallet({ wallet, callback: () => {} });
 
-        if (requiresVerification) {
-          // TODO Send event to admin
+        if (!requiresVerification) {
+          socket.broadcast.emit('user', { user: { userName } });
         }
 
         callback({
@@ -376,20 +376,19 @@ function handle(socket, io) {
 
         const userName = user.userName.toLowerCase();
 
-        if (userName !== undefined) {
-          dbUser.verifyUser({
-            userName,
-            callback: (verifyData) => {
-              if (verifyData.error) {
-                callback({ error: verifyData.error });
+        dbUser.verifyUser({
+          userName,
+          callback: (verifyData) => {
+            if (verifyData.error) {
+              callback({ error: verifyData.error });
 
-                return;
-              }
+              return;
+            }
 
-              callback({ data: { user: [user] } });
-            },
-          });
-        }
+            socket.broadcast.emit('user', { user: { userName } });
+            callback({ data: { user: [user] } });
+          },
+        });
       },
     });
   });
