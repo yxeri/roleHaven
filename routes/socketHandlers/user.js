@@ -91,7 +91,7 @@ function handle(socket, io) {
         manager.createWallet({ wallet, callback: () => {} });
 
         if (!requiresVerification) {
-          socket.broadcast.emit('user', { user: { userName } });
+          socket.broadcast.emit('users', { user: [{ userName }] });
         }
 
         callback({
@@ -385,8 +385,8 @@ function handle(socket, io) {
               return;
             }
 
-            socket.broadcast.emit('user', { user: { userName } });
-            callback({ data: { user: [user] } });
+            socket.broadcast.emit('users', { users: [{ userName }] });
+            callback({ data: { users: [user] } });
           },
         });
       },
@@ -415,6 +415,11 @@ function handle(socket, io) {
 
             const { users } = verifyData.data;
 
+            socket.broadcast.emit('users', {
+              users: users.map((user) => {
+                return { userName: user.userName };
+              }),
+            });
             callback({ data: { users } });
 
             // TODO Send message to registered device
