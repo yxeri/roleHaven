@@ -18,6 +18,7 @@
 
 const mongoose = require('mongoose');
 const errorCreator = require('../../objects/error/errorCreator');
+const dbConnector = require('../databaseConnector');
 
 const invitationListSchema = new mongoose.Schema({
   userName: { type: String, unique: true },
@@ -51,6 +52,34 @@ function getInvitations({ userName, callback }) {
     }
 
     callback({ data: { list } });
+  });
+}
+
+/**
+ * Create invitation list
+ * @param {string} params.userName Name of the owner of the list
+ * @param {Function} params.callback Callback
+ */
+function createInvitationList({ userName, callback }) {
+  const newInvitationList = new InvitationList({ userName, invitations: [] });
+  const query = { userName };
+
+  InvitationList.findOne(query).lean().exec((err, foundList) => {
+    if (err) {
+      callback({ error: new errorCreator.Database({ errorObject: err, name: 'create invitationlist' }) });
+
+      return;
+    } else if (foundList) {
+      callback({ error: new errorCreator.AlreadyExists({ name: `invitation list ${foundList.userName}` }) });
+
+      return;
+    }
+
+    dbConnector.saveObject({
+      callback,
+      object: newInvitationList,
+      objectType: 'invitationList',
+    });
   });
 }
 
@@ -150,4 +179,4 @@ exports.addInvitationToList = addInvitationToList;
 exports.removeInvitationFromList = removeInvitationFromList;
 exports.getInvitations = getInvitations;
 exports.removeInvitationTypeFromList = removeInvitationTypeFromList;
-
+exports.createInvitationList = createInvitationList;

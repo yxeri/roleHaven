@@ -25,6 +25,7 @@ const errorCreator = require('../../objects/error/errorCreator');
 const textTools = require('../../utils/textTools');
 const jwt = require('jsonwebtoken');
 const dbDevice = require('../../db/connectors/device');
+const dbInvitation = require('../../db/connectors/invitationList');
 
 dbUser.removeAllUserBlockedBy(() => {});
 
@@ -87,8 +88,19 @@ function handle(socket, io) {
         const requiresVerification = appConfig.userVerify;
         const wallet = { owner: userName };
 
-        manager.createRoom({ room: newRoom, user: userObj, callback: () => {} });
-        manager.createWallet({ wallet, callback: () => {} });
+        manager.createRoom({
+          room: newRoom,
+          user: userObj,
+          callback: () => {},
+        });
+        manager.createWallet({
+          wallet,
+          callback: () => {},
+        });
+        dbInvitation.createInvitationList({
+          userName,
+          callback: () => {},
+        });
 
         if (!requiresVerification) {
           socket.broadcast.emit('users', { user: [{ userName }] });
