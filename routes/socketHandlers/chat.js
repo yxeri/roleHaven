@@ -37,6 +37,10 @@ function shouldBeHidden({ roomName, socketId }) {
   const hiddenRooms = [
     socketId,
     dbConfig.rooms.bcast.roomName,
+    dbConfig.rooms.important.roomName,
+    dbConfig.rooms.user.roomName,
+    dbConfig.rooms.news.roomName,
+    dbConfig.rooms.schedule.roomName,
   ];
 
   return hiddenRooms.indexOf(roomName) >= 0 || roomName.indexOf(appConfig.whisperAppend) >= 0 || roomName.indexOf(appConfig.deviceAppend) >= 0;
@@ -168,7 +172,7 @@ function handle(socket, io) {
       callback({ error: new errorCreator.InvalidCharacters({ expected: 'a-z 0-9 length: 10' }) });
 
       return;
-    } else if (room.roomName.indexOf(appConfig.whisperAppend) > -1 || room.roomName.indexOf(appConfig.teamAppend) > -1) {
+    } else if (room.roomName.indexOf(appConfig.whisperAppend) > -1 || room.roomName.indexOf(appConfig.teamAppend) > -1 || room.roomName.indexOf(appConfig.scheduleAppend) > -1) {
       callback({ error: new errorCreator.InvalidCharacters({ expected: 'not protected words' }) });
 
       return;
@@ -258,9 +262,9 @@ function handle(socket, io) {
     });
   });
 
-  socket.on('followWhisper', ({ whisperTo, room, token }, callback = () => {}) => {
-    if (!objectValidator.isValidData({ room }, { room: { roomName: true } })) {
-      callback({ error: new errorCreator.InvalidData({ expected: '{ room: { roomName } }' }) });
+  socket.on('followWhisper', ({ user, whisperTo, room, token }, callback = () => {}) => {
+    if (!objectValidator.isValidData({ user, room }, { user: { userName: true }, room: { roomName: true } })) {
+      callback({ error: new errorCreator.InvalidData({ expected: '{ user: { userName }, room: { roomName } }' }) });
 
       return;
     }
@@ -271,6 +275,10 @@ function handle(socket, io) {
       callback: ({ error, allowedUser }) => {
         if (error) {
           callback({ error });
+
+          return;
+        } else if (allowedUser.aliases.indexOf(user.userName) === -1 && allowedUser.userName !== user.userName) {
+          callback({ error: new errorCreator.NotAllowed({ name: 'alias not in user' }) });
 
           return;
         }
@@ -285,7 +293,7 @@ function handle(socket, io) {
               return;
             }
 
-            const whisperToRoomName = `${whisperTo}-whisper-${allowedUser.userName}`;
+            const whisperToRoomName = `${whisperTo}-whisper-${user.userName}`;
 
             dbUser.addWhisperRoomToUser({
               userName: whisperTo,
@@ -298,7 +306,7 @@ function handle(socket, io) {
                 }
 
                 socket.to(`${whisperTo}${appConfig.whisperAppend}`).emit('follow', {
-                  whisperTo: allowedUser.userName,
+                  whisperTo: user.userName,
                   data: whisperToRoomName,
                   room: { roomName: whisperToRoomName },
                   whisper: true,

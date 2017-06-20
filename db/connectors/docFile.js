@@ -25,7 +25,7 @@ const docFileSchema = new mongoose.Schema({
   isPublic: { type: Boolean, default: true },
   text: [String],
   docFileId: { type: String, unique: true },
-  title: String,
+  title: { type: String, unique: true },
   creator: { type: String, default: 'SYSTEM' },
   team: String,
   accessUsers: [String],
@@ -116,14 +116,26 @@ function addAccessUser({ docFileId, userName, callback }) {
 /**
  * Get docFile by docFile ID and user access level
  * @param {string} params.docFileId ID of docFile
+ * @param {string} params.title Title of the docfile
+ * @param {string} params.team Retrieves user team
  * @param {number} params.accessLevel User access level
  * @param {Function} params.callback Callback
  */
-function getDocFile({ docFileId, accessLevel, callback }) {
+function getDocFile({ title, team, docFileId, accessLevel, callback }) {
   const query = {
-    $and: [
-      { visibility: { $lte: accessLevel } },
-      { docFileId },
+    $or: [
+      {
+        $and: [
+          { visibility: { $lte: accessLevel } },
+          { docFileId },
+        ],
+      }, {
+        $and: [
+          { visibility: { $lte: accessLevel } },
+          { title },
+          { team },
+        ],
+      }
     ],
   };
 

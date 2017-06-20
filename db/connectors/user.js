@@ -954,23 +954,27 @@ function getUserByAlias({ alias, callback }) {
  * @param {Function} params.callback Callback
  */
 function addAlias({ userName, alias, callback }) {
-  getUserByAlias({
-    alias,
-    callback: ({ error: aliasError, data }) => {
-      if (aliasError) {
-        callback({ error: aliasError });
+  const query = {
+    $or: [
+      { userName: alias },
+      { aliases: { $in: [alias] } },
+    ],
+  };
 
-        return;
-      } else if (data.user !== null) {
-        callback({ error: new errorCreator.AlreadyExists({ name: `alias ${alias}` }) });
+  User.findOne(query).lean().exec((err, user) => {
+    if (err) {
+      callback({ error: new errorCreator.Database({ errorObject: err }) });
 
-        return;
-      }
+      return;
+    } else if (user) {
+      callback({ error: new errorCreator.AlreadyExists({ name: `alias ${alias}` }) });
 
-      const update = { $push: { aliases: alias } };
+      return;
+    }
 
-      updateUserValue({ userName, update, callback });
-    },
+    const update = { $push: { aliases: alias } };
+
+    updateUserValue({ userName, update, callback });
   });
 }
 

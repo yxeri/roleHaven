@@ -203,6 +203,8 @@ config.deviceAppend = '-device';
  */
 config.teamAppend = '-team';
 
+config.scheduleAppend = '-schedule';
+
 /**
  * The number of years that will be subtracted/added to the current year
  */

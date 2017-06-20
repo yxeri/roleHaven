@@ -102,6 +102,10 @@ function handle(socket, io) {
                     return;
                   }
 
+                  if (!updateData.docFile.isPublic) {
+                    updateData.docFile.docFileId = null;
+                  }
+
                   callback({ data: { docFile: updateData.docFile } });
                 },
               });
@@ -113,24 +117,20 @@ function handle(socket, io) {
 
           dbDocFile.createDocFile({
             docFile,
-            callback: ({ error: docError, data }) => {
+            callback: ({ error: docError }) => {
               if (docError) {
                 callback({ error: docError });
 
                 return;
               }
 
-              const { docFile: newDocFile } = data;
+              callback({ data: { docFile } });
 
-              callback({ data: { docFile: newDocFile } });
-
-              if (newDocFile.isPublic) {
-                socket.broadcast.emit('docFile', { docFile: newDocFile });
-              } else if (newDocFile.team && newDocFile.team !== '') {
-                const teamRoom = newDocFile.team + appConfig.teamAppend;
-
-                socket.broadcast.to(teamRoom).emit('docFile', { docFile: newDocFile });
+              if (!docFile.isPublic) {
+                docFile.docFileId = null;
               }
+
+              socket.broadcast.emit('docFile', { docFile });
             },
           });
         }
@@ -138,9 +138,9 @@ function handle(socket, io) {
     });
   });
 
-  socket.on('getDocFile', ({ docFileId, token }, callback = () => {}) => {
-    if (!objectValidator.isValidData({ docFileId }, { docFileId: true })) {
-      callback({ error: new errorCreator.InvalidData({ expected: '{ docFileId' }) });
+  socket.on('getDocFile', ({ docFile, token }, callback = () => {}) => {
+    if (!objectValidator.isValidData({ docFile }, { docFile: true })) {
+      callback({ error: new errorCreator.InvalidData({ expected: '{ docFile }' }) });
 
       return;
     }
@@ -155,8 +155,12 @@ function handle(socket, io) {
           return;
         }
 
+        const { title, docFileId } = docFile;
+
         dbDocFile.getDocFile({
-          docFileId: docFileId.toLowerCase(),
+          title: title || null,
+          team: allowedUser.team,
+          docFileId: docFile.docFileId ? docFileId.toLowerCase() : null,
           accessLevel: allowedUser.accessLevel,
           callback: ({ error: getError, data }) => {
             if (getError) {
@@ -165,11 +169,9 @@ function handle(socket, io) {
               return;
             }
 
-            const { docFile } = data;
-
-            if (!docFile.accessUsers || docFile.accessUsers.indexOf(allowedUser.userName) === -1) {
+            if (!data.docFile.accessUsers || data.docFile.accessUsers.indexOf(allowedUser.userName) === -1) {
               dbDocFile.addAccessUser({
-                docFileId: docFile.docFileId,
+                docFileId: data.docFile.docFileId,
                 userName: allowedUser.userName,
                 callback: ({ error: accessError }) => {
                   if (accessError) {
@@ -178,14 +180,14 @@ function handle(socket, io) {
                     return;
                   }
 
-                  callback({ data: { docFile } });
+                  callback({ data: { docFile: data.docFile } });
                 },
               });
 
               return;
             }
 
-            callback({ data: { docFile } });
+            callback({ data: { docFile: data.docFile } });
           },
         });
       },

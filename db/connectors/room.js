@@ -313,12 +313,10 @@ function populateDbRooms({ rooms }) {
       const { rooms: retrievedRooms } = data;
       const roomNames = retrievedRooms.map(room => room.roomName);
 
-      Object.keys(rooms).map(roomKey => rooms[roomKey].roomName).forEach((roomName) => {
-        if (roomNames.indexOf(roomName) > -1) {
+      Object.keys(rooms).map(roomKey => rooms[roomKey]).forEach((room) => {
+        if (roomNames.indexOf(room.roomName) > -1) {
           return;
         }
-
-        const room = rooms[roomName];
 
         createRoom({
           room,
@@ -327,7 +325,6 @@ function populateDbRooms({ rooms }) {
               return;
             }
 
-            console.log(`Created room ${roomName}`);
           },
         });
       });

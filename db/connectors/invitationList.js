@@ -64,8 +64,6 @@ function addInvitationToList({ userName, invitation, callback }) {
   const query = { userName };
 
   InvitationList.findOne(query).lean().exec((err, list) => {
-    if (list) { console.log(list.invitations.filter(invitationItem => invitationItem.invitationType === invitation.invitationType && invitationItem.itemName === invitation.itemName)); }
-
     if (err) {
       callback({ error: new errorCreator.Database({ errorObject: err, name: 'addInvitationToList' }) });
 

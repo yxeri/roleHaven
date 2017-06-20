@@ -627,11 +627,18 @@ function addUserToTeam({ team, user, io, socket, callback }) {
         roomName: team.teamName + appConfig.teamAppend,
       });
 
-      callback({ data: { success: true }});
+      callback({ data: { success: true } });
     },
   });
 }
 
+/**
+ * Check if room is protected
+ * @param {string} roomName Room name to check
+ * @param {string} socketId Socket id
+ * @param {Object} user User
+ * @returns {boolean} Is the room protected?
+ */
 function isRequiredRoom({ roomName, socketId, user }) {
   const isAliasWhisperRoom = user.aliases ? user.aliases.map(alias => alias + appConfig.whisperAppend).indexOf(roomName) > -1 : false;
   const isRequired = dbConfig.requiredRooms.indexOf(roomName) > -1;

@@ -59,8 +59,6 @@ function updateDevice({ device, callback }) {
   };
 
   Device.findOneAndUpdate(query, update, options).lean().exec((err, updatedDevice) => {
-    console.log(updatedDevice);
-
     if (err) {
       callback({ error: new errorCreator.Database({ errorObject: err, name: 'updateDevice' }) });
 

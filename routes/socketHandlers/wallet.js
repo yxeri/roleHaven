@@ -159,7 +159,6 @@ function handle(socket, io) {
         dbPosition.getUserPosition({
           userName: allowedUser.userName,
           callback: (positionData) => {
-            console.log('pos', positionData);
             if (positionData.error) {
               if (positionData.type === errorCreator.ErrorTypes.DOESNOTEXIST) {
                 transactionCallback({ user: allowedUser, fromTeam, transaction, io });

@@ -227,6 +227,10 @@ function handle(io) {
         rooms: [
           dbConfig.rooms.public.roomName,
           dbConfig.rooms.bcast.roomName,
+          dbConfig.rooms.important.roomName,
+          dbConfig.rooms.user.roomName,
+          dbConfig.rooms.news.roomName,
+          dbConfig.rooms.schedule.roomName,
         ],
       };
       const wallet = {
