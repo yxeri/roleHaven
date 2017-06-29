@@ -53,65 +53,24 @@ function handle(socket, io) {
       return;
     }
 
-    const userName = user.userName.toLowerCase();
-    const userObj = {
-      userName,
-      fullName: user.fullName || userName,
-      socketId: '',
-      password: user.password,
-      registerDevice: user.registerDevice,
-      verified: false,
-      rooms: [
-        dbConfig.rooms.public.roomName,
-        dbConfig.rooms.bcast.roomName,
-        dbConfig.rooms.important.roomName,
-        dbConfig.rooms.user.roomName,
-        dbConfig.rooms.news.roomName,
-        dbConfig.rooms.schedule.roomName,
-      ],
-    };
+    user.userName = user.userName.toLowerCase();
 
-    dbUser.createUser({
-      user: userObj,
-      callback: (userData) => {
-        if (userData.error) {
-          callback({ error: userData.error });
+    manager.createUser({
+      user,
+      shouldVerify: false,
+      socket,
+      callback: ({ error, data }) => {
+        if (error) {
+          callback({ error });
 
           return;
         }
 
-        const newRoom = {
-          roomName: userObj.userName + appConfig.whisperAppend,
-          visibility: dbConfig.accessLevels.superUser,
-          accessLevel: dbConfig.accessLevels.superUser,
-        };
-        const requiresVerification = appConfig.userVerify;
-        const wallet = { owner: userName };
-
-        manager.createRoom({
-          room: newRoom,
-          user: userObj,
-          callback: () => {},
-        });
-        manager.createWallet({
-          wallet,
-          callback: () => {},
-        });
-        dbInvitation.createInvitationList({
-          userName,
-          callback: () => {},
-        });
-
-        if (!requiresVerification) {
-          socket.broadcast.emit('users', { user: [{ userName }] });
+        if (!data.requiresVerification) {
+          socket.broadcast.emit('users', { user: [{ userName: user.userName }] });
         }
 
-        callback({
-          data: {
-            requiresVerification,
-            success: true,
-          },
-        });
+        callback({ data });
       },
     });
   });

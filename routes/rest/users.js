@@ -138,7 +138,7 @@ function handle(io) {
    * @apiParam {string} data.user.password Password of the user
    * @apiParam {string} [data.user.fullName] Full name of the user. Defaults to userName
    * @apiParam {boolean} [data.user.lootable] Is the user's device lootable? Default is false
-   * @apiParam {string} [data.registerCode]
+   * @apiParam {boolean} [data.shouldVerify] Should the user be verified on creation? Default is false
    * @apiParamExample {json} Request-Example:
    *   {
    *    "data": {
@@ -155,23 +155,7 @@ function handle(io) {
    * @apiSuccessExample {json} Success-Response:
    *   {
    *    "data": {
-   *      "users": [
-   *        {
-   *          "fullName": "Mr. X",
-   *          "userName": "rez",
-   *          "registerDevice": "RESTAPI",
-   *          "authGroups": [],
-   *          "online": false,
-   *          "banned": false,
-   *          "verified": false,
-   *          "rooms": [
-   *            "public",
-   *            "broadcast"
-   *          ],
-   *          "visibility": "1",
-   *          "accessLevel": "1"
-   *        }
-   *      ]
+   *      "success": true
    *    }
    *  }
    */
@@ -214,39 +198,21 @@ function handle(io) {
         return;
       }
 
-      const { user } = req.body.data;
+      const { user, shouldVerify } = req.body.data;
       user.userName = user.userName.toLowerCase();
+      user.registerDevice = 'RESTAPI';
 
-      // TODO Duplicate code with register
-      const newUser = {
-        fullName: user.fullName || user.userName.toLowerCase(),
-        userName: user.userName.toLowerCase(),
-        password: user.password,
-        registerDevice: 'RESTAPI',
-        verified: false,
-        rooms: [
-          dbConfig.rooms.public.roomName,
-          dbConfig.rooms.bcast.roomName,
-          dbConfig.rooms.important.roomName,
-          dbConfig.rooms.user.roomName,
-          dbConfig.rooms.news.roomName,
-          dbConfig.rooms.schedule.roomName,
-        ],
-      };
-      const wallet = {
-        owner: newUser.userName,
-      };
-
-      dbUser.createUser({
-        user: newUser,
-        callback: ({ error }) => {
+      manager.createUser({
+        user,
+        shouldVerify,
+        callback: ({ error, data }) => {
           if (error) {
             if (error.type === errorCreator.ErrorTypes.ALREADYEXISTS) {
               res.status(403).json({
                 errors: [{
                   status: 403,
                   title: 'User already exists',
-                  detail: `User with user name ${newUser.userName} already exists`,
+                  detail: `User with user name ${user.userName} already exists`,
                 }],
               });
 
@@ -264,16 +230,11 @@ function handle(io) {
             return;
           }
 
-          const whisperRoom = {
-            roomName: newUser.userName + appConfig.whisperAppend,
-            visibility: dbConfig.accessLevels.superUser,
-            accessLevel: dbConfig.accessLevels.superUser,
-          };
+          if (!data.requiresVerification || shouldVerify) {
+            io.emit('users', { user: [{ userName: user.userName }] });
+          }
 
-          manager.createRoom({ room: whisperRoom, user: newUser, callback: () => {} });
-          manager.createWallet({ wallet, callback: () => {} });
-
-          res.json({ data: { users: [newUser] } });
+          res.json({ data: { success: true } });
         },
       });
     });

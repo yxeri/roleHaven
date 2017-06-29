@@ -103,15 +103,15 @@ function handle() {
           return;
         }
 
-        const { authUser } = data;
+        const { user } = data;
 
         const jwtUser = {
-          _id: authUser._id, // eslint-disable-line no-underscore-dangle
-          userName: authUser.userName,
-          accessLevel: authUser.accessLevel,
-          visibility: authUser.visibility,
-          verified: authUser.verified,
-          banned: authUser.banned,
+          _id: user._id, // eslint-disable-line no-underscore-dangle
+          userName: user.userName,
+          accessLevel: user.accessLevel,
+          visibility: user.visibility,
+          verified: user.verified,
+          banned: user.banned,
         };
 
         res.json({

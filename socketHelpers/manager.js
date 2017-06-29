@@ -25,6 +25,7 @@ const appConfig = require('./../config/defaults/config').app;
 const dbConfig = require('../config/defaults/config').databasePopulation;
 const errorCreator = require('../objects/error/errorCreator');
 const dbTransaction = require('../db/connectors/transaction');
+const dbInvitation = require('../db/connectors/invitationList');
 const jwt = require('jsonwebtoken');
 
 /**
@@ -648,6 +649,75 @@ function isRequiredRoom({ roomName, socketId, user }) {
   return isAliasWhisperRoom || isRequired || isSocketRoom || isWhisperRoom;
 }
 
+/**
+ * Create a user and all other objects needed for it
+ * @param {Object} params.user User to create
+ * @param {boolean} params.shouldVerify Should the user be automatically verified?
+ * @param {Function} params.callback Callback
+ */
+function createUser({ user, shouldVerify, callback }) {
+  const { userName, fullName, password, registerDevice } = user;
+
+  const userObj = {
+    userName,
+    password,
+    registerDevice,
+    fullName: fullName || userName,
+    verified: shouldVerify,
+    socketId: '',
+    rooms: [
+      dbConfig.rooms.public.roomName,
+      dbConfig.rooms.bcast.roomName,
+      dbConfig.rooms.important.roomName,
+      dbConfig.rooms.user.roomName,
+      dbConfig.rooms.news.roomName,
+      dbConfig.rooms.schedule.roomName,
+    ],
+  };
+  const wallet = {
+    owner: userObj.userName,
+  };
+
+  dbUser.createUser({
+    user: userObj,
+    callback: (userData) => {
+      if (userData.error) {
+        callback({ error: userData.error });
+
+        return;
+      }
+
+      const whisperRoom = {
+        roomName: userObj.userName + appConfig.whisperAppend,
+        visibility: dbConfig.accessLevels.superUser,
+        accessLevel: dbConfig.accessLevels.superUser,
+      };
+      const requiresVerification = appConfig.userVerify;
+
+      createRoom({
+        room: whisperRoom,
+        user: userObj,
+        callback: () => {},
+      });
+      createWallet({
+        wallet,
+        callback: () => {},
+      });
+      dbInvitation.createInvitationList({
+        userName,
+        callback: () => {},
+      });
+
+      callback({
+        data: {
+          requiresVerification,
+          success: true,
+        },
+      });
+    },
+  });
+}
+
 exports.userIsAllowed = userIsAllowed;
 exports.getHistory = getHistory;
 exports.createRoom = createRoom;
@@ -663,3 +733,4 @@ exports.leaveSocketRooms = leaveSocketRooms;
 exports.addUserTeamRoom = addUserTeamRoom;
 exports.addUserToTeam = addUserToTeam;
 exports.isRequiredRoom = isRequiredRoom;
+exports.createUser = createUser;
