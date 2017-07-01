@@ -21,6 +21,8 @@ const appConfig = require('../../config/defaults/config').app;
 const jwt = require('jsonwebtoken');
 const objectValidator = require('../../utils/objectValidator');
 const manager = require('../../socketHelpers/manager');
+const dbUser = require('../../db/connectors/user');
+const errorCreator = require('../../objects/error/errorCreator');
 
 const router = new express.Router();
 
@@ -118,7 +120,7 @@ function handle(io) {
 
   /**
    * @api {post} /transactions Create a transaction
-   * @apiVersion 5.0.3
+   * @apiVersion 5.1.0
    * @apiName CreateTransaction
    * @apiGroup Transactions
    *
@@ -128,12 +130,13 @@ function handle(io) {
    *
    * @apiParam {Object} data
    * @apiParam {Object} data.transaction Transaction
-   * @apiParam {String} data.transaction.to - User name of the receiver
-   * @apiParam {String} data.transaction.amount - Amount to transfer
-   * @apiParam {String} data.transaction.note - Note to the receiver
-   * @apiParam {Object} [data.transaction.coordinates] - GPS coordinates to where the transaction was made
-   * @apiParam {number} data.transaction.coordinates.longitude - Longitude
-   * @apiParam {number} data.transaction.coordinates.latitude - Latitude
+   * @apiParam {string} data.transaction.to User or team name of the receiver
+   * @apiParam {string} data.transaction.amount Amount to transfer
+   * @apiParam {string} [data.transaction.note] Note to the receiver
+   * @apiParam {Object} [data.transaction.coordinates] GPS coordinates to where the transaction was made
+   * @apiParam {number} data.transaction.coordinates.longitude Longitude
+   * @apiParam {number} data.transaction.coordinates.latitude Latitude
+   * @apiParam {number} [data.isTeamWallet] Should the transaction be created on the user's team?
    * @apiParamExample {json} Request-Example:
    *   {
    *    "data": {
@@ -210,34 +213,70 @@ function handle(io) {
       }
 
       const transaction = req.body.data.transaction;
+      const isTeamWallet = req.body.data.isTeamWallet;
+      const createTransactionFunc = ({ user }) => {
+        manager.createTransaction({
+          transaction,
+          io,
+          user,
+          fromTeam: isTeamWallet,
+          callback: ({ error, data }) => {
+            if (error) {
+              res.status(500).json({
+                errors: [{
+                  status: 500,
+                  title: 'Internal Server Error',
+                  detail: 'Internal Server Error',
+                }],
+              });
 
-      manager.createTransaction({
-        transaction,
-        io,
-        user: decoded.data,
-        callback: ({ error, data }) => {
-          if (error) {
-            res.status(500).json({
-              errors: [{
-                status: 500,
-                title: 'Internal Server Error',
-                detail: 'Internal Server Error',
-              }],
-            });
+              return;
+            }
 
-            return;
-          }
-
-          res.json({
-            data: {
-              transaction: data.transaction,
-              wallet: {
-                amount: data.wallet.amount,
+            res.json({
+              data: {
+                transaction: data.transaction,
+                wallet: {
+                  amount: data.wallet.amount,
+                },
               },
-            },
-          });
-        },
-      });
+            });
+          },
+        });
+      };
+
+      if (isTeamWallet) {
+        dbUser.getUserByAlias({
+          alias: decoded.data.userName,
+          callback: ({ error, data }) => {
+            if (error) {
+              res.status(500).json({
+                errors: [{
+                  status: 500,
+                  title: 'Internal Server Error',
+                  detail: 'Internal Server Error',
+                }],
+              });
+
+              return;
+            } else if (!data.user.team) {
+              res.status(404).json({
+                errors: [{
+                  status: 404,
+                  title: 'Failed to create transaction',
+                  detail: 'User team does not exist',
+                }],
+              });
+
+              return;
+            }
+
+            createTransactionFunc({ user: data.user });
+          },
+        });
+      } else {
+        createTransactionFunc({ user: decoded.data });
+      }
     });
   });
 
