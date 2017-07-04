@@ -27,13 +27,14 @@ try {
   console.log('Did not find modified appConfig. Using defaults');
 }
 
-const userVerifyEnv = textTools.convertToBoolean(process.env.USERVERIFY);
 const forceFullscreenEnv = textTools.convertToBoolean(process.env.FORCEFULLSCREEN);
 const gpsTrackingEnv = textTools.convertToBoolean(process.env.GPSTRACKING);
 const teamVerifyEnv = textTools.convertToBoolean(process.env.TEAMVERIFY);
 const disallowRegisterEnv = textTools.convertToBoolean(process.env.DISALLOWUSERREGISTER);
 
-// Title of the site
+/**
+ * Name of the system. Human-readable name that will be sent to clients, such as in the subject field of mail or page title
+ */
 config.title = process.env.TITLE || config.title || 'roleHaven';
 
 /**
@@ -144,46 +145,23 @@ config.maxHistoryLines = process.env.MAXHISTORYLINES || config.maxHistoryLines |
 // Amount of messages sent at a time to client
 config.chunkLength = process.env.MAXCHUNK || config.chunkLength || 10;
 
-// Does the user have to be verified before being able to login?
-config.userVerify = userVerifyEnv !== undefined ? userVerifyEnv : config.userVerify;
-
-if (config.userVerify === undefined) {
-  config.userVerify = false;
-}
-
 // Does the team have to be verified before being created?
-config.teamVerify = teamVerifyEnv !== undefined ? teamVerifyEnv : config.teamVerify;
-
-if (config.teamVerify === undefined) {
-  config.teamVerify = false;
-}
+config.teamVerify = teamVerifyEnv !== undefined ? teamVerifyEnv : config.teamVerify || false;
 
 /**
  * Should the frontend force full screen on click?
  */
-config.forceFullscreen = forceFullscreenEnv !== undefined ? forceFullscreenEnv : config.forceFullscreen;
-
-if (config.forceFullscreen === undefined) {
-  config.forceFullscreen = true;
-}
+config.forceFullscreen = forceFullscreenEnv !== undefined ? forceFullscreenEnv : config.forceFullscreen || true;
 
 /**
  * Should the frontend ask for user tracking?
  */
-config.gpsTracking = gpsTrackingEnv !== undefined ? gpsTrackingEnv : config.gpsTracking;
-
-if (config.gpsTracking === undefined) {
-  config.gpsTracking = true;
-}
+config.gpsTracking = gpsTrackingEnv !== undefined ? gpsTrackingEnv : config.gpsTracking || true;
 
 /**
  * Should users be able to register? Does not block register through rest api
  */
-config.disallowUserRegister = disallowRegisterEnv !== undefined ? disallowRegisterEnv : config.disallowUserRegister;
-
-if (config.disallowUserRegister === undefined) {
-  config.disallowUserRegister = false;
-}
+config.disallowUserRegister = disallowRegisterEnv !== undefined ? disallowRegisterEnv : config.disallowUserRegister || false;
 
 /**
  * Appended to the user name to create a room which is used to store private
@@ -287,5 +265,29 @@ config.maxUserWarnings = process.env.MAXUSERWARNINGS || config.maxUserWarnings |
 config.minimumPositionAccuracy = process.env.MINIMUMPOSITIONACCURACY || config.minimumPositionAccuracy || 70;
 
 config.maxPositionAge = process.env.MAXPOSITIONAGE || config.maxPositionAge || 2;
+
+/**
+ * Secret key used for Mailgun
+ */
+config.mailKey = process.env.MAILKEY;
+
+/**
+ * Public key used for Mailgun
+ */
+config.publicMailKey = process.env.PUBLICMAILKEY;
+
+if (config.mailKey && config.publicMailKey) {
+  /**
+   * Mail domain used by Mailgun
+   */
+  config.mailDomain = process.env.MAILDOMAIN || config.mailDomain;
+
+  /**
+   * Mail sender name. Will append mailDomain to name
+   */
+  config.mailSender = `${process.env.MAILSENDER || config.mailSender}@${config.mailDomain}`;
+}
+
+config.host = process.env.VIRTUAL_HOST;
 
 module.exports = config;

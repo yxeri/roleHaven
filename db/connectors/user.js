@@ -49,6 +49,8 @@ const userSchema = new mongoose.Schema({
   isTracked: Boolean,
   aliases: [String],
   blockedBy: String,
+  mail: { type: String, unique: true },
+  registeredAt: Date,
 }, { collection: 'users' });
 
 const User = mongoose.model('User', userSchema);
@@ -197,9 +199,8 @@ function getUserByDevice({ deviceCode, callback }) {
       const userQuery = {
         banned: false,
         socketId: device.socketId,
+        verified: true,
       };
-
-      if (appConfig.userVerify) { userQuery.verified = true; }
 
       User.findOne(userQuery).lean().exec((userErr, user) => {
         if (userErr) {
@@ -224,12 +225,8 @@ function getUserByDevice({ deviceCode, callback }) {
  * @param {Function} params.callback Callback
  */
 function getUserById({ socketId, callback }) {
-  const query = { socketId, banned: false };
+  const query = { socketId, banned: false, verify: true };
   const filter = { _id: 0 };
-
-  if (appConfig.userVerify) {
-    query.verified = true;
-  }
 
   User.findOne(query, filter).lean().exec((err, user) => {
     if (err) {
@@ -253,12 +250,8 @@ function getUserById({ socketId, callback }) {
  * @param {Function} params.callback Callback
  */
 function authUser({ userName, password, callback }) {
-  const query = { userName, password, banned: false };
+  const query = { userName, password, banned: false, verified: true };
   const filter = { password: 0 };
-
-  if (appConfig.userVerify) {
-    query.verified = true;
-  }
 
   User.findOne(query, filter).lean().exec((err, user) => {
     if (err) {
@@ -281,12 +274,8 @@ function authUser({ userName, password, callback }) {
  * @param {Function} params.callback Callback
  */
 function getUser({ userName, callback }) {
-  const query = { userName, banned: false };
+  const query = { userName, banned: false, verified: true };
   const filter = { password: 0 };
-
-  if (appConfig.userVerify) {
-    query.verified = true;
-  }
 
   User.findOne(query, filter).lean().exec((err, foundUser) => {
     if (err) {
@@ -338,13 +327,9 @@ function createUser({ user, callback }) {
  * @param {Function} params.callback Callback
  */
 function updateUserSocketId({ userName, socketId, callback }) {
-  const query = { banned: false, userName };
+  const query = { banned: false, userName, verified: true };
   const update = { $set: { socketId, online: true } };
   const options = { new: true };
-
-  if (appConfig.userVerify) {
-    query.verified = true;
-  }
 
   User.findOneAndUpdate(query, update, options).lean().exec((err, user) => {
     if (err) {
@@ -407,10 +392,7 @@ function getAllUsers({ user, includeInactive, callback }) {
 
   if (!includeInactive) {
     query.banned = false;
-
-    if (appConfig.userVerify) {
-      query.verified = true;
-    }
+    query.verified = true;
   }
 
   User.find(query, filter).sort(sort).lean().exec((err, users = []) => {
@@ -433,13 +415,10 @@ function getTeamUsers({ user, callback }) {
   const query = {
     team: user.team || '',
     banned: false,
+    verified: true,
   };
   const sort = { userName: 1 };
   const filter = { userName: 1, fullName: 1, online: 1, team: 1, isTracked: 1, _id: 0 };
-
-  if (appConfig.userVerify) {
-    query.verified = true;
-  }
 
   User.find(query, filter).sort(sort).lean().exec((err, users) => {
     if (err) {
@@ -458,13 +437,9 @@ function getTeamUsers({ user, callback }) {
  * @param {Function} params.callback Callback
  */
 function getAllUserPositions({ user, callback }) {
-  const query = { visibility: { $lte: user.accessLevel }, banned: false };
+  const query = { visibility: { $lte: user.accessLevel }, banned: false, verified: true };
   const sort = { userName: 1 };
   const filter = { _id: 0, userName: 1 };
-
-  if (appConfig.userVerify) {
-    query.verified = true;
-  }
 
   User.find(query, filter).sort(sort).lean().exec((err, users = []) => {
     if (err) {
@@ -532,12 +507,8 @@ function getUserPosition({ user, userName, callback }) {
  * @param {Function} params.callback Callback
  */
 function getUsersFollowingRoom({ roomName, callback }) {
-  const query = { rooms: { $in: [roomName] }, banned: false };
+  const query = { rooms: { $in: [roomName] }, banned: false, verified: true };
   const filter = { rooms: 1, socketId: 1 };
-
-  if (appConfig.userVerify) {
-    query.verified = true;
-  }
 
   User.find(query, filter).lean().exec((err, users) => {
     if (err) {
@@ -670,26 +641,6 @@ function setUserLastOnline({ userName, date, callback }) {
     }
 
     callback({ data: { user } });
-  });
-}
-
-/**
- * Get all unverified users
- * @param {Function} params.callback Callback
- */
-function getUnverifiedUsers({ callback }) {
-  const query = { verified: false, banned: false };
-  const filter = { _id: 0, userName: 1 };
-  const sort = { userName: 1 };
-
-  User.find(query, filter).sort(sort).lean().exec((err, users = []) => {
-    if (err) {
-      callback({ error: new errorCreator.Database({ errorObject: err, name: 'getUnverifiedUsers' }) });
-
-      return;
-    }
-
-    callback({ data: { users } });
   });
 }
 
@@ -921,16 +872,13 @@ function matchPartialUser({ partialName, user, callback }) {
 function getUserByAlias({ alias, callback }) {
   const query = {
     banned: false,
+    verified: true,
     $or: [
       { userName: alias },
       { aliases: { $in: [alias] } },
     ],
   };
   const filter = { _id: 0, password: 0 };
-
-  if (appConfig.userVerify) {
-    query.verified = true;
-  }
 
   User.findOne(query, filter).lean().exec((err, user) => {
     if (err) {
@@ -978,6 +926,24 @@ function addAlias({ userName, alias, callback }) {
   });
 }
 
+function getUserByMail({ mail, callback }) {
+  const query = { mail };
+
+  User.findOne(query).lean().exec((error, user) => {
+    if (error) {
+      callback({ error: new errorCreator.Database({ errorObject: err }) });
+
+      return;
+    } else if (!user) {
+      callback({ error: new errorCreator.DoesNotExist({ name: `user mail ${mail}` }) });
+
+      return;
+    }
+
+    callback({ data: { user } });
+  });
+}
+
 exports.getUserById = getUserById;
 exports.authUser = authUser;
 exports.createUser = createUser;
@@ -991,7 +957,6 @@ exports.addWhisperRoomToUser = addWhisperRoomToUser;
 exports.setUserLastOnline = setUserLastOnline;
 exports.updateUserPassword = updateUserPassword;
 exports.verifyUser = verifyUser;
-exports.getUnverifiedUsers = getUnverifiedUsers;
 exports.verifyAllUsers = verifyAllUsers;
 exports.banUser = banUser;
 exports.unbanUser = unbanUser;
@@ -1016,3 +981,4 @@ exports.removeAllUserBlockedBy = removeAllUserBlockedBy;
 exports.removeUserBlockedBy = removeUserBlockedBy;
 exports.removeAllUserTeam = removeAllUserTeam;
 exports.removeUserTeam = removeUserTeam;
+exports.getUserByMail = getUserByMail;

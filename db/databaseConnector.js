@@ -39,14 +39,14 @@ mongoose.connect(dbPath, (err) => {
  * @param {Function} params.callback Callback
  */
 function saveObject({ object, objectType, callback }) {
-  object.save((saveErr) => {
+  object.save((saveErr, savedObject) => {
     if (saveErr) {
       callback({ error: new errorCreator.Database({ errorObject: saveErr, name: `saveObject ${objectType} ${object}` }) });
 
       return;
     }
 
-    callback({ data: { success: true, objectType } });
+    callback({ data: { savedObject, objectType } });
   });
 }
 

@@ -22,7 +22,6 @@ const jwt = require('jsonwebtoken');
 const objectValidator = require('../../utils/objectValidator');
 const manager = require('../../socketHelpers/manager');
 const dbUser = require('../../db/connectors/user');
-const errorCreator = require('../../objects/error/errorCreator');
 
 const router = new express.Router();
 

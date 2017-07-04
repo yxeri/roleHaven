@@ -27,6 +27,8 @@ const ErrorTypes = {
   NEEDSVERIFICATION: 'needs verification',
   BANNED: 'banned',
   INSUFFICIENT: 'insufficient',
+  INTERNAL: 'general internal error',
+  EXPIRED: 'expired',
 };
 
 /**

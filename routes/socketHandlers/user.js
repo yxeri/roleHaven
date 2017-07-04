@@ -25,7 +25,8 @@ const errorCreator = require('../../objects/error/errorCreator');
 const textTools = require('../../utils/textTools');
 const jwt = require('jsonwebtoken');
 const dbDevice = require('../../db/connectors/device');
-const dbInvitation = require('../../db/connectors/invitationList');
+const dbMailEvent = require('../../db/connectors/mailEvent');
+const mailer = require('../../socketHelpers/mailer');
 
 dbUser.removeAllUserBlockedBy(() => {});
 
@@ -34,9 +35,151 @@ dbUser.removeAllUserBlockedBy(() => {});
  * @param {object} io Socket.IO
  */
 function handle(socket, io) {
+  socket.on('sendPasswordReset', ({ mail }, callback = () => {}) => {
+    if (!objectValidator.isValidData({ mail }, { mail: true })) {
+      callback({ error: new errorCreator.InvalidData({ expected: '{ mail }' }) });
+
+      return;
+    }
+
+    dbUser.getUserByMail({
+      mail,
+      callback: ({ error, data }) => {
+        if (error) {
+          callback({ error });
+
+          return;
+        }
+
+        const { user } = data;
+
+        mailer.sendPasswordReset({
+          userName: user.userName,
+          adress: user.mail,
+          callback: (verificationData) => {
+            if (verificationData.error) {
+              callback({ error: verificationData.error });
+
+              return;
+            }
+
+            callback({ data: { success: true } });
+          },
+        });
+      },
+    });
+  });
+
+  socket.on('sendVerification', ({ mail }, callback = () => {}) => {
+    if (!objectValidator.isValidData({ mail }, { mail: true })) {
+      callback({ error: new errorCreator.InvalidData({ expected: '{ mail }' }) });
+
+      return;
+    }
+
+    dbUser.getUserByMail({
+      mail,
+      callback: ({ error, data }) => {
+        if (error) {
+          callback({ error });
+
+          return;
+        }
+
+        const { user } = data;
+
+        mailer.sendVerification({
+          adress: mail,
+          userName: user.userName,
+          callback: (verificationData) => {
+            if (verificationData.error) {
+              callback({ error: verificationData.error });
+
+              return;
+            }
+
+            callback({ data: { success: true } });
+          },
+        });
+      },
+    });
+  });
+
+  socket.on('changePassword', ({ key, password }, callback = () => {}) => {
+    if (!objectValidator.isValidData({ password, key }, { password: true, key: true })) {
+      callback({ error: new errorCreator.InvalidData({ expected: '{ password, key }' }) });
+
+      return;
+    }
+
+    dbMailEvent.getMailEvent({
+      key,
+      callback: ({ error, data }) => {
+        if (error) {
+          callback({ error });
+
+          return;
+        }
+
+        const { event } = data;
+
+        dbUser.updateUserPassword({
+          password,
+          userName: event.owner,
+          callback: (updateData) => {
+            if (updateData.error) {
+              callback({ error: updateData.error });
+
+              return;
+            }
+
+            dbMailEvent.removeMailEvent({ key, callback: () => {} });
+            callback({ data: { success: true } });
+          },
+        });
+      },
+    });
+  });
+
+  socket.on('verifyUser', ({ key }, callback = () => {}) => {
+    if (!objectValidator.isValidData({ key }, { key: true })) {
+      callback({ error: new errorCreator.InvalidData({ expected: '{ key }' }) });
+
+      return;
+    }
+
+    dbMailEvent.getMailEvent({
+      key,
+      callback: ({ error, data }) => {
+        if (error) {
+          callback({ error });
+
+          return;
+        }
+
+        dbUser.verifyUser({
+          userName: data.event.owner,
+          callback: (verifyData) => {
+            if (verifyData.error) {
+              callback({ error: verifyData.error });
+
+              return;
+            }
+
+            const user = verifyData.data.verified;
+
+            dbMailEvent.removeMailEvent({ key, callback: () => {} });
+            callback({ data: { userName: user.userName } });
+            socket.broadcast.emit('users', { user: [{ userName: user.userName }] });
+          },
+        });
+      },
+    });
+  });
+
   socket.on('register', ({ user }, callback = () => {}) => {
-    if (!objectValidator.isValidData({ user }, { user: { userName: true, password: true, registerDevice: true } })) {
-      callback({ error: new errorCreator.InvalidData({ expected: '{ user: { userName, password, registerDevice } }' }) });
+    if (!objectValidator.isValidData({ user }, { user: { userName: true, password: true, registerDevice: true, mail: true } })) {
+      callback({ error: new errorCreator.InvalidData({ expected: '{ user: { userName, password, registerDevice, mail } }' }) });
 
       return;
     } else if (appConfig.disallowUserRegister) {
@@ -57,17 +200,12 @@ function handle(socket, io) {
 
     manager.createUser({
       user,
-      shouldVerify: false,
       socket,
       callback: ({ error, data }) => {
         if (error) {
           callback({ error });
 
           return;
-        }
-
-        if (!data.requiresVerification) {
-          socket.broadcast.emit('users', { user: [{ userName: user.userName }] });
         }
 
         callback({ data });
@@ -206,57 +344,6 @@ function handle(socket, io) {
     });
   });
 
-  // TODO Not used
-  socket.on('changePassword', ({ oldPassword, newPassword, token }, callback = () => {}) => {
-    if (!objectValidator.isValidData({ oldPassword, newPassword }, { oldPassword: true, newPassword: true })) {
-      callback({ error: new errorCreator.InvalidData({ expected: '{ oldPassword, newPassword }' }) });
-
-      return;
-    }
-
-    manager.userIsAllowed({
-      token,
-      commandName: dbConfig.commands.password.commandName,
-      callback: (allowErr, allowed, allowedUser) => {
-        if (allowErr) {
-          callback({ error: new errorCreator.Database({ errorObject: allowErr, name: 'changePassword' }) });
-
-          return;
-        } else if (!allowed) {
-          callback({ error: new errorCreator.NotAllowed({ name: 'changePassword' }) });
-
-          return;
-        }
-
-        dbUser.authUser({
-          userName: allowedUser.userName,
-          password: oldPassword,
-          callback: (authData) => {
-            if (authData.error) {
-              callback({ error: authData.error });
-
-              return;
-            }
-
-            dbUser.updateUserPassword({
-              userName: authData.data.user.userName,
-              password: newPassword,
-              callback: (passwordData) => {
-                if (passwordData.error) {
-                  callback({ error: passwordData.error });
-
-                  return;
-                }
-
-                callback({ data: { success: true } });
-              },
-            });
-          },
-        });
-      },
-    });
-  });
-
   socket.on('logout', ({ device, token }, callback = () => {}) => {
     if (!objectValidator.isValidData({ device }, { device: { deviceId: true } })) {
       callback({ error: new errorCreator.InvalidData({ expected: '{ device: { deviceId } }' }) });
@@ -322,107 +409,6 @@ function handle(socket, io) {
                 callback({ data: { success: true } });
               },
             });
-          },
-        });
-      },
-    });
-  });
-
-  socket.on('verifyUser', ({ user, token }, callback = () => {}) => {
-    if (!objectValidator.isValidData({ user }, { user: { userName: true } })) {
-      callback({ error: new errorCreator.InvalidData({ expected: '{ user }' }) });
-
-      return;
-    }
-
-    manager.userIsAllowed({
-      token,
-      commandName: dbConfig.commands.verifyUser.commandName,
-      callback: ({ error }) => {
-        if (error) {
-          callback({ error });
-
-          return;
-        }
-
-        const userName = user.userName.toLowerCase();
-
-        dbUser.verifyUser({
-          userName,
-          callback: (verifyData) => {
-            if (verifyData.error) {
-              callback({ error: verifyData.error });
-
-              return;
-            }
-
-            socket.broadcast.emit('users', { users: [{ userName }] });
-            callback({ data: { users: [user] } });
-          },
-        });
-      },
-    });
-  });
-
-  // TODO Not used
-  socket.on('verifyAllUsers', ({ token }, callback = () => {}) => {
-    manager.userIsAllowed({
-      token,
-      commandName: dbConfig.commands.verifyUser.commandName,
-      callback: ({ error }) => {
-        if (error) {
-          callback({ error });
-
-          return;
-        }
-
-        dbUser.verifyAllUsers({
-          callback: (verifyData) => {
-            if (verifyData.error) {
-              callback({ error: verifyData.error });
-
-              return;
-            }
-
-            const { users } = verifyData.data;
-
-            socket.broadcast.emit('users', {
-              users: users.map((user) => {
-                return { userName: user.userName };
-              }),
-            });
-            callback({ data: { users } });
-
-            // TODO Send message to registered device
-          },
-        });
-      },
-    });
-  });
-
-  // TODO Not used
-  socket.on('getUnverifiedUsers', ({ token }, callback = () => {}) => {
-    manager.userIsAllowed({
-      token,
-      commandName: dbConfig.commands.getUnverifiedUsers.commandName,
-      callback: ({ error }) => {
-        if (error) {
-          callback({ error });
-
-          return;
-        }
-
-        dbUser.getUnverifiedUsers({
-          callback: (unverifiedData) => {
-            if (unverifiedData.error) {
-              callback({ error: unverifiedData.error });
-
-              return;
-            }
-
-            const { users } = unverifiedData.data;
-
-            callback({ data: { users: users.map(user => user.userName) } });
           },
         });
       },
@@ -690,7 +676,7 @@ function handle(socket, io) {
 
               return true;
             }).forEach((currentUser) => {
-              if (includeInactive || ((!appConfig.userVerify || currentUser.verified) && (!currentUser.banned))) {
+              if (includeInactive || (currentUser.verified && !currentUser.banned)) {
                 const aliases = currentUser.aliases.map((alias) => {
                   return { userName: alias };
                 });

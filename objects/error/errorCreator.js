@@ -29,3 +29,5 @@ exports.Incorrect = require('./Incorrect');
 exports.NeedsVerification = require('./NeedsVerification');
 exports.Banned = require('./Banned');
 exports.Insufficient = require('./Insufficient');
+exports.Internal = require('./Internal');
+exports.Expired = require('./Expired');

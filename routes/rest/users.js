@@ -25,6 +25,7 @@ const dbUser = require('../../db/connectors/user');
 const dbRoom = require('../../db/connectors/room');
 const manager = require('../../socketHelpers/manager');
 const errorCreator = require('../../objects/error/errorCreator');
+const mailer = require('../../socketHelpers/mailer');
 
 const router = new express.Router();
 
@@ -123,6 +124,109 @@ function handle(io) {
   });
 
   /**
+   * @api {post} /users/:id/resetPassword Request user password reset
+   * @apiVersion 5.1.0
+   * @apiName ResetUserPassword
+   * @apiGroup Users
+   *
+   * @apiHeader {String} Authorization Your JSON Web Token
+   *
+   * @apiDescription Request user password reset. A mail will be sent to the user's registered mail adress
+   *
+   * @apiParam {String} id User name
+   *
+   * @apiSuccess {Object} data
+   * @apiSuccess {Object[]} data.success Was the reset mail properly sent?
+   * @apiSuccessExample {json} Success-Response:
+   *   {
+   *    "data": {
+   *      "success": true
+   *    }
+   *  }
+   */
+  router.post('/:id/resetPassword', (req, res) => {
+    if (!objectValidator.isValidData(req.params, { id: true })) {
+      res.status(400).json({
+        errors: [{
+          status: 400,
+          title: 'Missing data',
+          detail: 'Unable to parse data',
+        }],
+      });
+
+      return;
+    }
+
+    // noinspection JSUnresolvedVariable
+    const auth = req.headers.authorization || '';
+
+    jwt.verify(auth, appConfig.jsonKey, (jwtErr, decoded) => {
+      if (jwtErr) {
+        res.status(500).json({
+          errors: [{
+            status: 500,
+            title: 'Internal Server Error',
+            detail: 'Internal Server Error',
+          }],
+        });
+
+        return;
+      } else if (!decoded) {
+        res.status(401).json({
+          errors: [{
+            status: 401,
+            title: 'Unauthorized',
+            detail: 'Invalid token',
+          }],
+        });
+
+        return;
+      }
+
+      const userName = req.params.id;
+
+      dbUser.getUserByAlias({
+        alias: userName,
+        callback: ({ error, data }) => {
+          if (error) {
+            res.status(404).json({
+              errors: [{
+                status: 404,
+                title: 'User does not exist',
+                detail: 'User does not exist',
+              }],
+            });
+
+            return;
+          }
+
+          const { user } = data;
+
+          mailer.sendPasswordReset({
+            adress: user.mail,
+            userName: user.userName,
+            callback: (resetData) => {
+              if (resetData.error) {
+                res.status(500).json({
+                  errors: [{
+                    status: 500,
+                    title: 'Internal Server Error',
+                    detail: 'Failed to send reset mail',
+                  }],
+                });
+
+                return;
+              }
+
+              res.json({ data: { success: true } });
+            },
+          });
+        },
+      });
+    });
+  });
+
+  /**
    * @api {post} /users Create a user
    * @apiVersion 5.1.0
    * @apiName CreateUser
@@ -136,9 +240,9 @@ function handle(io) {
    * @apiParam {Object} data.user User
    * @apiParam {string} data.user.userName User name
    * @apiParam {string} data.user.password Password of the user
+   * @apiParam {string} data.user.mail Mail adress to the user. Note! It will not be stored. It is used to send a verification mail to user
    * @apiParam {string} [data.user.fullName] Full name of the user. Defaults to userName
    * @apiParam {boolean} [data.user.lootable] Is the user's device lootable? Default is false
-   * @apiParam {boolean} [data.shouldVerify] Should the user be verified on creation? Default is false
    * @apiParamExample {json} Request-Example:
    *   {
    *    "data": {
@@ -160,7 +264,7 @@ function handle(io) {
    *  }
    */
   router.post('/', (req, res) => {
-    if (!objectValidator.isValidData(req.body, { data: { user: { userName: true, password: true } } })) {
+    if (!objectValidator.isValidData(req.body, { data: { user: { userName: true, password: true, mail: true } } })) {
       res.status(400).json({
         errors: [{
           status: 400,
@@ -198,14 +302,13 @@ function handle(io) {
         return;
       }
 
-      const { user, shouldVerify } = req.body.data;
+      const { user } = req.body.data;
       user.userName = user.userName.toLowerCase();
       user.registerDevice = 'RESTAPI';
 
       manager.createUser({
         user,
-        shouldVerify,
-        callback: ({ error, data }) => {
+        callback: ({ error }) => {
           if (error) {
             if (error.type === errorCreator.ErrorTypes.ALREADYEXISTS) {
               res.status(403).json({
@@ -213,6 +316,16 @@ function handle(io) {
                   status: 403,
                   title: 'User already exists',
                   detail: `User with user name ${user.userName} already exists`,
+                }],
+              });
+
+              return;
+            } else if (error.type === errorCreator.ErrorTypes.INVALIDDATA) {
+              res.status(400).json({
+                errors: [{
+                  status: 400,
+                  title: 'Invalid data',
+                  detail: 'Invalid data',
                 }],
               });
 
@@ -228,10 +341,6 @@ function handle(io) {
             });
 
             return;
-          }
-
-          if (!data.requiresVerification || shouldVerify) {
-            io.emit('users', { user: [{ userName: user.userName }] });
           }
 
           res.json({ data: { success: true } });
@@ -262,6 +371,18 @@ function handle(io) {
    *  }
    */
   router.get('/:id', (req, res) => {
+    if (!objectValidator.isValidData(req.params, { id: true })) {
+      res.status(400).json({
+        errors: [{
+          status: 400,
+          title: 'Missing data',
+          detail: 'Unable to parse data',
+        }],
+      });
+
+      return;
+    }
+
     // noinspection JSUnresolvedVariable
     const auth = req.headers.authorization || '';
 

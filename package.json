@@ -33,6 +33,8 @@
     "hbs": "4.0.1",
     "html-minifier": "3.5.2",
     "jsonwebtoken": "7.4.1",
+    "mailcomposer": "4.0.2",
+    "mailgun-js": "0.11.2",
     "mongodb": "2.2.27",
     "mongoose": "4.10.2",
     "morgan": "1.8.2",

@@ -26,6 +26,8 @@ const dbConfig = require('../config/defaults/config').databasePopulation;
 const errorCreator = require('../objects/error/errorCreator');
 const dbTransaction = require('../db/connectors/transaction');
 const dbInvitation = require('../db/connectors/invitationList');
+const dbDocFile = require('../db/connectors/docFile');
+const mailer = require('../socketHelpers/mailer');
 const jwt = require('jsonwebtoken');
 
 /**
@@ -652,68 +654,124 @@ function isRequiredRoom({ roomName, socketId, user }) {
 /**
  * Create a user and all other objects needed for it
  * @param {Object} params.user User to create
- * @param {boolean} params.shouldVerify Should the user be automatically verified?
  * @param {Function} params.callback Callback
  */
-function createUser({ user, shouldVerify, callback }) {
-  const { userName, fullName, password, registerDevice } = user;
-
-  const userObj = {
-    userName,
-    password,
-    registerDevice,
-    fullName: fullName || userName,
-    verified: shouldVerify,
-    socketId: '',
-    rooms: [
-      dbConfig.rooms.public.roomName,
-      dbConfig.rooms.bcast.roomName,
-      dbConfig.rooms.important.roomName,
-      dbConfig.rooms.user.roomName,
-      dbConfig.rooms.news.roomName,
-      dbConfig.rooms.schedule.roomName,
-    ],
-  };
-  const wallet = {
-    owner: userObj.userName,
-  };
-
-  dbUser.createUser({
-    user: userObj,
-    callback: (userData) => {
-      if (userData.error) {
-        callback({ error: userData.error });
+function createUser({ user, callback }) {
+  mailer.isValidAdress({
+    adress: user.mail,
+    callback: (validData) => {
+      if (validData.error) {
+        callback({ error: validData.error });
 
         return;
       }
 
-      const whisperRoom = {
-        roomName: userObj.userName + appConfig.whisperAppend,
-        visibility: dbConfig.accessLevels.superUser,
-        accessLevel: dbConfig.accessLevels.superUser,
-      };
-      const requiresVerification = appConfig.userVerify;
+      const { userName, fullName, password, registerDevice, mail } = user;
 
-      createRoom({
-        room: whisperRoom,
-        user: userObj,
-        callback: () => {},
-      });
-      createWallet({
-        wallet,
-        callback: () => {},
-      });
-      dbInvitation.createInvitationList({
+      const userObj = {
         userName,
-        callback: () => {},
-      });
+        password,
+        registerDevice,
+        mail,
+        registeredAt: new Date(),
+        fullName: fullName || userName,
+        verified: false,
+        socketId: '',
+        rooms: [
+          dbConfig.rooms.public.roomName,
+          dbConfig.rooms.bcast.roomName,
+          dbConfig.rooms.important.roomName,
+          dbConfig.rooms.user.roomName,
+          dbConfig.rooms.news.roomName,
+          dbConfig.rooms.schedule.roomName,
+        ],
+      };
+      const wallet = {
+        owner: userObj.userName,
+      };
 
-      callback({
-        data: {
-          requiresVerification,
-          success: true,
+      dbUser.createUser({
+        user: userObj,
+        callback: (userData) => {
+          if (userData.error) {
+            callback({ error: userData.error });
+
+            return;
+          }
+
+          const whisperRoom = {
+            roomName: userObj.userName + appConfig.whisperAppend,
+            visibility: dbConfig.accessLevels.superUser,
+            accessLevel: dbConfig.accessLevels.superUser,
+          };
+
+          createRoom({
+            room: whisperRoom,
+            user: userObj,
+            callback: () => {},
+          });
+          createWallet({
+            wallet,
+            callback: () => {},
+          });
+          dbInvitation.createInvitationList({
+            userName,
+            callback: () => {},
+          });
+
+          mailer.sendVerification({
+            adress: user.mail,
+            userName: user.userName,
+            callback: (verifyData) => {
+              if (verifyData.error) {
+                callback({ error: verifyData.error });
+
+                return;
+              }
+
+              callback({
+                data: { success: true },
+              });
+            },
+          });
         },
       });
+    },
+  });
+}
+
+function changeDocFileAccess({ docFileId, visibility, isPublic, callback, io }) {
+  dbDocFile.updateDocFile({
+    docFileId,
+    visibility,
+    isPublic,
+    callback: ({ error, data }) => {
+      if (error) {
+        callback({ error });
+
+        return;
+      }
+
+        if (isPublic) {
+        }
+
+      callback();
+    },
+  });
+}
+
+function addUserToDocFile({ docFileId, userName, callback, io }) {
+  dbDocFile.addAccessUser({
+    docFileId,
+    userName,
+    callback: ({ error, data }) => {
+      if (error) {
+        callback({ error });
+
+        return;
+      }
+
+      callback();
     },
   });
 }
@@ -734,3 +792,5 @@ exports.addUserTeamRoom = addUserTeamRoom;
 exports.addUserToTeam = addUserToTeam;
 exports.isRequiredRoom = isRequiredRoom;
 exports.createUser = createUser;
+exports.changeDocFileAccess = changeDocFileAccess;
+exports.addUserToDocFile = addUserToDocFile;
