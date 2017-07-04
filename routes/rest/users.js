@@ -133,7 +133,7 @@ function handle(io) {
    *
    * @apiDescription Request user password reset. A mail will be sent to the user's registered mail adress
    *
-   * @apiParam {String} id User name
+   * @apiParam {String} id User's mail adress
    *
    * @apiSuccess {Object} data
    * @apiSuccess {Object[]} data.success Was the reset mail properly sent?
@@ -183,17 +183,29 @@ function handle(io) {
         return;
       }
 
-      const userName = req.params.id;
+      const mail = req.params.id;
 
-      dbUser.getUserByAlias({
-        alias: userName,
+      dbUser.getUserByMail({
+        mail,
         callback: ({ error, data }) => {
           if (error) {
-            res.status(404).json({
+            if (error.type === errorCreator.ErrorTypes.DOESNOTEXIST) {
+              res.status(404).json({
+                errors: [{
+                  status: 404,
+                  title: 'User with mail does not exist',
+                  detail: 'User with mail not exist',
+                }],
+              });
+
+              return;
+            }
+
+            res.status(500).json({
               errors: [{
-                status: 404,
-                title: 'User does not exist',
-                detail: 'User does not exist',
+                status: 500,
+                title: 'Internal Server Error',
+                detail: 'Failed to send reset mail',
               }],
             });
 
