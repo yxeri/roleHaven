@@ -202,7 +202,6 @@ function handle() {
             return;
           }
 
-          // TODO Push to clients, if next round
           res.json({ data: { round: data.round } });
         },
       });
@@ -337,8 +336,6 @@ function handle() {
               return;
             }
 
-            // TODO Emit to clients
-
             res.json({ data: { round: data.round } });
           },
         });
@@ -452,7 +449,7 @@ function handle() {
 
 
   /**
-   * @api {post} /:id Update an existing lantern round
+   * @api {post} /lanternRounds/:id Update an existing lantern round
    * @apiVersion 5.1.0
    * @apiName UpdateLanternRound
    * @apiGroup LanternRounds
@@ -492,7 +489,17 @@ function handle() {
    *  }
    */
   router.post('/:id', (req, res) => {
-    if (!objectValidator.isValidData(req.body, { data: { round: { startTime: true, endTime: true } } }) || isNaN(req.body.data.round.roundId)) {
+    if (!objectValidator.isValidData(req.params, { id: true })) {
+      res.status(400).json({
+        errors: [{
+          status: 400,
+          title: 'Missing data',
+          detail: 'Unable to parse data',
+        }],
+      });
+
+      return;
+    } else if (!objectValidator.isValidData(req.body, { data: { round: { startTime: true, endTime: true } } }) || isNaN(req.body.data.round.roundId)) {
       res.status(400).json({
         errors: [{
           status: 400,

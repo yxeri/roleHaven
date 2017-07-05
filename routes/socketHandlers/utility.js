@@ -39,14 +39,6 @@ function generateGameCode() {
  * @param {Object} io Socket.io
  */
 function handle(socket, io) {
-  // TODO Not used
-  socket.on('time', (params, callback = () => {}) => {
-    const now = new Date();
-    now.setFullYear(now.getFullYear() + appConfig.yearModification);
-
-    callback({ time: now });
-  });
-
   socket.on('createDocFile', ({ docFile, updateExisting, token }, callback = () => {}) => {
     if (!objectValidator.isValidData({ docFile }, { docFile: { docFileId: true, text: true, title: true } })) {
       callback({ error: new errorCreator.InvalidData({ expected: '{ docFile: { docFileId, text, title } }' }) });

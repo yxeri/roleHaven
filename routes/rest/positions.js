@@ -147,6 +147,18 @@ function handle(io) {
    *  }
    */
   router.get('/users/:id', (req, res) => {
+    if (!objectValidator.isValidData(req.params, { id: true })) {
+      res.status(400).json({
+        errors: [{
+          status: 400,
+          title: 'Missing data',
+          detail: 'Unable to parse data',
+        }],
+      });
+
+      return;
+    }
+
     // noinspection JSUnresolvedVariable
     const auth = req.headers.authorization || '';
 
@@ -208,7 +220,7 @@ function handle(io) {
   });
 
   /**
-   * @api {post} /positions/users Set position
+   * @api {post} /positions/users Set position for a user
    * @apiVersion 5.1.0
    * @apiName SetPosition
    * @apiGroup Positions

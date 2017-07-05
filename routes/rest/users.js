@@ -252,7 +252,7 @@ function handle(io) {
    * @apiParam {Object} data.user User
    * @apiParam {string} data.user.userName User name
    * @apiParam {string} data.user.password Password of the user
-   * @apiParam {string} data.user.mail Mail adress to the user. Note! It will not be stored. It is used to send a verification mail to user
+   * @apiParam {string} data.user.mail Mail adress to the user
    * @apiParam {string} [data.user.fullName] Full name of the user. Defaults to userName
    * @apiParam {boolean} [data.user.lootable] Is the user's device lootable? Default is false
    * @apiParamExample {json} Request-Example:
@@ -467,7 +467,7 @@ function handle(io) {
   });
 
   /**
-   * @api {post} /:id/follow Follow a room
+   * @api {post} /users/:id/follow Follow a room
    * @apiVersion 5.1.0
    * @apiName FollowRoom
    * @apiGroup Users
@@ -505,7 +505,17 @@ function handle(io) {
    *  }
    */
   router.post('/:id/follow', (req, res) => {
-    if (!objectValidator.isValidData(req.body, { data: { room: { roomName: true } } })) {
+    if (!objectValidator.isValidData(req.params, { id: true })) {
+      res.status(400).json({
+        errors: [{
+          status: 400,
+          title: 'Missing data',
+          detail: 'Unable to parse data',
+        }],
+      });
+
+      return;
+    } else if (!objectValidator.isValidData(req.body, { data: { room: { roomName: true } } })) {
       res.status(400).json({
         errors: [{
           status: 400,
@@ -609,7 +619,7 @@ function handle(io) {
   });
 
   /**
-   * @api {post} /:id/unfollow Unfollow a room
+   * @api {post} /users/:id/unfollow Unfollow a room
    * @apiVersion 5.1.0
    * @apiName UnfollowRoom
    * @apiGroup Users
@@ -645,7 +655,17 @@ function handle(io) {
    *  }
    */
   router.post('/:id/unfollow', (req, res) => {
-    if (!objectValidator.isValidData(req.body, { data: { room: { roomName: true } } })) {
+    if (!objectValidator.isValidData(req.params, { id: true })) {
+      res.status(400).json({
+        errors: [{
+          status: 400,
+          title: 'Missing data',
+          detail: 'Unable to parse data',
+        }],
+      });
+
+      return;
+    } else if (!objectValidator.isValidData(req.body, { data: { room: { roomName: true } } })) {
       res.status(400).json({
         errors: [{
           status: 400,

@@ -51,18 +51,95 @@ const stationSchema = new mongoose.Schema({
   stationName: String,
   signalValue: { type: Number, default: 0 },
   isActive: { type: Boolean, default: false },
+  owner: String,
 }, { collection: 'stations' });
 const lanternRoundSchema = new mongoose.Schema({
   roundId: Number,
   startTime: Date,
   endTime: Date,
 }, { collection: 'lanternRounds' });
+const lanternTeamSchema = new mongoose.Schema({
+  teamName: { type: String, unique: true },
+  shortName: { type: String, unique: true },
+  points: { type: Number, default: 0 },
+  isActive: { type: Boolean, default: false },
+});
 
 const LanternHack = mongoose.model('LanternHack', lanternHackSchema);
 const GameUser = mongoose.model('GameUser', gameUserSchema);
 const FakePassword = mongoose.model('FakePassword', fakePasswordSchema);
 const Station = mongoose.model('Station', stationSchema);
 const LanternRound = mongoose.model('Lantern', lanternRoundSchema);
+const LanternTeam = mongoose.model('LanternTeam', lanternTeamSchema);
+
+/**
+ * Create lantern team
+ * @param {Object} params.lanternTeam New lantern team
+ * @param {Function} params.callback Callback
+ */
+function createLanternTeam({ team, callback }) {
+  const newLanternTeam = new LanternTeam(team);
+  const query = {
+    $or: [
+      { teamName: team.teamName },
+      { shortName: team.shortName },
+    ],
+  };
+
+  LanternTeam.findOne(query).lean().exec((err, foundTeam) => {
+    if (err) {
+      callback({ error: new errorCreator.Database({ errorObject: err, name: 'createLanternTeam' }) });
+
+      return;
+    } else if (foundTeam) {
+      callback({ error: new errorCreator.AlreadyExists({ name: `Lantern team ${team.teamName} ${team.shortName}` }) });
+
+      return;
+    }
+
+    databaseConnector.saveObject({
+      object: newLanternTeam,
+      objectType: 'LanternTeam',
+      callback,
+    });
+  });
+}
+
+/**
+ * Update lantern team
+ * @param {string} params.shortName Short name of the team to update
+ * @param {boolean} [params.isActive] Is the team active?
+ * @param {number} [params.points] Teams total points
+ * @param {boolean} [params.resetPoints] Resets points on team to 0
+ * @param {Function} params.callback Callback
+ */
+function updateLanternTeam({ shortName, isActive, points, resetPoints, callback }) {
+  const query = { shortName };
+  const update = {};
+  const options = { new: true };
+
+  if (typeof isActive === 'boolean') { update.isActive = isActive; }
+
+  if (typeof resetPoints === 'boolean' && resetPoints) {
+    update.points = 0;
+  } else if (points) {
+    update.points = points;
+  }
+
+  LanternTeam.findOneAndUpdate(query, update, options).lean().exec((error, team) => {
+    if (error) {
+      callback({ error: new errorCreator.Database({ errorObject: err, name: 'updateLanternTeam' }) });
+
+      return;
+    } else if (!team) {
+      callback({ error: new errorCreator.DoesNotExist({ name: `${shortName} team. updateLanternTeam` }) });
+
+      return;
+    }
+
+    callback({ data: { team } });
+  });
+}
 
 /**
  * Update lantern round. Create a new one if none exist
@@ -328,19 +405,31 @@ function createStation({ station, callback }) {
  * @param {boolean} [params.station.isActive] Is the station active?
  * @param {string} [params.station.stationName] Name of the station
  * @param {string} [params.station.owner] Owner name of the station
+ * @param {Object} [params.attacker] Attacker
+ * @param {string} params.attacker.name Name of the attacker
+ * @param {Date} params.attacker.time Time when the attack succeeds
  * @param {Function} params.callback Callback
  */
-function updateLanternStation({ stationId, isActive, stationName, owner, callback }) {
+function updateLanternStation({ stationId, isActive, stationName, owner, attacker, callback }) {
   const set = {};
+  const unset = {};
 
   if (typeof isActive === 'boolean') { set.isActive = isActive; }
   if (stationName) { set.stationName = stationName; }
-  if (owner) { set.owner = owner; }
+
+  if (owner) {
+    set.owner = owner;
+    unset.attacker.name = '';
+    unset.attacker.time = '';
+  } else if (attacker) {
+    set.attacker = attacker;
+  }
 
   const query = { stationId };
-  const update = { $set: set };
+  const update = { $set: set, $unset: unset };
+  const options = { new: true };
 
-  Station.findOneAndUpdate(query, update).lean().exec((err, station) => {
+  Station.findOneAndUpdate(query, update, options).lean().exec((err, station) => {
     if (err) {
       callback({ error: new errorCreator.Database({ errorObject: err, name: 'updateLanternStation' }) });
 
@@ -579,6 +668,25 @@ function getAllFakePasswords({ callback }) {
   });
 }
 
+/**
+ * Get all lantern teams
+ * @param {Function} params.callback Callback
+ */
+function getAllTeams({ callback }) {
+  const query = {};
+  const filter = { _id: 0 };
+
+  LanternTeam.find(query, filter).lean().exec((err, teams = []) => {
+    if (err) {
+      callback({ error: new errorCreator.Database({ errorObject: err }) });
+
+      return;
+    }
+
+    callback({ data: { teams } });
+  });
+}
+
 exports.createGameUser = createGameUser;
 exports.getGameUser = getGameUser;
 exports.createFakePassword = createFakePassword;
@@ -601,3 +709,6 @@ exports.getLanternRounds = getLanternRounds;
 exports.startLanternRound = startLanternRound;
 exports.getActiveLanternRound = getActiveLanternRound;
 exports.endLanternRound = endLanternRound;
+exports.updateLanternTeam = updateLanternTeam;
+exports.createLanternTeam = createLanternTeam;
+exports.getAllTeams = getAllTeams;

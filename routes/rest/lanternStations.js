@@ -27,9 +27,10 @@ const errorCreator = require('../../objects/error/errorCreator');
 const router = new express.Router();
 
 /**
+ * @param {Object} io Socket io
  * @returns {Object} Router
  */
-function handle() {
+function handle(io) {
   /**
    * @api {get} /lanternStations Get all lantern stations
    * @apiVersion 5.1.0
@@ -121,7 +122,7 @@ function handle() {
    * @apiDescription Create a lantern station
    *
    * @apiParam {Object} data
-   * @apiParam {string} data.station New round
+   * @apiParam {string} data.station New station
    * @apiParam {number} data.station.stationId Station id
    * @apiParam {string} data.station.stationName Location name of the station
    * @apiParam {boolean} [data.station.isActive] Is the station active? Defaults to false
@@ -217,17 +218,15 @@ function handle() {
             return;
           }
 
-          // TODO Push to clients, if next round
-          res.json({
-            data: { station: data.station },
-          });
+          io.emit('lanternStations', { stations: [data.station] });
+          res.json({ data: { station: data.station } });
         },
       });
     });
   });
 
   /**
-   * @api {post} /:id Update an existing lantern station
+   * @api {post} /lanternStations/:id Update an existing lantern station
    * @apiVersion 5.1.0
    * @apiName UpdateLanternStation
    * @apiGroup LanternStations
@@ -243,12 +242,19 @@ function handle() {
    * @apiParam {string} [data.station.stationName] Location name of the station
    * @apiParam {boolean} [data.station.isActive] Is the station active?
    * @apiParam {boolean} [data.station.owner] Owner name of the station
+   * @apiParam {Object} [data.attacker] Attacker object. data.station.owner will be ignored if data.attacker is set
+   * @apiParam {string} data.attacker.name Name of the attacker that is trying to take over the station
+   * @apiParam {string} data.attacker.time Amount of time till the attack succeeds.
    * @apiParamExample {json} Request-Example:
    *   {
    *    "data": {
    *      "station": {
    *        "stationName": "North forest",
    *        "isActive": true,
+   *        "attacker": {
+   *          "name": "Bad peoples",
+   *          "time": "2016-10-14T09:54:18.694Z"
+   *        }
    *      }
    *    }
    *  }
@@ -262,12 +268,26 @@ function handle() {
    *        "stationId": 1,
    *        "stationName": "North forest",
    *        "isActive": true,
+   *        "attacker": {
+   *          "name": "Bad peoples",
+   *          "time": "time": "2016-10-14T09:54:18.694Z"
+   *        }
    *      }
    *    }
    *  }
    */
   router.post('/:id', (req, res) => {
-    if (!objectValidator.isValidData(req.body, { data: { station: true } })) {
+    if (!objectValidator.isValidData(req.params, { id: true })) {
+      res.status(400).json({
+        errors: [{
+          status: 400,
+          title: 'Missing data',
+          detail: 'Unable to parse data',
+        }],
+      });
+
+      return;
+    } else if (!objectValidator.isValidData(req.body, { data: { station: true } })) {
       res.status(400).json({
         errors: [{
           status: 400,
@@ -335,9 +355,11 @@ function handle() {
             return;
           }
 
+          const attacker = req.body.data.attacker;
           const { stationId, isActive, stationName, owner } = station;
 
           dbLanternHack.updateLanternStation({
+            attacker,
             stationId,
             isActive,
             stationName,
@@ -355,8 +377,7 @@ function handle() {
                 return;
               }
 
-              // TODO Push to clients, if next round
-
+              io.emit('lanternStations', { stations: [updateData.data.station] });
               res.json({ data: { station: updateData.station } });
             },
           });

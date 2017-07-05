@@ -22,6 +22,7 @@ const appConfig = require('../../config/defaults/config').app;
 const dbUser = require('../../db/connectors/user');
 const jwt = require('jsonwebtoken');
 const errorCreator = require('../../objects/error/errorCreator');
+const objectValidator = require('../../utils/objectValidator');
 
 const router = new express.Router();
 
@@ -175,6 +176,18 @@ function handle() {
    *  }
    */
   router.get('/:id', (req, res) => {
+    if (!objectValidator.isValidData(req.params, { id: true })) {
+      res.status(400).json({
+        errors: [{
+          status: 400,
+          title: 'Missing data',
+          detail: 'Unable to parse data',
+        }],
+      });
+
+      return;
+    }
+
     // noinspection JSUnresolvedVariable
     const auth = req.headers.authorization || '';
 
