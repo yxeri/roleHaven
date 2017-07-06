@@ -37,7 +37,7 @@ const disallowRegisterEnv = textTools.convertToBoolean(process.env.DISALLOWUSERR
  */
 config.title = process.env.TITLE || config.title || 'roleHaven';
 
-config.host = process.env.VIRTUAL_HOST;
+config.host = process.env.VIRTUAL_HOST || 'localhost';
 
 /**
  * Default language for clients connecting.
@@ -204,7 +204,7 @@ config.welcomeMessage = process.env.WELCOMEMESSAGE || config.welcomeMessage;
 /**
  * Secret key used with JSON Web Token
  */
-config.jsonKey = process.env.JSONKEY;
+config.jsonKey = process.env.JSONKEY || config.mode === 'test' ? 'TESTKEY' : undefined;
 
 /**
  * Secret key used with BBR events
@@ -271,23 +271,23 @@ config.maxPositionAge = process.env.MAXPOSITIONAGE || config.maxPositionAge || 2
 /**
  * Secret key used for Mailgun
  */
-config.mailKey = process.env.MAILKEY;
+config.mailKey = process.env.MAILKEY || config.mode === 'test' ? 'TESTKEY' : undefined;
 
 /**
  * Public key used for Mailgun
  */
-config.publicMailKey = process.env.PUBLICMAILKEY;
+config.publicMailKey = process.env.PUBLICMAILKEY || config.mode === 'test' ? 'TESTKEY' : undefined;
 
 if (config.mailKey && config.publicMailKey) {
   /**
    * Mail domain used by Mailgun
    */
-  config.mailDomain = process.env.MAILDOMAIN || config.mailDomain;
+  config.mailDomain = process.env.MAILDOMAIN || config.mailDomain || config.mode === 'test' ? 'localhost' : undefined;
 
   /**
    * Mail sender name. Will append mailDomain to name
    */
-  config.mailSender = `${process.env.MAILSENDER || config.mailSender}@${config.mailDomain}`;
+  config.mailSender = `${process.env.MAILSENDER || config.mailSender || 'roleHaven'}@${config.mailDomain}`;
 }
 
 module.exports = config;
