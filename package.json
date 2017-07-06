@@ -6,7 +6,7 @@
   "private": true,
   "scripts": {
     "start": "node ./bin/www",
-    "test": "MODE=test DEBUG=eslint:cli-engine eslint ./ && ./node_modules/mocha/bin/mocha --recursive",
+    "test": "MODE=test DEBUG=eslint:cli-engine ./node_modules/mocha/bin/mocha --recursive  && eslint ./",
     "nsp": "nsp check"
   },
   "repository": {
