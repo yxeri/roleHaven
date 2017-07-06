@@ -79,7 +79,7 @@ config.dbHost = process.env.DBHOST || config.dbHost || 'localhost';
 config.dbPort = process.env.DBPORT || config.dbPort || 27017;
 
 // Database database name
-config.dbName = `${config.mode}-${process.env.DBNAME}` || `${config.mode}-${config.dbName}` || `${config.mode}-roleHaven`;
+config.dbName = `${config.mode}-${process.env.DBNAME || config.dbName || 'roleHaven'}`;
 
 // Node server port number
 config.port = process.env.PORT || config.port || 8888;
@@ -169,21 +169,21 @@ config.disallowUserRegister = disallowRegisterEnv !== undefined ? disallowRegist
  * Appended to the user name to create a room which is used to store private
  * messages sent to a user (e.g user1-whisper)
  */
-config.whisperAppend = '-whisper';
+config.whisperAppend = process.env.WHISPERAPPEND || config.whisperAppend || '-whisper';
 
 /**
  * Appended to device ID to create a room which is used to store messages
  * sent to a device (e.g fe3Liw19Xz-device)
  */
-config.deviceAppend = '-device';
+config.deviceAppend = process.env.DEVICEAPPEND || config.deviceAppend || '-device';
 
 /**
  * Appended to the team name to create a room which is used to chat
  * within the team (e.g skynet-team)
  */
-config.teamAppend = '-team';
+config.teamAppend = process.env.TEAMAPPEND || config.teamAppend || '-team';
 
-config.scheduleAppend = '-schedule';
+config.scheduleAppend = process.env.SCHEDULEAPPEND || config.scheduleAppend || '-schedule';
 
 /**
  * The number of years that will be subtracted/added to the current year
