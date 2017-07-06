@@ -37,6 +37,8 @@ const disallowRegisterEnv = textTools.convertToBoolean(process.env.DISALLOWUSERR
  */
 config.title = process.env.TITLE || config.title || 'roleHaven';
 
+config.host = process.env.VIRTUAL_HOST;
+
 /**
  * Default language for clients connecting.
  * Default language is English.
@@ -61,6 +63,12 @@ config.scriptsPath = 'scripts';
 config.requiredPath = 'required';
 config.faviconPath = 'images/favicon.ico';
 
+/**
+ * Server mode. Options:
+ * prod, dev, test
+ */
+config.mode = process.env.MODE || config.mode || 'prod';
+
 // Morgan log level
 config.logLevel = process.env.LOGLEVEL || config.logLevel || 'tiny';
 
@@ -71,7 +79,7 @@ config.dbHost = process.env.DBHOST || config.dbHost || 'localhost';
 config.dbPort = process.env.DBPORT || config.dbPort || 27017;
 
 // Database database name
-config.dbName = process.env.DBNAME || config.dbName || 'roleHaven';
+config.dbName = `${config.mode}-${process.env.DBNAME}` || `${config.mode}-${config.dbName}` || `${config.mode}-roleHaven`;
 
 // Node server port number
 config.port = process.env.PORT || config.port || 8888;
@@ -82,12 +90,6 @@ config.port = process.env.PORT || config.port || 8888;
  */
 config.socketPath = (process.env.SOCKETPATH === 'cdn' || config.socketPath === 'cdn') ?
   'https://cdnjs.cloudflare.com/ajax/libs/socket.io/2.0.1/socket.io.slim.js' : (process.env.SOCKETPATH || config.socketPath || '/scripts/socket.io.js');
-
-/**
- * Server mode. Options:
- * prod, dev
- */
-config.mode = process.env.MODE || config.mode || 'prod';
 
 // TODO Routes should be empty by defaults. Move all routes to app-specific instances
 /**
@@ -287,7 +289,5 @@ if (config.mailKey && config.publicMailKey) {
    */
   config.mailSender = `${process.env.MAILSENDER || config.mailSender}@${config.mailDomain}`;
 }
-
-config.host = process.env.VIRTUAL_HOST;
 
 module.exports = config;

@@ -177,9 +177,10 @@ config.users = {
     userName: 'superuser',
     password: generatePass(),
     verified: true,
-    accessLevel: config.accessLevels.superUser,
+    accessLevel: config.accessLevels.anonymous,
     visibility: config.accessLevels.god,
     rooms: [config.rooms.public.roomName],
+    mail: 'superuser',
   },
   // Blocking name for users
   root: config.users.root || {
@@ -189,6 +190,7 @@ config.users = {
     accessLevel: config.accessLevels.anonymous,
     visibility: config.accessLevels.god,
     rooms: [],
+    mail: 'root',
   },
   // Blocking name for users
   admin: config.users.admin || {
@@ -198,6 +200,7 @@ config.users = {
     accessLevel: config.accessLevels.anonymous,
     visibility: config.accessLevels.god,
     rooms: [],
+    mail: 'admin',
   },
   anonymous: config.users.anonymous || {
     userName: 'anonymous',
@@ -206,6 +209,7 @@ config.users = {
     accessLevel: config.accessLevels.anonymous,
     visibility: config.accessLevels.god,
     rooms: [],
+    mail: 'anonymous',
   },
   system: config.users.system || {
     userName: 'system',
@@ -214,6 +218,7 @@ config.users = {
     accessLevel: config.accessLevels.admin,
     visibility: config.accessLevels.god,
     rooms: [],
+    mail: 'system',
   },
 };
 
@@ -301,10 +306,6 @@ config.commands = {
   verifyUser: config.commands.verifyUser || {
     commandName: 'verifyUser',
     accessLevel: config.accessLevels.admin,
-  },
-  getUnverifiedUsers: config.commands.getUnverifiedUsers || {
-    commandName: 'getUnverifiedUsers',
-    accessLevel: config.accessLevels.lowerAdmin,
   },
   banUser: config.commands.banUser || {
     commandName: 'banUser',
@@ -519,6 +520,10 @@ config.commands = {
     commandName: 'listAliases',
     accessLevel: config.accessLevels.lowerAdmin,
   },
+  createTimedEvent: config.commands.createTimedEvent || {
+    commandName: 'createTimedEvent',
+    accessLevel: config.accessLevels.privileged,
+  },
 };
 
 config.apiCommands = {
@@ -534,6 +539,7 @@ config.apiCommands = {
   UpdateLanternStation: config.apiCommands.UpdateLanternStation || { accessLevel: config.accessLevels.lowerAdmin },
   CreateLanternTeam: config.apiCommands.CreateLanternTeam || { accessLevel: config.accessLevels.lowerAdmin },
   CreateUser: config.apiCommands.CreateUser || { accessLevel: config.accessLevels.lowerAdmin },
+  CreateAlias: config.apiCommands.CreateAlias || { accessLevel: config.accessLevels.pro },
 };
 
 module.exports = config;

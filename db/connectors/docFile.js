@@ -135,7 +135,7 @@ function getDocFile({ title, team, docFileId, accessLevel, callback }) {
           { title },
           { team },
         ],
-      }
+      },
     ],
   };
 

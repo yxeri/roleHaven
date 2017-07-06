@@ -128,7 +128,7 @@ function updateLanternTeam({ shortName, isActive, points, resetPoints, callback 
 
   LanternTeam.findOneAndUpdate(query, update, options).lean().exec((error, team) => {
     if (error) {
-      callback({ error: new errorCreator.Database({ errorObject: err, name: 'updateLanternTeam' }) });
+      callback({ error: new errorCreator.Database({ errorObject: error, name: 'updateLanternTeam' }) });
 
       return;
     } else if (!team) {

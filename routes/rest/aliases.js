@@ -18,6 +18,7 @@
 
 const express = require('express');
 const appConfig = require('../../config/defaults/config').app;
+const dbConfig = require('../../config/defaults/config').databasePopulation;
 const jwt = require('jsonwebtoken');
 const objectValidator = require('../../utils/objectValidator');
 const manager = require('../../socketHelpers/manager');
@@ -31,14 +32,14 @@ const router = new express.Router();
  */
 function handle() {
   /**
-   * @api {get} /aliases Get all user's aliases
+   * @api {get} /aliases Get all aliases on self
    * @apiVersion 5.0.3
    * @apiName GetAliases
    * @apiGroup Aliases
    *
    * @apiHeader {String} Authorization Your JSON Web Token
    *
-   * @apiDescription Get all user's aliases, including user name
+   * @apiDescription Get all aliases on self, including user name
    *
    * @apiSuccess {Object} data
    * @apiSuccess {Object} data.aliases Aliases found
@@ -57,17 +58,7 @@ function handle() {
     const auth = req.headers.authorization || '';
 
     jwt.verify(auth, appConfig.jsonKey, (jwtErr, decoded) => {
-      if (jwtErr) {
-        res.status(500).json({
-          errors: [{
-            status: 500,
-            title: 'Internal Server Error',
-            detail: 'Internal Server Error',
-          }],
-        });
-
-        return;
-      } else if (!decoded) {
+      if (jwtErr || !decoded) {
         res.status(401).json({
           errors: [{
             status: 401,
@@ -159,17 +150,7 @@ function handle() {
     const auth = req.headers.authorization || '';
 
     jwt.verify(auth, appConfig.jsonKey, (jwtErr, decoded) => {
-      if (jwtErr) {
-        res.status(500).json({
-          errors: [{
-            status: 500,
-            title: 'Internal Server Error',
-            detail: 'Internal Server Error',
-          }],
-        });
-
-        return;
-      } else if (!decoded) {
+      if (jwtErr || !decoded || decoded.data.accessLevel < dbConfig.apiCommands.CreateAlias.accessLevel) {
         res.status(401).json({
           errors: [{
             status: 401,

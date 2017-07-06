@@ -28,12 +28,84 @@ const mailEventSchema = new mongoose.Schema({
 const MailEvent = mongoose.model('MailEvent', mailEventSchema);
 
 /**
- * Get timed event
+ * Remove mail event
+ * @param {string} params.key Key to event
+ * @param {Function} params.callback Callback
+ */
+function removeMailEventByKey({ key, callback }) {
+  const query = { key };
+
+  MailEvent.deleteOne(query).lean().exec((error) => {
+    if (error) {
+      callback({ error: new errorCreator.Database({ errorObject: error, name: 'removeMailEventByKey' }) });
+
+      return;
+    }
+
+    callback({ data: { success: true } });
+  });
+}
+
+/**
+ * Remove mail event
+ * @param {string} params.owner User name
+ * @param {string} params.eventType Type of event
+ * @param {Function} callback Callback
+ */
+function removeMailEvent({ owner, eventType, callback }) {
+  const query = { owner, eventType };
+
+  MailEvent.deleteOne(query).lean().exec((error) => {
+    if (error) {
+      callback({ error: new errorCreator.Database({ errorObject: error, name: 'removeMailEvent' }) });
+
+      return;
+    }
+
+    callback({ data: { success: true } });
+  });
+}
+
+/**
+ * Get mail event
  * @param {string} params.key Key for the event
  * @param {Function} params.callback Callback
  */
-function getMailEvent({ key, callback }) {
+function getMailEventByKey({ key, callback }) {
   const query = { key };
+
+  MailEvent.findOne(query).lean().exec((error, event) => {
+    if (error) {
+      callback({ error: new errorCreator.Database({ errorObject: error, name: 'getMailEventByKey' }) });
+
+      return;
+    } else if (!event) {
+      callback({ error: new errorCreator.DoesNotExist({ name: 'getMailEventByKey' }) });
+
+      return;
+    } else if (event.expiresAt < new Date()) {
+      removeMailEventByKey({
+        key,
+        callback: () => {
+          callback({ error: new errorCreator.Expired({ name: `${event.owner}`, expiredAt: event.expiresAt }) });
+        },
+      });
+
+      return;
+    }
+
+    callback({ data: { event } });
+  });
+}
+
+/**
+ * Get mail event
+ * @param {string} params.owner User name
+ * @param {string} params.eventType Type of event
+ * @param {Function} params.callback Callback
+ */
+function getMailEvent({ owner, eventType, callback }) {
+  const query = { owner, eventType };
 
   MailEvent.findOne(query).lean().exec((error, event) => {
     if (error) {
@@ -45,7 +117,13 @@ function getMailEvent({ key, callback }) {
 
       return;
     } else if (event.expiresAt < new Date()) {
-      callback({ error: new errorCreator.Expired({ name: `${event.owner}`, expiredAt: event.expiresAt }) });
+      removeMailEvent({
+        owner,
+        eventType,
+        callback: () => {
+          callback({ error: new errorCreator.Expired({ name: `${event.owner}`, expiredAt: event.expiresAt }) });
+        },
+      });
 
       return;
     }
@@ -82,25 +160,8 @@ function createMailEvent({ mailEvent, callback }) {
   });
 }
 
-/**
- * Remove mail event
- * @param {string} key Key to event
- * @param {Function} callback Callback
- */
-function removeMailEvent({ key, callback }) {
-  const query = { key };
-
-  MailEvent.deleteOne(query).lean().exec((error) => {
-    if (error) {
-      callback({ error: new errorCreator.Database({ errorObject: error, name: 'removeMailEvent' }) });
-
-      return;
-    }
-
-    callback({ data: { success: true } });
-  });
-}
-
 exports.createMailEvent = createMailEvent;
+exports.getMailEventByKey = getMailEventByKey;
+exports.removeMailEvent = removeMailEventByKey;
 exports.getMailEvent = getMailEvent;
 exports.removeMailEvent = removeMailEvent;

@@ -443,7 +443,7 @@ function handle(socket, io) {
 
                 const victim = {
                   userName: gameCode.owner,
-                  accessLevel: dbConfig.users.system.accessLevel,
+                  accessLevel: dbConfig.accessLevels.admin,
                 };
 
                 manager.createTransaction({

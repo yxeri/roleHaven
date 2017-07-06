@@ -28,7 +28,7 @@ class NotAllowedError extends GeneralError.create {
       type: GeneralError.ErrorTypes.NOTALLOWED,
       text: [
         'Insufficient permissions',
-        `Tried to access ${name}`,
+        `Tried to ${name}`,
       ],
     });
   }

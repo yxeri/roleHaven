@@ -96,6 +96,12 @@ function shuffleArray(array) {
   return shuffledArray;
 }
 
+/**
+ * Gets minutes between two dates
+ * @param {Date} params.firstDate From date
+ * @param {Date} params.secondDate To date
+ * @returns {number} Amount of minutes
+ */
 function calculateMinutesDifference({ firstDate, secondDate }) {
   return Math.floor(Math.abs(new Date(firstDate) - secondDate) / 1000 / 60);
 }

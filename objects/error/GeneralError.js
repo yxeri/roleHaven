@@ -14,6 +14,8 @@
  limitations under the License.
  */
 
+const appConfig = require('../../config/defaults/config').app;
+
 const ErrorTypes = {
   GENERAL: 'general error',
   DATABASE: 'database',
@@ -55,7 +57,7 @@ class GeneralError {
     this.text = text;
     this.type = type;
 
-    if (verbose) {
+    if (appConfig.mode !== 'test' && verbose) {
       console.log(`Error Type: ${type}. `, text.join(' '));
       printError(errorObject);
     }

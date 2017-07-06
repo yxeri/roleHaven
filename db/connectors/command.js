@@ -44,18 +44,38 @@ function incrementCommandUsage({ commandName }) {
 /**
  * Updates all commands. Creates new ones if they don't already exist
  * @param {Object} params.commands New commands
+ * @param {Function} params.callback Callback
  */
-function populateDbCommands({ commands }) {
-  console.log('Adding commands, if needed');
+function populateDbCommands({ commands, callback }) {
+  console.log('Creating default commands, if needed');
 
-  const cmdKeys = Object.keys(commands);
-  cmdKeys.forEach((commandName) => {
-    const query = { commandName };
-    const command = commands[commandName];
-    const options = { upsert: true };
+  /**
+   * Adds a command to database. Recursive
+   * @param {string[]} commandNames Command names
+   */
+  function addCommand(commandNames) {
+    const commandName = commandNames.shift();
 
-    Command.findOneAndUpdate(query, command, options).lean().exec();
-  });
+    if (commandName) {
+      const query = { commandName };
+      const command = commands[commandName];
+      const options = { upsert: true };
+
+      Command.findOneAndUpdate(query, command, options).lean().exec((error) => {
+        if (error) {
+          callback({ error: new errorCreator.Database({ errorObject: error }) });
+
+          return;
+        }
+
+        addCommand(commandNames);
+      });
+    } else {
+      callback({ data: { success: true } });
+    }
+  }
+
+  addCommand(Object.keys(commands));
 }
 
 /**

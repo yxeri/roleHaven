@@ -26,7 +26,7 @@ const dbConfig = require('../config/defaults/config').databasePopulation;
 const errorCreator = require('../objects/error/errorCreator');
 const dbTransaction = require('../db/connectors/transaction');
 const dbInvitation = require('../db/connectors/invitationList');
-const dbDocFile = require('../db/connectors/docFile');
+// const dbDocFile = require('../db/connectors/docFile');
 const mailer = require('../socketHelpers/mailer');
 const jwt = require('jsonwebtoken');
 
@@ -195,7 +195,7 @@ function createRoom({ room, user, callback }) {
 
   dbRoom.createRoom({
     room,
-    callback: ({ error }) => {
+    callback: ({ error, data }) => {
       if (error) {
         callback({ error });
 
@@ -212,7 +212,7 @@ function createRoom({ room, user, callback }) {
             return;
           }
 
-          callback({ data: { room } });
+          callback({ data: { room: data.savedObject } });
         },
       });
     },
@@ -347,6 +347,10 @@ function getAllTransactions({ owner, callback = () => {} }) {
 function createTransaction({ transaction, user, io, emitToSender, fromTeam, callback = () => {} }) {
   if (fromTeam && !user.team) {
     callback({ error: new errorCreator.DoesNotExist({ name: 'not part of team' }) });
+
+    return;
+  } else if (user.userName === transaction.to) {
+    callback({ error: new errorCreator.Incorrect({ name: 'transfer to self' }) });
 
     return;
   }
@@ -654,11 +658,13 @@ function isRequiredRoom({ roomName, socketId, user }) {
 /**
  * Create a user and all other objects needed for it
  * @param {Object} params.user User to create
+ * @param {boolean} params.autoVerifyMail Should the mail verification step be skipped?
  * @param {Function} params.callback Callback
  */
-function createUser({ user, callback }) {
-  mailer.isValidAdress({
-    adress: user.mail,
+function createUser({ user, autoVerifyMail, callback }) {
+  mailer.isValidAddress({
+    autoVerifyMail,
+    address: user.mail,
     callback: (validData) => {
       if (validData.error) {
         callback({ error: validData.error });
@@ -666,16 +672,18 @@ function createUser({ user, callback }) {
         return;
       }
 
-      const { userName, fullName, password, registerDevice, mail } = user;
+      const { userName, fullName, password, registerDevice, mail, accessLevel, verified, banned } = user;
 
       const userObj = {
         userName,
         password,
         registerDevice,
         mail,
+        accessLevel,
+        verified,
+        banned,
         registeredAt: new Date(),
         fullName: fullName || userName,
-        verified: false,
         socketId: '',
         rooms: [
           dbConfig.rooms.public.roomName,
@@ -720,7 +728,7 @@ function createUser({ user, callback }) {
           });
 
           mailer.sendVerification({
-            adress: user.mail,
+            address: user.mail,
             userName: user.userName,
             callback: (verifyData) => {
               if (verifyData.error) {
@@ -729,9 +737,7 @@ function createUser({ user, callback }) {
                 return;
               }
 
-              callback({
-                data: { success: true },
-              });
+              callback({ data: { user: userData.data.savedObject } });
             },
           });
         },
@@ -740,41 +746,42 @@ function createUser({ user, callback }) {
   });
 }
 
-function changeDocFileAccess({ docFileId, visibility, isPublic, callback, io }) {
-  dbDocFile.updateDocFile({
-    docFileId,
-    visibility,
-    isPublic,
-    callback: ({ error, data }) => {
-      if (error) {
-        callback({ error });
 
-        return;
-      }
-
-        if (isPublic) {
-        }
-
-      callback();
-    },
-  });
-}
-
-function addUserToDocFile({ docFileId, userName, callback, io }) {
-  dbDocFile.addAccessUser({
-    docFileId,
-    userName,
-    callback: ({ error, data }) => {
-      if (error) {
-        callback({ error });
-
-        return;
-      }
-
-      callback();
-    },
-  });
-}
+// function changeDocFileAccess({ docFileId, visibility, isPublic, callback, io }) {
+//   dbDocFile.updateDocFile({
+//     docFileId,
+//     visibility,
+//     isPublic,
+//     callback: ({ error, data }) => {
+//       if (error) {
+//         callback({ error });
+//
+//         return;
+//       }
+//
+//         if (isPublic) {
+//         }
+//
+//       callback();
+//     },
+//   });
+// }
+//
+// function addUserToDocFile({ docFileId, userName, callback, io }) {
+//   dbDocFile.addAccessUser({
+//     docFileId,
+//     userName,
+//     callback: ({ error, data }) => {
+//       if (error) {
+//         callback({ error });
+//
+//         return;
+//       }
+//
+//       callback();
+//     },
+//   });
+// }
 
 exports.userIsAllowed = userIsAllowed;
 exports.getHistory = getHistory;
@@ -792,5 +799,5 @@ exports.addUserTeamRoom = addUserTeamRoom;
 exports.addUserToTeam = addUserToTeam;
 exports.isRequiredRoom = isRequiredRoom;
 exports.createUser = createUser;
-exports.changeDocFileAccess = changeDocFileAccess;
-exports.addUserToDocFile = addUserToDocFile;
+// exports.changeDocFileAccess = changeDocFileAccess;
+// exports.addUserToDocFile = addUserToDocFile;

@@ -125,28 +125,28 @@ resetStations({ callback: () => {} });
  * @param {Function} params.callback Callback
  */
 // function retrieveStationStats({ callback }) {
-  // request.get('http://wrecking.bbreloaded.se/public.json', (err, response, body) => {
-  //   if (err) {
-  //     console.log('Error request', response, err);
-  //
-  //     return;
-  //   }
-  //
-  //   if (body) {
-  //     /**
-  //      * @type {{ stations: Object[], teams: Object[], active_round: Object, coming_rounds: Object[] }}
-  //      */
-  //     const stats = JSON.parse(body);
-  //     const stations = stats.stations;
-  //     const teams = stats.teams;
-  //     const currentRound = stats.active_round;
-  //     const futureRounds = stats.coming_rounds;
-  //
-  //     callback(stations, teams, currentRound, futureRounds);
-  //   }
-  // });
+// request.get('http://wrecking.bbreloaded.se/public.json', (err, response, body) => {
+//   if (err) {
+//     console.log('Error request', response, err);
+//
+//     return;
+//   }
+//
+//   if (body) {
+//     /**
+//      * @type {{ stations: Object[], teams: Object[], active_round: Object, coming_rounds: Object[] }}
+//      */
+//     const stats = JSON.parse(body);
+//     const stations = stats.stations;
+//     const teams = stats.teams;
+//     const currentRound = stats.active_round;
+//     const futureRounds = stats.coming_rounds;
+//
+//     callback(stations, teams, currentRound, futureRounds);
+//   }
+// });
 
-  // Temporary until external server is available
+// Temporary until external server is available
 //   const past = new Date();
 //   past.setDate(past.getDate() - 10);
 //   const future = new Date();

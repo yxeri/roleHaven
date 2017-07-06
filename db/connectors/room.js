@@ -21,7 +21,6 @@ const databaseConnector = require('../databaseConnector');
 const chatHistoryConnector = require('./chatHistory');
 const dbUser = require('./user');
 const errorCreator = require('../../objects/error/errorCreator');
-const dbConfig = require('../../config/defaults/config').databasePopulation;
 
 const roomSchema = new mongoose.Schema({
   roomName: { type: String, unique: true },
@@ -78,9 +77,10 @@ function authUserToRoom({ user, roomName, callback, password = '' }) {
 /**
  * Create and save room
  * @param {Object} params.room New room
+ * @param {boolean} params.silentOnExists Should error on exists be skipped?
  * @param {Function} params.callback Callback
  */
-function createRoom({ room, callback }) {
+function createRoom({ room, silentOnExists, callback }) {
   const newRoom = new Room(room);
   const query = { roomName: room.roomName };
 
@@ -89,8 +89,12 @@ function createRoom({ room, callback }) {
       callback({ error: new errorCreator.Database({ errorObject: err, name: 'createRoom' }) });
 
       return;
-    } else if (foundRoom !== null) {
-      callback({ error: new errorCreator.AlreadyExists({ name: `room ${room.roomName}` }) });
+    } else if (foundRoom) {
+      if (!silentOnExists) {
+        callback({ error: new errorCreator.AlreadyExists({ name: `room ${room.roomName}` }) });
+      } else {
+        callback({ data: { alreadyExists: true } });
+      }
 
       return;
     }
@@ -296,40 +300,36 @@ function matchPartialRoom({ partialName, user, callback }) {
  * @param {Object} params.rooms Rooms to be added
  * @param {Function} params.callback Callback
  */
-function populateDbRooms({ rooms }) {
+function populateDbRooms({ rooms, callback }) {
   console.log('Creating default rooms, if needed');
 
-  getAllRooms({
-    user: {
-      accessLevel: dbConfig.accessLevels.god,
-      banned: false,
-      verified: true,
-    },
-    callback: ({ error, data }) => {
-      if (error) {
-        return;
-      }
+  /**
+   * Adds a room to database. Recursive
+   * @param {string[]} roomNames Room names
+   */
+  function addRoom(roomNames) {
+    const roomName = roomNames.shift();
 
-      const { rooms: retrievedRooms } = data;
-      const roomNames = retrievedRooms.map(room => room.roomName);
+    if (roomName) {
+      createRoom({
+        room: rooms[roomName],
+        silentOnExists: true,
+        callback: ({ error }) => {
+          if (error) {
+            callback({ error });
 
-      Object.keys(rooms).map(roomKey => rooms[roomKey]).forEach((room) => {
-        if (roomNames.indexOf(room.roomName) > -1) {
-          return;
-        }
+            return;
+          }
 
-        createRoom({
-          room,
-          callback: (createData) => {
-            if (createData.error) {
-              return;
-            }
-
-          },
-        });
+          addRoom(roomNames);
+        },
       });
-    },
-  });
+    } else {
+      callback({ data: { success: true } });
+    }
+  }
+
+  addRoom(Object.keys(rooms));
 }
 
 /**

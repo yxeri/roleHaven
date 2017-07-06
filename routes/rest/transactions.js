@@ -22,6 +22,7 @@ const jwt = require('jsonwebtoken');
 const objectValidator = require('../../utils/objectValidator');
 const manager = require('../../socketHelpers/manager');
 const dbUser = require('../../db/connectors/user');
+const errorCreator = require('../../objects/error/errorCreator');
 
 const router = new express.Router();
 
@@ -31,14 +32,14 @@ const router = new express.Router();
  */
 function handle(io) {
   /**
-   * @api {get} /transactions Retrieve user's transactions
+   * @api {get} /transactions Retrieve transactions
    * @apiVersion 5.0.3
    * @apiName GetTransactions
    * @apiGroup Transactions
    *
    * @apiHeader {String} Authorization Your JSON Web Token
    *
-   * @apiDescription Retrieve user's transactions
+   * @apiDescription Retrieve transactions
    *
    * @apiSuccess {Object} data
    * @apiSuccess {Object[]} data.toTransactions Transactions with the user being the receiver
@@ -51,7 +52,8 @@ function handle(io) {
    *          "to": "rez",
    *          "from": "n4",
    *          "time": "2016-11-28T22:42:06.262Z",
-   *          "note": "Bounty payment"
+   *          "note": "Bounty payment",
+   *          "amount": 10
    *        }
    *      ],
    *      "fromTransactions": [
@@ -59,6 +61,7 @@ function handle(io) {
    *          "to": "bas",
    *          "from": "rez",
    *          "time:" "2016-10-28T22:42:06.262Z"
+   *          "amount:" 5
    *        }
    *      ]
    *    }
@@ -69,17 +72,7 @@ function handle(io) {
     const auth = req.headers.authorization || '';
 
     jwt.verify(auth, appConfig.jsonKey, (jwtErr, decoded) => {
-      if (jwtErr) {
-        res.status(500).json({
-          errors: [{
-            status: 500,
-            title: 'Internal Server Error',
-            detail: 'Internal Server Error',
-          }],
-        });
-
-        return;
-      } else if (!decoded) {
+      if (jwtErr || !decoded) {
         res.status(401).json({
           errors: [{
             status: 401,
@@ -189,17 +182,7 @@ function handle(io) {
     const auth = req.headers.authorization || '';
 
     jwt.verify(auth, appConfig.jsonKey, (jwtErr, decoded) => {
-      if (jwtErr) {
-        res.status(500).json({
-          errors: [{
-            status: 500,
-            title: 'Internal Server Error',
-            detail: 'Internal Server Error',
-          }],
-        });
-
-        return;
-      } else if (!decoded) {
+      if (jwtErr || !decoded) {
         res.status(401).json({
           errors: [{
             status: 401,
@@ -221,6 +204,28 @@ function handle(io) {
           fromTeam: isTeamWallet,
           callback: ({ error, data }) => {
             if (error) {
+              if (error.type === errorCreator.ErrorTypes.NOTALLOWED) {
+                res.status(401).json({
+                  errors: [{
+                    status: 401,
+                    title: 'Not enough credits',
+                    detail: 'Not enough credits in wallet',
+                  }],
+                });
+
+                return;
+              } else if (error.type === errorCreator.ErrorTypes.INCORRECT) {
+                res.status(400).json({
+                  errors: [{
+                    status: 400,
+                    title: 'Cannot transfer to self',
+                    detail: 'Cannot transfer to self',
+                  }],
+                });
+
+                return;
+              }
+
               res.status(500).json({
                 errors: [{
                   status: 500,

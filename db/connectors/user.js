@@ -20,8 +20,6 @@ const mongoose = require('mongoose');
 const databaseConnector = require('../databaseConnector');
 const deviceConnector = require('./device');
 const positionConnector = require('./position');
-const appConfig = require('../../config/defaults/config').app;
-const dbConfig = require('../../config/defaults/config').databasePopulation;
 const errorCreator = require('../../objects/error/errorCreator');
 
 // Access levels: Lowest / Lower / Middle / Higher / Highest / God
@@ -36,11 +34,13 @@ const userSchema = new mongoose.Schema({
   accessLevel: { type: Number, default: 1 },
   visibility: { type: Number, default: 1 },
   warnings: { type: Number, default: 0 },
+  rooms: { type: [String], default: [] },
+  whisperRooms: { type: [String], default: [] },
+  mail: { type: String, unique: true },
+  registeredAt: { type: Date, default: new Date() },
   fullName: String,
   password: String,
   socketId: String,
-  rooms: [String],
-  whisperRooms: [String],
   lastOnline: Date,
   registerDevice: String,
   team: String,
@@ -49,8 +49,6 @@ const userSchema = new mongoose.Schema({
   isTracked: Boolean,
   aliases: [String],
   blockedBy: String,
-  mail: { type: String, unique: true },
-  registeredAt: Date,
 }, { collection: 'users' });
 
 const User = mongoose.model('User', userSchema);
@@ -275,7 +273,7 @@ function authUser({ userName, password, callback }) {
  */
 function getUser({ userName, callback }) {
   const query = { userName, banned: false, verified: true };
-  const filter = { password: 0 };
+  const filter = { password: 0, socketId: 0 };
 
   User.findOne(query, filter).lean().exec((err, foundUser) => {
     if (err) {
@@ -295,9 +293,10 @@ function getUser({ userName, callback }) {
 /**
  * Create and save user
  * @param {Object} params.user New user
+ * @param {boolean} params.silentOnExists Should error on exists be skipped?
  * @param {Function} params.callback Callback
  */
-function createUser({ user, callback }) {
+function createUser({ user, silentOnExists, callback }) {
   const newUser = new User(user);
   const query = { userName: user.userName };
 
@@ -307,7 +306,11 @@ function createUser({ user, callback }) {
 
       return;
     } else if (foundUser) {
-      callback({ error: new errorCreator.AlreadyExists({ name: `user ${user.userName}` }) });
+      if (!silentOnExists) {
+        callback({ error: new errorCreator.AlreadyExists({ name: `user ${user.userName}` }) });
+      } else {
+        callback({ data: { alreadyExists: true } });
+      }
 
       return;
     }
@@ -388,7 +391,7 @@ function verifyAllUsers({ callback }) {
 function getAllUsers({ user, includeInactive, callback }) {
   const query = { visibility: { $lte: user.accessLevel } };
   const sort = { userName: 1 };
-  const filter = { _id: 0, password: 0 };
+  const filter = { _id: 0, password: 0, socketId: 0 };
 
   if (!includeInactive) {
     query.banned = false;
@@ -717,41 +720,36 @@ function getBannedUsers({ callback }) {
  * @param {Object} params.users New users
  * @param {Function} params.callback Callback
  */
-function populateDbUsers({ users }) {
+function populateDbUsers({ users, callback }) {
   console.log('Creating default users, if needed');
 
-  getAllUsers({
-    user: {
-      accessLevel: dbConfig.accessLevels.god,
-      banned: false,
-      verified: true,
-    },
-    callback: (usersData) => {
-      if (usersData.error) {
-        return;
-      }
+  /**
+   * Adds a user to the database. Recursive
+   * @param {string[]} userNames User names
+   */
+  function addUser(userNames) {
+    const userName = userNames.shift();
 
-      const { users: retrievedUsers } = usersData.data;
-      const userNames = retrievedUsers.map(user => user.userName);
+    if (userName) {
+      createUser({
+        user: users[userName],
+        silentOnExists: true,
+        callback: ({ error }) => {
+          if (error) {
+            callback({ error });
 
-      Object.keys(users).forEach((userName) => {
-        if (userNames.indexOf(userName) > -1) {
-          return;
-        }
+            return;
+          }
 
-        createUser({
-          user: users[userName],
-          callback: ({ error }) => {
-            if (error) {
-              return;
-            }
-
-            console.log(`Created default user ${userName}`);
-          },
-        });
+          addUser(userNames);
+        },
       });
-    },
-  });
+    } else {
+      callback({ data: { success: true } });
+    }
+  }
+
+  addUser(Object.keys(users));
 }
 
 /**
@@ -878,7 +876,7 @@ function getUserByAlias({ alias, callback }) {
       { aliases: { $in: [alias] } },
     ],
   };
-  const filter = { _id: 0, password: 0 };
+  const filter = { _id: 0, password: 0, socketId: 0 };
 
   User.findOne(query, filter).lean().exec((err, user) => {
     if (err) {
@@ -926,12 +924,17 @@ function addAlias({ userName, alias, callback }) {
   });
 }
 
+/**
+ * Get user by its mail
+ * @param {string} mail Mail address
+ * @param {Function} callback Callback
+ */
 function getUserByMail({ mail, callback }) {
   const query = { mail };
 
   User.findOne(query).lean().exec((error, user) => {
     if (error) {
-      callback({ error: new errorCreator.Database({ errorObject: err }) });
+      callback({ error: new errorCreator.Database({ errorObject: error }) });
 
       return;
     } else if (!user) {

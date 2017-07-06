@@ -21,10 +21,10 @@ const databaseConnector = require('../databaseConnector');
 const errorCreator = require('../../objects/error/errorCreator');
 
 const transactionSchema = new mongoose.Schema({
+  time: { type: Date, default: new Date() },
   amount: Number,
   to: String,
   from: String,
-  time: Date,
   coordinates: {
     longitude: Number,
     latitude: Number,

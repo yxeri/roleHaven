@@ -198,7 +198,7 @@ function getUserPosition({ userName, callback }) {
 
       return;
     } else if (!position) {
-      callback({ error: new errorCreator.DoesNotExist({ name: `user position ${userName}` } ) });
+      callback({ error: new errorCreator.DoesNotExist({ name: `user position ${userName}` }) });
 
       return;
     }

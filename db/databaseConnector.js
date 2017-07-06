@@ -143,7 +143,30 @@ function matchPartial({ callback, partialName, queryType, filter, sort, user, ty
   });
 }
 
+/**
+ * Drops database. Used during testing
+ * @param {Function} params.callback Callback
+ */
+function dropDatabase({ callback }) {
+  if (appConfig.mode === 'test') {
+    mongoose.connection.dropDatabase((error) => {
+      if (error) {
+        callback({ error: 'Failed to drop test db', errorObject: error });
+
+        return;
+      }
+
+      callback({ data: { success: true } });
+    });
+
+    return;
+  }
+
+  callback({ error: 'Not in testing mode' });
+}
+
 exports.matchPartial = matchPartial;
 exports.saveObject = saveObject;
 exports.verifyObject = verifyObject;
 exports.verifyAllObjects = verifyAllObjects;
+exports.dropDatabase = dropDatabase;

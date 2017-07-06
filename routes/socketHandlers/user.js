@@ -55,7 +55,7 @@ function handle(socket, io) {
 
         mailer.sendPasswordReset({
           userName: user.userName,
-          adress: user.mail,
+          address: user.mail,
           callback: (verificationData) => {
             if (verificationData.error) {
               callback({ error: verificationData.error });
@@ -89,7 +89,7 @@ function handle(socket, io) {
         const { user } = data;
 
         mailer.sendVerification({
-          adress: mail,
+          address: mail,
           userName: user.userName,
           callback: (verificationData) => {
             if (verificationData.error) {
@@ -112,7 +112,7 @@ function handle(socket, io) {
       return;
     }
 
-    dbMailEvent.getMailEvent({
+    dbMailEvent.getMailEventByKey({
       key,
       callback: ({ error, data }) => {
         if (error) {
@@ -148,7 +148,7 @@ function handle(socket, io) {
       return;
     }
 
-    dbMailEvent.getMailEvent({
+    dbMailEvent.getMailEventByKey({
       key,
       callback: ({ error, data }) => {
         if (error) {

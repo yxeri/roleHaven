@@ -24,6 +24,9 @@ const morgan = require('morgan');
 const compression = require('compression');
 const appConfig = require('./config/defaults/config').app;
 const databasePopulation = require('./config/defaults/config').databasePopulation;
+const dbUser = require('./db/connectors/user');
+const dbRoom = require('./db/connectors/room');
+const dbCommand = require('./db/connectors/command');
 
 const app = express();
 
@@ -35,23 +38,30 @@ app.disable('x-powered-by');
 // view engine setup
 app.set('views', path.join(appConfig.publicBase, appConfig.viewsPath));
 app.set('view engine', 'html');
-app.engine('html', require('hbs').__express); // eslint-disable-line no-underscore-dangle, import/newline-after-import
+// eslint-disable-next-line no-underscore-dangle, import/newline-after-import
+app.engine('html', require('hbs').__express);
 app.use(bodyParser.json());
 // noinspection JSCheckFunctionSignatures
 app.use(compression());
 // Logging
-app.use(morgan(appConfig.logLevel));
+if (appConfig.mode !== 'test') {
+  app.use(morgan(appConfig.logLevel));
+}
+
 // Serve files from public path
 app.use(express.static(appConfig.publicBase));
 
 
 appConfig.routes.forEach((route) => {
-  app.use(route.sitePath, require(path.resolve(route.filePath))(app.io)); // eslint-disable-line import/no-dynamic-require, global-require)
+  // eslint-disable-next-line global-require, import/no-dynamic-require
+  app.use(route.sitePath, require(path.resolve(route.filePath))(app.io));
 });
 
-require('./db/connectors/user').populateDbUsers({ users: databasePopulation.users });
-require('./db/connectors/room').populateDbRooms({ rooms: databasePopulation.rooms });
-require('./db/connectors/command').populateDbCommands({ commands: databasePopulation.commands });
+if (appConfig.mode !== 'test') {
+  dbUser.populateDbUsers({ users: databasePopulation.users });
+  dbRoom.populateDbRooms({ rooms: databasePopulation.rooms });
+  dbCommand.populateDbCommands({ commands: databasePopulation.commands });
+}
 
 /*
  * Catches all exceptions and keeps the server running
