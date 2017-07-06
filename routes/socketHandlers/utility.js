@@ -94,35 +94,41 @@ function handle(socket, io) {
                     return;
                   }
 
-                  if (!updateData.docFile.isPublic) {
-                    updateData.docFile.docFileId = null;
+                  const updatedDocFile = updateData.docFile;
+
+                  if (!updatedDocFile.isPublic) {
+                    updatedDocFile.docFileId = null;
                   }
 
-                  callback({ data: { docFile: updateData.docFile } });
+                  callback({ data: { docFile: updatedDocFile } });
                 },
               });
             },
           });
         } else {
-          docFile.creator = allowedUser.userName;
-          docFile.docFileId = docFile.docFileId.toLowerCase();
+          const newDocFile = docFile;
+
+          newDocFile.creator = allowedUser.userName;
+          newDocFile.docFileId = newDocFile.docFileId.toLowerCase();
 
           dbDocFile.createDocFile({
-            docFile,
-            callback: ({ error: docError }) => {
-              if (docError) {
-                callback({ error: docError });
+            docFile: newDocFile,
+            callback: (createData) => {
+              if (createData.error) {
+                callback({ error: createData.error });
 
                 return;
               }
 
-              callback({ data: { docFile } });
+              const createdDocFile = createData.data.savedObject;
 
-              if (!docFile.isPublic) {
-                docFile.docFileId = null;
+              callback({ data: { docFile: createdDocFile } });
+
+              if (!createdDocFile.isPublic) {
+                createdDocFile.docFileId = null;
               }
 
-              socket.broadcast.emit('docFile', { docFile });
+              socket.broadcast.emit('docFile', { docFile: createdDocFile });
             },
           });
         }

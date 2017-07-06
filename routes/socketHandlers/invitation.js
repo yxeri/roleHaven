@@ -188,7 +188,8 @@ function handle(socket, io) {
       return;
     }
 
-    user.userName = user.userName.toLowerCase();
+    const invitedUser = user;
+    invitedUser.userName = invitedUser.userName.toLowerCase();
 
     manager.userIsAllowed({
       token,
@@ -198,7 +199,7 @@ function handle(socket, io) {
           callback({ error });
 
           return;
-        } else if (allowedUser.userName === user.userName) {
+        } else if (allowedUser.userName === invitedUser.userName) {
           callback({ error: new errorCreator.AlreadyExists({ name: 'your team' }) });
 
           return;
@@ -218,7 +219,7 @@ function handle(socket, io) {
             }
 
             dbUser.getUser({
-              userName: user.userName,
+              userName: invitedUser.userName,
               callback: (userData) => {
                 if (userData.error) {
                   callback({ error: userData.error });

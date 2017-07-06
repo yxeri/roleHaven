@@ -134,11 +134,13 @@ function getRoom({ roomName, callback }) {
       return;
     }
 
-    if (room.password && room.password !== '') {
-      room.password = true;
+    const retrievedRoom = room;
+
+    if (retrievedRoom.password && retrievedRoom.password !== '') {
+      retrievedRoom.password = true;
     }
 
-    callback({ data: { room } });
+    callback({ data: { room: retrievedRoom } });
   });
 }
 

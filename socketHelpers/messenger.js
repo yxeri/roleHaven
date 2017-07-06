@@ -39,9 +39,10 @@ function addMsgToHistory({ roomName, message, callback }) {
         callback({ error });
       }
 
-      message.anonymous = data.history.anonymous;
+      const newMessage = message;
+      newMessage.anonymous = data.history.anonymous;
 
-      callback({ data: { message } });
+      callback({ data: { message: newMessage } });
     },
   });
 }
@@ -82,13 +83,18 @@ function sendMsg({ socket, message, io }) {
     return;
   }
 
-  message.time = new Date();
-  message.userName = databasePopulation.users.admin.userName.toUpperCase();
+  const messageToSend = message;
+  messageToSend.time = new Date();
+  messageToSend.userName = databasePopulation.users.admin.userName.toUpperCase();
 
   if (socket) {
-    socket.broadcast.to(message.roomName).emit('message', { message });
+    socket.broadcast.to(messageToSend.roomName).emit('message', {
+      message: messageToSend,
+    });
   } else {
-    io.to(message.roomName).emit('message', { message });
+    io.to(messageToSend.roomName).emit('message', {
+      message: messageToSend,
+    });
   }
 }
 
@@ -114,11 +120,12 @@ function sendAndStoreChatMsg({ user, callback, message, io, socket }) {
         return;
       }
 
-      message.time = new Date();
+      const newMessage = message;
+      newMessage.time = new Date();
 
       addMsgToHistory({
-        message,
-        roomName: message.roomName,
+        message: newMessage,
+        roomName: newMessage.roomName,
         callback: ({ error }) => {
           if (error) {
             callback({ error });
@@ -127,19 +134,19 @@ function sendAndStoreChatMsg({ user, callback, message, io, socket }) {
           }
 
           const data = {
-            messages: [message],
-            room: { roomName: message.roomName },
+            messages: [newMessage],
+            room: { roomName: newMessage.roomName },
           };
 
-          if (message.anonymous) {
-            message.userName = 'anonymous';
-            message.time.setHours(0);
-            message.time.setMinutes(0);
-            message.time.setSeconds(0);
+          if (newMessage.anonymous) {
+            newMessage.userName = 'anonymous';
+            newMessage.time.setHours(0);
+            newMessage.time.setMinutes(0);
+            newMessage.time.setSeconds(0);
           }
 
           if (socket) {
-            socket.broadcast.to(message.roomName).emit('chatMsgs', data);
+            socket.broadcast.to(newMessage.roomName).emit('chatMsgs', data);
           } else {
             io.to(message.roomName).emit('chatMsgs', data);
           }
@@ -167,18 +174,20 @@ function sendChatMsg({ message, user, callback, io, socket }) {
     return;
   }
 
-  if (message.roomName === 'team') {
-    message.roomName = user.team + appConfig.teamAppend;
+  const newMessage = message;
+
+  if (newMessage.roomName === 'team') {
+    newMessage.roomName = user.team + appConfig.teamAppend;
   }
 
-  if (!message.userName || message.userName === user.userName) {
-    message.shortTeam = user.shortTeam;
-    message.team = user.team;
+  if (!newMessage.userName || newMessage.userName === user.userName) {
+    newMessage.shortTeam = user.shortTeam;
+    newMessage.team = user.team;
   }
 
-  if (message.userName) {
+  if (newMessage.userName) {
     dbUser.getUserByAlias({
-      alias: message.userName,
+      alias: newMessage.userName,
       callback: (aliasData) => {
         if (aliasData.error) {
           callback({ error: aliasData.error });
@@ -190,13 +199,25 @@ function sendChatMsg({ message, user, callback, io, socket }) {
           return;
         }
 
-        sendAndStoreChatMsg({ io, message, user, callback, socket });
+        sendAndStoreChatMsg({
+          io,
+          user,
+          callback,
+          socket,
+          message: newMessage,
+        });
       },
     });
   } else {
-    message.userName = user.userName;
+    newMessage.userName = user.userName;
 
-    sendAndStoreChatMsg({ io, message, user, callback, socket });
+    sendAndStoreChatMsg({
+      io,
+      user,
+      callback,
+      socket,
+      message: newMessage,
+    });
   }
 }
 
@@ -229,14 +250,15 @@ function sendWhisperMsg({ io, user, message, socket, callback }) {
         return;
       }
 
-      message.roomName += appConfig.whisperAppend;
-      message.extraClass = 'whisperMsg';
-      message.time = new Date();
+      const newMessage = message;
+      newMessage.roomName += appConfig.whisperAppend;
+      newMessage.extraClass = 'whisperMsg';
+      newMessage.time = new Date();
 
       // TODO Message should be removed if db fails to store it at senders
       addMsgToHistory({
-        message,
-        roomName: message.roomName,
+        message: newMessage,
+        roomName: newMessage.roomName,
         callback: ({ error: historyError }) => {
           if (historyError) {
             callback({ error: historyError });
@@ -244,10 +266,10 @@ function sendWhisperMsg({ io, user, message, socket, callback }) {
             return;
           }
 
-          const senderRoomName = message.userName + appConfig.whisperAppend;
+          const senderRoomName = newMessage.userName + appConfig.whisperAppend;
 
           addMsgToHistory({
-            message,
+            message: newMessage,
             roomName: senderRoomName,
             callback: ({ error: sendError }) => {
               if (sendError) {
@@ -257,15 +279,15 @@ function sendWhisperMsg({ io, user, message, socket, callback }) {
               }
 
               const sendData = {
-                messages: [message],
-                room: { roomName: message.roomName },
+                messages: [newMessage],
+                room: { roomName: newMessage.roomName },
                 whisper: true,
               };
 
               if (socket) {
-                socket.broadcast.to(message.roomName).emit('chatMsgs', sendData);
+                socket.broadcast.to(newMessage.roomName).emit('chatMsgs', sendData);
               } else {
-                io.to(message.roomName).emit('chatMsgs', sendData);
+                io.to(newMessage.roomName).emit('chatMsgs', sendData);
               }
 
 

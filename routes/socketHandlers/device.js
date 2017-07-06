@@ -75,19 +75,18 @@ function handle(socket) {
           return;
         }
 
-        device.socketId = socket.id;
-        device.lastUser = allowedUser.userName;
+        const deviceToUpdate = device;
+        deviceToUpdate.socketId = socket.id;
+        deviceToUpdate.lastUser = allowedUser.userName;
 
         dbDevice.updateDevice({
-          device,
+          device: deviceToUpdate,
           callback: ({ error: updateError, data }) => {
             if (updateError) {
               callback({ error: updateError });
             }
 
-            const { device: updatedDevice } = data;
-
-            callback({ data: { updatedDevice } });
+            callback({ data: { device: data.device } });
           },
         });
       },

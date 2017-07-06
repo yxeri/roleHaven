@@ -68,7 +68,8 @@ function handle(socket, io) {
           return;
         }
 
-        message.text = textTools.cleanText(message.text);
+        const newMessage = message;
+        newMessage.text = textTools.cleanText(newMessage.text);
 
         if (image && image.imageName && image.source.match(/^data:image\/((png)|(jpeg));base64,/)) {
           const fileName = `${new Buffer(allowedUser.userName).toString('base64')}-${appConfig.mode}-${image.imageName.replace(/[^\w.]/g, '-')}`;
@@ -80,7 +81,7 @@ function handle(socket, io) {
               return;
             }
 
-            message.image = {
+            newMessage.image = {
               fileName,
               imageName: image.imageName,
               width: image.width,
@@ -89,18 +90,18 @@ function handle(socket, io) {
 
             messenger.sendChatMsg({
               callback,
-              message,
               io,
               socket,
               user: allowedUser,
+              message: newMessage,
             });
           });
         } else {
           messenger.sendChatMsg({
             callback,
-            message,
             io,
             socket,
+            message: newMessage,
             user: allowedUser,
           });
         }
@@ -125,13 +126,14 @@ function handle(socket, io) {
           return;
         }
 
-        message.text = textTools.cleanText(message.text);
+        const newMessage = message;
+        newMessage.text = textTools.cleanText(newMessage.text);
 
         messenger.sendWhisperMsg({
           socket,
           callback,
-          message,
           io,
+          message: newMessage,
           user: allowedUser,
         });
       },
@@ -156,9 +158,14 @@ function handle(socket, io) {
           return;
         }
 
-        message.userName = allowedUser.userName;
+        const newMessage = message;
+        newMessage.userName = allowedUser.userName;
 
-        messenger.sendBroadcastMsg({ socket, message, callback });
+        messenger.sendBroadcastMsg({
+          socket,
+          callback,
+          message: newMessage,
+        });
       },
     });
   });
@@ -188,11 +195,12 @@ function handle(socket, io) {
           return;
         }
 
-        room.owner = allowedUser.userName;
-        room.roomName = room.roomName.toLowerCase();
+        const newRoom = room;
+        newRoom.owner = allowedUser.userName;
+        newRoom.roomName = newRoom.roomName.toLowerCase();
 
         manager.createRoom({
-          room,
+          room: newRoom,
           user: allowedUser,
           callback: ({ error: createError, data }) => {
             if (createError) {
@@ -202,8 +210,8 @@ function handle(socket, io) {
             }
 
             socket.broadcast.emit('room', {
-              room: { roomName: room.roomName },
-              isProtected: typeof room.password !== 'undefined' && room.password !== '',
+              room: { roomName: newRoom.roomName },
+              isProtected: typeof newRoom.password !== 'undefined' && newRoom.password !== '',
             });
 
             manager.followRoom({
@@ -484,21 +492,23 @@ function handle(socket, io) {
           return;
         }
 
-        if (room && room.roomName) {
-          if (allowedUser.team && room.roomName === 'team') {
-            room.roomName = allowedUser.team + appConfig.teamAppend;
+        const newRoom = room;
+
+        if (newRoom && newRoom.roomName) {
+          if (allowedUser.team && newRoom.roomName === 'team') {
+            newRoom.roomName = allowedUser.team + appConfig.teamAppend;
           } else if (whisperTo) {
-            room.roomName += appConfig.whisperAppend;
+            newRoom.roomName += appConfig.whisperAppend;
           }
 
-          if (Object.keys(socket.rooms).indexOf(room.roomName) === -1) {
-            callback({ error: new errorCreator.NotAllowed({ name: `retrieve history from ${room.roomName}` }) });
+          if (Object.keys(socket.rooms).indexOf(newRoom.roomName) === -1) {
+            callback({ error: new errorCreator.NotAllowed({ name: `retrieve history from ${newRoom.roomName}` }) });
 
             return;
           }
         }
 
-        const allRooms = room ? [room.roomName] : Object.keys(socket.rooms);
+        const allRooms = newRoom ? [newRoom.roomName] : Object.keys(socket.rooms);
 
         manager.getHistory({
           whisperTo,
@@ -511,7 +521,7 @@ function handle(socket, io) {
             }
 
             const newData = data;
-            newData.following = room && Object.keys(socket.rooms).indexOf(room.roomName) > -1;
+            newData.following = newRoom && Object.keys(socket.rooms).indexOf(newRoom.roomName) > -1;
 
             callback({ data: newData });
           },
@@ -528,7 +538,8 @@ function handle(socket, io) {
       return;
     }
 
-    room.roomName = room.roomName.toLowerCase();
+    const roomToRemove = room;
+    roomToRemove.roomName = roomToRemove.roomName.toLowerCase();
 
     manager.userIsAllowed({
       token,
@@ -541,7 +552,7 @@ function handle(socket, io) {
         }
 
         dbRoom.getRoom({
-          roomName: room.roomName,
+          roomName: roomToRemove.roomName,
           callback: ({ error: getError, data }) => {
             if (getError) {
               callback({ error: getError });
@@ -551,8 +562,10 @@ function handle(socket, io) {
               callback({ error: new errorCreator.NotAllowed({ name: 'not owner of room' }) });
             }
 
+            const retrievedRoom = data.room;
+
             dbRoom.removeRoom({
-              roomName: data.room.roomName,
+              roomName: retrievedRoom.roomName,
               callback: ({ error: removeError }) => {
                 if (removeError) {
                   callback({ error: removeError });
@@ -561,7 +574,7 @@ function handle(socket, io) {
                 }
 
                 dbUser.removeRoomFromAllUsers({
-                  roomName: room.roomName,
+                  roomName: retrievedRoom.roomName,
                   callback: ({ error: allError }) => {
                     if (allError) {
                       callback({ error: allError });
@@ -569,13 +582,13 @@ function handle(socket, io) {
                       return;
                     }
 
-                    const connectedIds = Object.keys(io.sockets.adapter.rooms[room.roomName].sockets);
+                    const connectedIds = Object.keys(io.sockets.adapter.rooms[retrievedRoom.roomName].sockets);
                     const allSockets = io.sockets.connected;
 
-                    socket.broadcast.to(room.roomName).emit('unfollow', { room });
-                    connectedIds.forEach(connectedId => allSockets[connectedId].leave(room.roomName));
+                    socket.broadcast.to(retrievedRoom.roomName).emit('unfollow', { room: retrievedRoom });
+                    connectedIds.forEach(connectedId => allSockets[connectedId].leave(retrievedRoom.roomName));
 
-                    callback({ data: { room } });
+                    callback({ data: { room: retrievedRoom } });
                   },
                 });
               },

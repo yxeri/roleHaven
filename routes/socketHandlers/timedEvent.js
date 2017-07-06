@@ -54,11 +54,13 @@ function handle(socket) {
           return;
         }
 
-        timedEvent.owner = allowedUser.userName;
-        timedEvent.triggerTime = new Date(timedEvent.triggerTime);
+        const newEvent = timedEvent;
+
+        newEvent.owner = allowedUser.userName;
+        newEvent.triggerTime = new Date(newEvent.triggerTime);
 
         dbTimedEvent.createTimedEvent({
-          timedEvent,
+          timedEvent: newEvent,
           callback: (createData) => {
             if (createData.error) {
               callback({ error: createData.error });
@@ -66,7 +68,7 @@ function handle(socket) {
               return;
             }
 
-            callback({ data: createData.data });
+            callback({ data: { event: createData.data.savedObject } });
           },
         });
       },

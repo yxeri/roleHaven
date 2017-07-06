@@ -196,10 +196,11 @@ function handle(socket, io) {
       return;
     }
 
-    user.userName = user.userName.toLowerCase();
+    const newUser = user;
+    newUser.userName = newUser.userName.toLowerCase();
 
     manager.createUser({
-      user,
+      user: newUser,
       socket,
       callback: ({ error, data }) => {
         if (error) {
@@ -295,11 +296,12 @@ function handle(socket, io) {
               return;
             }
 
-            device.lastUser = authUser.userName;
-            device.socketId = socket.id;
+            const newDevice = device;
+            newDevice.lastUser = authUser.userName;
+            newDevice.socketId = socket.id;
 
             dbDevice.updateDevice({
-              device,
+              device: newDevice,
               callback: () => {},
             });
 
@@ -371,11 +373,12 @@ function handle(socket, io) {
               return;
             }
 
-            device.lastUser = allowedUser.userName;
-            device.socketId = '';
+            const deviceToUpdate = device;
+            deviceToUpdate.lastUser = allowedUser.userName;
+            deviceToUpdate.socketId = '';
 
             dbDevice.updateDevice({
-              device,
+              device: deviceToUpdate,
               callback: () => {},
             });
 

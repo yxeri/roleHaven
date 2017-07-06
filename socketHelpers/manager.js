@@ -26,7 +26,6 @@ const dbConfig = require('../config/defaults/config').databasePopulation;
 const errorCreator = require('../objects/error/errorCreator');
 const dbTransaction = require('../db/connectors/transaction');
 const dbInvitation = require('../db/connectors/invitationList');
-// const dbDocFile = require('../db/connectors/docFile');
 const mailer = require('../socketHelpers/mailer');
 const jwt = require('jsonwebtoken');
 
@@ -191,10 +190,11 @@ function getHistory({ rooms, whisperTo, callback }) {
  * @param {Function} params.callback callback
  */
 function createRoom({ room, user, callback }) {
-  room.roomName = room.roomName.toLowerCase();
+  const newRoom = room;
+  newRoom.roomName = room.roomName.toLowerCase();
 
   dbRoom.createRoom({
-    room,
+    room: newRoom,
     callback: ({ error, data }) => {
       if (error) {
         callback({ error });
@@ -204,7 +204,7 @@ function createRoom({ room, user, callback }) {
 
       dbUser.addRoomToUser({
         userName: user.userName,
-        roomName: room.roomName,
+        roomName: newRoom.roomName,
         callback: ({ error: addError }) => {
           if (addError) {
             callback({ error: addError });
@@ -355,25 +355,26 @@ function createTransaction({ transaction, user, io, emitToSender, fromTeam, call
     return;
   }
 
-  transaction.amount = Math.abs(transaction.amount);
-  transaction.time = new Date();
-  transaction.from = fromTeam ? user.team + appConfig.teamAppend : user.userName;
+  const newTransaction = transaction;
+  newTransaction.amount = Math.abs(newTransaction.amount);
+  newTransaction.time = new Date();
+  newTransaction.from = fromTeam ? user.team + appConfig.teamAppend : user.userName;
 
   dbWallet.getWallet({
-    owner: transaction.from,
+    owner: newTransaction.from,
     callback: (walletData) => {
       if (walletData.error) {
         callback({ error: walletData.error });
 
         return;
-      } else if (walletData.data.wallet.amount - transaction.amount < 0) {
+      } else if (walletData.data.wallet.amount - newTransaction.amount < 0) {
         callback({ error: new errorCreator.NotAllowed({ name: 'transfer too much' }) });
 
         return;
       }
 
       dbTransaction.createTransaction({
-        transaction,
+        transaction: newTransaction,
         callback: (transactionData) => {
           if (transactionData.error) {
             callback({ error: transactionData.error });
@@ -381,9 +382,11 @@ function createTransaction({ transaction, user, io, emitToSender, fromTeam, call
             return;
           }
 
+          const createdTransaction = transactionData.data.savedObject;
+
           dbWallet.decreaseAmount({
-            owner: transaction.from,
-            amount: transaction.amount,
+            owner: createdTransaction.from,
+            amount: createdTransaction.amount,
             callback: (decreasedWalletData) => {
               if (decreasedWalletData.error) {
                 callback({ error: decreasedWalletData.error });
@@ -392,8 +395,8 @@ function createTransaction({ transaction, user, io, emitToSender, fromTeam, call
               }
 
               dbWallet.increaseAmount({
-                owner: transaction.to,
-                amount: transaction.amount,
+                owner: createdTransaction.to,
+                amount: createdTransaction.amount,
                 callback: (increasedWalletData) => {
                   if (increasedWalletData.error) {
                     callback({ error: increasedWalletData.error });
@@ -407,8 +410,11 @@ function createTransaction({ transaction, user, io, emitToSender, fromTeam, call
                   callback({ data: { transaction, wallet: decreasedWallet } });
 
                   if (!fromTeam) {
-                    if (transaction.to.indexOf(appConfig.teamAppend) > -1) {
-                      io.to(transaction.to).emit('transaction', { transaction, wallet: increasedWallet });
+                    if (createdTransaction.to.indexOf(appConfig.teamAppend) > -1) {
+                      io.to(createdTransaction.to).emit('transaction', {
+                        transaction: createdTransaction,
+                        wallet: increasedWallet,
+                      });
 
                       if (emitToSender) {
                         dbUser.getUserByAlias({
@@ -423,14 +429,17 @@ function createTransaction({ transaction, user, io, emitToSender, fromTeam, call
                             const { user: sender } = senderData.data;
 
                             if (sender.socketId) {
-                              io.to(sender.socketId).emit('transaction', { transaction, wallet: decreasedWallet });
+                              io.to(sender.socketId).emit('transaction', {
+                                transaction: createdTransaction,
+                                wallet: decreasedWallet,
+                              });
                             }
                           },
                         });
                       }
                     } else {
                       dbUser.getUserByAlias({
-                        alias: transaction.to,
+                        alias: createdTransaction.to,
                         callback: (aliasData) => {
                           if (aliasData.error) {
                             callback({ error: aliasData.error });
@@ -441,7 +450,10 @@ function createTransaction({ transaction, user, io, emitToSender, fromTeam, call
                           const { user: receiver } = aliasData.data;
 
                           if (receiver.socketId !== '') {
-                            io.to(receiver.socketId).emit('transaction', { transaction, wallet: increasedWallet });
+                            io.to(receiver.socketId).emit('transaction', {
+                              transaction: createdTransaction,
+                              wallet: increasedWallet,
+                            });
                           }
 
                           if (emitToSender) {
@@ -457,7 +469,10 @@ function createTransaction({ transaction, user, io, emitToSender, fromTeam, call
                                 const { user: sender } = senderData.data;
 
                                 if (sender.socketId) {
-                                  io.to(sender.socketId).emit('transaction', { transaction, wallet: decreasedWallet });
+                                  io.to(sender.socketId).emit('transaction', {
+                                    transaction: createdTransaction,
+                                    wallet: decreasedWallet,
+                                  });
                                 }
                               },
                             });
@@ -466,8 +481,14 @@ function createTransaction({ transaction, user, io, emitToSender, fromTeam, call
                       });
                     }
                   } else {
-                    io.to(transaction.to).emit('transaction', { transaction, wallet: increasedWallet });
-                    io.to(transaction.from).emit('transaction', { transaction, wallet: decreasedWallet });
+                    io.to(createdTransaction.to).emit('transaction', {
+                      transaction: createdTransaction,
+                      wallet: increasedWallet,
+                    });
+                    io.to(createdTransaction.from).emit('transaction', {
+                      transaction: createdTransaction,
+                      wallet: decreasedWallet,
+                    });
                   }
                 },
               });
@@ -505,13 +526,14 @@ function followRoom({ userName, socket, room, callback }) {
  * @param {Object} [params.socket] Socket.io socket
  */
 function authFollowRoom({ socket, room, user, callback }) {
-  room.roomName = room.roomName.toLowerCase();
-  room.password = room.password || '';
+  const roomToFollow = room;
+  roomToFollow.roomName = roomToFollow.roomName.toLowerCase();
+  roomToFollow.password = roomToFollow.password || '';
 
   dbRoom.authUserToRoom({
     user,
-    roomName: room.roomName,
-    password: room.password,
+    roomName: roomToFollow.roomName,
+    password: roomToFollow.password,
     callback: (authData) => {
       if (authData.error) {
         callback({ error: authData.error });
@@ -521,7 +543,7 @@ function authFollowRoom({ socket, room, user, callback }) {
 
       dbUser.addRoomToUser({
         userName: user.userName,
-        roomName: room.roomName,
+        roomName: roomToFollow.roomName,
         callback: (userData) => {
           if (userData.error) {
             callback({ error: userData.error });
@@ -530,9 +552,9 @@ function authFollowRoom({ socket, room, user, callback }) {
           }
 
           followRoom({
-            room,
             callback,
             socket,
+            room: roomToFollow,
             userName: user.userName,
           });
         },

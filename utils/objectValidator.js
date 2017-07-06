@@ -56,17 +56,18 @@ function checkKeys(data, expected, options) {
  * @returns {boolean} Does the data have the expected structure?
  */
 function isValidData(data, expected, options = {}) {
-  options.verbose = typeof options.verbose === 'undefined' ? true : options.verbose;
+  const validationOptions = options;
+  validationOptions.verbose = typeof validationOptions.verbose === 'undefined' ? true : validationOptions.verbose;
 
   if ((!data || data === null) || (!expected || expected === null)) {
-    if (options.verbose) { console.log('Validation error', 'Data and expected structure have to be set'); }
+    if (validationOptions.verbose) { console.log('Validation error', 'Data and expected structure have to be set'); }
 
     return false;
   }
 
-  const isValid = checkKeys(data, expected, options);
+  const isValid = checkKeys(data, expected, validationOptions);
 
-  if (!isValid && options.verbose) {
+  if (!isValid && validationOptions.verbose) {
     console.log('Validation error', `Expected: ${JSON.stringify(expected)}`);
   }
 

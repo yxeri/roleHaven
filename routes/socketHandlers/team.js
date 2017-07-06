@@ -96,11 +96,13 @@ function handle(socket, io) {
           callback: (teamData) => {
             if (teamData.error) {
               if (teamData.error.type === errorCreator.ErrorTypes.DOESNOTEXIST) {
-                team.owner = allowedUser.userName;
-                team.verified = false;
+                const newTeam = team;
+
+                newTeam.owner = allowedUser.userName;
+                newTeam.verified = false;
 
                 dbTeam.createTeam({
-                  team,
+                  team: newTeam,
                   callback: (createRoomData) => {
                     if (createRoomData.error) {
                       callback({ error: createRoomData.error });
@@ -108,14 +110,15 @@ function handle(socket, io) {
                       return;
                     }
 
+                    const createdTeam = createRoomData.data.team;
                     const teamRoom = {
-                      roomName: team.teamName + appConfig.teamAppend,
+                      roomName: createdTeam.teamName + appConfig.teamAppend,
                       accessLevel: dbConfig.accessLevels.superUser,
                       visibility: dbConfig.accessLevels.superUser,
                     };
                     const wallet = {
-                      owner: team.teamName + appConfig.teamAppend,
-                      team: team.teamName,
+                      owner: createdTeam.teamName + appConfig.teamAppend,
+                      team: createdTeam.teamName,
                     };
 
                     manager.createWallet({ wallet, callback: () => {} });
@@ -130,15 +133,20 @@ function handle(socket, io) {
                           return;
                         }
 
-                        socket.broadcast.emit('team', { team: { teamName: team.teamName } });
+                        socket.broadcast.emit('team', { team: { teamName: newTeam.teamName } });
 
                         if (appConfig.teamVerify) {
-                          callback({ data: { requiresVerify: appConfig.teamVerify, team } });
+                          callback({
+                            data: {
+                              requiresVerify: appConfig.teamVerify,
+                              team: createdTeam,
+                            },
+                          });
                         } else {
                           manager.addUserToTeam({
                             socket,
                             io,
-                            team,
+                            team: createdTeam,
                             user: allowedUser,
                             callback: (addUserData) => {
                               if (addUserData.error) {

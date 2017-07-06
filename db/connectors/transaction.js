@@ -89,14 +89,14 @@ function createTransaction({ transaction, callback }) {
   databaseConnector.saveObject({
     object: newTransaction,
     objectType: 'transaction',
-    callback: ({ error }) => {
+    callback: ({ error, data }) => {
       if (error) {
         callback({ error });
 
         return;
       }
 
-      callback({ data: { success: true } });
+      callback({ data });
     },
   });
 }

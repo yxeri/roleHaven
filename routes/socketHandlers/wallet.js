@@ -127,12 +127,14 @@ function handle(socket, io) {
       return;
     }
 
-    const transactionCallback = (params) => {
+    const newTransaction = transaction;
+
+    const transactionCallback = ({ user, transaction: transactionToCreate }) => {
       manager.createTransaction({
-        fromTeam: params.fromTeam,
-        transaction: params.transaction,
-        io: params.io,
-        user: params.user,
+        io,
+        user,
+        fromTeam,
+        transaction: transactionToCreate,
         callback: (transactionData) => {
           if (transactionData.error) {
             callback({ error: transactionData.error });
@@ -140,7 +142,7 @@ function handle(socket, io) {
             return;
           }
 
-          callback(transactionData);
+          callback({ data: transactionData.data });
         },
       });
     };
@@ -161,7 +163,12 @@ function handle(socket, io) {
           callback: (positionData) => {
             if (positionData.error) {
               if (positionData.type === errorCreator.ErrorTypes.DOESNOTEXIST) {
-                transactionCallback({ user: allowedUser, fromTeam, transaction, io });
+                transactionCallback({
+                  fromTeam,
+                  io,
+                  user: allowedUser,
+                  transaction: newTransaction,
+                });
 
                 return;
               }
@@ -171,9 +178,12 @@ function handle(socket, io) {
               return;
             }
 
-            transaction.coordinates = positionData.data.position.coordinates;
+            newTransaction.coordinates = positionData.data.position.coordinates;
 
-            transactionCallback({ user: allowedUser, fromTeam, transaction, io });
+            transactionCallback({
+              user: allowedUser,
+              transaction: newTransaction,
+            });
           },
         });
       },

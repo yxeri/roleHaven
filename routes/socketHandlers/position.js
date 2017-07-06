@@ -54,16 +54,18 @@ function handle(socket) {
           return;
         }
 
-        if (position.markerType === 'ping' && position.description.length > 0) {
-          position.description = [position.description[0].slice(0, 20)];
+        const newPosition = position;
+
+        if (newPosition.markerType === 'ping' && newPosition.description.length > 0) {
+          newPosition.description = [newPosition.description[0].slice(0, 20)];
         }
 
-        position.owner = allowedUser.userName;
-        position.team = allowedUser.team;
-        position.lastUpdated = new Date();
+        newPosition.owner = allowedUser.userName;
+        newPosition.team = allowedUser.team;
+        newPosition.lastUpdated = new Date();
 
         dbPosition.updatePosition({
-          position,
+          position: newPosition,
           callback: ({ error: updateError, data }) => {
             if (updateError) {
               callback({ error: updateError });
@@ -71,21 +73,21 @@ function handle(socket) {
               return;
             }
 
-            const createdPosition = data.position;
+            const updatedPosition = data.position;
 
-            if (createdPosition.team && !createdPosition.isPublic) {
-              socket.broadcast.to(`${createdPosition}${appConfig.teamAppend}`).emit('mapPositions', {
-                positions: [position],
+            if (updatedPosition.team && !updatedPosition.isPublic) {
+              socket.broadcast.to(`${updatedPosition}${appConfig.teamAppend}`).emit('mapPositions', {
+                positions: [updatedPosition],
                 currentTime: new Date(),
               });
             } else {
               socket.broadcast.emit('mapPositions', {
-                positions: [position],
+                positions: [updatedPosition],
                 currentTime: new Date(),
               });
             }
 
-            callback({ data: { position: createdPosition } });
+            callback({ data: { position: updatedPosition } });
           },
         });
       },
@@ -113,11 +115,13 @@ function handle(socket) {
           return;
         }
 
-        position.positionName = allowedUser.userName;
-        position.markerType = 'user';
-        position.owner = allowedUser.userName;
-        position.team = allowedUser.team;
-        position.lastUpdated = new Date();
+        const newPosition = position;
+
+        newPosition.positionName = allowedUser.userName;
+        newPosition.markerType = 'user';
+        newPosition.owner = allowedUser.userName;
+        newPosition.team = allowedUser.team;
+        newPosition.lastUpdated = new Date();
 
         dbUser.updateUserIsTracked({
           userName: allowedUser.userName,
@@ -125,7 +129,7 @@ function handle(socket) {
           callback: () => {},
         });
         dbPosition.updatePosition({
-          position,
+          position: newPosition,
           callback: ({ error: updateError, data }) => {
             if (updateError) {
               callback({ error: updateError });
@@ -237,10 +241,11 @@ function handle(socket) {
                     return;
                   }
 
-                  if (allowedUser.accessLevel === 0) { allowedUser.accessLevel += 1; }
+                  const user = allowedUser;
+                  user.accessLevel = user.accessLevel === 0 ? 1 : 0;
 
                   dbUser.getAllUserPositions({
-                    user: allowedUser,
+                    user,
                     callback: (userData) => {
                       if (userData.error) {
                         callback({ error: userData.error });
