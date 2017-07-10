@@ -25,7 +25,7 @@ const chaiJson = require('chai-json-schema');
 const aliasSchemas = require('./schemas/aliases');
 const errorSchemas = require('./schemas/errors');
 const testData = require('./helper/testData');
-const tokens = require('./helper/starter').tokens;
+const tokens = require('./0- starter').tokens;
 const appConfig = require('../../config/defaults/config').app;
 const tools = require('./helper/tools');
 

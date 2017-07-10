@@ -25,7 +25,7 @@ const chaiJson = require('chai-json-schema');
 const docFileSchemas = require('./schemas/docFiles');
 const errorSchemas = require('./schemas/errors');
 const testData = require('./helper/testData');
-const tokens = require('./helper/starter').tokens;
+const tokens = require('./0- starter').tokens;
 
 chai.should();
 chai.use(chaiHttp);

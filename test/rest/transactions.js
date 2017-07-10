@@ -26,7 +26,7 @@ const transactionSchemas = require('./schemas/transactions');
 const errorSchemas = require('./schemas/errors');
 const testData = require('./helper/testData');
 const dbWallet = require('../../db/connectors/wallet');
-const tokens = require('./helper/starter').tokens;
+const tokens = require('./0- starter').tokens;
 
 chai.should();
 

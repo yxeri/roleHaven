@@ -21,14 +21,14 @@
 const chai = require('chai');
 const chaiHttp = require('chai-http');
 const chaiJson = require('chai-json-schema');
-const manager = require('../../../socketHelpers/manager');
-const testData = require('./testData');
-const dbConnector = require('../../../db/databaseConnector');
-const dbRoom = require('../../../db/connectors/room');
-const dbCommand = require('../../../db/connectors/command');
-const dbConfig = require('../../../config/defaults/config').databasePopulation;
-const app = require('../../../app');
-const authenticateSchemas = require('../schemas/authentications');
+const manager = require('../../socketHelpers/manager');
+const testData = require('./helper/testData');
+const dbConnector = require('../../db/databaseConnector');
+const dbRoom = require('../../db/connectors/room');
+const dbCommand = require('../../db/connectors/command');
+const dbConfig = require('../../config/defaults/config').databasePopulation;
+const app = require('../../app');
+const authenticateSchemas = require('./schemas/authentications');
 
 chai.should();
 
