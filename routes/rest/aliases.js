@@ -33,7 +33,7 @@ const router = new express.Router();
 function handle() {
   /**
    * @api {get} /aliases Get all aliases on self
-   * @apiVersion 5.0.3
+   * @apiVersion 6.0.0
    * @apiName GetAliases
    * @apiGroup Aliases
    *
@@ -58,40 +58,42 @@ function handle() {
     const auth = req.headers.authorization || '';
 
     jwt.verify(auth, appConfig.jsonKey, (jwtErr, decoded) => {
-      if (jwtErr || !decoded) {
+      if (jwtErr || !decoded || decoded.data.accessLevel < dbConfig.apiCommands.GetAliases.accessLevel) {
         res.status(401).json({
-          errors: [{
+          error: {
             status: 401,
             title: 'Unauthorized',
             detail: 'Invalid token',
-          }],
+          },
         });
 
         return;
       }
 
+      const userName = decoded.data.userName;
+
       dbUser.getUser({
-        userName: decoded.data.userName,
+        userName,
         callback: ({ error, data }) => {
           if (error) {
             if (error.type === errorCreator.ErrorTypes.DOESNOTEXIST) {
               res.status(404).json({
-                errors: [{
+                error: {
                   status: 404,
                   title: 'User does not exist',
                   detail: 'User does not exist',
-                }],
+                },
               });
 
               return;
             }
 
             res.status(500).json({
-              errors: [{
+              error: {
                 status: 500,
                 title: 'Internal Server Error',
                 detail: 'Internal Server Error',
-              }],
+              },
             });
 
             return;
@@ -99,7 +101,7 @@ function handle() {
 
           const aliases = data.user.aliases || [];
 
-          res.json({ data: { aliases, user: { userName: decoded.data.userName } } });
+          res.json({ data: { aliases, user: { userName } } });
         },
       });
     });
@@ -107,7 +109,7 @@ function handle() {
 
   /**
    * @api {post} /aliases Create an alias
-   * @apiVersion 5.0.3
+   * @apiVersion 6.0.0
    * @apiName CreateAlias
    * @apiGroup Aliases
    *
@@ -136,11 +138,11 @@ function handle() {
   router.post('/', (req, res) => {
     if (!objectValidator.isValidData(req.body, { data: { alias: true } })) {
       res.status(400).json({
-        errors: [{
+        error: {
           status: 400,
           title: 'Missing data',
           detail: 'Unable to parse data',
-        }],
+        },
       });
 
       return;
@@ -152,11 +154,11 @@ function handle() {
     jwt.verify(auth, appConfig.jsonKey, (jwtErr, decoded) => {
       if (jwtErr || !decoded || decoded.data.accessLevel < dbConfig.apiCommands.CreateAlias.accessLevel) {
         res.status(401).json({
-          errors: [{
+          error: {
             status: 401,
             title: 'Unauthorized',
             detail: 'Invalid token',
-          }],
+          },
         });
 
         return;
@@ -169,22 +171,22 @@ function handle() {
           if (error) {
             if (error.type === errorCreator.ErrorTypes.ALREADYEXISTS) {
               res.status(403).json({
-                errors: [{
+                error: {
                   status: 403,
                   title: 'Alias already exists',
                   detail: 'Alias already exists',
-                }],
+                },
               });
 
               return;
             }
 
             res.status(500).json({
-              errors: [{
+              error: {
                 status: 500,
                 title: 'Internal Server Error',
                 detail: 'Internal Server Error',
-              }],
+              },
             });
 
             return;

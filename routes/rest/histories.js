@@ -19,6 +19,7 @@
 const express = require('express');
 const manager = require('../../socketHelpers/manager');
 const appConfig = require('../../config/defaults/config').app;
+const dbConfig = require('../../config/defaults/config').databasePopulation;
 const dbUser = require('../../db/connectors/user');
 const jwt = require('jsonwebtoken');
 const errorCreator = require('../../objects/error/errorCreator');
@@ -31,14 +32,14 @@ const router = new express.Router();
  */
 function handle() {
   /**
-   * @api {get} /histories Retrieve history from all rooms
-   * @apiVersion 5.0.1
+   * @api {get} /histories Retrieve history from rooms
+   * @apiVersion 6.0.0
    * @apiName GetHistories
    * @apiGroup Histories
    *
    * @apiHeader {String} [Authorization] JSON Web Token. Will retrieve chat history from public rooms if not set
    *
-   * @apiDescription Retrieves history from all the rooms that the user is following. The messages will be sorted by date of creation
+   * @apiDescription Retrieves history from the rooms that the user is following. The messages will be sorted by date of creation
    *
    * @apiSuccess {Object} data
    * @apiSuccess {Object[]} data.messages Found messages from all rooms
@@ -72,23 +73,13 @@ function handle() {
     const auth = req.headers.authorization || '';
 
     jwt.verify(auth, appConfig.jsonKey, (jwtErr, decoded) => {
-      if (jwtErr) {
-        res.status(500).json({
-          errors: [{
-            status: 500,
-            title: 'Internal Server Error',
-            detail: 'Internal Server Error',
-          }],
-        });
-
-        return;
-      } else if (!decoded) {
+      if (jwtErr || !decoded || decoded.data.accessLevel < dbConfig.apiCommands.GetHistory.accessLevel) {
         res.status(401).json({
-          errors: [{
+          error: {
             status: 401,
             title: 'Unauthorized',
             detail: 'Invalid token',
-          }],
+          },
         });
 
         return;
@@ -98,24 +89,24 @@ function handle() {
         userName: decoded.data.userName,
         callback: ({ error, data }) => {
           if (error) {
-            if (error.type === errorCreator.ErrorTypes.DoesNotExist) {
+            if (error.type === errorCreator.ErrorTypes.DOESNOTEXIST) {
               res.status(404).json({
-                errors: [{
+                error: {
                   status: 404,
                   title: 'User does not exist',
                   detail: 'User does not exist',
-                }],
+                },
               });
 
               return;
             }
 
             res.status(500).json({
-              errors: [{
+              error: {
                 status: 500,
                 title: 'Internal Server Error',
                 detail: 'Internal Server Error',
-              }],
+              },
             });
 
             return;
@@ -126,11 +117,11 @@ function handle() {
             callback: ({ error: historyError, data: messageData }) => {
               if (historyError) {
                 res.status(500).json({
-                  errors: [{
+                  error: {
                     status: 500,
                     title: 'Internal Server Error',
                     detail: 'Internal Server Error',
-                  }],
+                  },
                 });
 
                 return;
@@ -146,7 +137,7 @@ function handle() {
 
   /**
    * @api {get} /histories/:id Retrieve history from specific room
-   * @apiVersion 5.0.1
+   * @apiVersion 6.0.0
    * @apiName GetHistory
    * @apiGroup Histories
    *
@@ -178,11 +169,11 @@ function handle() {
   router.get('/:id', (req, res) => {
     if (!objectValidator.isValidData(req.params, { id: true })) {
       res.status(400).json({
-        errors: [{
+        error: {
           status: 400,
           title: 'Missing data',
           detail: 'Unable to parse data',
-        }],
+        },
       });
 
       return;
@@ -192,23 +183,13 @@ function handle() {
     const auth = req.headers.authorization || '';
 
     jwt.verify(auth, appConfig.jsonKey, (jwtErr, decoded) => {
-      if (jwtErr) {
-        res.status(500).json({
-          errors: [{
-            status: 500,
-            title: 'Internal Server Error',
-            detail: 'Internal Server Error',
-          }],
-        });
-
-        return;
-      } else if (!decoded) {
+      if (jwtErr || !decoded || decoded.data.accessLevel < dbConfig.apiCommands.GetHistory.accessLevel) {
         res.status(401).json({
-          errors: [{
+          error: {
             status: 401,
             title: 'Unauthorized',
             detail: 'Invalid token',
-          }],
+          },
         });
 
         return;
@@ -216,38 +197,29 @@ function handle() {
 
       const roomName = req.params.id;
 
-      dbUser.getUser({
+      dbUser.getUserFollowingRooms({
         userName: decoded.data.userName,
-        callback: ({ error, data }) => {
+        rooms: [roomName],
+        callback: ({ error }) => {
           if (error) {
-            if (error.type === errorCreator.ErrorTypes.DoesNotExist) {
+            if (error.type === errorCreator.ErrorTypes.DOESNOTEXIST) {
               res.status(404).json({
-                errors: [{
+                error: {
                   status: 404,
-                  title: 'User does not exist',
-                  detail: 'User does not exist',
-                }],
+                  title: 'User not following rooms',
+                  detail: 'The user does not follow the room or does not exist',
+                },
               });
 
               return;
             }
 
             res.status(500).json({
-              errors: [{
+              error: {
                 status: 500,
                 title: 'Internal Server Error',
                 detail: 'Internal Server Error',
-              }],
-            });
-
-            return;
-          } else if (data.user.rooms.indexOf(roomName) === -1) {
-            res.status(400).json({
-              errors: [{
-                status: 400,
-                title: 'User is not following room',
-                detail: 'The user has to follow the room to be able to retrieve history from it',
-              }],
+              },
             });
 
             return;
@@ -256,20 +228,20 @@ function handle() {
           manager.getHistory({
             rooms: [roomName],
             lines: appConfig.historyLines,
-            callback: ({ error: historyError, data: messageData }) => {
-              if (historyError) {
+            callback: (historyData) => {
+              if (historyData.error) {
                 res.status(500).json({
-                  errors: [{
+                  error: {
                     status: 500,
                     title: 'Internal Server Error',
                     detail: 'Internal Server Error',
-                  }],
+                  },
                 });
 
                 return;
               }
 
-              res.json({ data: messageData });
+              res.json({ data: historyData.data });
             },
           });
         },

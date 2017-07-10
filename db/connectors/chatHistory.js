@@ -76,13 +76,13 @@ function addMsgToHistory({ roomName, message, callback }) {
  * @param {string[]} params.rooms Name of the rooms
  * @param {Function} params.callback Callback
  */
-function getHistoryFromRooms({ rooms, callback }) {
+function getHistories({ rooms, callback }) {
   const query = { roomName: { $in: rooms } };
   const filter = { 'messages._id': 0, _id: 0 };
 
-  ChatHistory.find(query, filter).lean().exec((err, histories) => {
+  ChatHistory.find(query, filter).lean().exec((err, histories = []) => {
     if (err) {
-      callback({ error: new errorCreator.Database({ errorObject: err, name: 'getHistoryFromRooms' }) });
+      callback({ error: new errorCreator.Database({ errorObject: err, name: 'getHistories' }) });
 
       return;
     }
@@ -101,22 +101,29 @@ function createHistory({ roomName, anonymous, callback }) {
   const newHistory = new ChatHistory({ roomName, anonymous });
   const query = { roomName };
 
-  // Checks if history for room already exists
   ChatHistory.findOne(query).lean().exec((histErr, history) => {
     if (histErr) {
       callback({ error: new errorCreator.Database({ errorObject: histErr, name: 'createHistory' }) });
 
       return;
-    } else if (history !== null) {
+    } else if (history) {
       callback({ error: new errorCreator.AlreadyExists({ name: `history ${roomName}` }) });
 
       return;
     }
 
     dbConnector.saveObject({
-      callback,
       object: newHistory,
       objectType: 'ChatHistory',
+      callback: ({ error, data }) => {
+        if (error) {
+          callback({ error });
+
+          return;
+        }
+
+        callback({ data: { history: data.savedObject } });
+      },
     });
   });
 }
@@ -141,6 +148,6 @@ function removeHistory({ roomName, callback }) {
 }
 
 exports.addMsgToHistory = addMsgToHistory;
-exports.getHistoryFromRooms = getHistoryFromRooms;
+exports.getHistories = getHistories;
 exports.createHistory = createHistory;
 exports.removeHistory = removeHistory;

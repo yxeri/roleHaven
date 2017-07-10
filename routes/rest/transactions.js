@@ -23,6 +23,7 @@ const objectValidator = require('../../utils/objectValidator');
 const manager = require('../../socketHelpers/manager');
 const dbUser = require('../../db/connectors/user');
 const errorCreator = require('../../objects/error/errorCreator');
+const dbConfig = require('../../config/defaults/config').databasePopulation;
 
 const router = new express.Router();
 
@@ -33,7 +34,7 @@ const router = new express.Router();
 function handle(io) {
   /**
    * @api {get} /transactions Retrieve transactions
-   * @apiVersion 5.0.3
+   * @apiVersion 6.0.0
    * @apiName GetTransactions
    * @apiGroup Transactions
    *
@@ -72,13 +73,13 @@ function handle(io) {
     const auth = req.headers.authorization || '';
 
     jwt.verify(auth, appConfig.jsonKey, (jwtErr, decoded) => {
-      if (jwtErr || !decoded) {
+      if (jwtErr || !decoded || decoded.data.accessLevel < dbConfig.apiCommands.GetTransaction) {
         res.status(401).json({
-          errors: [{
+          error: {
             status: 401,
             title: 'Unauthorized',
             detail: 'Invalid token',
-          }],
+          },
         });
 
         return;
@@ -89,11 +90,11 @@ function handle(io) {
         callback: ({ error, data }) => {
           if (error) {
             res.status(500).json({
-              errors: [{
+              error: {
                 status: 500,
                 title: 'Internal Server Error',
                 detail: 'Internal Server Error',
-              }],
+              },
             });
 
             return;
@@ -112,7 +113,7 @@ function handle(io) {
 
   /**
    * @api {post} /transactions Create a transaction
-   * @apiVersion 5.1.0
+   * @apiVersion 6.0.0
    * @apiName CreateTransaction
    * @apiGroup Transactions
    *
@@ -168,11 +169,11 @@ function handle(io) {
   router.post('/', (req, res) => {
     if (!objectValidator.isValidData(req.body, { data: { transaction: { to: true, amount: true } } }) || isNaN(req.body.data.transaction.amount)) {
       res.status(400).json({
-        errors: [{
+        error: {
           status: 400,
           title: 'Missing data',
           detail: 'Unable to parse data',
-        }],
+        },
       });
 
       return;
@@ -182,13 +183,13 @@ function handle(io) {
     const auth = req.headers.authorization || '';
 
     jwt.verify(auth, appConfig.jsonKey, (jwtErr, decoded) => {
-      if (jwtErr || !decoded) {
+      if (jwtErr || !decoded || decoded.data.accessLevel < dbConfig.apiCommands.CreateTransaction) {
         res.status(401).json({
-          errors: [{
+          error: {
             status: 401,
             title: 'Unauthorized',
             detail: 'Invalid token',
-          }],
+          },
         });
 
         return;
@@ -206,32 +207,32 @@ function handle(io) {
             if (error) {
               if (error.type === errorCreator.ErrorTypes.NOTALLOWED) {
                 res.status(401).json({
-                  errors: [{
+                  error: {
                     status: 401,
                     title: 'Not enough credits',
                     detail: 'Not enough credits in wallet',
-                  }],
+                  },
                 });
 
                 return;
               } else if (error.type === errorCreator.ErrorTypes.INCORRECT) {
                 res.status(400).json({
-                  errors: [{
+                  error: {
                     status: 400,
                     title: 'Cannot transfer to self',
                     detail: 'Cannot transfer to self',
-                  }],
+                  },
                 });
 
                 return;
               }
 
               res.status(500).json({
-                errors: [{
+                error: {
                   status: 500,
                   title: 'Internal Server Error',
                   detail: 'Internal Server Error',
-                }],
+                },
               });
 
               return;
@@ -255,21 +256,21 @@ function handle(io) {
           callback: ({ error, data }) => {
             if (error) {
               res.status(500).json({
-                errors: [{
+                error: {
                   status: 500,
                   title: 'Internal Server Error',
                   detail: 'Internal Server Error',
-                }],
+                },
               });
 
               return;
             } else if (!data.user.team) {
               res.status(404).json({
-                errors: [{
+                error: {
                   status: 404,
                   title: 'Failed to create transaction',
                   detail: 'User team does not exist',
-                }],
+                },
               });
 
               return;

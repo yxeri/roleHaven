@@ -24,9 +24,9 @@ const morgan = require('morgan');
 const compression = require('compression');
 const appConfig = require('./config/defaults/config').app;
 const databasePopulation = require('./config/defaults/config').databasePopulation;
-const dbUser = require('./db/connectors/user');
 const dbRoom = require('./db/connectors/room');
 const dbCommand = require('./db/connectors/command');
+const winston = require('winston');
 
 const app = express();
 
@@ -58,7 +58,6 @@ appConfig.routes.forEach((route) => {
 });
 
 if (appConfig.mode !== 'test') {
-  dbUser.populateDbUsers({ users: databasePopulation.users });
   dbRoom.populateDbRooms({ rooms: databasePopulation.rooms });
   dbCommand.populateDbCommands({ commands: databasePopulation.commands });
 }
@@ -67,8 +66,8 @@ if (appConfig.mode !== 'test') {
  * Catches all exceptions and keeps the server running
  */
 process.on('uncaughtException', (err) => {
-  console.log('Caught exception', err);
-  console.log(err.stack);
+  winston.error('Caught exception', err);
+  winston.error(err.stack);
 });
 
 module.exports = app;

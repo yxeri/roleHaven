@@ -35,7 +35,7 @@ const router = new express.Router();
 function handle() {
   /**
    * @api {get} /users Retrieve all users
-   * @apiVersion 5.0.1
+   * @apiVersion 6.0.0
    * @apiName GetUsers
    * @apiGroup Users
    *
@@ -69,11 +69,11 @@ function handle() {
     jwt.verify(auth, appConfig.jsonKey, (jwtErr, decoded) => {
       if (jwtErr || !decoded) {
         res.status(401).json({
-          errors: [{
+          error: {
             status: 401,
             title: 'Unauthorized',
             detail: 'Invalid token',
-          }],
+          },
         });
 
         return;
@@ -84,11 +84,11 @@ function handle() {
         callback: ({ error, data }) => {
           if (error) {
             res.status(500).json({
-              errors: [{
+              error: {
                 status: 500,
                 title: 'Internal Server Error',
                 detail: 'Internal Server Error',
-              }],
+              },
             });
 
             return;
@@ -114,7 +114,7 @@ function handle() {
 
   /**
    * @api {post} /users/:id/resetPassword Request user password reset
-   * @apiVersion 5.1.0
+   * @apiVersion 6.0.0
    * @apiName ResetUserPassword
    * @apiGroup Users
    *
@@ -136,11 +136,11 @@ function handle() {
   router.post('/:id/resetPassword', (req, res) => {
     if (!objectValidator.isValidData(req.params, { id: true })) {
       res.status(400).json({
-        errors: [{
+        error: {
           status: 400,
           title: 'Missing data',
           detail: 'Unable to parse data',
-        }],
+        },
       });
 
       return;
@@ -150,13 +150,13 @@ function handle() {
     const auth = req.headers.authorization || '';
 
     jwt.verify(auth, appConfig.jsonKey, (jwtErr, decoded) => {
-      if (jwtErr || !decoded) {
+      if (jwtErr || !decoded || decoded.data.accessLevel < dbConfig.apiCommands.RequestPasswordReset) {
         res.status(401).json({
-          errors: [{
+          error: {
             status: 401,
             title: 'Unauthorized',
             detail: 'Invalid token',
-          }],
+          },
         });
 
         return;
@@ -170,22 +170,22 @@ function handle() {
           if (error) {
             if (error.type === errorCreator.ErrorTypes.DOESNOTEXIST) {
               res.status(404).json({
-                errors: [{
+                error: {
                   status: 404,
                   title: 'User with mail does not exist',
                   detail: 'User with mail not exist',
-                }],
+                },
               });
 
               return;
             }
 
             res.status(500).json({
-              errors: [{
+              error: {
                 status: 500,
                 title: 'Internal Server Error',
                 detail: 'Failed to send reset mail',
-              }],
+              },
             });
 
             return;
@@ -199,11 +199,11 @@ function handle() {
             callback: (resetData) => {
               if (resetData.error) {
                 res.status(500).json({
-                  errors: [{
+                  error: {
                     status: 500,
                     title: 'Internal Server Error',
                     detail: 'Failed to send reset mail',
-                  }],
+                  },
                 });
 
                 return;
@@ -219,7 +219,7 @@ function handle() {
 
   /**
    * @api {post} /users Create a user
-   * @apiVersion 5.1.0
+   * @apiVersion 6.0.0
    * @apiName CreateUser
    * @apiGroup Users
    *
@@ -257,11 +257,11 @@ function handle() {
   router.post('/', (req, res) => {
     if (!objectValidator.isValidData(req.body, { data: { user: { userName: true, password: true, mail: true } } })) {
       res.status(400).json({
-        errors: [{
+        error: {
           status: 400,
           title: 'Missing data',
           detail: 'Unable to parse data',
-        }],
+        },
       });
 
       return;
@@ -273,11 +273,11 @@ function handle() {
     jwt.verify(auth, appConfig.jsonKey, (jwtErr, decoded) => {
       if (jwtErr || !decoded || decoded.data.accessLevel < dbConfig.apiCommands.CreateUser.accessLevel) {
         res.status(401).json({
-          errors: [{
+          error: {
             status: 401,
             title: 'Unauthorized',
             detail: 'Invalid token',
-          }],
+          },
         });
 
         return;
@@ -287,38 +287,43 @@ function handle() {
       user.userName = user.userName.toLowerCase();
       user.registerDevice = 'RESTAPI';
 
+      if (decoded.data.accessLevel < dbConfig.apiCommands.ChangeUserLevels.accessLevel) {
+        user.accessLevel = undefined;
+        user.visibility = undefined;
+      }
+
       manager.createUser({
         user,
         callback: ({ error, data }) => {
           if (error) {
             if (error.type === errorCreator.ErrorTypes.ALREADYEXISTS) {
               res.status(403).json({
-                errors: [{
+                error: {
                   status: 403,
                   title: 'User already exists',
                   detail: `User with user name ${user.userName} already exists`,
-                }],
+                },
               });
 
               return;
             } else if (error.type === errorCreator.ErrorTypes.INVALIDDATA) {
               res.status(400).json({
-                errors: [{
+                error: {
                   status: 400,
                   title: 'Invalid data',
                   detail: 'Invalid data',
-                }],
+                },
               });
 
               return;
             }
 
             res.status(500).json({
-              errors: [{
+              error: {
                 status: 500,
                 title: 'Internal Server Error',
                 detail: 'Internal Server Error',
-              }],
+              },
             });
 
             return;
@@ -332,7 +337,7 @@ function handle() {
 
   /**
    * @api {get} /users/:id Retrieve a specific user
-   * @apiVersion 5.1.1
+   * @apiVersion 6.0.0
    * @apiName GetUser
    * @apiGroup Users
    *
@@ -354,11 +359,11 @@ function handle() {
   router.get('/:id', (req, res) => {
     if (!objectValidator.isValidData(req.params, { id: true })) {
       res.status(400).json({
-        errors: [{
+        error: {
           status: 400,
           title: 'Missing data',
           detail: 'Unable to parse data',
-        }],
+        },
       });
 
       return;
@@ -368,13 +373,13 @@ function handle() {
     const auth = req.headers.authorization || '';
 
     jwt.verify(auth, appConfig.jsonKey, (jwtErr, decoded) => {
-      if (jwtErr || !decoded) {
+      if (jwtErr || !decoded || decoded.data.accessLevel < dbConfig.apiCommands.GetUser.accessLevel) {
         res.status(401).json({
-          errors: [{
+          error: {
             status: 401,
             title: 'Unauthorized',
             detail: 'Invalid token',
-          }],
+          },
         });
 
         return;
@@ -388,32 +393,32 @@ function handle() {
           if (error) {
             if (error.type === errorCreator.ErrorTypes.DOESNOTEXIST) {
               res.status(404).json({
-                errors: [{
+                error: {
                   status: 404,
                   title: 'Failed to retrieve user',
                   detail: 'Unable to retrieve user, due it it not existing or your user not having high enough access level',
-                }],
+                },
               });
 
               return;
             }
 
             res.status(500).json({
-              errors: [{
+              error: {
                 status: 500,
                 title: 'Internal Server Error',
                 detail: 'Internal Server Error',
-              }],
+              },
             });
 
             return;
           } else if (decoded.data.userName !== userName && (decoded.data.accessLevel < data.user.accessLevel || decoded.data.accessLevel < data.user.visibility)) {
             res.status(404).json({
-              errors: [{
+              error: {
                 status: 404,
                 title: 'Failed to retrieve user',
                 detail: 'Unable to retrieve user, due it it not existing or your user not having high enough access level',
-              }],
+              },
             });
 
             return;

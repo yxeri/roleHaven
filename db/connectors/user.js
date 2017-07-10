@@ -21,6 +21,7 @@ const databaseConnector = require('../databaseConnector');
 const deviceConnector = require('./device');
 const positionConnector = require('./position');
 const errorCreator = require('../../objects/error/errorCreator');
+const dbConfig = require('../../config/defaults/config').databasePopulation;
 
 // Access levels: Lowest / Lower / Middle / Higher / Highest / God
 // 1 / 3 / 5 / 7 / 9 / 11
@@ -31,8 +32,8 @@ const userSchema = new mongoose.Schema({
   banned: { type: Boolean, default: false },
   online: { type: Boolean, default: false },
   lootable: { type: Boolean, default: false },
-  accessLevel: { type: Number, default: 1 },
-  visibility: { type: Number, default: 1 },
+  accessLevel: { type: Number, default: dbConfig.AccessLevels.BASIC },
+  visibility: { type: Number, default: dbConfig.AccessLevels.BASIC },
   warnings: { type: Number, default: 0 },
   rooms: { type: [String], default: [] },
   whisperRooms: { type: [String], default: [] },
@@ -52,6 +53,20 @@ const userSchema = new mongoose.Schema({
 }, { collection: 'users' });
 
 const User = mongoose.model('User', userSchema);
+
+/**
+ * Remove private parameters from user
+ * @param {Object} params.user User
+ * @returns {Object} Clean user
+ */
+function cleanUserParameters({ user }) {
+  const cleanUser = user;
+
+  cleanUser.password = typeof cleanUser.password === 'string';
+  cleanUser.mail = typeof cleanUser.mail === 'string';
+
+  return cleanUser;
+}
 
 /**
  * Update user field
@@ -74,7 +89,7 @@ function updateUserValue({ userName, update, callback }) {
       return;
     }
 
-    callback({ data: { user } });
+    callback({ data: { user: cleanUserParameters({ user }) } });
   });
 }
 
@@ -111,19 +126,16 @@ function updateUserTeam({ userName, team, shortTeam, callback }) {
 function removeUserTeam({ userName, callback }) {
   const query = { userName };
   const update = { $unset: { team: '', shortTeam: '' } };
+  const options = { multi: true };
 
-  User.update(query, update).lean().exec((err, user) => {
+  User.update(query, update, options).lean().exec((err) => {
     if (err) {
       callback({ error: new errorCreator.Database({ errorObject: err, name: 'removeUserTeam' }) });
 
       return;
-    } else if (!user) {
-      callback({ error: new errorCreator.DoesNotExist({ name: `user ${userName} to remove team` }) });
-
-      return;
     }
 
-    callback({ data: { user } });
+    callback({ data: { success: true } });
   });
 }
 
@@ -136,16 +148,16 @@ function removeUserTeam({ userName, callback }) {
 function removeAllUserTeam({ team, callback }) {
   const query = { team };
   const update = { $unset: { team: '', shortTeam: '' } };
-  const options = { multi: true };
+  const options = { multi: true, new: true };
 
-  User.update(query, update, options).lean().exec((err, users = []) => {
+  User.update(query, update, options).lean().exec((err) => {
     if (err) {
       callback({ error: new errorCreator.Database({ errorObject: err, name: 'removeAllUserTeam' }) });
 
       return;
     }
 
-    callback({ data: { users } });
+    callback({ data: { success: true } });
   });
 }
 
@@ -158,8 +170,9 @@ function removeAllUserTeam({ team, callback }) {
 function addGroupToUser({ userName, group, callback }) {
   const query = { userName };
   const update = { $push: { group } };
+  const options = { new: true };
 
-  User.findOneAndUpdate(query, update).lean().exec((err, user) => {
+  User.findOneAndUpdate(query, update, options).lean().exec((err, user) => {
     if (err) {
       callback({ error: new errorCreator.Database({ errorObject: err, name: 'addGroupTouser' }) });
 
@@ -170,7 +183,7 @@ function addGroupToUser({ userName, group, callback }) {
       return;
     }
 
-    callback({ data: { user } });
+    callback({ data: { user: cleanUserParameters({ user }) } });
   });
 }
 
@@ -211,7 +224,7 @@ function getUserByDevice({ deviceCode, callback }) {
           return;
         }
 
-        callback({ data: { user } });
+        callback({ data: { user: cleanUserParameters({ user }) } });
       });
     },
   });
@@ -237,7 +250,7 @@ function getUserById({ socketId, callback }) {
       return;
     }
 
-    callback({ data: { user } });
+    callback({ data: { user: cleanUserParameters({ user }) } });
   });
 }
 
@@ -249,9 +262,8 @@ function getUserById({ socketId, callback }) {
  */
 function authUser({ userName, password, callback }) {
   const query = { userName, password, banned: false, verified: true };
-  const filter = { password: 0 };
 
-  User.findOne(query, filter).lean().exec((err, user) => {
+  User.findOne(query).lean().exec((err, user) => {
     if (err) {
       callback({ error: new errorCreator.Database({ errorObject: err, name: 'authuser' }) });
 
@@ -262,7 +274,7 @@ function authUser({ userName, password, callback }) {
       return;
     }
 
-    callback({ data: { user } });
+    callback({ data: { user: cleanUserParameters({ user }) } });
   });
 }
 
@@ -273,9 +285,8 @@ function authUser({ userName, password, callback }) {
  */
 function getUser({ userName, callback }) {
   const query = { userName, banned: false, verified: true };
-  const filter = { password: 0, socketId: 0 };
 
-  User.findOne(query, filter).lean().exec((err, foundUser) => {
+  User.findOne(query).lean().exec((err, foundUser) => {
     if (err) {
       callback({ error: new errorCreator.Database({ errorObject: err, name: 'getUser' }) });
 
@@ -286,7 +297,7 @@ function getUser({ userName, callback }) {
       return;
     }
 
-    callback({ data: { user: foundUser } });
+    callback({ data: { user: cleanUserParameters({ user: foundUser }) } });
   });
 }
 
@@ -316,9 +327,17 @@ function createUser({ user, silentOnExists, callback }) {
     }
 
     databaseConnector.saveObject({
-      callback,
       object: newUser,
       objectType: 'user',
+      callback: ({ error, data }) => {
+        if (error) {
+          callback({ error });
+
+          return;
+        }
+
+        callback({ data: { user: cleanUserParameters({ user: data.savedObject }) } });
+      },
     });
   });
 }
@@ -326,13 +345,19 @@ function createUser({ user, silentOnExists, callback }) {
 /**
  * Update user's socket ID
  * @param {string} params.userName Name of the user
- * @param {string} params.socketId New socket ID
+ * @param {string} [params.socketId] New socket ID or undefined. Will unset socketId in database if undefined
  * @param {Function} params.callback Callback
  */
 function updateUserSocketId({ userName, socketId, callback }) {
   const query = { banned: false, userName, verified: true };
-  const update = { $set: { socketId, online: true } };
+  const update = { $set: { online: true } };
   const options = { new: true };
+
+  if (socketId) {
+    update.$set.socketId = socketId;
+  } else {
+    update.$unset = { socketId: '' };
+  }
 
   User.findOneAndUpdate(query, update, options).lean().exec((err, user) => {
     if (err) {
@@ -345,7 +370,7 @@ function updateUserSocketId({ userName, socketId, callback }) {
       return;
     }
 
-    callback({ data: { user } });
+    callback({ data: { user: cleanUserParameters({ user }) } });
   });
 }
 
@@ -369,7 +394,19 @@ function updateUserOnline({ userName, online, callback }) {
 function verifyUser({ userName, callback }) {
   const query = { userName };
 
-  databaseConnector.verifyObject({ query, object: User, callback });
+  databaseConnector.verifyObject({
+    query,
+    object: User,
+    callback: ({ error, data }) => {
+      if (error) {
+        callback({ error });
+
+        return;
+      }
+
+      callback({ data: { user: cleanUserParameters({ user: data.verified }) } });
+    },
+  });
 }
 
 /**
@@ -379,7 +416,19 @@ function verifyUser({ userName, callback }) {
 function verifyAllUsers({ callback }) {
   const query = { verified: false };
 
-  databaseConnector.verifyAllObjects({ query, object: User, callback });
+  databaseConnector.verifyAllObjects({
+    query,
+    object: User,
+    callback: ({ error, data }) => {
+      if (error) {
+        callback({ error });
+
+        return;
+      }
+
+      callback({ data: { users: data.verified.map(user => cleanUserParameters({ user })) } });
+    },
+  });
 }
 
 /**
@@ -405,7 +454,7 @@ function getAllUsers({ user, includeInactive, callback }) {
       return;
     }
 
-    callback({ data: { users } });
+    callback({ data: { users: users.map(userToClean => cleanUserParameters({ user: userToClean })) } });
   });
 }
 
@@ -423,14 +472,14 @@ function getTeamUsers({ user, callback }) {
   const sort = { userName: 1 };
   const filter = { userName: 1, fullName: 1, online: 1, team: 1, isTracked: 1, _id: 0 };
 
-  User.find(query, filter).sort(sort).lean().exec((err, users) => {
+  User.find(query, filter).sort(sort).lean().exec((err, users = []) => {
     if (err) {
       callback({ error: new errorCreator.Database({ errorObject: err, name: 'getTeamusers' }) });
 
       return;
     }
 
-    callback({ data: { users } });
+    callback({ data: { users: users.map(userToClean => cleanUserParameters({ user: userToClean })) } });
   });
 }
 
@@ -489,7 +538,7 @@ function getUserPosition({ user, userName, callback }) {
       return;
     }
 
-    positionConnector.getPosition({
+    positionConnector.getUserPosition({
       userName,
       callback: ({ error, data }) => {
         if (error) {
@@ -513,14 +562,14 @@ function getUsersFollowingRoom({ roomName, callback }) {
   const query = { rooms: { $in: [roomName] }, banned: false, verified: true };
   const filter = { rooms: 1, socketId: 1 };
 
-  User.find(query, filter).lean().exec((err, users) => {
+  User.find(query, filter).lean().exec((err, users = []) => {
     if (err) {
       callback({ error: new errorCreator.Database({ errorObject: err, name: 'getUsersFollowingRoom' }) });
 
       return;
     }
 
-    callback({ data: { users } });
+    callback({ data: { users: users.map(user => cleanUserParameters({ user })) } });
   });
 }
 
@@ -545,7 +594,7 @@ function addRoomToUser({ userName, roomName, callback }) {
       return;
     }
 
-    callback({ data: { user } });
+    callback({ data: { user: cleanUserParameters({ user }) } });
   });
 }
 
@@ -558,9 +607,18 @@ function addRoomToUser({ userName, roomName, callback }) {
  */
 function removeRoomFromUser({ userName, roomName, isWhisperRoom, callback }) {
   const query = { userName };
-  const update = isWhisperRoom ? { $pull: { whisperRooms: roomName } } : { $pull: { rooms: roomName } };
+  const update = {};
+  const options = { new: true };
 
-  User.findOneAndUpdate(query, update).lean().exec((err, user) => {
+  if (isWhisperRoom) {
+    query.whisperRooms = { $in: [roomName] };
+    update.$pull = { whisperRooms: roomName };
+  } else {
+    query.rooms = { $in: [roomName] };
+    update.$pull = { rooms: roomName };
+  }
+
+  User.findOneAndUpdate(query, update, options).lean().exec((err, user) => {
     if (err) {
       callback({ error: new errorCreator.Database({ errorObject: err, name: 'removeRoomFromuser' }) });
 
@@ -571,7 +629,7 @@ function removeRoomFromUser({ userName, roomName, isWhisperRoom, callback }) {
       return;
     }
 
-    callback({ data: { user } });
+    callback({ data: { user: cleanUserParameters({ user }) } });
   });
 }
 
@@ -584,8 +642,9 @@ function removeRoomFromUser({ userName, roomName, isWhisperRoom, callback }) {
 function addWhisperRoomToUser({ userName, roomName, callback }) {
   const query = { userName };
   const update = { $addToSet: { whisperRooms: roomName } };
+  const options = { new: true };
 
-  User.findOneAndUpdate(query, update).lean().exec((err, user) => {
+  User.findOneAndUpdate(query, update, options).lean().exec((err, user) => {
     if (err) {
       callback({ error: new errorCreator.Database({ errorObject: err, name: 'addWhisperRoomToUser' }) });
 
@@ -596,7 +655,7 @@ function addWhisperRoomToUser({ userName, roomName, callback }) {
       return;
     }
 
-    callback({ data: { user } });
+    callback({ data: { user: cleanUserParameters({ user }) } });
   });
 }
 
@@ -608,16 +667,16 @@ function addWhisperRoomToUser({ userName, roomName, callback }) {
 function removeRoomFromAllUsers({ roomName, callback }) {
   const query = { rooms: { $in: [roomName] } };
   const update = { $pull: { rooms: roomName } };
-  const options = { multi: true };
+  const options = { multi: true, new: true };
 
-  User.update(query, update, options).lean().exec((err, users = []) => {
+  User.update(query, update, options).lean().exec((err) => {
     if (err) {
       callback({ error: new errorCreator.Database({ errorObject: err, name: 'removeRoomFromAllUsers' }) });
 
       return;
     }
 
-    callback({ data: { users } });
+    callback({ data: { success: true } });
   });
 }
 
@@ -643,7 +702,7 @@ function setUserLastOnline({ userName, date, callback }) {
       return;
     }
 
-    callback({ data: { user } });
+    callback({ data: { user: cleanUserParameters({ user }) } });
   });
 }
 
@@ -654,9 +713,13 @@ function setUserLastOnline({ userName, date, callback }) {
  */
 function banUser({ userName, callback }) {
   const query = { userName };
-  const update = { $set: { banned: true, socketId: '' } };
+  const update = {
+    $set: { banned: true },
+    $unset: { socketId: '' },
+  };
+  const options = { new: true };
 
-  User.findOneAndUpdate(query, update).lean().exec((err, user) => {
+  User.findOneAndUpdate(query, update, options).lean().exec((err, user) => {
     if (err) {
       callback({ error: new errorCreator.Database({ errorObject: err, name: 'banUser' }) });
 
@@ -667,7 +730,7 @@ function banUser({ userName, callback }) {
       return;
     }
 
-    callback({ data: { user } });
+    callback({ data: { user: cleanUserParameters({ user }) } });
   });
 }
 
@@ -679,8 +742,9 @@ function banUser({ userName, callback }) {
 function unbanUser({ userName, callback }) {
   const query = { userName };
   const update = { $set: { banned: false } };
+  const options = { new: true };
 
-  User.findOneAndUpdate(query, update).lean().exec((err, user) => {
+  User.findOneAndUpdate(query, update, options).lean().exec((err, user) => {
     if (err) {
       callback({ error: new errorCreator.Database({ errorObject: err, name: 'unbanUser' }) });
 
@@ -691,7 +755,7 @@ function unbanUser({ userName, callback }) {
       return;
     }
 
-    callback({ data: { user } });
+    callback({ data: { user: cleanUserParameters({ user }) } });
   });
 }
 
@@ -711,45 +775,8 @@ function getBannedUsers({ callback }) {
       return;
     }
 
-    callback({ data: { users } });
+    callback({ data: { users: users.map(user => cleanUserParameters({ user })) } });
   });
-}
-
-/**
- * Add users to the db
- * @param {Object} params.users New users
- * @param {Function} params.callback Callback
- */
-function populateDbUsers({ users, callback }) {
-  console.log('Creating default users, if needed');
-
-  /**
-   * Adds a user to the database. Recursive
-   * @param {string[]} userNames User names
-   */
-  function addUser(userNames) {
-    const userName = userNames.shift();
-
-    if (userName) {
-      createUser({
-        user: users[userName],
-        silentOnExists: true,
-        callback: ({ error }) => {
-          if (error) {
-            callback({ error });
-
-            return;
-          }
-
-          addUser(userNames);
-        },
-      });
-    } else {
-      callback({ data: { success: true } });
-    }
-  }
-
-  addUser(Object.keys(users));
 }
 
 /**
@@ -807,12 +834,16 @@ function updateUserBlockedBy({ userName, blockedBy, callback }) {
 function removeAllUserBlockedBy({ callback }) {
   const query = { blockedBy: { $exists: true } };
   const update = { $unset: { blockedBy: '' } };
-  const options = { multi: true };
+  const options = { multi: true, new: true };
 
   User.update(query, update, options).lean().exec((err) => {
     if (err) {
       callback({ error: new errorCreator.Database({ errorObject: err, name: 'removeAllUserBlockedBy' }) });
+
+      return;
     }
+
+    callback({ data: { success: true } });
   });
 }
 
@@ -837,7 +868,7 @@ function removeUserBlockedBy({ userName, callback }) {
       return;
     }
 
-    callback({ data: { user } });
+    callback({ data: { user: cleanUserParameters({ user }) } });
   });
 }
 
@@ -889,7 +920,7 @@ function getUserByAlias({ alias, callback }) {
       return;
     }
 
-    callback({ data: { user } });
+    callback({ data: { user: cleanUserParameters({ user }) } });
   });
 }
 
@@ -926,8 +957,8 @@ function addAlias({ userName, alias, callback }) {
 
 /**
  * Get user by its mail
- * @param {string} mail Mail address
- * @param {Function} callback Callback
+ * @param {string} params.mail Mail address
+ * @param {Function} params.callback Callback
  */
 function getUserByMail({ mail, callback }) {
   const query = { mail };
@@ -943,7 +974,31 @@ function getUserByMail({ mail, callback }) {
       return;
     }
 
-    callback({ data: { user } });
+    callback({ data: { user: cleanUserParameters({ user }) } });
+  });
+}
+
+/**
+ * Get user that is following all of the sent rooms
+ * @param {string} params.userName User name of user to check
+ * @param {string[]} params.rooms Rooms to check
+ * @param {Function} params.callback Callback
+ */
+function getUserFollowingRooms({ userName, rooms, callback }) {
+  const query = { userName, rooms: { $all: rooms } };
+
+  User.findOne(query).lean().exec((error, user) => {
+    if (error) {
+      callback({ error: new errorCreator.Database({ errorObject: error }) });
+
+      return;
+    } else if (!user) {
+      callback({ error: new errorCreator.DoesNotExist({ name: `user following ${rooms}` }) });
+
+      return;
+    }
+
+    callback({ data: { user: cleanUserParameters({ user }) } });
   });
 }
 
@@ -964,7 +1019,6 @@ exports.verifyAllUsers = verifyAllUsers;
 exports.banUser = banUser;
 exports.unbanUser = unbanUser;
 exports.getBannedUsers = getBannedUsers;
-exports.populateDbUsers = populateDbUsers;
 exports.updateUserVisibility = updateUserVisibility;
 exports.updateUserAccessLevel = updateUserAccessLevel;
 exports.addGroupToUser = addGroupToUser;
@@ -985,3 +1039,4 @@ exports.removeUserBlockedBy = removeUserBlockedBy;
 exports.removeAllUserTeam = removeAllUserTeam;
 exports.removeUserTeam = removeUserTeam;
 exports.getUserByMail = getUserByMail;
+exports.getUserFollowingRooms = getUserFollowingRooms;

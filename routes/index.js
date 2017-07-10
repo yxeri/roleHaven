@@ -94,7 +94,6 @@ function handle(io) {
 
           const device = {
             deviceId: deviceData.data.device.deviceId,
-            socketId: '',
           };
 
           dbDevice.updateDevice({
@@ -116,7 +115,6 @@ function handle(io) {
 
           dbUser.updateUserSocketId({
             userName: user.userName,
-            socketId: '',
             callback: () => {},
           });
           dbUser.setUserLastOnline({

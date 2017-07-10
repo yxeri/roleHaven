@@ -485,7 +485,7 @@ function handle(socket) {
         dbLanternHack.getLanternHack({
           owner: allowedUser.userName,
           callback: ({ error: getError, data }) => {
-            if (getError && getError.type !== errorCreator.ErrorTypes.DoesNotExist) {
+            if (getError && getError.type !== errorCreator.ErrorTypes.DOESNOTEXIST) {
               callback({ error: getError });
 
               return;

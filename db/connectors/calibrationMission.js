@@ -31,9 +31,10 @@ const CalibrationMission = mongoose.model('CalibrationMission', calibrationMissi
 /**
  * Get active mission
  * @param {string} params.owner User name
+ * @param {boolean} [params.silentOnDoesNotExist] Should the error on does not exist be supressed?
  * @param {Function} params.callback Callback
  */
-function getActiveMission({ owner, callback }) {
+function getActiveMission({ owner, silentOnDoesNotExist, callback }) {
   const query = { $and: [{ owner }, { completed: false }] };
   const filter = { _id: 0 };
 
@@ -43,7 +44,11 @@ function getActiveMission({ owner, callback }) {
 
       return;
     } else if (!foundMission) {
-      callback({ error: new errorCreator.DoesNotExist({ name: `calibration mission ${owner}` }) });
+      if (!silentOnDoesNotExist) {
+        callback({ error: new errorCreator.DoesNotExist({ name: `calibration mission ${owner}` }) });
+      } else {
+        callback({ data: { doesNotExist: true } });
+      }
 
       return;
     }
@@ -62,7 +67,7 @@ function getInactiveMissions({ owner, callback }) {
   const filter = { _id: 0 };
   const sort = { timeCompleted: 1 };
 
-  CalibrationMission.find(query, filter).sort(sort).lean().exec((err, foundMissions) => {
+  CalibrationMission.find(query, filter).sort(sort).lean().exec((err, foundMissions = []) => {
     if (err) {
       callback({ error: new errorCreator.Database({ errorObject: err, name: 'getInactiveMissions' }) });
 
@@ -80,7 +85,7 @@ function getInactiveMissions({ owner, callback }) {
  */
 function createMission({ mission, callback }) {
   const newMission = new CalibrationMission(mission);
-  const query = { owner: mission.owner };
+  const query = { owner: mission.owner, completed: false };
 
   CalibrationMission.findOne(query).lean().exec((err, foundMission) => {
     if (err) {

@@ -112,9 +112,10 @@ function handle(socket, io) {
 
                     const createdTeam = createRoomData.data.team;
                     const teamRoom = {
+                      owner: dbConfig.systemUserName,
                       roomName: createdTeam.teamName + appConfig.teamAppend,
-                      accessLevel: dbConfig.accessLevels.superUser,
-                      visibility: dbConfig.accessLevels.superUser,
+                      accessLevel: dbConfig.AccessLevels.SUPERUSER,
+                      visibility: dbConfig.AccessLevels.SUPERUSER,
                     };
                     const wallet = {
                       owner: createdTeam.teamName + appConfig.teamAppend,
@@ -125,7 +126,6 @@ function handle(socket, io) {
 
                     dbRoom.createRoom({
                       room: teamRoom,
-                      user: dbConfig.users.superuser,
                       callback: (teamRoomData) => {
                         if (teamRoomData.error) {
                           callback({ error: teamRoomData.error });

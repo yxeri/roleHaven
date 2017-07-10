@@ -17,50 +17,35 @@
 'use strict';
 
 const path = require('path');
+const winston = require('winston');
 
 let config = {};
 
 try {
   config = require(path.normalize(`${__dirname}/../../../../config/databasePopulation`)).config; // eslint-disable-line import/no-unresolved, global-require, import/no-dynamic-require
 } catch (err) {
-  console.log('Did not find modified dbConfig. Using defaults');
-}
-
-/**
- * Return random string
- * @returns {string} Random string
- */
-function generatePass() {
-  const randomString = '023456789abcdefghijkmnopqrstuvwxyz';
-  const randomLength = randomString.length;
-  let code = '';
-
-  for (let i = 0; i < 10; i += 1) {
-    const randomVal = Math.random() * (randomLength - 1);
-
-    code += randomString[Math.round(randomVal)];
-  }
-
-  return code;
+  winston.info('Did not find modified dbConfig. Using defaults');
 }
 
 // To avoid undefined if rooms and commands haven't been changed
 config.rooms = config.rooms || {};
 config.commands = config.commands || {};
-config.users = config.users || {};
 config.apiCommands = config.apiCommands || {};
 
-config.accessLevels = config.accessLevels || {
-  god: 13,
-  superUser: 12,
-  admin: 11,
-  lowerAdmin: 9,
-  privileged: 6,
-  pro: 3,
-  advanced: 2,
-  basic: 1,
-  anonymous: 0,
+config.AccessLevels = config.AccessLevels || {
+  GOD: 13,
+  SUPERUSER: 12,
+  ADMIN: 11,
+  LOWERADMIN: 9,
+  PRIVILEGED: 6,
+  PRO: 3,
+  ADVANCED: 2,
+  BASIC: 1,
+  ANONYMOUS: 0,
 };
+
+config.systemUserName = 'SYSTEM';
+config.anonymousUserName = 'ANONYMOUS';
 
 /**
  * Rooms to be created on first run
@@ -69,10 +54,9 @@ config.rooms = {
   // GeneralError chat room, available for every user
   public: config.rooms.public || {
     roomName: 'public',
-    visibility: config.accessLevels.anonymous,
-    accessLevel: config.accessLevels.anonymous,
-    writeLevel: config.accessLevels.basic,
-    owner: 'superuser',
+    visibility: config.AccessLevels.ANONYMOUS,
+    accessLevel: config.AccessLevels.ANONYMOUS,
+    owner: config.systemUserName,
   },
 
   /**
@@ -81,9 +65,9 @@ config.rooms = {
    */
   bcast: config.rooms.bcast || {
     roomName: 'broadcast',
-    visibility: config.accessLevels.superUser,
-    accessLevel: config.accessLevels.superUser,
-    owner: 'superuser',
+    visibility: config.AccessLevels.SUPERUSER,
+    accessLevel: config.AccessLevels.SUPERUSER,
+    owner: config.systemUserName,
   },
 
   /**
@@ -92,9 +76,9 @@ config.rooms = {
    */
   admin: config.rooms.admin || {
     roomName: 'hqroom',
-    visibility: config.accessLevels.admin,
-    accessLevel: config.accessLevels.admin,
-    owner: 'superuser',
+    visibility: config.AccessLevels.ADMIN,
+    accessLevel: config.AccessLevels.ADMIN,
+    owner: config.systemUserName,
   },
 
   /**
@@ -103,9 +87,9 @@ config.rooms = {
    */
   team: config.rooms.team || {
     roomName: 'team',
-    visibility: config.accessLevels.superUser,
-    accessLevel: config.accessLevels.superUser,
-    owner: 'superuser',
+    visibility: config.AccessLevels.SUPERUSER,
+    accessLevel: config.AccessLevels.SUPERUSER,
+    owner: config.systemUserName,
   },
 
   /**
@@ -114,50 +98,50 @@ config.rooms = {
    */
   whisper: config.rooms.whisper || {
     roomName: 'whisper',
-    visibility: config.accessLevels.superUser,
-    accessLevel: config.accessLevels.superUser,
-    owner: 'superuser',
+    visibility: config.AccessLevels.SUPERUSER,
+    accessLevel: config.AccessLevels.SUPERUSER,
+    owner: config.systemUserName,
   },
 
-  // TODO Move outside of defaults
-  dead: config.rooms.dead || {
-    roomName: 'd34d',
-    visibility: config.accessLevels.anonymous,
-    accessLevel: config.accessLevels.anonymous,
+  anonymous: config.rooms.anonymous || {
+    roomName: 'anonymous',
+    visibility: config.AccessLevels.ANONYMOUS,
+    accessLevel: config.AccessLevels.ANONYMOUS,
     anonymous: true,
-    owner: 'superuser',
+    owner: config.systemUserName,
   },
 
   important: config.rooms.important || {
     roomName: 'important',
-    visibility: config.accessLevels.superUser,
-    accessLevel: config.accessLevels.superUser,
-    owner: 'superuser',
+    visibility: config.AccessLevels.SUPERUSER,
+    accessLevel: config.AccessLevels.SUPERUSER,
+    owner: config.systemUserName,
   },
 
   news: config.rooms.news || {
     roomName: 'news',
-    visibility: config.accessLevels.superUser,
-    accessLevel: config.accessLevels.superUser,
-    owner: 'superuser',
+    visibility: config.AccessLevels.SUPERUSER,
+    accessLevel: config.AccessLevels.SUPERUSER,
+    owner: config.systemUserName,
   },
 
   schedule: config.rooms.schedule || {
     roomName: 'schedule',
-    visibility: config.accessLevels.superUser,
-    accessLevel: config.accessLevels.superUser,
-    owner: 'superuser',
+    visibility: config.AccessLevels.SUPERUSER,
+    accessLevel: config.AccessLevels.SUPERUSER,
+    owner: config.systemUserName,
   },
 
   user: config.rooms.user || {
     roomName: 'user',
-    visibility: config.accessLevels.superUser,
-    accessLevel: config.accessLevels.superUser,
-    owner: 'superuser',
+    visibility: config.AccessLevels.SUPERUSER,
+    accessLevel: config.AccessLevels.SUPERUSER,
+    owner: config.systemUserName,
   },
 };
 
 config.requiredRooms = [
+  config.rooms.anonymous,
   config.rooms.team.roomName,
   config.rooms.bcast.roomName,
   config.rooms.public.roomName,
@@ -167,379 +151,415 @@ config.requiredRooms = [
   config.rooms.user.roomName,
 ];
 
-/**
- * Users to be created on first run
- * superuser should always be created. The rest are optional
- */
-config.users = {
-  // Admin users to be used to create the first rooms and verify first users
-  superuser: config.users.superuser || {
-    userName: 'superuser',
-    password: generatePass(),
-    verified: true,
-    accessLevel: config.accessLevels.anonymous,
-    visibility: config.accessLevels.god,
-    rooms: [config.rooms.public.roomName],
-    mail: 'superuser',
-  },
-  // Blocking name for users
-  root: config.users.root || {
-    userName: 'root',
-    password: generatePass(),
-    verified: false,
-    accessLevel: config.accessLevels.anonymous,
-    visibility: config.accessLevels.god,
-    rooms: [],
-    mail: 'root',
-  },
-  // Blocking name for users
-  admin: config.users.admin || {
-    userName: 'admin',
-    password: generatePass(),
-    verified: false,
-    accessLevel: config.accessLevels.anonymous,
-    visibility: config.accessLevels.god,
-    rooms: [],
-    mail: 'admin',
-  },
-  anonymous: config.users.anonymous || {
-    userName: 'anonymous',
-    password: generatePass(),
-    verified: false,
-    accessLevel: config.accessLevels.anonymous,
-    visibility: config.accessLevels.god,
-    rooms: [],
-    mail: 'anonymous',
-  },
-  system: config.users.system || {
-    userName: 'system',
-    password: generatePass(),
-    verified: false,
-    accessLevel: config.accessLevels.admin,
-    visibility: config.accessLevels.god,
-    rooms: [],
-    mail: 'system',
-  },
-};
+config.protectedUserNames = [
+  config.anonymousUserName.toLowerCase(),
+  config.systemUserName.toLowerCase(),
+  'superuser',
+  'root',
+  'admin',
+];
 
 config.commands = {
   help: config.commands.help || {
     commandName: 'help',
-    accessLevel: config.accessLevels.anonymous,
+    accessLevel: config.AccessLevels.ANONYMOUS,
   },
   clear: config.commands.clear || {
     commandName: 'clear',
-    accessLevel: config.accessLevels.basic,
+    accessLevel: config.AccessLevels.BASIC,
   },
   whoami: config.commands.whoami || {
     commandName: 'whoami',
-    accessLevel: config.accessLevels.anonymous,
+    accessLevel: config.AccessLevels.ANONYMOUS,
   },
   chatMsg: config.commands.chatMsg || {
     commandName: 'chatMsg',
-    accessLevel: config.accessLevels.basic,
+    accessLevel: config.AccessLevels.BASIC,
   },
   broadcast: config.commands.broadcast || {
     commandName: 'broadcast',
-    accessLevel: config.accessLevels.privileged,
+    accessLevel: config.AccessLevels.PRIVILEGED,
   },
   follow: config.commands.follow || {
     commandName: 'follow',
-    accessLevel: config.accessLevels.basic,
+    accessLevel: config.AccessLevels.BASIC,
   },
   unfollow: config.commands.unfollow || {
     commandName: 'unfollow',
-    accessLevel: config.accessLevels.basic,
+    accessLevel: config.AccessLevels.BASIC,
   },
   listUsers: config.commands.listUsers || {
     commandName: 'listUsers',
-    accessLevel: config.accessLevels.basic,
+    accessLevel: config.AccessLevels.BASIC,
   },
   listRooms: config.commands.listRooms || {
     commandName: 'listRooms',
-    accessLevel: config.accessLevels.anonymous,
+    accessLevel: config.AccessLevels.ANONYMOUS,
   },
   listTeams: config.commands.listTeams || {
     commandName: 'listTeams',
-    accessLevel: config.accessLevels.anonymous,
+    accessLevel: config.AccessLevels.ANONYMOUS,
   },
   listDevices: config.commands.listDevices || {
     commandName: 'listDevices',
-    accessLevel: config.accessLevels.lowerAdmin,
+    accessLevel: config.AccessLevels.LOWERADMIN,
   },
   register: config.commands.register || {
     commandName: 'register',
-    accessLevel: config.accessLevels.anonymous,
+    accessLevel: config.AccessLevels.ANONYMOUS,
   },
   createRoom: config.commands.createRoom || {
     commandName: 'createRoom',
-    accessLevel: config.accessLevels.basic,
+    accessLevel: config.AccessLevels.BASIC,
   },
   login: config.commands.login || {
     commandName: 'login',
-    accessLevel: config.accessLevels.anonymous,
+    accessLevel: config.AccessLevels.ANONYMOUS,
   },
   time: config.commands.time || {
     commandName: 'time',
-    accessLevel: config.accessLevels.anonymous,
+    accessLevel: config.AccessLevels.ANONYMOUS,
   },
   locate: config.commands.locate || {
     commandName: 'locate',
-    accessLevel: config.accessLevels.basic,
+    accessLevel: config.AccessLevels.BASIC,
   },
   getHistory: config.commands.getHistory || {
     commandName: 'getHistory',
-    accessLevel: config.accessLevels.anonymous,
+    accessLevel: config.AccessLevels.ANONYMOUS,
   },
   password: config.commands.password || {
     commandName: 'password',
-    accessLevel: config.accessLevels.basic,
+    accessLevel: config.AccessLevels.BASIC,
   },
   logout: config.commands.logout || {
     commandName: 'logout',
-    accessLevel: config.accessLevels.basic,
+    accessLevel: config.AccessLevels.BASIC,
   },
   reboot: config.commands.reboot || {
     commandName: 'reboot',
-    accessLevel: config.accessLevels.anonymous,
+    accessLevel: config.AccessLevels.ANONYMOUS,
   },
   verifyUser: config.commands.verifyUser || {
     commandName: 'verifyUser',
-    accessLevel: config.accessLevels.admin,
+    accessLevel: config.AccessLevels.ADMIN,
   },
   banUser: config.commands.banUser || {
     commandName: 'banUser',
-    accessLevel: config.accessLevels.admin,
+    accessLevel: config.AccessLevels.ADMIN,
   },
   unbanUser: config.commands.unbanUser || {
     commandName: 'unbanUser',
-    accessLevel: config.accessLevels.admin,
+    accessLevel: config.AccessLevels.ADMIN,
   },
   getBannedUsers: config.commands.getBannedUsers || {
     commandName: 'getBannedUsers',
-    accessLevel: config.accessLevels.lowerAdmin,
+    accessLevel: config.AccessLevels.LOWERADMIN,
   },
   whisper: config.commands.whisper || {
     commandName: 'whisper',
-    accessLevel: config.accessLevels.basic,
+    accessLevel: config.AccessLevels.BASIC,
   },
   hackRoom: config.commands.hackRoom || {
     commandName: 'hackRoom',
-    accessLevel: config.accessLevels.advanced,
+    accessLevel: config.AccessLevels.ADVANCED,
   },
   hackLantern: config.commands.hackLantern || {
     commandName: 'hackLantern',
-    accessLevel: config.accessLevels.basic,
+    accessLevel: config.AccessLevels.BASIC,
   },
   chipper: config.commands.chipper || {
     commandName: 'chipper',
-    accessLevel: config.accessLevels.advanced,
+    accessLevel: config.AccessLevels.ADVANCED,
     authGroup: 'hackers',
   },
   switchRoom: config.commands.switchRoom || {
     commandName: 'room',
-    accessLevel: config.accessLevels.basic,
+    accessLevel: config.AccessLevels.BASIC,
   },
   removeRoom: config.commands.removeRoom || {
     commandName: 'removeRoom',
-    accessLevel: config.accessLevels.basic,
+    accessLevel: config.AccessLevels.BASIC,
   },
   updateUser: config.commands.updateUser || {
     commandName: 'updateUser',
-    accessLevel: config.accessLevels.admin,
+    accessLevel: config.AccessLevels.ADMIN,
   },
   updateCommand: config.commands.updateCommand || {
     commandName: 'updateCommand',
-    accessLevel: config.accessLevels.admin,
+    accessLevel: config.AccessLevels.ADMIN,
   },
   weather: config.commands.weather || {
     commandName: 'weather',
-    accessLevel: config.accessLevels.anonymous,
+    accessLevel: config.AccessLevels.ANONYMOUS,
   },
   updateDevice: config.commands.updateDevice || {
     commandName: 'updateDevice',
-    accessLevel: config.accessLevels.anonymous,
+    accessLevel: config.AccessLevels.ANONYMOUS,
   },
   updateRoom: config.commands.updateRoom || {
     commandName: 'updateRoom',
-    accessLevel: config.accessLevels.admin,
+    accessLevel: config.AccessLevels.ADMIN,
   },
   inviteTeam: config.commands.inviteTeam || {
     commandName: 'inviteTeam',
-    accessLevel: config.accessLevels.basic,
+    accessLevel: config.AccessLevels.BASIC,
   },
   createTeam: config.commands.createTeam || {
     commandName: 'createTeam',
-    accessLevel: config.accessLevels.basic,
+    accessLevel: config.AccessLevels.BASIC,
   },
   central: config.commands.central || {
     commandName: 'central',
-    accessLevel: config.accessLevels.god,
+    accessLevel: config.AccessLevels.GOD,
   },
   jobs: config.commands.jobs || {
     commandName: 'jobs',
-    accessLevel: config.accessLevels.anonymous,
+    accessLevel: config.AccessLevels.ANONYMOUS,
   },
   invitations: config.commands.invitations || {
     commandName: 'invitations',
-    accessLevel: config.accessLevels.basic,
+    accessLevel: config.AccessLevels.BASIC,
   },
   inviteRoom: config.commands.inviteRoom || {
     commandName: 'inviteRoom',
-    accessLevel: config.accessLevels.basic,
+    accessLevel: config.AccessLevels.BASIC,
   },
   createMission: config.commands.createMission || {
     commandName: 'createMission',
-    accessLevel: config.accessLevels.basic,
+    accessLevel: config.AccessLevels.BASIC,
   },
   verifyTeam: config.commands.verifyTeam || {
     commandName: 'verifyTeam',
-    accessLevel: config.accessLevels.lowerAdmin,
+    accessLevel: config.AccessLevels.LOWERADMIN,
   },
   getPositions: config.commands.getPositions || {
     commandName: 'getPositions',
-    accessLevel: config.accessLevels.anonymous,
+    accessLevel: config.AccessLevels.ANONYMOUS,
   },
   docFiles: config.commands.docFiles || {
     commandName: 'docFiles',
-    accessLevel: config.accessLevels.basic,
+    accessLevel: config.AccessLevels.BASIC,
   },
   leaveTeam: config.commands.leaveTeam || {
     commandName: 'leaveTeam',
-    accessLevel: config.accessLevels.basic,
+    accessLevel: config.AccessLevels.BASIC,
   },
   createGameUser: config.commands.createGameUser || {
     commandName: 'createGameUser',
-    accessLevel: config.accessLevels.admin,
+    accessLevel: config.AccessLevels.ADMIN,
   },
   createGameWord: config.commands.createGameWord || {
     commandName: 'createGameWord',
-    accessLevel: config.accessLevels.admin,
+    accessLevel: config.AccessLevels.ADMIN,
   },
   rebootAll: config.commands.rebootAll || {
     commandName: 'rebootAll',
-    accessLevel: config.accessLevels.admin,
+    accessLevel: config.AccessLevels.ADMIN,
   },
   getDocFiles: config.commands.getDocFiles || {
     commandName: 'getDocFiles',
-    accessLevel: config.accessLevels.anonymous,
+    accessLevel: config.AccessLevels.ANONYMOUS,
   },
   getDocFile: config.commands.getDocFile || {
     commandName: 'getDocFile',
-    accessLevel: config.accessLevels.anonymous,
+    accessLevel: config.AccessLevels.ANONYMOUS,
   },
   getRooms: config.commands.getRooms || {
     commandName: 'getRooms',
-    accessLevel: config.accessLevels.anonymous,
+    accessLevel: config.AccessLevels.ANONYMOUS,
   },
   updateUserPosition: config.commands.updateUserPosition || {
     commandName: 'updateUserPosition',
-    accessLevel: config.accessLevels.basic,
+    accessLevel: config.AccessLevels.BASIC,
   },
   updateDevicePosition: config.commands.updateDevicePosition || {
     commandName: 'updateDevicePosition',
-    accessLevel: config.accessLevels.anonymous,
+    accessLevel: config.AccessLevels.ANONYMOUS,
   },
   createPosition: config.commands.createPosition || {
     commandName: 'createPosition',
-    accessLevel: config.accessLevels.basic,
+    accessLevel: config.AccessLevels.BASIC,
   },
   getWallet: config.commands.getWallet || {
     commandName: 'getWallet',
-    accessLevel: config.accessLevels.basic,
+    accessLevel: config.AccessLevels.BASIC,
   },
   calibrationMission: config.commands.calibrationMission || {
     commandName: 'calibrationMission',
-    accessLevel: config.accessLevels.basic,
+    accessLevel: config.AccessLevels.BASIC,
   },
   updateCalibrationMission: config.commands.updateCalibrationMission || {
     commandName: 'updateCalibrationMission',
-    accessLevel: config.accessLevels.lowerAdmin,
+    accessLevel: config.AccessLevels.LOWERADMIN,
   },
   getTeam: config.commands.getTeam || {
     commandName: 'getTeam',
-    accessLevel: config.accessLevels.basic,
+    accessLevel: config.AccessLevels.BASIC,
   },
   addAlias: config.commands.addAlias || {
     commandName: 'addAlias',
-    accessLevel: config.accessLevels.basic,
+    accessLevel: config.AccessLevels.BASIC,
   },
   aliases: config.commands.aliases || {
     commandName: 'aliases',
-    accessLevel: config.accessLevels.basic,
+    accessLevel: config.AccessLevels.BASIC,
   },
   getSimpleMsgs: config.commands.getSimpleMsgs || {
     commandName: 'getSimpleMsgs',
-    accessLevel: config.accessLevels.anonymous,
+    accessLevel: config.AccessLevels.ANONYMOUS,
   },
   simpleMsg: config.commands.simpleMsg || {
     commandName: 'simpleMsg',
-    accessLevel: config.accessLevels.basic,
+    accessLevel: config.AccessLevels.BASIC,
   },
   getGameCode: config.commands.getGameCode || {
     commandName: 'getGameCode',
-    accessLevel: config.accessLevels.basic,
+    accessLevel: config.AccessLevels.BASIC,
   },
   useGameCode: config.commands.useGameCode || {
     commandName: 'useGameCode',
-    accessLevel: config.accessLevels.basic,
+    accessLevel: config.AccessLevels.BASIC,
   },
   createGameCode: config.commands.createGameCode || {
     commandName: 'createameCode',
-    accessLevel: config.accessLevels.basic,
+    accessLevel: config.AccessLevels.BASIC,
   },
   signalBlock: config.commands.signalBlock || {
     commandName: 'signalBlock',
-    accessLevel: config.accessLevels.basic,
+    accessLevel: config.AccessLevels.BASIC,
   },
   updateId: config.commands.updateId || {
     commandName: 'updateId',
-    accessLevel: config.accessLevels.basic,
+    accessLevel: config.AccessLevels.BASIC,
   },
   verifyDevice: config.commands.verifyDevice || {
     commandName: 'verifyDevice',
-    accessLevel: config.accessLevels.lowerAdmin,
+    accessLevel: config.AccessLevels.LOWERADMIN,
   },
   getUserPositions: config.commands.getUserPositions || {
     commandName: 'getUserPosition',
-    accessLevel: config.accessLevels.anonymous,
+    accessLevel: config.AccessLevels.ANONYMOUS,
   },
   getCustomPositions: config.commands.getCustomPositions || {
     commandName: 'getCustomPositions',
-    accessLevel: config.accessLevels.anonymous,
+    accessLevel: config.AccessLevels.ANONYMOUS,
   },
   getSources: config.commands.getSources || {
     commandName: 'getSources',
-    accessLevel: config.accessLevels.basic,
+    accessLevel: config.AccessLevels.BASIC,
   },
   updateDeviceAlias: config.commands.updateDeviceAlias || {
     commandName: 'updateDeviceAlias',
-    accessLevel: config.accessLevels.lowerAdmin,
+    accessLevel: config.AccessLevels.LOWERADMIN,
   },
   listAliases: config.commands.listAliases || {
     commandName: 'listAliases',
-    accessLevel: config.accessLevels.lowerAdmin,
+    accessLevel: config.AccessLevels.LOWERADMIN,
   },
   createTimedEvent: config.commands.createTimedEvent || {
     commandName: 'createTimedEvent',
-    accessLevel: config.accessLevels.privileged,
+    accessLevel: config.AccessLevels.PRIVILEGED,
   },
 };
 
 config.apiCommands = {
-  UnfollowRoom: config.apiCommands.UnfollowRoom || { accessLevel: config.accessLevels.lowerAdmin },
-  FollowRoom: config.apiCommands.FollowRoom || { accessLevel: config.accessLevels.lowerAdmin },
-  CancelCalibrationMission: config.apiCommands.FollowRoom || { accessLevel: config.accessLevels.lowerAdmin },
-  CompleteCalibrationMission: config.apiCommands.FollowRoom || { accessLevel: config.accessLevels.lowerAdmin },
-  SendBroadcast: config.apiCommands.SendBroadcast || { accessLevel: config.accessLevels.lowerAdmin },
-  UpdateLanternRound: config.apiCommands.UpdateLanternRound || { accessLevel: config.accessLevels.lowerAdmin },
-  CreateLanternRound: config.apiCommands.CreateLanternRound || { accessLevel: config.accessLevels.lowerAdmin },
-  StartLanternRound: config.apiCommands.StartLanternRound || { accessLevel: config.accessLevels.lowerAdmin },
-  CreateLanternStation: config.apiCommands.CreateLanternStation || { accessLevel: config.accessLevels.lowerAdmin },
-  UpdateLanternStation: config.apiCommands.UpdateLanternStation || { accessLevel: config.accessLevels.lowerAdmin },
-  CreateLanternTeam: config.apiCommands.CreateLanternTeam || { accessLevel: config.accessLevels.lowerAdmin },
-  CreateUser: config.apiCommands.CreateUser || { accessLevel: config.accessLevels.lowerAdmin },
-  CreateAlias: config.apiCommands.CreateAlias || { accessLevel: config.accessLevels.pro },
+  SendMessage: config.apiCommands.SendMessage || {
+    accessLevel: config.AccessLevels.BASIC,
+  },
+  SendBroadcast: config.apiCommands.SendBroadcast || {
+    accessLevel: config.AccessLevels.LOWERADMIN,
+  },
+  GetHistory: config.apiCommands.GetHistory || {
+    accessLevel: config.AccessLevels.ANONYMOUS,
+  },
+  CreateDocFile: config.apiCommands.CreateDocFile || {
+    accessLevel: config.AccessLevels.BASIC,
+  },
+  GetDocFile: config.apiCommands.GetDocFile || {
+    accessLevel: config.AccessLevels.ANONYMOUS,
+  },
+  CreateUser: config.apiCommands.CreateUser || {
+    accessLevel: config.AccessLevels.LOWERADMIN,
+  },
+  ChangeUserLevels: config.apiCommands.ChangeUserLevels || {
+    accessLevel: config.AccessLevels.ADMIN,
+  },
+  GetUser: config.apiCommands.GetUser || {
+    accessLevel: config.AccessLevels.BASIC,
+  },
+  RequestPasswordReset: config.apiCommands.RequestPasswordReset || {
+    accessLevel: config.AccessLevels.BASIC,
+  },
+  CreateAlias: config.apiCommands.CreateAlias || {
+    accessLevel: config.AccessLevels.ADVANCED,
+  },
+  GetAliases: config.apiCommands.GetAliases || {
+    accessLevel: config.AccessLevels.ADVANCED,
+  },
+  CreateLanternRound: config.apiCommands.CreateLanternRound || {
+    accessLevel: config.AccessLevels.LOWERADMIN,
+  },
+  UpdateLanternRound: config.apiCommands.UpdateLanternRound || {
+    accessLevel: config.AccessLevels.LOWERADMIN,
+  },
+  GetLanternRound: config.apiCommands.GetLanternRound || {
+    accessLevel: config.AccessLevels.LOWERADMIN,
+  },
+  GetActiveLanternRound: config.apiCommands.GetActiveLanternRound || {
+    accessLevel: config.AccessLevels.ANONYMOUS,
+  },
+  StartLanternRound: config.apiCommands.StartLanternRound || {
+    accessLevel: config.AccessLevels.LOWERADMIN,
+  },
+  EndLanternRound: config.apiCommands.EndLanternRound || {
+    accessLevel: config.AccessLevels.LOWERADMIN,
+  },
+  GetCalibrationMission: config.apiCommands.GetCalibrationMission || {
+    accessLevel: config.AccessLevels.BASIC,
+  },
+  CancelCalibrationMission: config.apiCommands.CancelCalibrationMission || {
+    accessLevel: config.AccessLevels.LOWERADMIN,
+  },
+  CompleteCalibrationMission: config.apiCommands.CompleteCalibrationMission || {
+    accessLevel: config.AccessLevels.LOWERADMIN,
+  },
+  CreateLanternStation: config.apiCommands.CreateLanternStation || {
+    accessLevel: config.AccessLevels.LOWERADMIN,
+  },
+  UpdateLanternStation: config.apiCommands.UpdateLanternStation || {
+    accessLevel: config.AccessLevels.LOWERADMIN,
+  },
+  CreateLanternTeam: config.apiCommands.CreateLanternTeam || {
+    accessLevel: config.AccessLevels.LOWERADMIN,
+  },
+  GetLanternTeam: config.apiCommands.GetLanternTeam || {
+    accessLevel: config.AccessLevels.BASIC,
+  },
+  CreateTransaction: config.apiCommands.CreateTransaction || {
+    accessLevel: config.AccessLevels.BASIC,
+  },
+  GetTransaction: config.apiCommands.GetTransaction || {
+    accessLevel: config.AccessLevels.BASIC,
+  },
+  FollowRoom: config.apiCommands.FollowRoom || {
+    accessLevel: config.AccessLevels.BASIC,
+  },
+  UnfollowRoom: config.apiCommands.UnfollowRoom || {
+    accessLevel: config.AccessLevels.BASIC,
+  },
+  CreateRoom: config.apiCommands.CreateRoom || {
+    accessLevel: config.AccessLevels.BASIC,
+  },
+  GetRoom: config.apiCommands.GetRoom || {
+    accessLevel: config.AccessLevels.BASIC,
+  },
+  GetUserPosition: config.apiCommands.GetUserPosition || {
+    accessLevel: config.AccessLevels.BASIC,
+  },
+  UpdateUserPosition: config.apiCommands.UpdateUserPosition || {
+    accessLevel: config.AccessLevels.BASIC,
+  },
 };
 
 module.exports = config;

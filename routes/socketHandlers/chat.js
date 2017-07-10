@@ -214,7 +214,7 @@ function handle(socket, io) {
               isProtected: typeof newRoom.password !== 'undefined' && newRoom.password !== '',
             });
 
-            manager.followRoom({
+            manager.roomFollow({
               callback,
               socket,
               userName: allowedUser.userName,

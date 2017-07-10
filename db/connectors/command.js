@@ -18,6 +18,7 @@
 
 const mongoose = require('mongoose');
 const errorCreator = require('../../objects/error/errorCreator');
+const winston = require('winston');
 
 const commandSchema = new mongoose.Schema({
   commandName: String,
@@ -47,7 +48,7 @@ function incrementCommandUsage({ commandName }) {
  * @param {Function} params.callback Callback
  */
 function populateDbCommands({ commands, callback }) {
-  console.log('Creating default commands, if needed');
+  winston.info('Creating default commands, if needed');
 
   /**
    * Adds a command to database. Recursive

@@ -21,21 +21,25 @@
 const chai = require('chai');
 const chaiHttp = require('chai-http');
 const chaiJson = require('chai-json-schema');
-const manager = require('../../socketHelpers/manager');
-const helperData = require('./helper/data');
-const dbConnector = require('../../db/databaseConnector');
-const dbUser = require('../../db/connectors/user');
-const dbRoom = require('../../db/connectors/room');
-const dbCommand = require('../../db/connectors/command');
-const dbConfig = require('../../config/defaults/config').databasePopulation;
+const manager = require('../../../socketHelpers/manager');
+const testData = require('./testData');
+const dbConnector = require('../../../db/databaseConnector');
+const dbRoom = require('../../../db/connectors/room');
+const dbCommand = require('../../../db/connectors/command');
+const dbConfig = require('../../../config/defaults/config').databasePopulation;
+const app = require('../../../app');
+const authenticateSchemas = require('../schemas/authentications');
 
 chai.should();
 
 chai.use(chaiHttp);
 chai.use(chaiJson);
 
+const tokens = {};
 
-before('Clear database', (done) => {
+before('Clear database', function clearDatabase(done) {
+  this.timeout(10000);
+
   dbConnector.dropDatabase({
     callback: (dropData) => {
       dropData.should.have.property('data');
@@ -68,21 +72,9 @@ before('Create all app default rooms', function createRooms(done) {
   });
 });
 
-before('Create all app default users', function createUsers(done) {
-  this.timeout(10000);
-
-  dbUser.populateDbUsers({
-    users: dbConfig.users,
-    callback: (popData) => {
-      popData.should.have.property('data');
-      done();
-    },
-  });
-});
-
 before('Create admin user', (done) => {
   manager.createUser({
-    user: helperData.adminUser,
+    user: testData.userAdmin,
     autoVerifyMail: true,
     callback: (createData) => {
       createData.should.have.property('data');
@@ -93,7 +85,7 @@ before('Create admin user', (done) => {
 
 before('Create unverified user', (done) => {
   manager.createUser({
-    user: helperData.unverifiedUser,
+    user: testData.userUnverified,
     autoVerifyMail: true,
     callback: (createData) => {
       createData.should.have.property('data');
@@ -104,7 +96,7 @@ before('Create unverified user', (done) => {
 
 before('Create banned user', (done) => {
   manager.createUser({
-    user: helperData.bannedUser,
+    user: testData.userBanned,
     autoVerifyMail: true,
     callback: (createData) => {
       createData.should.have.property('data');
@@ -115,7 +107,7 @@ before('Create banned user', (done) => {
 
 before('Create normal user', (done) => {
   manager.createUser({
-    user: helperData.normalUser,
+    user: testData.userNormal,
     autoVerifyMail: true,
     callback: (createData) => {
       createData.should.have.property('data');
@@ -123,3 +115,37 @@ before('Create normal user', (done) => {
     },
   });
 });
+
+before('Authenticate', (done) => {
+  chai
+    .request(app)
+    .post('/api/authenticate')
+    .send({ data: { user: testData.userAdmin } })
+    .end((error, response) => {
+      response.should.have.status(200);
+      response.should.be.json;
+      response.body.should.be.jsonSchema(authenticateSchemas.authenticate);
+
+      tokens.admin = response.body.data.token;
+
+      done();
+    });
+});
+
+before(`Authenticate user ${testData.userNormal.userName}`, (done) => {
+  chai
+    .request(app)
+    .post('/api/authenticate')
+    .send({ data: { user: testData.userNormal } })
+    .end((error, response) => {
+      response.should.have.status(200);
+      response.should.be.json;
+      response.body.should.be.jsonSchema(authenticateSchemas.authenticate);
+
+      tokens.normal = response.body.data.token;
+
+      done();
+    });
+});
+
+exports.tokens = tokens;

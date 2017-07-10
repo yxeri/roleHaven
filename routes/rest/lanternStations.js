@@ -33,7 +33,7 @@ const router = new express.Router();
 function handle(io) {
   /**
    * @api {get} /lanternStations Get all lantern stations
-   * @apiVersion 5.1.0
+   * @apiVersion 6.0.0
    * @apiName GetLanternStations
    * @apiGroup LanternStations
    *
@@ -51,14 +51,14 @@ function handle(io) {
    *        "owner": "alpha"
    *        "isActive": true,
    *        "stationName:" "North forest",
-   *        "boost": 137
+   *        "signalValue": 137
    *      }, {
    *        "stationId": 2,
    *        "owner": "beta"
    *        "isActive": fale,
    *        "stationName:" "West bunker",
-   *        "boost": 66
-   *      }]
+   *        "signalValue": 66
+   *      }
    *    }
    *  }
    */
@@ -67,23 +67,13 @@ function handle(io) {
     const auth = req.headers.authorization || '';
 
     jwt.verify(auth, appConfig.jsonKey, (jwtErr, decoded) => {
-      if (jwtErr) {
-        res.status(500).json({
-          errors: [{
-            status: 500,
-            title: 'Internal Server Error',
-            detail: 'Internal Server Error',
-          }],
-        });
-
-        return;
-      } else if (!decoded) {
+      if (jwtErr || !decoded) {
         res.status(401).json({
-          errors: [{
+          error: {
             status: 401,
             title: 'Unauthorized',
             detail: 'Invalid token',
-          }],
+          },
         });
 
         return;
@@ -93,11 +83,11 @@ function handle(io) {
         callback: ({ error, data }) => {
           if (error) {
             res.status(500).json({
-              errors: [{
+              error: {
                 status: 500,
                 title: 'Internal Server Error',
                 detail: 'Internal Server Error',
-              }],
+              },
             });
 
             return;
@@ -113,7 +103,7 @@ function handle(io) {
 
   /**
    * @api {post} /lanternStations Create a lantern station
-   * @apiVersion 5.1.0
+   * @apiVersion 6.0.0
    * @apiName CreateLanternStation
    * @apiGroup LanternStations
    *
@@ -146,18 +136,19 @@ function handle(io) {
    *        "stationId": 1,
    *        "stationName": "North forest,
    *        "isActive": true,
+   *        "signalValue": 0
    *      }
    *    }
    *  }
    */
   router.post('/', (req, res) => {
-    if (!objectValidator.isValidData(req.body, { data: { station: { stationId: true, stationName: true, isActive: true } } })) {
+    if (!objectValidator.isValidData(req.body, { data: { station: { stationId: true, stationName: true } } })) {
       res.status(400).json({
-        errors: [{
+        error: {
           status: 400,
           title: 'Missing data',
           detail: 'Unable to parse data',
-        }],
+        },
       });
 
       return;
@@ -167,23 +158,13 @@ function handle(io) {
     const auth = req.headers.authorization || '';
 
     jwt.verify(auth, appConfig.jsonKey, (jwtErr, decoded) => {
-      if (jwtErr) {
-        res.status(500).json({
-          errors: [{
-            status: 500,
-            title: 'Internal Server Error',
-            detail: 'Internal Server Error',
-          }],
-        });
-
-        return;
-      } else if (!decoded || decoded.data.accessLevel < dbConfig.apiCommands.CreateLanternStation.accessLevel) {
+      if (jwtErr || !decoded || decoded.data.accessLevel < dbConfig.apiCommands.CreateLanternStation.accessLevel) {
         res.status(401).json({
-          errors: [{
+          error: {
             status: 401,
             title: 'Unauthorized',
             detail: 'Invalid token',
-          }],
+          },
         });
 
         return;
@@ -196,23 +177,23 @@ function handle(io) {
         callback: ({ error, data }) => {
           if (error) {
             if (error.type === errorCreator.ErrorTypes.ALREADYEXISTS) {
-              res.status(404).json({
-                errors: [{
-                  status: 404,
+              res.status(403).json({
+                error: {
+                  status: 403,
                   title: 'Station already exists',
                   detail: `Station with id ${station.stationId} already exists`,
-                }],
+                },
               });
 
               return;
             }
 
             res.status(500).json({
-              errors: [{
+              error: {
                 status: 500,
                 title: 'Internal Server Error',
                 detail: 'Internal Server Error',
-              }],
+              },
             });
 
             return;
@@ -227,7 +208,7 @@ function handle(io) {
 
   /**
    * @api {post} /lanternStations/:id Update an existing lantern station
-   * @apiVersion 5.1.0
+   * @apiVersion 6.0.0
    * @apiName UpdateLanternStation
    * @apiGroup LanternStations
    *
@@ -242,9 +223,9 @@ function handle(io) {
    * @apiParam {string} [data.station.stationName] Location name of the station
    * @apiParam {boolean} [data.station.isActive] Is the station active?
    * @apiParam {boolean} [data.station.owner] Owner name of the station
-   * @apiParam {Object} [data.attacker] Attacker object. data.station.owner will be ignored if data.attacker is set
-   * @apiParam {string} data.attacker.name Name of the attacker that is trying to take over the station
-   * @apiParam {string} data.attacker.time Amount of time till the attack succeeds.
+   * @apiParam {Object} [data.station.attacker] Attacker object. data.station.owner will be ignored if data.attacker is set
+   * @apiParam {string} data.station.attacker.name Name of the attacker that is trying to take over the station
+   * @apiParam {string} data.station.attacker.time Amount of time till the attack succeeds.
    * @apiParamExample {json} Request-Example:
    *   {
    *    "data": {
@@ -268,6 +249,7 @@ function handle(io) {
    *        "stationId": 1,
    *        "stationName": "North forest",
    *        "isActive": true,
+   *        "signalValue": 0,
    *        "attacker": {
    *          "name": "Bad peoples",
    *          "time": "time": "2016-10-14T09:54:18.694Z"
@@ -279,21 +261,21 @@ function handle(io) {
   router.post('/:id', (req, res) => {
     if (!objectValidator.isValidData(req.params, { id: true })) {
       res.status(400).json({
-        errors: [{
+        error: {
           status: 400,
           title: 'Missing data',
           detail: 'Unable to parse data',
-        }],
+        },
       });
 
       return;
     } else if (!objectValidator.isValidData(req.body, { data: { station: true } })) {
       res.status(400).json({
-        errors: [{
+        error: {
           status: 400,
           title: 'Incorrect data',
           detail: 'Unable to parse data',
-        }],
+        },
       });
 
       return;
@@ -303,84 +285,54 @@ function handle(io) {
     const auth = req.headers.authorization || '';
 
     jwt.verify(auth, appConfig.jsonKey, (jwtErr, decoded) => {
-      if (jwtErr) {
-        res.status(500).json({
-          errors: [{
-            status: 500,
-            title: 'Internal Server Error',
-            detail: 'Internal Server Error',
-          }],
-        });
-
-        return;
-      } else if (!decoded || decoded.data.accessLevel < dbConfig.apiCommands.UpdateLanternStation.accessLevel) {
+      if (jwtErr || !decoded || decoded.data.accessLevel < dbConfig.apiCommands.UpdateLanternStation.accessLevel) {
         res.status(401).json({
-          errors: [{
+          error: {
             status: 401,
             title: 'Unauthorized',
             detail: 'Invalid token',
-          }],
+          },
         });
 
         return;
       }
 
-      const station = req.body.data.station;
-      station.stationId = req.params.id;
+      const { attacker, isActive, stationName, owner } = req.body.data.station;
+      const stationId = req.params.id;
 
-      dbLanternHack.getStation({
-        stationId: station.stationId,
-        callback: ({ error }) => {
-          if (error) {
-            if (error.type === errorCreator.ErrorTypes.DOESNOTEXIST) {
+      dbLanternHack.updateLanternStation({
+        attacker,
+        stationId,
+        isActive,
+        stationName,
+        owner,
+        callback: ({ error: updateError, data: updateData }) => {
+          if (updateError) {
+            if (updateError.type === errorCreator.ErrorTypes.DOESNOTEXIST) {
               res.status(404).json({
-                errors: [{
+                error: {
                   status: 404,
-                  title: 'Failed to update lantern station',
+                  title: 'Lantern station does not exist',
                   detail: 'Lantern station does not exist',
-                }],
+                },
               });
 
               return;
             }
 
             res.status(500).json({
-              errors: [{
+              error: {
                 status: 500,
                 title: 'Internal Server Error',
                 detail: 'Internal Server Error',
-              }],
+              },
             });
 
             return;
           }
 
-          const attacker = req.body.data.attacker;
-          const { stationId, isActive, stationName, owner } = station;
-
-          dbLanternHack.updateLanternStation({
-            attacker,
-            stationId,
-            isActive,
-            stationName,
-            owner,
-            callback: ({ error: updateError, data: updateData }) => {
-              if (updateError) {
-                res.status(500).json({
-                  errors: [{
-                    status: 500,
-                    title: 'Internal Server Error',
-                    detail: 'Internal Server Error',
-                  }],
-                });
-
-                return;
-              }
-
-              io.emit('lanternStations', { stations: [updateData.data.station] });
-              res.json({ data: { station: updateData.station } });
-            },
-          });
+          io.emit('lanternStations', { stations: [updateData.station] });
+          res.json({ data: { station: updateData.station } });
         },
       });
     });

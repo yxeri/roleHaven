@@ -22,8 +22,12 @@ const chai = require('chai');
 const chaiHttp = require('chai-http');
 const app = require('../../app');
 const chaiJson = require('chai-json-schema');
-const schemas = require('./helper/schemas');
-const helperData = require('./helper/data');
+const userSchemas = require('./schemas/users');
+const authenticateSchemas = require('./schemas/authentications');
+const successSchemas = require('./schemas/successes');
+const errorSchemas = require('./schemas/errors');
+const testData = require('./helper/testData');
+const tokens = require('./helper/starter').tokens;
 
 chai.should();
 
@@ -31,63 +35,46 @@ chai.use(chaiHttp);
 chai.use(chaiJson);
 
 describe('Users', () => {
-  // jwt token
-  let adminToken = '';
   let newUserToken = '';
 
-  before(`Authenticate ${helperData.adminUser.userName}`, (done) => {
-    chai
-      .request(app)
-      .post('/api/authenticate')
-      .send({ data: { user: helperData.adminUser } })
-      .end((error, response) => {
-        response.should.have.status(200);
-        response.should.be.json;
-        response.body.should.be.jsonSchema(schemas.authenticate);
-
-        adminToken = response.body.data.token;
-
-        done();
-      });
-  });
-
-  describe('User creation', () => {
-    it(`Should create user ${helperData.newUser.userName} by user ${helperData.adminUser.userName} on /users POST`, (done) => {
+  describe('Create user', () => {
+    it('Should create user on /users POST', (done) => {
       chai
         .request(app)
         .post('/api/users')
-        .set('Authorization', adminToken)
-        .send({ data: { user: helperData.newUser } })
+        .set('Authorization', tokens.admin)
+        .send({ data: { user: testData.userNew } })
         .end((error, response) => {
           response.should.have.status(200);
           response.should.be.json;
-          response.body.should.be.jsonSchema(schemas.user);
+          response.body.should.be.jsonSchema(userSchemas.user);
           done();
         });
     });
 
-    it(`Should NOT create user ${helperData.normalUser.userName} with incorrect authorization on /users POST`, (done) => {
+    it(`Should NOT create user ${testData.userNormal.userName} with incorrect authorization on /users POST`, (done) => {
       chai
         .request(app)
         .post('/api/users')
-        .set('Authorization', helperData.incorrectJwt)
-        .send({ data: { user: helperData.normalUser } })
+        .set('Authorization', testData.incorrectJwt)
+        .send({ data: { user: testData.userNormal } })
         .end((error, response) => {
           response.should.have.status(401);
           response.should.be.json;
+          response.body.should.be.jsonSchema(errorSchemas.error);
           done();
         });
     });
 
-    after(`Authenticate ${helperData.newUser.userName}`, (done) => {
+    after(`Authenticate ${testData.userNew.userName}`, (done) => {
       chai
         .request(app)
         .post('/api/authenticate')
-        .send({ data: { user: helperData.newUser } })
+        .send({ data: { user: testData.userNew } })
         .end((error, response) => {
           response.should.have.status(200);
           response.should.be.json;
-          response.body.should.be.jsonSchema(schemas.authenticate);
+          response.body.should.be.jsonSchema(authenticateSchemas.authenticate);
 
           newUserToken = response.body.data.token;
 
@@ -97,15 +84,15 @@ describe('Users', () => {
   });
 
   describe('Request password recovery', () => {
-    it(`Should create and send password reset to existing user with mail ${helperData.adminUser.mail} on /users/:id/resetPassword POST`, (done) => {
+    it('Should create and send password reset to existing user by mail on /users/:id/resetPassword POST', (done) => {
       chai
         .request(app)
-        .post(`/api/users/${helperData.adminUser.mail}/resetPassword`)
-        .set('Authorization', adminToken)
+        .post(`/api/users/${testData.userAdmin.mail}/resetPassword`)
+        .set('Authorization', tokens.admin)
         .end((error, response) => {
           response.should.have.status(200);
           response.should.be.json;
-          response.body.should.be.jsonSchema(schemas.success);
+          response.body.should.be.jsonSchema(successSchemas.success);
 
           done();
         });
@@ -114,39 +101,42 @@ describe('Users', () => {
     it('Should NOT create and send password reset with incorrect authorization on /users/:id/resetPassword POST', (done) => {
       chai
         .request(app)
-        .post(`/api/users/${helperData.adminUser.mail}/resetPassword`)
-        .set('Authorization', helperData.incorrectJwt)
+        .post(`/api/users/${testData.userAdmin.mail}/resetPassword`)
+        .set('Authorization', testData.incorrectJwt)
         .end((error, response) => {
           response.should.have.status(401);
           response.should.be.json;
+          response.body.should.be.jsonSchema(errorSchemas.error);
 
           done();
         });
     });
 
-    it(`Should NOT create and send password reset to non-existing user with mail ${helperData.fakeMail} on /users/:id/resetPassword POST`, (done) => {
+    it('Should NOT create and send password reset to non-existing user by mail on /users/:id/resetPassword POST', (done) => {
       chai
         .request(app)
-        .post(`/api/users/${helperData.fakeMail}/resetPassword`)
-        .set('Authorization', adminToken)
+        .post(`/api/users/${testData.fakeMail}/resetPassword`)
+        .set('Authorization', tokens.admin)
         .end((error, response) => {
           response.should.have.status(404);
           response.should.be.json;
+          response.body.should.be.jsonSchema(errorSchemas.error);
 
           done();
         });
     });
   });
 
-  describe('User listing', () => {
+  describe('List users', () => {
     it('Should NOT list users with incorrect authorization set on /users GET', (done) => {
       chai
         .request(app)
         .get('/api/users')
-        .set('Authorization', helperData.incorrectJwt)
+        .set('Authorization', testData.incorrectJwt)
         .end((error, response) => {
           response.should.have.status(401);
           response.should.be.json;
+          response.body.should.be.jsonSchema(errorSchemas.error);
 
           done();
         });
@@ -156,11 +146,11 @@ describe('Users', () => {
       chai
         .request(app)
         .get('/api/users')
-        .set('Authorization', adminToken)
+        .set('Authorization', tokens.admin)
         .end((error, response) => {
           response.should.have.status(200);
           response.should.be.json;
-          response.body.should.be.jsonSchema(schemas.users);
+          response.body.should.be.jsonSchema(userSchemas.users);
 
           // TODO Check that users retrieved have lower access level/visibility
 
@@ -168,39 +158,43 @@ describe('Users', () => {
         });
     });
 
-    it(`Should NOT retrive user ${helperData.adminUser.userName} with incorrect authorization set on /users/:id GET`, (done) => {
+    it('Should NOT list users with incorrect authorization set on /users/:id GET', (done) => {
       chai
         .request(app)
-        .get(`/api/users/${helperData.adminUser.userName}`)
+        .get(`/api/users/${testData.userAdmin.userName}`)
         .set('Authorization', 'incorrect')
         .end((error, response) => {
           response.should.have.status(401);
           response.should.be.json;
+          response.body.should.be.jsonSchema(errorSchemas.error);
           done();
         });
     });
+  });
 
+  describe('Get specific user', () => {
     it('Should retrieve own user on /users/:id GET', (done) => {
       chai
         .request(app)
-        .get(`/api/users/${helperData.adminUser.userName}`)
-        .set('Authorization', adminToken)
+        .get(`/api/users/${testData.userAdmin.userName}`)
+        .set('Authorization', tokens.admin)
         .end((error, response) => {
           response.should.have.status(200);
           response.should.be.json;
-          response.body.should.be.jsonSchema(schemas.user);
+          response.body.should.be.jsonSchema(userSchemas.user);
           done();
         });
     });
 
-    it(`Should NOT retrieve user ${helperData.adminUser.userName} by user ${helperData.newUser.userName} due to access level and/or visibility on /users/:id GET`, (done) => {
+    it('Should NOT get user with higher access level than user on /users/:id GET', (done) => {
       chai
         .request(app)
-        .get(`/api/users/${helperData.adminUser.userName}`)
+        .get(`/api/users/${testData.userAdmin.userName}`)
         .set('Authorization', newUserToken)
         .end((error, response) => {
           response.should.have.status(404);
           response.should.be.json;
+          response.body.should.be.jsonSchema(errorSchemas.error);
           done();
         });
     });

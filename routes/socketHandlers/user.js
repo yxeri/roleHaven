@@ -22,13 +22,12 @@ const manager = require('../../socketHelpers/manager');
 const appConfig = require('../../config/defaults/config').app;
 const objectValidator = require('../../utils/objectValidator');
 const errorCreator = require('../../objects/error/errorCreator');
-const textTools = require('../../utils/textTools');
 const jwt = require('jsonwebtoken');
 const dbDevice = require('../../db/connectors/device');
 const dbMailEvent = require('../../db/connectors/mailEvent');
 const mailer = require('../../socketHelpers/mailer');
 
-dbUser.removeAllUserBlockedBy(() => {});
+dbUser.removeAllUserBlockedBy({ callback: () => {} });
 
 /**
  * @param {object} socket Socket.IO socket
@@ -184,14 +183,6 @@ function handle(socket, io) {
       return;
     } else if (appConfig.disallowUserRegister) {
       callback({ error: new errorCreator.NotAllowed({ name: 'register disallowed' }) });
-
-      return;
-    } else if (!textTools.isAllowedFull(user.userName.toLowerCase())) {
-      callback({ error: new errorCreator.InvalidCharacters({ name: `User name: ${user.userName}` }) });
-
-      return;
-    } else if (user.userName.length > appConfig.userNameMaxLength || user.password.length > appConfig.passwordMaxLength || user.registerDevice.length > appConfig.deviceIdLength) {
-      callback({ error: new errorCreator.InvalidCharacters({ name: `User name length: ${appConfig.userNameMaxLength} Password length: ${appConfig.userNameMaxLength} Device length: ${appConfig.deviceIdLength}` }) });
 
       return;
     }
@@ -365,7 +356,6 @@ function handle(socket, io) {
 
         dbUser.updateUserSocketId({
           userName: allowedUser.userName,
-          socketId: '',
           callback: (socketData) => {
             if (socketData.error) {
               callback({ error: socketData.error });
@@ -451,7 +441,6 @@ function handle(socket, io) {
 
               dbUser.updateUserSocketId({
                 userName,
-                socketId: '',
                 callback: (updateData) => {
                   if (updateData.error) {
                     if (updateData.error.type === errorCreator.ErrorTypes.DOESNOTEXIST) {
@@ -618,7 +607,7 @@ function handle(socket, io) {
         }
 
         dbUser.getAllUsers({
-          includeInactive: includeInactive && allowedUser.accessLevel >= dbConfig.accessLevels.lowerAdmin,
+          includeInactive: includeInactive && allowedUser.accessLevel >= dbConfig.AccessLevels.LOWERADMIN,
           user: allowedUser,
           callback: (usersData) => {
             if (usersData.error) {
@@ -652,7 +641,7 @@ function handle(socket, io) {
         }
 
         dbUser.getAllUsers({
-          includeInactive: includeInactive && allowedUser.accessLevel >= dbConfig.accessLevels.lowerAdmin,
+          includeInactive: includeInactive && allowedUser.accessLevel >= dbConfig.AccessLevels.LOWERADMIN,
           user: allowedUser,
           callback: (usersData) => {
             if (usersData.error) {
@@ -687,7 +676,7 @@ function handle(socket, io) {
                   userName: currentUser.userName,
                 };
 
-                if (allowedUser.accessLevel >= dbConfig.accessLevels.lowerAdmin) {
+                if (allowedUser.accessLevel >= dbConfig.AccessLevels.LOWERADMIN) {
                   filteredUser.verified = currentUser.verified;
                   filteredUser.banned = currentUser.banned;
                   filteredUser.fullName = currentUser.fullName;

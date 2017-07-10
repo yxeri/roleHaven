@@ -19,16 +19,19 @@
 const mongoose = require('mongoose');
 const errorCreator = require('../../objects/error/errorCreator');
 const databaseConnector = require('../databaseConnector');
+const dbConfig = require('../../config/defaults/config').databasePopulation;
 
 const docFileSchema = new mongoose.Schema({
-  visibility: { type: Number, default: 0 },
+  visibility: { type: Number, default: dbConfig.AccessLevels.ANONYMOUS },
+  accessLevel: { type: Number, default: dbConfig.AccessLevels.ANONYMOUS },
   isPublic: { type: Boolean, default: true },
-  text: [String],
+  creator: { type: String, default: 'SYSTEM' },
+  accessUsers: { type: [String], default: [] },
+  accessGroups: { type: [String], default: [] },
   docFileId: { type: String, unique: true },
   title: { type: String, unique: true },
-  creator: { type: String, default: 'SYSTEM' },
+  text: [String],
   team: String,
-  accessUsers: [String],
 }, { collection: 'docFiles' });
 
 const DocFile = mongoose.model('DocFile', docFileSchema);
@@ -40,7 +43,12 @@ const DocFile = mongoose.model('DocFile', docFileSchema);
  */
 function createDocFile({ docFile, callback }) {
   const newDocFile = new DocFile(docFile);
-  const query = { docFileId: docFile.docFileId };
+  const query = {
+    $or: [
+      { docFileId: docFile.docFileId },
+      { title: docFile.title },
+    ],
+  };
 
   DocFile.findOne(query).lean().exec((err, foundDocFile) => {
     if (err) {
@@ -48,25 +56,33 @@ function createDocFile({ docFile, callback }) {
 
       return;
     } else if (foundDocFile) {
-      callback({ error: new errorCreator.AlreadyExists({ name: `docfile ${docFile.docFileId}` }) });
+      callback({ error: new errorCreator.AlreadyExists({ name: `Docfile ${docFile.docFileId}. Title ${docFile.title}` }) });
 
       return;
     }
 
     databaseConnector.saveObject({
-      callback,
       object: newDocFile,
       objectType: 'docFile',
+      callback: (savedData) => {
+        if (savedData.error) {
+          callback({ error: savedData.error });
+
+          return;
+        }
+
+        callback({ data: { docFile: savedData.data.savedObject } });
+      },
     });
   });
 }
 
 /**
- * Set text on docFile
+ * Update docFile
  * @param {string} params.docFileId ID of docFile
  * @param {string[]} [params.text] Array with text
  * @param {string} [params.title] Title
- * @param {number} [params.visibility] Access level required to access the document
+ * @param {number} [params.visibility] Minimum access level required to see document
  * @param {boolean} [params.isPublic] Is the document visible to the public?
  * @param {Function} params.callback Callback
  */
@@ -114,28 +130,17 @@ function addAccessUser({ docFileId, userName, callback }) {
 }
 
 /**
- * Get docFile by docFile ID and user access level
+ * Get docFile by docFile ID
  * @param {string} params.docFileId ID of docFile
- * @param {string} params.title Title of the docfile
- * @param {string} params.team Retrieves user team
- * @param {number} params.accessLevel User access level
+ * @param {Object} params.user User retrieving docfile
  * @param {Function} params.callback Callback
  */
-function getDocFile({ title, team, docFileId, accessLevel, callback }) {
+function getDocFileById({ docFileId, user, callback }) {
   const query = {
+    docFileId,
     $or: [
-      {
-        $and: [
-          { visibility: { $lte: accessLevel } },
-          { docFileId },
-        ],
-      }, {
-        $and: [
-          { visibility: { $lte: accessLevel } },
-          { title },
-          { team },
-        ],
-      },
+      { accessLevel: { $lte: user.accessLevel } },
+      { accessUsers: { $in: [user.userName] } },
     ],
   };
 
@@ -155,20 +160,28 @@ function getDocFile({ title, team, docFileId, accessLevel, callback }) {
 }
 
 /**
- * Get list of docFiles, based on user access level
+ * Get list of docFiles
  * @param {number} params.accessLevel Access level
+ * @param {string} params.userName User name
  * @param {Function} params.callback Callback
  */
 function getDocFilesList({ accessLevel, userName, callback }) {
   const query = {
-    $or: [
-      { visibility: { $lte: accessLevel } },
-      { owner: userName },
+    $and: [
+      { $or: [
+        { isPublic: true },
+        { accessLevel: { $lte: accessLevel } },
+      ] },
+      { $or: [
+        { isPublic: true },
+        { visibility: { $lte: accessLevel } },
+        { creator: userName },
+      ] },
     ],
   };
-  const filter = { _id: 0, text: 0 };
+  const filter = { _id: 0, text: 0, visibility: 0, accessLevel: 0 };
 
-  DocFile.find(query, filter).lean().exec((err, docFiles) => {
+  DocFile.find(query, filter).lean().exec((err, docFiles = []) => {
     if (err) {
       callback({ error: new errorCreator.Database({ errorObject: err, name: 'getDocFilesList' }) });
 
@@ -180,7 +193,7 @@ function getDocFilesList({ accessLevel, userName, callback }) {
 }
 
 exports.createDocFile = createDocFile;
-exports.getDocFile = getDocFile;
+exports.getDocFileById = getDocFileById;
 exports.getDocFilesList = getDocFilesList;
 exports.updateDocFile = updateDocFile;
 exports.addAccessUser = addAccessUser;

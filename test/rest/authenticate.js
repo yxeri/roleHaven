@@ -22,8 +22,9 @@ const chai = require('chai');
 const chaiHttp = require('chai-http');
 const app = require('../../app');
 const chaiJson = require('chai-json-schema');
-const schemas = require('./helper/schemas');
-const helperData = require('./helper/data');
+const authenticateSchemas = require('./schemas/authentications');
+const errorSchemas = require('./schemas/errors');
+const testData = require('./helper/testData');
 
 chai.should();
 
@@ -35,11 +36,11 @@ describe('Authenticate', () => {
     chai
       .request(app)
       .post('/api/authenticate')
-      .send({ data: { user: helperData.adminUser } })
+      .send({ data: { user: testData.userAdmin } })
       .end((error, response) => {
         response.should.have.status(200);
         response.should.be.json;
-        response.body.should.be.jsonSchema(schemas.authenticate);
+        response.body.should.be.jsonSchema(authenticateSchemas.authenticate);
         done();
       });
   });
@@ -48,10 +49,12 @@ describe('Authenticate', () => {
     chai
       .request(app)
       .post('/api/authenticate')
-      .send({ data: { user: helperData.unverifiedUser } })
+      .send({ data: { user: testData.userUnverified } })
       .end((error, response) => {
         response.should.have.status(401);
         response.should.be.json;
+        response.body.should.be.jsonSchema(errorSchemas.error);
+
         done();
       });
   });
@@ -60,10 +63,12 @@ describe('Authenticate', () => {
     chai
       .request(app)
       .post('/api/authenticate')
-      .send({ data: { user: helperData.bannedUser } })
+      .send({ data: { user: testData.userBanned } })
       .end((error, response) => {
         response.should.have.status(401);
         response.should.be.json;
+        response.body.should.be.jsonSchema(errorSchemas.error);
+
         done();
       });
   });
