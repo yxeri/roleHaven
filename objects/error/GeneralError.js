@@ -58,7 +58,7 @@ class GeneralError {
     this.text = text;
     this.type = type;
 
-    if ((appConfig.mode !== 'test' || appConfig.verboseError) && verbose) {
+    if (appConfig.mode !== 'test' && verbose) {
       winston.error(`Error Type: ${type}. `, text.join(' '));
       printError(errorObject);
     }
