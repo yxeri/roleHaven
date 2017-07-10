@@ -291,6 +291,18 @@ function handle(io) {
         position,
         callback: ({ error, data }) => {
           if (error) {
+            if (error.type === errorCreator.ErrorTypes.DOESNOTEXIST) {
+              res.status(404).json({
+                error: {
+                  status: 404,
+                  title: 'User does not exist',
+                  detail: 'User does not exist',
+                },
+              });
+
+              return;
+            }
+
             res.status(500).json({
               error: {
                 status: 500,
