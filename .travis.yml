@@ -4,7 +4,7 @@ node_js:
 - '7'
 
 env:
-- CXX=g++-4.8 MODE=test
+- CXX=g++-4.8 MODE=test VERBOSEERROR=true
 
 services:
 - mongodb

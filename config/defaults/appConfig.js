@@ -32,6 +32,7 @@ const forceFullscreenEnv = textTools.convertToBoolean(process.env.FORCEFULLSCREE
 const gpsTrackingEnv = textTools.convertToBoolean(process.env.GPSTRACKING);
 const teamVerifyEnv = textTools.convertToBoolean(process.env.TEAMVERIFY);
 const disallowRegisterEnv = textTools.convertToBoolean(process.env.DISALLOWUSERREGISTER);
+const verboseErrorEnv = textTools.convertToBoolean(process.env.VERBOSEERROR);
 
 /**
  * Name of the system. Human-readable name that will be sent to clients, such as in the subject field of mail or page title
@@ -277,6 +278,8 @@ config.maxUserWarnings = process.env.MAXUSERWARNINGS || config.maxUserWarnings |
 config.minimumPositionAccuracy = process.env.MINIMUMPOSITIONACCURACY || config.minimumPositionAccuracy || 70;
 
 config.maxPositionAge = process.env.MAXPOSITIONAGE || config.maxPositionAge || 2;
+
+config.verboseError = verboseErrorEnv !== undefined ? verboseErrorEnv : config.verboseError || true;
 
 /**
  * Secret key used for Mailgun
