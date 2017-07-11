@@ -6,15 +6,19 @@ node_js:
 env:
 - CXX=g++-4.8 MODE=test VERBOSEERROR=true
 
-services:
-- mongodb
-
 addons:
   apt:
     sources:
     - ubuntu-toolchain-r-test
+    - mongodb-upstart
+    - mongodb-3.2-precise
     packages:
     - g++-4.8
+    - mongodb-org-server
+    - mongodb-org-shell
+
+services:
+- mongodb
 
 cache:
   directories:

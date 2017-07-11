@@ -24,7 +24,7 @@ const winston = require('winston');
 
 const dbPath = `mongodb://${appConfig.dbHost}:${appConfig.dbPort}/${appConfig.dbName}`;
 
-mongoose.connect(dbPath, (err) => {
+mongoose.connect(dbPath, { useMongoClient: true }, (err) => {
   if (err) {
     winston.emerg('Failed to connect to the database');
 
