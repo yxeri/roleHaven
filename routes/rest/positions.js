@@ -280,6 +280,8 @@ function handle(io) {
         return;
       }
 
+      console.log('up pos', jwtErr, decoded);
+
       const position = req.body.data.position;
       position.lastUpdated = new Date();
       position.positionName = decoded.data.userName;
