@@ -280,8 +280,6 @@ function handle(io) {
         return;
       }
 
-      console.log('up pos', jwtErr, decoded);
-
       const position = req.body.data.position;
       position.lastUpdated = new Date();
       position.positionName = decoded.data.userName;
@@ -289,9 +287,12 @@ function handle(io) {
       position.markerType = 'user';
       position.coordinates.accuracy = position.coordinates.accuracy || appConfig.minimumPositionAccuracy / 2;
 
+      console.log('pos err', jwtErr, 'decode', decoded, 'data', req.body.data, 'pos', position);
+
       dbPosition.updatePosition({
         position,
         callback: ({ error, data }) => {
+          console.log('get pos', error, 'get data', data);
           if (error) {
             if (error.type === errorCreator.ErrorTypes.DOESNOTEXIST) {
               res.status(404).json({
