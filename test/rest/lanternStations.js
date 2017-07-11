@@ -24,51 +24,21 @@ const app = require('../../app');
 const chaiJson = require('chai-json-schema');
 const lanternStationSchemas = require('./schemas/lanternStations');
 const errorSchemas = require('./schemas/errors');
-const testData = require('./helper/testData');
-const tokens = require('./0- starter').tokens;
+const lanternStationData = require('./testData/lanternStations');
+const tokens = require('./testData/tokens');
 
 chai.should();
 chai.use(chaiHttp);
 chai.use(chaiJson);
 
 describe('LanternStations', () => {
-  describe('List lantern stations', () => {
-    it('Should NOT list lantern stations with incorrect authorization on /lanternStations GET', (done) => {
-      chai
-        .request(app)
-        .get('/api/lanternStations')
-        .set('Authorization', testData.incorrectJwt)
-        .end((error, response) => {
-          response.should.have.status(401);
-          response.should.be.json;
-          response.body.should.be.jsonSchema(errorSchemas.error);
-
-          done();
-        });
-    });
-
-    it('Should retrieve lantern stations on /lanternStations GET', (done) => {
-      chai
-        .request(app)
-        .get('/api/lanternStations')
-        .set('Authorization', tokens.admin)
-        .end((error, response) => {
-          response.should.have.status(200);
-          response.should.be.json;
-          response.body.should.be.jsonSchema(lanternStationSchemas.lanternStations);
-
-          done();
-        });
-    });
-  });
-
   describe('Create lantern station', () => {
     it('Should NOT create lantern station with incorrect authorization on /lanternStations POST', (done) => {
       chai
         .request(app)
         .post('/api/lanternStations')
-        .send({ data: { station: testData.lanternStationNew } })
-        .set('Authorization', testData.incorrectJwt)
+        .send({ data: { station: lanternStationData.lanternStationToCreate } })
+        .set('Authorization', tokens.incorrectJwt)
         .end((error, response) => {
           response.should.have.status(401);
           response.should.be.json;
@@ -82,8 +52,8 @@ describe('LanternStations', () => {
       chai
         .request(app)
         .post('/api/lanternStations/')
-        .send({ data: { station: testData.lanternStationNew } })
-        .set('Authorization', tokens.admin)
+        .send({ data: { station: lanternStationData.lanternStationToCreate } })
+        .set('Authorization', tokens.adminUser)
         .end((error, response) => {
           response.should.have.status(200);
           response.should.be.json;
@@ -97,12 +67,42 @@ describe('LanternStations', () => {
       chai
         .request(app)
         .post('/api/lanternStations/')
-        .send({ data: { station: testData.lanternStationNew } })
-        .set('Authorization', tokens.admin)
+        .send({ data: { station: lanternStationData.lanternStationToCreate } })
+        .set('Authorization', tokens.adminUser)
         .end((error, response) => {
           response.should.have.status(403);
           response.should.be.json;
           response.body.should.be.jsonSchema(errorSchemas.error);
+
+          done();
+        });
+    });
+  });
+
+  describe('List lantern stations', () => {
+    it('Should NOT list lantern stations with incorrect authorization on /lanternStations GET', (done) => {
+      chai
+        .request(app)
+        .get('/api/lanternStations')
+        .set('Authorization', tokens.incorrectJwt)
+        .end((error, response) => {
+          response.should.have.status(401);
+          response.should.be.json;
+          response.body.should.be.jsonSchema(errorSchemas.error);
+
+          done();
+        });
+    });
+
+    it('Should retrieve lantern stations on /lanternStations GET', (done) => {
+      chai
+        .request(app)
+        .get('/api/lanternStations')
+        .set('Authorization', tokens.adminUser)
+        .end((error, response) => {
+          response.should.have.status(200);
+          response.should.be.json;
+          response.body.should.be.jsonSchema(lanternStationSchemas.lanternStations);
 
           done();
         });
@@ -114,8 +114,8 @@ describe('LanternStations', () => {
       chai
         .request(app)
         .post('/api/lanternStations/')
-        .send({ data: { station: testData.lanternStationToModify } })
-        .set('Authorization', tokens.admin)
+        .send({ data: { station: lanternStationData.lanternStationToCreateAndModify } })
+        .set('Authorization', tokens.adminUser)
         .end((error, response) => {
           response.should.have.status(200);
           response.should.be.json;
@@ -128,9 +128,9 @@ describe('LanternStations', () => {
     it('Should NOT update lantern station with incorrect authorization on /lanternStations/:id POST', (done) => {
       chai
         .request(app)
-        .post(`/api/lanternStations/${testData.lanternStationToModify.stationId}`)
-        .send({ data: { station: testData.lanternStationToModifyOwner } })
-        .set('Authorization', testData.incorrectJwt)
+        .post(`/api/lanternStations/${lanternStationData.lanternStationToCreateAndModify.stationId}`)
+        .send({ data: { station: lanternStationData.lanternStationWithNewOwner } })
+        .set('Authorization', tokens.incorrectJwt)
         .end((error, response) => {
           response.should.have.status(401);
           response.should.be.json;
@@ -143,9 +143,9 @@ describe('LanternStations', () => {
     it('Should update owner on lantern station on /lanternStations/:id POST', (done) => {
       chai
         .request(app)
-        .post(`/api/lanternStations/${testData.lanternStationToModify.stationId}`)
-        .send({ data: { station: testData.lanternStationToModifyOwner } })
-        .set('Authorization', tokens.admin)
+        .post(`/api/lanternStations/${lanternStationData.lanternStationToCreateAndModify.stationId}`)
+        .send({ data: { station: lanternStationData.lanternStationWithNewOwner } })
+        .set('Authorization', tokens.adminUser)
         .end((error, response) => {
           response.should.have.status(200);
           response.should.be.json;
@@ -158,9 +158,9 @@ describe('LanternStations', () => {
     it('Should update attacker on lantern station on /lanternStations/:id POST', (done) => {
       chai
         .request(app)
-        .post(`/api/lanternStations/${testData.lanternStationToModify.stationId}`)
-        .send({ data: { station: testData.lanternStationToModifyAttacker } })
-        .set('Authorization', tokens.admin)
+        .post(`/api/lanternStations/${lanternStationData.lanternStationToCreateAndModify.stationId}`)
+        .send({ data: { station: lanternStationData.lanternStationWithNewAttacker } })
+        .set('Authorization', tokens.adminUser)
         .end((error, response) => {
           response.should.have.status(200);
           response.should.be.json;
@@ -173,9 +173,9 @@ describe('LanternStations', () => {
     it('Should NOT update non-existing lantern station /lanternStations/:id POST', (done) => {
       chai
         .request(app)
-        .post(`/api/lanternStations/${testData.lanternStationDoesNotExist.stationId}`)
-        .send({ data: { station: testData.lanternStationToModifyOwner } })
-        .set('Authorization', tokens.admin)
+        .post(`/api/lanternStations/${lanternStationData.lanternStationThatDoesNotExist.stationId}`)
+        .send({ data: { station: lanternStationData.lanternStationWithNewOwner } })
+        .set('Authorization', tokens.adminUser)
         .end((error, response) => {
           response.should.have.status(404);
           response.should.be.json;

@@ -24,8 +24,7 @@ const app = require('../../app');
 const chaiJson = require('chai-json-schema');
 const calibrationMissionSchemas = require('./schemas/calibrationMissions');
 const errorSchemas = require('./schemas/errors');
-const testData = require('./helper/testData');
-const tokens = require('./0- starter').tokens;
+const tokens = require('./testData/tokens');
 
 chai.should();
 chai.use(chaiHttp);
@@ -37,7 +36,7 @@ describe('CalibrationMissions', () => {
       chai
         .request(app)
         .get('/api/calibrationMissions')
-        .set('Authorization', testData.incorrectJwt)
+        .set('Authorization', tokens.incorrectJwt)
         .end((error, response) => {
           response.should.have.status(401);
           response.should.be.json;
@@ -51,7 +50,7 @@ describe('CalibrationMissions', () => {
       chai
         .request(app)
         .get('/api/calibrationMissions')
-        .set('Authorization', tokens.admin)
+        .set('Authorization', tokens.adminUser)
         .end((error, response) => {
           response.should.have.status(200);
           response.should.be.json;
@@ -69,7 +68,7 @@ describe('CalibrationMissions', () => {
       chai
         .request(app)
         .get('/api/calibrationMissions')
-        .set('Authorization', tokens.admin)
+        .set('Authorization', tokens.adminUser)
         .end((error, response) => {
           response.should.have.status(200);
           response.should.be.json;
@@ -85,7 +84,7 @@ describe('CalibrationMissions', () => {
       chai
         .request(app)
         .post('/api/calibrationMissions/complete')
-        .set('Authorization', testData.incorrectJwt)
+        .set('Authorization', tokens.incorrectJwt)
         .send({ data: { mission: calibrationMission } })
         .end((error, response) => {
           response.should.have.status(401);
@@ -100,7 +99,7 @@ describe('CalibrationMissions', () => {
       chai
         .request(app)
         .post('/api/calibrationMissions/complete')
-        .set('Authorization', tokens.admin)
+        .set('Authorization', tokens.adminUser)
         .send({ data: { mission: calibrationMission } })
         .end((error, response) => {
           response.should.have.status(200);
@@ -115,7 +114,7 @@ describe('CalibrationMissions', () => {
       chai
         .request(app)
         .get('/api/calibrationMissions')
-        .set('Authorization', tokens.admin)
+        .set('Authorization', tokens.adminUser)
         .end((error, response) => {
           response.should.have.status(200);
           response.should.be.json;
@@ -130,7 +129,7 @@ describe('CalibrationMissions', () => {
       chai
         .request(app)
         .get('/api/calibrationMissions')
-        .set('Authorization', tokens.admin)
+        .set('Authorization', tokens.adminUser)
         .end((error, response) => {
           response.should.have.status(200);
           response.should.be.json;
@@ -149,7 +148,7 @@ describe('CalibrationMissions', () => {
       chai
         .request(app)
         .get('/api/calibrationMissions')
-        .set('Authorization', tokens.admin)
+        .set('Authorization', tokens.adminUser)
         .end((error, response) => {
           response.should.have.status(200);
           response.should.be.json;
@@ -165,7 +164,7 @@ describe('CalibrationMissions', () => {
       chai
         .request(app)
         .post('/api/calibrationMissions/cancel')
-        .set('Authorization', testData.incorrectJwt)
+        .set('Authorization', tokens.incorrectJwt)
         .send({ data: { mission: calibrationMission } })
         .end((error, response) => {
           response.should.have.status(401);
@@ -180,7 +179,7 @@ describe('CalibrationMissions', () => {
       chai
         .request(app)
         .post('/api/calibrationMissions/cancel')
-        .set('Authorization', tokens.admin)
+        .set('Authorization', tokens.adminUser)
         .send({ data: { mission: calibrationMission } })
         .end((error, response) => {
           response.should.have.status(200);
@@ -195,7 +194,7 @@ describe('CalibrationMissions', () => {
       chai
         .request(app)
         .post('/api/calibrationMissions/cancel')
-        .set('Authorization', tokens.admin)
+        .set('Authorization', tokens.adminUser)
         .send({ data: { mission: calibrationMission } })
         .end((error, response) => {
           response.should.have.status(404);
@@ -210,7 +209,7 @@ describe('CalibrationMissions', () => {
       chai
         .request(app)
         .get('/api/calibrationMissions')
-        .set('Authorization', tokens.admin)
+        .set('Authorization', tokens.adminUser)
         .end((error, response) => {
           response.should.have.status(200);
           response.should.be.json;
@@ -226,7 +225,7 @@ describe('CalibrationMissions', () => {
       chai
         .request(app)
         .get('/api/calibrationMissions')
-        .set('Authorization', tokens.admin)
+        .set('Authorization', tokens.adminUser)
         .end((error, response) => {
           response.should.have.status(200);
           response.should.be.json;

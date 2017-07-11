@@ -25,20 +25,20 @@ const chaiJson = require('chai-json-schema');
 const historySchemas = require('./schemas/histories');
 const roomSchemas = require('./schemas/rooms');
 const errorSchemas = require('./schemas/errors');
-const testData = require('./helper/testData');
-const tokens = require('./0- starter').tokens;
+const tokens = require('./testData/tokens');
+const historyData = require('./testData/histories');
 
 chai.should();
 chai.use(chaiHttp);
 chai.use(chaiJson);
 
 describe('Histories', () => {
-  before(`Create ${testData.roomNewHistory.roomName} room`, (done) => {
+  before(`Create ${historyData.roomToCreate.roomName} room`, (done) => {
     chai
       .request(app)
       .post('/api/rooms')
-      .set('Authorization', tokens.admin)
-      .send({ data: { room: testData.roomNewHistory } })
+      .set('Authorization', tokens.adminUser)
+      .send({ data: { room: historyData.roomToCreate } })
       .end((error, response) => {
         response.should.have.status(200);
         response.should.be.json;
@@ -48,12 +48,12 @@ describe('Histories', () => {
       });
   });
 
-  before(`Create ${testData.roomHistoryUnfollowed.roomName} room`, (done) => {
+  before(`Create ${historyData.unfollowedRoomToCreate.roomName} room`, (done) => {
     chai
       .request(app)
       .post('/api/rooms')
-      .set('Authorization', tokens.normal)
-      .send({ data: { room: testData.roomHistoryUnfollowed } })
+      .set('Authorization', tokens.basicUser)
+      .send({ data: { room: historyData.unfollowedRoomToCreate } })
       .end((error, response) => {
         response.should.have.status(200);
         response.should.be.json;
@@ -67,8 +67,8 @@ describe('Histories', () => {
     it('Should NOT retrieve specific history with incorrect authorization on /histories/:id GET', (done) => {
       chai
         .request(app)
-        .get(`/api/histories/${testData.roomNewHistory.roomName}`)
-        .set('Authorization', testData.incorrectJwt)
+        .get(`/api/histories/${historyData.roomToCreate.roomName}`)
+        .set('Authorization', tokens.incorrectJwt)
         .end((error, response) => {
           response.should.have.status(401);
           response.should.be.json;
@@ -81,8 +81,8 @@ describe('Histories', () => {
     it('Should retrieve specific history from followed room on /histories/:id GET', (done) => {
       chai
         .request(app)
-        .get(`/api/histories/${testData.roomNewHistory.roomName}`)
-        .set('Authorization', tokens.admin)
+        .get(`/api/histories/${historyData.roomToCreate.roomName}`)
+        .set('Authorization', tokens.adminUser)
         .end((error, response) => {
           response.should.have.status(200);
           response.should.be.json;
@@ -95,8 +95,8 @@ describe('Histories', () => {
     it('Should NOT retrieve specific history from unfollowed room on /histories/:id GET', (done) => {
       chai
         .request(app)
-        .get(`/api/histories/${testData.roomHistoryUnfollowed.roomName}`)
-        .set('Authorization', tokens.admin)
+        .get(`/api/histories/${historyData.unfollowedRoomToCreate.roomName}`)
+        .set('Authorization', tokens.adminUser)
         .end((error, response) => {
           response.should.have.status(404);
           response.should.be.json;
@@ -109,8 +109,8 @@ describe('Histories', () => {
     it('Should NOT retrieve specific history from room that does not exist on /histories/:id GET', (done) => {
       chai
         .request(app)
-        .get('/api/histories/dneroom')
-        .set('Authorization', tokens.admin)
+        .get(`/api/histories/${historyData.roomThatDoesNotExist}`)
+        .set('Authorization', tokens.adminUser)
         .end((error, response) => {
           response.should.have.status(404);
           response.should.be.json;
@@ -126,7 +126,7 @@ describe('Histories', () => {
       chai
         .request(app)
         .get('/api/histories')
-        .set('Authorization', testData.incorrectJwt)
+        .set('Authorization', tokens.incorrectJwt)
         .end((error, response) => {
           response.should.have.status(401);
           response.should.be.json;
@@ -140,7 +140,7 @@ describe('Histories', () => {
       chai
         .request(app)
         .get('/api/histories')
-        .set('Authorization', tokens.admin)
+        .set('Authorization', tokens.adminUser)
         .end((error, response) => {
           response.should.have.status(200);
           response.should.be.json;

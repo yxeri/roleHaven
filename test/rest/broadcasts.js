@@ -24,8 +24,8 @@ const app = require('../../app');
 const chaiJson = require('chai-json-schema');
 const broadcastSchemas = require('./schemas/broadcasts');
 const errorSchemas = require('./schemas/errors');
-const testData = require('./helper/testData');
-const tokens = require('./0- starter').tokens;
+const broadcastData = require('./testData/broadcasts');
+const tokens = require('./testData/tokens');
 
 chai.should();
 chai.use(chaiHttp);
@@ -36,8 +36,8 @@ describe('Send broadcast', () => {
     chai
       .request(app)
       .post('/api/broadcasts')
-      .set('Authorization', testData.incorrectJwt)
-      .send({ data: { message: testData.broadcast } })
+      .set('Authorization', tokens.incorrectJwt)
+      .send({ data: { message: broadcastData.broadcastToCreate } })
       .end((error, response) => {
         response.should.have.status(401);
         response.should.be.json;
@@ -51,8 +51,8 @@ describe('Send broadcast', () => {
     chai
       .request(app)
       .post('/api/broadcasts')
-      .set('Authorization', tokens.admin)
-      .send({ data: { message: testData.broadcastTooLong } })
+      .set('Authorization', tokens.adminUser)
+      .send({ data: { message: broadcastData.tooLongBroadcast } })
       .end((error, response) => {
         response.should.have.status(200);
         response.should.be.json;
@@ -66,12 +66,27 @@ describe('Send broadcast', () => {
     chai
       .request(app)
       .post('/api/broadcasts')
-      .set('Authorization', tokens.admin)
-      .send({ data: { message: testData.broadcast } })
+      .set('Authorization', tokens.adminUser)
+      .send({ data: { message: broadcastData.broadcastToCreate } })
       .end((error, response) => {
         response.should.have.status(200);
         response.should.be.json;
         response.body.should.be.jsonSchema(broadcastSchemas.broadcast);
+
+        done();
+      });
+  });
+
+  it('Should NOT send broadcast message with too low access level /broadcasts POST', (done) => {
+    chai
+      .request(app)
+      .post('/api/broadcasts')
+      .set('Authorization', tokens.basicUser)
+      .send({ data: { message: broadcastData.broadcastToCreate } })
+      .end((error, response) => {
+        response.should.have.status(401);
+        response.should.be.json;
+        response.body.should.be.jsonSchema(errorSchemas.error);
 
         done();
       });

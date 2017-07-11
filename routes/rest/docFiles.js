@@ -289,7 +289,17 @@ function handle(io) {
         docFile: newDocFile,
         callback: ({ error, data }) => {
           if (error) {
-            if (error.type === errorCreator.ErrorTypes.ALREADYEXISTS) {
+            if (error.type === errorCreator.ErrorTypes.INVALIDCHARACTERS) {
+              res.status(400).json({
+                error: {
+                  status: 400,
+                  title: 'Invalid data',
+                  detail: 'Invalid data',
+                },
+              });
+
+              return;
+            } else if (error.type === errorCreator.ErrorTypes.ALREADYEXISTS) {
               res.status(403).json({
                 error: {
                   status: 403,

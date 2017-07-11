@@ -948,19 +948,21 @@ function completeActiveCalibrationMission({ mission, io, callback }) {
  * @param {Function} params.callback Callback
  */
 function createDocFile({ user, docFile, callback }) {
+  const joinedText = docFile.text.join('');
+
   if (!textTools.isAlphaNumeric(docFile.docFileId)) {
     callback({ error: new errorCreator.InvalidCharacters({ expected: `alphanumeric ${docFile.docFileId}` }) });
 
     return;
-  } else if (docFile.text.join('').length > appConfig.docFileMaxLength) {
+  } else if (joinedText.length > appConfig.docFileMaxLength || joinedText === '') {
     callback({ error: new errorCreator.InvalidCharacters({ expected: `Text length: ${appConfig.docFileMaxLength}.` }) });
 
     return;
-  } else if (docFile.title.length > appConfig.docFileTitleMaxLength) {
+  } else if (docFile.title.length > appConfig.docFileTitleMaxLength || docFile.title === '') {
     callback({ error: new errorCreator.InvalidCharacters({ expected: `Title length: ${appConfig.docFileTitleMaxLength}` }) });
 
     return;
-  } else if (docFile.docFileId.length > appConfig.docFileIdMaxLength) {
+  } else if (docFile.docFileId.length > appConfig.docFileIdMaxLength || docFile.docFileId === '') {
     callback({ error: new errorCreator.InvalidCharacters({ expected: `Id length: ${appConfig.docFileIdMaxLength}` }) });
 
     return;

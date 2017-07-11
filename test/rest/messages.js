@@ -25,8 +25,8 @@ const chaiJson = require('chai-json-schema');
 const messageSchemas = require('./schemas/messages');
 const errorSchemas = require('./schemas/errors');
 const roomSchemas = require('./schemas/rooms');
-const testData = require('./helper/testData');
-const tokens = require('./0- starter').tokens;
+const tokens = require('./testData/tokens');
+const messageData = require('./testData/messages');
 
 chai.should();
 chai.use(chaiHttp);
@@ -34,12 +34,12 @@ chai.use(chaiJson);
 
 describe('Messages', () => {
   describe('Send message', () => {
-    before(`Create room ${testData.messageRoom.roomName}`, (done) => {
+    before(`Create room ${messageData.roomToCreateAndSendMessagesTo.roomName}`, (done) => {
       chai
         .request(app)
         .post('/api/rooms')
-        .set('Authorization', tokens.admin)
-        .send({ data: { room: testData.messageRoom } })
+        .set('Authorization', tokens.adminUser)
+        .send({ data: { room: messageData.roomToCreateAndSendMessagesTo } })
         .end((error, response) => {
           response.should.have.status(200);
           response.should.be.json;
@@ -53,8 +53,8 @@ describe('Messages', () => {
       chai
         .request(app)
         .post('/api/messages')
-        .set('Authorization', testData.incorrectJwt)
-        .send({ data: { message: testData.messageNew } })
+        .set('Authorization', tokens.incorrectJwt)
+        .send({ data: { message: messageData.messageToSend } })
         .end((error, response) => {
           response.should.have.status(401);
           response.should.be.json;
@@ -68,8 +68,8 @@ describe('Messages', () => {
       chai
         .request(app)
         .post('/api/messages')
-        .set('Authorization', tokens.admin)
-        .send({ data: { message: testData.messageRoomNotExist } })
+        .set('Authorization', tokens.adminUser)
+        .send({ data: { message: messageData.roomThatDoesNotExist } })
         .end((error, response) => {
           response.should.have.status(401);
           response.should.be.json;
@@ -83,8 +83,8 @@ describe('Messages', () => {
       chai
         .request(app)
         .post('/api/messages')
-        .set('Authorization', tokens.normal)
-        .send({ data: { message: testData.messageNew } })
+        .set('Authorization', tokens.basicUser)
+        .send({ data: { message: messageData.messageToSend } })
         .end((error, response) => {
           response.should.have.status(401);
           response.should.be.json;
@@ -98,8 +98,8 @@ describe('Messages', () => {
       chai
         .request(app)
         .post('/api/messages')
-        .set('Authorization', tokens.admin)
-        .send({ data: { message: testData.messageTooLong } })
+        .set('Authorization', tokens.adminUser)
+        .send({ data: { message: messageData.tooLongMessage } })
         .end((error, response) => {
           response.should.have.status(400);
           response.should.be.json;
@@ -113,8 +113,8 @@ describe('Messages', () => {
       chai
         .request(app)
         .post('/api/messages')
-        .set('Authorization', tokens.admin)
-        .send({ data: { message: testData.messageNew } })
+        .set('Authorization', tokens.adminUser)
+        .send({ data: { message: messageData.messageToSend } })
         .end((error, response) => {
           response.should.have.status(200);
           response.should.be.json;

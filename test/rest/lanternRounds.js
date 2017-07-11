@@ -24,8 +24,8 @@ const app = require('../../app');
 const chaiJson = require('chai-json-schema');
 const lanternRoundSchemas = require('./schemas/lanternRounds');
 const errorSchemas = require('./schemas/errors');
-const testData = require('./helper/testData');
-const tokens = require('./0- starter').tokens;
+const lanternRoundData = require('./testData/lanternRounds');
+const tokens = require('./testData/tokens');
 
 chai.should();
 chai.use(chaiHttp);
@@ -37,8 +37,8 @@ describe('LanternRounds', () => {
       chai
         .request(app)
         .post('/api/lanternRounds')
-        .send({ data: { round: testData.lanternRoundNew } })
-        .set('Authorization', testData.incorrectJwt)
+        .send({ data: { round: lanternRoundData.lanternRoundToCreate } })
+        .set('Authorization', tokens.incorrectJwt)
         .end((error, response) => {
           response.should.have.status(401);
           response.should.be.json;
@@ -52,8 +52,8 @@ describe('LanternRounds', () => {
       chai
         .request(app)
         .post('/api/lanternRounds/')
-        .send({ data: { round: testData.lanternRoundNew } })
-        .set('Authorization', tokens.admin)
+        .send({ data: { round: lanternRoundData.lanternRoundToCreate } })
+        .set('Authorization', tokens.adminUser)
         .end((error, response) => {
           response.should.have.status(200);
           response.should.be.json;
@@ -67,8 +67,8 @@ describe('LanternRounds', () => {
       chai
         .request(app)
         .post('/api/lanternRounds/')
-        .send({ data: { round: testData.lanternRoundNew } })
-        .set('Authorization', tokens.admin)
+        .send({ data: { round: lanternRoundData.lanternRoundToCreate } })
+        .set('Authorization', tokens.adminUser)
         .end((error, response) => {
           response.should.have.status(403);
           response.should.be.json;
@@ -84,8 +84,8 @@ describe('LanternRounds', () => {
       chai
         .request(app)
         .post('/api/lanternRounds/')
-        .send({ data: { round: testData.lanternRoundModify } })
-        .set('Authorization', tokens.admin)
+        .send({ data: { round: lanternRoundData.lanternRoundToCreateAndModify } })
+        .set('Authorization', tokens.adminUser)
         .end((error, response) => {
           response.should.have.status(200);
           response.should.be.json;
@@ -98,9 +98,9 @@ describe('LanternRounds', () => {
     it('Should NOT update lantern round with incorrect authorization on /lanternRounds/:id POST', (done) => {
       chai
         .request(app)
-        .post(`/api/lanternRounds/${testData.lanternRoundModify.roundId}`)
-        .send({ data: { round: testData.lanternRoundModifyEndTime } })
-        .set('Authorization', testData.incorrectJwt)
+        .post(`/api/lanternRounds/${lanternRoundData.lanternRoundToCreateAndModify.roundId}`)
+        .send({ data: { round: lanternRoundData.lanternRoundWithNewEndTime } })
+        .set('Authorization', tokens.incorrectJwt)
         .end((error, response) => {
           response.should.have.status(401);
           response.should.be.json;
@@ -113,9 +113,9 @@ describe('LanternRounds', () => {
     it('Should update start time on lantern round on /lanternRounds/:id POST', (done) => {
       chai
         .request(app)
-        .post(`/api/lanternRounds/${testData.lanternRoundModify.roundId}`)
-        .send({ data: { round: testData.lanternRoundModifyStartTime } })
-        .set('Authorization', tokens.admin)
+        .post(`/api/lanternRounds/${lanternRoundData.lanternRoundToCreateAndModify.roundId}`)
+        .send({ data: { round: lanternRoundData.lantertRoundWithNewStartTime } })
+        .set('Authorization', tokens.adminUser)
         .end((error, response) => {
           response.should.have.status(200);
           response.should.be.json;
@@ -128,9 +128,9 @@ describe('LanternRounds', () => {
     it('Should update end time on lantern round on /lanternRounds/:id POST', (done) => {
       chai
         .request(app)
-        .post(`/api/lanternRounds/${testData.lanternRoundModify.roundId}`)
-        .send({ data: { round: testData.lanternRoundModifyEndTime } })
-        .set('Authorization', tokens.admin)
+        .post(`/api/lanternRounds/${lanternRoundData.lanternRoundToCreateAndModify.roundId}`)
+        .send({ data: { round: lanternRoundData.lanternRoundWithNewEndTime } })
+        .set('Authorization', tokens.adminUser)
         .end((error, response) => {
           response.should.have.status(200);
           response.should.be.json;
@@ -145,9 +145,9 @@ describe('LanternRounds', () => {
     it('Should NOT update non-existing lantern round /lanternRounds/:id POST', (done) => {
       chai
         .request(app)
-        .post(`/api/lanternRounds/${testData.lanternRoundModify.roundId}`)
-        .send({ data: { round: testData.lanternRoundModifyEndTime } })
-        .set('Authorization', testData.incorrectJwt)
+        .post(`/api/lanternRounds/${lanternRoundData.lanternRoundToCreateAndModify.roundId}`)
+        .send({ data: { round: lanternRoundData.lanternRoundWithNewEndTime } })
+        .set('Authorization', tokens.incorrectJwt)
         .end((error, response) => {
           response.should.have.status(401);
           response.should.be.json;
@@ -163,7 +163,7 @@ describe('LanternRounds', () => {
       chai
         .request(app)
         .get('/api/lanternRounds')
-        .set('Authorization', testData.incorrectJwt)
+        .set('Authorization', tokens.incorrectJwt)
         .end((error, response) => {
           response.should.have.status(401);
           response.should.be.json;
@@ -177,7 +177,7 @@ describe('LanternRounds', () => {
       chai
         .request(app)
         .get('/api/lanternRounds')
-        .set('Authorization', tokens.admin)
+        .set('Authorization', tokens.adminUser)
         .end((error, response) => {
           response.should.have.status(200);
           response.should.be.json;

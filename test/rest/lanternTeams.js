@@ -24,51 +24,21 @@ const app = require('../../app');
 const chaiJson = require('chai-json-schema');
 const lanternTeamSchemas = require('./schemas/lanternTeams');
 const errorSchemas = require('./schemas/errors');
-const testData = require('./helper/testData');
-const tokens = require('./0- starter').tokens;
+const tokens = require('./testData/tokens');
+const lanternTeamData = require('./testData/lanternTeams');
 
 chai.should();
 chai.use(chaiHttp);
 chai.use(chaiJson);
 
 describe('LanternTeams', () => {
-  describe('List lantern teams', () => {
-    it('Should NOT list lantern teams with incorrect authorization on /lanternStations GET', (done) => {
-      chai
-        .request(app)
-        .get('/api/lanternTeams')
-        .set('Authorization', testData.incorrectJwt)
-        .end((error, response) => {
-          response.should.have.status(401);
-          response.should.be.json;
-          response.body.should.be.jsonSchema(errorSchemas.error);
-
-          done();
-        });
-    });
-
-    it('Should list lantern teams on /lanternStations GET', (done) => {
-      chai
-        .request(app)
-        .get('/api/lanternTeams')
-        .set('Authorization', tokens.admin)
-        .end((error, response) => {
-          response.should.have.status(200);
-          response.should.be.json;
-          response.body.should.be.jsonSchema(lanternTeamSchemas.lanternTeams);
-
-          done();
-        });
-    });
-  });
-
   describe('Create lantern team', () => {
     it('Should NOT create lantern team with incorrect authorization on /lanternTeams POST', (done) => {
       chai
         .request(app)
         .post('/api/lanternTeams')
-        .send({ data: { team: testData.lanternTeamNew } })
-        .set('Authorization', testData.incorrectJwt)
+        .send({ data: { team: lanternTeamData.lanternTeamToCreate } })
+        .set('Authorization', tokens.incorrectJwt)
         .end((error, response) => {
           response.should.have.status(401);
           response.should.be.json;
@@ -82,8 +52,8 @@ describe('LanternTeams', () => {
       chai
         .request(app)
         .post('/api/lanternTeams/')
-        .send({ data: { team: testData.lanternTeamNew } })
-        .set('Authorization', tokens.admin)
+        .send({ data: { team: lanternTeamData.lanternTeamToCreate } })
+        .set('Authorization', tokens.adminUser)
         .end((error, response) => {
           response.should.have.status(200);
           response.should.be.json;
@@ -97,12 +67,42 @@ describe('LanternTeams', () => {
       chai
         .request(app)
         .post('/api/lanternTeams/')
-        .send({ data: { team: testData.lanternTeamNew } })
-        .set('Authorization', tokens.admin)
+        .send({ data: { team: lanternTeamData.lanternTeamToCreate } })
+        .set('Authorization', tokens.adminUser)
         .end((error, response) => {
           response.should.have.status(403);
           response.should.be.json;
           response.body.should.be.jsonSchema(errorSchemas.error);
+
+          done();
+        });
+    });
+  });
+
+  describe('List lantern teams', () => {
+    it('Should NOT list lantern teams with incorrect authorization on /lanternStations GET', (done) => {
+      chai
+        .request(app)
+        .get('/api/lanternTeams')
+        .set('Authorization', tokens.incorrectJwt)
+        .end((error, response) => {
+          response.should.have.status(401);
+          response.should.be.json;
+          response.body.should.be.jsonSchema(errorSchemas.error);
+
+          done();
+        });
+    });
+
+    it('Should list lantern teams on /lanternStations GET', (done) => {
+      chai
+        .request(app)
+        .get('/api/lanternTeams')
+        .set('Authorization', tokens.adminUser)
+        .end((error, response) => {
+          response.should.have.status(200);
+          response.should.be.json;
+          response.body.should.be.jsonSchema(lanternTeamSchemas.lanternTeams);
 
           done();
         });
@@ -114,8 +114,8 @@ describe('LanternTeams', () => {
       chai
         .request(app)
         .post('/api/lanternTeams/')
-        .send({ data: { team: testData.lanternTeamModify } })
-        .set('Authorization', tokens.admin)
+        .send({ data: { team: lanternTeamData.lanternTeamToCreateAndModify } })
+        .set('Authorization', tokens.adminUser)
         .end((error, response) => {
           response.should.have.status(200);
           response.should.be.json;
@@ -128,9 +128,9 @@ describe('LanternTeams', () => {
     it('Should NOT update lantern team with incorrect authorization on /lanternTeams/:id POST', (done) => {
       chai
         .request(app)
-        .post(`/api/lanternTeams/${testData.lanternTeamModify.teamName}`)
-        .send({ data: { team: testData.lanternTeamModifyPoints } })
-        .set('Authorization', testData.incorrectJwt)
+        .post(`/api/lanternTeams/${lanternTeamData.lanternTeamToCreateAndModify.teamName}`)
+        .send({ data: { team: lanternTeamData.lanternTeamWithNewPoints } })
+        .set('Authorization', tokens.incorrectJwt)
         .end((error, response) => {
           response.should.have.status(401);
           response.should.be.json;
@@ -143,9 +143,9 @@ describe('LanternTeams', () => {
     it('Should NOT update points on inactive lantern team', (done) => {
       chai
         .request(app)
-        .post(`/api/lanternTeams/${testData.lanternTeamModify.teamName}`)
-        .send({ data: { team: testData.lanternTeamModifyPoints } })
-        .set('Authorization', tokens.admin)
+        .post(`/api/lanternTeams/${lanternTeamData.lanternTeamToCreateAndModify.teamName}`)
+        .send({ data: { team: lanternTeamData.lanternTeamWithNewPoints } })
+        .set('Authorization', tokens.adminUser)
         .end((error, response) => {
           response.should.have.status(404);
           response.should.be.json;
@@ -158,15 +158,15 @@ describe('LanternTeams', () => {
     it('Should update active on lantern team on /lanternTeams/:id POST', (done) => {
       chai
         .request(app)
-        .post(`/api/lanternTeams/${testData.lanternTeamModify.teamName}`)
-        .send({ data: { team: testData.lanternTeamModifyActive } })
-        .set('Authorization', tokens.admin)
+        .post(`/api/lanternTeams/${lanternTeamData.lanternTeamToCreateAndModify.teamName}`)
+        .send({ data: { team: lanternTeamData.lanternTeamWithIsActive } })
+        .set('Authorization', tokens.adminUser)
         .end((error, response) => {
           response.should.have.status(200);
           response.should.be.json;
           response.body.should.be.jsonSchema(lanternTeamSchemas.lanternTeam);
-          response.body.data.team.isActive.should.not.equal(testData.lanternTeamModify.isActive);
-          response.body.data.team.isActive.should.equal(testData.lanternTeamModifyActive.isActive);
+          response.body.data.team.isActive.should.not.equal(lanternTeamData.lanternTeamToCreateAndModify.isActive);
+          response.body.data.team.isActive.should.equal(lanternTeamData.lanternTeamWithIsActive.isActive);
 
           done();
         });
@@ -175,15 +175,15 @@ describe('LanternTeams', () => {
     it('Should update points on active lantern team on /lanternTeams/:id POST', (done) => {
       chai
         .request(app)
-        .post(`/api/lanternTeams/${testData.lanternTeamModify.teamName}`)
-        .send({ data: { team: testData.lanternTeamModifyPoints } })
-        .set('Authorization', tokens.admin)
+        .post(`/api/lanternTeams/${lanternTeamData.lanternTeamToCreateAndModify.teamName}`)
+        .send({ data: { team: lanternTeamData.lanternTeamWithNewPoints } })
+        .set('Authorization', tokens.adminUser)
         .end((error, response) => {
           response.should.have.status(200);
           response.should.be.json;
           response.body.should.be.jsonSchema(lanternTeamSchemas.lanternTeam);
-          response.body.data.team.points.should.not.equal(testData.lanternTeamModify.points);
-          response.body.data.team.points.should.equal(testData.lanternTeamModifyPoints.points);
+          response.body.data.team.points.should.not.equal(lanternTeamData.lanternTeamToCreateAndModify.points);
+          response.body.data.team.points.should.equal(lanternTeamData.lanternTeamWithNewPoints.points);
 
           done();
         });
@@ -192,14 +192,14 @@ describe('LanternTeams', () => {
     it('Should reset points to 0 and ignore points parameter on lantern team on /lanternTeams/:id POST', (done) => {
       chai
         .request(app)
-        .post(`/api/lanternTeams/${testData.lanternTeamModify.teamName}`)
-        .send({ data: { team: testData.lanternTeamModifyResetPoints } })
-        .set('Authorization', tokens.admin)
+        .post(`/api/lanternTeams/${lanternTeamData.lanternTeamToCreateAndModify.teamName}`)
+        .send({ data: { team: lanternTeamData.lanternTeamWithResetPoints } })
+        .set('Authorization', tokens.adminUser)
         .end((error, response) => {
           response.should.have.status(200);
           response.should.be.json;
           response.body.should.be.jsonSchema(lanternTeamSchemas.lanternTeam);
-          response.body.data.team.points.should.not.equal(testData.lanternTeamModify.points);
+          response.body.data.team.points.should.not.equal(lanternTeamData.lanternTeamToCreateAndModify.points);
           response.body.data.team.points.should.equal(0);
 
           done();
@@ -209,9 +209,9 @@ describe('LanternTeams', () => {
     it('Should NOT update non-existing lantern team /lanternTeams/:id POST', (done) => {
       chai
         .request(app)
-        .post(`/api/lanternTeams/${testData.lanternTeamDoesNotExist.teamName}`)
-        .send({ data: { team: testData.lanternTeamModifyActive } })
-        .set('Authorization', tokens.admin)
+        .post(`/api/lanternTeams/${lanternTeamData.lanternTeamThatDoesNotExist.teamName}`)
+        .send({ data: { team: lanternTeamData.lanternTeamWithIsActive } })
+        .set('Authorization', tokens.adminUser)
         .end((error, response) => {
           response.should.have.status(404);
           response.should.be.json;

@@ -24,9 +24,11 @@ const app = require('../../app');
 const chaiJson = require('chai-json-schema');
 const transactionSchemas = require('./schemas/transactions');
 const errorSchemas = require('./schemas/errors');
-const testData = require('./helper/testData');
+const userSchemas = require('./schemas/users');
 const dbWallet = require('../../db/connectors/wallet');
-const tokens = require('./0- starter').tokens;
+const tokens = require('./testData/tokens');
+const transactionData = require('./testData/transactions');
+const authenticateSchemas = require('./schemas/authentications');
 
 chai.should();
 
@@ -34,9 +36,74 @@ chai.use(chaiHttp);
 chai.use(chaiJson);
 
 describe('Transactions', () => {
-  before('Give admin user credits', (done) => {
+  const transactionTokens = {
+    poor: '',
+    rich: '',
+  };
+
+  before(`Create user ${transactionData.newUserToSendCredits.userName} on /users POST`, (done) => {
+    chai
+      .request(app)
+      .post('/api/users')
+      .set('Authorization', tokens.adminUser)
+      .send({ data: { user: transactionData.newUserToSendCredits } })
+      .end((error, response) => {
+        response.should.have.status(200);
+        response.should.be.json;
+        response.body.should.be.jsonSchema(userSchemas.user);
+        done();
+      });
+  });
+
+  before(`Create user ${transactionData.newUserToReceiveCredits.userName} on /users POST`, (done) => {
+    chai
+      .request(app)
+      .post('/api/users')
+      .set('Authorization', tokens.adminUser)
+      .send({ data: { user: transactionData.newUserToReceiveCredits } })
+      .end((error, response) => {
+        response.should.have.status(200);
+        response.should.be.json;
+        response.body.should.be.jsonSchema(userSchemas.user);
+        done();
+      });
+  });
+
+  before(`Authenticate ${transactionData.newUserToSendCredits.userName}`, (done) => {
+    chai
+      .request(app)
+      .post('/api/authenticate')
+      .send({ data: { user: transactionData.newUserToSendCredits } })
+      .end((error, response) => {
+        response.should.have.status(200);
+        response.should.be.json;
+        response.body.should.be.jsonSchema(authenticateSchemas.authenticate);
+
+        transactionTokens.rich = response.body.data.token;
+
+        done();
+      });
+  });
+
+  before(`Authenticate ${transactionData.newUserToReceiveCredits.userName}`, (done) => {
+    chai
+      .request(app)
+      .post('/api/authenticate')
+      .send({ data: { user: transactionData.newUserToReceiveCredits } })
+      .end((error, response) => {
+        response.should.have.status(200);
+        response.should.be.json;
+        response.body.should.be.jsonSchema(authenticateSchemas.authenticate);
+
+        transactionTokens.poor = response.body.data.token;
+
+        done();
+      });
+  });
+
+  before(`Give ${transactionData.newUserToSendCredits.userName} user credits`, (done) => {
     dbWallet.increaseAmount({
-      owner: testData.userAdmin.userName,
+      owner: transactionData.newUserToSendCredits.userName,
       amount: 100,
       callback: (walletData) => {
         walletData.should.have.property('data');
@@ -50,7 +117,7 @@ describe('Transactions', () => {
       chai
         .request(app)
         .get('/api/transactions')
-        .set('Authorization', testData.incorrectJwt)
+        .set('Authorization', tokens.incorrectJwt)
         .end((error, response) => {
           response.should.have.status(401);
           response.should.be.json;
@@ -64,7 +131,7 @@ describe('Transactions', () => {
       chai
         .request(app)
         .get('/api/transactions')
-        .set('Authorization', tokens.admin)
+        .set('Authorization', tokens.adminUser)
         .end((error, response) => {
           response.should.have.status(200);
           response.should.be.json;
@@ -80,8 +147,8 @@ describe('Transactions', () => {
       chai
         .request(app)
         .post('/api/transactions')
-        .set('Authorization', testData.incorrectJwt)
-        .send({ data: { transaction: { to: testData.userNormal.userName, amount: 10 } } })
+        .set('Authorization', tokens.incorrectJwt)
+        .send({ data: { transaction: { to: transactionData.newUserToReceiveCredits.userName, amount: 10 } } })
         .end((error, response) => {
           response.should.have.status(401);
           response.body.should.be.jsonSchema(errorSchemas.error);
@@ -94,8 +161,8 @@ describe('Transactions', () => {
       chai
         .request(app)
         .post('/api/transactions')
-        .set('Authorization', tokens.normal)
-        .send({ data: { transaction: { to: testData.userAdmin.userName, amount: 15 } } })
+        .set('Authorization', transactionTokens.poor)
+        .send({ data: { transaction: { to: transactionData.newUserToSendCredits.userName, amount: 15 } } })
         .end((error, response) => {
           response.should.have.status(401);
           response.should.be.json;
@@ -109,8 +176,8 @@ describe('Transactions', () => {
       chai
         .request(app)
         .post('/api/transactions')
-        .set('Authorization', tokens.admin)
-        .send({ data: { transaction: { to: testData.userNormal.userName, amount: 10 } } })
+        .set('Authorization', transactionTokens.rich)
+        .send({ data: { transaction: { to: transactionData.newUserToReceiveCredits.userName, amount: 10 } } })
         .end((error, response) => {
           response.should.have.status(200);
           response.should.be.json;
@@ -124,7 +191,7 @@ describe('Transactions', () => {
       chai
         .request(app)
         .get('/api/transactions')
-        .set('Authorization', tokens.admin)
+        .set('Authorization', transactionTokens.rich)
         .end((error, response) => {
           response.should.have.status(200);
           response.should.be.json;
@@ -140,7 +207,7 @@ describe('Transactions', () => {
       chai
         .request(app)
         .get('/api/transactions')
-        .set('Authorization', tokens.normal)
+        .set('Authorization', transactionTokens.poor)
         .end((error, response) => {
           response.should.have.status(200);
           response.should.be.json;
@@ -158,8 +225,8 @@ describe('Transactions', () => {
       chai
         .request(app)
         .post('/api/transactions')
-        .set('Authorization', tokens.admin)
-        .send({ data: { transaction: { to: testData.userAdmin.userName, amount: 10 } } })
+        .set('Authorization', transactionTokens.rich)
+        .send({ data: { transaction: { to: transactionData.newUserToSendCredits.userName, amount: 10 } } })
         .end((error, response) => {
           response.should.have.status(400);
           response.should.be.json;

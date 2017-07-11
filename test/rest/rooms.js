@@ -24,8 +24,8 @@ const app = require('../../app');
 const chaiJson = require('chai-json-schema');
 const roomSchemas = require('./schemas/rooms');
 const errorSchemas = require('./schemas/errors');
-const testData = require('./helper/testData');
-const tokens = require('./0- starter').tokens;
+const tokens = require('./testData/tokens');
+const roomData = require('./testData/rooms');
 
 chai.should();
 
@@ -33,87 +33,13 @@ chai.use(chaiHttp);
 chai.use(chaiJson);
 
 describe('Rooms', () => {
-  before(`Create room ${testData.roomPublic.roomName}`, (done) => {
-    chai
-      .request(app)
-      .post('/api/rooms')
-      .set('Authorization', tokens.admin)
-      .send({ data: { room: testData.roomPublic } })
-      .end((error, response) => {
-        response.should.have.status(200);
-        response.should.be.json;
-        response.body.should.be.jsonSchema(roomSchemas.room);
-
-        done();
-      });
-  });
-
-  before(`Create room ${testData.roomAccess.roomName}`, (done) => {
-    chai
-      .request(app)
-      .post('/api/rooms')
-      .set('Authorization', tokens.admin)
-      .send({ data: { room: testData.roomAccess } })
-      .end((error, response) => {
-        response.should.have.status(200);
-        response.should.be.json;
-        response.body.should.be.jsonSchema(roomSchemas.room);
-
-        done();
-      });
-  });
-
-  before(`Create room ${testData.roomPassword.roomName}`, (done) => {
-    chai
-      .request(app)
-      .post('/api/rooms')
-      .set('Authorization', tokens.admin)
-      .send({ data: { room: testData.roomPassword } })
-      .end((error, response) => {
-        response.should.have.status(200);
-        response.should.be.json;
-        response.body.should.be.jsonSchema(roomSchemas.room);
-
-        done();
-      });
-  });
-
-  before(`Create room ${testData.roomInvisible.roomName}`, (done) => {
-    chai
-      .request(app)
-      .post('/api/rooms')
-      .set('Authorization', tokens.admin)
-      .send({ data: { room: testData.roomInvisible } })
-      .end((error, response) => {
-        response.should.have.status(200);
-        response.should.be.json;
-        response.body.should.be.jsonSchema(roomSchemas.room);
-
-        done();
-      });
-  });
-
-  describe('List rooms', () => {
-    it('Should list rooms on /rooms GET', (done) => {
+  describe('Create room', () => {
+    it('Should NOT create room with incorrect authorization on /rooms POST', (done) => {
       chai
         .request(app)
-        .get('/api/rooms')
-        .set('Authorization', tokens.admin)
-        .end((error, response) => {
-          response.should.have.status(200);
-          response.should.be.json;
-          response.body.should.be.jsonSchema(roomSchemas.rooms);
-          // TODO Check access level and visiblity
-
-          done();
-        });
-    });
-
-    it('Should NOT list rooms with incorrect authorization on /rooms GET', (done) => {
-      chai
-        .request(app)
-        .get('/api/rooms')
-        .set('Authorization', testData.incorrectJwt)
+        .post('/api/rooms')
+        .set('Authorization', tokens.incorrectJwt)
+        .send({ data: { room: roomData.roomToCreate } })
         .end((error, response) => {
           response.should.have.status(401);
           response.should.be.json;
@@ -122,15 +48,13 @@ describe('Rooms', () => {
           done();
         });
     });
-  });
 
-  describe('Create room', () => {
     it('Should create room on /rooms POST', (done) => {
       chai
         .request(app)
         .post('/api/rooms')
-        .set('Authorization', tokens.admin)
-        .send({ data: { room: testData.roomNew } })
+        .set('Authorization', tokens.adminUser)
+        .send({ data: { room: roomData.roomToCreate } })
         .end((error, response) => {
           response.should.have.status(200);
           response.should.be.json;
@@ -144,8 +68,8 @@ describe('Rooms', () => {
       chai
         .request(app)
         .post('/api/rooms')
-        .set('Authorization', tokens.admin)
-        .send({ data: { room: testData.roomNew } })
+        .set('Authorization', tokens.adminUser)
+        .send({ data: { room: roomData.roomToCreate } })
         .end((error, response) => {
           response.should.have.status(403);
           response.should.be.json;
@@ -155,16 +79,107 @@ describe('Rooms', () => {
         });
     });
 
-    it('Should NOT create room with incorrect authorization on /rooms POST', (done) => {
+    after(`Create room ${roomData.publicRoomToCreate.roomName}`, (done) => {
       chai
         .request(app)
         .post('/api/rooms')
-        .set('Authorization', testData.incorrectJwt)
-        .send({ data: { room: testData.roomNew } })
+        .set('Authorization', tokens.adminUser)
+        .send({ data: { room: roomData.publicRoomToCreate } })
+        .end((error, response) => {
+          response.should.have.status(200);
+          response.should.be.json;
+          response.body.should.be.jsonSchema(roomSchemas.room);
+
+          done();
+        });
+    });
+
+    after(`Create room ${roomData.highAccessLevelRoomToCreate.roomName}`, (done) => {
+      chai
+        .request(app)
+        .post('/api/rooms')
+        .set('Authorization', tokens.adminUser)
+        .send({ data: { room: roomData.highAccessLevelRoomToCreate } })
+        .end((error, response) => {
+          response.should.have.status(200);
+          response.should.be.json;
+          response.body.should.be.jsonSchema(roomSchemas.room);
+
+          done();
+        });
+    });
+
+    after(`Create room ${roomData.passwordProtectedRoomToCreate.roomName}`, (done) => {
+      chai
+        .request(app)
+        .post('/api/rooms')
+        .set('Authorization', tokens.adminUser)
+        .send({ data: { room: roomData.passwordProtectedRoomToCreate } })
+        .end((error, response) => {
+          response.should.have.status(200);
+          response.should.be.json;
+          response.body.should.be.jsonSchema(roomSchemas.room);
+
+          done();
+        });
+    });
+
+    after(`Create room ${roomData.invisibleRoomToCreate.roomName}`, (done) => {
+      chai
+        .request(app)
+        .post('/api/rooms')
+        .set('Authorization', tokens.adminUser)
+        .send({ data: { room: roomData.invisibleRoomToCreate } })
+        .end((error, response) => {
+          response.should.have.status(200);
+          response.should.be.json;
+          response.body.should.be.jsonSchema(roomSchemas.room);
+
+          done();
+        });
+    });
+
+    after(`Unfollow room ${roomData.passwordProtectedRoomToCreate.roomName} /rooms/follow POST`, (done) => {
+      chai
+        .request(app)
+        .post('/api/rooms/unfollow')
+        .set('Authorization', tokens.adminUser)
+        .send({ data: { room: { roomName: roomData.passwordProtectedRoomToCreate.roomName } } })
+        .end((error, response) => {
+          response.should.have.status(200);
+          response.should.be.json;
+          response.body.should.be.jsonSchema(roomSchemas.unfollowRoom);
+
+          done();
+        });
+    });
+  });
+
+  describe('List rooms', () => {
+    it('Should NOT list rooms with incorrect authorization on /rooms GET', (done) => {
+      chai
+        .request(app)
+        .get('/api/rooms')
+        .set('Authorization', tokens.incorrectJwt)
         .end((error, response) => {
           response.should.have.status(401);
           response.should.be.json;
           response.body.should.be.jsonSchema(errorSchemas.error);
+
+          done();
+        });
+    });
+
+    it('Should list rooms on /rooms GET', (done) => {
+      chai
+        .request(app)
+        .get('/api/rooms')
+        .set('Authorization', tokens.adminUser)
+        .end((error, response) => {
+          response.should.have.status(200);
+          response.should.be.json;
+          response.body.should.be.jsonSchema(roomSchemas.rooms);
+          // TODO Check access level and visiblity
 
           done();
         });
@@ -175,8 +190,8 @@ describe('Rooms', () => {
     it('Should NOT get room with incorrect authorization on /rooms/:id GET', (done) => {
       chai
         .request(app)
-        .get(`/api/rooms/${testData.userNormal.roomName}`)
-        .set('Authorization', testData.incorrectJwt)
+        .get(`/api/rooms/${roomData.roomToCreate.roomName}`)
+        .set('Authorization', tokens.incorrectJwt)
         .end((error, response) => {
           response.should.have.status(401);
           response.should.be.json;
@@ -186,11 +201,11 @@ describe('Rooms', () => {
         });
     });
 
-    it('Should get room with lower access level than user\'s on /rooms/:id GET', (done) => {
+    it('Should get room with lower visibility level than user\'s access level on /rooms/:id GET', (done) => {
       chai
         .request(app)
-        .get(`/api/rooms/${testData.roomPublic.roomName}`)
-        .set('Authorization', tokens.admin)
+        .get(`/api/rooms/${roomData.publicRoomToCreate.roomName}`)
+        .set('Authorization', tokens.basicUser)
         .end((error, response) => {
           response.should.have.status(200);
           response.should.be.json;
@@ -200,11 +215,11 @@ describe('Rooms', () => {
         });
     });
 
-    it('Should get room with higher access level than user\'s on /rooms/:id GET', (done) => {
+    it('Should get room with higher access level to user\'s access level on /rooms/:id GET', (done) => {
       chai
         .request(app)
-        .get(`/api/rooms/${testData.roomAccess.roomName}`)
-        .set('Authorization', tokens.normal)
+        .get(`/api/rooms/${roomData.highAccessLevelRoomToCreate.roomName}`)
+        .set('Authorization', tokens.basicUser)
         .end((error, response) => {
           response.should.have.status(200);
           response.should.be.json;
@@ -214,25 +229,11 @@ describe('Rooms', () => {
         });
     });
 
-    it('Should get room with equal visibility level to user\'s access level on /rooms/:id GET', (done) => {
+    it('Should get room with lower access level to user\'s access level on /rooms/:id GET', (done) => {
       chai
         .request(app)
-        .get(`/api/rooms/${testData.roomInvisible.roomName}`)
-        .set('Authorization', tokens.admin)
-        .end((error, response) => {
-          response.should.have.status(200);
-          response.should.be.json;
-          response.body.should.be.jsonSchema(roomSchemas.room);
-
-          done();
-        });
-    });
-
-    it('Should get room with lower visibility level to user\'s access level on /rooms/:id GET', (done) => {
-      chai
-        .request(app)
-        .get(`/api/rooms/${testData.roomPublic.roomName}`)
-        .set('Authorization', tokens.normal)
+        .get(`/api/rooms/${roomData.publicRoomToCreate.roomName}`)
+        .set('Authorization', tokens.basicUser)
         .end((error, response) => {
           response.should.have.status(200);
           response.should.be.json;
@@ -245,8 +246,8 @@ describe('Rooms', () => {
     it('Should NOT get room with higher visiblity level than user\'s access level on /rooms/:id GET', (done) => {
       chai
         .request(app)
-        .get(`/api/rooms/${testData.roomInvisible.roomName}`)
-        .set('Authorization', tokens.normal)
+        .get(`/api/rooms/${roomData.invisibleRoomToCreate.roomName}`)
+        .set('Authorization', tokens.basicUser)
         .end((error, response) => {
           response.should.have.status(401);
           response.should.be.json;
@@ -258,33 +259,17 @@ describe('Rooms', () => {
   });
 
   describe('Follow room', () => {
-    it('Should follow room with equal access level to user\'s access level on /rooms/follow POST', (done) => {
-      chai
-        .request(app)
-        .post('/api/rooms/follow')
-        .set('Authorization', tokens.admin)
-        .send({ data: { room: { roomName: testData.roomAccess.roomName } } })
-        .end((error, response) => {
-          response.should.have.status(200);
-          response.should.be.json;
-          response.body.should.be.jsonSchema(roomSchemas.room);
-          response.body.data.room.accessLevel.should.equal(testData.userAdmin.accessLevel);
-
-          done();
-        });
-    });
-
     it('Should follow room with lower or equal access level to user\'s access level on /rooms/follow POST', (done) => {
       chai
         .request(app)
         .post('/api/rooms/follow')
-        .set('Authorization', tokens.normal)
-        .send({ data: { room: { roomName: testData.roomPublic.roomName } } })
+        .set('Authorization', tokens.basicUser)
+        .send({ data: { room: { roomName: roomData.publicRoomToCreate.roomName } } })
         .end((error, response) => {
           response.should.have.status(200);
           response.should.be.json;
           response.body.should.be.jsonSchema(roomSchemas.room);
-          response.body.data.room.accessLevel.should.satisfy(value => value <= testData.userNormal.accessLevel);
+          response.body.data.room.accessLevel.should.satisfy(value => value <= roomData.publicRoomToCreate.accessLevel);
 
           done();
         });
@@ -294,8 +279,8 @@ describe('Rooms', () => {
       chai
         .request(app)
         .post('/api/rooms/follow')
-        .set('Authorization', tokens.normal)
-        .send({ data: { room: { roomName: testData.roomAccess.roomName } } })
+        .set('Authorization', tokens.basicUser)
+        .send({ data: { room: { roomName: roomData.highAccessLevelRoomToCreate.roomName } } })
         .end((error, response) => {
           response.should.have.status(401);
           response.should.be.json;
@@ -309,8 +294,8 @@ describe('Rooms', () => {
       chai
         .request(app)
         .post('/api/rooms/follow')
-        .set('Authorization', tokens.normal)
-        .send({ data: { room: { roomName: testData.roomInvisible.roomName } } })
+        .set('Authorization', tokens.basicUser)
+        .send({ data: { room: { roomName: roomData.invisibleRoomToCreate.roomName } } })
         .end((error, response) => {
           response.should.have.status(200);
           response.should.be.json;
@@ -322,12 +307,27 @@ describe('Rooms', () => {
   });
 
   describe('Follow password-protected room', () => {
+    it('Should NOT follow password-protected room with incorrect password on /rooms/follow POST', (done) => {
+      chai
+        .request(app)
+        .post('/api/rooms/follow')
+        .set('Authorization', tokens.basicUser)
+        .send({ data: { room: { roomName: roomData.passwordProtectedRoomToCreate.roomName, password: roomData.incorrectPassword } } })
+        .end((error, response) => {
+          response.should.have.status(401);
+          response.should.be.json;
+          response.body.should.be.jsonSchema(errorSchemas.error);
+
+          done();
+        });
+    });
+
     it('Should follow password-protected room with correct password on /rooms/follow POST', (done) => {
       chai
         .request(app)
         .post('/api/rooms/follow')
-        .set('Authorization', tokens.normal)
-        .send({ data: { room: { roomName: testData.roomPassword.roomName, password: testData.roomPassword.password } } })
+        .set('Authorization', tokens.basicUser)
+        .send({ data: { room: { roomName: roomData.passwordProtectedRoomToCreate.roomName, password: roomData.passwordProtectedRoomToCreate.password } } })
         .end((error, response) => {
           response.should.have.status(200);
           response.should.be.json;
@@ -341,27 +341,12 @@ describe('Rooms', () => {
       chai
         .request(app)
         .post('/api/rooms/follow')
-        .set('Authorization', tokens.admin)
-        .send({ data: { room: { roomName: testData.roomPassword.roomName } } })
+        .set('Authorization', tokens.adminUser)
+        .send({ data: { room: { roomName: roomData.passwordProtectedRoomToCreate.roomName } } })
         .end((error, response) => {
           response.should.have.status(200);
           response.should.be.json;
           response.body.should.be.jsonSchema(roomSchemas.room);
-
-          done();
-        });
-    });
-
-    it('Should NOT follow password-protected room with incorrect password on /rooms/follow POST', (done) => {
-      chai
-        .request(app)
-        .post('/api/rooms/follow')
-        .set('Authorization', tokens.normal)
-        .send({ data: { room: { roomName: testData.roomPassword.roomName, password: testData.incorrectJwt } } })
-        .end((error, response) => {
-          response.should.have.status(401);
-          response.should.be.json;
-          response.body.should.be.jsonSchema(errorSchemas.error);
 
           done();
         });
@@ -369,27 +354,12 @@ describe('Rooms', () => {
   });
 
   describe('Unfollow room', () => {
-    before(`Create room ${testData.roomFollow.roomName}`, (done) => {
-      chai
-        .request(app)
-        .post('/api/rooms')
-        .set('Authorization', tokens.admin)
-        .send({ data: { room: testData.roomFollow } })
-        .end((error, response) => {
-          response.should.have.status(200);
-          response.should.be.json;
-          response.body.should.be.jsonSchema(roomSchemas.room);
-
-          done();
-        });
-    });
-
-    before(`Follow room ${testData.roomFollow.roomName}`, (done) => {
+    before(`Follow room ${roomData.roomToCreate.roomName}`, (done) => {
       chai
         .request(app)
         .post('/api/rooms/follow')
-        .set('Authorization', tokens.normal)
-        .send({ data: { room: { roomName: testData.roomFollow.roomName } } })
+        .set('Authorization', tokens.basicUser)
+        .send({ data: { room: { roomName: roomData.roomToCreate.roomName } } })
         .end((error, response) => {
           response.should.have.status(200);
           response.should.be.json;
@@ -403,8 +373,8 @@ describe('Rooms', () => {
       chai
         .request(app)
         .post('/api/rooms/unfollow')
-        .set('Authorization', tokens.normal)
-        .send({ data: { room: { roomName: testData.roomFollow.roomName } } })
+        .set('Authorization', tokens.basicUser)
+        .send({ data: { room: { roomName: roomData.roomToCreate.roomName } } })
         .end((error, response) => {
           response.should.have.status(200);
           response.should.be.json;
@@ -418,8 +388,8 @@ describe('Rooms', () => {
       chai
         .request(app)
         .post('/api/rooms/unfollow')
-        .set('Authorization', tokens.admin)
-        .send({ data: { room: testData.roomNoExist } })
+        .set('Authorization', tokens.adminUser)
+        .send({ data: { room: roomData.roomThatDoesNotExist } })
         .end((error, response) => {
           response.should.have.status(404);
           response.should.be.json;

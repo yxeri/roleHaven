@@ -22,11 +22,12 @@ const chai = require('chai');
 const chaiHttp = require('chai-http');
 const chaiJson = require('chai-json-schema');
 const manager = require('../../socketHelpers/manager');
-const testData = require('./helper/testData');
 const dbConnector = require('../../db/databaseConnector');
 const dbRoom = require('../../db/connectors/room');
 const dbCommand = require('../../db/connectors/command');
 const dbConfig = require('../../config/defaults/config').databasePopulation;
+const tokens = require('./testData/tokens');
+const starterData = require('./testData/starter');
 const app = require('../../app');
 const authenticateSchemas = require('./schemas/authentications');
 
@@ -35,117 +36,119 @@ chai.should();
 chai.use(chaiHttp);
 chai.use(chaiJson);
 
-const tokens = {};
+describe('App preparation', () => {
+  it('Should clear database', function clearDatabase(done) {
+    this.timeout(10000);
 
-before('Clear database', function clearDatabase(done) {
-  this.timeout(10000);
-
-  dbConnector.dropDatabase({
-    callback: (dropData) => {
-      dropData.should.have.property('data');
-      done();
-    },
-  });
-});
-
-before('Create all app default commands', function createCommands(done) {
-  this.timeout(10000);
-
-  dbCommand.populateDbCommands({
-    commands: dbConfig.commands,
-    callback: (popData) => {
-      popData.should.have.property('data');
-      done();
-    },
-  });
-});
-
-before('Create all app default rooms', function createRooms(done) {
-  this.timeout(10000);
-
-  dbRoom.populateDbRooms({
-    rooms: dbConfig.rooms,
-    callback: (popData) => {
-      popData.should.have.property('data');
-      done();
-    },
-  });
-});
-
-before('Create admin user', (done) => {
-  manager.createUser({
-    user: testData.userAdmin,
-    autoVerifyMail: true,
-    callback: (createData) => {
-      createData.should.have.property('data');
-      done();
-    },
-  });
-});
-
-before('Create unverified user', (done) => {
-  manager.createUser({
-    user: testData.userUnverified,
-    autoVerifyMail: true,
-    callback: (createData) => {
-      createData.should.have.property('data');
-      done();
-    },
-  });
-});
-
-before('Create banned user', (done) => {
-  manager.createUser({
-    user: testData.userBanned,
-    autoVerifyMail: true,
-    callback: (createData) => {
-      createData.should.have.property('data');
-      done();
-    },
-  });
-});
-
-before('Create normal user', (done) => {
-  manager.createUser({
-    user: testData.userNormal,
-    autoVerifyMail: true,
-    callback: (createData) => {
-      createData.should.have.property('data');
-      done();
-    },
-  });
-});
-
-before('Authenticate', (done) => {
-  chai
-    .request(app)
-    .post('/api/authenticate')
-    .send({ data: { user: testData.userAdmin } })
-    .end((error, response) => {
-      response.should.have.status(200);
-      response.should.be.json;
-      response.body.should.be.jsonSchema(authenticateSchemas.authenticate);
-
-      tokens.admin = response.body.data.token;
-
-      done();
+    dbConnector.dropDatabase({
+      callback: (dropData) => {
+        dropData.should.have.property('data');
+        done();
+      },
     });
-});
+  });
 
-before(`Authenticate user ${testData.userNormal.userName}`, (done) => {
-  chai
-    .request(app)
-    .post('/api/authenticate')
-    .send({ data: { user: testData.userNormal } })
-    .end((error, response) => {
-      response.should.have.status(200);
-      response.should.be.json;
-      response.body.should.be.jsonSchema(authenticateSchemas.authenticate);
+  it('Should create all app default commands', function createCommands(done) {
+    this.timeout(10000);
 
-      tokens.normal = response.body.data.token;
-
-      done();
+    dbCommand.populateDbCommands({
+      commands: dbConfig.commands,
+      callback: (popData) => {
+        popData.should.have.property('data');
+        done();
+      },
     });
+  });
+
+  it('Should create all app default rooms', function createRooms(done) {
+    this.timeout(10000);
+
+    dbRoom.populateDbRooms({
+      rooms: dbConfig.rooms,
+      callback: (popData) => {
+        popData.should.have.property('data');
+        done();
+      },
+    });
+  });
 });
 
-exports.tokens = tokens;
+describe('Create test users', () => {
+  it('Should create adminUser user', (done) => {
+    manager.createUser({
+      user: starterData.adminUserToAuth,
+      autoVerifyMail: true,
+      callback: (createData) => {
+        createData.should.have.property('data');
+        done();
+      },
+    });
+  });
+
+  it('Should create unverified user', (done) => {
+    manager.createUser({
+      user: starterData.unverifiedUserToAuth,
+      autoVerifyMail: true,
+      callback: (createData) => {
+        createData.should.have.property('data');
+        done();
+      },
+    });
+  });
+
+  it('Should create banned user', (done) => {
+    manager.createUser({
+      user: starterData.bannedUserToAuth,
+      autoVerifyMail: true,
+      callback: (createData) => {
+        createData.should.have.property('data');
+        done();
+      },
+    });
+  });
+
+  it('Should create basicUser user', (done) => {
+    manager.createUser({
+      user: starterData.basicUserToAuth,
+      autoVerifyMail: true,
+      callback: (createData) => {
+        createData.should.have.property('data');
+        done();
+      },
+    });
+  });
+});
+
+describe('Authenticate test users and store tokens', () => {
+  it('Should authenticate adminUser user', (done) => {
+    chai
+      .request(app)
+      .post('/api/authenticate')
+      .send({ data: { user: starterData.adminUserToAuth } })
+      .end((error, response) => {
+        response.should.have.status(200);
+        response.should.be.json;
+        response.body.should.be.jsonSchema(authenticateSchemas.authenticate);
+
+        tokens.adminUser = response.body.data.token;
+
+        done();
+      });
+  });
+
+  it('Should authenticate basic user', (done) => {
+    chai
+      .request(app)
+      .post('/api/authenticate')
+      .send({ data: { user: starterData.basicUserToAuth } })
+      .end((error, response) => {
+        response.should.have.status(200);
+        response.should.be.json;
+        response.body.should.be.jsonSchema(authenticateSchemas.authenticate);
+
+        tokens.basicUser = response.body.data.token;
+
+        done();
+      });
+  });
+});
