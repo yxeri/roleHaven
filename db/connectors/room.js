@@ -353,7 +353,7 @@ function matchPartialRoom({ partialName, user, callback }) {
  * @param {Object} params.rooms Rooms to be added
  * @param {Function} params.callback Callback
  */
-function populateDbRooms({ rooms, callback }) {
+function populateDbRooms({ rooms, callback = () => {} }) {
   winston.info('Creating default rooms, if needed');
 
   /**

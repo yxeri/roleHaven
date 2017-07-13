@@ -47,7 +47,7 @@ function incrementCommandUsage({ commandName }) {
  * @param {Object} params.commands New commands
  * @param {Function} params.callback Callback
  */
-function populateDbCommands({ commands, callback }) {
+function populateDbCommands({ commands, callback = () => {} }) {
   winston.info('Creating default commands, if needed');
 
   /**
