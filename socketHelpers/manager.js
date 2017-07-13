@@ -686,10 +686,9 @@ function isRequiredRoom({ roomName, socketId, user }) {
 /**
  * Create a user and all other objects needed for it
  * @param {Object} params.user User to create
- * @param {boolean} params.autoVerifyMail Should the mail verification step be skipped?
  * @param {Function} params.callback Callback
  */
-function createUser({ user, autoVerifyMail, callback }) {
+function createUser({ user, callback }) {
   if (!textTools.isAllowedFull(user.userName.toLowerCase())) {
     callback({ error: new errorCreator.InvalidCharacters({ name: `User name: ${user.userName}` }) });
 
@@ -700,87 +699,75 @@ function createUser({ user, autoVerifyMail, callback }) {
     return;
   }
 
-  mailer.isValidAddress({
-    autoVerifyMail,
-    address: user.mail,
-    callback: (validData) => {
-      if (validData.error) {
-        callback({ error: validData.error });
+  const { userName, fullName, password, registerDevice, mail, accessLevel, verified, banned, visibility } = user;
+
+  const userObj = {
+    userName,
+    password,
+    registerDevice,
+    mail,
+    accessLevel,
+    visibility,
+    verified,
+    banned,
+    registeredAt: new Date(),
+    fullName: fullName || userName,
+    rooms: [
+      dbConfig.rooms.public.roomName,
+      dbConfig.rooms.bcast.roomName,
+      dbConfig.rooms.important.roomName,
+      dbConfig.rooms.user.roomName,
+      dbConfig.rooms.news.roomName,
+      dbConfig.rooms.schedule.roomName,
+    ],
+  };
+  const wallet = {
+    owner: userObj.userName,
+  };
+
+  dbUser.createUser({
+    user: userObj,
+    callback: (userData) => {
+      if (userData.error) {
+        callback({ error: userData.error });
 
         return;
       }
 
-      const { userName, fullName, password, registerDevice, mail, accessLevel, verified, banned, visibility } = user;
+      const createdUser = userData.data.user;
 
-      const userObj = {
-        userName,
-        password,
-        registerDevice,
-        mail,
-        accessLevel,
-        visibility,
-        verified,
-        banned,
-        registeredAt: new Date(),
-        fullName: fullName || userName,
-        rooms: [
-          dbConfig.rooms.public.roomName,
-          dbConfig.rooms.bcast.roomName,
-          dbConfig.rooms.important.roomName,
-          dbConfig.rooms.user.roomName,
-          dbConfig.rooms.news.roomName,
-          dbConfig.rooms.schedule.roomName,
-        ],
-      };
-      const wallet = {
-        owner: userObj.userName,
+      const whisperRoom = {
+        roomName: createdUser.userName + appConfig.whisperAppend,
+        visibility: dbConfig.AccessLevels.SUPERUSER,
+        accessLevel: dbConfig.AccessLevels.SUPERUSER,
+        isWhisper: true,
       };
 
-      dbUser.createUser({
-        user: userObj,
-        callback: (userData) => {
-          if (userData.error) {
-            callback({ error: userData.error });
+      createRoom({
+        room: whisperRoom,
+        user: createdUser,
+        callback: () => {},
+      });
+      createWallet({
+        wallet,
+        callback: () => {},
+      });
+      dbInvitation.createInvitationList({
+        userName: createdUser.userName,
+        callback: () => {},
+      });
+
+      mailer.sendVerification({
+        address: createdUser.mail,
+        userName: createdUser.userName,
+        callback: (verifyData) => {
+          if (verifyData.error) {
+            callback({ error: verifyData.error });
 
             return;
           }
 
-          const createdUser = userData.data.user;
-
-          const whisperRoom = {
-            roomName: createdUser.userName + appConfig.whisperAppend,
-            visibility: dbConfig.AccessLevels.SUPERUSER,
-            accessLevel: dbConfig.AccessLevels.SUPERUSER,
-            isWhisper: true,
-          };
-
-          createRoom({
-            room: whisperRoom,
-            user: createdUser,
-            callback: () => {},
-          });
-          createWallet({
-            wallet,
-            callback: () => {},
-          });
-          dbInvitation.createInvitationList({
-            userName: createdUser.userName,
-            callback: () => {},
-          });
-
-          mailer.sendVerification({
-            address: createdUser.mail,
-            userName: createdUser.userName,
-            callback: (verifyData) => {
-              if (verifyData.error) {
-                callback({ error: verifyData.error });
-
-                return;
-              }
-
-              callback({ data: { user: createdUser } });
-            },
-          });
+          callback({ data: { user: createdUser } });
         },
       });
     },

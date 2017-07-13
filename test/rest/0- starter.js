@@ -77,7 +77,6 @@ describe('Create test users', () => {
   it('Should create adminUser user', (done) => {
     manager.createUser({
       user: starterData.adminUserToAuth,
-      autoVerifyMail: true,
       callback: (createData) => {
         createData.should.have.property('data');
         done();
@@ -88,7 +87,6 @@ describe('Create test users', () => {
   it('Should create unverified user', (done) => {
     manager.createUser({
       user: starterData.unverifiedUserToAuth,
-      autoVerifyMail: true,
       callback: (createData) => {
         createData.should.have.property('data');
         done();
@@ -99,7 +97,6 @@ describe('Create test users', () => {
   it('Should create banned user', (done) => {
     manager.createUser({
       user: starterData.bannedUserToAuth,
-      autoVerifyMail: true,
       callback: (createData) => {
         createData.should.have.property('data');
         done();
@@ -110,7 +107,6 @@ describe('Create test users', () => {
   it('Should create basicUser user', (done) => {
     manager.createUser({
       user: starterData.basicUserToAuth,
-      autoVerifyMail: true,
       callback: (createData) => {
         createData.should.have.property('data');
         done();
