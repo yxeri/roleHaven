@@ -12,11 +12,11 @@ function run() {
   // Sets server port
   app.set('port', appConfig.port);
 
-// Starts Express server
+  // Starts Express server
   const server = app.listen(app.get('port'), () => {
   });
 
-// SocketIO
+  // SocketIO
   const io = app.io;
 
   io.attach(server);
