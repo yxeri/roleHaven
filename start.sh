@@ -47,5 +47,3 @@ if (($configSize > 0)); then
   wget $CONFIGPATH/appConfig.js -O ./config/modified/appConfig.js
   wget $CONFIGPATH/databasePopulation.js -O ./config/modified/databasePopulation.js
 fi
-
-npm start
