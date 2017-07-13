@@ -80,7 +80,7 @@ function resetStations({ callback = () => {} }) {
               //   },
               // });
 
-              setTimeout(resetStations, appConfig.signalResetTimeout);
+              setTimeout(resetStations, appConfig.signalResetTimeout, {});
             },
           });
         }
@@ -89,7 +89,7 @@ function resetStations({ callback = () => {} }) {
   });
 }
 
-resetStations({ callback: () => {} });
+resetStations({});
 
 /**
  * Post request to external server
