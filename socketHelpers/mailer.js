@@ -1,38 +1,14 @@
 const appConfig = require('../config/defaults/config').app;
-const mailgun = require('mailgun-js')({ apiKey: appConfig.mailKey, domain: appConfig.mailDomain, publicApiKey: appConfig.publicMailKey });
+const mailgun = appConfig.mailKey
+  && appConfig.mailDomain
+  && appConfig.publicMailKey
+  ? require('mailgun-js')({ apiKey: appConfig.mailKey, domain: appConfig.mailDomain, publicApiKey: appConfig.publicMailKey })
+  : null;
 const errorCreator = require('../objects/error/errorCreator');
 const crypto = require('crypto');
 const mailcomposer = require('mailcomposer');
 const dbMailEvent = require('../db/connectors/mailEvent');
 const { URL } = require('url');
-
-/**
- * Checks if mail address is valid
- * @param {string} params.address Mail address
- * @param {boolean} params.autoVerifyMail Should the mail verification step be skipped?
- * @param {Function} params.callback Callback
- */
-function isValidAddress({ address, autoVerifyMail, callback }) {
-  if (autoVerifyMail || (appConfig.mode === 'test' && appConfig.publicMailKey === 'TESTKEY')) {
-    callback({ data: { isValid: true } });
-
-    return;
-  }
-
-  mailgun.validate(address, (error, body) => {
-    if (error) {
-      callback({ error: new errorCreator.Internal({ name: 'isValidAddress', errorObject: error }) });
-
-      return;
-    } else if (!body || !body.is_valid) {
-      callback({ error: new errorCreator.InvalidData({ expected: 'valid mail address' }) });
-
-      return;
-    }
-
-    callback({ data: { isValid: true } });
-  });
-}
 
 /**
  * Send user verification mail
@@ -41,69 +17,64 @@ function isValidAddress({ address, autoVerifyMail, callback }) {
  * @param {Function} params.callback Callback
  */
 function sendVerification({ address, userName, callback }) {
-  isValidAddress({
-    address,
-    callback: (validData) => {
-      if (validData.error) {
-        callback({ error: validData.error });
+  if (!mailgun) {
+    callback({ error: new errorCreator.Internal({ name: 'Mailgun mailKey, mailDomain, publicMailKey not set' }) });
 
-        return;
-      }
+    return;
+  }
 
-      crypto.randomBytes(20, (err, key) => {
-        const url = new URL(`https://${appConfig.host}/?key=${key.toString('hex')}&mailEvent=userVerify`);
-        const mail = mailcomposer({
-          from: appConfig.mailSender,
-          to: address,
-          subject: `${appConfig.title} User Verification`,
-          text: `Your account ${userName} has been created, but to be able to login you will need to activate your account. Go to ${url.href} to activate your account`,
-          html: `Your account ${userName} has been created, but to be able to login you will need to activate your account. Click <a href="${url.href}">here</a> to activate your account`,
-        });
+  crypto.randomBytes(20, (err, key) => {
+    const url = new URL(`https://${appConfig.host}/?key=${key.toString('hex')}&mailEvent=userVerify`);
+    const mail = mailcomposer({
+      from: appConfig.mailSender,
+      to: address,
+      subject: `${appConfig.title} User Verification`,
+      text: `Your account ${userName} has been created, but to be able to login you will need to activate your account. Go to ${url.href} to activate your account`,
+      html: `Your account ${userName} has been created, but to be able to login you will need to activate your account. Click <a href="${url.href}">here</a> to activate your account`,
+    });
 
-        dbMailEvent.createMailEvent({
-          mailEvent: {
-            owner: userName,
-            key: key.toString('hex'),
-            eventType: 'userVerify',
+    dbMailEvent.createMailEvent({
+      mailEvent: {
+        owner: userName,
+        key: key.toString('hex'),
+        eventType: 'userVerify',
 
-          },
-          callback: (mailEventData) => {
-            if (mailEventData.error) {
-              callback({ error: mailEventData.error });
+      },
+      callback: (mailEventData) => {
+        if (mailEventData.error) {
+          callback({ error: mailEventData.error });
 
-              return;
-            } else if (appConfig.mode === 'test') {
-              callback({ data: { success: true } });
+          return;
+        } else if (appConfig.mode === 'test') {
+          callback({ data: { success: true } });
+
+          return;
+        }
+
+        mail.build((compileError, message) => {
+          if (compileError) {
+            callback({ error: new errorCreator.Internal({ name: 'sendVerification', errorObject: compileError }) });
+
+            return;
+          }
+
+          const mailData = {
+            to: address,
+            message: message.toString('ascii'),
+          };
+
+          mailgun.messages().sendMime(mailData, (error, body) => {
+            if (error) {
+              callback({ error: new errorCreator.Internal({ name: 'sendVerification', errorObject: error }) });
 
               return;
             }
 
-            mail.build((compileError, message) => {
-              if (compileError) {
-                callback({ error: new errorCreator.Internal({ name: 'sendVerification', errorObject: compileError }) });
-
-                return;
-              }
-
-              const mailData = {
-                to: address,
-                message: message.toString('ascii'),
-              };
-
-              mailgun.messages().sendMime(mailData, (error, body) => {
-                if (error) {
-                  callback({ error: new errorCreator.Internal({ name: 'sendVerification', errorObject: error }) });
-
-                  return;
-                }
-
-                callback({ data: { body } });
-              });
-            });
-          },
+            callback({ data: { body } });
+          });
         });
-      });
-    },
+      },
+    });
   });
 }
 
@@ -114,6 +85,12 @@ function sendVerification({ address, userName, callback }) {
  * @param {Function} params.callback Callback
  */
 function sendPasswordReset({ address, userName, callback }) {
+  if (!mailgun) {
+    callback({ error: new errorCreator.Internal({ name: 'Mailgun mailKey, mailDomain, publicMailKey not set' }) });
+
+    return;
+  }
+
   crypto.randomBytes(20, (err, key) => {
     const url = new URL(`https://${appConfig.host}/?key=${key.toString('hex')}&mailEvent=passwordReset`);
     const mail = mailcomposer({
@@ -173,4 +150,3 @@ function sendPasswordReset({ address, userName, callback }) {
 
 exports.sendVerification = sendVerification;
 exports.sendPasswordReset = sendPasswordReset;
-exports.isValidAddress = isValidAddress;

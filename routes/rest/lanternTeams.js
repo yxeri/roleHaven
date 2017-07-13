@@ -33,7 +33,7 @@ const router = new express.Router();
 function handle(io) {
   /**
    * @api {get} /lanternTeams Get all lantern teams
-   * @apiVersion 5.1.0
+   * @apiVersion 6.0.0
    * @apiName GetLanternTeams
    * @apiGroup LanternTeams
    *
@@ -56,7 +56,7 @@ function handle(io) {
    *        "teamName": "razor",
    *        "isActive": false,
    *        "points": 100
-   *      }]
+   *      }
    *    }
    *  }
    */
@@ -65,23 +65,13 @@ function handle(io) {
     const auth = req.headers.authorization || '';
 
     jwt.verify(auth, appConfig.jsonKey, (jwtErr, decoded) => {
-      if (jwtErr) {
-        res.status(500).json({
-          errors: [{
-            status: 500,
-            title: 'Internal Server Error',
-            detail: 'Internal Server Error',
-          }],
-        });
-
-        return;
-      } else if (!decoded) {
+      if (jwtErr || !decoded || decoded.data.accessLevel < dbConfig.apiCommands.GetLanternTeam) {
         res.status(401).json({
-          errors: [{
+          error: {
             status: 401,
             title: 'Unauthorized',
             detail: 'Invalid token',
-          }],
+          },
         });
 
         return;
@@ -91,11 +81,11 @@ function handle(io) {
         callback: ({ error, data }) => {
           if (error) {
             res.status(500).json({
-              errors: [{
+              error: {
                 status: 500,
                 title: 'Internal Server Error',
                 detail: 'Internal Server Error',
-              }],
+              },
             });
 
             return;
@@ -109,7 +99,7 @@ function handle(io) {
 
   /**
    * @api {post} /lanternTeams Create a lantern team
-   * @apiVersion 5.1.0
+   * @apiVersion 6.0.0
    * @apiName CreateLanternTeam
    * @apiGroup LanternTeams
    *
@@ -149,11 +139,11 @@ function handle(io) {
   router.post('/', (req, res) => {
     if (!objectValidator.isValidData(req.body, { data: { team: { shortName: true, teamName: true } } })) {
       res.status(400).json({
-        errors: [{
+        error: {
           status: 400,
           title: 'Missing data',
           detail: 'Unable to parse data',
-        }],
+        },
       });
 
       return;
@@ -163,23 +153,13 @@ function handle(io) {
     const auth = req.headers.authorization || '';
 
     jwt.verify(auth, appConfig.jsonKey, (jwtErr, decoded) => {
-      if (jwtErr) {
-        res.status(500).json({
-          errors: [{
-            status: 500,
-            title: 'Internal Server Error',
-            detail: 'Internal Server Error',
-          }],
-        });
-
-        return;
-      } else if (!decoded || decoded.data.accessLevel < dbConfig.apiCommands.CreateLanternTeam.accessLevel) {
+      if (jwtErr || !decoded || decoded.data.accessLevel < dbConfig.apiCommands.CreateLanternTeam.accessLevel) {
         res.status(401).json({
-          errors: [{
+          error: {
             status: 401,
             title: 'Unauthorized',
             detail: 'Invalid token',
-          }],
+          },
         });
 
         return;
@@ -192,30 +172,30 @@ function handle(io) {
         callback: ({ error, data }) => {
           if (error) {
             if (error.type === errorCreator.ErrorTypes.ALREADYEXISTS) {
-              res.status(400).json({
-                errors: [{
-                  status: 400,
+              res.status(403).json({
+                error: {
+                  status: 403,
                   title: 'Team already exists',
                   detail: `Team ${team.shortName} ${team.teamName} already exists`,
-                }],
+                },
               });
 
               return;
             }
 
             res.status(500).json({
-              errors: [{
+              error: {
                 status: 500,
                 title: 'Internal Server Error',
                 detail: 'Internal Server Error',
-              }],
+              },
             });
 
             return;
           }
 
-          io.emit('lanternTeams', { teams: [data.savedObject] });
-          res.json({ data: { team: data.savedObject } });
+          io.emit('lanternTeams', { teams: [data.team] });
+          res.json({ data: { team: data.team } });
         },
       });
     });
@@ -223,7 +203,7 @@ function handle(io) {
 
   /**
    * @api {post} /lanternTeams/:id Update an existing lantern team
-   * @apiVersion 5.1.0
+   * @apiVersion 6.0.0
    * @apiName UpdateLanternTeam
    * @apiGroup LanternTeams
    *
@@ -231,7 +211,7 @@ function handle(io) {
    *
    * @apiDescription Update an existing lantern team
    *
-   * @apiParam {Object} id Lantern team short name
+   * @apiParam {Object} id Lantern team name
    *
    * @apiParam {Object} data
    * @apiParam {string} data.team Lantern team
@@ -265,21 +245,21 @@ function handle(io) {
   router.post('/:id', (req, res) => {
     if (!objectValidator.isValidData(req.params, { id: true })) {
       res.status(400).json({
-        errors: [{
+        error: {
           status: 400,
-          title: 'Missing data',
-          detail: 'Unable to parse data',
-        }],
+          title: 'Incorrect data',
+          detail: 'Incorrect parameters',
+        },
       });
 
       return;
-    } else if (!objectValidator.isValidData(req.body, { data: { station: true } })) {
+    } else if (!objectValidator.isValidData(req.body, { data: { team: true } })) {
       res.status(400).json({
-        errors: [{
+        error: {
           status: 400,
           title: 'Incorrect data',
-          detail: 'Unable to parse data',
-        }],
+          detail: 'Missing body parameters',
+        },
       });
 
       return;
@@ -289,33 +269,23 @@ function handle(io) {
     const auth = req.headers.authorization || '';
 
     jwt.verify(auth, appConfig.jsonKey, (jwtErr, decoded) => {
-      if (jwtErr) {
-        res.status(500).json({
-          errors: [{
-            status: 500,
-            title: 'Internal Server Error',
-            detail: 'Internal Server Error',
-          }],
-        });
-
-        return;
-      } else if (!decoded || decoded.data.accessLevel < dbConfig.apiCommands.UpdateLanternStation.accessLevel) {
+      if (jwtErr || !decoded || decoded.data.accessLevel < dbConfig.apiCommands.UpdateLanternStation.accessLevel) {
         res.status(401).json({
-          errors: [{
+          error: {
             status: 401,
             title: 'Unauthorized',
             detail: 'Invalid token',
-          }],
+          },
         });
 
         return;
       }
 
       const { team } = req.body.data;
-      const shortName = req.params.id;
+      const teamName = req.params.id;
 
       dbLanternHack.updateLanternTeam({
-        shortName,
+        teamName,
         isActive: team.isActive,
         points: team.points,
         resetPoints: team.resetPoints,
@@ -323,22 +293,22 @@ function handle(io) {
           if (error) {
             if (error.type === errorCreator.ErrorTypes.DOESNOTEXIST) {
               res.status(404).json({
-                errors: [{
+                error: {
                   status: 404,
                   title: 'Failed to update lantern team',
                   detail: 'Lantern team does not exist',
-                }],
+                },
               });
 
               return;
             }
 
             res.status(500).json({
-              errors: [{
+              error: {
                 status: 500,
                 title: 'Internal Server Error',
                 detail: 'Internal Server Error',
-              }],
+              },
             });
 
             return;

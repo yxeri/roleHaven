@@ -22,7 +22,6 @@ const databasePopulation = require('./../config/defaults/config').databasePopula
 const appConfig = require('./../config/defaults/config').app;
 const objectValidator = require('./../utils/objectValidator');
 const errorCreator = require('../objects/error/errorCreator');
-const manager = require('../socketHelpers/manager');
 
 /**
  * Add a sent message to a room's getHistory in the database
@@ -85,7 +84,7 @@ function sendMsg({ socket, message, io }) {
 
   const messageToSend = message;
   messageToSend.time = new Date();
-  messageToSend.userName = databasePopulation.users.admin.userName.toUpperCase();
+  messageToSend.userName = databasePopulation.systemUserName;
 
   if (socket) {
     socket.broadcast.to(messageToSend.roomName).emit('message', {
@@ -139,7 +138,7 @@ function sendAndStoreChatMsg({ user, callback, message, io, socket }) {
           };
 
           if (newMessage.anonymous) {
-            newMessage.userName = 'anonymous';
+            newMessage.userName = databasePopulation.anonymousUserName;
             newMessage.time.setHours(0);
             newMessage.time.setMinutes(0);
             newMessage.time.setSeconds(0);
@@ -170,6 +169,10 @@ function sendAndStoreChatMsg({ user, callback, message, io, socket }) {
 function sendChatMsg({ message, user, callback, io, socket }) {
   if (!objectValidator.isValidData({ message, user, callback, io }, { user: { userName: true }, message: { text: true, roomName: true }, io: true })) {
     callback({ error: new errorCreator.InvalidData({ expected: '{ user: { userName }, message: { text, roomName }, io }' }) });
+
+    return;
+  } else if (message.text.join('').length > appConfig.messageMaxLength) {
+    callback({ error: new errorCreator.InvalidCharacters({ expected: `text length ${appConfig.messageMaxLength}` }) });
 
     return;
   }
@@ -307,52 +310,40 @@ function sendWhisperMsg({ io, user, message, socket, callback }) {
  * @param {Object} params.message Message to be sent
  * @param {Object} [params.socket] Socket.io socket
  * @param {Object} params.io Socket.io. Used by API, when no socket is available
- * @param {string} params.token jwt token
  * @param {Function} params.callback Client callback
  */
-function sendBroadcastMsg({ message, socket, callback, io, token }) {
-  manager.userIsAllowed({
-    token,
-    commandName: databasePopulation.commands.broadcast.commandName,
-    callback: ({ error }) => {
-      if (error) {
-        callback({ error });
+function sendBroadcastMsg({ message, socket, callback, io }) {
+  if (!objectValidator.isValidData({ message, io }, { message: { text: true }, io: true })) {
+    callback({ error: new errorCreator.InvalidData({ expected: '{ message: { text }, io }' }) });
 
-        return;
-      } else if (!objectValidator.isValidData({ message, socket, callback }, { message: { text: true }, io: true })) {
-        callback({ error: new errorCreator.InvalidData({ expected: '{ message: { text }, io }' }) });
+    return;
+  }
+
+  const newMessage = message;
+  newMessage.extraClass = 'broadcastMsg';
+  newMessage.roomName = databasePopulation.rooms.bcast.roomName;
+  newMessage.time = new Date();
+  newMessage.userName = newMessage.userName || 'SYSTEM';
+
+  addMsgToHistory({
+    roomName: newMessage.roomName,
+    message: newMessage,
+    callback: (historyData) => {
+      if (historyData.error) {
+        callback({ error: historyData.error });
 
         return;
       }
 
-      const data = { message };
-      data.message.extraClass = 'broadcastMsg';
-      data.message.roomName = databasePopulation.rooms.bcast.roomName;
-      data.message.time = new Date();
+      const data = { message: newMessage };
 
-      if (!data.message.userName) {
-        data.message.userName = 'SYSTEM';
+      if (socket) {
+        socket.broadcast.to(newMessage.roomName).emit('bcastMsg', data);
+      } else {
+        io.to(newMessage.roomName).emit('bcastMsg', data);
       }
 
-      addMsgToHistory({
-        roomName: data.message.roomName,
-        message: data.message,
-        callback: (historyData) => {
-          if (historyData.error) {
-            callback({ error: historyData.error });
-
-            return;
-          }
-
-          if (socket) {
-            socket.broadcast.to(data.message.roomName).emit('bcastMsg', data);
-          } else {
-            io.to(data.message.roomName).emit('bcastMsg', data);
-          }
-
-          callback({ data });
-        },
-      });
+      callback({ data });
     },
   });
 }

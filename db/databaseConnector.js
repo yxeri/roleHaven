@@ -20,16 +20,18 @@ const mongoose = require('mongoose');
 const appConfig = require('../config/defaults/config').app;
 const objectValidator = require('./../utils/objectValidator');
 const errorCreator = require('../objects/error/errorCreator');
+const winston = require('winston');
 
 const dbPath = `mongodb://${appConfig.dbHost}:${appConfig.dbPort}/${appConfig.dbName}`;
 
-mongoose.connect(dbPath, (err) => {
+mongoose.connect(dbPath, { useMongoClient: true }, (err) => {
   if (err) {
-    console.log('Failed to connect to the database');
-  } else {
-    // TODO Trigger non-database version of app
-    console.log('Connection established to database');
+    winston.emerg('Failed to connect to the database');
+
+    return;
   }
+
+  winston.info('Connection established to database');
 });
 
 /**

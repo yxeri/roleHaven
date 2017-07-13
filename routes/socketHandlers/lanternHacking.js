@@ -80,7 +80,7 @@ function resetStations({ callback = () => {} }) {
               //   },
               // });
 
-              setTimeout(resetStations, appConfig.signalResetTimeout);
+              setTimeout(resetStations, appConfig.signalResetTimeout, {});
             },
           });
         }
@@ -89,7 +89,7 @@ function resetStations({ callback = () => {} }) {
   });
 }
 
-resetStations({ callback: () => {} });
+resetStations({});
 
 /**
  * Post request to external server
@@ -485,7 +485,7 @@ function handle(socket) {
         dbLanternHack.getLanternHack({
           owner: allowedUser.userName,
           callback: ({ error: getError, data }) => {
-            if (getError && getError.type !== errorCreator.ErrorTypes.DoesNotExist) {
+            if (getError && getError.type !== errorCreator.ErrorTypes.DOESNOTEXIST) {
               callback({ error: getError });
 
               return;

@@ -31,7 +31,7 @@ const router = new express.Router();
 function handle() {
   /**
    * @api {post} /authenticate Create a JSON Web Token
-   * @apiVersion 5.0.1
+   * @apiVersion 6.0.0
    * @apiName Authenticate
    * @apiGroup Authenticate
    *
@@ -63,11 +63,11 @@ function handle() {
   router.post('/', (req, res) => {
     if (!objectValidator.isValidData(req.body, { data: { user: { userName: true, password: true } } })) {
       res.status(400).json({
-        errors: [{
+        error: {
           status: 400,
           title: 'Missing data',
           detail: 'Unable to parse data',
-        }],
+        },
       });
 
       return;
@@ -82,22 +82,22 @@ function handle() {
         if (error) {
           if (error.type === errorCreator.ErrorTypes.DOESNOTEXIST) {
             res.status(401).json({
-              errors: [{
+              error: {
                 status: 401,
                 title: 'Unauthorized user',
                 detail: 'Incorrect username and/or password or user does not exist, is banned or has not been verified',
-              }],
+              },
             });
 
             return;
           }
 
           res.status(500).json({
-            errors: [{
+            error: {
               status: 500,
               title: 'Internal Server Error',
               detail: 'Internal Server Error',
-            }],
+            },
           });
 
           return;

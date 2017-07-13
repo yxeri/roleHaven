@@ -18,14 +18,13 @@
 
 const express = require('express');
 const appConfig = require('../../config/defaults/config').app;
-const databasePopulation = require('../../config/defaults/config').databasePopulation;
+const dbConfig = require('../../config/defaults/config').databasePopulation;
 const jwt = require('jsonwebtoken');
 const objectValidator = require('../../utils/objectValidator');
 const dbCalibrationMission = require('../../db/connectors/calibrationMission');
-const dbWallet = require('../../db/connectors/wallet');
 const dbUser = require('../../db/connectors/user');
-const dbTransaction = require('../../db/connectors/transaction');
 const errorCreator = require('../../objects/error/errorCreator');
+const manager = require('../../socketHelpers/manager');
 
 const router = new express.Router();
 
@@ -35,9 +34,9 @@ const router = new express.Router();
  */
 function handle(io) {
   /**
-   * @api {get} /calibrationMissions Get all of user's active calibration missions
-   * @apiVersion 5.1.0
-   * @apiName GetCalibrationMissions
+   * @api {get} /calibrationMissions Get user's active calibration mission
+   * @apiVersion 6.0.0
+   * @apiName GetCalibrationMission
    * @apiGroup CalibrationMissions
    *
    * @apiHeader {String} Authorization Your JSON Web Token
@@ -45,16 +44,16 @@ function handle(io) {
    * @apiDescription Get all of user's active calibration missions
    *
    * @apiSuccess {Object} data
-   * @apiSuccess {Object[]} data.missions Missions found. Can be empty
+   * @apiSuccess {Object[]} data.mission Mission found
    * @apiSuccessExample {json} Success-Response:
    *   {
    *    "data": {
-   *      "missions": [{
+   *      "mission": {
    *        owner: 'raz',
    *        stationId: 1,
-   *        code: 81855211
+   *        code: 81855211,
    *        completed: false,
-   *      }],
+   *      }
    *    }
    *  }
    */
@@ -63,51 +62,34 @@ function handle(io) {
     const auth = req.headers.authorization || '';
 
     jwt.verify(auth, appConfig.jsonKey, (jwtErr, decoded) => {
-      if (jwtErr) {
-        res.status(500).json({
-          errors: [{
-            status: 500,
-            title: 'Internal Server Error',
-            detail: 'Internal Server Error',
-          }],
-        });
-
-        return;
-      } else if (!decoded) {
+      if (jwtErr || !decoded || decoded.data.accessLevel < dbConfig.apiCommands.GetCalibrationMission.accessLevel) {
         res.status(401).json({
-          errors: [{
+          error: {
             status: 401,
             title: 'Unauthorized',
             detail: 'Invalid token',
-          }],
+          },
         });
 
         return;
       }
 
-      dbCalibrationMission.getActiveMission({
-        owner: decoded.data.userName,
+      manager.getActiveCalibrationMission({
+        userName: decoded.data.userName,
         callback: ({ error, data }) => {
           if (error) {
             res.status(500).json({
-              errors: [{
+              error: {
                 status: 500,
                 title: 'Internal Server Error',
                 detail: 'Internal Server Error',
-              }],
+              },
             });
 
             return;
           }
 
-          const { mission } = data;
-          const missions = [];
-
-          if (mission) {
-            missions.push(mission);
-          }
-
-          res.json({ data: { missions } });
+          res.json({ data: { mission: data.mission } });
         },
       });
     });
@@ -115,7 +97,7 @@ function handle(io) {
 
   /**
    * @api {post} /calibrationMissions/complete Complete a mission
-   * @apiVersion 5.1.0
+   * @apiVersion 6.0.0
    * @apiName CompleteCalibrationMission
    * @apiGroup CalibrationMissions
    *
@@ -139,6 +121,7 @@ function handle(io) {
    *
    * @apiSuccess {Object} data
    * @apiSuccess {Object[]} data.mission Mission completed
+   * @apiSuccess {Object[]} data.transaction Transaction for completed mission
    * @apiSuccessExample {json} Success-Response:
    *   {
    *    "data": {
@@ -158,13 +141,13 @@ function handle(io) {
    *  }
    */
   router.post('/complete', (req, res) => {
-    if (!objectValidator.isValidData(req.body, { data: { mission: { stationId: true } } })) {
+    if (!objectValidator.isValidData(req.body, { data: { mission: { stationId: true, code: true } } })) {
       res.status(400).json({
-        errors: [{
+        error: {
           status: 400,
           title: 'Missing data',
           detail: 'Unable to parse data',
-        }],
+        },
       });
 
       return;
@@ -174,128 +157,33 @@ function handle(io) {
     const auth = req.headers.authorization || '';
 
     jwt.verify(auth, appConfig.jsonKey, (jwtErr, decoded) => {
-      if (jwtErr) {
-        res.status(500).json({
-          errors: [{
-            status: 500,
-            title: 'Internal Server Error',
-            detail: 'Internal Server Error',
-          }],
-        });
-
-        return;
-      } else if (!decoded || decoded.data.accessLevel < databasePopulation.apiCommands.CompleteCalibrationMission.accessLevel) {
+      if (jwtErr || (!decoded || decoded.data.accessLevel < dbConfig.apiCommands.CompleteCalibrationMission.accessLevel)) {
         res.status(401).json({
-          errors: [{
+          error: {
             status: 401,
             title: 'Unauthorized',
             detail: 'Invalid token',
-          }],
+          },
         });
 
         return;
       }
 
-      const mission = req.body.data.mission;
-
-      dbCalibrationMission.setMissionCompleted({
-        code: mission.code,
-        stationId: mission.stationId,
+      manager.completeActiveCalibrationMission({
+        io,
+        mission: req.body.data.mission,
         callback: ({ error, data }) => {
           if (error) {
-            if (error.type === errorCreator.ErrorTypes.DOESNOTEXIST) {
-              res.status(404).json({
-                errors: [{
-                  status: 404,
-                  title: 'Not found',
-                  detail: 'Mission not found',
-                }],
-              });
-
-              return;
-            }
-
             res.status(500).json({
-              errors: [{
+              error: {
                 status: 500,
-                title: 'Internal Server Error',
-                detail: 'Internal Server Error',
-              }],
+                title: 'Internal server error',
+                detail: 'Internal server error',
+              },
             });
-
-            return;
           }
 
-          const transaction = {
-            to: data.mission.owner,
-            from: 'SYSTEM',
-            amount: 50,
-            time: new Date(),
-            note: `CALIBRATION OF STATION ${data.mission.stationId}`,
-          };
-
-          dbTransaction.createTransaction({
-            transaction,
-            callback: ({ error: createError }) => {
-              if (createError) {
-                res.status(500).json({
-                  errors: [{
-                    status: 500,
-                    title: 'Internal Server Error',
-                    detail: 'Internal Server Error',
-                  }],
-                });
-
-                return;
-              }
-
-              dbWallet.increaseAmount({
-                owner: mission.owner,
-                amount: transaction.amount,
-                callback: ({ error: walletError, data: walletData }) => {
-                  if (walletError) {
-                    res.status(500).json({
-                      errors: [{
-                        status: 500,
-                        title: 'Internal Server Error',
-                        detail: 'Internal Server Error',
-                      }],
-                    });
-
-                    return;
-                  }
-
-                  dbUser.getUserByAlias({
-                    alias: transaction.to,
-                    callback: ({ error: aliasError, data: aliasData }) => {
-                      if (aliasError) {
-                        res.status(500).json({
-                          errors: [{
-                            status: 500,
-                            title: 'Internal Server Error',
-                            detail: 'Internal Server Error',
-                          }],
-                        });
-
-                        return;
-                      }
-
-                      const { receiver } = aliasData;
-
-                      if (receiver.socketId !== '') {
-                        io.to(receiver.socketId).emit('transaction', { transaction, wallet: walletData.wallet });
-                        io.to(receiver.socketId).emit('terminal', { mission: { missionType: 'calibrationMission', completed: true } });
-                      }
-
-                      res.json({
-                        data: { mission, transaction },
-                      });
-                    },
-                  });
-                },
-              });
-            },
-          });
+          res.json({ data });
         },
       });
     });
@@ -303,7 +191,7 @@ function handle(io) {
 
   /**
    * @api {post} /calibrationMissions/cancel Cancel a mission
-   * @apiVersion 5.1.0
+   * @apiVersion 6.0.0
    * @apiName CancelCalibrationMission
    * @apiGroup CalibrationMissions
    *
@@ -342,13 +230,13 @@ function handle(io) {
    *  }
    */
   router.post('/cancel', (req, res) => {
-    if (!objectValidator.isValidData(req.body, { data: { mission: { stationId: true } } })) {
+    if (!objectValidator.isValidData(req.body, { data: { mission: { stationId: true, code: true } } })) {
       res.status(400).json({
-        errors: [{
+        error: {
           status: 400,
           title: 'Missing data',
           detail: 'Unable to parse data',
-        }],
+        },
       });
 
       return;
@@ -358,23 +246,13 @@ function handle(io) {
     const auth = req.headers.authorization || '';
 
     jwt.verify(auth, appConfig.jsonKey, (jwtErr, decoded) => {
-      if (jwtErr) {
-        res.status(500).json({
-          errors: [{
-            status: 500,
-            title: 'Internal Server Error',
-            detail: 'Internal Server Error',
-          }],
-        });
-
-        return;
-      } else if (!decoded || decoded.data.accessLevel < databasePopulation.apiCommands.CancelCalibrationMission.accessLevel) {
+      if (jwtErr || (!decoded || decoded.data.accessLevel < dbConfig.apiCommands.CancelCalibrationMission.accessLevel)) {
         res.status(401).json({
-          errors: [{
+          error: {
             status: 401,
             title: 'Unauthorized',
             detail: 'Invalid token',
-          }],
+          },
         });
 
         return;
@@ -389,22 +267,22 @@ function handle(io) {
           if (error) {
             if (error.type === errorCreator.ErrorTypes.DOESNOTEXIST) {
               res.status(404).json({
-                errors: [{
+                error: {
                   status: 404,
                   title: 'Not found',
                   detail: 'Mission not found',
-                }],
+                },
               });
 
               return;
             }
 
             res.status(500).json({
-              errors: [{
+              error: {
                 status: 500,
                 title: 'Internal Server Error',
                 detail: 'Internal Server Error',
-              }],
+              },
             });
 
             return;
@@ -417,11 +295,11 @@ function handle(io) {
             callback: ({ error: aliasError, data: aliasData }) => {
               if (aliasError) {
                 res.status(500).json({
-                  errors: [{
+                  error: {
                     status: 500,
                     title: 'Internal Server Error',
                     detail: 'Internal Server Error',
-                  }],
+                  },
                 });
 
                 return;

@@ -35,7 +35,7 @@ const router = new express.Router();
 function handle(io) {
   /**
    * @api {get} /rooms Retrieve all rooms
-   * @apiVersion 5.0.1
+   * @apiVersion 6.0.0
    * @apiName GetRooms
    * @apiGroup Rooms
    *
@@ -60,46 +60,39 @@ function handle(io) {
     const auth = req.headers.authorization || '';
 
     jwt.verify(auth, appConfig.jsonKey, (jwtErr, decoded) => {
-      if (jwtErr) {
-        res.status(500).json({
-          errors: [{
-            status: 500,
-            title: 'Internal Server Error',
-            detail: 'Internal Server Error',
-          }],
-        });
-
-        return;
-      } else if (!decoded) {
+      if (jwtErr || !decoded || decoded.data.accessLevel < dbConfig.apiCommands.GetRoom) {
         res.status(401).json({
-          errors: [{
+          error: {
             status: 401,
             title: 'Unauthorized',
             detail: 'Invalid token',
-          }],
+          },
         });
 
         return;
       }
 
-      const user = auth ? decoded.data : { accessLevel: 0 };
-
       dbRoom.getAllRooms({
-        user,
+        user: decoded.data,
         callback: ({ error, data }) => {
           if (error) {
             res.status(500).json({
-              errors: [{
+              error: {
                 status: 500,
                 title: 'Internal Server Error',
                 detail: 'Internal Server Error',
-              }],
+              },
             });
 
             return;
           }
 
-          res.json({ data: { rooms: data.rooms.map(room => room.roomName) } });
+          res.json({
+            data: {
+              rooms: data.rooms.map(room => room.roomName),
+              whisperRooms: data.whisperRooms.map(room => room.roomName),
+            },
+          });
         },
       });
     });
@@ -107,7 +100,7 @@ function handle(io) {
 
   /**
    * @api {get} /rooms/:id Retrieve specific room
-   * @apiVersion 5.0.1
+   * @apiVersion 6.0.0
    * @apiName GetRoom
    * @apiGroup Rooms
    *
@@ -141,11 +134,11 @@ function handle(io) {
   router.get('/:id', (req, res) => {
     if (!objectValidator.isValidData(req.params, { id: true })) {
       res.status(400).json({
-        errors: [{
+        error: {
           status: 400,
           title: 'Missing data',
           detail: 'Unable to parse data',
-        }],
+        },
       });
 
       return;
@@ -155,29 +148,17 @@ function handle(io) {
     const auth = req.headers.authorization || '';
 
     jwt.verify(auth, appConfig.jsonKey, (jwtErr, decoded) => {
-      if (jwtErr) {
-        res.status(500).json({
-          errors: [{
-            status: 500,
-            title: 'Internal Server Error',
-            detail: 'Internal Server Error',
-          }],
-        });
-
-        return;
-      } else if (!decoded) {
+      if (jwtErr || !decoded || decoded.data.accessLevel < dbConfig.apiCommands.GetRoom) {
         res.status(401).json({
-          errors: [{
+          error: {
             status: 401,
             title: 'Unauthorized',
             detail: 'Invalid token',
-          }],
+          },
         });
 
         return;
       }
-
-      const user = auth ? decoded.data : { accessLevel: 0 };
 
       dbRoom.getRoom({
         roomName: req.params.id,
@@ -185,32 +166,32 @@ function handle(io) {
           if (error) {
             if (error.type === errorCreator.ErrorTypes.DOESNOTEXIST) {
               res.status(404).json({
-                errors: [{
+                error: {
                   status: 404,
                   title: 'Room does not exist',
                   detail: 'Room does not exist',
-                }],
-              });
-
-              return;
-            } else if (user.accessLevel < data.room.accessLevel) {
-              res.status(401).json({
-                errors: [{
-                  status: 401,
-                  title: 'Unauthorized',
-                  detail: '',
-                }],
+                },
               });
 
               return;
             }
 
             res.status(500).json({
-              errors: [{
+              error: {
                 status: 500,
                 title: 'Internal Server Error',
                 detail: 'Internal Server Error',
-              }],
+              },
+            });
+
+            return;
+          } else if (decoded.data.accessLevel < data.room.visibility) {
+            res.status(401).json({
+              error: {
+                status: 401,
+                title: 'Unauthorized',
+                detail: 'Invalid token',
+              },
             });
 
             return;
@@ -224,7 +205,7 @@ function handle(io) {
 
   /**
    * @api {post} /rooms Create a room
-   * @apiVersion 5.0.1
+   * @apiVersion 6.0.0
    * @apiName CreateRoom
    * @apiGroup Rooms
    *
@@ -236,8 +217,8 @@ function handle(io) {
    * @apiParam {Object} data.room Room
    * @apiParam {String} data.room.roomName Name of the room to create
    * @apiParam {String} [data.room.password] Password for the room. Leave unset if you don't want to password-protect the room
-   * @apiParam {Number} [data.room.visibility] Minimum access level required to see the room. 0 = anonymous. 1 = registered user. Default is 1.
-   * @apiParam {Number} [data.room.accessLevel] Minimum access level required to follow the room. 0 = anonymous. 1 = registered user. Default is 1.
+   * @apiParam {Number} [data.room.visibility] Minimum access level required to see the room. 0 = ANONYMOUS. 1 = registered user. Default is 1.
+   * @apiParam {Number} [data.room.accessLevel] Minimum access level required to follow the room. 0 = ANONYMOUS. 1 = registered user. Default is 1.
    * @apiParamExample {json} Request-Example:
    *   {
    *    "data": {
@@ -269,11 +250,11 @@ function handle(io) {
   router.post('/', (req, res) => {
     if (!objectValidator.isValidData(req.body, { data: { room: { roomName: true } } })) {
       res.status(400).json({
-        errors: [{
+        error: {
           status: 400,
           title: 'Missing data',
           detail: 'Unable to parse data',
-        }],
+        },
       });
 
       return;
@@ -283,23 +264,13 @@ function handle(io) {
     const auth = req.headers.authorization || '';
 
     jwt.verify(auth, appConfig.jsonKey, (jwtErr, decoded) => {
-      if (jwtErr) {
-        res.status(500).json({
-          errors: [{
-            status: 500,
-            title: 'Internal Server Error',
-            detail: 'Internal Server Error',
-          }],
-        });
-
-        return;
-      } else if (!decoded) {
+      if (jwtErr || !decoded || decoded.data.accessLevel < dbConfig.apiCommands.CreateRoom.accessLevel) {
         res.status(401).json({
-          errors: [{
+          error: {
             status: 401,
             title: 'Unauthorized',
             detail: 'Invalid token',
-          }],
+          },
         });
 
         return;
@@ -316,22 +287,22 @@ function handle(io) {
           if (error) {
             if (error.type === errorCreator.ErrorTypes.ALREADYEXISTS) {
               res.status(403).json({
-                errors: [{
+                error: {
                   status: 403,
                   title: 'Room already exists',
                   detail: 'Room already exists',
-                }],
+                },
               });
 
               return;
             }
 
             res.status(500).json({
-              errors: [{
+              error: {
                 status: 500,
                 title: 'Internal Server Error',
                 detail: 'Internal Server Error',
-              }],
+              },
             });
 
             return;
@@ -345,7 +316,7 @@ function handle(io) {
 
   /**
    * @api {post} /rooms/follow Follow a room
-   * @apiVersion 5.1.1
+   * @apiVersion 6.0.0
    * @apiName FollowRoom
    * @apiGroup Rooms
    *
@@ -382,11 +353,11 @@ function handle(io) {
   router.post('/follow', (req, res) => {
     if (!objectValidator.isValidData(req.body, { data: { room: { roomName: true } } })) {
       res.status(400).json({
-        errors: [{
+        error: {
           status: 400,
           title: 'Missing data',
           detail: 'Unable to parse data',
-        }],
+        },
       });
 
       return;
@@ -396,23 +367,13 @@ function handle(io) {
     const auth = req.headers.authorization || '';
 
     jwt.verify(auth, appConfig.jsonKey, (jwtErr, decoded) => {
-      if (jwtErr) {
-        res.status(500).json({
-          errors: [{
-            status: 500,
-            title: 'Internal Server Error',
-            detail: 'Internal Server Error',
-          }],
-        });
-
-        return;
-      } else if (!decoded || decoded.data.accessLevel < dbConfig.apiCommands.FollowRoom.accessLevel) {
+      if (jwtErr || (!decoded || decoded.data.accessLevel < dbConfig.apiCommands.FollowRoom.accessLevel)) {
         res.status(401).json({
-          errors: [{
+          error: {
             status: 401,
             title: 'Unauthorized',
             detail: 'Invalid token',
-          }],
+          },
         });
 
         return;
@@ -429,22 +390,22 @@ function handle(io) {
           if (error) {
             if (error.type === errorCreator.ErrorTypes.NOTALLOWED) {
               res.status(401).json({
-                errors: [{
+                error: {
                   status: 401,
                   title: 'Not authorized to follow room',
                   detail: 'Your user is not allowed to follow the room',
-                }],
+                },
               });
 
               return;
             }
 
             res.status(500).json({
-              errors: [{
+              error: {
                 status: 500,
                 title: 'Internal Server Error',
                 detail: 'Internal Server Error',
-              }],
+              },
             });
 
             return;
@@ -458,11 +419,11 @@ function handle(io) {
             callback: ({ error: addError, data: userData }) => {
               if (addError) {
                 res.status(500).json({
-                  errors: [{
+                  error: {
                     status: 500,
                     title: 'Internal Server Error',
                     detail: 'Internal Server Error',
-                  }],
+                  },
                 });
 
                 return;
@@ -474,7 +435,7 @@ function handle(io) {
                 io.to(user.socketId).emit('follow', { room });
               }
 
-              res.json({ data: { room: { roomName } } });
+              res.json({ data: { room } });
             },
           });
         },
@@ -484,7 +445,7 @@ function handle(io) {
 
   /**
    * @api {post} /rooms/unfollow Unfollow a room
-   * @apiVersion 5.1.1
+   * @apiVersion 6.0.0
    * @apiName UnfollowRoom
    * @apiGroup Rooms
    *
@@ -519,11 +480,11 @@ function handle(io) {
   router.post('/unfollow', (req, res) => {
     if (!objectValidator.isValidData(req.body, { data: { room: { roomName: true } } })) {
       res.status(400).json({
-        errors: [{
+        error: {
           status: 400,
           title: 'Missing data',
           detail: 'Unable to parse data',
-        }],
+        },
       });
 
       return;
@@ -533,23 +494,13 @@ function handle(io) {
     const auth = req.headers.authorization || '';
 
     jwt.verify(auth, appConfig.jsonKey, (jwtErr, decoded) => {
-      if (jwtErr) {
-        res.status(500).json({
-          errors: [{
-            status: 500,
-            title: 'Internal Server Error',
-            detail: 'Internal Server Error',
-          }],
-        });
-
-        return;
-      } else if (!decoded || decoded.data.accessLevel < dbConfig.apiCommands.UnfollowRoom.accessLevel) {
+      if (jwtErr || (!decoded || decoded.data.accessLevel < dbConfig.apiCommands.UnfollowRoom.accessLevel)) {
         res.status(401).json({
-          errors: [{
+          error: {
             status: 401,
             title: 'Unauthorized',
             detail: 'Invalid token',
-          }],
+          },
         });
 
         return;
@@ -562,12 +513,24 @@ function handle(io) {
         userName: decoded.data.userName,
         callback: ({ error, data }) => {
           if (error) {
+            if (error.type === errorCreator.ErrorTypes.DOESNOTEXIST) {
+              res.status(404).json({
+                error: {
+                  status: 404,
+                  title: 'Room does not exist',
+                  detail: 'User is not following room',
+                },
+              });
+
+              return;
+            }
+
             res.status(500).json({
-              errors: [{
+              error: {
                 status: 500,
                 title: 'Internal Server Error',
                 detail: 'Internal Server Error',
-              }],
+              },
             });
 
             return;

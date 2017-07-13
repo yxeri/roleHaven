@@ -16,10 +16,13 @@
 
 'use strict';
 
+const winston = require('winston');
+const appConfig = require('../config/defaults/config').app;
+
 /**
  * Checks if the sent object has the expected structure. It will returns false if it doesn't
- * @param {Object} data - The object that was sent
- * @param {Object} expected - The expected structure of the object
+ * @param {Object} data The object that was sent
+ * @param {Object} expected The expected structure of the object
  * @param {Object} options Options
  * @param {boolean} options.verbose Should error messages be printed?
  * @returns {boolean} Does the data have the correct structure?
@@ -31,7 +34,7 @@ function checkKeys(data, expected, options) {
     const expectedKey = expectedKeys[i];
 
     if ((!data[expectedKey] || data[expectedKey] === null) && typeof data[expectedKey] !== 'boolean') {
-      if (options.verbose) { console.log('Validation error', `Key missing: ${expectedKey}`); }
+      if (options.verbose && appConfig.mode !== 'test') { winston.error('Validation error', `Key missing: ${expectedKey}`); }
 
       return false;
     }
@@ -60,15 +63,15 @@ function isValidData(data, expected, options = {}) {
   validationOptions.verbose = typeof validationOptions.verbose === 'undefined' ? true : validationOptions.verbose;
 
   if ((!data || data === null) || (!expected || expected === null)) {
-    if (validationOptions.verbose) { console.log('Validation error', 'Data and expected structure have to be set'); }
+    if (validationOptions.verbose && appConfig.mode !== 'test') { winston.error('Validation error', 'Data and expected structure have to be set'); }
 
     return false;
   }
 
   const isValid = checkKeys(data, expected, validationOptions);
 
-  if (!isValid && validationOptions.verbose) {
-    console.log('Validation error', `Expected: ${JSON.stringify(expected)}`);
+  if (!isValid && validationOptions.verbose && appConfig.mode !== 'test') {
+    winston.error('Validation error', `Expected: ${JSON.stringify(expected)}`);
   }
 
   return isValid;

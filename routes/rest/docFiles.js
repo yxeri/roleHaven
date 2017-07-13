@@ -19,9 +19,11 @@
 const express = require('express');
 const objectValidator = require('../../utils/objectValidator');
 const appConfig = require('../../config/defaults/config').app;
+const dbConfig = require('../../config/defaults/config').databasePopulation;
 const dbDocFile = require('../../db/connectors/docFile');
 const jwt = require('jsonwebtoken');
 const errorCreator = require('../../objects/error/errorCreator');
+const manager = require('../../socketHelpers/manager');
 
 const router = new express.Router();
 
@@ -31,14 +33,14 @@ const router = new express.Router();
  */
 function handle(io) {
   /**
-   * @api {get} /docFiles Retrieve all public docFiles
-   * @apiVersion 5.0.1
+   * @api {get} /docFiles Retrieve public docFiles
+   * @apiVersion 6.0.0
    * @apiName GetPublicDocFiles
    * @apiGroup DocFiles
    *
    * @apiHeader {String} Authorization Your JSON Web Token
    *
-   * @apiDescription Retrieve all public docFiles
+   * @apiDescription Retrieve public docFiles
    *
    * @apiSuccess {Object} data
    * @apiSuccess {Object[]} data.docFiles All public docFiles. Empty if no match was found
@@ -47,7 +49,6 @@ function handle(io) {
    *    "data": {
    *      "docFiles": [
    *        {
-   *          "_id": "58093459d3b44c3400858273",
    *          "title": "Hello",
    *          "docFileId": "hello",
    *          "creator": "rez5",
@@ -56,7 +57,6 @@ function handle(io) {
    *            "This is great"
    *          ],
    *          "isPublic": true,
-   *          "visibility": 0
    *        }
    *      ]
    *    }
@@ -67,23 +67,13 @@ function handle(io) {
     const auth = req.headers.authorization || '';
 
     jwt.verify(auth, appConfig.jsonKey, (jwtErr, decoded) => {
-      if (jwtErr) {
-        res.status(500).json({
-          errors: [{
-            status: 500,
-            title: 'Internal Server Error',
-            detail: 'Internal Server Error',
-          }],
-        });
-
-        return;
-      } else if (!decoded) {
+      if (jwtErr || !decoded || decoded.data.accessLevel < dbConfig.apiCommands.GetDocFile) {
         res.status(401).json({
-          errors: [{
+          error: {
             status: 401,
             title: 'Unauthorized',
             detail: 'Invalid token',
-          }],
+          },
         });
 
         return;
@@ -95,19 +85,17 @@ function handle(io) {
         callback: ({ error, data }) => {
           if (error) {
             res.status(500).json({
-              errors: [{
+              error: {
                 status: 500,
                 title: 'Internal Server Error',
                 detail: 'Internal Server Error',
-              }],
+              },
             });
 
             return;
           }
 
-          const { docFiles } = data;
-
-          res.json({ data: { docFiles } });
+          res.json({ data });
         },
       });
     });
@@ -115,7 +103,7 @@ function handle(io) {
 
   /**
    * @api {get} /docFiles/:id Retrieve specific docFile
-   * @apiVersion 5.0.1
+   * @apiVersion 6.0.0
    * @apiName GetDocFile
    * @apiGroup DocFiles
    *
@@ -148,13 +136,13 @@ function handle(io) {
    *  }
    */
   router.get('/:id', (req, res) => {
-    if (!objectValidator.isValidData(req.paramsw, { id: true })) {
+    if (!objectValidator.isValidData(req.params, { id: true })) {
       res.status(400).json({
-        errors: [{
+        error: {
           status: 400,
           title: 'Missing data',
           detail: 'Unable to parse data',
-        }],
+        },
       });
 
       return;
@@ -164,51 +152,41 @@ function handle(io) {
     const auth = req.headers.authorization || '';
 
     jwt.verify(auth, appConfig.jsonKey, (jwtErr, decoded) => {
-      if (jwtErr) {
-        res.status(500).json({
-          errors: [{
-            status: 500,
-            title: 'Internal Server Error',
-            detail: 'Internal Server Error',
-          }],
-        });
-
-        return;
-      } else if (!decoded) {
+      if (jwtErr || !decoded || decoded.data.accessLevel < dbConfig.apiCommands.GetDocFile) {
         res.status(401).json({
-          errors: [{
+          error: {
             status: 401,
             title: 'Unauthorized',
             detail: 'Invalid token',
-          }],
+          },
         });
 
         return;
       }
 
-      dbDocFile.getDocFile({
+      dbDocFile.getDocFileById({
         docFileId: req.params.id,
-        accessLevel: decoded.data.accessLevel,
+        user: decoded.data,
         callback: ({ error, data }) => {
           if (error) {
             if (error.type === errorCreator.ErrorTypes.DOESNOTEXIST) {
               res.status(404).json({
-                errors: [{
+                error: {
                   status: 404,
                   title: 'Not found',
                   detail: 'DocFile not found',
-                }],
+                },
               });
 
               return;
             }
 
             res.status(500).json({
-              errors: [{
+              error: {
                 status: 500,
                 title: 'Internal Server Error',
                 detail: 'Internal Server Error',
-              }],
+              },
             });
 
             return;
@@ -216,7 +194,7 @@ function handle(io) {
 
           const { docFile } = data;
 
-          res.json({ data: { docFiles: [docFile] } });
+          res.json({ data: { docFile } });
         },
       });
     });
@@ -224,7 +202,7 @@ function handle(io) {
 
   /**
    * @api {post} /docFiles Create an docFile
-   * @apiVersion 5.0.1
+   * @apiVersion 6.0.0
    * @apiName CreateDocFile
    * @apiGroup DocFiles
    *
@@ -261,28 +239,27 @@ function handle(io) {
    *  {
    *    "data": {
    *      "docFile": {
- *          "_id": "58093459d3b44c3400858273",
- *          "title": "Hello",
- *          "docFileId": "hello",
- *          "creator": "rez5",
- *          "text": [
- *            "Hello world!",
- *            "This is great"
- *          ],
- *          "isPublic": true,
- *          "visibility": 0
- *        }
+   *        "title": "Hello",
+   *        "docFileId": "hello",
+   *        "creator": "rez5",
+   *        "text": [
+   *          "Hello world!",
+   *          "This is great"
+   *        ],
+   *        "isPublic": true,
+   *        "visibility": 0
+   *      }
    *    }
    *  }
    */
   router.post('/', (req, res) => {
     if (!objectValidator.isValidData(req.body, { data: { docFile: { docFileId: true, text: true, title: true } } })) {
       res.status(400).json({
-        errors: [{
+        error: {
           status: 400,
           title: 'Missing data',
           detail: 'Unable to parse data',
-        }],
+        },
       });
 
       return;
@@ -292,23 +269,13 @@ function handle(io) {
     const auth = req.headers.authorization || '';
 
     jwt.verify(auth, appConfig.jsonKey, (jwtErr, decoded) => {
-      if (jwtErr) {
-        res.status(500).json({
-          errors: [{
-            status: 500,
-            title: 'Internal Server Error',
-            detail: 'Internal Server Error',
-          }],
-        });
-
-        return;
-      } else if (!decoded) {
+      if (jwtErr || !decoded || decoded.data.accessLevel < dbConfig.apiCommands.CreateDocFile) {
         res.status(401).json({
-          errors: [{
+          error: {
             status: 401,
             title: 'Unauthorized',
             detail: 'Invalid token',
-          }],
+          },
         });
 
         return;
@@ -316,46 +283,49 @@ function handle(io) {
 
       const newDocFile = req.body.data.docFile;
       newDocFile.creator = decoded.data.userName;
-      newDocFile.docFileId = newDocFile.docFileId.toLowerCase();
 
-      dbDocFile.createDocFile({
+      manager.createDocFile({
+        user: decoded.data,
         docFile: newDocFile,
         callback: ({ error, data }) => {
           if (error) {
-            if (error.type === errorCreator.ErrorTypes.ALREADYEXISTS) {
+            if (error.type === errorCreator.ErrorTypes.INVALIDCHARACTERS) {
+              res.status(400).json({
+                error: {
+                  status: 400,
+                  title: 'Invalid data',
+                  detail: 'Invalid data',
+                },
+              });
+
+              return;
+            } else if (error.type === errorCreator.ErrorTypes.ALREADYEXISTS) {
               res.status(403).json({
-                errors: [{
+                error: {
                   status: 403,
                   title: 'DocFile already exists',
                   detail: `DocFile with ID ${newDocFile.docFileId} already exists`,
-                }],
+                },
               });
 
               return;
             }
 
             res.status(500).json({
-              errors: [{
+              error: {
                 status: 500,
                 title: 'Internal Server Error',
                 detail: 'Internal Server Error',
-              }],
+              },
             });
 
             return;
           }
 
-          const { docFile } = data;
+          const createdDocFile = data.docFile;
 
-          if (docFile.isPublic) {
-            io.emit('docFile', { docFile });
-          } else if (docFile.team && docFile.team !== '') {
-            const teamRoom = newDocFile.team + appConfig.teamAppend;
-
-            io.to(teamRoom).emit('docFile', { docFile });
-          }
-
-          res.json({ data: { docFile } });
+          io.emit('docFile', { docFile: createdDocFile });
+          res.json({ data: { docFile: createdDocFile } });
         },
       });
     });

@@ -22,9 +22,13 @@ const chai = require('chai');
 const chaiHttp = require('chai-http');
 const app = require('../../app');
 const chaiJson = require('chai-json-schema');
-const schemas = require('./helper/schemas');
-const helperData = require('./helper/data');
+const transactionSchemas = require('./schemas/transactions');
+const errorSchemas = require('./schemas/errors');
+const userSchemas = require('./schemas/users');
 const dbWallet = require('../../db/connectors/wallet');
+const tokens = require('./testData/tokens');
+const transactionData = require('./testData/transactions');
+const authenticateSchemas = require('./schemas/authentications');
 
 chai.should();
 
@@ -32,13 +36,74 @@ chai.use(chaiHttp);
 chai.use(chaiJson);
 
 describe('Transactions', () => {
-  // jwt token
-  let adminToken = '';
-  let normalToken = '';
+  const transactionTokens = {
+    poor: '',
+    rich: '',
+  };
 
-  before('Give admin user credits', (done) => {
+  before(`Create user ${transactionData.newUserToSendCredits.userName} on /users POST`, (done) => {
+    chai
+      .request(app)
+      .post('/api/users')
+      .set('Authorization', tokens.adminUser)
+      .send({ data: { user: transactionData.newUserToSendCredits } })
+      .end((error, response) => {
+        response.should.have.status(200);
+        response.should.be.json;
+        response.body.should.be.jsonSchema(userSchemas.user);
+        done();
+      });
+  });
+
+  before(`Create user ${transactionData.newUserToReceiveCredits.userName} on /users POST`, (done) => {
+    chai
+      .request(app)
+      .post('/api/users')
+      .set('Authorization', tokens.adminUser)
+      .send({ data: { user: transactionData.newUserToReceiveCredits } })
+      .end((error, response) => {
+        response.should.have.status(200);
+        response.should.be.json;
+        response.body.should.be.jsonSchema(userSchemas.user);
+        done();
+      });
+  });
+
+  before(`Authenticate ${transactionData.newUserToSendCredits.userName}`, (done) => {
+    chai
+      .request(app)
+      .post('/api/authenticate')
+      .send({ data: { user: transactionData.newUserToSendCredits } })
+      .end((error, response) => {
+        response.should.have.status(200);
+        response.should.be.json;
+        response.body.should.be.jsonSchema(authenticateSchemas.authenticate);
+
+        transactionTokens.rich = response.body.data.token;
+
+        done();
+      });
+  });
+
+  before(`Authenticate ${transactionData.newUserToReceiveCredits.userName}`, (done) => {
+    chai
+      .request(app)
+      .post('/api/authenticate')
+      .send({ data: { user: transactionData.newUserToReceiveCredits } })
+      .end((error, response) => {
+        response.should.have.status(200);
+        response.should.be.json;
+        response.body.should.be.jsonSchema(authenticateSchemas.authenticate);
+
+        transactionTokens.poor = response.body.data.token;
+
+        done();
+      });
+  });
+
+  before(`Give ${transactionData.newUserToSendCredits.userName} user credits`, (done) => {
     dbWallet.increaseAmount({
-      owner: helperData.adminUser.userName,
+      owner: transactionData.newUserToSendCredits.userName,
       amount: 100,
       callback: (walletData) => {
         walletData.should.have.property('data');
@@ -47,89 +112,90 @@ describe('Transactions', () => {
     });
   });
 
-  before('Authenticate admin user', (done) => {
-    chai
-      .request(app)
-      .post('/api/authenticate')
-      .send({ data: { user: helperData.adminUser } })
-      .end((error, response) => {
-        response.should.have.status(200);
-        response.should.be.json;
-        response.body.should.be.jsonSchema(schemas.authenticate);
-
-        adminToken = response.body.data.token;
-
-        done();
-      });
-  });
-
-  before('Authenticate receiver user', (done) => {
-    chai
-      .request(app)
-      .post('/api/authenticate')
-      .send({ data: { user: helperData.normalUser } })
-      .end((error, response) => {
-        response.should.have.status(200);
-        response.should.be.json;
-        response.body.should.be.jsonSchema(schemas.authenticate);
-
-        normalToken = response.body.data.token;
-
-        done();
-      });
-  });
-
-  describe('Transaction from admin user to normal user', () => {
-    it(`Should create transaction from user ${helperData.adminUser.userName} to user ${helperData.normalUser.userName} with enough credits in wallet on /transactions POST`, (done) => {
+  describe('List transasctions', () => {
+    it('Should NOT list transactions for user with incorrect authorization on /transactions GET', (done) => {
       chai
         .request(app)
-        .post('/api/transactions')
-        .set('Authorization', adminToken)
-        .send({ data: { transaction: { to: helperData.normalUser.userName, amount: 10 } } })
+        .get('/api/transactions')
+        .set('Authorization', tokens.incorrectJwt)
         .end((error, response) => {
-          response.should.have.status(200);
+          response.should.have.status(401);
           response.should.be.json;
-          response.body.should.be.jsonSchema(schemas.fullTransaction);
+          response.body.should.be.jsonSchema(errorSchemas.error);
 
           done();
         });
     });
 
+    it('Should list transactions for user on /transactions GET', (done) => {
+      chai
+        .request(app)
+        .get('/api/transactions')
+        .set('Authorization', tokens.adminUser)
+        .end((error, response) => {
+          response.should.have.status(200);
+          response.should.be.json;
+          response.body.should.be.jsonSchema(transactionSchemas.allTransactions);
+
+          done();
+        });
+    });
+  });
+
+  describe('Create transaction between users', () => {
     it('Should NOT create transaction with incorrect authorization on /transactions POST', (done) => {
       chai
         .request(app)
         .post('/api/transactions')
-        .set('Authorization', helperData.incorrectJwt)
-        .send({ data: { transaction: { to: helperData.normalUser.userName, amount: 10 } } })
+        .set('Authorization', tokens.incorrectJwt)
+        .send({ data: { transaction: { to: transactionData.newUserToReceiveCredits.userName, amount: 10 } } })
         .end((error, response) => {
           response.should.have.status(401);
+          response.body.should.be.jsonSchema(errorSchemas.error);
 
           done();
         });
     });
 
-    it('Should NOT list transactions with incorrect authoriszation on /transactions GET', (done) => {
+    it('Should NOT create transaction, due to not having enough currency on /transactions POST', (done) => {
       chai
         .request(app)
-        .get('/api/transactions')
-        .set('Authorization', helperData.incorrectJwt)
+        .post('/api/transactions')
+        .set('Authorization', transactionTokens.poor)
+        .send({ data: { transaction: { to: transactionData.newUserToSendCredits.userName, amount: 15 } } })
         .end((error, response) => {
           response.should.have.status(401);
           response.should.be.json;
+          response.body.should.be.jsonSchema(errorSchemas.error);
 
           done();
         });
     });
 
-    it(`Should list user ${helperData.adminUser.userName} transactions with new transaction on /transactions GET`, (done) => {
+    it('Should create transaction from user with enough credits in wallet on /transactions POST', (done) => {
       chai
         .request(app)
-        .get('/api/transactions')
-        .set('Authorization', adminToken)
+        .post('/api/transactions')
+        .set('Authorization', transactionTokens.rich)
+        .send({ data: { transaction: { to: transactionData.newUserToReceiveCredits.userName, amount: 10 } } })
         .end((error, response) => {
           response.should.have.status(200);
           response.should.be.json;
-          response.body.should.be.jsonSchema(schemas.allTransactions);
+          response.body.should.be.jsonSchema(transactionSchemas.fullTransaction);
+
+          done();
+        });
+    });
+
+    it('Should list sender transactions with new transaction on /transactions GET', (done) => {
+      chai
+        .request(app)
+        .get('/api/transactions')
+        .set('Authorization', transactionTokens.rich)
+        .end((error, response) => {
+          response.should.have.status(200);
+          response.should.be.json;
+          response.body.should.be.jsonSchema(transactionSchemas.allTransactions);
           response.body.data.fromTransactions.should.have.lengthOf(1);
           // TODO Should check info in transaction
 
@@ -137,15 +203,15 @@ describe('Transactions', () => {
         });
     });
 
-    it(`Should list user ${helperData.normalUser.userName} transactions with new transaction on /transactions GET`, (done) => {
+    it('Should list receiver transactions with new transaction on /transactions GET', (done) => {
       chai
         .request(app)
         .get('/api/transactions')
-        .set('Authorization', normalToken)
+        .set('Authorization', transactionTokens.poor)
         .end((error, response) => {
           response.should.have.status(200);
           response.should.be.json;
-          response.body.should.be.jsonSchema(schemas.allTransactions);
+          response.body.should.be.jsonSchema(transactionSchemas.allTransactions);
           response.body.data.toTransactions.should.have.lengthOf(1);
           // TODO Should check info in transaction
 
@@ -154,32 +220,17 @@ describe('Transactions', () => {
     });
   });
 
-  describe('Transaction from user without enough currency', () => {
-    it('Should NOT create transaction, due to not having enough currency on /transactions POST', (done) => {
-      chai
-        .request(app)
-        .post('/api/transactions')
-        .set('Authorization', normalToken)
-        .send({ data: { transaction: { to: helperData.adminUser.userName, amount: 15 } } })
-        .end((error, response) => {
-          response.should.have.status(401);
-          response.should.be.json;
-
-          done();
-        });
-    });
-  });
-
-  describe('Incorrect sender/receiver information', () => {
+  describe('Create transaction with incorrect information', () => {
     it('Should NOT create transaction with self as receiver on /transactions POST', (done) => {
       chai
         .request(app)
         .post('/api/transactions')
-        .set('Authorization', adminToken)
-        .send({ data: { transaction: { to: helperData.adminUser.userName, amount: 10 } } })
+        .set('Authorization', transactionTokens.rich)
+        .send({ data: { transaction: { to: transactionData.newUserToSendCredits.userName, amount: 10 } } })
         .end((error, response) => {
           response.should.have.status(400);
           response.should.be.json;
+          response.body.should.be.jsonSchema(errorSchemas.error);
 
           done();
         });

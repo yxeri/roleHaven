@@ -6,4 +6,4 @@ COPY . /usr/src/app
 
 RUN npm prune && npm install
 
-CMD [ "./docker-start.sh" ]
+RUN /usr/src/app/start.sh

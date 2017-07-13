@@ -52,6 +52,10 @@ const stationSchema = new mongoose.Schema({
   signalValue: { type: Number, default: 0 },
   isActive: { type: Boolean, default: false },
   owner: String,
+  attacker: {
+    name: String,
+    time: Number,
+  },
 }, { collection: 'stations' });
 const lanternRoundSchema = new mongoose.Schema({
   roundId: Number,
@@ -100,21 +104,29 @@ function createLanternTeam({ team, callback }) {
     databaseConnector.saveObject({
       object: newLanternTeam,
       objectType: 'LanternTeam',
-      callback,
+      callback: (saveData) => {
+        if (saveData.error) {
+          callback({ error: saveData.error });
+
+          return;
+        }
+
+        callback({ data: { team: saveData.data.savedObject } });
+      },
     });
   });
 }
 
 /**
  * Update lantern team
- * @param {string} params.shortName Short name of the team to update
+ * @param {string} params.teamName Name of the team to update
  * @param {boolean} [params.isActive] Is the team active?
  * @param {number} [params.points] Teams total points
  * @param {boolean} [params.resetPoints] Resets points on team to 0
  * @param {Function} params.callback Callback
  */
-function updateLanternTeam({ shortName, isActive, points, resetPoints, callback }) {
-  const query = { shortName };
+function updateLanternTeam({ teamName, isActive, points, resetPoints, callback }) {
+  const query = { teamName };
   const update = {};
   const options = { new: true };
 
@@ -123,6 +135,7 @@ function updateLanternTeam({ shortName, isActive, points, resetPoints, callback 
   if (typeof resetPoints === 'boolean' && resetPoints) {
     update.points = 0;
   } else if (points) {
+    query.isActive = true;
     update.points = points;
   }
 
@@ -132,7 +145,7 @@ function updateLanternTeam({ shortName, isActive, points, resetPoints, callback 
 
       return;
     } else if (!team) {
-      callback({ error: new errorCreator.DoesNotExist({ name: `${shortName} team. updateLanternTeam` }) });
+      callback({ error: new errorCreator.DoesNotExist({ name: `${teamName} team. updateLanternTeam` }) });
 
       return;
     }
@@ -142,22 +155,63 @@ function updateLanternTeam({ shortName, isActive, points, resetPoints, callback 
 }
 
 /**
+ * Create lantern round
+ * @param {Object} params.lanternRound New lantern round
+ * @param {Function} params.callback Callback
+ */
+function createLanternRound({ round, callback }) {
+  const newLanternRound = new LanternRound(round);
+  const query = { roundId: round.roundId };
+
+  LanternRound.findOne(query).lean().exec((err, foundRound) => {
+    if (err) {
+      callback({ error: new errorCreator.Database({ errorObject: err, name: 'createLanternRound' }) });
+
+      return;
+    } else if (foundRound) {
+      callback({ error: new errorCreator.AlreadyExists({ name: `Lantern round ${round.roundId}` }) });
+
+      return;
+    }
+
+    databaseConnector.saveObject({
+      object: newLanternRound,
+      objectType: 'LanternRound',
+      callback: (saveData) => {
+        if (saveData.error) {
+          callback({ error: saveData.error });
+
+          return;
+        }
+
+        callback({ data: { round: saveData.data.savedObject } });
+      },
+    });
+  });
+}
+
+/**
  * Update lantern round. Create a new one if none exist
  * @param {number} params.roundId Id of the round
- * @param {Date} params.startTime Start time of the round
- * @param {Date} params.endTime End time of the round
+ * @param {Date} [params.startTime] Start time of the round
+ * @param {Date} [params.endTime] End time of the round
  * @param {Function} params.callback Callback
  */
 function updateLanternRound({ roundId, startTime, endTime, callback }) {
   const query = { roundId };
   const update = { $set: { startTime, endTime } };
-  const options = { upsert: true, new: true };
+  const options = { new: true };
+
+  if (startTime) { update.$set.startTime = startTime; }
+  if (endTime) { update.$set.endTime = endTime; }
 
   LanternRound.findOneAndUpdate(query, update, options).lean().exec((err, updatedRound) => {
     if (err) {
       callback({ error: new errorCreator.Database({ errorObject: err, name: 'updateLanternRound' }) });
 
       return;
+    } else if (!updatedRound) {
+      callback({ error: new errorCreator.DoesNotExist({ name: `Lantern round ${roundId}` }) });
     }
 
     callback({ data: { round: updatedRound } });
@@ -270,7 +324,7 @@ function getActiveLanternRound({ callback }) {
 
       return;
     } else if (!foundRound) {
-      callback({ error: new errorCreator.DoesNotExist({ name: 'active round' }) });
+      callback({ error: new errorCreator.DoesNotExist({ error: 'No active lantern round' }) });
 
       return;
     }
@@ -304,14 +358,16 @@ function getLanternRound({ roundId, callback }) {
 }
 
 /**
- * Get lantern rounds
+ * Get present and future lantern rounds
  * @param {Function} params.allback Callback
  */
 function getLanternRounds({ callback }) {
-  const query = {};
+  const now = new Date();
+  const query = { endTime: { $gte: now } };
   const filter = { _id: 0 };
+  const sort = { startTime: 1 };
 
-  LanternRound.find(query, filter).lean().exec((err, foundRounds = []) => {
+  LanternRound.find(query, filter).sort(sort).lean().exec((err, foundRounds = []) => {
     if (err) {
       callback({ error: new errorCreator.Database({ errorObject: err, name: 'getLanternRounds' }) });
 
@@ -391,9 +447,17 @@ function createStation({ station, callback }) {
     }
 
     databaseConnector.saveObject({
-      callback,
       object: newStation,
       objectType: 'Station',
+      callback: ({ error, data }) => {
+        if (error) {
+          callback({ error });
+
+          return;
+        }
+
+        callback({ data: { station: data.savedObject } });
+      },
     });
   });
 }
@@ -411,6 +475,9 @@ function createStation({ station, callback }) {
  * @param {Function} params.callback Callback
  */
 function updateLanternStation({ stationId, isActive, stationName, owner, attacker, callback }) {
+  const query = { stationId };
+  const update = {};
+  const options = { new: true };
   const set = {};
   const unset = {};
 
@@ -419,15 +486,13 @@ function updateLanternStation({ stationId, isActive, stationName, owner, attacke
 
   if (owner) {
     set.owner = owner;
-    unset.attacker.name = '';
-    unset.attacker.time = '';
+    unset.attacker = '';
   } else if (attacker) {
     set.attacker = attacker;
   }
 
-  const query = { stationId };
-  const update = { $set: set, $unset: unset };
-  const options = { new: true };
+  if (Object.keys(set).length > 0) { update.$set = set; }
+  if (Object.keys(unset).length > 0) { update.$unset = unset; }
 
   Station.findOneAndUpdate(query, update, options).lean().exec((err, station) => {
     if (err) {
@@ -712,3 +777,4 @@ exports.endLanternRound = endLanternRound;
 exports.updateLanternTeam = updateLanternTeam;
 exports.createLanternTeam = createLanternTeam;
 exports.getAllTeams = getAllTeams;
+exports.createLanternRound = createLanternRound;

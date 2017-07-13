@@ -39,17 +39,9 @@ function generateGameCode() {
  * @param {Object} io Socket.io
  */
 function handle(socket, io) {
-  socket.on('createDocFile', ({ docFile, updateExisting, token }, callback = () => {}) => {
+  socket.on('createDocFile', ({ docFile, token }, callback = () => {}) => {
     if (!objectValidator.isValidData({ docFile }, { docFile: { docFileId: true, text: true, title: true } })) {
       callback({ error: new errorCreator.InvalidData({ expected: '{ docFile: { docFileId, text, title } }' }) });
-
-      return;
-    } else if (!textTools.isAlphaNumeric(docFile.docFileId)) {
-      callback({ error: new errorCreator.InvalidCharacters({ expected: `alphanumeric ${docFile.docFileId}` }) });
-
-      return;
-    } else if (docFile.text.join('').length > appConfig.docFileMaxLength || docFile.title.length > appConfig.docFileTitleMaxLength || docFile.docFileId.length > appConfig.docFileIdMaxLength) {
-      callback({ error: new errorCreator.InvalidCharacters({ expected: `text length: ${appConfig.docFileMaxLength}, title length: ${appConfig.docFileTitleMaxLength}, id length: ${appConfig.docFileIdMaxLength}` }) });
 
       return;
     }
@@ -64,74 +56,24 @@ function handle(socket, io) {
           return;
         }
 
-        if (updateExisting) {
-          const { title, text, visibility, isPublic, docFileId } = docFile;
+        manager.createDocFile({
+          socket,
+          io,
+          docFile,
+          user: allowedUser,
+          callback: (createData) => {
+            if (createData.error) {
+              callback({ error: createData.error });
 
-          dbDocFile.getDocFile({
-            docFileId,
-            accessLevel: allowedUser.accessLevel,
-            callback: ({ error: getError, data }) => {
-              if (getError) {
-                callback({ error: getError });
+              return;
+            }
 
-                return;
-              } else if (data.docFile.creator !== allowedUser.userName) {
-                callback({ error: new errorCreator.NotAllowed({ name: `${allowedUser.userName} updating doc owned by other user` }) });
+            const createdDocFile = createData.data.docFile;
 
-                return;
-              }
-
-              dbDocFile.updateDocFile({
-                docFileId,
-                title,
-                text,
-                visibility,
-                isPublic,
-                callback: ({ error: updateError, data: updateData }) => {
-                  if (updateError) {
-                    callback({ error: updateError });
-
-                    return;
-                  }
-
-                  const updatedDocFile = updateData.docFile;
-
-                  if (!updatedDocFile.isPublic) {
-                    updatedDocFile.docFileId = null;
-                  }
-
-                  callback({ data: { docFile: updatedDocFile } });
-                },
-              });
-            },
-          });
-        } else {
-          const newDocFile = docFile;
-
-          newDocFile.creator = allowedUser.userName;
-          newDocFile.docFileId = newDocFile.docFileId.toLowerCase();
-
-          dbDocFile.createDocFile({
-            docFile: newDocFile,
-            callback: (createData) => {
-              if (createData.error) {
-                callback({ error: createData.error });
-
-                return;
-              }
-
-              const createdDocFile = createData.data.savedObject;
-
-              callback({ data: { docFile: createdDocFile } });
-
-              if (!createdDocFile.isPublic) {
-                createdDocFile.docFileId = null;
-              }
-
-              socket.broadcast.emit('docFile', { docFile: createdDocFile });
-            },
-          });
-        }
+            socket.broadcast.emit('docFile', { docFile: createdDocFile });
+            callback({ data: { docFile: createdDocFile } });
+          },
+        });
       },
     });
   });
@@ -449,7 +391,7 @@ function handle(socket, io) {
 
                 const victim = {
                   userName: gameCode.owner,
-                  accessLevel: dbConfig.accessLevels.admin,
+                  accessLevel: dbConfig.AccessLevels.ADMIN,
                 };
 
                 manager.createTransaction({

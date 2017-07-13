@@ -15,6 +15,7 @@
  */
 
 const appConfig = require('../../config/defaults/config').app;
+const winston = require('winston');
 
 const ErrorTypes = {
   GENERAL: 'general error',
@@ -39,9 +40,9 @@ const ErrorTypes = {
  */
 function printError(errorObject) {
   if (errorObject) {
-    if (errorObject.name) { console.log(errorObject.name); }
-    if (errorObject.message) { console.log(errorObject.message); }
-    if (errorObject.stack) { console.log(errorObject.stack); }
+    if (errorObject.name) { winston.error(errorObject.name); }
+    if (errorObject.message) { winston.error(errorObject.message); }
+    if (errorObject.stack) { winston.error(errorObject.stack); }
   }
 }
 
@@ -57,8 +58,8 @@ class GeneralError {
     this.text = text;
     this.type = type;
 
-    if (appConfig.mode !== 'test' && verbose) {
-      console.log(`Error Type: ${type}. `, text.join(' '));
+    if ((appConfig.mode !== 'test' || appConfig.verboseError) && verbose) {
+      winston.error(`Error Type: ${type}. `, text.join(' '));
       printError(errorObject);
     }
   }

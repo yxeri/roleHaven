@@ -18,19 +18,21 @@
 
 const path = require('path');
 const textTools = require('../../utils/textTools');
+const winston = require('winston');
 
 let config = {};
 
 try {
   config = require(path.normalize(`${__dirname}/../../../../config/appConfig`)).config; // eslint-disable-line import/no-unresolved, global-require, import/no-dynamic-require
 } catch (err) {
-  console.log('Did not find modified appConfig. Using defaults');
+  winston.info('Did not find modified appConfig. Using defaults');
 }
 
 const forceFullscreenEnv = textTools.convertToBoolean(process.env.FORCEFULLSCREEN);
 const gpsTrackingEnv = textTools.convertToBoolean(process.env.GPSTRACKING);
 const teamVerifyEnv = textTools.convertToBoolean(process.env.TEAMVERIFY);
 const disallowRegisterEnv = textTools.convertToBoolean(process.env.DISALLOWUSERREGISTER);
+const verboseErrorEnv = textTools.convertToBoolean(process.env.VERBOSEERROR);
 
 /**
  * Name of the system. Human-readable name that will be sent to clients, such as in the subject field of mail or page title
@@ -120,6 +122,7 @@ config.routes = config.routes || [
   { sitePath: '/api/calibrationMissions', filePath: `${__dirname}/../../routes/rest/calibrationMissions.js` },
   { sitePath: '/api/lanternRounds', filePath: `${__dirname}/../../routes/rest/lanternRounds.js` },
   { sitePath: '/api/lanternStations', filePath: `${__dirname}/../../routes/rest/lanternStations.js` },
+  { sitePath: '/api/lanternTeams', filePath: `${__dirname}/../../routes/rest/lanternTeams` },
   { sitePath: '*', filePath: `${__dirname}/../../routes/error.js` },
 ];
 
@@ -250,6 +253,12 @@ config.docFileTitleMaxLength = process.env.DOCFILETITLEMAXLENGTH || config.docFi
 
 config.docFileIdMaxLength = process.env.DOCFILEIDMAXLENGTH || config.docFileIdMaxLength || 20;
 
+config.messageMaxLength = process.env.MESSAGEMAXLENGTH || config.messageMaxLength || 6000;
+
+config.messageMaxLength = process.env.MESSAGEMAXLENGTH || config.messageMaxLength || 6000;
+
+config.broadcastMaxLength = process.env.BROADCASTMAXLENGTH || config.broadcastMaxLength || 600;
+
 config.userNameMaxLength = process.env.USERNAMEMAXLENGTH || config.userNameMaxLength || 20;
 
 config.teamNameMaxLength = process.env.TEAMNAMEMAXLENGTH || config.teamNameMaxLength || 20;
@@ -262,11 +271,15 @@ config.deviceIdLength = process.env.DEVICEIDLENGTH || config.deviceIdLength || 1
 
 config.roomNameMaxLength = process.env.ROOMNAMEMAXLENGTH || config.roomNameMaxLength || 20;
 
+config.whisperRoomNameLength = config.roomNameMaxLength + config.whisperAppend.length;
+
 config.maxUserWarnings = process.env.MAXUSERWARNINGS || config.maxUserWarnings || 2;
 
 config.minimumPositionAccuracy = process.env.MINIMUMPOSITIONACCURACY || config.minimumPositionAccuracy || 70;
 
 config.maxPositionAge = process.env.MAXPOSITIONAGE || config.maxPositionAge || 2;
+
+config.verboseError = verboseErrorEnv !== undefined ? verboseErrorEnv : config.verboseError || true;
 
 /**
  * Secret key used for Mailgun

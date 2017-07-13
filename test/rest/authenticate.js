@@ -22,8 +22,11 @@ const chai = require('chai');
 const chaiHttp = require('chai-http');
 const app = require('../../app');
 const chaiJson = require('chai-json-schema');
-const schemas = require('./helper/schemas');
-const helperData = require('./helper/data');
+const authenticateSchemas = require('./schemas/authentications');
+const errorSchemas = require('./schemas/errors');
+const authenticateData = require('./testData/authentications');
+const tokens = require('./testData/tokens');
+const userSchemas = require('./schemas/users');
 
 chai.should();
 
@@ -31,15 +34,29 @@ chai.use(chaiHttp);
 chai.use(chaiJson);
 
 describe('Authenticate', () => {
+  before('Create admin user on /users POST', (done) => {
+    chai
+      .request(app)
+      .post('/api/users')
+      .set('Authorization', tokens.adminUser)
+      .send({ data: { user: authenticateData.adminUserToAuth } })
+      .end((error, response) => {
+        response.should.have.status(200);
+        response.should.be.json;
+        response.body.should.be.jsonSchema(userSchemas.user);
+        done();
+      });
+  });
+
   it('Should get jwt token on /authenticate POST', (done) => {
     chai
       .request(app)
       .post('/api/authenticate')
-      .send({ data: { user: helperData.adminUser } })
+      .send({ data: { user: authenticateData.adminUserToAuth } })
       .end((error, response) => {
         response.should.have.status(200);
         response.should.be.json;
-        response.body.should.be.jsonSchema(schemas.authenticate);
+        response.body.should.be.jsonSchema(authenticateSchemas.authenticate);
         done();
       });
   });
@@ -48,10 +65,12 @@ describe('Authenticate', () => {
     chai
       .request(app)
       .post('/api/authenticate')
-      .send({ data: { user: helperData.unverifiedUser } })
+      .send({ data: { user: authenticateData.unverifiedUserToAuth } })
       .end((error, response) => {
         response.should.have.status(401);
         response.should.be.json;
+        response.body.should.be.jsonSchema(errorSchemas.error);
+
         done();
       });
   });
@@ -60,10 +79,26 @@ describe('Authenticate', () => {
     chai
       .request(app)
       .post('/api/authenticate')
-      .send({ data: { user: helperData.bannedUser } })
+      .send({ data: { user: authenticateData.bannedUserToAuth } })
       .end((error, response) => {
         response.should.have.status(401);
         response.should.be.json;
+        response.body.should.be.jsonSchema(errorSchemas.error);
+
+        done();
+      });
+  });
+
+  it('Should NOT get jwt token with non-existent user on /authenticate POST', (done) => {
+    chai
+      .request(app)
+      .post('/api/authenticate')
+      .send({ data: { user: authenticateData.userThatDoesNotExist } })
+      .end((error, response) => {
+        response.should.have.status(401);
+        response.should.be.json;
+        response.body.should.be.jsonSchema(errorSchemas.error);
+
         done();
       });
   });

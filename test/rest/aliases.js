@@ -22,100 +22,105 @@ const chai = require('chai');
 const chaiHttp = require('chai-http');
 const app = require('../../app');
 const chaiJson = require('chai-json-schema');
-const schemas = require('./helper/schemas');
-const helperData = require('./helper/data');
+const aliasSchemas = require('./schemas/aliases');
+const errorSchemas = require('./schemas/errors');
+const tokens = require('./testData/tokens');
+const aliasData = require('./testData/aliases');
 
 chai.should();
 chai.use(chaiHttp);
 chai.use(chaiJson);
 
 describe('Aliases', () => {
-  // jwt token
-  let adminToken = '';
+  describe('Create alias', () => {
+    it('Should NOT create an alias that is too long /aliases POST', (done) => {
+      chai
+        .request(app)
+        .post('/api/aliases')
+        .send({ data: { alias: aliasData.tooLongAlias } })
+        .set('Authorization', tokens.incorrectJwt)
+        .end((error, response) => {
+          response.should.have.status(401);
+          response.should.be.json;
+          response.body.should.be.jsonSchema(errorSchemas.error);
 
-  before('Authenticate', (done) => {
-    chai
-      .request(app)
-      .post('/api/authenticate')
-      .send({ data: { user: helperData.adminUser } })
-      .end((error, response) => {
-        response.should.have.status(200);
-        response.should.be.json;
-        response.body.should.be.jsonSchema(schemas.authenticate);
+          done();
+        });
+    });
 
-        adminToken = response.body.data.token;
+    it('Should NOT create an alias with incorrect authorization on /aliases POST', (done) => {
+      chai
+        .request(app)
+        .post('/api/aliases')
+        .send({ data: { alias: aliasData.aliasToCreate } })
+        .set('Authorization', tokens.incorrectJwt)
+        .end((error, response) => {
+          response.should.have.status(401);
+          response.should.be.json;
+          response.body.should.be.jsonSchema(errorSchemas.error);
 
-        done();
-      });
+          done();
+        });
+    });
+
+    it('Should create an alias on self on /aliases POST', (done) => {
+      chai
+        .request(app)
+        .post('/api/aliases')
+        .send({ data: { alias: aliasData.aliasToCreate } })
+        .set('Authorization', tokens.adminUser)
+        .end((error, response) => {
+          response.should.have.status(200);
+          response.should.be.json;
+          response.body.should.be.jsonSchema(aliasSchemas.alias);
+
+          done();
+        });
+    });
+
+    it('Should NOT create an existing alias on /aliases POST', (done) => {
+      chai
+        .request(app)
+        .post('/api/aliases')
+        .send({ data: { alias: aliasData.aliasToCreate } })
+        .set('Authorization', tokens.adminUser)
+        .end((error, response) => {
+          response.should.have.status(403);
+          response.should.be.json;
+          response.body.should.be.jsonSchema(errorSchemas.error);
+
+          done();
+        });
+    });
   });
 
-  it('Should NOT retrieve aliases with incorrect authorization on /aliases GET', (done) => {
-    chai
-      .request(app)
-      .get('/api/aliases')
-      .set('Authorization', helperData.incorrectJwt)
-      .end((error, response) => {
-        response.should.have.status(401);
-        response.should.be.json;
+  describe('List aliases', () => {
+    it('Should NOT retrieve aliases with incorrect authorization on /aliases GET', (done) => {
+      chai
+        .request(app)
+        .get('/api/aliases')
+        .set('Authorization', tokens.incorrectJwt)
+        .end((error, response) => {
+          response.should.have.status(401);
+          response.should.be.json;
+          response.body.should.be.jsonSchema(errorSchemas.error);
 
-        done();
-      });
-  });
+          done();
+        });
+    });
 
-  it('Should retrieve aliases and user name from self on /aliases GET', (done) => {
-    chai
-      .request(app)
-      .get('/api/aliases')
-      .set('Authorization', adminToken)
-      .end((error, response) => {
-        response.should.have.status(200);
-        response.should.be.json;
-        response.body.should.be.jsonSchema(schemas.aliases);
+    it('Should retrieve aliases and user name from self on /aliases GET', (done) => {
+      chai
+        .request(app)
+        .get('/api/aliases')
+        .set('Authorization', tokens.adminUser)
+        .end((error, response) => {
+          response.should.have.status(200);
+          response.should.be.json;
+          response.body.should.be.jsonSchema(aliasSchemas.aliases);
 
-        done();
-      });
-  });
-
-  it('Should create an alias on self on /aliases POST', (done) => {
-    chai
-      .request(app)
-      .post('/api/aliases')
-      .send({ data: { alias: 'secretalias' } })
-      .set('Authorization', adminToken)
-      .end((error, response) => {
-        response.should.have.status(200);
-        response.should.be.json;
-        response.body.should.be.jsonSchema(schemas.alias);
-
-        done();
-      });
-  });
-
-  it('Should NOT create an alias with incorrect authorization on /aliases POST', (done) => {
-    chai
-      .request(app)
-      .post('/api/aliases')
-      .send({ data: { alias: 'twoalias' } })
-      .set('Authorization', helperData.incorrectJwt)
-      .end((error, response) => {
-        response.should.have.status(401);
-        response.should.be.json;
-
-        done();
-      });
-  });
-
-  it('Should NOT create an existing alias on /aliases POST', (done) => {
-    chai
-      .request(app)
-      .post('/api/aliases')
-      .send({ data: { alias: 'secretalias' } })
-      .set('Authorization', adminToken)
-      .end((error, response) => {
-        response.should.have.status(403);
-        response.should.be.json;
-
-        done();
-      });
+          done();
+        });
+    });
   });
 });

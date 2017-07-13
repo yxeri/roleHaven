@@ -21,56 +21,84 @@ const databaseConnector = require('../databaseConnector');
 const chatHistoryConnector = require('./chatHistory');
 const dbUser = require('./user');
 const errorCreator = require('../../objects/error/errorCreator');
+const dbConfig = require('../../config/defaults/config').databasePopulation;
+const winston = require('winston');
 
 const roomSchema = new mongoose.Schema({
+  accessLevel: { type: Number, default: dbConfig.AccessLevels.BASIC },
+  visibility: { type: Number, default: dbConfig.AccessLevels.BASIC },
+  anonymous: { type: Boolean, default: false },
   roomName: { type: String, unique: true },
-  password: { type: String, default: '' },
-  accessLevel: { type: Number, default: 1 },
-  visibility: { type: Number, default: 1 },
-  writeLevel: Number,
-  commands: [{
-    commandName: String,
-    accessLevel: Number,
-    requireAdmin: Boolean,
-  }],
+  isWhisper: { type: Boolean, default: false },
+  password: String,
   admins: [String],
   bannedUsers: [String],
   owner: String,
   team: String,
-  anonymous: { type: Boolean, default: false },
+  accessUsers: { type: [String], default: [] },
 }, { collection: 'rooms' });
 
 const Room = mongoose.model('Room', roomSchema);
 
 /**
- * Authorize the user to the room, by checking if the password is correct and the user has high enough access level
+ * Remove private parameters from room
+ * @param {Object} params.room Room
+ * @returns {Object} Clean room
+ */
+function cleanRoomParameters({ room }) {
+  const cleanRoom = room;
+
+  cleanRoom.password = typeof room.password === 'string';
+
+  return cleanRoom;
+}
+
+/**
+ * Authorize the user to the room
+ * Checks if the user is the owner, if the user has the same team and high enough access level or if user is in accessUsers
  * @param {Object} params.user User to authorize
  * @param {string} params.roomName Name of the room
  * @param {string} [params.password] Password of the room
  * @param {Function} params.callback Callback
  */
-function authUserToRoom({ user, roomName, callback, password = '' }) {
+function authUserToRoom({ user, roomName, callback, password }) {
   const query = {
-    $and: [
-      { roomName },
-      { password },
-      { accessLevel: { $lte: user.accessLevel } },
+    roomName,
+    $or: [
+      { owner: user.userName },
+      {
+        $and: [
+          { team: { $exists: true, $eq: user.team } },
+          { $or: [
+            { accessUsers: { $in: [user.userName] } },
+            { accessLevel: { $lte: user.accessLevel } },
+          ] },
+        ],
+      },
+      {
+        $and: [
+          { password },
+          { $or: [
+            { accessUsers: { $in: [user.userName] } },
+            { accessLevel: { $lte: user.accessLevel } },
+          ] },
+        ],
+      },
     ],
   };
-  const filter = { password: 0 };
 
-  Room.findOne(query, filter).lean().exec((err, room) => {
+  Room.findOne(query).lean().exec((err, foundRoom) => {
     if (err) {
       callback({ error: new errorCreator.Database({ errorObject: err, name: 'authUserToRoom' }) });
 
       return;
-    } else if (!room) {
+    } else if (!foundRoom) {
       callback({ error: new errorCreator.NotAllowed({ name: `Room ${roomName}` }) });
 
       return;
     }
 
-    callback({ data: { room } });
+    callback({ data: { room: cleanRoomParameters({ room: foundRoom }) } });
   });
 }
 
@@ -109,7 +137,19 @@ function createRoom({ room, silentOnExists, callback }) {
           return;
         }
 
-        databaseConnector.saveObject({ object: newRoom, objectType: 'room', callback });
+        databaseConnector.saveObject({
+          object: newRoom,
+          objectType: 'room',
+          callback: (savedData) => {
+            if (savedData.error) {
+              callback({ error: savedData.error });
+
+              return;
+            }
+
+            callback({ data: { room: cleanRoomParameters({ room: savedData.data.savedObject }) } });
+          },
+        });
       },
     });
   });
@@ -134,13 +174,7 @@ function getRoom({ roomName, callback }) {
       return;
     }
 
-    const retrievedRoom = room;
-
-    if (retrievedRoom.password && retrievedRoom.password !== '') {
-      retrievedRoom.password = true;
-    }
-
-    callback({ data: { room: retrievedRoom } });
+    callback({ data: { room: cleanRoomParameters({ room }) } });
   });
 }
 
@@ -152,16 +186,15 @@ function getRoom({ roomName, callback }) {
 function getOwnedRooms({ user, callback }) {
   const query = { owner: user.userName };
   const sort = { roomName: 1 };
-  const filter = { password: 0 };
 
-  Room.find(query, filter).sort(sort).lean().exec((err, rooms = []) => {
+  Room.find(query).sort(sort).lean().exec((err, rooms = []) => {
     if (err) {
       callback({ error: new errorCreator.Database({ errorObject: err, name: 'getOwnedRooms' }) });
 
       return;
     }
 
-    callback({ data: { rooms } });
+    callback({ data: { rooms: rooms.map(room => cleanRoomParameters({ room })) } });
   });
 }
 
@@ -174,14 +207,32 @@ function getAllRooms({ user, callback }) {
   const query = { visibility: { $lte: user.accessLevel } };
   const sort = { roomName: 1 };
 
-  Room.find(query).sort(sort).lean().exec((err, rooms = []) => {
+  Room.find(query).sort(sort).lean().exec((err, foundRooms = []) => {
     if (err) {
       callback({ error: new errorCreator.Database({ errorObject: err, name: 'getAllRooms' }) });
 
       return;
     }
 
-    callback({ data: { rooms } });
+    const whisperRooms = [];
+    const rooms = foundRooms.filter((room) => {
+      const cleanRoom = cleanRoomParameters({ room });
+
+      if (cleanRoom.isWhisper) {
+        whisperRooms.push(cleanRoom);
+
+        return false;
+      }
+
+      return true;
+    });
+
+    callback({
+      data: {
+        rooms,
+        whisperRooms,
+      },
+    });
   });
 }
 
@@ -206,7 +257,7 @@ function banUserFromRoom({ userName, roomName, callback }) {
       return;
     }
 
-    callback({ data: { room } });
+    callback({ data: { room: cleanRoomParameters({ room }) } });
   });
 }
 
@@ -231,7 +282,7 @@ function unbanUserFromRoom({ userName, roomName, callback }) {
       return;
     }
 
-    callback({ data: { room } });
+    callback({ data: { room: cleanRoomParameters({ room }) } });
   });
 }
 
@@ -302,8 +353,8 @@ function matchPartialRoom({ partialName, user, callback }) {
  * @param {Object} params.rooms Rooms to be added
  * @param {Function} params.callback Callback
  */
-function populateDbRooms({ rooms, callback }) {
-  console.log('Creating default rooms, if needed');
+function populateDbRooms({ rooms, callback = () => {} }) {
+  winston.info('Creating default rooms, if needed');
 
   /**
    * Adds a room to database. Recursive
@@ -343,15 +394,16 @@ function populateDbRooms({ rooms, callback }) {
 function updateRoomVisibility({ roomName, visibility, callback }) {
   const query = { roomName };
   const update = { $set: { visibility } };
+  const options = { new: true };
 
-  Room.findOneAndUpdate(query, update).lean().exec((err, room) => {
+  Room.findOneAndUpdate(query, update, options).lean().exec((err, room) => {
     if (err) {
       callback({ error: new errorCreator.Database({ errorObject: err, name: 'updateRoomVisibility' }) });
 
       return;
     }
 
-    callback({ data: { room } });
+    callback({ data: { room: cleanRoomParameters({ room }) } });
   });
 }
 
@@ -364,15 +416,16 @@ function updateRoomVisibility({ roomName, visibility, callback }) {
 function updateRoomAccessLevel({ roomName, accessLevel, callback }) {
   const query = { roomName };
   const update = { $set: { accessLevel } };
+  const options = { new: true };
 
-  Room.findOneAndUpdate(query, update).lean().exec((err, room) => {
+  Room.findOneAndUpdate(query, update, options).lean().exec((err, room) => {
     if (err) {
       callback({ error: new errorCreator.Database({ errorObject: err, name: 'updateRoomAccessLevel' }) });
 
       return;
     }
 
-    callback({ data: { room } });
+    callback({ data: { room: cleanRoomParameters({ room }) } });
   });
 }
 

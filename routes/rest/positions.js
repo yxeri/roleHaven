@@ -23,6 +23,7 @@ const dbUser = require('../../db/connectors/user');
 const jwt = require('jsonwebtoken');
 const dbPosition = require('../../db/connectors/position');
 const errorCreator = require('../../objects/error/errorCreator');
+const dbConfig = require('../../config/defaults/config').databasePopulation;
 
 const router = new express.Router();
 
@@ -33,13 +34,13 @@ const router = new express.Router();
 function handle(io) {
   /**
    * @api {get} /positions/users Retrieve all user positions
-   * @apiVersion 5.1.0
+   * @apiVersion 6.0.0
    * @apiName GetUserPositions
    * @apiGroup Positions
    *
    * @apiHeader {String} Authorization Your JSON Web Token
    *
-   * @apiDescription Retrieve the positions from all users, that your user is allowed to see
+   * @apiDescription Retrieve the positions from all users, that the user is allowed to see
    *
    * @apiSuccess {Object} data
    * @apiSuccess {Object[]} data.positions Found user positions
@@ -48,7 +49,6 @@ function handle(io) {
    *    "data": {
    *      "positions": [
    *        {
-   *          "_id": "580cd329720ed46986af64f9",
    *          "positionName": "rez",
    *          "lastUpdated": "2016-10-25T16:55:34.309Z",
    *          "markerType": "user",
@@ -69,23 +69,13 @@ function handle(io) {
     const auth = req.headers.authorization || '';
 
     jwt.verify(auth, appConfig.jsonKey, (jwtErr, decoded) => {
-      if (jwtErr) {
-        res.status(500).json({
-          errors: [{
-            status: 500,
-            title: 'Internal Server Error',
-            detail: 'Internal Server Error',
-          }],
-        });
-
-        return;
-      } else if (!decoded) {
+      if (jwtErr || !decoded || decoded.data.accessLevel < dbConfig.apiCommands.GetUserPosition.accessLevel) {
         res.status(401).json({
-          errors: [{
+          error: {
             status: 401,
             title: 'Unauthorized',
             detail: 'Invalid token',
-          }],
+          },
         });
 
         return;
@@ -96,11 +86,11 @@ function handle(io) {
         callback: ({ error, data }) => {
           if (error) {
             res.status(500).json({
-              errors: [{
+              error: {
                 status: 500,
                 title: 'Internal Server Error',
                 detail: 'Internal Server Error',
-              }],
+              },
             });
 
             return;
@@ -114,7 +104,7 @@ function handle(io) {
 
   /**
    * @api {get} /positions/users/:id Retrieve specific user position
-   * @apiVersion 5.1.0
+   * @apiVersion 6.0.0
    * @apiName GetUserPosition
    * @apiGroup Positions
    *
@@ -149,11 +139,11 @@ function handle(io) {
   router.get('/users/:id', (req, res) => {
     if (!objectValidator.isValidData(req.params, { id: true })) {
       res.status(400).json({
-        errors: [{
+        error: {
           status: 400,
           title: 'Missing data',
           detail: 'Unable to parse data',
-        }],
+        },
       });
 
       return;
@@ -163,23 +153,13 @@ function handle(io) {
     const auth = req.headers.authorization || '';
 
     jwt.verify(auth, appConfig.jsonKey, (jwtErr, decoded) => {
-      if (jwtErr) {
-        res.status(500).json({
-          errors: [{
-            status: 500,
-            title: 'Internal Server Error',
-            detail: 'Internal Server Error',
-          }],
-        });
-
-        return;
-      } else if (!decoded) {
+      if (jwtErr || !decoded || decoded.data.accessLevel < dbConfig.apiCommands.GetUserPosition.accessLevel) {
         res.status(401).json({
-          errors: [{
+          error: {
             status: 401,
             title: 'Unauthorized',
             detail: 'Invalid token',
-          }],
+          },
         });
 
         return;
@@ -192,22 +172,22 @@ function handle(io) {
           if (error) {
             if (error.type === errorCreator.ErrorTypes.DOESNOTEXIST) {
               res.status(404).json({
-                errors: [{
+                error: {
                   status: 404,
                   title: 'User position not found',
                   detail: 'User position not found',
-                }],
+                },
               });
 
               return;
             }
 
             res.status(500).json({
-              errors: [{
+              error: {
                 status: 500,
                 title: 'Internal Server Error',
                 detail: 'Internal Server Error',
-              }],
+              },
             });
 
             return;
@@ -220,9 +200,9 @@ function handle(io) {
   });
 
   /**
-   * @api {post} /positions/users Set position for a user
-   * @apiVersion 5.1.0
-   * @apiName SetPosition
+   * @api {post} /positions/users Set position for user
+   * @apiVersion 6.0.0
+   * @apiName SetUserPosition
    * @apiGroup Positions
    *
    * @apiHeader {String} Authorization Your JSON Web Token
@@ -234,8 +214,8 @@ function handle(io) {
    * @apiParam {Object} data.position.coordinates
    * @apiParam {Number} data.position.coordinates.longitude Longitude
    * @apiParam {Number} data.position.coordinates.latitude Latitude
+   * @apiParam {Number} [data.position.coordinates.accuracy] Accuracy (in meters) for the position. Will be defaulted if not set
    * @apiParam {Number} [data.position.coordinates.speed] Velocity (meters per second) of the unit being tracked
-   * @apiParam {Number} [data.position.coordinates.accuracy] Accuracy (in meters) of the tracked position
    * @apiParam {Number} [data.position.coordinates.heading] Heading of the unit being tracked. Extressed in degrees. 0 indicates true north, 90 east, 270 west)
    * @apiParamExample {json} Request-Example:
    *   {
@@ -243,8 +223,7 @@ function handle(io) {
    *      "position": {
    *        "coordinates": {
    *          "longitude": 55.401,
-   *          "latitude": 12.0041,
-   *          "accuracy": 50
+   *          "latitude": 12.0041
    *        }
    *      }
    *    }
@@ -275,11 +254,11 @@ function handle(io) {
   router.post('/users', (req, res) => {
     if (!objectValidator.isValidData(req.body, { data: { position: { coordinates: { longitude: true, latitude: true } } } })) {
       res.status(400).json({
-        errors: [{
+        error: {
           status: 400,
           title: 'Missing data',
           detail: 'Unable to parse data',
-        }],
+        },
       });
 
       return;
@@ -289,23 +268,13 @@ function handle(io) {
     const auth = req.headers.authorization || '';
 
     jwt.verify(auth, appConfig.jsonKey, (jwtErr, decoded) => {
-      if (jwtErr) {
-        res.status(500).json({
-          errors: [{
-            status: 500,
-            title: 'Internal Server Error',
-            detail: 'Internal Server Error',
-          }],
-        });
-
-        return;
-      } else if (!decoded) {
+      if (jwtErr || !decoded || decoded.data.accessLevel < dbConfig.apiCommands.UpdateUserPosition.accessLevel) {
         res.status(401).json({
-          errors: [{
+          error: {
             status: 401,
             title: 'Unauthorized',
             detail: 'Invalid token',
-          }],
+          },
         });
 
         return;
@@ -316,17 +285,30 @@ function handle(io) {
       position.positionName = decoded.data.userName;
       position.owner = decoded.data.userName;
       position.markerType = 'user';
+      position.coordinates.accuracy = position.coordinates.accuracy || appConfig.minimumPositionAccuracy / 2;
 
       dbPosition.updatePosition({
         position,
         callback: ({ error, data }) => {
           if (error) {
+            if (error.type === errorCreator.ErrorTypes.DOESNOTEXIST) {
+              res.status(404).json({
+                error: {
+                  status: 404,
+                  title: 'User does not exist',
+                  detail: 'User does not exist',
+                },
+              });
+
+              return;
+            }
+
             res.status(500).json({
-              errors: [{
+              error: {
                 status: 500,
                 title: 'Internal Server Error',
                 detail: 'Internal Server Error',
-              }],
+              },
             });
 
             return;
@@ -334,7 +316,6 @@ function handle(io) {
 
           const { position: newPosition } = data;
 
-          // TODO Only to users that have tracking on?
           io.emit('mapPositions', {
             positions: [newPosition],
             currentTime: (new Date()),

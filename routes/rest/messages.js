@@ -22,6 +22,7 @@ const jwt = require('jsonwebtoken');
 const messenger = require('../../socketHelpers/messenger');
 const objectValidator = require('../../utils/objectValidator');
 const errorCreator = require('../../objects/error/errorCreator');
+const dbConfig = require('../../config/defaults/config').databasePopulation;
 
 const router = new express.Router();
 
@@ -33,7 +34,7 @@ const router = new express.Router();
 function handle(io) {
   /**
    * @api {post} /messages Send a message
-   * @apiVersion 5.0.3
+   * @apiVersion 6.0.0
    * @apiName SendMessage
    * @apiGroup Messages
    *
@@ -42,11 +43,11 @@ function handle(io) {
    * @apiDescription Send a message to a room
    *
    * @apiParam {Object} data
-   * @apiParam {Boolean} [data.whisper] Is this a whisper (direct message) to another user?
    * @apiParam {Object} data.message Message
    * @apiParam {String} data.message.roomName Name of the room (or user name) to send the message to
-   * @apiParam {String} [data.message.userName] Name of the sender. Default is your user name. You can instead set it to one of your user's aliases
    * @apiParam {String[]} data.message.text Content of the message
+   * @apiParam {String} [data.message.userName] Name of the sender. Default is your user name. You can instead set it to one of your user's aliases
+   * @apiParam {Boolean} [data.message.isWhisper] Is this a whisper (direct message) to another user?
    * @apiParamExample {json} Request-Example:
    *   {
    *    "data": {
@@ -79,11 +80,11 @@ function handle(io) {
   router.post('/', (req, res) => {
     if (!objectValidator.isValidData(req.body, { data: { message: { roomName: true, text: true } } })) {
       res.status(400).json({
-        errors: [{
+        error: {
           status: 400,
           title: 'Missing data',
           detail: 'Unable to parse data',
-        }],
+        },
       });
 
       return;
@@ -93,56 +94,55 @@ function handle(io) {
     const auth = req.headers.authorization || '';
 
     jwt.verify(auth, appConfig.jsonKey, (jwtErr, decoded) => {
-      if (jwtErr) {
-        res.status(500).json({
-          errors: [{
-            status: 500,
-            title: 'Internal Server Error',
-            detail: 'Internal Server Error',
-          }],
-        });
-
-        return;
-      } else if (!decoded) {
+      if (jwtErr || !decoded || decoded.data.accessLevel < dbConfig.apiCommands.SendMessage) {
         res.status(401).json({
-          errors: [{
+          error: {
             status: 401,
             title: 'Unauthorized',
             detail: 'Invalid token',
-          }],
+          },
         });
 
         return;
       }
 
-      const message = req.body.data.message;
-      const whisper = req.body.data.whisper;
+      const { message, whisper } = req.body.data;
       const callback = ({ error, data }) => {
         if (error) {
-          if (error.type === errorCreator.ErrorTypes.NOTALLOWED) {
+          if (error.type === errorCreator.ErrorTypes.INVALIDCHARACTERS) {
+            res.status(400).json({
+              error: {
+                status: 400,
+                title: 'Message too long',
+                detail: 'Message too long',
+              },
+            });
+
+            return;
+          } else if (error.type === errorCreator.ErrorTypes.NOTALLOWED) {
             res.status(401).json({
-              errors: [{
+              error: {
                 status: 401,
                 title: 'Unauthorized',
                 detail: 'Not following room',
-              }],
+              },
             });
 
             return;
           }
 
           res.status(500).json({
-            errors: [{
+            error: {
               status: 500,
               title: 'Internal Server Error',
               detail: 'Internal Server Error',
-            }],
+            },
           });
 
           return;
         }
 
-        res.json({ data: { message: data.messages } });
+        res.json({ data: { messages: data.messages } });
       };
 
       if (whisper) {

@@ -34,7 +34,7 @@ const router = new express.Router();
 function handle(io) {
   /**
    * @api {post} /broadcasts Send a broadcast
-   * @apiVersion 5.0.3
+   * @apiVersion 6.0.0
    * @apiName SendBroadcast
    * @apiGroup Broadcasts
    *
@@ -44,8 +44,8 @@ function handle(io) {
    *
    * @apiParam {Object} data
    * @apiParam {Object} data.message Message
-   * @apiParam {String} [data.message.userName] Name of the sender. Default will be set to a generic term, such as "SYSTEM"
    * @apiParam {String[]} data.message.text Content of the message
+   * @apiParam {String} [data.message.userName] Name of the sender. Default will be set to a generic term, such as "SYSTEM"
    * @apiParamExample {json} Request-Example:
    *   {
      *    "data": {
@@ -68,18 +68,18 @@ function handle(io) {
      *        ],
      *        "userName": "rez",
      *        "time": "2016-10-28T22:42:06.262Z"
-     *      }]
+     *      }
      *    }
      *  }
    */
-  router.post('/broadcast', (req, res) => {
+  router.post('/', (req, res) => {
     if (!objectValidator.isValidData(req.body, { data: { message: { text: true } } })) {
       res.status(400).json({
-        errors: [{
+        error: {
           status: 400,
           title: 'Missing data',
           detail: 'Unable to parse data',
-        }],
+        },
       });
 
       return;
@@ -89,56 +89,50 @@ function handle(io) {
     const auth = req.headers.authorization || '';
 
     jwt.verify(auth, appConfig.jsonKey, (jwtErr, decoded) => {
-      if (jwtErr) {
-        res.status(500).json({
-          errors: [{
-            status: 500,
-            title: 'Internal Server Error',
-            detail: 'Internal Server Error',
-          }],
-        });
-
-        return;
-      } else if (!decoded || decoded.data.accessLevel < dbConfig.apiCommands.SendBroadcast.accessLevel) {
+      if (jwtErr || (!decoded || decoded.data.accessLevel < dbConfig.apiCommands.SendBroadcast.accessLevel)) {
         res.status(401).json({
-          errors: [{
+          error: {
             status: 401,
             title: 'Unauthorized',
             detail: 'Invalid token',
-          }],
+          },
         });
 
         return;
       }
 
-      const message = req.body.data.message;
       const callback = ({ error, data }) => {
         if (error) {
           if (error.type && error.type === errorCreator.ErrorTypes.NOTALLOWED) {
             res.status(401).json({
-              errors: [{
+              error: {
                 status: 401,
                 title: 'Unauthorized user',
                 detail: 'User not allowed to use feature',
-              }],
+              },
             });
 
             return;
           }
 
           res.status(500).json({
-            errors: [{
+            error: {
               status: 500,
               title: 'Internal Server Error',
               detail: 'Internal Server Error',
-            }],
+            },
           });
         }
 
         res.json({ data: { message: data.message } });
       };
 
-      messenger.sendBroadcastMsg({ message, io, callback, user: decoded.data });
+      messenger.sendBroadcastMsg({
+        io,
+        callback,
+        message: req.body.data.message,
+        user: decoded.data,
+      });
     });
   });
 

@@ -5,8 +5,8 @@
   "author": "Aleksandar Jankovic <aleksonline@icloud.com>",
   "private": true,
   "scripts": {
-    "start": "node ./bin/www",
-    "test": "MODE=test DEBUG=eslint:cli-engine eslint ./ && ./node_modules/mocha/bin/mocha --recursive",
+    "start": "node bin/www",
+    "test": "MODE=test DEBUG=eslint:cli-engine ./node_modules/mocha/bin/mocha --recursive && eslint ./",
     "nsp": "nsp check"
   },
   "repository": {
@@ -47,6 +47,7 @@
     "request": "2.81.0",
     "socket.io": "2.0.3",
     "uglify-js": "3.0.23",
+    "winston": "2.3.1",
     "xml2json": "0.11.0"
   }
 }
