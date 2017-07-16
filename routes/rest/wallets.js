@@ -1,5 +1,5 @@
 /*
- Copyright 2015 Aleksandar Jankovic
+ Copyright 2017 Aleksandar Jankovic
 
  Licensed under the Apache License, Version 2.0 (the "License");
  you may not use this file except in compliance with the License.
@@ -17,46 +17,51 @@
 'use strict';
 
 const express = require('express');
-const dbRoom = require('../../db/connectors/room');
-const dbConfig = require('../../config/defaults/config').databasePopulation;
-const manager = require('../../socketHelpers/manager');
-const objectValidator = require('../../utils/objectValidator');
 const errorCreator = require('../../objects/error/errorCreator');
-const dbUser = require('../../db/connectors/user');
+const dbConfig = require('../../config/defaults/config').databasePopulation;
 const authenticator = require('../../socketHelpers/authenticator');
+const dbWallet = require('../../db/connectors/wallet');
+const objectValidator = require('../../utils/objectValidator');
+const manager = require('../../socketHelpers/manager');
 
 const router = new express.Router();
 
 /**
- * @param {object} io - Socket.IO
  * @returns {Object} Router
  */
-function handle(io) {
+function handle() {
   /**
-   * @api {get} /rooms Retrieve all rooms
+   * @api {get} /wallets/ Get wallets
    * @apiVersion 6.0.0
-   * @apiName GetRooms
-   * @apiGroup Rooms
+   * @apiName GetWallets
+   * @apiGroup Wallets
    *
    * @apiHeader {String} Authorization Your JSON Web Token
    *
-   * @apiDescription Retrieve all rooms available to your user
+   * @apiDescription Get wallets with lower access level than user, user being the owner or having the same team
    *
    * @apiSuccess {Object} data
-   * @apiSuccess {Object} data.rooms Found rooms
+   * @apiSuccess {Object} data.wallet Found wallets
    * @apiSuccessExample {json} Success-Response:
    *   {
    *    "data": {
-   *      "rooms": [
-   *        "public",
-   *        "bb1"
-   *      ]
+   *      "wallets": [{
+   *        "owner": "abc",
+   *        "amount": 10,
+   *        "isProtected": false,
+   *        "accessLevel": 1
+   *      }, {
+   *        "owner": "qwer",
+   *        "amount": 13,
+   *        "isProtected": false,
+   *        "accessLevel": 1
+   *      }]
    *    }
    *  }
    */
   router.get('/', (req, res) => {
     authenticator.isUserAllowed({
-      commandName: dbConfig.apiCommands.GetRoom.name,
+      commandName: dbConfig.apiCommands.GetWallet.name,
       token: req.headers.authorization,
       callback: ({ error, data }) => {
         if (error) {
@@ -93,10 +98,10 @@ function handle(io) {
           return;
         }
 
-        dbRoom.getAllRooms({
+        dbWallet.getWallets({
           user: data.user,
-          callback: ({ error: roomError, data: roomData }) => {
-            if (roomError) {
+          callback: ({ error: walletError, data: walletsData }) => {
+            if (walletError) {
               res.status(500).json({
                 error: {
                   status: 500,
@@ -108,12 +113,7 @@ function handle(io) {
               return;
             }
 
-            res.json({
-              data: {
-                rooms: roomData.rooms.map(room => room.roomName),
-                whisperRooms: roomData.whisperRooms.map(room => room.roomName),
-              },
-            });
+            res.json({ data: walletsData });
           },
         });
       },
@@ -121,33 +121,24 @@ function handle(io) {
   });
 
   /**
-   * @api {get} /rooms/:id Retrieve specific room
+   * @api {get} /wallets/:id Get wallet by owner
    * @apiVersion 6.0.0
-   * @apiName GetRoom
-   * @apiGroup Rooms
+   * @apiName GetWallet
+   * @apiGroup Wallets
    *
    * @apiHeader {String} Authorization Your JSON Web Token
    *
-   * @apiDescription Retrieve a specific room, based on sent room name
-   *
-   * @apiParam {String} id Name of the room to retrieve
+   * @apiDescription RetriGeteve wallet by owner
    *
    * @apiSuccess {Object} data
-   * @apiSuccess {Object} data.room Found room. Empty if no room was found
+   * @apiSuccess {Object} data.wallet Found wallet
    * @apiSuccessExample {json} Success-Response:
    *   {
    *    "data": {
-   *      "room": {
-   *        "roomName": "bb1",
-   *        "owner": "rez",
-   *        "bannedUsers": [
-   *          "a1",
-   *        ],
-   *        "admins": [
-   *          "rez2"
-   *        ],
-   *        "commands": [],
-   *        "visibility": 1,
+   *      "wallet": {
+   *        "owner": "",
+   *        "amount": 10,
+   *        "isProtected": false,
    *        "accessLevel": 1
    *      }
    *    }
@@ -167,7 +158,7 @@ function handle(io) {
     }
 
     authenticator.isUserAllowed({
-      commandName: dbConfig.apiCommands.GetRoom.name,
+      commandName: dbConfig.apiCommands.GetWallet.name,
       token: req.headers.authorization,
       callback: ({ error, data }) => {
         if (error) {
@@ -204,16 +195,16 @@ function handle(io) {
           return;
         }
 
-        dbRoom.getRoom({
-          roomName: req.params.id,
-          callback: ({ error: roomError, data: roomData }) => {
-            if (roomError) {
-              if (roomError.type === errorCreator.ErrorTypes.DOESNOTEXIST) {
+        dbWallet.getWallet({
+          owner: req.params.id,
+          callback: ({ error: walletError, data: walletData }) => {
+            if (walletError) {
+              if (walletError.type === errorCreator.ErrorTypes.DOESNOTEXIST) {
                 res.status(404).json({
                   error: {
                     status: 404,
-                    title: 'Room does not exist',
-                    detail: 'Room does not exist',
+                    title: 'Wallet does not exist',
+                    detail: 'Wallet does not exist',
                   },
                 });
 
@@ -229,19 +220,19 @@ function handle(io) {
               });
 
               return;
-            } else if (data.user.accessLevel < roomData.room.visibility) {
+            } else if (walletData.wallet.accessLevel >= data.user.accessLevel) {
               res.status(401).json({
                 error: {
                   status: 401,
-                  title: 'Unauthorized',
-                  detail: 'Not allowed to retrieve room',
+                  title: 'Unable to retrieve wallet',
+                  detail: 'Does not have access to wallet',
                 },
               });
 
               return;
             }
 
-            res.json({ data: roomData });
+            res.json({ data: walletData });
           },
         });
       },
@@ -249,51 +240,52 @@ function handle(io) {
   });
 
   /**
-   * @api {post} /rooms Create a room
+   * @api {post} /wallets/:id/increase Increase wallet amount
    * @apiVersion 6.0.0
-   * @apiName CreateRoom
-   * @apiGroup Rooms
+   * @apiName IncreaseWalletAmount
+   * @apiGroup Wallets
    *
    * @apiHeader {String} Authorization Your JSON Web Token
    *
-   * @apiDescription Create a room
+   * @apiDescription Increase wallet amount
+   *
+   * @apiParam {String} id Name of the owner of the wallet
    *
    * @apiParam {Object} data
-   * @apiParam {Object} data.room Room
-   * @apiParam {String} data.room.roomName Name of the room to create
-   * @apiParam {String} [data.room.password] Password for the room. Leave unset if you don't want to password-protect the room
-   * @apiParam {Number} [data.room.visibility] Minimum access level required to see the room. 0 = ANONYMOUS. 1 = registered user. Default is 1.
-   * @apiParam {Number} [data.room.accessLevel] Minimum access level required to follow the room. 0 = ANONYMOUS. 1 = registered user. Default is 1.
+   * @apiParam {Object} data.amount Amount to increase
    * @apiParamExample {json} Request-Example:
    *   {
    *    "data": {
-   *      "room": {
-   *        "roomName": "bb1",
-   *        "accessLevel": 0
-   *      }
+   *      "amount": 8
    *    }
    *  }
    *
    * @apiSuccess {Object} data
-   * @apiSuccess {Object} data.room Room created
+   * @apiSuccess {Object} data.wallet Updated wallet
    * @apiSuccessExample {json} Success-Response:
    *   {
    *    "data": {
-   *      "room": {
-   *        "roomName": "bb1",
-   *        "owner": "rez",
-   *        "bannedUsers": [],
-   *        "admins": [],
-   *        "commands": [],
-   *        "visibility": 1,
-   *        "accessLevel": 0,
-   *        password: false
+   *      "wallet": {
+   *        "owner": "abc",
+   *        "amount": 18,
+   *        "isProtected": false,
+   *        "accessLevel": 1
    *      }
    *    }
    *  }
    */
-  router.post('/', (req, res) => {
-    if (!objectValidator.isValidData(req.body, { data: { room: { roomName: true } } })) {
+  router.post('/:id/increase', (req, res) => {
+    if (!objectValidator.isValidData(req.params, { id: true })) {
+      res.status(400).json({
+        error: {
+          status: 400,
+          title: 'Missing data',
+          detail: 'Unable to parse data',
+        },
+      });
+
+      return;
+    } else if (!objectValidator.isValidData(req.body, { data: { amount: true } })) {
       res.status(400).json({
         error: {
           status: 400,
@@ -306,9 +298,9 @@ function handle(io) {
     }
 
     authenticator.isUserAllowed({
-      commandName: dbConfig.apiCommands.CreateRoom.name,
+      commandName: dbConfig.apiCommands.IncreaseWalletAmount.name,
       token: req.headers.authorization,
-      callback: ({ error, data }) => {
+      callback: ({ error }) => {
         if (error) {
           if (error.type === errorCreator.ErrorTypes.DOESNOTEXIST) {
             res.status(404).json({
@@ -343,293 +335,27 @@ function handle(io) {
           return;
         }
 
-        const newRoom = req.body.data.room;
-        newRoom.roomName = newRoom.roomName.toLowerCase();
-        newRoom.owner = data.user.userName;
-
-        manager.createRoom({
-          room: newRoom,
-          user: data.user,
-          callback: ({ error: roomError, data: roomData }) => {
-            if (roomError) {
-              if (roomError.type === errorCreator.ErrorTypes.ALREADYEXISTS) {
-                res.status(403).json({
-                  error: {
-                    status: 403,
-                    title: 'Room already exists',
-                    detail: 'Room already exists',
-                  },
-                });
-
-                return;
-              }
-
-              res.status(500).json({
-                error: {
-                  status: 500,
-                  title: 'Internal Server Error',
-                  detail: 'Internal Server Error',
-                },
-              });
-
-              return;
-            }
-
-            res.json({ data: roomData });
-          },
-        });
-      },
-    });
-  });
-
-  /**
-   * @api {post} /rooms/follow Follow a room
-   * @apiVersion 6.0.0
-   * @apiName FollowRoom
-   * @apiGroup Rooms
-   *
-   * @apiHeader {string} Authorization Your JSON Web Token
-   *
-   * @apiDescription Follow a room
-   *
-   * @apiParam {Object} data
-   * @apiParam {Object} data.room Room
-   * @apiParam {string} data.room.roomName Name of the room
-   * @apiParam {string} [data.room.password] Password for the room
-   * @apiParamExample {json} Request-Example:
-   *   {
-   *    "data": {
-   *      "room": {
-   *        "room": "broom",
-   *        "password": "password"
-   *      }
-   *    }
-   *  }
-   *
-   * @apiSuccess {Object} data
-   * @apiSuccess {Object} data.room Room
-   * @apiSuccess {String} data.room.roomName Name of the room that is followed
-   * @apiSuccessExample {json} Success-Response:
-   *   {
-   *    "data": {
-   *      "room": {
-   *        "roomName": "broom"
-   *      }
-   *    }
-   *  }
-   */
-  router.post('/follow', (req, res) => {
-    if (!objectValidator.isValidData(req.body, { data: { room: { roomName: true } } })) {
-      res.status(400).json({
-        error: {
-          status: 400,
-          title: 'Missing data',
-          detail: 'Unable to parse data',
-        },
-      });
-
-      return;
-    }
-
-    authenticator.isUserAllowed({
-      commandName: dbConfig.apiCommands.FollowRoom.name,
-      token: req.headers.authorization,
-      callback: ({ error, data }) => {
-        if (error) {
-          if (error.type === errorCreator.ErrorTypes.DOESNOTEXIST) {
-            res.status(404).json({
-              error: {
-                status: 404,
-                title: 'Command does not exist',
-                detail: 'Command does not exist',
-              },
-            });
-
-            return;
-          } else if (error.type === errorCreator.ErrorTypes.NOTALLOWED) {
-            res.status(401).json({
-              error: {
-                status: 401,
-                title: 'Unauthorized',
-                detail: 'Invalid token',
-              },
-            });
-
-            return;
-          }
-
-          res.status(500).json({
-            error: {
-              status: 500,
-              title: 'Internal Server Error',
-              detail: 'Internal Server Error',
-            },
-          });
-
-          return;
-        }
-
-        const { roomName, password } = req.body.data.room;
-
-        // Checks that the user trying to add a user to a room has access to it
-        dbRoom.authUserToRoom({
-          roomName,
-          password,
-          user: data.user,
-          callback: ({ error: roomError, data: roomData }) => {
-            if (roomError) {
-              if (roomError.type === errorCreator.ErrorTypes.NOTALLOWED) {
-                res.status(401).json({
-                  error: {
-                    status: 401,
-                    title: 'Not authorized to follow room',
-                    detail: 'Your user is not allowed to follow the room',
-                  },
-                });
-
-                return;
-              }
-
-              res.status(500).json({
-                error: {
-                  status: 500,
-                  title: 'Internal Server Error',
-                  detail: 'Internal Server Error',
-                },
-              });
-
-              return;
-            }
-
-            dbUser.addRoomToUser({
-              userName: data.user.userName,
-              roomName: roomData.room.roomName,
-              callback: ({ error: addError, data: userData }) => {
-                if (addError) {
-                  res.status(500).json({
-                    error: {
-                      status: 500,
-                      title: 'Internal Server Error',
-                      detail: 'Internal Server Error',
-                    },
-                  });
-
-                  return;
-                }
-
-                const { user } = userData;
-
-                if (user.socketId) {
-                  io.to(user.socketId).emit('follow', { room: roomData.room });
-                }
-
-                res.json({ data: roomData });
-              },
-            });
-          },
-        });
-      },
-    });
-  });
-
-  /**
-   * @api {post} /rooms/unfollow Unfollow a room
-   * @apiVersion 6.0.0
-   * @apiName UnfollowRoom
-   * @apiGroup Rooms
-   *
-   * @apiHeader {String} Authorization Your JSON Web Token
-   *
-   * @apiDescription Unfollow a room
-   *
-   * @apiParam {Object} data
-   * @apiParam {Object} data.room Room
-   * @apiParam {String} data.room.roomName Name of the room to unfollow
-   * @apiParamExample {json} Request-Example:
-   *   {
-   *    "data": {
-   *      "room": {
-   *        "roomName": "bb1"
-   *      }
-   *    }
-   *  }
-   *
-   * @apiSuccess {Object} data
-   * @apiSuccess {Object} data.room Room
-   * @apiSuccess {String} data.room.roomName Name of the room that was unfollowed
-   * @apiSuccessExample {json} Success-Response:
-   *   {
-   *    "data": {
-   *      "room": {
-   *        "roomName": "bb1"
-   *      }
-   *    }
-   *  }
-   */
-  router.post('/unfollow', (req, res) => {
-    if (!objectValidator.isValidData(req.body, { data: { room: { roomName: true } } })) {
-      res.status(400).json({
-        error: {
-          status: 400,
-          title: 'Missing data',
-          detail: 'Unable to parse data',
-        },
-      });
-
-      return;
-    }
-
-    authenticator.isUserAllowed({
-      commandName: dbConfig.apiCommands.UnfollowRoom.name,
-      token: req.headers.authorization,
-      callback: ({ error, data }) => {
-        if (error) {
-          if (error.type === errorCreator.ErrorTypes.DOESNOTEXIST) {
-            res.status(404).json({
-              error: {
-                status: 404,
-                title: 'Command does not exist',
-                detail: 'Command does not exist',
-              },
-            });
-
-            return;
-          } else if (error.type === errorCreator.ErrorTypes.NOTALLOWED) {
-            res.status(401).json({
-              error: {
-                status: 401,
-                title: 'Unauthorized',
-                detail: 'Invalid token',
-              },
-            });
-
-            return;
-          }
-
-          res.status(500).json({
-            error: {
-              status: 500,
-              title: 'Internal Server Error',
-              detail: 'Internal Server Error',
-            },
-          });
-
-          return;
-        }
-
-        const { roomName } = req.body.data.room;
-
-        dbUser.removeRoomFromUser({
-          roomName,
-          userName: data.user.userName,
-          callback: ({ error: userError, data: userData }) => {
-            if (userError) {
-              if (userError.type === errorCreator.ErrorTypes.DOESNOTEXIST) {
+        manager.increaseWalletAmount({
+          owner: req.params.id,
+          amount: req.body.data.amount,
+          callback: ({ error: walletError, data: walletData }) => {
+            if (walletError) {
+              if (walletError.type === errorCreator.ErrorTypes.DOESNOTEXIST) {
                 res.status(404).json({
                   error: {
                     status: 404,
-                    title: 'Room does not exist',
-                    detail: 'User is not following room',
+                    title: 'Internal Server Error',
+                    detail: 'Internal Server Error',
+                  },
+                });
+
+                return;
+              } else if (walletError.type === errorCreator.ErrorTypes.INVALIDDATA) {
+                res.status(400).json({
+                  error: {
+                    status: 400,
+                    title: 'Amount must be higher than 0',
+                    detail: 'Amount must be higher than 0',
                   },
                 });
 
@@ -647,13 +373,259 @@ function handle(io) {
               return;
             }
 
-            const { user } = userData;
+            res.json({ data: walletData });
+          },
+        });
+      },
+    });
+  });
 
-            if (user.socketId) {
-              io.to(user.socketId).emit('unfollow', { room: { roomName } });
+  /**
+   * @api {post} /wallets/:id/decrease Decrease wallet amount
+   * @apiVersion 6.0.0
+   * @apiName DecreaseWalletAmount
+   * @apiGroup Wallets
+   *
+   * @apiHeader {String} Authorization Your JSON Web Token
+   *
+   * @apiDescription Decrease wallet amount
+   *
+   * @apiParam {String} id Name of the owner of the wallet
+   *
+   * @apiParam {Object} data
+   * @apiParam {Object} data.amount Amount to decrease
+   * @apiParamExample {json} Request-Example:
+   *   {
+   *    "data": {
+   *      "amount": 8
+   *    }
+   *  }
+   *
+   * @apiSuccess {Object} data
+   * @apiSuccess {Object} data.wallet Updated wallet
+   * @apiSuccessExample {json} Success-Response:
+   *   {
+   *    "data": {
+   *      "wallet": {
+   *        "owner": "abc",
+   *        "amount": 2,
+   *        "isProtected": false,
+   *        "accessLevel": 1
+   *      }
+   *    }
+   *  }
+   */
+  router.post('/:id/decrease', (req, res) => {
+    if (!objectValidator.isValidData(req.params, { id: true })) {
+      res.status(400).json({
+        error: {
+          status: 400,
+          title: 'Missing data',
+          detail: 'Unable to parse data',
+        },
+      });
+
+      return;
+    } else if (!objectValidator.isValidData(req.body, { data: { amount: true } })) {
+      res.status(400).json({
+        error: {
+          status: 400,
+          title: 'Missing data',
+          detail: 'Unable to parse data',
+        },
+      });
+
+      return;
+    }
+
+    authenticator.isUserAllowed({
+      commandName: dbConfig.apiCommands.DecreaseWalletAmount.name,
+      token: req.headers.authorization,
+      callback: ({ error }) => {
+        if (error) {
+          if (error.type === errorCreator.ErrorTypes.DOESNOTEXIST) {
+            res.status(404).json({
+              error: {
+                status: 404,
+                title: 'Command does not exist',
+                detail: 'Command does not exist',
+              },
+            });
+
+            return;
+          } else if (error.type === errorCreator.ErrorTypes.NOTALLOWED) {
+            res.status(401).json({
+              error: {
+                status: 401,
+                title: 'Unauthorized',
+                detail: 'Invalid token',
+              },
+            });
+
+            return;
+          }
+
+          res.status(500).json({
+            error: {
+              status: 500,
+              title: 'Internal Server Error',
+              detail: 'Internal Server Error',
+            },
+          });
+
+          return;
+        }
+
+        manager.decreaseWalletAmount({
+          owner: req.params.id,
+          amount: req.body.data.amount,
+          callback: ({ error: walletError, data: walletData }) => {
+            if (walletError) {
+              if (walletError.type === errorCreator.ErrorTypes.DOESNOTEXIST) {
+                res.status(404).json({
+                  error: {
+                    status: 404,
+                    title: 'Internal Server Error',
+                    detail: 'Internal Server Error',
+                  },
+                });
+
+                return;
+              } else if (walletError.type === errorCreator.ErrorTypes.INVALIDDATA) {
+                res.status(400).json({
+                  error: {
+                    status: 400,
+                    title: 'Amount must be higher than 0',
+                    detail: 'Amount must be higher than 0',
+                  },
+                });
+
+                return;
+              }
+
+              res.status(500).json({
+                error: {
+                  status: 500,
+                  title: 'Internal Server Error',
+                  detail: 'Internal Server Error',
+                },
+              });
+
+              return;
             }
 
-            res.json({ data: { room: { roomName } } });
+            res.json({ data: walletData });
+          },
+        });
+      },
+    });
+  });
+
+  /**
+   * @api {post} /wallets/:id/empty Reset wallet amount to 0
+   * @apiVersion 6.0.0
+   * @apiName EmptyWallet
+   * @apiGroup Wallets
+   *
+   * @apiHeader {String} Authorization Your JSON Web Token
+   *
+   * @apiDescription Reset wallet amount to 0
+   *
+   * @apiParam {String} id Name of the owner of the wallet
+   *
+   * @apiSuccess {Object} data
+   * @apiSuccess {Object} data.wallet Updated wallet
+   * @apiSuccessExample {json} Success-Response:
+   *   {
+   *    "data": {
+   *      "wallet": {
+   *        "owner": "abc",
+   *        "amount": 0,
+   *        "isProtected": false,
+   *        "accessLevel": 1
+   *      }
+   *    }
+   *  }
+   */
+  router.post('/:id/empty', (req, res) => {
+    if (!objectValidator.isValidData(req.params, { id: true })) {
+      res.status(400).json({
+        error: {
+          status: 400,
+          title: 'Missing data',
+          detail: 'Unable to parse data',
+        },
+      });
+
+      return;
+    }
+
+    authenticator.isUserAllowed({
+      commandName: dbConfig.apiCommands.DecreaseWalletAmount.name,
+      token: req.headers.authorization,
+      callback: ({ error }) => {
+        if (error) {
+          if (error.type === errorCreator.ErrorTypes.DOESNOTEXIST) {
+            res.status(404).json({
+              error: {
+                status: 404,
+                title: 'Command does not exist',
+                detail: 'Command does not exist',
+              },
+            });
+
+            return;
+          } else if (error.type === errorCreator.ErrorTypes.NOTALLOWED) {
+            res.status(401).json({
+              error: {
+                status: 401,
+                title: 'Unauthorized',
+                detail: 'Invalid token',
+              },
+            });
+
+            return;
+          }
+
+          res.status(500).json({
+            error: {
+              status: 500,
+              title: 'Internal Server Error',
+              detail: 'Internal Server Error',
+            },
+          });
+
+          return;
+        }
+
+        dbWallet.resetWalletAmount({
+          owner: req.params.id,
+          callback: ({ error: walletError, data: walletData }) => {
+            if (walletError) {
+              if (walletError.type === errorCreator.ErrorTypes.DOESNOTEXIST) {
+                res.status(404).json({
+                  error: {
+                    status: 404,
+                    title: 'Internal Server Error',
+                    detail: 'Internal Server Error',
+                  },
+                });
+
+                return;
+              }
+
+              res.status(500).json({
+                error: {
+                  status: 500,
+                  title: 'Internal Server Error',
+                  detail: 'Internal Server Error',
+                },
+              });
+
+              return;
+            }
+
+            res.json({ data: walletData });
           },
         });
       },

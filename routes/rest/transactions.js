@@ -17,13 +17,12 @@
 'use strict';
 
 const express = require('express');
-const appConfig = require('../../config/defaults/config').app;
-const jwt = require('jsonwebtoken');
 const objectValidator = require('../../utils/objectValidator');
 const manager = require('../../socketHelpers/manager');
 const dbUser = require('../../db/connectors/user');
 const errorCreator = require('../../objects/error/errorCreator');
 const dbConfig = require('../../config/defaults/config').databasePopulation;
+const authenticator = require('../../socketHelpers/authenticator');
 
 const router = new express.Router();
 
@@ -69,45 +68,63 @@ function handle(io) {
    *  }
    */
   router.get('/', (req, res) => {
-    // noinspection JSUnresolvedVariable
-    const auth = req.headers.authorization || '';
-
-    jwt.verify(auth, appConfig.jsonKey, (jwtErr, decoded) => {
-      if (jwtErr || !decoded || decoded.data.accessLevel < dbConfig.apiCommands.GetTransaction) {
-        res.status(401).json({
-          error: {
-            status: 401,
-            title: 'Unauthorized',
-            detail: 'Invalid token',
-          },
-        });
-
-        return;
-      }
-
-      manager.getAllTransactions({
-        owner: decoded.data.userName,
-        callback: ({ error, data }) => {
-          if (error) {
-            res.status(500).json({
+    authenticator.isUserAllowed({
+      commandName: dbConfig.apiCommands.GetTransaction.name,
+      token: req.headers.authorization,
+      callback: ({ error, data }) => {
+        if (error) {
+          if (error.type === errorCreator.ErrorTypes.DOESNOTEXIST) {
+            res.status(404).json({
               error: {
-                status: 500,
-                title: 'Internal Server Error',
-                detail: 'Internal Server Error',
+                status: 404,
+                title: 'Command does not exist',
+                detail: 'Command does not exist',
+              },
+            });
+
+            return;
+          } else if (error.type === errorCreator.ErrorTypes.NOTALLOWED) {
+            res.status(401).json({
+              error: {
+                status: 401,
+                title: 'Unauthorized',
+                detail: 'Invalid token',
               },
             });
 
             return;
           }
 
-          res.json({
-            data: {
-              toTransactions: data.toTransactions,
-              fromTransactions: data.fromTransactions,
+          res.status(500).json({
+            error: {
+              status: 500,
+              title: 'Internal Server Error',
+              detail: 'Internal Server Error',
             },
           });
-        },
-      });
+
+          return;
+        }
+
+        manager.getAllTransactions({
+          owner: data.user.userName,
+          callback: ({ error: transactionError, data: transactionData }) => {
+            if (transactionError) {
+              res.status(500).json({
+                error: {
+                  status: 500,
+                  title: 'Internal Server Error',
+                  detail: 'Internal Server Error',
+                },
+              });
+
+              return;
+            }
+
+            res.json({ data: transactionData });
+          },
+        });
+      },
     });
   });
 
@@ -177,111 +194,144 @@ function handle(io) {
       });
 
       return;
+    } else if (req.body.data.transaction.amount <= 0) {
+      res.status(400).json({
+        error: {
+          status: 400,
+          title: 'Amount is less or equal to 0',
+          detail: 'Amount has to be higher than 0',
+        },
+      });
+
+      return;
     }
 
-    // noinspection JSUnresolvedVariable
-    const auth = req.headers.authorization || '';
+    authenticator.isUserAllowed({
+      commandName: dbConfig.apiCommands.CreateTransaction.name,
+      token: req.headers.authorization,
+      callback: ({ error, data }) => {
+        if (error) {
+          if (error.type === errorCreator.ErrorTypes.DOESNOTEXIST) {
+            res.status(404).json({
+              error: {
+                status: 404,
+                title: 'Command does not exist',
+                detail: 'Command does not exist',
+              },
+            });
 
-    jwt.verify(auth, appConfig.jsonKey, (jwtErr, decoded) => {
-      if (jwtErr || !decoded || decoded.data.accessLevel < dbConfig.apiCommands.CreateTransaction) {
-        res.status(401).json({
-          error: {
-            status: 401,
-            title: 'Unauthorized',
-            detail: 'Invalid token',
-          },
-        });
+            return;
+          } else if (error.type === errorCreator.ErrorTypes.NOTALLOWED) {
+            res.status(401).json({
+              error: {
+                status: 401,
+                title: 'Unauthorized',
+                detail: 'Invalid token',
+              },
+            });
 
-        return;
-      }
+            return;
+          }
 
-      const transaction = req.body.data.transaction;
-      const isTeamWallet = req.body.data.isTeamWallet;
-      const createTransactionFunc = ({ user }) => {
-        manager.createTransaction({
-          transaction,
-          io,
-          user,
-          fromTeam: isTeamWallet,
-          callback: ({ error, data }) => {
-            if (error) {
-              if (error.type === errorCreator.ErrorTypes.NOTALLOWED) {
-                res.status(401).json({
+          res.status(500).json({
+            error: {
+              status: 500,
+              title: 'Internal Server Error',
+              detail: 'Internal Server Error',
+            },
+          });
+
+          return;
+        }
+
+        const transaction = req.body.data.transaction;
+        const isTeamWallet = req.body.data.isTeamWallet;
+        const createTransactionFunc = ({ user }) => {
+          manager.createTransaction({
+            transaction,
+            io,
+            user,
+            fromTeam: isTeamWallet,
+            callback: ({ error: transactionError, data: transactionData }) => {
+              if (transactionError) {
+                if (transactionError.type === errorCreator.ErrorTypes.NOTALLOWED) {
+                  res.status(401).json({
+                    error: {
+                      status: 401,
+                      title: 'Not enough credits',
+                      detail: 'Not enough credits in wallet',
+                    },
+                  });
+
+                  return;
+                } else if (transactionError.type === errorCreator.ErrorTypes.INCORRECT) {
+                  res.status(400).json({
+                    error: {
+                      status: 400,
+                      title: 'Cannot transfer to self',
+                      detail: 'Cannot transfer to self',
+                    },
+                  });
+
+                  return;
+                }
+
+                res.status(500).json({
                   error: {
-                    status: 401,
-                    title: 'Not enough credits',
-                    detail: 'Not enough credits in wallet',
-                  },
-                });
-
-                return;
-              } else if (error.type === errorCreator.ErrorTypes.INCORRECT) {
-                res.status(400).json({
-                  error: {
-                    status: 400,
-                    title: 'Cannot transfer to self',
-                    detail: 'Cannot transfer to self',
+                    status: 500,
+                    title: 'Internal Server Error',
+                    detail: 'Internal Server Error',
                   },
                 });
 
                 return;
               }
 
-              res.status(500).json({
-                error: {
-                  status: 500,
-                  title: 'Internal Server Error',
-                  detail: 'Internal Server Error',
+              res.json({
+                data: {
+                  transaction: transactionData.transaction,
+                  wallet: {
+                    amount: transactionData.wallet.amount,
+                  },
                 },
               });
+            },
+          });
+        };
 
-              return;
-            }
+        if (isTeamWallet) {
+          dbUser.getUserByAlias({
+            alias: data.user.userName,
+            callback: ({ error: userError, data: userData }) => {
+              if (userError) {
+                res.status(500).json({
+                  error: {
+                    status: 500,
+                    title: 'Internal Server Error',
+                    detail: 'Internal Server Error',
+                  },
+                });
 
-            res.json({
-              data: {
-                transaction: data.transaction,
-                wallet: {
-                  amount: data.wallet.amount,
-                },
-              },
-            });
-          },
-        });
-      };
+                return;
+              } else if (!userData.user.team) {
+                res.status(404).json({
+                  error: {
+                    status: 404,
+                    title: 'Failed to create transaction',
+                    detail: 'User team does not exist',
+                  },
+                });
 
-      if (isTeamWallet) {
-        dbUser.getUserByAlias({
-          alias: decoded.data.userName,
-          callback: ({ error, data }) => {
-            if (error) {
-              res.status(500).json({
-                error: {
-                  status: 500,
-                  title: 'Internal Server Error',
-                  detail: 'Internal Server Error',
-                },
-              });
+                return;
+              }
 
-              return;
-            } else if (!data.user.team) {
-              res.status(404).json({
-                error: {
-                  status: 404,
-                  title: 'Failed to create transaction',
-                  detail: 'User team does not exist',
-                },
-              });
-
-              return;
-            }
-
-            createTransactionFunc({ user: data.user });
-          },
-        });
-      } else {
-        createTransactionFunc({ user: decoded.data });
-      }
+              createTransactionFunc(userData);
+            },
+          });
+        } else {
+          createTransactionFunc(data);
+        }
+      },
     });
   });
 

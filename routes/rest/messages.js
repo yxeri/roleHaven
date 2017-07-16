@@ -17,12 +17,11 @@
 'use strict';
 
 const express = require('express');
-const appConfig = require('../../config/defaults/config').app;
-const jwt = require('jsonwebtoken');
 const messenger = require('../../socketHelpers/messenger');
 const objectValidator = require('../../utils/objectValidator');
 const errorCreator = require('../../objects/error/errorCreator');
 const dbConfig = require('../../config/defaults/config').databasePopulation;
+const authenticator = require('../../socketHelpers/authenticator');
 
 const router = new express.Router();
 
@@ -90,31 +89,17 @@ function handle(io) {
       return;
     }
 
-    // noinspection JSUnresolvedVariable
-    const auth = req.headers.authorization || '';
-
-    jwt.verify(auth, appConfig.jsonKey, (jwtErr, decoded) => {
-      if (jwtErr || !decoded || decoded.data.accessLevel < dbConfig.apiCommands.SendMessage) {
-        res.status(401).json({
-          error: {
-            status: 401,
-            title: 'Unauthorized',
-            detail: 'Invalid token',
-          },
-        });
-
-        return;
-      }
-
-      const { message, whisper } = req.body.data;
-      const callback = ({ error, data }) => {
+    authenticator.isUserAllowed({
+      commandName: dbConfig.apiCommands.SendMessage.name,
+      token: req.headers.authorization,
+      callback: ({ error, data }) => {
         if (error) {
-          if (error.type === errorCreator.ErrorTypes.INVALIDCHARACTERS) {
-            res.status(400).json({
+          if (error.type === errorCreator.ErrorTypes.DOESNOTEXIST) {
+            res.status(404).json({
               error: {
-                status: 400,
-                title: 'Message too long',
-                detail: 'Message too long',
+                status: 404,
+                title: 'Command does not exist',
+                detail: 'Command does not exist',
               },
             });
 
@@ -124,7 +109,7 @@ function handle(io) {
               error: {
                 status: 401,
                 title: 'Unauthorized',
-                detail: 'Not following room',
+                detail: 'Invalid token',
               },
             });
 
@@ -142,26 +127,65 @@ function handle(io) {
           return;
         }
 
-        res.json({ data: { messages: data.messages } });
-      };
+        const { message, whisper } = req.body.data;
+        const { user } = data;
 
-      if (whisper) {
-        message.userName = decoded.data.userName;
+        const callback = ({ error: messageError, data: messageData }) => {
+          if (messageError) {
+            if (messageError.type === errorCreator.ErrorTypes.INVALIDCHARACTERS) {
+              res.status(400).json({
+                error: {
+                  status: 400,
+                  title: 'Message too long',
+                  detail: 'Message too long',
+                },
+              });
 
-        messenger.sendWhisperMsg({
-          io,
-          message,
-          callback,
-          user: decoded.data,
-        });
-      } else {
-        messenger.sendChatMsg({
-          io,
-          message,
-          callback,
-          user: decoded.data,
-        });
-      }
+              return;
+            } else if (messageError.type === errorCreator.ErrorTypes.NOTALLOWED) {
+              res.status(401).json({
+                error: {
+                  status: 401,
+                  title: 'Unauthorized',
+                  detail: 'Not following room',
+                },
+              });
+
+              return;
+            }
+
+            res.status(500).json({
+              error: {
+                status: 500,
+                title: 'Internal Server Error',
+                detail: 'Internal Server Error',
+              },
+            });
+
+            return;
+          }
+
+          res.json({ data: messageData });
+        };
+
+        if (whisper) {
+          message.userName = user.userName;
+
+          messenger.sendWhisperMsg({
+            io,
+            message,
+            callback,
+            user,
+          });
+        } else {
+          messenger.sendChatMsg({
+            io,
+            message,
+            callback,
+            user,
+          });
+        }
+      },
     });
   });
 

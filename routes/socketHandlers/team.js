@@ -18,7 +18,6 @@
 
 const dbTeam = require('../../db/connectors/team');
 const dbUser = require('../../db/connectors/user');
-const dbRoom = require('../../db/connectors/room');
 const dbConfig = require('../../config/defaults/config').databasePopulation;
 const manager = require('../../socketHelpers/manager');
 const objectValidator = require('../../utils/objectValidator');
@@ -50,127 +49,6 @@ function handle(socket, io) {
             }
 
             callback({ data: teamData.data });
-          },
-        });
-      },
-    });
-  });
-
-  /**
-   * Create a team
-   * @param {Object} params.team Team
-   * @param {string} params.team.teamName Full team name
-   * @param {string} params.team.shortName Short name (5 chars) for the team
-   */
-  socket.on('createTeam', ({ team, token }, callback = () => {}) => {
-    if (!objectValidator.isValidData({ team }, { team: { teamName: true, shortName: true } })) {
-      callback({ error: new errorCreator.InvalidData({ expected: '{ team: { teamName, shortName } }' }) });
-
-      return;
-    } else if (team.teamName.toLowerCase() === 'team') {
-      callback({ error: new errorCreator.InvalidData({ expected: 'team name !== team' }) });
-
-      return;
-    } else if (team.teamName.length > appConfig.teamNameMaxLength || team.shortName.length > appConfig.shortTeamMaxLength) {
-      callback({ error: new errorCreator.InvalidCharacters({ name: `Team name length: ${appConfig.teamNameMaxLength} Short name length: ${appConfig.shortTeamMaxLength}` }) });
-
-      return;
-    }
-
-    manager.userIsAllowed({
-      token,
-      commandName: dbConfig.commands.createTeam.commandName,
-      callback: ({ error, allowedUser }) => {
-        if (error) {
-          callback({ error });
-
-          return;
-        } else if (allowedUser.team) {
-          callback({ error: new errorCreator.AlreadyExists({ name: 'team' }) });
-
-          return;
-        }
-
-        dbTeam.getTeamByOwner({
-          owner: allowedUser.userName,
-          callback: (teamData) => {
-            if (teamData.error) {
-              if (teamData.error.type === errorCreator.ErrorTypes.DOESNOTEXIST) {
-                const newTeam = team;
-
-                newTeam.owner = allowedUser.userName;
-                newTeam.verified = false;
-
-                dbTeam.createTeam({
-                  team: newTeam,
-                  callback: (createRoomData) => {
-                    if (createRoomData.error) {
-                      callback({ error: createRoomData.error });
-
-                      return;
-                    }
-
-                    const createdTeam = createRoomData.data.team;
-                    const teamRoom = {
-                      owner: dbConfig.systemUserName,
-                      roomName: createdTeam.teamName + appConfig.teamAppend,
-                      accessLevel: dbConfig.AccessLevels.SUPERUSER,
-                      visibility: dbConfig.AccessLevels.SUPERUSER,
-                    };
-                    const wallet = {
-                      owner: createdTeam.teamName + appConfig.teamAppend,
-                      team: createdTeam.teamName,
-                    };
-
-                    manager.createWallet({ wallet, callback: () => {} });
-
-                    dbRoom.createRoom({
-                      room: teamRoom,
-                      callback: (teamRoomData) => {
-                        if (teamRoomData.error) {
-                          callback({ error: teamRoomData.error });
-
-                          return;
-                        }
-
-                        socket.broadcast.emit('team', { team: { teamName: newTeam.teamName } });
-
-                        if (appConfig.teamVerify) {
-                          callback({
-                            data: {
-                              requiresVerify: appConfig.teamVerify,
-                              team: createdTeam,
-                            },
-                          });
-                        } else {
-                          manager.addUserToTeam({
-                            socket,
-                            io,
-                            team: createdTeam,
-                            user: allowedUser,
-                            callback: (addUserData) => {
-                              if (addUserData.error) {
-                                callback({ error: addUserData.error });
-
-                                return;
-                              }
-
-                              callback({ data: addUserData.data });
-                            },
-                          });
-                        }
-                      },
-                    });
-                  },
-                });
-
-                return;
-              }
-
-              callback({ error: teamData.error });
-            } else if (teamData.data.team) {
-              callback({ error: new errorCreator.AlreadyExists({ name: `team ${teamData.data.team.teamName}` }) });
-            }
           },
         });
       },
@@ -263,7 +141,7 @@ function handle(socket, io) {
           return;
         }
 
-        dbTeam.getAllTeams({
+        dbTeam.getTeams({
           callback: (teamsData) => {
             if (teamsData.error) {
               callback({ error: teamsData.error });

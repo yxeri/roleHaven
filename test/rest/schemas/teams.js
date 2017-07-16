@@ -19,59 +19,60 @@
 
 const schemas = {};
 
-const positionBase = {
-  type: 'object',
-  required: [
-    'coordinates',
-    'positionName',
-    'markerType',
-    'lastUpdated',
-  ],
-  properties: {
-    positionName: { type: 'string' },
-    markerType: { type: 'string' },
-    lastUpdated: { type: 'string' },
-    coordinates: {
-      type: 'object',
-      required: [
-        'longitude',
-        'latitude',
-        'accuracy',
-      ],
-      properties: {
-        longitude: { type: 'number' },
-        latitude: { type: 'number' },
-        accuracy: { type: 'number' },
-      },
-    },
-  },
-};
-
-schemas.position = {
+schemas.team = {
   type: 'object',
   required: ['data'],
   properties: {
     data: {
       type: 'object',
-      required: ['position'],
+      required: ['team'],
       properties: {
-        position: positionBase,
+        teams: {
+          type: 'object',
+          required: [
+            'teamName',
+            'shortName',
+            'admins',
+            'owner',
+            'verified',
+          ],
+          properties: {
+            teamName: { type: 'string' },
+            shortName: { type: 'string' },
+            admins: {
+              type: 'array',
+              items: { type: 'string' },
+            },
+            owner: { type: 'string' },
+            verified: { type: 'boolean' },
+          },
+        },
       },
     },
   },
 };
 
-schemas.positions = {
+schemas.teams = {
   type: 'object',
   required: ['data'],
   properties: {
     data: {
       type: 'object',
-      required: ['positions'],
+      required: ['teams'],
       properties: {
-        positions: {
+        teams: {
           type: 'array',
-          items: positionBase,
+          items: {
+            type: 'object',
+            required: [
+              'teamName',
+              'shortName',
+            ],
+            properties: {
+              teamName: { type: 'string' },
+              shortName: { type: 'string' },
+            },
+          },
         },
       },
     },
@@ -79,4 +80,3 @@ schemas.positions = {
 };
 
 module.exports = schemas;
-

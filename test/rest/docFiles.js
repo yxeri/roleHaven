@@ -33,7 +33,7 @@ chai.use(chaiJson);
 
 describe('DocFiles', () => {
   describe('Create DocFile', () => {
-    it('Should NOT create docFile with incorrect authorization on /docFiles POST', (done) => {
+    it('Should NOT create docFile with incorrect authorization on /api/docFiles POST', (done) => {
       chai
         .request(app)
         .post('/api/docFiles')
@@ -48,7 +48,7 @@ describe('DocFiles', () => {
         });
     });
 
-    it('Should create new private docFile on /docFiles POST', (done) => {
+    it('Should create new private docFile on /api/docFiles POST', (done) => {
       chai
         .request(app)
         .post('/api/docFiles')
@@ -63,7 +63,7 @@ describe('DocFiles', () => {
         });
     });
 
-    it('Should NOT create docFile with existing docFileId on /docFiles POST', (done) => {
+    it('Should NOT create docFile with existing docFileId on /api/docFiles POST', (done) => {
       chai
         .request(app)
         .post('/api/docFiles')
@@ -78,7 +78,7 @@ describe('DocFiles', () => {
         });
     });
 
-    it('Should NOT create docFile with existing title on /docFiles POST', (done) => {
+    it('Should NOT create docFile with existing title on /api/docFiles POST', (done) => {
       chai
         .request(app)
         .post('/api/docFiles')
@@ -93,7 +93,7 @@ describe('DocFiles', () => {
         });
     });
 
-    it('Should NOT create docFile with empty docFileId on /docFiles POST', (done) => {
+    it('Should NOT create docFile with empty docFileId on /api/docFiles POST', (done) => {
       chai
         .request(app)
         .post('/api/docFiles')
@@ -108,7 +108,7 @@ describe('DocFiles', () => {
         });
     });
 
-    it('Should NOT create docFile with empty text on /docFiles POST', (done) => {
+    it('Should NOT create docFile with empty text on /api/docFiles POST', (done) => {
       chai
         .request(app)
         .post('/api/docFiles')
@@ -123,7 +123,7 @@ describe('DocFiles', () => {
         });
     });
 
-    it('Should NOT create docFile with empty title on /docFiles POST', (done) => {
+    it('Should NOT create docFile with empty title on /api/docFiles POST', (done) => {
       chai
         .request(app)
         .post('/api/docFiles')
@@ -138,7 +138,7 @@ describe('DocFiles', () => {
         });
     });
 
-    it('Should create new public docFile on /docFiles POST', (done) => {
+    it('Should create new public docFile on /api/docFiles POST', (done) => {
       chai
         .request(app)
         .post('/api/docFiles')
@@ -155,7 +155,7 @@ describe('DocFiles', () => {
   });
 
   describe('List DocFiles', () => {
-    it('Should NOT list docFiles with incorrect authorization on /docFiles GET', (done) => {
+    it('Should NOT list docFiles with incorrect authorization on /api/docFiles GET', (done) => {
       chai
         .request(app)
         .get('/api/docFiles')
@@ -169,7 +169,7 @@ describe('DocFiles', () => {
         });
     });
 
-    it('Should list docFiles on /docFiles GET', (done) => {
+    it('Should list docFiles on /api/docFiles GET', (done) => {
       chai
         .request(app)
         .get('/api/docFiles')
@@ -185,7 +185,7 @@ describe('DocFiles', () => {
   });
 
   describe('Get specific DocFile', () => {
-    before('Create private docFile', (done) => {
+    before('Create private docFile on /api/docFiles', (done) => {
       chai
         .request(app)
         .post('/api/docFiles')
@@ -200,7 +200,7 @@ describe('DocFiles', () => {
         });
     });
 
-    before('Create public docFile', (done) => {
+    before('Create public docFile on /api/docFiles', (done) => {
       chai
         .request(app)
         .post('/api/docFiles')
@@ -215,7 +215,7 @@ describe('DocFiles', () => {
         });
     });
 
-    it('Should get specific public docFile on /docFiles/:id GET', (done) => {
+    it('Should get specific public docFile on /api/docFiles/:id GET', (done) => {
       chai
         .request(app)
         .get(`/api/docFiles/${docFileData.publicDocFileToCreateAndGet.docFileId}`)
@@ -229,7 +229,7 @@ describe('DocFiles', () => {
         });
     });
 
-    it('Should get specific private docFile on /docFiles/:id GET', (done) => {
+    it('Should get specific private docFile on /api/docFiles/:id GET', (done) => {
       chai
         .request(app)
         .get(`/api/docFiles/${docFileData.privateDocFileToCreateAndGet.docFileId}`)

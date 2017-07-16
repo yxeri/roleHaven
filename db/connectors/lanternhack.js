@@ -737,7 +737,7 @@ function getAllFakePasswords({ callback }) {
  * Get all lantern teams
  * @param {Function} params.callback Callback
  */
-function getAllTeams({ callback }) {
+function getTeams({ callback }) {
   const query = {};
   const filter = { _id: 0 };
 
@@ -776,5 +776,5 @@ exports.getActiveLanternRound = getActiveLanternRound;
 exports.endLanternRound = endLanternRound;
 exports.updateLanternTeam = updateLanternTeam;
 exports.createLanternTeam = createLanternTeam;
-exports.getAllTeams = getAllTeams;
+exports.getTeams = getTeams;
 exports.createLanternRound = createLanternRound;

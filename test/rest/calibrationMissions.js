@@ -32,7 +32,7 @@ chai.use(chaiJson);
 
 describe('CalibrationMissions', () => {
   describe('Get active calibration mission', () => {
-    it('Should NOT retrieve active calibration mission with incorrect authorization on /calibrationMissions GET', (done) => {
+    it('Should NOT retrieve active calibration mission with incorrect authorization on /api/calibrationMissions GET', (done) => {
       chai
         .request(app)
         .get('/api/calibrationMissions')
@@ -46,7 +46,7 @@ describe('CalibrationMissions', () => {
         });
     });
 
-    it('Should get active calibration mission for user on /calibrationMissions GET', (done) => {
+    it('Should get active calibration mission for user on /api/calibrationMissions GET', (done) => {
       chai
         .request(app)
         .get('/api/calibrationMissions')
@@ -64,7 +64,7 @@ describe('CalibrationMissions', () => {
   describe('Complete active calibration mission', () => {
     let calibrationMission = {};
 
-    it('Should get active calibration mission for user on /calibrationMissions GET', (done) => {
+    before('Get active calibration mission for user on /api/calibrationMissions GET', (done) => {
       chai
         .request(app)
         .get('/api/calibrationMissions')
@@ -80,7 +80,7 @@ describe('CalibrationMissions', () => {
         });
     });
 
-    it('Should NOT complete active calibration mission with incorrect authorization /calibrationMissions/complete POST', (done) => {
+    it('Should NOT complete active calibration mission with incorrect authorization /api/calibrationMissions/complete POST', (done) => {
       chai
         .request(app)
         .post('/api/calibrationMissions/complete')
@@ -95,7 +95,7 @@ describe('CalibrationMissions', () => {
         });
     });
 
-    it('Should complete active calibration mission for user on /calibrationMissions/complete POST', (done) => {
+    it('Should complete active calibration mission for user on /api/calibrationMissions/complete POST', (done) => {
       chai
         .request(app)
         .post('/api/calibrationMissions/complete')
@@ -110,41 +110,62 @@ describe('CalibrationMissions', () => {
         });
     });
 
-    it('Should get new active calibration mission for user and it should NOT be the same as the completed mission on /calibrationMissions GET', (done) => {
-      chai
-        .request(app)
-        .get('/api/calibrationMissions')
-        .set('Authorization', tokens.adminUser)
-        .end((error, response) => {
-          response.should.have.status(200);
-          response.should.be.json;
-          response.body.should.be.jsonSchema(calibrationMissionSchemas.calibrationMission);
-          response.body.data.mission.should.not.equal(calibrationMission);
+    describe('Correct completed mission data', () => {
+      let activeMission = {};
 
-          done();
-        });
-    });
+      before('Get active calibration mission for user on /api/calibrationMissions GET', (done) => {
+        chai
+          .request(app)
+          .get('/api/calibrationMissions')
+          .set('Authorization', tokens.adminUser)
+          .end((error, response) => {
+            response.should.have.status(200);
+            response.should.be.json;
+            response.body.should.be.jsonSchema(calibrationMissionSchemas.calibrationMission);
 
-    it('Should get new active calibration mission for user and it should NOT have the same station ID as the completed mission on /calibrationMissions GET', (done) => {
-      chai
-        .request(app)
-        .get('/api/calibrationMissions')
-        .set('Authorization', tokens.adminUser)
-        .end((error, response) => {
-          response.should.have.status(200);
-          response.should.be.json;
-          response.body.should.be.jsonSchema(calibrationMissionSchemas.calibrationMission);
-          response.body.data.mission.stationId.should.not.equal(calibrationMission.stationId);
+            activeMission = response.body.data.mission;
 
-          done();
-        });
+            done();
+          });
+      });
+
+      before('Complete active calibration mission for user on /api/calibrationMissions/complete POST', (done) => {
+        chai
+          .request(app)
+          .post('/api/calibrationMissions/complete')
+          .set('Authorization', tokens.adminUser)
+          .send({ data: { mission: activeMission } })
+          .end((error, response) => {
+            response.should.have.status(200);
+            response.should.be.json;
+            response.body.should.be.jsonSchema(calibrationMissionSchemas.calibrationMission);
+
+            done();
+          });
+      });
+
+      it('Should get new active calibration mission for user and it should NOT have the same station ID nor code as the completed mission on /api/calibrationMissions GET', (done) => {
+        chai
+          .request(app)
+          .get('/api/calibrationMissions')
+          .set('Authorization', tokens.adminUser)
+          .end((error, response) => {
+            response.should.have.status(200);
+            response.should.be.json;
+            response.body.should.be.jsonSchema(calibrationMissionSchemas.calibrationMission);
+            response.body.data.mission.stationId.should.not.equal(activeMission.stationId);
+            response.body.data.mission.code.should.not.equal(activeMission.code);
+
+            done();
+          });
+      });
     });
   });
 
   describe('Cancel active calibration mission', () => {
     let calibrationMission = {};
 
-    it('Should get active calibration mission for user on /calibrationMissions GET', (done) => {
+    it('Should get active calibration mission for user on /api/calibrationMissions GET', (done) => {
       chai
         .request(app)
         .get('/api/calibrationMissions')
@@ -160,7 +181,7 @@ describe('CalibrationMissions', () => {
         });
     });
 
-    it('Should NOT cancel active calibration mission with incorrect authorization /calibrationMissions/cancel POST', (done) => {
+    it('Should NOT cancel active calibration mission with incorrect authorization /api/calibrationMissions/cancel POST', (done) => {
       chai
         .request(app)
         .post('/api/calibrationMissions/cancel')
@@ -175,7 +196,7 @@ describe('CalibrationMissions', () => {
         });
     });
 
-    it('Should cancel active calibration mission for user on /calibrationMissions/cancel POST', (done) => {
+    it('Should cancel active calibration mission for user on /api/calibrationMissions/cancel POST', (done) => {
       chai
         .request(app)
         .post('/api/calibrationMissions/cancel')
@@ -190,7 +211,7 @@ describe('CalibrationMissions', () => {
         });
     });
 
-    it('Should NOT cancel if there is no active calibrationMission for user on /calibrationMissions/cancel POST', (done) => {
+    it('Should NOT cancel if there is no active calibrationMission for user on /api/calibrationMissions/cancel POST', (done) => {
       chai
         .request(app)
         .post('/api/calibrationMissions/cancel')
@@ -205,7 +226,7 @@ describe('CalibrationMissions', () => {
         });
     });
 
-    it('Should get new active calibration mission for user and it should not be the same as the cancelled mission on /calibrationMissions GET', (done) => {
+    it('Should get new active calibration mission for user and it should not be the same as the cancelled mission on /api/calibrationMissions GET', (done) => {
       chai
         .request(app)
         .get('/api/calibrationMissions')
@@ -221,7 +242,7 @@ describe('CalibrationMissions', () => {
         });
     });
 
-    it('Should get new active calibration mission for user and it should NOT have the same station ID as the completed mission on /calibrationMissions GET', (done) => {
+    it('Should get new active calibration mission for user and it should NOT have the same station ID as the completed mission on /api/calibrationMissions GET', (done) => {
       chai
         .request(app)
         .get('/api/calibrationMissions')

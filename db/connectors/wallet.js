@@ -24,11 +24,40 @@ const walletSchema = new mongoose.Schema({
   owner: { type: String, unique: true },
   amount: { type: Number, default: 0 },
   accessLevel: { type: Number, default: 1 },
-  protected: { type: Boolean, default: false },
+  isProtected: { type: Boolean, default: false },
   team: String,
 }, { collection: 'wallets' });
 
 const Wallet = mongoose.model('Wallet', walletSchema);
+
+/**
+ * Get wallets under user's access level or owner equal to user name
+ * @param {Object} params.user User retrieving wallets
+ * @param {Function} params.callback Callback
+ */
+function getWallets({ user, callback }) {
+  const query = {
+    $or: [
+      {
+        $or: [
+          { owner: user.userName },
+          { isProtected: false },
+        ],
+      },
+      { accessLevel: { $lt: user.accessLevel } },
+    ],
+  };
+
+  Wallet.find(query).lean().exec((err, wallets = []) => {
+    if (err) {
+      callback({ error: new errorCreator.Database({ errorObject: err, name: 'getWallets' }) });
+
+      return;
+    }
+
+    callback({ data: { wallets } });
+  });
+}
 
 /**
  * Get wallet
@@ -129,7 +158,34 @@ function decreaseAmount({ owner, amount, callback }) {
   });
 }
 
+/**
+ * Reset wallet amount to 0
+ * @param {string} params.owner Owner name
+ * @param {Function} params.callback Callback
+ */
+function resetWalletAmount({ owner, callback }) {
+  const query = { owner };
+  const update = { $set: { amount: 0 } };
+  const options = { new: true };
+
+  Wallet.findOneAndUpdate(query, update, options).lean().exec((err, wallet) => {
+    if (err) {
+      callback({ error: new errorCreator.Database({ errorObject: err, name: 'resetWalletAmount' }) });
+
+      return;
+    } else if (!wallet) {
+      callback({ error: new errorCreator.DoesNotExist({ name: `wallet ${owner}` }) });
+
+      return;
+    }
+
+    callback({ data: { wallet } });
+  });
+}
+
 exports.increaseAmount = increaseAmount;
 exports.decreaseAmount = decreaseAmount;
 exports.getWallet = getWallet;
 exports.createWallet = createWallet;
+exports.getWallets = getWallets;
+exports.resetWalletAmount = resetWalletAmount;

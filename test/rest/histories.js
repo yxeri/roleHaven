@@ -33,7 +33,7 @@ chai.use(chaiHttp);
 chai.use(chaiJson);
 
 describe('Histories', () => {
-  before(`Create ${historyData.roomToCreate.roomName} room`, (done) => {
+  before(`Create ${historyData.roomToCreate.roomName} room on /api/rooms`, (done) => {
     chai
       .request(app)
       .post('/api/rooms')
@@ -48,7 +48,7 @@ describe('Histories', () => {
       });
   });
 
-  before(`Create ${historyData.unfollowedRoomToCreate.roomName} room`, (done) => {
+  before(`Create ${historyData.unfollowedRoomToCreate.roomName} room on /api/rooms`, (done) => {
     chai
       .request(app)
       .post('/api/rooms')
@@ -64,7 +64,7 @@ describe('Histories', () => {
   });
 
   describe('Get specific history', () => {
-    it('Should NOT retrieve specific history with incorrect authorization on /histories/:id GET', (done) => {
+    it('Should NOT retrieve specific history with incorrect authorization on /api/histories/:id GET', (done) => {
       chai
         .request(app)
         .get(`/api/histories/${historyData.roomToCreate.roomName}`)
@@ -78,7 +78,7 @@ describe('Histories', () => {
         });
     });
 
-    it('Should retrieve specific history from followed room on /histories/:id GET', (done) => {
+    it('Should retrieve specific history from followed room on /api/histories/:id GET', (done) => {
       chai
         .request(app)
         .get(`/api/histories/${historyData.roomToCreate.roomName}`)
@@ -92,13 +92,13 @@ describe('Histories', () => {
         });
     });
 
-    it('Should NOT retrieve specific history from unfollowed room on /histories/:id GET', (done) => {
+    it('Should NOT retrieve specific history from unfollowed room on /api/histories/:id GET', (done) => {
       chai
         .request(app)
         .get(`/api/histories/${historyData.unfollowedRoomToCreate.roomName}`)
         .set('Authorization', tokens.adminUser)
         .end((error, response) => {
-          response.should.have.status(404);
+          response.should.have.status(401);
           response.should.be.json;
           response.body.should.be.jsonSchema(errorSchemas.error);
 
@@ -106,13 +106,13 @@ describe('Histories', () => {
         });
     });
 
-    it('Should NOT retrieve specific history from room that does not exist on /histories/:id GET', (done) => {
+    it('Should NOT retrieve specific history from room that does not exist on /api/histories/:id GET', (done) => {
       chai
         .request(app)
         .get(`/api/histories/${historyData.roomThatDoesNotExist}`)
         .set('Authorization', tokens.adminUser)
         .end((error, response) => {
-          response.should.have.status(404);
+          response.should.have.status(401);
           response.should.be.json;
           response.body.should.be.jsonSchema(errorSchemas.error);
 
@@ -122,7 +122,7 @@ describe('Histories', () => {
   });
 
   describe('List histories', () => {
-    it('Should NOT retrieve histories with incorrect authorization on /histories GET', (done) => {
+    it('Should NOT retrieve histories with incorrect authorization on /api/histories GET', (done) => {
       chai
         .request(app)
         .get('/api/histories')
@@ -136,7 +136,7 @@ describe('Histories', () => {
         });
     });
 
-    it('Should retrieve histories from followed rooms on /histories GET', (done) => {
+    it('Should retrieve histories from followed rooms on /api/histories GET', (done) => {
       chai
         .request(app)
         .get('/api/histories')

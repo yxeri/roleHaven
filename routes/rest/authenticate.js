@@ -17,11 +17,9 @@
 'use strict';
 
 const express = require('express');
-const jwt = require('jsonwebtoken');
-const dbUser = require('../../db/connectors/user');
-const appConfig = require('../../config/defaults/config').app;
 const objectValidator = require('../../utils/objectValidator');
 const errorCreator = require('../../objects/error/errorCreator');
+const authenticator = require('../../socketHelpers/authenticator');
 
 const router = new express.Router();
 
@@ -75,7 +73,7 @@ function handle() {
 
     const { userName, password } = req.body.data.user;
 
-    dbUser.authUser({
+    authenticator.createToken({
       userName,
       password,
       callback: ({ error, data }) => {
@@ -103,20 +101,7 @@ function handle() {
           return;
         }
 
-        const { user } = data;
-
-        const jwtUser = {
-          _id: user._id, // eslint-disable-line no-underscore-dangle
-          userName: user.userName,
-          accessLevel: user.accessLevel,
-          visibility: user.visibility,
-          verified: user.verified,
-          banned: user.banned,
-        };
-
-        res.json({
-          data: { token: jwt.sign({ data: jwtUser }, appConfig.jsonKey) },
-        });
+        res.json({ data });
       },
     });
   });

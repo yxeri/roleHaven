@@ -18,12 +18,11 @@
 
 const express = require('express');
 const objectValidator = require('../../utils/objectValidator');
-const appConfig = require('../../config/defaults/config').app;
 const dbConfig = require('../../config/defaults/config').databasePopulation;
 const dbDocFile = require('../../db/connectors/docFile');
-const jwt = require('jsonwebtoken');
 const errorCreator = require('../../objects/error/errorCreator');
 const manager = require('../../socketHelpers/manager');
+const authenticator = require('../../socketHelpers/authenticator');
 
 const router = new express.Router();
 
@@ -63,41 +62,66 @@ function handle(io) {
    *  }
    */
   router.get('/', (req, res) => {
-    // noinspection JSUnresolvedVariable
-    const auth = req.headers.authorization || '';
-
-    jwt.verify(auth, appConfig.jsonKey, (jwtErr, decoded) => {
-      if (jwtErr || !decoded || decoded.data.accessLevel < dbConfig.apiCommands.GetDocFile) {
-        res.status(401).json({
-          error: {
-            status: 401,
-            title: 'Unauthorized',
-            detail: 'Invalid token',
-          },
-        });
-
-        return;
-      }
-
-      dbDocFile.getDocFilesList({
-        accessLevel: decoded.data.accessLevel,
-        userName: decoded.data.userName,
-        callback: ({ error, data }) => {
-          if (error) {
-            res.status(500).json({
+    authenticator.isUserAllowed({
+      commandName: dbConfig.apiCommands.GetDocFile.name,
+      token: req.headers.authorization,
+      callback: ({ error, data }) => {
+        if (error) {
+          if (error.type === errorCreator.ErrorTypes.DOESNOTEXIST) {
+            res.status(404).json({
               error: {
-                status: 500,
-                title: 'Internal Server Error',
-                detail: 'Internal Server Error',
+                status: 404,
+                title: 'Command does not exist',
+                detail: 'Command does not exist',
+              },
+            });
+
+            return;
+          } else if (error.type === errorCreator.ErrorTypes.NOTALLOWED) {
+            res.status(401).json({
+              error: {
+                status: 401,
+                title: 'Unauthorized',
+                detail: 'Invalid token',
               },
             });
 
             return;
           }
 
-          res.json({ data });
-        },
-      });
+          res.status(500).json({
+            error: {
+              status: 500,
+              title: 'Internal Server Error',
+              detail: 'Internal Server Error',
+            },
+          });
+
+          return;
+        }
+
+        const user = data.user;
+
+        dbDocFile.getDocFilesList({
+          accessLevel: user.accessLevel,
+          userName: user.userName,
+          callback: ({ error: docError, data: docData }) => {
+            if (docError) {
+              res.status(500).json({
+                error: {
+                  status: 500,
+                  title: 'Internal Server Error',
+                  detail: 'Internal Server Error',
+                },
+              });
+
+              return;
+            }
+
+            res.json({ data: docData });
+          },
+        });
+      },
     });
   });
 
@@ -148,55 +172,76 @@ function handle(io) {
       return;
     }
 
-    // noinspection JSUnresolvedVariable
-    const auth = req.headers.authorization || '';
-
-    jwt.verify(auth, appConfig.jsonKey, (jwtErr, decoded) => {
-      if (jwtErr || !decoded || decoded.data.accessLevel < dbConfig.apiCommands.GetDocFile) {
-        res.status(401).json({
-          error: {
-            status: 401,
-            title: 'Unauthorized',
-            detail: 'Invalid token',
-          },
-        });
-
-        return;
-      }
-
-      dbDocFile.getDocFileById({
-        docFileId: req.params.id,
-        user: decoded.data,
-        callback: ({ error, data }) => {
-          if (error) {
-            if (error.type === errorCreator.ErrorTypes.DOESNOTEXIST) {
-              res.status(404).json({
-                error: {
-                  status: 404,
-                  title: 'Not found',
-                  detail: 'DocFile not found',
-                },
-              });
-
-              return;
-            }
-
-            res.status(500).json({
+    authenticator.isUserAllowed({
+      commandName: dbConfig.apiCommands.GetDocFile.name,
+      token: req.headers.authorization,
+      callback: ({ error, data }) => {
+        if (error) {
+          if (error.type === errorCreator.ErrorTypes.DOESNOTEXIST) {
+            res.status(404).json({
               error: {
-                status: 500,
-                title: 'Internal Server Error',
-                detail: 'Internal Server Error',
+                status: 404,
+                title: 'Command does not exist',
+                detail: 'Command does not exist',
+              },
+            });
+
+            return;
+          } else if (error.type === errorCreator.ErrorTypes.NOTALLOWED) {
+            res.status(401).json({
+              error: {
+                status: 401,
+                title: 'Unauthorized',
+                detail: 'Invalid token',
               },
             });
 
             return;
           }
 
-          const { docFile } = data;
+          res.status(500).json({
+            error: {
+              status: 500,
+              title: 'Internal Server Error',
+              detail: 'Internal Server Error',
+            },
+          });
 
-          res.json({ data: { docFile } });
-        },
-      });
+          return;
+        }
+
+        dbDocFile.getDocFileById({
+          docFileId: req.params.id,
+          user: data.user,
+          callback: ({ error: docError, data: docData }) => {
+            if (docError) {
+              if (docError.type === errorCreator.ErrorTypes.DOESNOTEXIST) {
+                res.status(404).json({
+                  error: {
+                    status: 404,
+                    title: 'Not found',
+                    detail: 'DocFile not found',
+                  },
+                });
+
+                return;
+              }
+
+              res.status(500).json({
+                error: {
+                  status: 500,
+                  title: 'Internal Server Error',
+                  detail: 'Internal Server Error',
+                },
+              });
+
+              return;
+            }
+
+            res.json({ data: docData });
+          },
+        });
+      },
     });
   });
 
@@ -265,69 +310,91 @@ function handle(io) {
       return;
     }
 
-    // noinspection JSUnresolvedVariable
-    const auth = req.headers.authorization || '';
-
-    jwt.verify(auth, appConfig.jsonKey, (jwtErr, decoded) => {
-      if (jwtErr || !decoded || decoded.data.accessLevel < dbConfig.apiCommands.CreateDocFile) {
-        res.status(401).json({
-          error: {
-            status: 401,
-            title: 'Unauthorized',
-            detail: 'Invalid token',
-          },
-        });
-
-        return;
-      }
-
-      const newDocFile = req.body.data.docFile;
-      newDocFile.creator = decoded.data.userName;
-
-      manager.createDocFile({
-        user: decoded.data,
-        docFile: newDocFile,
-        callback: ({ error, data }) => {
-          if (error) {
-            if (error.type === errorCreator.ErrorTypes.INVALIDCHARACTERS) {
-              res.status(400).json({
-                error: {
-                  status: 400,
-                  title: 'Invalid data',
-                  detail: 'Invalid data',
-                },
-              });
-
-              return;
-            } else if (error.type === errorCreator.ErrorTypes.ALREADYEXISTS) {
-              res.status(403).json({
-                error: {
-                  status: 403,
-                  title: 'DocFile already exists',
-                  detail: `DocFile with ID ${newDocFile.docFileId} already exists`,
-                },
-              });
-
-              return;
-            }
-
-            res.status(500).json({
+    authenticator.isUserAllowed({
+      commandName: dbConfig.apiCommands.CreateDocFile.name,
+      token: req.headers.authorization,
+      callback: ({ error, data }) => {
+        if (error) {
+          if (error.type === errorCreator.ErrorTypes.DOESNOTEXIST) {
+            res.status(404).json({
               error: {
-                status: 500,
-                title: 'Internal Server Error',
-                detail: 'Internal Server Error',
+                status: 404,
+                title: 'Command does not exist',
+                detail: 'Command does not exist',
+              },
+            });
+
+            return;
+          } else if (error.type === errorCreator.ErrorTypes.NOTALLOWED) {
+            res.status(401).json({
+              error: {
+                status: 401,
+                title: 'Unauthorized',
+                detail: 'Invalid token',
               },
             });
 
             return;
           }
 
-          const createdDocFile = data.docFile;
+          res.status(500).json({
+            error: {
+              status: 500,
+              title: 'Internal Server Error',
+              detail: 'Internal Server Error',
+            },
+          });
 
-          io.emit('docFile', { docFile: createdDocFile });
-          res.json({ data: { docFile: createdDocFile } });
-        },
-      });
+          return;
+        }
+
+        const user = data.user;
+        const newDocFile = req.body.data.docFile;
+        newDocFile.creator = user.userName;
+
+        manager.createDocFile({
+          user,
+          docFile: newDocFile,
+          callback: ({ error: docError, data: docData }) => {
+            if (docError) {
+              if (docError.type === errorCreator.ErrorTypes.INVALIDCHARACTERS) {
+                res.status(400).json({
+                  error: {
+                    status: 400,
+                    title: 'Invalid data',
+                    detail: 'Invalid data',
+                  },
+                });
+
+                return;
+              } else if (docError.type === errorCreator.ErrorTypes.ALREADYEXISTS) {
+                res.status(403).json({
+                  error: {
+                    status: 403,
+                    title: 'DocFile already exists',
+                    detail: `DocFile with ID ${newDocFile.docFileId} already exists`,
+                  },
+                });
+
+                return;
+              }
+
+              res.status(500).json({
+                error: {
+                  status: 500,
+                  title: 'Internal Server Error',
+                  detail: 'Internal Server Error',
+                },
+              });
+
+              return;
+            }
+
+            io.emit('docFile', { docFile: docData.docFile });
+            res.json({ data: docData });
+          },
+        });
+      },
     });
   });
 

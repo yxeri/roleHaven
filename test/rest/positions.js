@@ -39,7 +39,7 @@ describe('Positions', () => {
     admin: '',
   };
 
-  before('Create admin user on /users POST', (done) => {
+  before('Create admin user on /api/users POST', (done) => {
     chai
       .request(app)
       .post('/api/users')
@@ -54,7 +54,7 @@ describe('Positions', () => {
       });
   });
 
-  before('Create basic user on /users POST', (done) => {
+  before('Create basic user on /api/users POST', (done) => {
     chai
       .request(app)
       .post('/api/users')
@@ -69,7 +69,7 @@ describe('Positions', () => {
       });
   });
 
-  before('Authenticate admin user on /authenticate POST', (done) => {
+  before('Authenticate admin user on /api/authenticate POST', (done) => {
     chai
       .request(app)
       .post('/api/authenticate')
@@ -85,7 +85,7 @@ describe('Positions', () => {
       });
   });
 
-  before('Authenticate basic user on /authenticate POST', (done) => {
+  before('Authenticate basic user on /api/authenticate POST', (done) => {
     chai
       .request(app)
       .post('/api/authenticate')
@@ -102,7 +102,7 @@ describe('Positions', () => {
   });
 
   describe('Update user position', () => {
-    it('Should NOT update user position with incorrect authorization on /positions/users POST', (done) => {
+    it('Should NOT update user position with incorrect authorization on /api/positions/users POST', (done) => {
       chai
         .request(app)
         .post('/api/positions/users')
@@ -117,7 +117,7 @@ describe('Positions', () => {
         });
     });
 
-    it('Should update basic user position on /positions/users POST', (done) => {
+    it('Should update basic user position on /api/positions/users POST', (done) => {
       chai
         .request(app)
         .post('/api/positions/users')
@@ -126,13 +126,13 @@ describe('Positions', () => {
         .end((error, response) => {
           response.should.have.status(200);
           response.should.be.json;
-          response.body.should.be.jsonSchema(positionSchemas.positions);
+          response.body.should.be.jsonSchema(positionSchemas.position);
 
           done();
         });
     });
 
-    it('Should update admin user position on /positions/users POST', (done) => {
+    it('Should update admin user position on /api/positions/users POST', (done) => {
       chai
         .request(app)
         .post('/api/positions/users')
@@ -141,7 +141,7 @@ describe('Positions', () => {
         .end((error, response) => {
           response.should.have.status(200);
           response.should.be.json;
-          response.body.should.be.jsonSchema(positionSchemas.positions);
+          response.body.should.be.jsonSchema(positionSchemas.position);
 
           done();
         });
@@ -171,7 +171,7 @@ describe('Positions', () => {
         .end((error, response) => {
           response.should.have.status(200);
           response.should.be.json;
-          response.body.should.be.jsonSchema(positionSchemas.positions);
+          response.body.should.be.jsonSchema(positionSchemas.position);
 
           done();
         });
@@ -186,6 +186,36 @@ describe('Positions', () => {
           response.should.have.status(404);
           response.should.be.json;
           response.body.should.be.jsonSchema(errorSchemas.error);
+
+          done();
+        });
+    });
+  });
+
+  describe('List user positions', () => {
+    it('Should NOT list user positions with incorrect authorization on /api/positions/users', (done) => {
+      chai
+        .request(app)
+        .get('/api/positions/users')
+        .set('Authorization', tokens.incorrectJwt)
+        .end((error, response) => {
+          response.should.have.status(401);
+          response.should.be.json;
+          response.body.should.be.jsonSchema(errorSchemas.error);
+
+          done();
+        });
+    });
+
+    it('Should list user positions on /api/positions/users', (done) => {
+      chai
+        .request(app)
+        .get('/api/positions/users')
+        .set('Authorization', positionTokens.basic)
+        .end((error, response) => {
+          response.should.have.status(200);
+          response.should.be.json;
+          response.body.should.be.jsonSchema(positionSchemas.positions);
 
           done();
         });

@@ -17,12 +17,11 @@
 'use strict';
 
 const express = require('express');
-const appConfig = require('../../config/defaults/config').app;
-const jwt = require('jsonwebtoken');
 const objectValidator = require('../../utils/objectValidator');
 const dbConfig = require('../../config/defaults/config').databasePopulation;
 const dbLanternHack = require('../../db/connectors/lanternhack');
 const errorCreator = require('../../objects/error/errorCreator');
+const authenticator = require('../../socketHelpers/authenticator');
 
 const router = new express.Router();
 
@@ -34,7 +33,7 @@ function handle() {
    * @api {get} /lanternRounds Get all lantern rounds
    * @apiVersion 6.0.0
    * @apiName GetLanternRounds
-   * @apiGroup LanternRounds
+   * @apiGroup LanternItems
    *
    * @apiHeader {String} Authorization Your JSON Web Token
    *
@@ -58,42 +57,65 @@ function handle() {
    *  }
    */
   router.get('/', (req, res) => {
-    // noinspection JSUnresolvedVariable
-    const auth = req.headers.authorization || '';
-
-    jwt.verify(auth, appConfig.jsonKey, (jwtErr, decoded) => {
-      if (jwtErr || !decoded || decoded.data.accessLevel < dbConfig.apiCommands.GetLanternRound.accessLevel) {
-        res.status(401).json({
-          error: {
-            status: 401,
-            title: 'Unauthorized',
-            detail: 'Invalid token',
-          },
-        });
-
-        return;
-      }
-
-      dbLanternHack.getLanternRounds({
-        callback: ({ error, data }) => {
-          if (error) {
-            res.status(500).json({
+    authenticator.isUserAllowed({
+      commandName: dbConfig.apiCommands.GetLanternRound.name,
+      token: req.headers.authorization,
+      callback: ({ error }) => {
+        if (error) {
+          if (error.type === errorCreator.ErrorTypes.DOESNOTEXIST) {
+            res.status(404).json({
               error: {
-                status: 500,
-                title: 'Internal Server Error',
-                detail: 'Internal Server Error',
+                status: 404,
+                title: 'Command does not exist',
+                detail: 'Command does not exist',
+              },
+            });
+
+            return;
+          } else if (error.type === errorCreator.ErrorTypes.NOTALLOWED) {
+            res.status(401).json({
+              error: {
+                status: 401,
+                title: 'Unauthorized',
+                detail: 'Invalid token',
               },
             });
 
             return;
           }
 
-          const currentTime = new Date();
-          const rounds = data.rounds.filter(round => currentTime >= new Date(round.endTime));
+          res.status(500).json({
+            error: {
+              status: 500,
+              title: 'Internal Server Error',
+              detail: 'Internal Server Error',
+            },
+          });
 
-          res.json({ data: { rounds } });
-        },
-      });
+          return;
+        }
+
+        dbLanternHack.getLanternRounds({
+          callback: ({ error: roundError, data: roundData }) => {
+            if (roundError) {
+              res.status(500).json({
+                error: {
+                  status: 500,
+                  title: 'Internal Server Error',
+                  detail: 'Internal Server Error',
+                },
+              });
+
+              return;
+            }
+
+            const currentTime = new Date();
+            const rounds = roundData.rounds.filter(round => currentTime >= new Date(round.endTime));
+
+            res.json({ data: { rounds } });
+          },
+        });
+      },
     });
   });
 
@@ -101,7 +123,7 @@ function handle() {
    * @api {get} /lanternRounds Get active lantern round
    * @apiVersion 6.0.0
    * @apiName GetActiveLanternRound
-   * @apiGroup LanternRounds
+   * @apiGroup LanternItems
    *
    * @apiHeader {String} Authorization Your JSON Web Token
    *
@@ -122,44 +144,68 @@ function handle() {
    *  }
    */
   router.get('/', (req, res) => {
-    // noinspection JSUnresolvedVariable
-    const auth = req.headers.authorization || '';
-
-    jwt.verify(auth, appConfig.jsonKey, (jwtErr, decoded) => {
-      if (jwtErr || !decoded || decoded.data.accessLevel < dbConfig.apiCommands.GetActiveLanternRound.accessLevel) {
-        res.status(401).json({
-          error: {
-            status: 401,
-            title: 'Unauthorized',
-            detail: 'Invalid token',
-          },
-        });
-
-        return;
-      }
-
-      dbLanternHack.getActiveLanternRound({
-        callback: ({ error, data = {} }) => {
-          if (error && error.type !== errorCreator.ErrorTypes.DOESNOTEXIST) {
-            res.status(500).json({
+    authenticator.isUserAllowed({
+      commandName: db.apiCommands.GetActiveLanternRound.name,
+      token: req.headers.authorization,
+      callback: ({ error }) => {
+        if (error) {
+          if (error.type === errorCreator.ErrorTypes.DOESNOTEXIST) {
+            res.status(404).json({
               error: {
-                status: 500,
-                title: 'Internal Server Error',
-                detail: 'Internal Server Error',
+                status: 404,
+                title: 'Command does not exist',
+                detail: 'Command does not exist',
+              },
+            });
+
+            return;
+          } else if (error.type === errorCreator.ErrorTypes.NOTALLOWED) {
+            res.status(401).json({
+              error: {
+                status: 401,
+                title: 'Unauthorized',
+                detail: 'Invalid token',
               },
             });
 
             return;
           }
 
-          const dataToSend = {
-            noactiveRound: typeof data.round === 'undefined',
-            round: data.round,
-          };
+          res.status(500).json({
+            error: {
+              status: 500,
+              title: 'Internal Server Error',
+              detail: 'Internal Server Error',
+            },
+          });
 
-          res.json({ data: dataToSend });
-        },
-      });
+          return;
+        }
+
+        dbLanternHack.getActiveLanternRound({
+          callback: ({ error: roundError, data: roundData }) => {
+            if (roundError) {
+              res.status(500).json({
+                error: {
+                  status: 500,
+                  title: 'Internal Server Error',
+                  detail: 'Internal Server Error',
+                },
+              });
+
+              return;
+            }
+
+            const round = roundData;
+            const dataToSend = {
+              round,
+              noActiveRound: typeof round === 'undefined',
+            };
+
+            res.json({ data: dataToSend });
+          },
+        });
+      },
     });
   });
 
@@ -167,7 +213,7 @@ function handle() {
    * @api {post} /lanternRounds Create a lantern round
    * @apiVersion 6.0.0
    * @apiName CreateLanternRound
-   * @apiGroup LanternRounds
+   * @apiGroup LanternItems
    *
    * @apiHeader {String} Authorization Your JSON Web Token
    *
@@ -215,52 +261,75 @@ function handle() {
       return;
     }
 
-    // noinspection JSUnresolvedVariable
-    const auth = req.headers.authorization || '';
-
-    jwt.verify(auth, appConfig.jsonKey, (jwtErr, decoded) => {
-      if (jwtErr || !decoded || decoded.data.accessLevel < dbConfig.apiCommands.CreateLanternRound.accessLevel) {
-        res.status(401).json({
-          error: {
-            status: 401,
-            title: 'Unauthorized',
-            detail: 'Invalid token',
-          },
-        });
-
-        return;
-      }
-
-      dbLanternHack.createLanternRound({
-        round: req.body.data.round,
-        callback: ({ error, data }) => {
-          if (error) {
-            if (error.type === errorCreator.ErrorTypes.ALREADYEXISTS) {
-              res.status(403).json({
-                error: {
-                  status: 403,
-                  title: 'Lantern round already exists',
-                  detail: 'Lantern round already exists',
-                },
-              });
-
-              return;
-            }
-
-            res.status(500).json({
+    authenticator.isUserAllowed({
+      commandName: dbConfig.apiCommands.CreateLanternRound.name,
+      token: req.headers.authorization,
+      callback: ({ error }) => {
+        if (error) {
+          if (error.type === errorCreator.ErrorTypes.DOESNOTEXIST) {
+            res.status(404).json({
               error: {
-                status: 500,
-                title: 'Internal Server Error',
-                detail: 'Internal Server Error',
+                status: 404,
+                title: 'Command does not exist',
+                detail: 'Command does not exist',
+              },
+            });
+
+            return;
+          } else if (error.type === errorCreator.ErrorTypes.NOTALLOWED) {
+            res.status(401).json({
+              error: {
+                status: 401,
+                title: 'Unauthorized',
+                detail: 'Invalid token',
               },
             });
 
             return;
           }
 
-          res.json({ data: { round: data.round } });
-        },
-      });
+          res.status(500).json({
+            error: {
+              status: 500,
+              title: 'Internal Server Error',
+              detail: 'Internal Server Error',
+            },
+          });
+
+          return;
+        }
+
+        dbLanternHack.createLanternRound({
+          round: req.body.data.round,
+          callback: ({ error: lanternError, data: lanternData }) => {
+            if (lanternError) {
+              if (lanternError.type === errorCreator.ErrorTypes.ALREADYEXISTS) {
+                res.status(403).json({
+                  error: {
+                    status: 403,
+                    title: 'Lantern round already exists',
+                    detail: 'Lantern round already exists',
+                  },
+                });
+
+                return;
+              }
+
+              res.status(500).json({
+                error: {
+                  status: 500,
+                  title: 'Internal Server Error',
+                  detail: 'Internal Server Error',
+                },
+              });
+
+              return;
+            }
+
+            res.json({ data: lanternData });
+          },
+        });
+      },
     });
   });
 
@@ -268,7 +337,7 @@ function handle() {
    * @api {post} /lanternRounds/start Trigger start of a lantern round
    * @apiVersion 6.0.0
    * @apiName StartLanternRound
-   * @apiGroup LanternRounds
+   * @apiGroup LanternItems
    *
    * @apiHeader {String} Authorization Your JSON Web Token
    *
@@ -312,82 +381,105 @@ function handle() {
       return;
     }
 
-    // noinspection JSUnresolvedVariable
-    const auth = req.headers.authorization || '';
-
-    jwt.verify(auth, appConfig.jsonKey, (jwtErr, decoded) => {
-      if (jwtErr || !decoded || decoded.data.accessLevel < dbConfig.apiCommands.StartLanternRound.accessLevel) {
-        res.status(401).json({
-          error: {
-            status: 401,
-            title: 'Unauthorized',
-            detail: 'Invalid token',
-          },
-        });
-
-        return;
-      }
-
-      const round = req.body.data.round;
-
-      dbLanternHack.getActiveLanternRound({
-        callback: ({ error }) => {
-          if (error) {
-            if (error.type === errorCreator.ErrorTypes.ALREADYEXISTS) {
-              res.status(404).json({
-                error: {
-                  status: 404,
-                  title: 'Active round already exists',
-                  detail: 'Active round already exists',
-                },
-              });
-
-              return;
-            }
-
-            res.status(500).json({
+    authenticator.isUserAllowed({
+      commandName: dbConfig.apiCommands.StartLanternRound.name,
+      token: req.headers.authorization,
+      callback: ({ error }) => {
+        if (error) {
+          if (error.type === errorCreator.ErrorTypes.DOESNOTEXIST) {
+            res.status(404).json({
               error: {
-                status: 500,
-                title: 'Internal Server Error',
-                detail: 'Internal Server Error',
+                status: 404,
+                title: 'Command does not exist',
+                detail: 'Command does not exist',
+              },
+            });
+
+            return;
+          } else if (error.type === errorCreator.ErrorTypes.NOTALLOWED) {
+            res.status(401).json({
+              error: {
+                status: 401,
+                title: 'Unauthorized',
+                detail: 'Invalid token',
               },
             });
 
             return;
           }
 
-          dbLanternHack.startLanternRound({
-            roundId: round.roundId,
-            callback: ({ error: startError, data }) => {
-              if (startError) {
-                if (startError.type === errorCreator.ErrorTypes.DOESNOTEXIST) {
-                  res.status(404).json({
-                    error: {
-                      status: 404,
-                      title: 'Active round does not exists',
-                      detail: 'Active round does not exists',
-                    },
-                  });
+          res.status(500).json({
+            error: {
+              status: 500,
+              title: 'Internal Server Error',
+              detail: 'Internal Server Error',
+            },
+          });
 
-                  return;
-                }
+          return;
+        }
 
-                res.status(500).json({
+        const round = req.body.data.round;
+
+        dbLanternHack.getActiveLanternRound({
+          callback: ({ error: activeLanternError }) => {
+            if (activeLanternError) {
+              if (activeLanternError.type === errorCreator.ErrorTypes.ALREADYEXISTS) {
+                res.status(404).json({
                   error: {
-                    status: 500,
-                    title: 'Internal Server Error',
-                    detail: 'Internal Server Error',
+                    status: 404,
+                    title: 'Active round already exists',
+                    detail: 'Active round already exists',
                   },
                 });
 
                 return;
               }
 
-              res.json({ data: { round: data.round } });
-            },
-          });
-        },
-      });
+              res.status(500).json({
+                error: {
+                  status: 500,
+                  title: 'Internal Server Error',
+                  detail: 'Internal Server Error',
+                },
+              });
+
+              return;
+            }
+
+            dbLanternHack.startLanternRound({
+              roundId: round.roundId,
+              callback: ({ error: startLanternError, data: startLanternData }) => {
+                if (startLanternError) {
+                  if (startLanternError.type === errorCreator.ErrorTypes.DOESNOTEXIST) {
+                    res.status(404).json({
+                      error: {
+                        status: 404,
+                        title: 'Active round does not exists',
+                        detail: 'Active round does not exists',
+                      },
+                    });
+
+                    return;
+                  }
+
+                  res.status(500).json({
+                    error: {
+                      status: 500,
+                      title: 'Internal Server Error',
+                      detail: 'Internal Server Error',
+                    },
+                  });
+
+                  return;
+                }
+
+                res.json({ data: startLanternData });
+              },
+            });
+          },
+        });
+      },
     });
   });
 
@@ -395,7 +487,7 @@ function handle() {
    * @api {post} /lanternRounds/end Trigger end of a lantern round
    * @apiVersion 6.0.0
    * @apiName EndLanternRound
-   * @apiGroup LanternRounds
+   * @apiGroup LanternItems
    *
    * @apiHeader {String} Authorization Your JSON Web Token
    *
@@ -411,53 +503,76 @@ function handle() {
    *  }
    */
   router.post('/end', (req, res) => {
-    // noinspection JSUnresolvedVariable
-    const auth = req.headers.authorization || '';
-
-    jwt.verify(auth, appConfig.jsonKey, (jwtErr, decoded) => {
-      if (jwtErr || !decoded || decoded.data.accessLevel < dbConfig.apiCommands.EndLanternRound.accessLevel) {
-        res.status(401).json({
-          error: {
-            status: 401,
-            title: 'Unauthorized',
-            detail: 'Invalid token',
-          },
-        });
-
-        return;
-      }
-
-      dbLanternHack.endLanternRound({
-        callback: ({ error: endError }) => {
-          if (endError) {
-            if (endError.type === errorCreator.ErrorTypes.DOESNOTEXIST) {
-              res.status(404).json({
-                error: {
-                  status: 404,
-                  title: 'Active round does not exist',
-                  detail: 'Active round does not exist',
-                },
-              });
-
-              return;
-            }
-
-            res.status(500).json({
+    authenticator.isUserAllowed({
+      commandName: dbConfig.apiCommands.EndLanternRound.name,
+      token: req.headers.authorization,
+      callback: ({ error }) => {
+        if (error) {
+          if (error.type === errorCreator.ErrorTypes.DOESNOTEXIST) {
+            res.status(404).json({
               error: {
-                status: 500,
-                title: 'Internal Server Error',
-                detail: 'Internal Server Error',
+                status: 404,
+                title: 'Command does not exist',
+                detail: 'Command does not exist',
+              },
+            });
+
+            return;
+          } else if (error.type === errorCreator.ErrorTypes.NOTALLOWED) {
+            res.status(401).json({
+              error: {
+                status: 401,
+                title: 'Unauthorized',
+                detail: 'Invalid token',
               },
             });
 
             return;
           }
 
-          // TODO Emit to clients
+          res.status(500).json({
+            error: {
+              status: 500,
+              title: 'Internal Server Error',
+              detail: 'Internal Server Error',
+            },
+          });
 
-          res.json({ data: { success: true } });
-        },
-      });
+          return;
+        }
+
+        dbLanternHack.endLanternRound({
+          callback: ({ error: roundError }) => {
+            if (roundError) {
+              if (roundError.type === errorCreator.ErrorTypes.DOESNOTEXIST) {
+                res.status(404).json({
+                  error: {
+                    status: 404,
+                    title: 'Active round does not exist',
+                    detail: 'Active round does not exist',
+                  },
+                });
+
+                return;
+              }
+
+              res.status(500).json({
+                error: {
+                  status: 500,
+                  title: 'Internal Server Error',
+                  detail: 'Internal Server Error',
+                },
+              });
+
+              return;
+            }
+
+            // TODO Emit to clients
+
+            res.json({ data: { success: true } });
+          },
+        });
+      },
     });
   });
 
@@ -466,7 +581,7 @@ function handle() {
    * @api {post} /lanternRounds/:id Update an existing lantern round
    * @apiVersion 6.0.0
    * @apiName UpdateLanternRound
-   * @apiGroup LanternRounds
+   * @apiGroup LanternItems
    *
    * @apiHeader {String} Authorization Your JSON Web Token
    *
@@ -527,60 +642,81 @@ function handle() {
       return;
     }
 
-    // noinspection JSUnresolvedVariable
-    const auth = req.headers.authorization || '';
-
-    jwt.verify(auth, appConfig.jsonKey, (jwtErr, decoded) => {
-      if (jwtErr || !decoded || decoded.data.accessLevel < dbConfig.apiCommands.UpdateLanternRound.accessLevel) {
-        res.status(401).json({
-          error: {
-            status: 401,
-            title: 'Unauthorized',
-            detail: 'Invalid token',
-          },
-        });
-
-        return;
-      }
-
-      const { startTime, endTime } = req.body.data.round;
-      const roundId = req.params.id;
-
-      dbLanternHack.updateLanternRound({
-        roundId,
-        startTime,
-        endTime,
-        callback: ({ error, data }) => {
-          if (error) {
-            if (error.type === errorCreator.ErrorTypes.DOESNOTEXIST) {
-              res.status(404).json({
-                error: {
-                  status: 404,
-                  title: 'Lantern round does not exist',
-                  detail: 'Lantern round does not exist',
-                },
-              });
-
-              return;
-            }
-
-            res.status(500).json({
+    authenticator.isUserAllowed({
+      commandName: dbConfig.apiCommands.UpdateLanternRound.name,
+      token: req.headers.authorization,
+      callback: ({ error }) => {
+        if (error) {
+          if (error.type === errorCreator.ErrorTypes.DOESNOTEXIST) {
+            res.status(404).json({
               error: {
-                status: 500,
-                title: 'Internal Server Error',
-                detail: 'Internal Server Error',
+                status: 404,
+                title: 'Command does not exist',
+                detail: 'Command does not exist',
+              },
+            });
+
+            return;
+          } else if (error.type === errorCreator.ErrorTypes.NOTALLOWED) {
+            res.status(401).json({
+              error: {
+                status: 401,
+                title: 'Unauthorized',
+                detail: 'Invalid token',
               },
             });
 
             return;
           }
 
-          const { round } = data;
+          res.status(500).json({
+            error: {
+              status: 500,
+              title: 'Internal Server Error',
+              detail: 'Internal Server Error',
+            },
+          });
 
-          // TODO Push to clients, if next round
-          res.json({ data: { round } });
-        },
-      });
+          return;
+        }
+
+        const { startTime, endTime } = req.body.data.round;
+        const roundId = req.params.id;
+
+        dbLanternHack.updateLanternRound({
+          roundId,
+          startTime,
+          endTime,
+          callback: ({ error: lanternError, data: lanternData }) => {
+            if (lanternError) {
+              if (lanternError.type === errorCreator.ErrorTypes.DOESNOTEXIST) {
+                res.status(404).json({
+                  error: {
+                    status: 404,
+                    title: 'Lantern round does not exist',
+                    detail: 'Lantern round does not exist',
+                  },
+                });
+
+                return;
+              }
+
+              res.status(500).json({
+                error: {
+                  status: 500,
+                  title: 'Internal Server Error',
+                  detail: 'Internal Server Error',
+                },
+              });
+
+              return;
+            }
+
+            // TODO Push to clients, if next round
+            res.json({ data: lanternData });
+          },
+        });
+      },
     });
   });
 

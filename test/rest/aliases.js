@@ -33,7 +33,7 @@ chai.use(chaiJson);
 
 describe('Aliases', () => {
   describe('Create alias', () => {
-    it('Should NOT create an alias that is too long /aliases POST', (done) => {
+    it('Should NOT create an alias that is too long /api/aliases POST', (done) => {
       chai
         .request(app)
         .post('/api/aliases')
@@ -48,7 +48,7 @@ describe('Aliases', () => {
         });
     });
 
-    it('Should NOT create an alias with incorrect authorization on /aliases POST', (done) => {
+    it('Should NOT create an alias with incorrect authorization on /api/aliases POST', (done) => {
       chai
         .request(app)
         .post('/api/aliases')
@@ -63,7 +63,7 @@ describe('Aliases', () => {
         });
     });
 
-    it('Should create an alias on self on /aliases POST', (done) => {
+    it('Should create an alias on self on /api/aliases POST', (done) => {
       chai
         .request(app)
         .post('/api/aliases')
@@ -78,7 +78,7 @@ describe('Aliases', () => {
         });
     });
 
-    it('Should NOT create an existing alias on /aliases POST', (done) => {
+    it('Should NOT create an existing alias on /api/aliases POST', (done) => {
       chai
         .request(app)
         .post('/api/aliases')
@@ -95,7 +95,7 @@ describe('Aliases', () => {
   });
 
   describe('List aliases', () => {
-    it('Should NOT retrieve aliases with incorrect authorization on /aliases GET', (done) => {
+    it('Should NOT retrieve aliases with incorrect authorization on /api/aliases GET', (done) => {
       chai
         .request(app)
         .get('/api/aliases')
@@ -109,7 +109,7 @@ describe('Aliases', () => {
         });
     });
 
-    it('Should retrieve aliases and user name from self on /aliases GET', (done) => {
+    it('Should retrieve aliases and user name from self on /api/aliases GET', (done) => {
       chai
         .request(app)
         .get('/api/aliases')
