@@ -140,6 +140,18 @@ config.rooms = {
   },
 };
 
+config.anonymousUser = {
+  userName: '',
+  accessLevel: config.AccessLevels.ANONYMOUS,
+  visibility: config.AccessLevels.ANONYMOUS,
+  aliases: [],
+  rooms: [],
+  whisperRooms: [],
+  isTracked: false,
+  team: null,
+  shortTeam: null,
+};
+
 config.requiredRooms = [
   config.rooms.anonymous,
   config.rooms.team.roomName,
@@ -465,99 +477,163 @@ config.commands = {
 
 config.apiCommands = {
   SendMessage: config.apiCommands.SendMessage || {
+    name: 'SendMessage',
     accessLevel: config.AccessLevels.BASIC,
   },
   SendBroadcast: config.apiCommands.SendBroadcast || {
+    name: 'SendBroadcast',
     accessLevel: config.AccessLevels.LOWERADMIN,
   },
   GetHistory: config.apiCommands.GetHistory || {
+    name: 'GetHistory',
     accessLevel: config.AccessLevels.ANONYMOUS,
   },
   CreateDocFile: config.apiCommands.CreateDocFile || {
+    name: 'CreateDocFile',
     accessLevel: config.AccessLevels.BASIC,
   },
   GetDocFile: config.apiCommands.GetDocFile || {
+    name: 'GetDocFile',
     accessLevel: config.AccessLevels.ANONYMOUS,
   },
   CreateUser: config.apiCommands.CreateUser || {
+    name: 'CreateUser',
     accessLevel: config.AccessLevels.LOWERADMIN,
   },
   ChangeUserLevels: config.apiCommands.ChangeUserLevels || {
+    name: 'ChangeUserLevels',
     accessLevel: config.AccessLevels.ADMIN,
   },
   GetUser: config.apiCommands.GetUser || {
+    name: 'GetUser',
     accessLevel: config.AccessLevels.BASIC,
   },
   RequestPasswordReset: config.apiCommands.RequestPasswordReset || {
+    name: 'RequestPasswordReset',
     accessLevel: config.AccessLevels.BASIC,
   },
   CreateAlias: config.apiCommands.CreateAlias || {
+    name: 'CreateAlias',
     accessLevel: config.AccessLevels.ADVANCED,
   },
   GetAliases: config.apiCommands.GetAliases || {
+    name: 'GetAliases',
     accessLevel: config.AccessLevels.ADVANCED,
   },
   CreateLanternRound: config.apiCommands.CreateLanternRound || {
+    name: 'CreateLanternRound',
     accessLevel: config.AccessLevels.LOWERADMIN,
   },
   UpdateLanternRound: config.apiCommands.UpdateLanternRound || {
+    name: 'UpdateLanternRound',
     accessLevel: config.AccessLevels.LOWERADMIN,
   },
   GetLanternRound: config.apiCommands.GetLanternRound || {
+    name: 'GetLanternRound',
     accessLevel: config.AccessLevels.LOWERADMIN,
   },
   GetActiveLanternRound: config.apiCommands.GetActiveLanternRound || {
+    name: 'GetActiveLanternRound',
     accessLevel: config.AccessLevels.ANONYMOUS,
   },
   StartLanternRound: config.apiCommands.StartLanternRound || {
+    name: 'StartLanternRound',
     accessLevel: config.AccessLevels.LOWERADMIN,
   },
   EndLanternRound: config.apiCommands.EndLanternRound || {
+    name: 'EndLanternRound',
     accessLevel: config.AccessLevels.LOWERADMIN,
   },
   GetCalibrationMission: config.apiCommands.GetCalibrationMission || {
+    name: 'GetCalibrationMission',
     accessLevel: config.AccessLevels.BASIC,
   },
   CancelCalibrationMission: config.apiCommands.CancelCalibrationMission || {
+    name: 'CancelCalibrationMission',
     accessLevel: config.AccessLevels.LOWERADMIN,
   },
   CompleteCalibrationMission: config.apiCommands.CompleteCalibrationMission || {
+    name: 'CompleteCalibrationMission',
     accessLevel: config.AccessLevels.LOWERADMIN,
   },
   CreateLanternStation: config.apiCommands.CreateLanternStation || {
+    name: 'CreateLanternStation',
     accessLevel: config.AccessLevels.LOWERADMIN,
   },
   UpdateLanternStation: config.apiCommands.UpdateLanternStation || {
+    name: 'UpdateLanternStation',
     accessLevel: config.AccessLevels.LOWERADMIN,
   },
+  GetLanternStations: config.apiCommands.GetLanternStations || {
+    name: 'GetLanternStations',
+    accessLevel: config.AccessLevels.ANONYMOUS,
+  },
   CreateLanternTeam: config.apiCommands.CreateLanternTeam || {
+    name: 'CreateLanternTeam',
     accessLevel: config.AccessLevels.LOWERADMIN,
   },
   GetLanternTeam: config.apiCommands.GetLanternTeam || {
+    name: 'GetLanternTeam',
     accessLevel: config.AccessLevels.BASIC,
   },
   CreateTransaction: config.apiCommands.CreateTransaction || {
+    name: 'CreateTransaction',
     accessLevel: config.AccessLevels.BASIC,
   },
   GetTransaction: config.apiCommands.GetTransaction || {
+    name: 'GetTransaction',
     accessLevel: config.AccessLevels.BASIC,
   },
   FollowRoom: config.apiCommands.FollowRoom || {
+    name: 'FollowRoom',
     accessLevel: config.AccessLevels.BASIC,
   },
   UnfollowRoom: config.apiCommands.UnfollowRoom || {
+    name: 'UnfollowRoom',
     accessLevel: config.AccessLevels.BASIC,
   },
   CreateRoom: config.apiCommands.CreateRoom || {
+    name: 'CreateRoom',
     accessLevel: config.AccessLevels.BASIC,
   },
   GetRoom: config.apiCommands.GetRoom || {
+    name: 'GetRoom',
     accessLevel: config.AccessLevels.BASIC,
   },
   GetUserPosition: config.apiCommands.GetUserPosition || {
+    name: 'GetUserPosition',
     accessLevel: config.AccessLevels.BASIC,
   },
   UpdateUserPosition: config.apiCommands.UpdateUserPosition || {
+    name: 'UpdateUserPosition',
+    accessLevel: config.AccessLevels.BASIC,
+  },
+  GetWallet: config.apiCommands.GetWallet || {
+    name: 'GetWallet',
+    accessLevel: config.AccessLevels.BASIC,
+  },
+  IncreaseWalletAmount: config.apiCommands.IncreaseWalletAmount || {
+    name: 'IncreaseWalletAmount',
+    accessLevel: config.AccessLevels.LOWERADMIN,
+  },
+  DecreaseWalletAmount: config.apiCommands.DecreaseWalletAmount || {
+    name: 'DecreaseWalletAmount',
+    accessLevel: config.AccessLevels.LOWERADMIN,
+  },
+  GetTeam: config.apiCommands.GetTeam || {
+    name: 'GetTeam',
+    accessLevel: config.AccessLevels.PRIVILEGED,
+  },
+  GetTeams: config.apiCommands.GetTeams || {
+    name: 'GetTeams',
+    accessLevel: config.AccessLevels.PRIVILEGED,
+  },
+  CreateTeam: config.apiCommands.CreateTeam || {
+    name: 'CreateTeam',
+    accessLevel: config.AccessLevels.BASIC,
+  },
+  InviteToTeam: config.apiCommands.InviteToTeam || {
+    name: 'InviteToTeam',
     accessLevel: config.AccessLevels.BASIC,
   },
 };

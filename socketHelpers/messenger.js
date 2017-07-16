@@ -317,6 +317,10 @@ function sendBroadcastMsg({ message, socket, callback, io }) {
     callback({ error: new errorCreator.InvalidData({ expected: '{ message: { text }, io }' }) });
 
     return;
+  } else if (message.text.join('').length > appConfig.broadcastMaxLength) {
+    callback({ error: new errorCreator.InvalidCharacters({ expected: `text length ${appConfig.broadcastMaxLength}` }) });
+
+    return;
   }
 
   const newMessage = message;

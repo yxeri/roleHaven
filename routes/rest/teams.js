@@ -1,5 +1,5 @@
 /*
- Copyright 2017 Aleksandar Jankovic
+ Copyright 2015 Aleksandar Jankovic
 
  Licensed under the Apache License, Version 2.0 (the "License");
  you may not use this file except in compliance with the License.
@@ -17,53 +17,48 @@
 'use strict';
 
 const express = require('express');
-const objectValidator = require('../../utils/objectValidator');
 const dbConfig = require('../../config/defaults/config').databasePopulation;
-const dbLanternHack = require('../../db/connectors/lanternhack');
+const manager = require('../../socketHelpers/manager');
+const objectValidator = require('../../utils/objectValidator');
 const errorCreator = require('../../objects/error/errorCreator');
 const authenticator = require('../../socketHelpers/authenticator');
+const dbTeam = require('../../db/connectors/team');
+const appConfig = require('../../config/defaults/config').app;
 
 const router = new express.Router();
 
 /**
- * @param {Object} io Socket io
+ * @param {object} io - Socket.IO
  * @returns {Object} Router
  */
 function handle(io) {
   /**
-   * @api {get} /lanternTeams Get all lantern teams
+   * @api {get} /rooms Retrieve teams
    * @apiVersion 6.0.0
-   * @apiName GetLanternTeams
-   * @apiGroup LanternItems
+   * @apiName GetTeams
+   * @apiGroup Teams
    *
    * @apiHeader {String} Authorization Your JSON Web Token
    *
-   * @apiDescription Get all lantern teams
+   * @apiDescription Retrieve teams
    *
    * @apiSuccess {Object} data
-   * @apiSuccess {Object} data.teams Lantern teams found
+   * @apiSuccess {Object} data.teams Found teams
    * @apiSuccessExample {json} Success-Response:
    *   {
    *    "data": {
-   *      "teams": [{
-   *        "shortName": "org",
-   *        "teamName": "organica",
-   *        "isActive": true,
-   *        "points": 200
-   *      }, {
-   *        "shortName": "raz",
-   *        "teamName": "razor",
-   *        "isActive": false,
-   *        "points": 100
-   *      }
+   *      "teams": [
+   *        { shortName: "pc", teamName: "private company" },
+   *        { shortName: "comp", teamName: "human computers" },
+   *      ]
    *    }
    *  }
    */
   router.get('/', (req, res) => {
     authenticator.isUserAllowed({
-      commandName: dbConfig.apiCommands.GetLanternTeam.name,
+      commandName: dbConfig.apiCommands.GetTeams.name,
       token: req.headers.authorization,
-      callback: ({ error }) => {
+      callback: ({ error, data }) => {
         if (error) {
           if (error.type === errorCreator.ErrorTypes.DOESNOTEXIST) {
             res.status(404).json({
@@ -98,21 +93,14 @@ function handle(io) {
           return;
         }
 
-        dbLanternHack.getTeams({
-          callback: ({ error: teamError, data: teamData }) => {
+        dbTeam.getTeams({
+          user: data.user,
+          callback: ({ error: teamError, data: teamsData }) => {
             if (teamError) {
-              res.status(500).json({
-                error: {
-                  status: 500,
-                  title: 'Internal Server Error',
-                  detail: 'Internal Server Error',
-                },
-              });
-
               return;
             }
 
-            res.json({ data: teamData });
+            res.json({ data: teamsData });
           },
         });
       },
@@ -120,46 +108,36 @@ function handle(io) {
   });
 
   /**
-   * @api {post} /lanternTeams Create a lantern team
+   * @api {get} /teams/:id Get specific team
    * @apiVersion 6.0.0
-   * @apiName CreateLanternTeam
-   * @apiGroup LanternItems
+   * @apiName GetTeam
+   * @apiGroup Teams
    *
    * @apiHeader {String} Authorization Your JSON Web Token
    *
-   * @apiDescription Create a lantern station
+   * @apiDescription Get a specific team
    *
-   * @apiParam {Object} data
-   * @apiParam {string} data.team New lantern team
-   * @apiParam {string} data.team.shortName Team short name (acronym)
-   * @apiParam {string} data.team.teamName Team name
-   * @apiParam {boolean} [data.team.isActive] Is the team active? Defaults to false
-   * @apiParamExample {json} Request-Example:
-   *   {
-   *    "data": {
-   *      "team": {
-   *        "shortName": "org",
-   *        "teamName": "organica",
-   *        "isActive": true
-   *      }
-   *    }
-   *  }
+   * @apiParam {String} id Name of the team to retrieve
    *
    * @apiSuccess {Object} data
-   * @apiSuccess {Object[]} data.team Lantern team created
+   * @apiSuccess {Object} data.room Found team
    * @apiSuccessExample {json} Success-Response:
    *   {
    *    "data": {
    *      "team": {
-   *        "shortName": "org",
-   *        "teamName": "organica",
-   *        "isActive": true
+   *        "teamName": "bb1",
+   *        "shortName": "rez",
+   *        "admins": [
+   *          "a1",
+   *        ],
+   *        "owner": "jazz",
+   *        "isProtected": false
    *      }
    *    }
    *  }
    */
-  router.post('/', (req, res) => {
-    if (!objectValidator.isValidData(req.body, { data: { team: { shortName: true, teamName: true } } })) {
+  router.get('/:id', (req, res) => {
+    if (!objectValidator.isValidData(req.params, { id: true })) {
       res.status(400).json({
         error: {
           status: 400,
@@ -172,7 +150,7 @@ function handle(io) {
     }
 
     authenticator.isUserAllowed({
-      commandName: dbConfig.apiCommands.CreateLanternTeam.name,
+      commandName: dbConfig.apiCommands.GetTeam.name,
       token: req.headers.authorization,
       callback: ({ error }) => {
         if (error) {
@@ -209,18 +187,15 @@ function handle(io) {
           return;
         }
 
-        const { team } = req.body.data;
-
-        dbLanternHack.createLanternTeam({
-          team,
+        dbTeam.getTeam({
           callback: ({ error: teamError, data: teamData }) => {
             if (teamError) {
-              if (teamError.type === errorCreator.ErrorTypes.ALREADYEXISTS) {
-                res.status(403).json({
+              if (teamError.type === errorCreator.ErrorTypes.DOESNOTEXIST) {
+                res.status(404).json({
                   error: {
-                    status: 403,
-                    title: 'Team already exists',
-                    detail: `Team ${team.shortName} ${team.teamName} already exists`,
+                    status: 404,
+                    title: 'Team does not exist',
+                    detail: 'Team does not exist',
                   },
                 });
 
@@ -238,7 +213,6 @@ function handle(io) {
               return;
             }
 
-            io.emit('lanternTeams', { teams: [teamData.team] });
             res.json({ data: teamData });
           },
         });
@@ -247,63 +221,58 @@ function handle(io) {
   });
 
   /**
-   * @api {post} /lanternTeams/:id Update an existing lantern team
+   * @api {post} /teams Create a team
    * @apiVersion 6.0.0
-   * @apiName UpdateLanternTeam
-   * @apiGroup LanternItems
+   * @apiName CreateTeam
+   * @apiGroup Teams
    *
    * @apiHeader {String} Authorization Your JSON Web Token
    *
-   * @apiDescription Update an existing lantern team
-   *
-   * @apiParam {Object} id Lantern team name
+   * @apiDescription Create a team
    *
    * @apiParam {Object} data
-   * @apiParam {string} data.team Lantern team
-   * @apiParam {boolean} [data.team.isActive] Is the team active?
-   * @apiParam {number} [data.team.points] Teams total points
-   * @apiParam {boolean} [data.team.resetPoints] Should the teams total points be reset to 0? data.team.points will be ignored if set
+   * @apiParam {Object} data.team Team
+   * @apiParam {string} data.team.teamName Team name
+   * @apiParam {string} data.team.shortName Short/acronym team name
    * @apiParamExample {json} Request-Example:
    *   {
    *    "data": {
    *      "team": {
-   *        "isActive": true,
-   *        "points": 100
+   *        "teamName": "team bravo",
+   *        "shortName": "tb"
    *      }
    *    }
    *  }
    *
    * @apiSuccess {Object} data
-   * @apiSuccess {Object[]} data.station Updated lantern team
+   * @apiSuccess {Object} data.room Team created
    * @apiSuccessExample {json} Success-Response:
    *   {
    *    "data": {
    *      "team": {
-   *        "shortName": "org",
-   *        "teamName": "organica",
-   *        "isActive": true,
-   *        "points": 100
+   *        "teamName": "team bravo",
+   *        "shortName": "tb",
+   *        "owner": "rez",
+   *        "admins": [],
+   *        "verified": false
+   *      },
+   *      "wallet": {
+   *        "amount": 0,
+   *        "owner": "team bravo-team",
+   *        "accessLevel": 1,
+   *        "isProtected": false,
+   *        "team": "team bravo"
    *      }
    *    }
    *  }
    */
-  router.post('/:id', (req, res) => {
-    if (!objectValidator.isValidData(req.params, { id: true })) {
+  router.post('/', (req, res) => {
+    if (!objectValidator.isValidData(req.body, { data: { team: { teamName: true, shortName: true } } })) {
       res.status(400).json({
         error: {
           status: 400,
-          title: 'Incorrect data',
-          detail: 'Incorrect parameters',
-        },
-      });
-
-      return;
-    } else if (!objectValidator.isValidData(req.body, { data: { team: true } })) {
-      res.status(400).json({
-        error: {
-          status: 400,
-          title: 'Incorrect data',
-          detail: 'Missing body parameters',
+          title: 'Missing data',
+          detail: 'Unable to parse data',
         },
       });
 
@@ -311,9 +280,9 @@ function handle(io) {
     }
 
     authenticator.isUserAllowed({
-      commandName: dbConfig.apiCommands.UpdateLanternStation.name,
+      commandName: dbConfig.apiCommands.CreateTeam.name,
       token: req.headers.authorization,
-      callback: ({ error }) => {
+      callback: ({ error, data }) => {
         if (error) {
           if (error.type === errorCreator.ErrorTypes.DOESNOTEXIST) {
             res.status(404).json({
@@ -349,21 +318,30 @@ function handle(io) {
         }
 
         const { team } = req.body.data;
-        const teamName = req.params.id;
+        const { user } = data;
 
-        dbLanternHack.updateLanternTeam({
-          teamName,
-          isActive: team.isActive,
-          points: team.points,
-          resetPoints: team.resetPoints,
+        manager.createTeam({
+          team,
+          user,
+          io,
           callback: ({ error: teamError, data: teamData }) => {
             if (teamError) {
-              if (teamError.type === errorCreator.ErrorTypes.DOESNOTEXIST) {
-                res.status(404).json({
+              if (teamError.type === errorCreator.ErrorTypes.INVALIDDATA) {
+                res.status(400).json({
                   error: {
-                    status: 404,
-                    title: 'Failed to update lantern team',
-                    detail: 'Lantern team does not exist',
+                    status: 400,
+                    title: 'Names too long',
+                    detail: `Max team name length ${appConfig.teamNameMaxLength}. Max short name length ${appConfig.shortTeamMaxLength}`,
+                  },
+                });
+
+                return;
+              } else if (teamError.type === errorCreator.ErrorTypes.ALREADYEXISTS) {
+                res.status(403).json({
+                  error: {
+                    status: 403,
+                    title: 'User already in team or team already exists',
+                    detail: 'User already in team or team already exists',
                   },
                 });
 
@@ -381,8 +359,131 @@ function handle(io) {
               return;
             }
 
-            io.emit('lanternTeams', { teams: [teamData.team] });
             res.json({ data: teamData });
+          },
+        });
+      },
+    });
+  });
+
+  /**
+   * @api {post} /teams/users/:id/invite Invite user to team
+   * @apiVersion 6.0.0
+   * @apiName InviteToTeam
+   * @apiGroup Teams
+   *
+   * @apiHeader {String} Authorization Your JSON Web Token
+   *
+   * @apiDescription Invite user to team
+   *
+   * @apiParam {String} id Name of the user to invite
+   *
+   * @apiSuccess {Object} data
+   * @apiSuccess {Object} data.room Invitation created
+   * @apiSuccessExample {json} Success-Response:
+   *   {
+   *    "data": {
+   *      "invitation": {
+   *        "invitationType": "team",
+   *        "itemName": "bravo team",
+   *        "sender": "raz",
+   *        "time": "2016-10-14T09:54:18.694Z"
+   *      },
+   *      "to": "yathzee"
+   *    }
+   *  }
+   */
+  router.post('/users/:id/invite', (req, res) => {
+    if (!objectValidator.isValidData(req.params, { id: true })) {
+      res.status(400).json({
+        error: {
+          status: 400,
+          title: 'Missing data',
+          detail: 'Unable to parse data',
+        },
+      });
+
+      return;
+    }
+
+    authenticator.isUserAllowed({
+      commandName: dbConfig.apiCommands.InviteToTeam.name,
+      token: req.headers.authorization,
+      callback: ({ error, data }) => {
+        if (error) {
+          if (error.type === errorCreator.ErrorTypes.DOESNOTEXIST) {
+            res.status(404).json({
+              error: {
+                status: 404,
+                title: 'Command does not exist',
+                detail: 'Command does not exist',
+              },
+            });
+
+            return;
+          } else if (error.type === errorCreator.ErrorTypes.NOTALLOWED) {
+            res.status(401).json({
+              error: {
+                status: 401,
+                title: 'Unauthorized',
+                detail: 'Invalid token',
+              },
+            });
+
+            return;
+          }
+
+          res.status(500).json({
+            error: {
+              status: 500,
+              title: 'Internal Server Error',
+              detail: 'Internal Server Error',
+            },
+          });
+
+          return;
+        }
+
+        manager.inviteToTeam({
+          io,
+          user: data.user,
+          to: req.params.id,
+          callback: ({ error: inviteError, data: inviteData }) => {
+            if (inviteError) {
+              if (inviteError.type === errorCreator.ErrorTypes.DOESNOTEXIST) {
+                res.status(404).json({
+                  error: {
+                    status: 404,
+                    title: 'User or team does not exist',
+                    detail: 'User or team does not exist',
+                  },
+                });
+
+                return;
+              } else if (error.type === errorCreator.ErrorTypes.NOTALLOWED) {
+                res.status(401).json({
+                  error: {
+                    status: 401,
+                    title: 'Unauthorized',
+                    detail: 'Invalid token',
+                  },
+                });
+
+                return;
+              }
+
+              res.status(500).json({
+                error: {
+                  status: 500,
+                  title: 'Internal Server Error',
+                  detail: 'Internal Server Error',
+                },
+              });
+
+              return;
+            }
+
+            res.json({ data: inviteData });
           },
         });
       },

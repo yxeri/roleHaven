@@ -242,15 +242,17 @@ function handle(socket, io) {
                 dbInvitation.addInvitationToList({
                   invitation,
                   userName: userData.data.user.userName,
-                  callback: ({ error: inviteError }) => {
+                  callback: ({ error: inviteError, data: invitationData }) => {
                     if (inviteError) {
                       callback({ error: inviteError });
 
                       return;
                     }
 
-                    socket.to(`${to}${appConfig.whisperAppend}`).emit('invitation', { invitation });
-                    callback({ data: { invitation } });
+                    const newInvitation = invitationData.list.invitations[invitationData.list.invitation.length - 1];
+
+                    socket.to(`${to}${appConfig.whisperAppend}`).emit('invitation', { invitation: newInvitation });
+                    callback({ data: { invitation: newInvitation } });
                   },
                 });
               },

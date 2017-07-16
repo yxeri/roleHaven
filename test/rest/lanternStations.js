@@ -33,7 +33,7 @@ chai.use(chaiJson);
 
 describe('LanternStations', () => {
   describe('Create lantern station', () => {
-    it('Should NOT create lantern station with incorrect authorization on /lanternStations POST', (done) => {
+    it('Should NOT create lantern station with incorrect authorization on /api/lanternStations POST', (done) => {
       chai
         .request(app)
         .post('/api/lanternStations')
@@ -48,7 +48,7 @@ describe('LanternStations', () => {
         });
     });
 
-    it('Should create lantern station /lanternStations POST', (done) => {
+    it('Should create lantern station on /api/lanternStations POST', (done) => {
       chai
         .request(app)
         .post('/api/lanternStations/')
@@ -63,7 +63,7 @@ describe('LanternStations', () => {
         });
     });
 
-    it('Should NOT create existing lantern station /lanternStations POST', (done) => {
+    it('Should NOT create existing lantern station on /api/lanternStations POST', (done) => {
       chai
         .request(app)
         .post('/api/lanternStations/')
@@ -80,7 +80,7 @@ describe('LanternStations', () => {
   });
 
   describe('List lantern stations', () => {
-    it('Should NOT list lantern stations with incorrect authorization on /lanternStations GET', (done) => {
+    it('Should NOT list lantern stations with incorrect authorization on /api/lanternStations GET', (done) => {
       chai
         .request(app)
         .get('/api/lanternStations')
@@ -94,7 +94,7 @@ describe('LanternStations', () => {
         });
     });
 
-    it('Should retrieve lantern stations on /lanternStations GET', (done) => {
+    it('Should retrieve lantern stations on /api/lanternStations GET', (done) => {
       chai
         .request(app)
         .get('/api/lanternStations')
@@ -110,7 +110,7 @@ describe('LanternStations', () => {
   });
 
   describe('Update lantern station', () => {
-    before('Create lantern station /lanternStations POST', (done) => {
+    before('Create lantern station on /api/lanternStations POST', (done) => {
       chai
         .request(app)
         .post('/api/lanternStations/')
@@ -125,7 +125,7 @@ describe('LanternStations', () => {
         });
     });
 
-    it('Should NOT update lantern station with incorrect authorization on /lanternStations/:id POST', (done) => {
+    it('Should NOT update lantern station with incorrect authorization on /api/lanternStations/:id POST', (done) => {
       chai
         .request(app)
         .post(`/api/lanternStations/${lanternStationData.lanternStationToCreateAndModify.stationId}`)
@@ -140,7 +140,7 @@ describe('LanternStations', () => {
         });
     });
 
-    it('Should update owner on lantern station on /lanternStations/:id POST', (done) => {
+    it('Should update owner on lantern station on /api/lanternStations/:id POST', (done) => {
       chai
         .request(app)
         .post(`/api/lanternStations/${lanternStationData.lanternStationToCreateAndModify.stationId}`)
@@ -155,7 +155,7 @@ describe('LanternStations', () => {
         });
     });
 
-    it('Should update attacker on lantern station on /lanternStations/:id POST', (done) => {
+    it('Should update attacker on lantern station on /api/lanternStations/:id POST', (done) => {
       chai
         .request(app)
         .post(`/api/lanternStations/${lanternStationData.lanternStationToCreateAndModify.stationId}`)
@@ -170,7 +170,7 @@ describe('LanternStations', () => {
         });
     });
 
-    it('Should NOT update non-existing lantern station /lanternStations/:id POST', (done) => {
+    it('Should NOT update non-existing lantern station on /api/lanternStations/:id POST', (done) => {
       chai
         .request(app)
         .post(`/api/lanternStations/${lanternStationData.lanternStationThatDoesNotExist.stationId}`)

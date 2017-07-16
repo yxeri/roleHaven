@@ -17,12 +17,11 @@
 'use strict';
 
 const express = require('express');
-const appConfig = require('../../config/defaults/config').app;
-const jwt = require('jsonwebtoken');
 const objectValidator = require('../../utils/objectValidator');
 const dbConfig = require('../../config/defaults/config').databasePopulation;
 const dbLanternHack = require('../../db/connectors/lanternhack');
 const errorCreator = require('../../objects/error/errorCreator');
+const authenticator = require('../../socketHelpers/authenticator');
 
 const router = new express.Router();
 
@@ -35,7 +34,7 @@ function handle(io) {
    * @api {get} /lanternStations Get all lantern stations
    * @apiVersion 6.0.0
    * @apiName GetLanternStations
-   * @apiGroup LanternStations
+   * @apiGroup LanternItems
    *
    * @apiHeader {String} Authorization Your JSON Web Token
    *
@@ -63,41 +62,62 @@ function handle(io) {
    *  }
    */
   router.get('/', (req, res) => {
-    // noinspection JSUnresolvedVariable
-    const auth = req.headers.authorization || '';
-
-    jwt.verify(auth, appConfig.jsonKey, (jwtErr, decoded) => {
-      if (jwtErr || !decoded) {
-        res.status(401).json({
-          error: {
-            status: 401,
-            title: 'Unauthorized',
-            detail: 'Invalid token',
-          },
-        });
-
-        return;
-      }
-
-      dbLanternHack.getAllStations({
-        callback: ({ error, data }) => {
-          if (error) {
-            res.status(500).json({
+    authenticator.isUserAllowed({
+      commandName: dbConfig.apiCommands.GetLanternStations.name,
+      token: req.headers.authorization,
+      callback: ({ error }) => {
+        if (error) {
+          if (error.type === errorCreator.ErrorTypes.DOESNOTEXIST) {
+            res.status(404).json({
               error: {
-                status: 500,
-                title: 'Internal Server Error',
-                detail: 'Internal Server Error',
+                status: 404,
+                title: 'Command does not exist',
+                detail: 'Command does not exist',
+              },
+            });
+
+            return;
+          } else if (error.type === errorCreator.ErrorTypes.NOTALLOWED) {
+            res.status(401).json({
+              error: {
+                status: 401,
+                title: 'Unauthorized',
+                detail: 'Invalid token',
               },
             });
 
             return;
           }
 
-          const { stations } = data;
+          res.status(500).json({
+            error: {
+              status: 500,
+              title: 'Internal Server Error',
+              detail: 'Internal Server Error',
+            },
+          });
 
-          res.json({ data: { stations } });
-        },
-      });
+          return;
+        }
+
+        dbLanternHack.getAllStations({
+          callback: ({ error: stationError, data: stationData }) => {
+            if (stationError) {
+              res.status(500).json({
+                error: {
+                  status: 500,
+                  title: 'Internal Server Error',
+                  detail: 'Internal Server Error',
+                },
+              });
+
+              return;
+            }
+
+            res.json({ data: stationData });
+          },
+        });
+      },
     });
   });
 
@@ -105,7 +125,7 @@ function handle(io) {
    * @api {post} /lanternStations Create a lantern station
    * @apiVersion 6.0.0
    * @apiName CreateLanternStation
-   * @apiGroup LanternStations
+   * @apiGroup LanternItems
    *
    * @apiHeader {String} Authorization Your JSON Web Token
    *
@@ -154,55 +174,78 @@ function handle(io) {
       return;
     }
 
-    // noinspection JSUnresolvedVariable
-    const auth = req.headers.authorization || '';
-
-    jwt.verify(auth, appConfig.jsonKey, (jwtErr, decoded) => {
-      if (jwtErr || !decoded || decoded.data.accessLevel < dbConfig.apiCommands.CreateLanternStation.accessLevel) {
-        res.status(401).json({
-          error: {
-            status: 401,
-            title: 'Unauthorized',
-            detail: 'Invalid token',
-          },
-        });
-
-        return;
-      }
-
-      const station = req.body.data.station;
-
-      dbLanternHack.createStation({
-        station,
-        callback: ({ error, data }) => {
-          if (error) {
-            if (error.type === errorCreator.ErrorTypes.ALREADYEXISTS) {
-              res.status(403).json({
-                error: {
-                  status: 403,
-                  title: 'Station already exists',
-                  detail: `Station with id ${station.stationId} already exists`,
-                },
-              });
-
-              return;
-            }
-
-            res.status(500).json({
+    authenticator.isUserAllowed({
+      commandName: dbConfig.apiCommands.CreateLanternStation.name,
+      token: req.headers.authorization,
+      callback: ({ error }) => {
+        if (error) {
+          if (error.type === errorCreator.ErrorTypes.DOESNOTEXIST) {
+            res.status(404).json({
               error: {
-                status: 500,
-                title: 'Internal Server Error',
-                detail: 'Internal Server Error',
+                status: 404,
+                title: 'Command does not exist',
+                detail: 'Command does not exist',
+              },
+            });
+
+            return;
+          } else if (error.type === errorCreator.ErrorTypes.NOTALLOWED) {
+            res.status(401).json({
+              error: {
+                status: 401,
+                title: 'Unauthorized',
+                detail: 'Invalid token',
               },
             });
 
             return;
           }
 
-          io.emit('lanternStations', { stations: [data.station] });
-          res.json({ data: { station: data.station } });
-        },
-      });
+          res.status(500).json({
+            error: {
+              status: 500,
+              title: 'Internal Server Error',
+              detail: 'Internal Server Error',
+            },
+          });
+
+          return;
+        }
+
+        const station = req.body.data.station;
+
+        dbLanternHack.createStation({
+          station,
+          callback: ({ error: stationError, data: stationData }) => {
+            if (stationError) {
+              if (stationError.type === errorCreator.ErrorTypes.ALREADYEXISTS) {
+                res.status(403).json({
+                  error: {
+                    status: 403,
+                    title: 'Station already exists',
+                    detail: `Station with id ${station.stationId} already exists`,
+                  },
+                });
+
+                return;
+              }
+
+              res.status(500).json({
+                error: {
+                  status: 500,
+                  title: 'Internal Server Error',
+                  detail: 'Internal Server Error',
+                },
+              });
+
+              return;
+            }
+
+            io.emit('lanternStations', { stations: [stationData.station] });
+            res.json({ data: stationData });
+          },
+        });
+      },
     });
   });
 
@@ -210,7 +253,7 @@ function handle(io) {
    * @api {post} /lanternStations/:id Update an existing lantern station
    * @apiVersion 6.0.0
    * @apiName UpdateLanternStation
-   * @apiGroup LanternStations
+   * @apiGroup LanternItems
    *
    * @apiHeader {String} Authorization Your JSON Web Token
    *
@@ -281,60 +324,83 @@ function handle(io) {
       return;
     }
 
-    // noinspection JSUnresolvedVariable
-    const auth = req.headers.authorization || '';
-
-    jwt.verify(auth, appConfig.jsonKey, (jwtErr, decoded) => {
-      if (jwtErr || !decoded || decoded.data.accessLevel < dbConfig.apiCommands.UpdateLanternStation.accessLevel) {
-        res.status(401).json({
-          error: {
-            status: 401,
-            title: 'Unauthorized',
-            detail: 'Invalid token',
-          },
-        });
-
-        return;
-      }
-
-      const { attacker, isActive, stationName, owner } = req.body.data.station;
-      const stationId = req.params.id;
-
-      dbLanternHack.updateLanternStation({
-        attacker,
-        stationId,
-        isActive,
-        stationName,
-        owner,
-        callback: ({ error: updateError, data: updateData }) => {
-          if (updateError) {
-            if (updateError.type === errorCreator.ErrorTypes.DOESNOTEXIST) {
-              res.status(404).json({
-                error: {
-                  status: 404,
-                  title: 'Lantern station does not exist',
-                  detail: 'Lantern station does not exist',
-                },
-              });
-
-              return;
-            }
-
-            res.status(500).json({
+    authenticator.isUserAllowed({
+      commandName: dbConfig.apiCommands.UpdateLanternStation.name,
+      token: req.headers.authorization,
+      callback: ({ error }) => {
+        if (error) {
+          if (error.type === errorCreator.ErrorTypes.DOESNOTEXIST) {
+            res.status(404).json({
               error: {
-                status: 500,
-                title: 'Internal Server Error',
-                detail: 'Internal Server Error',
+                status: 404,
+                title: 'Command does not exist',
+                detail: 'Command does not exist',
+              },
+            });
+
+            return;
+          } else if (error.type === errorCreator.ErrorTypes.NOTALLOWED) {
+            res.status(401).json({
+              error: {
+                status: 401,
+                title: 'Unauthorized',
+                detail: 'Invalid token',
               },
             });
 
             return;
           }
 
-          io.emit('lanternStations', { stations: [updateData.station] });
-          res.json({ data: { station: updateData.station } });
-        },
-      });
+          res.status(500).json({
+            error: {
+              status: 500,
+              title: 'Internal Server Error',
+              detail: 'Internal Server Error',
+            },
+          });
+
+          return;
+        }
+
+        const { attacker, isActive, stationName, owner } = req.body.data.station;
+        const stationId = req.params.id;
+
+        dbLanternHack.updateLanternStation({
+          attacker,
+          stationId,
+          isActive,
+          stationName,
+          owner,
+          callback: ({ error: updateError, data: updateData }) => {
+            if (updateError) {
+              if (updateError.type === errorCreator.ErrorTypes.DOESNOTEXIST) {
+                res.status(404).json({
+                  error: {
+                    status: 404,
+                    title: 'Lantern station does not exist',
+                    detail: 'Lantern station does not exist',
+                  },
+                });
+
+                return;
+              }
+
+              res.status(500).json({
+                error: {
+                  status: 500,
+                  title: 'Internal Server Error',
+                  detail: 'Internal Server Error',
+                },
+              });
+
+              return;
+            }
+
+            io.emit('lanternStations', { stations: [updateData.station] });
+            res.json({ data: updateData });
+          },
+        });
+      },
     });
   });
 

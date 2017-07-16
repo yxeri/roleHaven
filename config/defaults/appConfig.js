@@ -123,6 +123,8 @@ config.routes = config.routes || [
   { sitePath: '/api/lanternRounds', filePath: `${__dirname}/../../routes/rest/lanternRounds.js` },
   { sitePath: '/api/lanternStations', filePath: `${__dirname}/../../routes/rest/lanternStations.js` },
   { sitePath: '/api/lanternTeams', filePath: `${__dirname}/../../routes/rest/lanternTeams` },
+  { sitePath: '/api/wallets', filePath: `${__dirname}/../../routes/rest/wallets` },
+  { sitePath: '/api/teams', filePath: `${__dirname}/../../routes/rest/teams` },
   { sitePath: '*', filePath: `${__dirname}/../../routes/error.js` },
 ];
 
@@ -279,7 +281,7 @@ config.minimumPositionAccuracy = process.env.MINIMUMPOSITIONACCURACY || config.m
 
 config.maxPositionAge = process.env.MAXPOSITIONAGE || config.maxPositionAge || 2;
 
-config.verboseError = verboseErrorEnv !== undefined ? verboseErrorEnv : config.verboseError || true;
+config.verboseError = verboseErrorEnv !== undefined ? verboseErrorEnv : config.verboseError || false;
 
 /**
  * Secret key used for Mailgun

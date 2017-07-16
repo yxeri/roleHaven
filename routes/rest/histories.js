@@ -20,10 +20,9 @@ const express = require('express');
 const manager = require('../../socketHelpers/manager');
 const appConfig = require('../../config/defaults/config').app;
 const dbConfig = require('../../config/defaults/config').databasePopulation;
-const dbUser = require('../../db/connectors/user');
-const jwt = require('jsonwebtoken');
-const errorCreator = require('../../objects/error/errorCreator');
 const objectValidator = require('../../utils/objectValidator');
+const authenticator = require('../../socketHelpers/authenticator');
+const errorCreator = require('../../objects/error/errorCreator');
 
 const router = new express.Router();
 
@@ -69,69 +68,63 @@ function handle() {
    *  }
    */
   router.get('/', (req, res) => {
-    // noinspection JSUnresolvedVariable
-    const auth = req.headers.authorization || '';
-
-    jwt.verify(auth, appConfig.jsonKey, (jwtErr, decoded) => {
-      if (jwtErr || !decoded || decoded.data.accessLevel < dbConfig.apiCommands.GetHistory.accessLevel) {
-        res.status(401).json({
-          error: {
-            status: 401,
-            title: 'Unauthorized',
-            detail: 'Invalid token',
-          },
-        });
-
-        return;
-      }
-
-      dbUser.getUser({
-        userName: decoded.data.userName,
-        callback: ({ error, data }) => {
-          if (error) {
-            if (error.type === errorCreator.ErrorTypes.DOESNOTEXIST) {
-              res.status(404).json({
-                error: {
-                  status: 404,
-                  title: 'User does not exist',
-                  detail: 'User does not exist',
-                },
-              });
-
-              return;
-            }
-
-            res.status(500).json({
+    authenticator.isUserAllowed({
+      commandName: dbConfig.apiCommands.GetHistory.name,
+      token: req.headers.authorization,
+      callback: ({ error, data }) => {
+        if (error) {
+          if (error.type === errorCreator.ErrorTypes.DOESNOTEXIST) {
+            res.status(404).json({
               error: {
-                status: 500,
-                title: 'Internal Server Error',
-                detail: 'Internal Server Error',
+                status: 404,
+                title: 'Command does not exist',
+                detail: 'Command does not exist',
+              },
+            });
+
+            return;
+          } else if (error.type === errorCreator.ErrorTypes.NOTALLOWED) {
+            res.status(401).json({
+              error: {
+                status: 401,
+                title: 'Unauthorized',
+                detail: 'Invalid token',
               },
             });
 
             return;
           }
 
-          manager.getHistory({
-            rooms: data.user.rooms,
-            callback: ({ error: historyError, data: messageData }) => {
-              if (historyError) {
-                res.status(500).json({
-                  error: {
-                    status: 500,
-                    title: 'Internal Server Error',
-                    detail: 'Internal Server Error',
-                  },
-                });
-
-                return;
-              }
-
-              res.json({ data: messageData });
+          res.status(500).json({
+            error: {
+              status: 500,
+              title: 'Internal Server Error',
+              detail: 'Internal Server Error',
             },
           });
-        },
-      });
+
+          return;
+        }
+
+        manager.getHistory({
+          rooms: data.user.rooms,
+          callback: ({ error: historyError, data: messageData }) => {
+            if (historyError) {
+              res.status(500).json({
+                error: {
+                  status: 500,
+                  title: 'Internal Server Error',
+                  detail: 'Internal Server Error',
+                },
+              });
+
+              return;
+            }
+
+            res.json({ data: messageData });
+          },
+        });
+      },
     });
   });
 
@@ -179,73 +172,76 @@ function handle() {
       return;
     }
 
-    // noinspection JSUnresolvedVariable
-    const auth = req.headers.authorization || '';
+    const roomName = req.params.id;
 
-    jwt.verify(auth, appConfig.jsonKey, (jwtErr, decoded) => {
-      if (jwtErr || !decoded || decoded.data.accessLevel < dbConfig.apiCommands.GetHistory.accessLevel) {
-        res.status(401).json({
-          error: {
-            status: 401,
-            title: 'Unauthorized',
-            detail: 'Invalid token',
-          },
-        });
-
-        return;
-      }
-
-      const roomName = req.params.id;
-
-      dbUser.getUserFollowingRooms({
-        userName: decoded.data.userName,
-        rooms: [roomName],
-        callback: ({ error }) => {
-          if (error) {
-            if (error.type === errorCreator.ErrorTypes.DOESNOTEXIST) {
-              res.status(404).json({
-                error: {
-                  status: 404,
-                  title: 'User not following rooms',
-                  detail: 'The user does not follow the room or does not exist',
-                },
-              });
-
-              return;
-            }
-
-            res.status(500).json({
+    authenticator.isUserAllowed({
+      commandName: dbConfig.apiCommands.GetHistory.name,
+      token: req.headers.authorization,
+      callback: ({ error, data }) => {
+        if (error) {
+          if (error.type === errorCreator.ErrorTypes.DOESNOTEXIST) {
+            res.status(404).json({
               error: {
-                status: 500,
-                title: 'Internal Server Error',
-                detail: 'Internal Server Error',
+                status: 404,
+                title: 'Command does not exist',
+                detail: 'Command does not exist',
+              },
+            });
+
+            return;
+          } else if (error.type === errorCreator.ErrorTypes.NOTALLOWED) {
+            res.status(401).json({
+              error: {
+                status: 401,
+                title: 'Unauthorized',
+                detail: 'Invalid token',
               },
             });
 
             return;
           }
 
-          manager.getHistory({
-            rooms: [roomName],
-            lines: appConfig.historyLines,
-            callback: (historyData) => {
-              if (historyData.error) {
-                res.status(500).json({
-                  error: {
-                    status: 500,
-                    title: 'Internal Server Error',
-                    detail: 'Internal Server Error',
-                  },
-                });
-
-                return;
-              }
-
-              res.json({ data: historyData.data });
+          res.status(500).json({
+            error: {
+              status: 500,
+              title: 'Internal Server Error',
+              detail: 'Internal Server Error',
             },
           });
-        },
-      });
+
+          return;
+        } else if (data.user.rooms.indexOf(roomName) === -1) {
+          res.status(401).json({
+            error: {
+              status: 401,
+              title: 'User not following room',
+              detail: 'User is not following room',
+            },
+          });
+
+          return;
+        }
+
+        manager.getHistory({
+          rooms: [roomName],
+          lines: appConfig.historyLines,
+          callback: ({ error: historyError, data: historyData }) => {
+            if (historyError) {
+              res.status(500).json({
+                error: {
+                  status: 500,
+                  title: 'Internal Server Error',
+                  detail: 'Internal Server Error',
+                },
+              });
+
+              return;
+            }
+
+            res.json({ data: historyData });
+          },
+        });
+      },
     });
   });
 

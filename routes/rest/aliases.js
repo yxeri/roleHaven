@@ -17,13 +17,11 @@
 'use strict';
 
 const express = require('express');
-const appConfig = require('../../config/defaults/config').app;
 const dbConfig = require('../../config/defaults/config').databasePopulation;
-const jwt = require('jsonwebtoken');
 const objectValidator = require('../../utils/objectValidator');
 const manager = require('../../socketHelpers/manager');
-const dbUser = require('../../db/connectors/user');
 const errorCreator = require('../../objects/error/errorCreator');
+const authenticator = require('../../socketHelpers/authenticator');
 
 const router = new express.Router();
 
@@ -54,56 +52,48 @@ function handle() {
    *  }
    */
   router.get('/', (req, res) => {
-    // noinspection JSUnresolvedVariable
-    const auth = req.headers.authorization || '';
-
-    jwt.verify(auth, appConfig.jsonKey, (jwtErr, decoded) => {
-      if (jwtErr || !decoded || decoded.data.accessLevel < dbConfig.apiCommands.GetAliases.accessLevel) {
-        res.status(401).json({
-          error: {
-            status: 401,
-            title: 'Unauthorized',
-            detail: 'Invalid token',
-          },
-        });
-
-        return;
-      }
-
-      const userName = decoded.data.userName;
-
-      dbUser.getUser({
-        userName,
-        callback: ({ error, data }) => {
-          if (error) {
-            if (error.type === errorCreator.ErrorTypes.DOESNOTEXIST) {
-              res.status(404).json({
-                error: {
-                  status: 404,
-                  title: 'User does not exist',
-                  detail: 'User does not exist',
-                },
-              });
-
-              return;
-            }
-
-            res.status(500).json({
+    authenticator.isUserAllowed({
+      commandName: dbConfig.apiCommands.GetAliases.name,
+      token: req.headers.authorization,
+      callback: ({ error, data }) => {
+        if (error) {
+          if (error.type === errorCreator.ErrorTypes.DOESNOTEXIST) {
+            res.status(404).json({
               error: {
-                status: 500,
-                title: 'Internal Server Error',
-                detail: 'Internal Server Error',
+                status: 404,
+                title: 'Command does not exist',
+                detail: 'Command does not exist',
+              },
+            });
+
+            return;
+          } else if (error.type === errorCreator.ErrorTypes.NOTALLOWED) {
+            res.status(401).json({
+              error: {
+                status: 401,
+                title: 'Unauthorized',
+                detail: 'Invalid token',
               },
             });
 
             return;
           }
 
-          const aliases = data.user.aliases || [];
+          res.status(500).json({
+            error: {
+              status: 500,
+              title: 'Internal Server Error',
+              detail: 'Internal Server Error',
+            },
+          });
 
-          res.json({ data: { aliases, user: { userName } } });
-        },
-      });
+          return;
+        }
+
+        const { aliases, userName } = data.user;
+
+        res.json({ data: { aliases, user: { userName } } });
+      },
     });
   });
 
@@ -148,55 +138,78 @@ function handle() {
       return;
     }
 
-    // noinspection JSUnresolvedVariable
-    const auth = req.headers.authorization || '';
-
-    jwt.verify(auth, appConfig.jsonKey, (jwtErr, decoded) => {
-      if (jwtErr || !decoded || decoded.data.accessLevel < dbConfig.apiCommands.CreateAlias.accessLevel) {
-        res.status(401).json({
-          error: {
-            status: 401,
-            title: 'Unauthorized',
-            detail: 'Invalid token',
-          },
-        });
-
-        return;
-      }
-
-      manager.addAlias({
-        user: decoded.data,
-        alias: req.body.data.alias,
-        callback: ({ error, data }) => {
-          if (error) {
-            if (error.type === errorCreator.ErrorTypes.ALREADYEXISTS) {
-              res.status(403).json({
-                error: {
-                  status: 403,
-                  title: 'Alias already exists',
-                  detail: 'Alias already exists',
-                },
-              });
-
-              return;
-            }
-
-            res.status(500).json({
+    authenticator.isUserAllowed({
+      commandName: dbConfig.apiCommands.CreateAlias.name,
+      token: req.headers.authorization,
+      callback: ({ error, data }) => {
+        if (error) {
+          if (error.type === errorCreator.ErrorTypes.DOESNOTEXIST) {
+            res.status(404).json({
               error: {
-                status: 500,
-                title: 'Internal Server Error',
-                detail: 'Internal Server Error',
+                status: 404,
+                title: 'Command does not exist',
+                detail: 'Command does not exist',
+              },
+            });
+
+            return;
+          } else if (error.type === errorCreator.ErrorTypes.NOTALLOWED) {
+            res.status(401).json({
+              error: {
+                status: 401,
+                title: 'Unauthorized',
+                detail: 'Invalid token',
               },
             });
 
             return;
           }
 
-          res.json({
-            data: { alias: data.alias },
+          res.status(500).json({
+            error: {
+              status: 500,
+              title: 'Internal Server Error',
+              detail: 'Internal Server Error',
+            },
           });
-        },
-      });
+
+          return;
+        }
+
+        const { alias } = req.body.data;
+
+        manager.addAlias({
+          alias,
+          user: data.user,
+          callback: ({ error: aliasError, data: aliasData }) => {
+            if (aliasError) {
+              if (aliasError.type === errorCreator.ErrorTypes.ALREADYEXISTS) {
+                res.status(403).json({
+                  error: {
+                    status: 403,
+                    title: 'Alias already exists',
+                    detail: 'Alias already exists',
+                  },
+                });
+
+                return;
+              }
+
+              res.status(500).json({
+                error: {
+                  status: 500,
+                  title: 'Internal Server Error',
+                  detail: 'Internal Server Error',
+                },
+              });
+
+              return;
+            }
+
+            res.json({ data: aliasData });
+          },
+        });
+      },
     });
   });
 

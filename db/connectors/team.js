@@ -27,8 +27,9 @@ const teamSchema = new mongoose.Schema({
   teamName: { type: String, unique: true },
   shortName: { type: String, unique: true },
   owner: String,
-  admins: [String],
+  admins: { type: [String], default: [] },
   verified: { type: Boolean, default: false },
+  isProtected: { type: Boolean, default: false },
 }, { collection: 'teams' });
 
 const Team = mongoose.model('Team', teamSchema);
@@ -54,9 +55,17 @@ function createTeam({ team, callback }) {
     }
 
     dbConnector.saveObject({
-      callback,
       object: newTeam,
       objectType: 'team',
+      callback: ({ error, data }) => {
+        if (error) {
+          callback({ error });
+
+          return;
+        }
+
+        callback({ data: { team: data.savedObject } });
+      },
     });
   });
 }
@@ -76,7 +85,7 @@ function getTeam({ teamName, callback }) {
 
       return;
     } else if (!team) {
-      callback({ error: new errorCreator.DoesNotExist({ name: `team ${team.teamName}` }) });
+      callback({ error: new errorCreator.DoesNotExist({ name: `team ${teamName}` }) });
 
       return;
     }
@@ -86,15 +95,23 @@ function getTeam({ teamName, callback }) {
 }
 
 /**
- * Get all teams
+ * Get teams
+ * @param {Object} params.user User retrieving the teams
  * @param {Function} params.callback Callback
  */
-function getAllTeams({ callback }) {
-  const query = {};
+function getTeams({ user, callback }) {
+  const query = {
+    $or: [
+      { owner: user.userName },
+      { isProtected: false },
+    ],
+    verified: true,
+  };
+  const filter = { teamName: 1, shortName: 1 };
 
-  Team.find(query).lean().exec((err, teams = []) => {
+  Team.find(query, filter).lean().exec((err, teams = []) => {
     if (err) {
-      callback({ error: new errorCreator.Database({ errorObject: err, name: 'getAllTeams' }) });
+      callback({ error: new errorCreator.Database({ errorObject: err, name: 'getTeams' }) });
 
       return;
     }
@@ -168,6 +185,36 @@ function getTeamByOwner({ owner, callback }) {
 }
 
 /**
+ * Get team by owner
+ * @param {string} params.owner User name of the team owner
+ * @param {Function} params.callback Callback
+ */
+function doesTeamExist({ owner, teamName, shortName, callback }) {
+  const query = {
+    $or: [
+      { owner },
+      { teamName },
+      { shortName },
+    ],
+  };
+  const filter = { _id: 0 };
+
+  Team.findOne(query, filter).lean().exec((err, team) => {
+    if (err) {
+      callback({ error: new errorCreator.Database({ errorObject: err, name: 'doesTeamExist' }) });
+
+      return;
+    }
+
+    if (!team) {
+      callback({ data: { exists: false } });
+    } else {
+      callback({ data: { exists: true } });
+    }
+  });
+}
+
+/**
  * Remove team
  * @param {string} params.teamName Name of the team to remove
  * @param {Object} params.user User trying to remove the team
@@ -216,4 +263,5 @@ exports.verifyAllTeams = verifyAllTeams;
 exports.getUnverifiedTeams = getUnverifiedTeams;
 exports.getTeamByOwner = getTeamByOwner;
 exports.removeTeam = removeTeam;
-exports.getAllTeams = getAllTeams;
+exports.getTeams = getTeams;
+exports.doesTeamExist = doesTeamExist;

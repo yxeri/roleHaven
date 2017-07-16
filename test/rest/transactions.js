@@ -41,7 +41,7 @@ describe('Transactions', () => {
     rich: '',
   };
 
-  before(`Create user ${transactionData.newUserToSendCredits.userName} on /users POST`, (done) => {
+  before(`Create user ${transactionData.newUserToSendCredits.userName} on /api/users POST`, (done) => {
     chai
       .request(app)
       .post('/api/users')
@@ -55,7 +55,7 @@ describe('Transactions', () => {
       });
   });
 
-  before(`Create user ${transactionData.newUserToReceiveCredits.userName} on /users POST`, (done) => {
+  before(`Create user ${transactionData.newUserToReceiveCredits.userName} on /api/users POST`, (done) => {
     chai
       .request(app)
       .post('/api/users')
@@ -69,7 +69,7 @@ describe('Transactions', () => {
       });
   });
 
-  before(`Authenticate ${transactionData.newUserToSendCredits.userName}`, (done) => {
+  before(`Authenticate ${transactionData.newUserToSendCredits.userName} on /api/authenticate`, (done) => {
     chai
       .request(app)
       .post('/api/authenticate')
@@ -85,7 +85,7 @@ describe('Transactions', () => {
       });
   });
 
-  before(`Authenticate ${transactionData.newUserToReceiveCredits.userName}`, (done) => {
+  before(`Authenticate ${transactionData.newUserToReceiveCredits.userName} on /api/authenticate`, (done) => {
     chai
       .request(app)
       .post('/api/authenticate')
@@ -113,7 +113,7 @@ describe('Transactions', () => {
   });
 
   describe('List transasctions', () => {
-    it('Should NOT list transactions for user with incorrect authorization on /transactions GET', (done) => {
+    it('Should NOT list transactions for user with incorrect authorization on /api/transactions GET', (done) => {
       chai
         .request(app)
         .get('/api/transactions')
@@ -127,7 +127,7 @@ describe('Transactions', () => {
         });
     });
 
-    it('Should list transactions for user on /transactions GET', (done) => {
+    it('Should list transactions for user on /api/transactions GET', (done) => {
       chai
         .request(app)
         .get('/api/transactions')
@@ -143,7 +143,7 @@ describe('Transactions', () => {
   });
 
   describe('Create transaction between users', () => {
-    it('Should NOT create transaction with incorrect authorization on /transactions POST', (done) => {
+    it('Should NOT create transaction with incorrect authorization on /api/transactions POST', (done) => {
       chai
         .request(app)
         .post('/api/transactions')
@@ -157,12 +157,12 @@ describe('Transactions', () => {
         });
     });
 
-    it('Should NOT create transaction, due to not having enough currency on /transactions POST', (done) => {
+    it('Should NOT create transaction, due to not having enough currency on /api/transactions POST', (done) => {
       chai
         .request(app)
         .post('/api/transactions')
         .set('Authorization', transactionTokens.poor)
-        .send({ data: { transaction: { to: transactionData.newUserToSendCredits.userName, amount: 15 } } })
+        .send({ data: { transaction: { to: transactionData.newUserToSendCredits.userName, amount: 25 } } })
         .end((error, response) => {
           response.should.have.status(401);
           response.should.be.json;
@@ -172,7 +172,7 @@ describe('Transactions', () => {
         });
     });
 
-    it('Should create transaction from user with enough credits in wallet on /transactions POST', (done) => {
+    it('Should create transaction from user with enough credits in wallet on /api/transactions POST', (done) => {
       chai
         .request(app)
         .post('/api/transactions')
@@ -187,7 +187,7 @@ describe('Transactions', () => {
         });
     });
 
-    it('Should list sender transactions with new transaction on /transactions GET', (done) => {
+    it('Should list sender transactions with new transaction on /api/transactions GET', (done) => {
       chai
         .request(app)
         .get('/api/transactions')
@@ -203,7 +203,7 @@ describe('Transactions', () => {
         });
     });
 
-    it('Should list receiver transactions with new transaction on /transactions GET', (done) => {
+    it('Should list receiver transactions with new transaction on /api/transactions GET', (done) => {
       chai
         .request(app)
         .get('/api/transactions')
@@ -220,13 +220,47 @@ describe('Transactions', () => {
     });
   });
 
+  // TODO Create transaction between teams
+
+  // TODO Create transaction between user and team
+
   describe('Create transaction with incorrect information', () => {
-    it('Should NOT create transaction with self as receiver on /transactions POST', (done) => {
+    it('Should NOT create transaction with self as receiver on /api/transactions POST', (done) => {
       chai
         .request(app)
         .post('/api/transactions')
         .set('Authorization', transactionTokens.rich)
         .send({ data: { transaction: { to: transactionData.newUserToSendCredits.userName, amount: 10 } } })
+        .end((error, response) => {
+          response.should.have.status(400);
+          response.should.be.json;
+          response.body.should.be.jsonSchema(errorSchemas.error);
+
+          done();
+        });
+    });
+
+    it('Should NOT create transaction with amount that equals 0 on /api/transactions POST', (done) => {
+      chai
+        .request(app)
+        .post('/api/transactions')
+        .set('Authorization', transactionTokens.rich)
+        .send({ data: { transaction: { to: transactionData.newUserToSendCredits.userName, amount: 0 } } })
+        .end((error, response) => {
+          response.should.have.status(400);
+          response.should.be.json;
+          response.body.should.be.jsonSchema(errorSchemas.error);
+
+          done();
+        });
+    });
+
+    it('Should NOT create transaction with amount that is less than 0 on /api/transactions POST', (done) => {
+      chai
+        .request(app)
+        .post('/api/transactions')
+        .set('Authorization', transactionTokens.rich)
+        .send({ data: { transaction: { to: transactionData.newUserToSendCredits.userName, amount: -10 } } })
         .end((error, response) => {
           response.should.have.status(400);
           response.should.be.json;

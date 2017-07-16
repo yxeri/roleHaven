@@ -33,7 +33,7 @@ chai.use(chaiJson);
 
 describe('LanternRounds', () => {
   describe('Create lantern round', () => {
-    it('Should NOT create lantern round with incorrect authorization on /lanternRounds POST', (done) => {
+    it('Should NOT create lantern round with incorrect authorization on /api/lanternRounds POST', (done) => {
       chai
         .request(app)
         .post('/api/lanternRounds')
@@ -48,7 +48,7 @@ describe('LanternRounds', () => {
         });
     });
 
-    it('Should create lantern round /lanternRounds POST', (done) => {
+    it('Should create lantern round on /api/lanternRounds POST', (done) => {
       chai
         .request(app)
         .post('/api/lanternRounds/')
@@ -63,7 +63,7 @@ describe('LanternRounds', () => {
         });
     });
 
-    it('Should NOT create existing lantern round /lanternRounds POST', (done) => {
+    it('Should NOT create existing lantern round on /api/lanternRounds POST', (done) => {
       chai
         .request(app)
         .post('/api/lanternRounds/')
@@ -80,7 +80,7 @@ describe('LanternRounds', () => {
   });
 
   describe('Update lantern round', () => {
-    before('Create lantern round /lanternRounds POST', (done) => {
+    before('Create lantern round on /api/lanternRounds POST', (done) => {
       chai
         .request(app)
         .post('/api/lanternRounds/')
@@ -95,7 +95,7 @@ describe('LanternRounds', () => {
         });
     });
 
-    it('Should NOT update lantern round with incorrect authorization on /lanternRounds/:id POST', (done) => {
+    it('Should NOT update lantern round with incorrect authorization on /api/lanternRounds/:id POST', (done) => {
       chai
         .request(app)
         .post(`/api/lanternRounds/${lanternRoundData.lanternRoundToCreateAndModify.roundId}`)
@@ -110,7 +110,7 @@ describe('LanternRounds', () => {
         });
     });
 
-    it('Should update start time on lantern round on /lanternRounds/:id POST', (done) => {
+    it('Should update start time on lantern round on /api/lanternRounds/:id POST', (done) => {
       chai
         .request(app)
         .post(`/api/lanternRounds/${lanternRoundData.lanternRoundToCreateAndModify.roundId}`)
@@ -125,7 +125,7 @@ describe('LanternRounds', () => {
         });
     });
 
-    it('Should update end time on lantern round on /lanternRounds/:id POST', (done) => {
+    it('Should update end time on lantern round on /api/lanternRounds/:id POST', (done) => {
       chai
         .request(app)
         .post(`/api/lanternRounds/${lanternRoundData.lanternRoundToCreateAndModify.roundId}`)
@@ -142,7 +142,7 @@ describe('LanternRounds', () => {
 
     // TODO 'Should NOT update start time on active lantern round on /lanternRounds/:id POST'
 
-    it('Should NOT update non-existing lantern round /lanternRounds/:id POST', (done) => {
+    it('Should NOT update non-existing lantern round /api/lanternRounds/:id POST', (done) => {
       chai
         .request(app)
         .post(`/api/lanternRounds/${lanternRoundData.lanternRoundToCreateAndModify.roundId}`)
@@ -159,7 +159,7 @@ describe('LanternRounds', () => {
   });
 
   describe('List lantern rounds', () => {
-    it('Should NOT list lantern rounds with incorrect authorization on /lanternRounds GET', (done) => {
+    it('Should NOT list lantern rounds with incorrect authorization on /api/lanternRounds GET', (done) => {
       chai
         .request(app)
         .get('/api/lanternRounds')
@@ -173,7 +173,7 @@ describe('LanternRounds', () => {
         });
     });
 
-    it('Should list lantern rounds on /lanternRounds GET', (done) => {
+    it('Should list lantern rounds on /api/lanternRounds GET', (done) => {
       chai
         .request(app)
         .get('/api/lanternRounds')

@@ -34,7 +34,7 @@ chai.use(chaiHttp);
 chai.use(chaiJson);
 
 describe('Authenticate', () => {
-  before('Create admin user on /users POST', (done) => {
+  before('Create admin user on /api/users POST', (done) => {
     chai
       .request(app)
       .post('/api/users')
@@ -48,7 +48,7 @@ describe('Authenticate', () => {
       });
   });
 
-  it('Should get jwt token on /authenticate POST', (done) => {
+  it('Should get jwt token on /api/authenticate POST', (done) => {
     chai
       .request(app)
       .post('/api/authenticate')
@@ -61,7 +61,7 @@ describe('Authenticate', () => {
       });
   });
 
-  it('Should NOT get jwt token with unverified user on /authenticate POST', (done) => {
+  it('Should NOT get jwt token with unverified user on /api/authenticate POST', (done) => {
     chai
       .request(app)
       .post('/api/authenticate')
@@ -75,7 +75,7 @@ describe('Authenticate', () => {
       });
   });
 
-  it('Should NOT get jwt token with banned user on /authenticate POST', (done) => {
+  it('Should NOT get jwt token with banned user on /api/authenticate POST', (done) => {
     chai
       .request(app)
       .post('/api/authenticate')
@@ -89,7 +89,7 @@ describe('Authenticate', () => {
       });
   });
 
-  it('Should NOT get jwt token with non-existent user on /authenticate POST', (done) => {
+  it('Should NOT get jwt token with non-existent user on /api/authenticate POST', (done) => {
     chai
       .request(app)
       .post('/api/authenticate')

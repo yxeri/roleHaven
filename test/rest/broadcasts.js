@@ -32,7 +32,7 @@ chai.use(chaiHttp);
 chai.use(chaiJson);
 
 describe('Send broadcast', () => {
-  it('Should NOT send broadcast message with incorrect authorization on /broadcasts POST', (done) => {
+  it('Should NOT send broadcast message with incorrect authorization on /api/broadcasts POST', (done) => {
     chai
       .request(app)
       .post('/api/broadcasts')
@@ -47,22 +47,22 @@ describe('Send broadcast', () => {
       });
   });
 
-  it('Should NOT send broadcast message that is too long on /broadcasts POST', (done) => {
+  it('Should NOT send broadcast message that is too long on /api/broadcasts POST', (done) => {
     chai
       .request(app)
       .post('/api/broadcasts')
       .set('Authorization', tokens.adminUser)
       .send({ data: { message: broadcastData.tooLongBroadcast } })
       .end((error, response) => {
-        response.should.have.status(200);
+        response.should.have.status(400);
         response.should.be.json;
-        response.body.should.be.jsonSchema(broadcastSchemas.broadcast);
+        response.body.should.be.jsonSchema(errorSchemas.error);
 
         done();
       });
   });
 
-  it('Should send broadcast message on /broadcasts POST', (done) => {
+  it('Should send broadcast message on /api/broadcasts POST', (done) => {
     chai
       .request(app)
       .post('/api/broadcasts')
@@ -77,7 +77,7 @@ describe('Send broadcast', () => {
       });
   });
 
-  it('Should NOT send broadcast message with too low access level /broadcasts POST', (done) => {
+  it('Should NOT send broadcast message with too low access level /api/broadcasts POST', (done) => {
     chai
       .request(app)
       .post('/api/broadcasts')

@@ -17,14 +17,13 @@
 'use strict';
 
 const express = require('express');
-const appConfig = require('../../config/defaults/config').app;
 const dbConfig = require('../../config/defaults/config').databasePopulation;
-const jwt = require('jsonwebtoken');
 const objectValidator = require('../../utils/objectValidator');
 const dbCalibrationMission = require('../../db/connectors/calibrationMission');
 const dbUser = require('../../db/connectors/user');
 const errorCreator = require('../../objects/error/errorCreator');
 const manager = require('../../socketHelpers/manager');
+const authenticator = require('../../socketHelpers/authenticator');
 
 const router = new express.Router();
 
@@ -58,40 +57,63 @@ function handle(io) {
    *  }
    */
   router.get('/', (req, res) => {
-    // noinspection JSUnresolvedVariable
-    const auth = req.headers.authorization || '';
-
-    jwt.verify(auth, appConfig.jsonKey, (jwtErr, decoded) => {
-      if (jwtErr || !decoded || decoded.data.accessLevel < dbConfig.apiCommands.GetCalibrationMission.accessLevel) {
-        res.status(401).json({
-          error: {
-            status: 401,
-            title: 'Unauthorized',
-            detail: 'Invalid token',
-          },
-        });
-
-        return;
-      }
-
-      manager.getActiveCalibrationMission({
-        userName: decoded.data.userName,
-        callback: ({ error, data }) => {
-          if (error) {
-            res.status(500).json({
+    authenticator.isUserAllowed({
+      commandName: dbConfig.apiCommands.GetCalibrationMission.name,
+      token: req.headers.authorization,
+      callback: ({ error, data }) => {
+        if (error) {
+          if (error.type === errorCreator.ErrorTypes.DOESNOTEXIST) {
+            res.status(404).json({
               error: {
-                status: 500,
-                title: 'Internal Server Error',
-                detail: 'Internal Server Error',
+                status: 404,
+                title: 'Command does not exist',
+                detail: 'Command does not exist',
+              },
+            });
+
+            return;
+          } else if (error.type === errorCreator.ErrorTypes.NOTALLOWED) {
+            res.status(401).json({
+              error: {
+                status: 401,
+                title: 'Unauthorized',
+                detail: 'Invalid token',
               },
             });
 
             return;
           }
 
-          res.json({ data: { mission: data.mission } });
-        },
-      });
+          res.status(500).json({
+            error: {
+              status: 500,
+              title: 'Internal Server Error',
+              detail: 'Internal Server Error',
+            },
+          });
+
+          return;
+        }
+
+        manager.getActiveCalibrationMission({
+          userName: data.user.userName,
+          callback: ({ error: calibrationError, data: calibrationData }) => {
+            if (calibrationError) {
+              res.status(500).json({
+                error: {
+                  status: 500,
+                  title: 'Internal Server Error',
+                  detail: 'Internal Server Error',
+                },
+              });
+
+              return;
+            }
+
+            res.json({ data: calibrationData });
+          },
+        });
+      },
     });
   });
 
@@ -153,39 +175,62 @@ function handle(io) {
       return;
     }
 
-    // noinspection JSUnresolvedVariable
-    const auth = req.headers.authorization || '';
-
-    jwt.verify(auth, appConfig.jsonKey, (jwtErr, decoded) => {
-      if (jwtErr || (!decoded || decoded.data.accessLevel < dbConfig.apiCommands.CompleteCalibrationMission.accessLevel)) {
-        res.status(401).json({
-          error: {
-            status: 401,
-            title: 'Unauthorized',
-            detail: 'Invalid token',
-          },
-        });
-
-        return;
-      }
-
-      manager.completeActiveCalibrationMission({
-        io,
-        mission: req.body.data.mission,
-        callback: ({ error, data }) => {
-          if (error) {
-            res.status(500).json({
+    authenticator.isUserAllowed({
+      commandName: dbConfig.apiCommands.CompleteCalibrationMission.name,
+      token: req.headers.authorization,
+      callback: ({ error }) => {
+        if (error) {
+          if (error.type === errorCreator.ErrorTypes.DOESNOTEXIST) {
+            res.status(404).json({
               error: {
-                status: 500,
-                title: 'Internal server error',
-                detail: 'Internal server error',
+                status: 404,
+                title: 'Command does not exist',
+                detail: 'Command does not exist',
               },
             });
+
+            return;
+          } else if (error.type === errorCreator.ErrorTypes.NOTALLOWED) {
+            res.status(401).json({
+              error: {
+                status: 401,
+                title: 'Unauthorized',
+                detail: 'Invalid token',
+              },
+            });
+
+            return;
           }
 
-          res.json({ data });
-        },
-      });
+          res.status(500).json({
+            error: {
+              status: 500,
+              title: 'Internal Server Error',
+              detail: 'Internal Server Error',
+            },
+          });
+
+          return;
+        }
+
+        manager.completeActiveCalibrationMission({
+          io,
+          mission: req.body.data.mission,
+          callback: ({ error: calibrationError, data: calibrationData }) => {
+            if (calibrationError) {
+              res.status(500).json({
+                error: {
+                  status: 500,
+                  title: 'Internal server error',
+                  detail: 'Internal server error',
+                },
+              });
+            }
+
+            res.json({ data: calibrationData });
+          },
+        });
+      },
     });
   });
 
@@ -242,80 +287,103 @@ function handle(io) {
       return;
     }
 
-    // noinspection JSUnresolvedVariable
-    const auth = req.headers.authorization || '';
-
-    jwt.verify(auth, appConfig.jsonKey, (jwtErr, decoded) => {
-      if (jwtErr || (!decoded || decoded.data.accessLevel < dbConfig.apiCommands.CancelCalibrationMission.accessLevel)) {
-        res.status(401).json({
-          error: {
-            status: 401,
-            title: 'Unauthorized',
-            detail: 'Invalid token',
-          },
-        });
-
-        return;
-      }
-
-      const mission = req.body.data.mission;
-
-      dbCalibrationMission.setMissionCompleted({
-        code: mission.code,
-        stationId: mission.stationId,
-        callback: ({ error, data }) => {
-          if (error) {
-            if (error.type === errorCreator.ErrorTypes.DOESNOTEXIST) {
-              res.status(404).json({
-                error: {
-                  status: 404,
-                  title: 'Not found',
-                  detail: 'Mission not found',
-                },
-              });
-
-              return;
-            }
-
-            res.status(500).json({
+    authenticator.isUserAllowed({
+      commandName: dbConfig.apiCommands.CancelCalibrationMission.name,
+      token: req.headers.authorization,
+      callback: ({ error }) => {
+        if (error) {
+          if (error.type === errorCreator.ErrorTypes.DOESNOTEXIST) {
+            res.status(404).json({
               error: {
-                status: 500,
-                title: 'Internal Server Error',
-                detail: 'Internal Server Error',
+                status: 404,
+                title: 'Command does not exist',
+                detail: 'Command does not exist',
+              },
+            });
+
+            return;
+          } else if (error.type === errorCreator.ErrorTypes.NOTALLOWED) {
+            res.status(401).json({
+              error: {
+                status: 401,
+                title: 'Unauthorized',
+                detail: 'Invalid token',
               },
             });
 
             return;
           }
 
-          const { mission: updatedMission } = data;
+          res.status(500).json({
+            error: {
+              status: 500,
+              title: 'Internal Server Error',
+              detail: 'Internal Server Error',
+            },
+          });
 
-          dbUser.getUserByAlias({
-            alias: updatedMission.owner,
-            callback: ({ error: aliasError, data: aliasData }) => {
-              if (aliasError) {
-                res.status(500).json({
+          return;
+        }
+
+        const { mission } = req.body.data;
+
+        dbCalibrationMission.setMissionCompleted({
+          code: mission.code,
+          stationId: mission.stationId,
+          callback: ({ error: missionError, data: missionData }) => {
+            if (missionError) {
+              if (missionError.type === errorCreator.ErrorTypes.DOESNOTEXIST) {
+                res.status(404).json({
                   error: {
-                    status: 500,
-                    title: 'Internal Server Error',
-                    detail: 'Internal Server Error',
+                    status: 404,
+                    title: 'Not found',
+                    detail: 'Mission not found',
                   },
                 });
 
                 return;
               }
 
-              const { user } = aliasData;
+              res.status(500).json({
+                error: {
+                  status: 500,
+                  title: 'Internal Server Error',
+                  detail: 'Internal Server Error',
+                },
+              });
 
-              if (user.socketId !== '') {
-                io.to(user.socketId).emit('terminal', { mission: { missionType: 'calibrationMission', cancelled: true } });
-              }
+              return;
+            }
 
-              res.json({ data: { mission: updatedMission, cancelled: true } });
-            },
-          });
-        },
-      });
+            const updatedMission = missionData.mission;
+
+            dbUser.getUserByAlias({
+              alias: updatedMission.owner,
+              callback: ({ error: aliasError, data: aliasData }) => {
+                if (aliasError) {
+                  res.status(500).json({
+                    error: {
+                      status: 500,
+                      title: 'Internal Server Error',
+                      detail: 'Internal Server Error',
+                    },
+                  });
+
+                  return;
+                }
+
+                const { user } = aliasData;
+
+                if (user.socketId !== '') {
+                  io.to(user.socketId).emit('terminal', { mission: { missionType: 'calibrationMission', cancelled: true } });
+                }
+
+                res.json({ data: { mission: updatedMission, cancelled: true } });
+              },
+            });
+          },
+        });
+      },
     });
   });
 

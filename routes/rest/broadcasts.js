@@ -17,12 +17,11 @@
 'use strict';
 
 const express = require('express');
-const appConfig = require('../../config/defaults/config').app;
-const jwt = require('jsonwebtoken');
 const messenger = require('../../socketHelpers/messenger');
 const objectValidator = require('../../utils/objectValidator');
 const dbConfig = require('../../config/defaults/config').databasePopulation;
 const errorCreator = require('../../objects/error/errorCreator');
+const authenticator = require('../../socketHelpers/authenticator');
 
 const router = new express.Router();
 
@@ -85,30 +84,27 @@ function handle(io) {
       return;
     }
 
-    // noinspection JSUnresolvedVariable
-    const auth = req.headers.authorization || '';
-
-    jwt.verify(auth, appConfig.jsonKey, (jwtErr, decoded) => {
-      if (jwtErr || (!decoded || decoded.data.accessLevel < dbConfig.apiCommands.SendBroadcast.accessLevel)) {
-        res.status(401).json({
-          error: {
-            status: 401,
-            title: 'Unauthorized',
-            detail: 'Invalid token',
-          },
-        });
-
-        return;
-      }
-
-      const callback = ({ error, data }) => {
+    authenticator.isUserAllowed({
+      commandName: dbConfig.apiCommands.SendBroadcast.name,
+      token: req.headers.authorization,
+      callback: ({ error, data }) => {
         if (error) {
-          if (error.type && error.type === errorCreator.ErrorTypes.NOTALLOWED) {
+          if (error.type === errorCreator.ErrorTypes.DOESNOTEXIST) {
+            res.status(404).json({
+              error: {
+                status: 404,
+                title: 'Command does not exist',
+                detail: 'Command does not exist',
+              },
+            });
+
+            return;
+          } else if (error.type === errorCreator.ErrorTypes.NOTALLOWED) {
             res.status(401).json({
               error: {
                 status: 401,
-                title: 'Unauthorized user',
-                detail: 'User not allowed to use feature',
+                title: 'Unauthorized',
+                detail: 'Invalid token',
               },
             });
 
@@ -122,17 +118,51 @@ function handle(io) {
               detail: 'Internal Server Error',
             },
           });
+
+          return;
         }
 
-        res.json({ data: { message: data.message } });
-      };
+        messenger.sendBroadcastMsg({
+          io,
+          message: req.body.data.message,
+          user: data.user,
+          callback: ({ error: broadcastError, data: broadcastData }) => {
+            if (broadcastError) {
+              if (broadcastError.type === errorCreator.ErrorTypes.INVALIDCHARACTERS) {
+                res.status(400).json({
+                  error: {
+                    status: 400,
+                    title: 'Missing data',
+                    detail: 'Unable to parse data',
+                  },
+                });
 
-      messenger.sendBroadcastMsg({
-        io,
-        callback,
-        message: req.body.data.message,
-        user: decoded.data,
-      });
+                return;
+              } else if (broadcastError.type === errorCreator.ErrorTypes.NOTALLOWED) {
+                res.status(401).json({
+                  error: {
+                    status: 401,
+                    title: 'Unauthorized user',
+                    detail: 'User not allowed to use feature',
+                  },
+                });
+
+                return;
+              }
+
+              res.status(500).json({
+                error: {
+                  status: 500,
+                  title: 'Internal Server Error',
+                  detail: 'Internal Server Error',
+                },
+              });
+            }
+
+            res.json({ data: broadcastData });
+          },
+        });
+      },
     });
   });
 

@@ -17,7 +17,6 @@
 'use strict';
 
 const dbUser = require('../db/connectors/user');
-const dbCommand = require('./../db/connectors/command');
 const dbRoom = require('../db/connectors/room');
 const dbChatHistory = require('./../db/connectors/chatHistory');
 const dbWallet = require('../db/connectors/wallet');
@@ -27,10 +26,10 @@ const errorCreator = require('../objects/error/errorCreator');
 const dbTransaction = require('../db/connectors/transaction');
 const dbInvitation = require('../db/connectors/invitationList');
 const mailer = require('../socketHelpers/mailer');
-const jwt = require('jsonwebtoken');
 const dbCalibrationMission = require('../db/connectors/calibrationMission');
 const textTools = require('../utils/textTools');
 const dbDocFile = require('../db/connectors/docFile');
+const dbTeam = require('../db/connectors/team');
 
 /**
  * Does string contain valid characters?
@@ -53,77 +52,6 @@ const messageSort = (a, b) => {
 
   return 0;
 };
-
-/**
- * Checks if the user is allowed to use the command
- * @param {string} params.token Json web token
- * @param {string} params.commandName Name of the command
- * @param {Function} params.callback callback
- */
-function userIsAllowed({ commandName, token, callback = () => {} }) {
-  const anonUser = {
-    userName: '',
-    accessLevel: 0,
-    visibility: 0,
-    aliases: [],
-    rooms: [],
-    whisperRooms: [],
-    isTracked: false,
-    team: null,
-    shortTeam: null,
-  };
-
-  dbCommand.getCommand({
-    commandName,
-    callback: (commandData) => {
-      if (commandData.error) {
-        callback({ error: commandData.error });
-
-        return;
-      } else if (!token) {
-        if (commandData.data.command.accessLevel > anonUser.accessLevel) {
-          callback({ error: new errorCreator.NotAllowed({ name: commandName }) });
-
-          return;
-        }
-
-        dbCommand.incrementCommandUsage({ commandName });
-        callback({ allowedUser: anonUser });
-
-        return;
-      }
-
-      jwt.verify(token, appConfig.jsonKey, (jwtErr, decoded) => {
-        if (jwtErr) {
-          callback({ error: new errorCreator.Database({ errorObject: jwtErr, name: 'jwt' }) });
-
-          return;
-        } else if (!decoded) {
-          callback({ error: new errorCreator.NotAllowed({ name: commandName }) });
-
-          return;
-        }
-
-        dbUser.getUserByAlias({
-          alias: decoded.data.userName,
-          callback: (aliasData) => {
-            if (aliasData.error) {
-              callback({ error: aliasData.error });
-
-              return;
-            } else if (commandData.data.command.accessLevel > aliasData.data.user.accessLevel) {
-              callback({ error: new errorCreator.NotAllowed({ name: commandName }) });
-
-              return;
-            }
-
-            callback({ allowedUser: aliasData.data.user });
-          },
-        });
-      });
-    },
-  });
-}
 
 /**
  * Gets getHistory (messages) from one or more rooms
@@ -373,7 +301,7 @@ function createTransaction({ transaction, user, io, emitToSender, fromTeam, call
         callback({ error: walletData.error });
 
         return;
-      } else if (walletData.data.wallet.amount - newTransaction.amount < 0) {
+      } else if (walletData.data.wallet.amount - newTransaction.amount <= 0) {
         callback({ error: new errorCreator.NotAllowed({ name: 'transfer too much' }) });
 
         return;
@@ -722,6 +650,7 @@ function createUser({ user, callback }) {
     ],
   };
   const wallet = {
+    accessLevel,
     owner: userObj.userName,
   };
 
@@ -1036,7 +965,295 @@ function updateDocFile({ docFile, socket, io, user, callback }) {
   });
 }
 
-exports.userIsAllowed = userIsAllowed;
+/**
+ * Decrease wallet amount
+ * @param {string} params.owner Name of the owner of the wallet
+ * @param {number} params.amount The amount to decrease wallet amount with
+ * @param {Function} params.callback Callback
+ */
+function decreaseWalletAmount({ owner, amount, callback }) {
+  if (amount <= 0) {
+    callback({ error: new errorCreator.InvalidData({ name: 'amount is 0' }) });
+
+    return;
+  }
+
+  dbWallet.getWallet({
+    owner,
+    callback: ({ error: walletError, data: walletData }) => {
+      if (walletError) {
+        callback({ error: walletError });
+
+        return;
+      } else if (walletData.wallet.amount < amount) {
+        callback({ error: new errorCreator.InvalidData({ name: 'wallet amount' }) });
+
+        return;
+      }
+
+      dbWallet.decreaseAmount({
+        owner,
+        amount,
+        callback: ({ error: decreasedError, data: decreasedData }) => {
+          if (decreasedError) {
+            callback({ error: decreasedError });
+
+            return;
+          }
+
+          callback({ data: decreasedData });
+        },
+      });
+    },
+  });
+}
+
+/**
+ * Increase wallet amount
+ * @param {string} params.owner Name of the owner of the wallet
+ * @param {number} params.amount The amount to increase wallet amount with
+ * @param {Function} params.callback Callback
+ */
+function increaseWalletAmount({ owner, amount, callback }) {
+  if (amount <= 0) {
+    callback({ error: new errorCreator.InvalidData({ name: 'amount is 0' }) });
+
+    return;
+  }
+
+  dbWallet.getWallet({
+    owner,
+    callback: ({ error: walletError }) => {
+      if (walletError) {
+        callback({ error: walletError });
+
+        return;
+      }
+
+      dbWallet.increaseAmount({
+        owner,
+        amount,
+        callback: ({ error: decreasedError, data: decreasedData }) => {
+          if (decreasedError) {
+            callback({ error: decreasedError });
+
+            return;
+          }
+
+          callback({ data: decreasedData });
+        },
+      });
+    },
+  });
+}
+
+/**
+ * Create team
+ * @param {Object} params.team Team to create
+ * @param {Object} params.user User creating team
+ * @param {Object} [params.socket] Socket io
+ * @param {Object} [params.io] Socket io. Will be used if socket is not set
+ * @param {Function} params.callback Callback
+ */
+function createTeam({ team, user, socket, io, callback }) {
+  if (team.teamName.toLowerCase() === 'team') {
+    callback({ error: new errorCreator.InvalidData({ expected: 'team name !== team' }) });
+
+    return;
+  } else if (team.teamName.length > appConfig.teamNameMaxLength || team.shortName.length > appConfig.shortTeamMaxLength) {
+    callback({ error: new errorCreator.InvalidData({ name: `Team name length: ${appConfig.teamNameMaxLength} Short name length: ${appConfig.shortTeamMaxLength}` }) });
+
+    return;
+  } else if (user.team) {
+    callback({ error: new errorCreator.AlreadyExists({ name: 'already in team' }) });
+
+    return;
+  }
+
+  dbTeam.doesTeamExist({
+    teamName: team.teamName,
+    shortName: team.shortName,
+    owner: user.userName,
+    callback: ({ error: teamError, data: teamData }) => {
+      if (teamError) {
+        callback({ error: teamData.error });
+
+        return;
+      } else if (teamData.exists) {
+        callback({ error: new errorCreator.AlreadyExists({ name: `team ${team.teamName} ${team.shortName}` }) });
+
+        return;
+      }
+
+      const newTeam = team;
+
+      newTeam.owner = user.userName;
+      newTeam.verified = false;
+
+      dbTeam.createTeam({
+        team: newTeam,
+        callback: (createRoomData) => {
+          if (createRoomData.error) {
+            callback({ error: createRoomData.error });
+
+            return;
+          }
+
+          const createdTeam = createRoomData.data.team;
+          const teamRoom = {
+            owner: dbConfig.systemUserName,
+            roomName: createdTeam.teamName + appConfig.teamAppend,
+            accessLevel: dbConfig.AccessLevels.SUPERUSER,
+            visibility: dbConfig.AccessLevels.SUPERUSER,
+          };
+          const wallet = {
+            owner: createdTeam.teamName + appConfig.teamAppend,
+            team: createdTeam.teamName,
+          };
+
+          createWallet({
+            wallet,
+            callback: ({ error: walletError, data: walletData }) => {
+              if (walletError) {
+                callback({ error: walletError });
+
+                return;
+              }
+
+              dbRoom.createRoom({
+                room: teamRoom,
+                callback: (teamRoomData) => {
+                  if (teamRoomData.error) {
+                    callback({ error: teamRoomData.error });
+
+                    return;
+                  }
+
+                  const dataToEmit = {
+                    team: {
+                      teamName: newTeam.teamName,
+                      shortName: newTeam.shortName,
+                    },
+                  };
+
+                  if (appConfig.teamVerify) {
+                    if (socket) {
+                      socket.broadcast.emit('team', dataToEmit);
+                    } else {
+                      io.emit('team', dataToEmit);
+                    }
+
+                    callback({
+                      data: {
+                        requiresVerify: appConfig.teamVerify,
+                        team: createdTeam,
+                        wallet: walletData.wallet,
+                      },
+                    });
+                  } else {
+                    addUserToTeam({
+                      socket,
+                      io,
+                      user,
+                      team: createdTeam,
+                      callback: ({ error: userError }) => {
+                        if (userError) {
+                          callback({ error: userError });
+
+                          return;
+                        }
+
+                        if (socket) {
+                          socket.broadcast.emit('team', dataToEmit);
+                        } else {
+                          io.emit('team', dataToEmit);
+                        }
+
+                        callback({
+                          data: {
+                            team: createdTeam,
+                            wallet: walletData.wallet,
+                          },
+                        });
+                      },
+                    });
+                  }
+                },
+              });
+            },
+          });
+        },
+      });
+    },
+  });
+}
+
+/**
+ * Invite user to team
+ * @param {Object} params.user User making the invitation
+ * @param {string} params.to Name of the user to invite
+ * @param {Object} [params.socket] Socket io
+ * @param {Object} [params.io] Socket io. Will be used if socket is not set
+ * @param {Function} params.callback Callback
+ */
+function inviteToTeam({ user, to, socket, io, callback }) {
+  const invitation = {
+    itemName: user.team,
+    time: new Date(),
+    invitationType: 'team',
+    sender: user.userName,
+  };
+
+  dbTeam.getTeam({
+    teamName: user.team,
+    callback: ({ error: teamError }) => {
+      if (teamError) {
+        callback({ error: teamError });
+
+        return;
+      }
+
+      dbUser.getUserByAlias({
+        alias: to,
+        callback: ({ error: userError, data: userData }) => {
+          if (userError) {
+            callback({ error: userError });
+
+            return;
+          }
+
+          dbInvitation.addInvitationToList({
+            invitation,
+            userName: userData.user.userName,
+            callback: ({ error: inviteError, data: invitationData }) => {
+              if (inviteError) {
+                callback({ error: inviteError });
+
+                return;
+              }
+
+              const newInvitation = invitationData.list.invitations[invitationData.list.invitations.length - 1];
+              const dataToSend = {
+                invitation: newInvitation,
+                to: invitationData.list.userName,
+              };
+              const emitRoomName = `${to}${appConfig.whisperAppend}`;
+
+              if (socket) {
+                socket.to(emitRoomName).emit('invitation', dataToSend);
+              } else {
+                io.to(emitRoomName).emit('invitation', dataToSend);
+              }
+
+              callback({ data: dataToSend });
+            },
+          });
+        },
+      });
+    },
+  });
+}
+
 exports.getHistory = getHistory;
 exports.createRoom = createRoom;
 exports.joinRooms = joinRooms;
@@ -1056,3 +1273,7 @@ exports.getActiveCalibrationMission = getActiveCalibrationMission;
 exports.completeActiveCalibrationMission = completeActiveCalibrationMission;
 exports.createDocFile = createDocFile;
 exports.updateDocFile = updateDocFile;
+exports.decreaseWalletAmount = decreaseWalletAmount;
+exports.increaseWalletAmount = increaseWalletAmount;
+exports.createTeam = createTeam;
+exports.inviteToTeam = inviteToTeam;

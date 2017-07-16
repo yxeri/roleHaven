@@ -16,14 +16,19 @@
 
 'use strict';
 
-
 const schemas = {};
 
-schemas.wallet = {
+// owner: { type: String, unique: true },
+// amount: { type: Number, default: 0 },
+// accessLevel: { type: Number, default: 1 },
+// protected: { type: Boolean, default: false },
+// team: String,
+
+const walletBase = {
   type: 'object',
-  required: ['data'],
+  required: ['wallet'],
   properties: {
-    data: {
+    room: {
       type: 'object',
       required: [
         'owner',
@@ -33,11 +38,50 @@ schemas.wallet = {
       ],
       properties: {
         owner: { type: 'string' },
-        amount: { type: 'number' },
         accessLevel: { type: 'number' },
+        amount: { type: 'number' },
         protected: { type: 'boolean' },
       },
     },
+  },
+};
+const teamWalletBase = {
+  type: 'object',
+  required: ['wallet'],
+  properties: {
+    room: {
+      type: 'object',
+      required: [
+        'owner',
+        'amount',
+        'accessLevel',
+        'protected',
+        'team',
+      ],
+      properties: {
+        owner: { type: 'string' },
+        accessLevel: { type: 'number' },
+        amount: { type: 'number' },
+        protected: { type: 'boolean' },
+        team: { type: 'string' },
+      },
+    },
+  },
+};
+
+schemas.wallet = {
+  type: 'object',
+  required: ['data'],
+  properties: {
+    data: walletBase,
+  },
+};
+
+schemas.teamWallet = {
+  type: 'object',
+  required: ['data'],
+  properties: {
+    data: teamWalletBase,
   },
 };
 

@@ -34,7 +34,7 @@ chai.use(chaiJson);
 
 describe('Messages', () => {
   describe('Send message', () => {
-    before(`Create room ${messageData.roomToCreateAndSendMessagesTo.roomName}`, (done) => {
+    before(`Create room ${messageData.roomToCreateAndSendMessagesTo.roomName} on /api/rooms`, (done) => {
       chai
         .request(app)
         .post('/api/rooms')
@@ -49,7 +49,7 @@ describe('Messages', () => {
         });
     });
 
-    it('Should NOT send message with incorrect authorization on /messages POST', (done) => {
+    it('Should NOT send message with incorrect authorization on /api/messages POST', (done) => {
       chai
         .request(app)
         .post('/api/messages')
@@ -64,7 +64,7 @@ describe('Messages', () => {
         });
     });
 
-    it('Should NOT send message to a non-existent room on /messages POST', (done) => {
+    it('Should NOT send message to a non-existent room on /api/messages POST', (done) => {
       chai
         .request(app)
         .post('/api/messages')
@@ -79,7 +79,7 @@ describe('Messages', () => {
         });
     });
 
-    it('Should NOT send message to an unfollowed room on /messages POST', (done) => {
+    it('Should NOT send message to an unfollowed room on /api/messages POST', (done) => {
       chai
         .request(app)
         .post('/api/messages')
@@ -94,7 +94,7 @@ describe('Messages', () => {
         });
     });
 
-    it('Should NOT send message that is too long on /messages POST', (done) => {
+    it('Should NOT send message that is too long on /api/messages POST', (done) => {
       chai
         .request(app)
         .post('/api/messages')
@@ -109,7 +109,7 @@ describe('Messages', () => {
         });
     });
 
-    it('Should send message on /messages POST', (done) => {
+    it('Should send message on /api/messages POST', (done) => {
       chai
         .request(app)
         .post('/api/messages')

@@ -33,7 +33,7 @@ chai.use(chaiJson);
 
 describe('LanternTeams', () => {
   describe('Create lantern team', () => {
-    it('Should NOT create lantern team with incorrect authorization on /lanternTeams POST', (done) => {
+    it('Should NOT create lantern team with incorrect authorization on /api/lanternTeams POST', (done) => {
       chai
         .request(app)
         .post('/api/lanternTeams')
@@ -48,7 +48,7 @@ describe('LanternTeams', () => {
         });
     });
 
-    it('Should create lantern team /lanternTeams POST', (done) => {
+    it('Should create lantern team on /api/lanternTeams POST', (done) => {
       chai
         .request(app)
         .post('/api/lanternTeams/')
@@ -63,7 +63,7 @@ describe('LanternTeams', () => {
         });
     });
 
-    it('Should NOT create existing lantern team /lanternTeams POST', (done) => {
+    it('Should NOT create existing lantern team on /api/lanternTeams POST', (done) => {
       chai
         .request(app)
         .post('/api/lanternTeams/')
@@ -80,7 +80,7 @@ describe('LanternTeams', () => {
   });
 
   describe('List lantern teams', () => {
-    it('Should NOT list lantern teams with incorrect authorization on /lanternStations GET', (done) => {
+    it('Should NOT list lantern teams with incorrect authorization on /api/lanternStations GET', (done) => {
       chai
         .request(app)
         .get('/api/lanternTeams')
@@ -94,7 +94,7 @@ describe('LanternTeams', () => {
         });
     });
 
-    it('Should list lantern teams on /lanternStations GET', (done) => {
+    it('Should list lantern teams on /api/lanternStations GET', (done) => {
       chai
         .request(app)
         .get('/api/lanternTeams')
@@ -110,7 +110,7 @@ describe('LanternTeams', () => {
   });
 
   describe('Update lantern team', () => {
-    before('Create lantern team /lanternTeams POST', (done) => {
+    before('Create lantern team on /api/lanternTeams POST', (done) => {
       chai
         .request(app)
         .post('/api/lanternTeams/')
@@ -125,7 +125,7 @@ describe('LanternTeams', () => {
         });
     });
 
-    it('Should NOT update lantern team with incorrect authorization on /lanternTeams/:id POST', (done) => {
+    it('Should NOT update lantern team with incorrect authorization on /api/lanternTeams/:id POST', (done) => {
       chai
         .request(app)
         .post(`/api/lanternTeams/${lanternTeamData.lanternTeamToCreateAndModify.teamName}`)
@@ -140,7 +140,7 @@ describe('LanternTeams', () => {
         });
     });
 
-    it('Should NOT update points on inactive lantern team', (done) => {
+    it('Should NOT update points on inactive lantern team on /api/lanternTeams/:id', (done) => {
       chai
         .request(app)
         .post(`/api/lanternTeams/${lanternTeamData.lanternTeamToCreateAndModify.teamName}`)
@@ -155,7 +155,7 @@ describe('LanternTeams', () => {
         });
     });
 
-    it('Should update active on lantern team on /lanternTeams/:id POST', (done) => {
+    it('Should update active on lantern team on /api/lanternTeams/:id POST', (done) => {
       chai
         .request(app)
         .post(`/api/lanternTeams/${lanternTeamData.lanternTeamToCreateAndModify.teamName}`)
@@ -172,7 +172,7 @@ describe('LanternTeams', () => {
         });
     });
 
-    it('Should update points on active lantern team on /lanternTeams/:id POST', (done) => {
+    it('Should update points on active lantern team on /api/lanternTeams/:id POST', (done) => {
       chai
         .request(app)
         .post(`/api/lanternTeams/${lanternTeamData.lanternTeamToCreateAndModify.teamName}`)
@@ -189,7 +189,7 @@ describe('LanternTeams', () => {
         });
     });
 
-    it('Should reset points to 0 and ignore points parameter on lantern team on /lanternTeams/:id POST', (done) => {
+    it('Should reset points to 0 and ignore points parameter on lantern team on /api/lanternTeams/:id POST', (done) => {
       chai
         .request(app)
         .post(`/api/lanternTeams/${lanternTeamData.lanternTeamToCreateAndModify.teamName}`)
@@ -206,7 +206,7 @@ describe('LanternTeams', () => {
         });
     });
 
-    it('Should NOT update non-existing lantern team /lanternTeams/:id POST', (done) => {
+    it('Should NOT update non-existing lantern team on /api/lanternTeams/:id POST', (done) => {
       chai
         .request(app)
         .post(`/api/lanternTeams/${lanternTeamData.lanternTeamThatDoesNotExist.teamName}`)

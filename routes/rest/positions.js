@@ -20,10 +20,10 @@ const express = require('express');
 const objectValidator = require('../../utils/objectValidator');
 const appConfig = require('../../config/defaults/config').app;
 const dbUser = require('../../db/connectors/user');
-const jwt = require('jsonwebtoken');
 const dbPosition = require('../../db/connectors/position');
 const errorCreator = require('../../objects/error/errorCreator');
 const dbConfig = require('../../config/defaults/config').databasePopulation;
+const authenticator = require('../../socketHelpers/authenticator');
 
 const router = new express.Router();
 
@@ -65,40 +65,63 @@ function handle(io) {
    *  }
    */
   router.get('/users', (req, res) => {
-    // noinspection JSUnresolvedVariable
-    const auth = req.headers.authorization || '';
-
-    jwt.verify(auth, appConfig.jsonKey, (jwtErr, decoded) => {
-      if (jwtErr || !decoded || decoded.data.accessLevel < dbConfig.apiCommands.GetUserPosition.accessLevel) {
-        res.status(401).json({
-          error: {
-            status: 401,
-            title: 'Unauthorized',
-            detail: 'Invalid token',
-          },
-        });
-
-        return;
-      }
-
-      dbUser.getAllUserPositions({
-        user: decoded.data,
-        callback: ({ error, data }) => {
-          if (error) {
-            res.status(500).json({
+    authenticator.isUserAllowed({
+      commandName: dbConfig.apiCommands.GetUserPosition.name,
+      token: req.headers.authorization,
+      callback: ({ error, data }) => {
+        if (error) {
+          if (error.type === errorCreator.ErrorTypes.DOESNOTEXIST) {
+            res.status(404).json({
               error: {
-                status: 500,
-                title: 'Internal Server Error',
-                detail: 'Internal Server Error',
+                status: 404,
+                title: 'Command does not exist',
+                detail: 'Command does not exist',
+              },
+            });
+
+            return;
+          } else if (error.type === errorCreator.ErrorTypes.NOTALLOWED) {
+            res.status(401).json({
+              error: {
+                status: 401,
+                title: 'Unauthorized',
+                detail: 'Invalid token',
               },
             });
 
             return;
           }
 
-          res.json({ data: { positions: data.positions } });
-        },
-      });
+          res.status(500).json({
+            error: {
+              status: 500,
+              title: 'Internal Server Error',
+              detail: 'Internal Server Error',
+            },
+          });
+
+          return;
+        }
+
+        dbUser.getAllUserPositions({
+          user: data.user,
+          callback: ({ error: positionError, data: positionData }) => {
+            if (positionError) {
+              res.status(500).json({
+                error: {
+                  status: 500,
+                  title: 'Internal Server Error',
+                  detail: 'Internal Server Error',
+                },
+              });
+
+              return;
+            }
+
+            res.json({ data: positionData });
+          },
+        });
+      },
     });
   });
 
@@ -149,53 +172,76 @@ function handle(io) {
       return;
     }
 
-    // noinspection JSUnresolvedVariable
-    const auth = req.headers.authorization || '';
-
-    jwt.verify(auth, appConfig.jsonKey, (jwtErr, decoded) => {
-      if (jwtErr || !decoded || decoded.data.accessLevel < dbConfig.apiCommands.GetUserPosition.accessLevel) {
-        res.status(401).json({
-          error: {
-            status: 401,
-            title: 'Unauthorized',
-            detail: 'Invalid token',
-          },
-        });
-
-        return;
-      }
-
-      dbUser.getUserPosition({
-        user: decoded.data,
-        userName: req.params.id,
-        callback: ({ error, data }) => {
-          if (error) {
-            if (error.type === errorCreator.ErrorTypes.DOESNOTEXIST) {
-              res.status(404).json({
-                error: {
-                  status: 404,
-                  title: 'User position not found',
-                  detail: 'User position not found',
-                },
-              });
-
-              return;
-            }
-
-            res.status(500).json({
+    authenticator.isUserAllowed({
+      commandName: dbConfig.apiCommands.GetUserPosition.name,
+      token: req.headers.authorization,
+      callback: ({ error, data }) => {
+        if (error) {
+          if (error.type === errorCreator.ErrorTypes.DOESNOTEXIST) {
+            res.status(404).json({
               error: {
-                status: 500,
-                title: 'Internal Server Error',
-                detail: 'Internal Server Error',
+                status: 404,
+                title: 'Command does not exist',
+                detail: 'Command does not exist',
+              },
+            });
+
+            return;
+          } else if (error.type === errorCreator.ErrorTypes.NOTALLOWED) {
+            res.status(401).json({
+              error: {
+                status: 401,
+                title: 'Unauthorized',
+                detail: 'Invalid token',
               },
             });
 
             return;
           }
 
-          res.json({ data: { positions: [data.position] } });
-        },
-      });
+          res.status(500).json({
+            error: {
+              status: 500,
+              title: 'Internal Server Error',
+              detail: 'Internal Server Error',
+            },
+          });
+
+          return;
+        }
+
+        dbUser.getUserPosition({
+          user: data.user,
+          userName: req.params.id,
+          callback: ({ error: positionError, data: positionData }) => {
+            if (positionError) {
+              if (positionError.type === errorCreator.ErrorTypes.DOESNOTEXIST) {
+                res.status(404).json({
+                  error: {
+                    status: 404,
+                    title: 'User position not found',
+                    detail: 'User position not found',
+                  },
+                });
+
+                return;
+              }
+
+              res.status(500).json({
+                error: {
+                  status: 500,
+                  title: 'Internal Server Error',
+                  detail: 'Internal Server Error',
+                },
+              });
+
+              return;
+            }
+
+            res.json({ data: positionData });
+          },
+        });
+      },
     });
   });
 
@@ -264,66 +310,88 @@ function handle(io) {
       return;
     }
 
-    // noinspection JSUnresolvedVariable
-    const auth = req.headers.authorization || '';
-
-    jwt.verify(auth, appConfig.jsonKey, (jwtErr, decoded) => {
-      if (jwtErr || !decoded || decoded.data.accessLevel < dbConfig.apiCommands.UpdateUserPosition.accessLevel) {
-        res.status(401).json({
-          error: {
-            status: 401,
-            title: 'Unauthorized',
-            detail: 'Invalid token',
-          },
-        });
-
-        return;
-      }
-
-      const position = req.body.data.position;
-      position.lastUpdated = new Date();
-      position.positionName = decoded.data.userName;
-      position.owner = decoded.data.userName;
-      position.markerType = 'user';
-      position.coordinates.accuracy = position.coordinates.accuracy || appConfig.minimumPositionAccuracy / 2;
-
-      dbPosition.updatePosition({
-        position,
-        callback: ({ error, data }) => {
-          if (error) {
-            if (error.type === errorCreator.ErrorTypes.DOESNOTEXIST) {
-              res.status(404).json({
-                error: {
-                  status: 404,
-                  title: 'User does not exist',
-                  detail: 'User does not exist',
-                },
-              });
-
-              return;
-            }
-
-            res.status(500).json({
+    authenticator.isUserAllowed({
+      commandName: dbConfig.apiCommands.UpdateUserPosition.name,
+      token: req.headers.authorization,
+      callback: ({ error, data }) => {
+        if (error) {
+          if (error.type === errorCreator.ErrorTypes.DOESNOTEXIST) {
+            res.status(404).json({
               error: {
-                status: 500,
-                title: 'Internal Server Error',
-                detail: 'Internal Server Error',
+                status: 404,
+                title: 'Command does not exist',
+                detail: 'Command does not exist',
+              },
+            });
+
+            return;
+          } else if (error.type === errorCreator.ErrorTypes.NOTALLOWED) {
+            res.status(401).json({
+              error: {
+                status: 401,
+                title: 'Unauthorized',
+                detail: 'Invalid token',
               },
             });
 
             return;
           }
 
-          const { position: newPosition } = data;
-
-          io.emit('mapPositions', {
-            positions: [newPosition],
-            currentTime: (new Date()),
+          res.status(500).json({
+            error: {
+              status: 500,
+              title: 'Internal Server Error',
+              detail: 'Internal Server Error',
+            },
           });
 
-          res.json({ data: { positions: [newPosition] } });
-        },
-      });
+          return;
+        }
+
+        const user = data.user;
+        const position = req.body.data.position;
+        position.lastUpdated = new Date();
+        position.positionName = user.userName;
+        position.owner = user.userName;
+        position.markerType = 'user';
+        position.coordinates.accuracy = position.coordinates.accuracy || appConfig.minimumPositionAccuracy / 2;
+
+        dbPosition.updatePosition({
+          position,
+          callback: ({ error: positionError, data: positionData }) => {
+            if (positionError) {
+              if (positionError.type === errorCreator.ErrorTypes.DOESNOTEXIST) {
+                res.status(404).json({
+                  error: {
+                    status: 404,
+                    title: 'User does not exist',
+                    detail: 'User does not exist',
+                  },
+                });
+
+                return;
+              }
+
+              res.status(500).json({
+                error: {
+                  status: 500,
+                  title: 'Internal Server Error',
+                  detail: 'Internal Server Error',
+                },
+              });
+
+              return;
+            }
+
+            io.emit('mapPositions', {
+              position: positionData.position,
+              currentTime: (new Date()),
+            });
+
+            res.json({ data: positionData });
+          },
+        });
+      },
     });
   });
 

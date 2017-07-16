@@ -34,7 +34,7 @@ chai.use(chaiJson);
 
 describe('Rooms', () => {
   describe('Create room', () => {
-    it('Should NOT create room with incorrect authorization on /rooms POST', (done) => {
+    it('Should NOT create room with incorrect authorization on /api/rooms POST', (done) => {
       chai
         .request(app)
         .post('/api/rooms')
@@ -64,7 +64,7 @@ describe('Rooms', () => {
         });
     });
 
-    it('Should NOT create room with existing name on /rooms POST', (done) => {
+    it('Should NOT create room with existing name on /api/rooms POST', (done) => {
       chai
         .request(app)
         .post('/api/rooms')
@@ -79,7 +79,7 @@ describe('Rooms', () => {
         });
     });
 
-    after(`Create room ${roomData.publicRoomToCreate.roomName}`, (done) => {
+    after(`Create room ${roomData.publicRoomToCreate.roomName} on /api/rooms`, (done) => {
       chai
         .request(app)
         .post('/api/rooms')
@@ -94,7 +94,7 @@ describe('Rooms', () => {
         });
     });
 
-    after(`Create room ${roomData.highAccessLevelRoomToCreate.roomName}`, (done) => {
+    after(`Create room ${roomData.highAccessLevelRoomToCreate.roomName} on /api/rooms`, (done) => {
       chai
         .request(app)
         .post('/api/rooms')
@@ -109,7 +109,7 @@ describe('Rooms', () => {
         });
     });
 
-    after(`Create room ${roomData.passwordProtectedRoomToCreate.roomName}`, (done) => {
+    after(`Create room ${roomData.passwordProtectedRoomToCreate.roomName} on /api/rooms`, (done) => {
       chai
         .request(app)
         .post('/api/rooms')
@@ -124,7 +124,7 @@ describe('Rooms', () => {
         });
     });
 
-    after(`Create room ${roomData.invisibleRoomToCreate.roomName}`, (done) => {
+    after(`Create room ${roomData.invisibleRoomToCreate.roomName} on /api/rooms`, (done) => {
       chai
         .request(app)
         .post('/api/rooms')
@@ -139,7 +139,7 @@ describe('Rooms', () => {
         });
     });
 
-    after(`Unfollow room ${roomData.passwordProtectedRoomToCreate.roomName} /rooms/follow POST`, (done) => {
+    after(`Unfollow room ${roomData.passwordProtectedRoomToCreate.roomName} /api/rooms/follow POST`, (done) => {
       chai
         .request(app)
         .post('/api/rooms/unfollow')
@@ -156,7 +156,7 @@ describe('Rooms', () => {
   });
 
   describe('List rooms', () => {
-    it('Should NOT list rooms with incorrect authorization on /rooms GET', (done) => {
+    it('Should NOT list rooms with incorrect authorization on /api/rooms GET', (done) => {
       chai
         .request(app)
         .get('/api/rooms')
@@ -187,7 +187,7 @@ describe('Rooms', () => {
   });
 
   describe('Get specific room', () => {
-    it('Should NOT get room with incorrect authorization on /rooms/:id GET', (done) => {
+    it('Should NOT get room with incorrect authorization on /api/rooms/:id GET', (done) => {
       chai
         .request(app)
         .get(`/api/rooms/${roomData.roomToCreate.roomName}`)
@@ -201,7 +201,7 @@ describe('Rooms', () => {
         });
     });
 
-    it('Should get room with lower visibility level than user\'s access level on /rooms/:id GET', (done) => {
+    it('Should get room with lower visibility level than user\'s access level on /api/rooms/:id GET', (done) => {
       chai
         .request(app)
         .get(`/api/rooms/${roomData.publicRoomToCreate.roomName}`)
@@ -215,7 +215,7 @@ describe('Rooms', () => {
         });
     });
 
-    it('Should get room with higher access level to user\'s access level on /rooms/:id GET', (done) => {
+    it('Should get room with higher access level to user\'s access level on /api/rooms/:id GET', (done) => {
       chai
         .request(app)
         .get(`/api/rooms/${roomData.highAccessLevelRoomToCreate.roomName}`)
@@ -229,7 +229,7 @@ describe('Rooms', () => {
         });
     });
 
-    it('Should get room with lower access level to user\'s access level on /rooms/:id GET', (done) => {
+    it('Should get room with lower access level to user\'s access level on /api/rooms/:id GET', (done) => {
       chai
         .request(app)
         .get(`/api/rooms/${roomData.publicRoomToCreate.roomName}`)
@@ -243,7 +243,7 @@ describe('Rooms', () => {
         });
     });
 
-    it('Should NOT get room with higher visiblity level than user\'s access level on /rooms/:id GET', (done) => {
+    it('Should NOT get room with higher visiblity level than user\'s access level on /api/rooms/:id GET', (done) => {
       chai
         .request(app)
         .get(`/api/rooms/${roomData.invisibleRoomToCreate.roomName}`)
@@ -259,7 +259,7 @@ describe('Rooms', () => {
   });
 
   describe('Follow room', () => {
-    it('Should follow room with lower or equal access level to user\'s access level on /rooms/follow POST', (done) => {
+    it('Should follow room with lower or equal access level to user\'s access level on /api/rooms/follow POST', (done) => {
       chai
         .request(app)
         .post('/api/rooms/follow')
@@ -275,7 +275,7 @@ describe('Rooms', () => {
         });
     });
 
-    it('Should NOT follow room with higher access level than user\'s access level on /rooms/follow POST', (done) => {
+    it('Should NOT follow room with higher access level than user\'s access level on /api/rooms/follow POST', (done) => {
       chai
         .request(app)
         .post('/api/rooms/follow')
@@ -290,7 +290,7 @@ describe('Rooms', () => {
         });
     });
 
-    it('Should follow room with higher visibility than user\'s access level on /rooms/follow POST', (done) => {
+    it('Should follow room with higher visibility than user\'s access level on /api/rooms/follow POST', (done) => {
       chai
         .request(app)
         .post('/api/rooms/follow')
@@ -307,7 +307,7 @@ describe('Rooms', () => {
   });
 
   describe('Follow password-protected room', () => {
-    it('Should NOT follow password-protected room with incorrect password on /rooms/follow POST', (done) => {
+    it('Should NOT follow password-protected room with incorrect password on /api/rooms/follow POST', (done) => {
       chai
         .request(app)
         .post('/api/rooms/follow')
@@ -322,7 +322,7 @@ describe('Rooms', () => {
         });
     });
 
-    it('Should follow password-protected room with correct password on /rooms/follow POST', (done) => {
+    it('Should follow password-protected room with correct password on /api/rooms/follow POST', (done) => {
       chai
         .request(app)
         .post('/api/rooms/follow')
@@ -337,7 +337,7 @@ describe('Rooms', () => {
         });
     });
 
-    it('Should follow password-protected room without password if owner on /rooms/follow POST', (done) => {
+    it('Should follow password-protected room without password if owner on /api/rooms/follow POST', (done) => {
       chai
         .request(app)
         .post('/api/rooms/follow')
@@ -354,7 +354,7 @@ describe('Rooms', () => {
   });
 
   describe('Unfollow room', () => {
-    before(`Follow room ${roomData.roomToCreate.roomName}`, (done) => {
+    before(`Follow room ${roomData.roomToCreate.roomName} on /api/rooms/follow`, (done) => {
       chai
         .request(app)
         .post('/api/rooms/follow')
@@ -369,7 +369,7 @@ describe('Rooms', () => {
         });
     });
 
-    it('Should unfollow room that is followed /rooms/follow POST', (done) => {
+    it('Should unfollow room that is followed /api/rooms/follow POST', (done) => {
       chai
         .request(app)
         .post('/api/rooms/unfollow')
@@ -384,7 +384,7 @@ describe('Rooms', () => {
         });
     });
 
-    it('Should NOT unfollow room that is not followed /rooms/follow POST', (done) => {
+    it('Should NOT unfollow room that is not followed /api/rooms/follow POST', (done) => {
       chai
         .request(app)
         .post('/api/rooms/unfollow')

@@ -116,7 +116,7 @@ describe('Create test users', () => {
 });
 
 describe('Authenticate test users and store tokens', () => {
-  it('Should authenticate adminUser user', (done) => {
+  it('Should authenticate adminUser user on /api/authenticate', (done) => {
     chai
       .request(app)
       .post('/api/authenticate')
@@ -132,7 +132,7 @@ describe('Authenticate test users and store tokens', () => {
       });
   });
 
-  it('Should authenticate basic user', (done) => {
+  it('Should authenticate basic user on /api/authenticate', (done) => {
     chai
       .request(app)
       .post('/api/authenticate')

@@ -40,7 +40,7 @@ describe('Users', () => {
   };
 
   describe('Create user', () => {
-    it('Should NOT create user with incorrect authorization on /users POST', (done) => {
+    it('Should NOT create user with incorrect authorization on /api/users POST', (done) => {
       chai
         .request(app)
         .post('/api/users')
@@ -54,7 +54,7 @@ describe('Users', () => {
         });
     });
 
-    it('Should create user on /users POST', (done) => {
+    it('Should create user on /api/users POST', (done) => {
       chai
         .request(app)
         .post('/api/users')
@@ -68,7 +68,7 @@ describe('Users', () => {
         });
     });
 
-    after('Create admin user on /users POST', (done) => {
+    after('Create admin user on /api/users POST', (done) => {
       chai
         .request(app)
         .post('/api/users')
@@ -82,7 +82,7 @@ describe('Users', () => {
         });
     });
 
-    after(`Authenticate ${userData.newUserToCreate.userName}`, (done) => {
+    after(`Authenticate ${userData.newUserToCreate.userName} on /api/authenticate`, (done) => {
       chai
         .request(app)
         .post('/api/authenticate')
@@ -100,7 +100,7 @@ describe('Users', () => {
   });
 
   describe('Request password recovery', () => {
-    it('Should NOT create and send password reset with incorrect authorization on /users/:id/resetPassword POST', (done) => {
+    it('Should NOT create and send password reset with incorrect authorization on /api/users/:id/resetPassword POST', (done) => {
       chai
         .request(app)
         .post(`/api/users/${userData.newUserToCreate.mail}/resetPassword`)
@@ -114,7 +114,7 @@ describe('Users', () => {
         });
     });
 
-    it('Should create and send password reset to existing user by mail on /users/:id/resetPassword POST', (done) => {
+    it('Should create and send password reset to existing user by mail on /api/users/:id/resetPassword POST', (done) => {
       chai
         .request(app)
         .post(`/api/users/${userData.newUserToCreate.mail}/resetPassword`)
@@ -128,7 +128,7 @@ describe('Users', () => {
         });
     });
 
-    it('Should NOT create and send password reset to non-existing user by mail on /users/:id/resetPassword POST', (done) => {
+    it('Should NOT create and send password reset to non-existing user by mail on /api/users/:id/resetPassword POST', (done) => {
       chai
         .request(app)
         .post(`/api/users/${userData.fakeMail}/resetPassword`)
@@ -144,7 +144,7 @@ describe('Users', () => {
   });
 
   describe('List users', () => {
-    it('Should NOT list users with incorrect authorization set on /users GET', (done) => {
+    it('Should NOT list users with incorrect authorization set on /api/users GET', (done) => {
       chai
         .request(app)
         .get('/api/users')
@@ -158,7 +158,7 @@ describe('Users', () => {
         });
     });
 
-    it('Should list users on /users GET', (done) => {
+    it('Should list users on /api/users GET', (done) => {
       chai
         .request(app)
         .get('/api/users')
@@ -176,7 +176,7 @@ describe('Users', () => {
   });
 
   describe('Get specific user', () => {
-    it('Should NOT retrieve specific user with incorrect authorization set on /users/:id GET', (done) => {
+    it('Should NOT retrieve specific user with incorrect authorization set on /api/users/:id GET', (done) => {
       chai
         .request(app)
         .get(`/api/users/${userData.newUserToCreate.userName}`)
@@ -189,7 +189,7 @@ describe('Users', () => {
         });
     });
 
-    it('Should retrieve own user on /users/:id GET', (done) => {
+    it('Should retrieve own user on /api/users/:id GET', (done) => {
       chai
         .request(app)
         .get(`/api/users/${userData.newUserToCreate.userName}`)
@@ -202,7 +202,7 @@ describe('Users', () => {
         });
     });
 
-    it('Should NOT get user with higher access level than user on /users/:id GET', (done) => {
+    it('Should NOT get user with higher access level than user on /api/users/:id GET', (done) => {
       chai
         .request(app)
         .get(`/api/users/${userData.newAdminUserToCreate.userName}`)
