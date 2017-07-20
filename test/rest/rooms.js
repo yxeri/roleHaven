@@ -259,6 +259,21 @@ describe('Rooms', () => {
   });
 
   describe('Follow room', () => {
+    it('Should NOT follow room with incorrect authorization on /api/rooms GET', (done) => {
+      chai
+        .request(app)
+        .post('/api/rooms/follow')
+        .set('Authorization', tokens.incorrectJwt)
+        .send({ data: { room: { roomName: roomData.publicRoomToCreate.roomName } } })
+        .end((error, response) => {
+          response.should.have.status(401);
+          response.should.be.json;
+          response.body.should.be.jsonSchema(errorSchemas.error);
+
+          done();
+        });
+    });
+
     it('Should follow room with lower or equal access level to user\'s access level on /api/rooms/follow POST', (done) => {
       chai
         .request(app)
@@ -307,6 +322,21 @@ describe('Rooms', () => {
   });
 
   describe('Follow password-protected room', () => {
+    it('Should NOT follow password-protected with incorrect authorization on /api/rooms POST', (done) => {
+      chai
+        .request(app)
+        .post('/api/rooms/follow')
+        .set('Authorization', tokens.incorrectJwt)
+        .send({ data: { room: { roomName: roomData.passwordProtectedRoomToCreate.roomName, password: roomData.incorrectPassword } } })
+        .end((error, response) => {
+          response.should.have.status(401);
+          response.should.be.json;
+          response.body.should.be.jsonSchema(errorSchemas.error);
+
+          done();
+        });
+    });
+
     it('Should NOT follow password-protected room with incorrect password on /api/rooms/follow POST', (done) => {
       chai
         .request(app)
@@ -354,6 +384,21 @@ describe('Rooms', () => {
   });
 
   describe('Unfollow room', () => {
+    it('Should NOT unfollow with incorrect authorization on /api/rooms GET', (done) => {
+      chai
+        .request(app)
+        .post('/api/rooms/unfollow')
+        .set('Authorization', tokens.incorrectJwt)
+        .send({ data: { room: { roomName: roomData.passwordProtectedRoomToCreate.roomName, password: roomData.incorrectPassword } } })
+        .end((error, response) => {
+          response.should.have.status(401);
+          response.should.be.json;
+          response.body.should.be.jsonSchema(errorSchemas.error);
+
+          done();
+        });
+    });
+
     before(`Follow room ${roomData.roomToCreate.roomName} on /api/rooms/follow`, (done) => {
       chai
         .request(app)
@@ -394,6 +439,96 @@ describe('Rooms', () => {
           response.should.have.status(404);
           response.should.be.json;
           response.body.should.be.jsonSchema(errorSchemas.error);
+
+          done();
+        });
+    });
+  });
+
+  describe('Match partial room name', () => {
+    before(`Create room ${roomData.roomStartingWithZz.roomName} on /api/rooms`, (done) => {
+      chai
+        .request(app)
+        .post('/api/rooms')
+        .set('Authorization', tokens.adminUser)
+        .send({ data: { room: roomData.roomStartingWithZz } })
+        .end((error, response) => {
+          response.should.have.status(200);
+          response.should.be.json;
+          response.body.should.be.jsonSchema(roomSchemas.room);
+
+          done();
+        });
+    });
+
+    before(`Create room ${roomData.secondRoomStartingWithZz.roomName} on /api/rooms`, (done) => {
+      chai
+        .request(app)
+        .post('/api/rooms')
+        .set('Authorization', tokens.adminUser)
+        .send({ data: { room: roomData.secondRoomStartingWithZz } })
+        .end((error, response) => {
+          response.should.have.status(200);
+          response.should.be.json;
+          response.body.should.be.jsonSchema(roomSchemas.room);
+
+          done();
+        });
+    });
+
+    it('Should NOT match partial room name with incorrect authorization on /api/rooms/:id/match GET', (done) => {
+      chai
+        .request(app)
+        .get(`/api/rooms/${roomData.partialRoomName}/match`)
+        .set('Authorization', tokens.incorrectJwt)
+        .end((error, response) => {
+          response.should.have.status(401);
+          response.should.be.json;
+          response.body.should.be.jsonSchema(errorSchemas.error);
+
+          done();
+        });
+    });
+
+    it('Should NOT match partial followed room name with incorrect authorization on /api/rooms/:id/match GET', (done) => {
+      chai
+        .request(app)
+        .get(`/api/rooms/${roomData.partialRoomName}/match`)
+        .set('Authorization', tokens.incorrectJwt)
+        .end((error, response) => {
+          response.should.have.status(401);
+          response.should.be.json;
+          response.body.should.be.jsonSchema(errorSchemas.error);
+
+          done();
+        });
+    });
+
+    it('Should match partial name to rooms on /api/rooms/:id/match GET', (done) => {
+      chai
+        .request(app)
+        .get(`/api/rooms/${roomData.partialRoomName}/match`)
+        .set('Authorization', tokens.basicUser)
+        .end((error, response) => {
+          response.should.have.status(200);
+          response.should.be.json;
+          response.body.should.be.jsonSchema(roomSchemas.matched);
+          response.body.data.matched.should.have.lengthOf(2);
+
+          done();
+        });
+    });
+
+    it('Should match partial name to followed rooms on /api/rooms/:id/match GET', (done) => {
+      chai
+        .request(app)
+        .get(`/api/rooms/${roomData.partialRoomName}/match/followed`)
+        .set('Authorization', tokens.adminUser)
+        .end((error, response) => {
+          response.should.have.status(200);
+          response.should.be.json;
+          response.body.should.be.jsonSchema(roomSchemas.matched);
+          response.body.data.matched.should.have.lengthOf(2);
 
           done();
         });

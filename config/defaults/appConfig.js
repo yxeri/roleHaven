@@ -33,6 +33,7 @@ const gpsTrackingEnv = textTools.convertToBoolean(process.env.GPSTRACKING);
 const teamVerifyEnv = textTools.convertToBoolean(process.env.TEAMVERIFY);
 const disallowRegisterEnv = textTools.convertToBoolean(process.env.DISALLOWUSERREGISTER);
 const verboseErrorEnv = textTools.convertToBoolean(process.env.VERBOSEERROR);
+const allowMessageImageEnv = textTools.convertToBoolean(process.env.ALLOWMESSAGEIMAGE);
 
 /**
  * Name of the system. Human-readable name that will be sent to clients, such as in the subject field of mail or page title
@@ -125,6 +126,7 @@ config.routes = config.routes || [
   { sitePath: '/api/lanternTeams', filePath: `${__dirname}/../../routes/rest/lanternTeams` },
   { sitePath: '/api/wallets', filePath: `${__dirname}/../../routes/rest/wallets` },
   { sitePath: '/api/teams', filePath: `${__dirname}/../../routes/rest/teams` },
+  { sitePath: '/api/devices', filePath: `${__dirname}/../../routes/rest/devices` },
   { sitePath: '*', filePath: `${__dirname}/../../routes/error.js` },
 ];
 
@@ -271,6 +273,8 @@ config.passwordMaxLength = process.env.PASSWORDMAXLENGTH || config.passwordMaxLe
 
 config.deviceIdLength = process.env.DEVICEIDLENGTH || config.deviceIdLength || 16;
 
+config.deviceAliasMaxLength = process.env.DEVICEALIASMAXLENGTH || config.deviceAliasMaxLength || 20;
+
 config.roomNameMaxLength = process.env.ROOMNAMEMAXLENGTH || config.roomNameMaxLength || 20;
 
 config.whisperRoomNameLength = config.roomNameMaxLength + config.whisperAppend.length;
@@ -282,6 +286,8 @@ config.minimumPositionAccuracy = process.env.MINIMUMPOSITIONACCURACY || config.m
 config.maxPositionAge = process.env.MAXPOSITIONAGE || config.maxPositionAge || 2;
 
 config.verboseError = verboseErrorEnv !== undefined ? verboseErrorEnv : config.verboseError || false;
+
+config.allowMessageImage = allowMessageImageEnv !== undefined ? allowMessageImageEnv : config.allowMessageImage || false;
 
 /**
  * Secret key used for Mailgun

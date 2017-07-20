@@ -41,7 +41,12 @@ const Team = mongoose.model('Team', teamSchema);
  */
 function createTeam({ team, callback }) {
   const newTeam = new Team(team);
-  const query = { teamName: team.teamName };
+  const query = {
+    $or: [
+      { teamName: team.teamName },
+      { shortName: team.shortName },
+    ],
+  };
 
   Team.findOne(query).lean().exec((err, foundTeam) => {
     if (err) {

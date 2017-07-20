@@ -17,7 +17,7 @@
 'use strict';
 
 const dbConfig = require('../../config/defaults/config').databasePopulation;
-const manager = require('../../socketHelpers/manager');
+const manager = require('../../helpers/manager');
 const dbInvitation = require('../../db/connectors/invitationList');
 const objectValidator = require('../../utils/objectValidator');
 const errorCreator = require('../../objects/error/errorCreator');

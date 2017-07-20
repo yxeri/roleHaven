@@ -17,11 +17,11 @@
 'use strict';
 
 const express = require('express');
-const messenger = require('../../socketHelpers/messenger');
+const messenger = require('../../helpers/messenger');
 const objectValidator = require('../../utils/objectValidator');
 const errorCreator = require('../../objects/error/errorCreator');
 const dbConfig = require('../../config/defaults/config').databasePopulation;
-const authenticator = require('../../socketHelpers/authenticator');
+const authenticator = require('../../helpers/authenticator');
 
 const router = new express.Router();
 

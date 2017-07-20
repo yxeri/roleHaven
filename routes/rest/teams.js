@@ -18,10 +18,10 @@
 
 const express = require('express');
 const dbConfig = require('../../config/defaults/config').databasePopulation;
-const manager = require('../../socketHelpers/manager');
+const manager = require('../../helpers/manager');
 const objectValidator = require('../../utils/objectValidator');
 const errorCreator = require('../../objects/error/errorCreator');
-const authenticator = require('../../socketHelpers/authenticator');
+const authenticator = require('../../helpers/authenticator');
 const dbTeam = require('../../db/connectors/team');
 const appConfig = require('../../config/defaults/config').app;
 

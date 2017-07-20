@@ -1,5 +1,5 @@
 /*
- Copyright 2015 Aleksandar Jankovic
+ Copyright 2017 Aleksandar Jankovic
 
  Licensed under the Apache License, Version 2.0 (the "License");
  you may not use this file except in compliance with the License.
@@ -17,55 +17,58 @@
 'use strict';
 
 const express = require('express');
-const objectValidator = require('../../utils/objectValidator');
 const dbConfig = require('../../config/defaults/config').databasePopulation;
-const dbDocFile = require('../../db/connectors/docFile');
-const errorCreator = require('../../objects/error/errorCreator');
+const objectValidator = require('../../utils/objectValidator');
 const manager = require('../../helpers/manager');
+const errorCreator = require('../../objects/error/errorCreator');
 const authenticator = require('../../helpers/authenticator');
 
 const router = new express.Router();
 
 /**
- * @param {object} io Socket.IO
  * @returns {Object} Router
  */
-function handle(io) {
+function handle() {
   /**
-   * @api {get} /docFiles Retrieve public docFiles
+   * @api {get} /devices Get devices
    * @apiVersion 6.0.0
-   * @apiName GetPublicDocFiles
-   * @apiGroup DocFiles
+   * @apiName GetDevices
+   * @apiGroup Devices
    *
    * @apiHeader {String} Authorization Your JSON Web Token
    *
-   * @apiDescription Retrieve public docFiles
+   * @apiDescription Get devices
    *
    * @apiSuccess {Object} data
-   * @apiSuccess {Object[]} data.docFiles All public docFiles. Empty if no match was found
+   * @apiSuccess {Object[]} data.devices Devices found
+   * @apiSuccess {Object} data.devices.deviceId Unique device ID
+   * @apiSuccess {Date} data.devices.lastAlive Date when the device was last updated
+   * @apiSuccess {string} data.devices.deviceAlias More recognizable identificator than device ID. Defaults to deviceId
+   * @apiSuccess {string} [data.devices.lastUser] Name of the last user logged in on device
    * @apiSuccessExample {json} Success-Response:
-   *  {
+   *   {
    *    "data": {
-   *      "docFiles": [
+   *      "devices": [
    *        {
-   *          "title": "Hello",
-   *          "docFileId": "hello",
-   *          "creator": "rez5",
-   *          "text": [
-   *            "Hello world!",
-   *            "This is great"
-   *          ],
-   *          "isPublic": true,
-   *        }
+   *          "deviceId": "LoPGj4i3l1Ac951Y",
+   *          "lastAlive": "2016-10-14T11:13:03.555Z",
+   *          "deviceAlias": minaDev,
+   *          "lastUser": "mina"
+   *        },
+   *        {
+   *          "deviceId": "594lKhgmYwRcZkLp",
+   *          "lastAlive": "2016-10-14T11:13:03.555Z",
+   *          "deviceAlias": 594lKhgmYwRcZkLp
+   *        },
    *      ]
    *    }
    *  }
    */
   router.get('/', (req, res) => {
     authenticator.isUserAllowed({
-      commandName: dbConfig.apiCommands.GetDocFile.name,
+      commandName: dbConfig.apiCommands.GetDevices.name,
       token: req.headers.authorization,
-      callback: ({ error, data }) => {
+      callback: ({ error }) => {
         if (error) {
           if (error.type === errorCreator.ErrorTypes.DOESNOTEXIST) {
             res.status(404).json({
@@ -100,13 +103,9 @@ function handle(io) {
           return;
         }
 
-        const user = data.user;
-
-        dbDocFile.getDocFilesList({
-          accessLevel: user.accessLevel,
-          userName: user.userName,
-          callback: ({ error: docError, data: docData }) => {
-            if (docError) {
+        manager.getDevices({
+          callback: ({ error: deviceError, data: deviceData }) => {
+            if (deviceError) {
               res.status(500).json({
                 error: {
                   status: 500,
@@ -118,7 +117,7 @@ function handle(io) {
               return;
             }
 
-            res.json({ data: docData });
+            res.json({ data: deviceData });
           },
         });
       },
@@ -126,40 +125,36 @@ function handle(io) {
   });
 
   /**
-   * @api {get} /docFiles/:id Retrieve specific docFile
+   * @api {post} /devices/:id Update device
    * @apiVersion 6.0.0
-   * @apiName GetDocFile
-   * @apiGroup DocFiles
+   * @apiName UpdateDevice
+   * @apiGroup Devices
    *
    * @apiHeader {String} Authorization Your JSON Web Token
    *
-   * @apiDescription Retrieve a specific docFile based on the sent docFile ID
+   * @apiDescription Update device. It will update lastAlive with current time and lastUser from token, if set. It is accessible by anonymous users
    *
-   * @apiParam {String} id The docFile ID.
+   * @apiParam {String} id Device id
    *
    * @apiSuccess {Object} data
-   * @apiSuccess {Object[]} data.docFiles Found docFile with sent docFile ID. Empty if no match was found
+   * @apiSuccess {Object} data.device Updated device
+   * @apiSuccess {Object} data.device.deviceId Device id
+   * @apiSuccess {Object} data.device.deviceAlias Device alias
+   * @apiSuccess {Object} data.device.lastAlive Date when the device was last updated (now)
+   * @apiSuccess {string} [data.devices.lastUser] Name of the last user logged in on device
    * @apiSuccessExample {json} Success-Response:
-   *  {
+   *   {
    *    "data": {
-   *      "docFiles": [
-   *        {
-   *          "_id": "58093459d3b44c3400858273",
-   *          "title": "Hello",
-   *          "docFileId": "hello",
-   *          "creator": "rez5",
-   *          "text": [
-   *            "Hello world!",
-   *            "This is great"
-   *          ],
-   *          "isPublic": true,
-   *          "visibility": 0
-   *        }
-   *      ]
+   *      "device": {
+   *        "deviceId": "594lKhgmYwRcZkLp",
+   *        "lastAlive": "2016-10-14T11:13:03.555Z",
+   *        "deviceAlias": 594lKhgmYwRcZkLp,
+   *        "lastUser": "mina
+   *      }
    *    }
    *  }
    */
-  router.get('/:id', (req, res) => {
+  router.post('/:id', (req, res) => {
     if (!objectValidator.isValidData(req.params, { id: true })) {
       res.status(400).json({
         error: {
@@ -173,7 +168,7 @@ function handle(io) {
     }
 
     authenticator.isUserAllowed({
-      commandName: dbConfig.apiCommands.GetDocFile.name,
+      commandName: dbConfig.apiCommands.UpdateDevice.name,
       token: req.headers.authorization,
       callback: ({ error, data }) => {
         if (error) {
@@ -210,23 +205,11 @@ function handle(io) {
           return;
         }
 
-        dbDocFile.getDocFileById({
-          docFileId: req.params.id,
+        manager.updateDevice({
+          device: { deviceId: req.params.id },
           user: data.user,
-          callback: ({ error: docError, data: docData }) => {
-            if (docError) {
-              if (docError.type === errorCreator.ErrorTypes.DOESNOTEXIST) {
-                res.status(404).json({
-                  error: {
-                    status: 404,
-                    title: 'Not found',
-                    detail: 'DocFile not found',
-                  },
-                });
-
-                return;
-              }
-
+          callback: ({ error: deviceError, data: deviceData }) => {
+            if (deviceError) {
               res.status(500).json({
                 error: {
                   status: 500,
@@ -238,7 +221,7 @@ function handle(io) {
               return;
             }
 
-            res.json({ data: docData });
+            res.json({ data: deviceData });
           },
         });
       },
@@ -246,59 +229,58 @@ function handle(io) {
   });
 
   /**
-   * @api {post} /docFiles Create an docFile
+   * @api {post} /devices/:id/alias Update device alias
    * @apiVersion 6.0.0
-   * @apiName CreateDocFile
-   * @apiGroup DocFiles
+   * @apiName UpdateDeviceAlias
+   * @apiGroup Devices
    *
    * @apiHeader {String} Authorization Your JSON Web Token
    *
-   * @apiDescription Create an docFile
+   * @apiDescription Update device. It will update lastAlive with current time and lastUser from token, if set
+   *
+   * @apiParam {String} id Device id
    *
    * @apiParam {Object} data
-   * @apiParam {Object} data.docFile DocFile
-   * @apiParam {String} data.docFile.title Title for the docFile
-   * @apiParam {String} data.docFile.docFileId ID of the docFile. Will be used to retrieve this specific docFile
-   * @apiParam {String[]} data.docFile.text Content of the docFile
-   * @apiParam {Boolean} data.docFile.isPublic Should the docFile be public? Non-public docFiles can only be retrieved with its docFile ID
+   * @apiParam {string} data.device Device
+   * @apiParam {string} data.device.deviceAlias New device alias
    * @apiParamExample {json} Request-Example:
    *   {
    *    "data": {
-   *      "docFiles": [
-   *        {
-   *          "title": "Hello",
-   *          "docFileId": "hello",
-   *          "text": [
-   *            "Hello world!",
-   *            "This is great"
-   *          ],
-   *          "isPublic": true
-   *        }
-   *      ]
+   *      "device": {
+   *        "deviceAlias": "bananaman",
+   *      }
    *    }
    *  }
    *
    * @apiSuccess {Object} data
-   * @apiSuccess {Object[]} data.docFiles Found docFile with sent docFile ID. Empty if no match was found
+   * @apiSuccess {Object} data.device Updated device
+   * @apiSuccess {Object} data.device.deviceId Device id
+   * @apiSuccess {Object} data.device.deviceAlias Device alias
+   * @apiSuccess {Object} data.device.lastAlive Date when the device was last updated (now)
+   * @apiSuccess {string} [data.devices.lastUser] Name of the last user logged in on device
    * @apiSuccessExample {json} Success-Response:
-   *  {
+   *   {
    *    "data": {
-   *      "docFile": {
-   *        "title": "Hello",
-   *        "docFileId": "hello",
-   *        "creator": "rez5",
-   *        "text": [
-   *          "Hello world!",
-   *          "This is great"
-   *        ],
-   *        "isPublic": true,
-   *        "visibility": 0
+   *      "device": {
+   *        "deviceId": "594lKhgmYwRcZkLp",
+   *        "lastAlive": "2016-10-14T11:13:03.555Z",
+   *        "deviceAlias": "bananaman"
    *      }
    *    }
    *  }
    */
-  router.post('/', (req, res) => {
-    if (!objectValidator.isValidData(req.body, { data: { docFile: { docFileId: true, text: true, title: true } } })) {
+  router.post('/:id/alias', (req, res) => {
+    if (!objectValidator.isValidData(req.body, { data: { device: { deviceAlias: true } } })) {
+      res.status(400).json({
+        error: {
+          status: 400,
+          title: 'Missing data',
+          detail: 'Unable to parse data',
+        },
+      });
+
+      return;
+    } else if (!objectValidator.isValidData(req.params, { id: true })) {
       res.status(400).json({
         error: {
           status: 400,
@@ -311,9 +293,9 @@ function handle(io) {
     }
 
     authenticator.isUserAllowed({
-      commandName: dbConfig.apiCommands.CreateDocFile.name,
+      commandName: dbConfig.apiCommands.UpdateDeviceAlias.name,
       token: req.headers.authorization,
-      callback: ({ error, data }) => {
+      callback: ({ error }) => {
         if (error) {
           if (error.type === errorCreator.ErrorTypes.DOESNOTEXIST) {
             res.status(404).json({
@@ -348,37 +330,13 @@ function handle(io) {
           return;
         }
 
-        const user = data.user;
-        const newDocFile = req.body.data.docFile;
-        newDocFile.creator = user.userName;
-
-        manager.createDocFile({
-          user,
-          docFile: newDocFile,
-          callback: ({ error: docError, data: docData }) => {
-            if (docError) {
-              if (docError.type === errorCreator.ErrorTypes.INVALIDCHARACTERS) {
-                res.status(400).json({
-                  error: {
-                    status: 400,
-                    title: 'Invalid data',
-                    detail: 'Invalid data',
-                  },
-                });
-
-                return;
-              } else if (docError.type === errorCreator.ErrorTypes.ALREADYEXISTS) {
-                res.status(403).json({
-                  error: {
-                    status: 403,
-                    title: 'DocFile already exists',
-                    detail: `DocFile with ID ${newDocFile.docFileId} already exists`,
-                  },
-                });
-
-                return;
-              }
-
+        manager.updateDeviceAlias({
+          device: {
+            deviceId: req.params.id,
+            deviceAlias: req.body.data.device.deviceAlias,
+          },
+          callback: ({ error: deviceError, data: deviceData }) => {
+            if (deviceError) {
               res.status(500).json({
                 error: {
                   status: 500,
@@ -390,8 +348,7 @@ function handle(io) {
               return;
             }
 
-            io.emit('docFile', { docFile: docData.docFile });
-            res.json({ data: docData });
+            res.json({ data: deviceData });
           },
         });
       },

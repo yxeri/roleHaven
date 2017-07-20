@@ -19,22 +19,37 @@
 
 const schemas = {};
 
+const roomListBase = {
+  type: 'array',
+  items: {
+    type: 'object',
+    required: ['roomName', 'password'],
+    properties: {
+      roomName: { type: 'string' },
+      password: { type: 'boolean' },
+    },
+  },
+};
+
 schemas.rooms = {
   type: 'object',
   required: ['data'],
   properties: {
     data: {
       type: 'object',
-      required: ['rooms', 'whisperRooms'],
+      required: [
+        'rooms',
+        'whisperRooms',
+        'followedRooms',
+        'ownedRooms',
+        'protectedRooms',
+      ],
       properties: {
-        rooms: {
-          type: 'array',
-          items: { type: 'string' },
-        },
-        whisperRooms: {
-          type: 'array',
-          items: { type: 'string' },
-        },
+        rooms: roomListBase,
+        whisperRooms: roomListBase,
+        followedRooms: roomListBase,
+        protectedRooms: roomListBase,
+        ownedRooms: roomListBase,
       },
     },
   },
@@ -84,6 +99,23 @@ schemas.unfollowRoom = {
           properties: {
             roomName: { type: 'string' },
           },
+        },
+      },
+    },
+  },
+};
+
+schemas.matched = {
+  type: 'object',
+  required: ['data'],
+  properties: {
+    data: {
+      type: 'object',
+      required: ['matched'],
+      properties: {
+        matched: {
+          type: 'array',
+          items: { type: 'string' },
         },
       },
     },

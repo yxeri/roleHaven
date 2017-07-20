@@ -17,19 +17,19 @@
 'use strict';
 
 const express = require('express');
-const manager = require('../../socketHelpers/manager');
-const appConfig = require('../../config/defaults/config').app;
+const manager = require('../../helpers/manager');
 const dbConfig = require('../../config/defaults/config').databasePopulation;
 const objectValidator = require('../../utils/objectValidator');
-const authenticator = require('../../socketHelpers/authenticator');
+const authenticator = require('../../helpers/authenticator');
 const errorCreator = require('../../objects/error/errorCreator');
 
 const router = new express.Router();
 
 /**
+ * @param {Object} io socket io
  * @returns {Object} Router
  */
-function handle() {
+function handle(io) {
   /**
    * @api {get} /histories Retrieve history from rooms
    * @apiVersion 6.0.0
@@ -107,6 +107,8 @@ function handle() {
         }
 
         manager.getHistory({
+          io,
+          user: data.user,
           rooms: data.user.rooms,
           callback: ({ error: historyError, data: messageData }) => {
             if (historyError) {
@@ -223,8 +225,9 @@ function handle() {
         }
 
         manager.getHistory({
+          io,
+          user: data.user,
           rooms: [roomName],
-          lines: appConfig.historyLines,
           callback: ({ error: historyError, data: historyData }) => {
             if (historyError) {
               res.status(500).json({

@@ -19,7 +19,7 @@
 const express = require('express');
 const objectValidator = require('../../utils/objectValidator');
 const errorCreator = require('../../objects/error/errorCreator');
-const authenticator = require('../../socketHelpers/authenticator');
+const authenticator = require('../../helpers/authenticator');
 
 const router = new express.Router();
 

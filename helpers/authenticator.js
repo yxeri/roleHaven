@@ -51,7 +51,7 @@ function createToken({ userName, password, callback }) {
  * @param {string} params.commandName Name of the command
  * @param {Function} params.callback callback
  */
-function isUserAllowed({ commandName, token = '', callback = () => {} }) {
+function isUserAllowed({ commandName, token, callback = () => {} }) {
   const commandUsed = dbConfig.apiCommands[commandName];
   const anonUser = dbConfig.anonymousUser;
 
@@ -61,14 +61,22 @@ function isUserAllowed({ commandName, token = '', callback = () => {} }) {
     return;
   }
 
-  jwt.verify(token, appConfig.jsonKey, (err, decoded) => {
-    if (err || (!decoded && commandUsed.accessLevel > anonUser.accessLevel)) {
+  if (!token) {
+    if (commandUsed.accessLevel > anonUser.accessLevel) {
       callback({ error: new errorCreator.NotAllowed({ name: commandName }) });
 
       return;
     }
 
-    if (decoded) {
+    callback({ data: { user: anonUser } });
+  } else {
+    jwt.verify(token, appConfig.jsonKey, (err, decoded) => {
+      if (err || !decoded) {
+        callback({ error: new errorCreator.NotAllowed({ name: commandName }) });
+
+        return;
+      }
+
       dbUser.getUserByAlias({
         alias: decoded.data.userName,
         callback: ({ error, data }) => {
@@ -85,10 +93,8 @@ function isUserAllowed({ commandName, token = '', callback = () => {} }) {
           callback({ data: { user: data.user } });
         },
       });
-    } else {
-      callback({ data: { user: anonUser, anonymous: true } });
-    }
-  });
+    });
+  }
 }
 
 exports.isUserAllowed = isUserAllowed;

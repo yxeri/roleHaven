@@ -17,7 +17,7 @@
 'use strict';
 
 const objectValidator = require('../../utils/objectValidator');
-const manager = require('../../socketHelpers/manager');
+const manager = require('../../helpers/manager');
 const appConfig = require('../../config/defaults/config').app;
 const dbConfig = require('../../config/defaults/config').databasePopulation;
 // const http = require('http');

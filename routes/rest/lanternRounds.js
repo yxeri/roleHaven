@@ -21,7 +21,7 @@ const objectValidator = require('../../utils/objectValidator');
 const dbConfig = require('../../config/defaults/config').databasePopulation;
 const dbLanternHack = require('../../db/connectors/lanternhack');
 const errorCreator = require('../../objects/error/errorCreator');
-const authenticator = require('../../socketHelpers/authenticator');
+const authenticator = require('../../helpers/authenticator');
 
 const router = new express.Router();
 

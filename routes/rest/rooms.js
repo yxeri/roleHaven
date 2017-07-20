@@ -17,13 +17,11 @@
 'use strict';
 
 const express = require('express');
-const dbRoom = require('../../db/connectors/room');
 const dbConfig = require('../../config/defaults/config').databasePopulation;
-const manager = require('../../socketHelpers/manager');
+const manager = require('../../helpers/manager');
 const objectValidator = require('../../utils/objectValidator');
 const errorCreator = require('../../objects/error/errorCreator');
-const dbUser = require('../../db/connectors/user');
-const authenticator = require('../../socketHelpers/authenticator');
+const authenticator = require('../../helpers/authenticator');
 
 const router = new express.Router();
 
@@ -93,10 +91,10 @@ function handle(io) {
           return;
         }
 
-        dbRoom.getAllRooms({
+        manager.listRooms({
           user: data.user,
-          callback: ({ error: roomError, data: roomData }) => {
-            if (roomError) {
+          callback: ({ error: roomsError, data: roomsData }) => {
+            if (roomsError) {
               res.status(500).json({
                 error: {
                   status: 500,
@@ -108,12 +106,7 @@ function handle(io) {
               return;
             }
 
-            res.json({
-              data: {
-                rooms: roomData.rooms.map(room => room.roomName),
-                whisperRooms: roomData.whisperRooms.map(room => room.roomName),
-              },
-            });
+            res.json({ data: roomsData });
           },
         });
       },
@@ -204,8 +197,9 @@ function handle(io) {
           return;
         }
 
-        dbRoom.getRoom({
+        manager.getRoom({
           roomName: req.params.id,
+          user: data.user,
           callback: ({ error: roomError, data: roomData }) => {
             if (roomError) {
               if (roomError.type === errorCreator.ErrorTypes.DOESNOTEXIST) {
@@ -218,6 +212,16 @@ function handle(io) {
                 });
 
                 return;
+              } else if (roomError.type === errorCreator.ErrorTypes.NOTALLOWED) {
+                res.status(401).json({
+                  error: {
+                    status: 401,
+                    title: 'Unauthorized',
+                    detail: 'Not allowed to retrieve room',
+                  },
+                });
+
+                return;
               }
 
               res.status(500).json({
@@ -225,16 +229,6 @@ function handle(io) {
                   status: 500,
                   title: 'Internal Server Error',
                   detail: 'Internal Server Error',
-                },
-              });
-
-              return;
-            } else if (data.user.accessLevel < roomData.room.visibility) {
-              res.status(401).json({
-                error: {
-                  status: 401,
-                  title: 'Unauthorized',
-                  detail: 'Not allowed to retrieve room',
                 },
               });
 
@@ -343,12 +337,8 @@ function handle(io) {
           return;
         }
 
-        const newRoom = req.body.data.room;
-        newRoom.roomName = newRoom.roomName.toLowerCase();
-        newRoom.owner = data.user.userName;
-
         manager.createRoom({
-          room: newRoom,
+          room: req.body.data.room,
           user: data.user,
           callback: ({ error: roomError, data: roomData }) => {
             if (roomError) {
@@ -469,12 +459,9 @@ function handle(io) {
           return;
         }
 
-        const { roomName, password } = req.body.data.room;
-
-        // Checks that the user trying to add a user to a room has access to it
-        dbRoom.authUserToRoom({
-          roomName,
-          password,
+        manager.followRoom({
+          io,
+          room: req.body.data.room,
           user: data.user,
           callback: ({ error: roomError, data: roomData }) => {
             if (roomError) {
@@ -501,31 +488,7 @@ function handle(io) {
               return;
             }
 
-            dbUser.addRoomToUser({
-              userName: data.user.userName,
-              roomName: roomData.room.roomName,
-              callback: ({ error: addError, data: userData }) => {
-                if (addError) {
-                  res.status(500).json({
-                    error: {
-                      status: 500,
-                      title: 'Internal Server Error',
-                      detail: 'Internal Server Error',
-                    },
-                  });
-
-                  return;
-                }
-
-                const { user } = userData;
-
-                if (user.socketId) {
-                  io.to(user.socketId).emit('follow', { room: roomData.room });
-                }
-
-                res.json({ data: roomData });
-              },
-            });
+            res.json({ data: roomData });
           },
         });
       },
@@ -617,14 +580,13 @@ function handle(io) {
           return;
         }
 
-        const { roomName } = req.body.data.room;
-
-        dbUser.removeRoomFromUser({
-          roomName,
-          userName: data.user.userName,
-          callback: ({ error: userError, data: userData }) => {
-            if (userError) {
-              if (userError.type === errorCreator.ErrorTypes.DOESNOTEXIST) {
+        manager.unfollowRoom({
+          io,
+          user: data.user,
+          room: req.body.data.room,
+          callback: ({ error: unfollowError, data: unfollowData }) => {
+            if (unfollowError) {
+              if (unfollowError.type === errorCreator.ErrorTypes.DOESNOTEXIST) {
                 res.status(404).json({
                   error: {
                     status: 404,
@@ -647,13 +609,205 @@ function handle(io) {
               return;
             }
 
-            const { user } = userData;
+            res.json({ data: unfollowData });
+          },
+        });
+      },
+    });
+  });
 
-            if (user.socketId) {
-              io.to(user.socketId).emit('unfollow', { room: { roomName } });
+  /**
+   * @api {get} /rooms/:id/match Match rooms with sent partial room name
+   * @apiVersion 6.0.0
+   * @apiName MatchRoomName
+   * @apiGroup Rooms
+   *
+   * @apiHeader {String} Authorization Your JSON Web Token
+   *
+   * @apiDescription Retrieve a collection of rooms, based on the sent partial name. The match is done from index 0
+   *
+   * @apiParam {String} id Partial room name
+   *
+   * @apiSuccess {Object} data
+   * @apiSuccess {Object} data.rooms Found rooms. Empty array if no rooms were found
+   * @apiSuccessExample {json} Success-Response:
+   *   {
+   *    "data": {
+   *      "rooms": [
+   *        "bb1",
+   *        "bb2",
+   *        "roomSec",
+   *      ]
+   *    }
+   *  }
+   */
+  router.get('/:id/match', (req, res) => {
+    if (!objectValidator.isValidData(req.params, { id: true })) {
+      res.status(400).json({
+        error: {
+          status: 400,
+          title: 'Missing data',
+          detail: 'Unable to parse data',
+        },
+      });
+
+      return;
+    }
+
+    authenticator.isUserAllowed({
+      commandName: dbConfig.apiCommands.GetRoom.name,
+      token: req.headers.authorization,
+      callback: ({ error, data }) => {
+        if (error) {
+          if (error.type === errorCreator.ErrorTypes.DOESNOTEXIST) {
+            res.status(404).json({
+              error: {
+                status: 404,
+                title: 'Command does not exist',
+                detail: 'Command does not exist',
+              },
+            });
+
+            return;
+          } else if (error.type === errorCreator.ErrorTypes.NOTALLOWED) {
+            res.status(401).json({
+              error: {
+                status: 401,
+                title: 'Unauthorized',
+                detail: 'Invalid token',
+              },
+            });
+
+            return;
+          }
+
+          res.status(500).json({
+            error: {
+              status: 500,
+              title: 'Internal Server Error',
+              detail: 'Internal Server Error',
+            },
+          });
+
+          return;
+        }
+
+        manager.matchPartialRoomName({
+          partialName: req.params.id,
+          user: data.user,
+          callback: ({ error: matchError, data: matchData }) => {
+            if (matchError) {
+              res.status(500).json({
+                error: {
+                  status: 500,
+                  title: 'Internal Server Error',
+                  detail: 'Internal Server Error',
+                },
+              });
+
+              return;
             }
 
-            res.json({ data: { room: { roomName } } });
+            res.json({ data: matchData });
+          },
+        });
+      },
+    });
+  });
+
+  /**
+   * @api {get} /rooms/:id/match Match followed rooms with sent partial room name
+   * @apiVersion 6.0.0
+   * @apiName MatchRoomName
+   * @apiGroup Rooms
+   *
+   * @apiHeader {String} Authorization Your JSON Web Token
+   *
+   * @apiDescription Retrieve a collection of followed rooms, based on the sent partial name. The match is done from index 0
+   *
+   * @apiParam {String} id Partial room name
+   *
+   * @apiSuccess {Object} data
+   * @apiSuccess {Object} data.rooms Found rooms. Empty array if no rooms were found
+   * @apiSuccessExample {json} Success-Response:
+   *   {
+   *    "data": {
+   *      "rooms": [
+   *        "bb1",
+   *        "bb2",
+   *        "roomSec",
+   *      ]
+   *    }
+   *  }
+   */
+  router.get('/:id/match/followed', (req, res) => {
+    if (!objectValidator.isValidData(req.params, { id: true })) {
+      res.status(400).json({
+        error: {
+          status: 400,
+          title: 'Missing data',
+          detail: 'Unable to parse data',
+        },
+      });
+
+      return;
+    }
+
+    authenticator.isUserAllowed({
+      commandName: dbConfig.apiCommands.GetRoom.name,
+      token: req.headers.authorization,
+      callback: ({ error, data }) => {
+        if (error) {
+          if (error.type === errorCreator.ErrorTypes.DOESNOTEXIST) {
+            res.status(404).json({
+              error: {
+                status: 404,
+                title: 'Command does not exist',
+                detail: 'Command does not exist',
+              },
+            });
+
+            return;
+          } else if (error.type === errorCreator.ErrorTypes.NOTALLOWED) {
+            res.status(401).json({
+              error: {
+                status: 401,
+                title: 'Unauthorized',
+                detail: 'Invalid token',
+              },
+            });
+
+            return;
+          }
+
+          res.status(500).json({
+            error: {
+              status: 500,
+              title: 'Internal Server Error',
+              detail: 'Internal Server Error',
+            },
+          });
+
+          return;
+        }
+
+        manager.matchMyPartialRoomName({
+          partialName: req.params.id,
+          user: data.user,
+          callback: ({ error: matchError, data: matchData }) => {
+            if (matchError) {
+              res.status(500).json({
+                error: {
+                  status: 500,
+                  title: 'Internal Server Error',
+                  detail: 'Internal Server Error',
+                },
+              });
+
+              return;
+            }
+
+            res.json({ data: matchData });
           },
         });
       },

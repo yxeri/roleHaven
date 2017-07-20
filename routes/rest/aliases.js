@@ -19,9 +19,10 @@
 const express = require('express');
 const dbConfig = require('../../config/defaults/config').databasePopulation;
 const objectValidator = require('../../utils/objectValidator');
-const manager = require('../../socketHelpers/manager');
+const manager = require('../../helpers/manager');
 const errorCreator = require('../../objects/error/errorCreator');
-const authenticator = require('../../socketHelpers/authenticator');
+const authenticator = require('../../helpers/authenticator');
+const appConfig = require('../../config/defaults/config').app;
 
 const router = new express.Router();
 
@@ -183,7 +184,18 @@ function handle() {
           user: data.user,
           callback: ({ error: aliasError, data: aliasData }) => {
             if (aliasError) {
-              if (aliasError.type === errorCreator.ErrorTypes.ALREADYEXISTS) {
+              if (aliasError.type === errorCreator.ErrorTypes.INVALIDCHARACTERS) {
+                res.status(400).json({
+                  error: {
+                    status: 400,
+                    title: 'Alias contains invalid characters',
+                    detail: `Max length: ${appConfig.userNameMaxLength}. a-z 0-9`,
+                  },
+                });
+
+
+                return;
+              } else if (aliasError.type === errorCreator.ErrorTypes.ALREADYEXISTS) {
                 res.status(403).json({
                   error: {
                     status: 403,

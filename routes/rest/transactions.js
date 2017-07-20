@@ -18,11 +18,11 @@
 
 const express = require('express');
 const objectValidator = require('../../utils/objectValidator');
-const manager = require('../../socketHelpers/manager');
+const manager = require('../../helpers/manager');
 const dbUser = require('../../db/connectors/user');
 const errorCreator = require('../../objects/error/errorCreator');
 const dbConfig = require('../../config/defaults/config').databasePopulation;
-const authenticator = require('../../socketHelpers/authenticator');
+const authenticator = require('../../helpers/authenticator');
 
 const router = new express.Router();
 

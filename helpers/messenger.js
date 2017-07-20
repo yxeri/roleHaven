@@ -18,10 +18,27 @@
 
 const dbChatHistory = require('./../db/connectors/chatHistory');
 const dbUser = require('./../db/connectors/user');
-const databasePopulation = require('./../config/defaults/config').databasePopulation;
+const dbConfig = require('./../config/defaults/config').databasePopulation;
 const appConfig = require('./../config/defaults/config').app;
 const objectValidator = require('./../utils/objectValidator');
 const errorCreator = require('../objects/error/errorCreator');
+const textTools = require('../utils/textTools');
+const fs = require('fs');
+
+/**
+ * Check if the room name should be hidden and not returned to client
+ * @param {string} params.roomName Name of the room
+ * @param {string} socketId Socket.io id
+ * @returns {boolean} Should room name be hidden?
+ */
+function filterHiddenRooms({ roomNames, socketId }) {
+  const roomsToHide = dbConfig.roomsToBeHidden;
+  roomsToHide.push(socketId);
+
+  return roomNames.filter((roomName) => {
+    return roomsToHide.indexOf(roomName) === -1 && roomName.indexOf(appConfig.whisperAppend) === -1 && roomName.indexOf(appConfig.deviceAppend) === -1;
+  });
+}
 
 /**
  * Add a sent message to a room's getHistory in the database
@@ -84,7 +101,7 @@ function sendMsg({ socket, message, io }) {
 
   const messageToSend = message;
   messageToSend.time = new Date();
-  messageToSend.userName = databasePopulation.systemUserName;
+  messageToSend.userName = dbConfig.systemUserName;
 
   if (socket) {
     socket.broadcast.to(messageToSend.roomName).emit('message', {
@@ -138,7 +155,7 @@ function sendAndStoreChatMsg({ user, callback, message, io, socket }) {
           };
 
           if (newMessage.anonymous) {
-            newMessage.userName = databasePopulation.anonymousUserName;
+            newMessage.userName = dbConfig.anonymousUserName;
             newMessage.time.setHours(0);
             newMessage.time.setMinutes(0);
             newMessage.time.setSeconds(0);
@@ -158,15 +175,55 @@ function sendAndStoreChatMsg({ user, callback, message, io, socket }) {
 }
 
 /**
+ * Create and return image object
+ * @param {Object} params.image Image to create
+ * @param {Object} params.user User attaching image
+ * @param {Object} params.callback Callback
+ */
+function createImage({ image, user, callback }) {
+  if (!appConfig.allowMessageImage) {
+    callback({ error: errorCreator.NotAllowed({ name: 'send image' }) });
+
+    return;
+  } else if (!image || !image.imageName || !image.source.match(/^data:image\/((png)|(jpeg));base64,/)) {
+    callback({ error: new errorCreator.InvalidData({ name: 'image data' }) });
+
+    return;
+  }
+
+  const fileName = `${new Buffer(user.userName).toString('base64')}-${appConfig.mode}-${image.imageName.replace(/[^\w.]/g, '-')}`;
+
+  fs.writeFile(`${appConfig.publicBase}/images/${fileName}`, image.source.replace(/data:image\/((png)|(jpeg));base64,/, ''), { encoding: 'base64' }, (err) => {
+    if (err) {
+      callback({ error: new errorCreator.Database({ errorObject: err, name: 'writeFile image' }) });
+
+      return;
+    }
+
+    callback({
+      data: {
+        image: {
+          fileName,
+          imageName: image.imageName,
+          width: image.width,
+          height: image.height,
+        },
+      },
+    });
+  });
+}
+
+/**
  * Sends a message to a room and stores it in history
  * Emits message
  * @param {Object} params.message Message to be sent
  * @param {Object} params.user User sending the message
  * @param {Object} params.io Socket.io. Used by API, when no socket is available
  * @param {Object} params.socket Socket.io socket
+ * @param {Object} [params.image] Image to attach to the message
  * @param {Function} params.callback Client callback
  */
-function sendChatMsg({ message, user, callback, io, socket }) {
+function sendChatMsg({ image, message, user, callback, io, socket }) {
   if (!objectValidator.isValidData({ message, user, callback, io }, { user: { userName: true }, message: { text: true, roomName: true }, io: true })) {
     callback({ error: new errorCreator.InvalidData({ expected: '{ user: { userName }, message: { text, roomName }, io }' }) });
 
@@ -177,50 +234,74 @@ function sendChatMsg({ message, user, callback, io, socket }) {
     return;
   }
 
+  const sendMessage = ({ newMessage }) => {
+    if (newMessage.userName) {
+      dbUser.getUserByAlias({
+        alias: newMessage.userName,
+        callback: (aliasData) => {
+          if (aliasData.error) {
+            callback({ error: aliasData.error });
+
+            return;
+          } else if (aliasData.data.user.userName !== user.userName) {
+            callback({ error: new errorCreator.NotAllowed({ name: 'alias does not match with user name' }) });
+
+            return;
+          }
+
+          sendAndStoreChatMsg({
+            io,
+            user,
+            callback,
+            socket,
+            message: newMessage,
+          });
+        },
+      });
+    } else {
+      const modifiedMessage = newMessage;
+      modifiedMessage.userName = user.userName;
+
+      sendAndStoreChatMsg({
+        io,
+        user,
+        callback,
+        socket,
+        message: modifiedMessage,
+      });
+    }
+  };
   const newMessage = message;
+  newMessage.text = textTools.cleanText(newMessage.text);
 
   if (newMessage.roomName === 'team') {
     newMessage.roomName = user.team + appConfig.teamAppend;
   }
 
+  // TODO ?
   if (!newMessage.userName || newMessage.userName === user.userName) {
     newMessage.shortTeam = user.shortTeam;
     newMessage.team = user.team;
   }
 
-  if (newMessage.userName) {
-    dbUser.getUserByAlias({
-      alias: newMessage.userName,
-      callback: (aliasData) => {
-        if (aliasData.error) {
-          callback({ error: aliasData.error });
-
-          return;
-        } else if (aliasData.data.user.userName !== user.userName) {
-          callback({ error: new errorCreator.NotAllowed({ name: 'alias does not match with user name' }) });
+  if (image) {
+    createImage({
+      image,
+      user,
+      callback: ({ error: imageError, data: imageData }) => {
+        if (imageError) {
+          callback({ error: imageError });
 
           return;
         }
 
-        sendAndStoreChatMsg({
-          io,
-          user,
-          callback,
-          socket,
-          message: newMessage,
-        });
+        newMessage.image = imageData.image;
+
+        sendMessage({ newMessage });
       },
     });
   } else {
-    newMessage.userName = user.userName;
-
-    sendAndStoreChatMsg({
-      io,
-      user,
-      callback,
-      socket,
-      message: newMessage,
-    });
+    sendMessage({ newMessage });
   }
 }
 
@@ -240,6 +321,12 @@ function sendWhisperMsg({ io, user, message, socket, callback }) {
     return;
   }
 
+  const newMessage = message;
+  newMessage.text = textTools.cleanText(newMessage.text);
+  newMessage.roomName += appConfig.whisperAppend;
+  newMessage.extraClass = 'whisperMsg';
+  newMessage.time = new Date();
+
   dbUser.getUserByAlias({
     alias: message.userName,
     callback: ({ error, data }) => {
@@ -253,12 +340,6 @@ function sendWhisperMsg({ io, user, message, socket, callback }) {
         return;
       }
 
-      const newMessage = message;
-      newMessage.roomName += appConfig.whisperAppend;
-      newMessage.extraClass = 'whisperMsg';
-      newMessage.time = new Date();
-
-      // TODO Message should be removed if db fails to store it at senders
       addMsgToHistory({
         message: newMessage,
         roomName: newMessage.roomName,
@@ -282,15 +363,15 @@ function sendWhisperMsg({ io, user, message, socket, callback }) {
               }
 
               const sendData = {
-                messages: [newMessage],
+                message: newMessage,
                 room: { roomName: newMessage.roomName },
                 whisper: true,
               };
 
               if (socket) {
-                socket.broadcast.to(newMessage.roomName).emit('chatMsgs', sendData);
+                socket.broadcast.to(newMessage.roomName).emit('chatMsg', sendData);
               } else {
-                io.to(newMessage.roomName).emit('chatMsgs', sendData);
+                io.to(newMessage.roomName).emit('chatMsg', sendData);
               }
 
 
@@ -325,9 +406,9 @@ function sendBroadcastMsg({ message, socket, callback, io }) {
 
   const newMessage = message;
   newMessage.extraClass = 'broadcastMsg';
-  newMessage.roomName = databasePopulation.rooms.bcast.roomName;
+  newMessage.roomName = dbConfig.rooms.bcast.roomName;
   newMessage.time = new Date();
-  newMessage.userName = newMessage.userName || 'SYSTEM';
+  newMessage.userName = 'SYSTEM';
 
   addMsgToHistory({
     roomName: newMessage.roomName,
@@ -357,3 +438,4 @@ exports.sendWhisperMsg = sendWhisperMsg;
 exports.sendBroadcastMsg = sendBroadcastMsg;
 exports.sendMsg = sendMsg;
 exports.sendSelfMsg = sendSelfMsg;
+exports.filterHiddenRooms = filterHiddenRooms;

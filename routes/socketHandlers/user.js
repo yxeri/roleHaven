@@ -18,14 +18,14 @@
 
 const dbUser = require('../../db/connectors/user');
 const dbConfig = require('../../config/defaults/config').databasePopulation;
-const manager = require('../../socketHelpers/manager');
+const manager = require('../../helpers/manager');
 const appConfig = require('../../config/defaults/config').app;
 const objectValidator = require('../../utils/objectValidator');
 const errorCreator = require('../../objects/error/errorCreator');
 const jwt = require('jsonwebtoken');
 const dbDevice = require('../../db/connectors/device');
 const dbMailEvent = require('../../db/connectors/mailEvent');
-const mailer = require('../../socketHelpers/mailer');
+const mailer = require('../../helpers/mailer');
 
 dbUser.removeAllUserBlockedBy({ callback: () => {} });
 

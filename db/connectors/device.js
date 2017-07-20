@@ -33,24 +33,27 @@ const Device = mongoose.model('Device', deviceSchema);
  * Update device properties. Creates a new device if one doesn't exist with sent deviceId
  * @param {Object} params.device Properties to update in device
  * @param {string} params.device.deviceId Device ID
- * @param {string} [params.device.deviceAlias] Alias for device
  * @param {string} [params.device.lastUser] Last user name logged in on device
  * @param {string} [params.device.socketId] Socket.IO socket ID
  * @param {Function} params.callback Callback
  */
 function updateDevice({ device, callback }) {
-  const { deviceId, deviceAlias, lastUser, socketId } = device;
+  const { deviceId, lastUser, socketId, lastAlive } = device;
   const query = { deviceId };
-  const toSet = {
-    lastAlive: new Date(),
-  };
+  const toSet = { lastAlive };
+  const toUnset = {};
 
-  if (deviceAlias) { toSet.deviceAlias = deviceAlias; }
   if (lastUser) { toSet.lastUser = lastUser; }
-  if (socketId) { toSet.socketId = socketId; }
+
+  if (socketId) {
+    toSet.socketId = socketId;
+  } else {
+    toUnset.socketId = '';
+  }
 
   const update = {
     $set: toSet,
+    $unset: toUnset,
     $setOnInsert: { deviceAlias: device.deviceId },
   };
   const options = {
@@ -61,6 +64,33 @@ function updateDevice({ device, callback }) {
   Device.findOneAndUpdate(query, update, options).lean().exec((err, updatedDevice) => {
     if (err) {
       callback({ error: new errorCreator.Database({ errorObject: err, name: 'updateDevice' }) });
+
+      return;
+    }
+
+    callback({ data: { device: updatedDevice } });
+  });
+}
+
+/**
+ * Update device alias
+ * @param {Object} params.device Device
+ * @param {string} params.deviceId Device id
+ * @param {string} params.deviceAlias New device alias
+ * @param {Function} params.callback Callback
+ */
+function updateDeviceAlias({ device, callback }) {
+  const query = { deviceId: device.deviceId };
+  const update = { $set: { deviceAlias: device.deviceAlias } };
+  const options = { new: true };
+
+  Device.findOneAndUpdate(query, update, options).lean().exec((error, updatedDevice) => {
+    if (error) {
+      callback({ error: new errorCreator.Database({ errorObject: error, name: 'updateDeviceAlias' }) });
+
+      return;
+    } else if (!updatedDevice) {
+      callback({ error: new errorCreator.DoesNotExist({ name: `device ${device.deviceId}` }) });
 
       return;
     }
@@ -98,7 +128,12 @@ function getDeviceBySocketId({ socketId, callback }) {
  * @param {Function} params.callback Callback
  */
 function getDevice({ deviceCode, callback }) {
-  const query = { $or: [{ deviceId: deviceCode }, { deviceAlias: deviceCode }] };
+  const query = {
+    $or: [
+      { deviceId: deviceCode },
+      { deviceAlias: deviceCode },
+    ],
+  };
 
   Device.findOne(query).lean().exec((err, device) => {
     if (err) {
@@ -134,3 +169,4 @@ exports.updateDevice = updateDevice;
 exports.getDevice = getDevice;
 exports.getAllDevices = getAllDevices;
 exports.getDeviceBySocketId = getDeviceBySocketId;
+exports.updateDeviceAlias = updateDeviceAlias;

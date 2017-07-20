@@ -18,7 +18,7 @@
 
 const dbUser = require('../../db/connectors/user');
 const dbPosition = require('../../db/connectors/position');
-const manager = require('../../socketHelpers/manager');
+const manager = require('../../helpers/manager');
 const dbConfig = require('../../config/defaults/config').databasePopulation;
 const objectValidator = require('../../utils/objectValidator');
 const mapCreator = require('../../utils/mapCreator');

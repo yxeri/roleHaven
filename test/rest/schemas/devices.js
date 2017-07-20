@@ -19,28 +19,46 @@
 
 const schemas = {};
 
-schemas.histories = {
+const deviceBase = {
+  type: 'object',
+  required: [
+    'deviceId',
+    'lastAlive',
+    'deviceAlias',
+  ],
+  properties: {
+    deviceId: { type: 'string' },
+    lastAlive: { type: 'string' },
+    deviceAlias: { type: 'string' },
+  },
+};
+
+schemas.devices = {
   type: 'object',
   required: ['data'],
   properties: {
     data: {
       type: 'object',
-      required: ['histories', 'timeZoneOffset'],
+      required: ['devices'],
       properties: {
-        timeZoneOffset: { type: 'number' },
-        histories: {
-          required: [
-            'messages',
-            'anonymous',
-            'isWhisper',
-          ],
-          properties: {
-            messages: { type: 'array', items: { type: 'object' } },
-            anonymous: { type: 'boolean' },
-            timeZoneOffset: { type: 'number' },
-            isWhisper: { type: 'boolean' },
-          },
+        devices: {
+          type: 'array',
+          items: deviceBase,
         },
+      },
+    },
+  },
+};
+
+schemas.device = {
+  type: 'object',
+  required: ['data'],
+  properties: {
+    data: {
+      type: 'object',
+      required: ['device'],
+      properties: {
+        device: deviceBase,
       },
     },
   },

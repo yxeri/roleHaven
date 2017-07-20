@@ -23,7 +23,7 @@ const dbUser = require('../../db/connectors/user');
 const dbPosition = require('../../db/connectors/position');
 const errorCreator = require('../../objects/error/errorCreator');
 const dbConfig = require('../../config/defaults/config').databasePopulation;
-const authenticator = require('../../socketHelpers/authenticator');
+const authenticator = require('../../helpers/authenticator');
 
 const router = new express.Router();
 

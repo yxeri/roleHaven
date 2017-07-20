@@ -16,7 +16,7 @@
 
 'use strict';
 
-const manager = require('../../socketHelpers/manager');
+const manager = require('../../helpers/manager');
 const databasePopulation = require('../../config/defaults/config').databasePopulation;
 const dbUser = require('../../db/connectors/user');
 const dbPosition = require('../../db/connectors/position');

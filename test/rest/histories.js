@@ -86,7 +86,7 @@ describe('Histories', () => {
         .end((error, response) => {
           response.should.have.status(200);
           response.should.be.json;
-          response.body.should.be.jsonSchema(historySchemas.history);
+          response.body.should.be.jsonSchema(historySchemas.histories);
 
           done();
         });
@@ -144,7 +144,7 @@ describe('Histories', () => {
         .end((error, response) => {
           response.should.have.status(200);
           response.should.be.json;
-          response.body.should.be.jsonSchema(historySchemas.history);
+          response.body.should.be.jsonSchema(historySchemas.histories);
 
           done();
         });

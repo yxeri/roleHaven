@@ -17,14 +17,11 @@
 'use strict';
 
 const express = require('express');
-const appConfig = require('../../config/defaults/config').app;
-const jwt = require('jsonwebtoken');
 const objectValidator = require('../../utils/objectValidator');
 const dbConfig = require('../../config/defaults/config').databasePopulation;
-const dbUser = require('../../db/connectors/user');
-const manager = require('../../socketHelpers/manager');
+const manager = require('../../helpers/manager');
 const errorCreator = require('../../objects/error/errorCreator');
-const mailer = require('../../socketHelpers/mailer');
+const authenticator = require('../../helpers/authenticator');
 
 const router = new express.Router();
 
@@ -63,52 +60,63 @@ function handle() {
    *  }
    */
   router.get('/', (req, res) => {
-    // noinspection JSUnresolvedVariable
-    const auth = req.headers.authorization || '';
-
-    jwt.verify(auth, appConfig.jsonKey, (jwtErr, decoded) => {
-      if (jwtErr || !decoded) {
-        res.status(401).json({
-          error: {
-            status: 401,
-            title: 'Unauthorized',
-            detail: 'Invalid token',
-          },
-        });
-
-        return;
-      }
-
-      dbUser.getAllUsers({
-        user: decoded.data,
-        callback: ({ error, data }) => {
-          if (error) {
-            res.status(500).json({
+    authenticator.isUserAllowed({
+      commandName: dbConfig.apiCommands.GetUser.name,
+      token: req.headers.authorization,
+      callback: ({ error, data }) => {
+        if (error) {
+          if (error.type === errorCreator.ErrorTypes.DOESNOTEXIST) {
+            res.status(404).json({
               error: {
-                status: 500,
-                title: 'Internal Server Error',
-                detail: 'Internal Server Error',
+                status: 404,
+                title: 'Command does not exist',
+                detail: 'Command does not exist',
+              },
+            });
+
+            return;
+          } else if (error.type === errorCreator.ErrorTypes.NOTALLOWED) {
+            res.status(401).json({
+              error: {
+                status: 401,
+                title: 'Unauthorized',
+                detail: 'Invalid token',
               },
             });
 
             return;
           }
 
-          res.json({
-            data: {
-              users: data.users.map((user) => {
-                const userObj = {
-                  userName: user.userName,
-                  team: user.team,
-                  online: user.online,
-                };
-
-                return userObj;
-              }),
+          res.status(500).json({
+            error: {
+              status: 500,
+              title: 'Internal Server Error',
+              detail: 'Internal Server Error',
             },
           });
-        },
-      });
+
+          return;
+        }
+
+        manager.getAllUsers({
+          user: data.user,
+          callback: ({ error: userError, data: userData }) => {
+            if (userError) {
+              res.status(500).json({
+                error: {
+                  status: 500,
+                  title: 'Internal Server Error',
+                  detail: 'Internal Server Error',
+                },
+              });
+
+              return;
+            }
+
+            res.json({ data: userData });
+          },
+        });
+      },
     });
   });
 
@@ -146,74 +154,75 @@ function handle() {
       return;
     }
 
-    // noinspection JSUnresolvedVariable
-    const auth = req.headers.authorization || '';
-
-    jwt.verify(auth, appConfig.jsonKey, (jwtErr, decoded) => {
-      if (jwtErr || !decoded || decoded.data.accessLevel < dbConfig.apiCommands.RequestPasswordReset) {
-        res.status(401).json({
-          error: {
-            status: 401,
-            title: 'Unauthorized',
-            detail: 'Invalid token',
-          },
-        });
-
-        return;
-      }
-
-      const mail = req.params.id;
-
-      dbUser.getUserByMail({
-        mail,
-        callback: ({ error, data }) => {
-          if (error) {
-            if (error.type === errorCreator.ErrorTypes.DOESNOTEXIST) {
-              res.status(404).json({
-                error: {
-                  status: 404,
-                  title: 'User with mail does not exist',
-                  detail: 'User with mail not exist',
-                },
-              });
-
-              return;
-            }
-
-            res.status(500).json({
+    authenticator.isUserAllowed({
+      commandName: dbConfig.apiCommands.RequestPasswordReset.name,
+      token: req.headers.authorization,
+      callback: ({ error }) => {
+        if (error) {
+          if (error.type === errorCreator.ErrorTypes.DOESNOTEXIST) {
+            res.status(404).json({
               error: {
-                status: 500,
-                title: 'Internal Server Error',
-                detail: 'Failed to send reset mail',
+                status: 404,
+                title: 'Command does not exist',
+                detail: 'Command does not exist',
+              },
+            });
+
+            return;
+          } else if (error.type === errorCreator.ErrorTypes.NOTALLOWED) {
+            res.status(401).json({
+              error: {
+                status: 401,
+                title: 'Unauthorized',
+                detail: 'Invalid token',
               },
             });
 
             return;
           }
 
-          const { user } = data;
+          res.status(500).json({
+            error: {
+              status: 500,
+              title: 'Internal Server Error',
+              detail: 'Internal Server Error',
+            },
+          });
 
-          mailer.sendPasswordReset({
-            address: user.mail,
-            userName: user.userName,
-            callback: (resetData) => {
-              if (resetData.error) {
-                res.status(500).json({
+          return;
+        }
+
+        manager.sendPasswordReset({
+          mail: req.params.id,
+          callback: ({ error: mailError, data: mailData }) => {
+            if (mailError) {
+              if (mailError.type === errorCreator.ErrorTypes.DOESNOTEXIST) {
+                res.status(404).json({
                   error: {
-                    status: 500,
-                    title: 'Internal Server Error',
-                    detail: 'Failed to send reset mail',
+                    status: 404,
+                    title: 'User with mail does not exist',
+                    detail: 'User with mail not exist',
                   },
                 });
 
                 return;
               }
 
-              res.json({ data: { success: true } });
-            },
-          });
-        },
-      });
+              res.status(500).json({
+                error: {
+                  status: 500,
+                  title: 'Internal Server Error',
+                  detail: 'Failed to send reset mail',
+                },
+              });
+
+              return;
+            }
+
+            res.json({ data: mailData });
+          },
+        });
+      },
     });
   });
 
@@ -250,7 +259,10 @@ function handle() {
    * @apiSuccessExample {json} Success-Response:
    *   {
    *    "data": {
-   *      "success": true
+   *      "user": {
+   *        "userName": "rez",
+   *        "fullName": "Mr. X"
+   *      }
    *    }
    *  }
    */
@@ -267,71 +279,93 @@ function handle() {
       return;
     }
 
-    // noinspection JSUnresolvedVariable
-    const auth = req.headers.authorization || '';
-
-    jwt.verify(auth, appConfig.jsonKey, (jwtErr, decoded) => {
-      if (jwtErr || !decoded || decoded.data.accessLevel < dbConfig.apiCommands.CreateUser.accessLevel) {
-        res.status(401).json({
-          error: {
-            status: 401,
-            title: 'Unauthorized',
-            detail: 'Invalid token',
-          },
-        });
-
-        return;
-      }
-
-      const { user } = req.body.data;
-      user.userName = user.userName.toLowerCase();
-      user.registerDevice = 'RESTAPI';
-
-      if (decoded.data.accessLevel < dbConfig.apiCommands.ChangeUserLevels.accessLevel) {
-        user.accessLevel = undefined;
-        user.visibility = undefined;
-      }
-
-      manager.createUser({
-        user,
-        callback: ({ error, data }) => {
-          if (error) {
-            if (error.type === errorCreator.ErrorTypes.ALREADYEXISTS) {
-              res.status(403).json({
-                error: {
-                  status: 403,
-                  title: 'User already exists',
-                  detail: `User with user name ${user.userName} already exists`,
-                },
-              });
-
-              return;
-            } else if (error.type === errorCreator.ErrorTypes.INVALIDDATA) {
-              res.status(400).json({
-                error: {
-                  status: 400,
-                  title: 'Invalid data',
-                  detail: 'Invalid data',
-                },
-              });
-
-              return;
-            }
-
-            res.status(500).json({
+    authenticator.isUserAllowed({
+      commandName: dbConfig.apiCommands.CreateUser.name,
+      token: req.headers.authorization,
+      callback: ({ error, data }) => {
+        if (error) {
+          if (error.type === errorCreator.ErrorTypes.DOESNOTEXIST) {
+            res.status(404).json({
               error: {
-                status: 500,
-                title: 'Internal Server Error',
-                detail: 'Internal Server Error',
+                status: 404,
+                title: 'Command does not exist',
+                detail: 'Command does not exist',
+              },
+            });
+
+            return;
+          } else if (error.type === errorCreator.ErrorTypes.NOTALLOWED) {
+            res.status(401).json({
+              error: {
+                status: 401,
+                title: 'Unauthorized',
+                detail: 'Invalid token',
               },
             });
 
             return;
           }
 
-          res.json({ data });
-        },
-      });
+          res.status(500).json({
+            error: {
+              status: 500,
+              title: 'Internal Server Error',
+              detail: 'Internal Server Error',
+            },
+          });
+
+          return;
+        }
+
+        const newUser = req.body.data.user;
+        newUser.registerDevice = 'RESTAPI';
+
+        if (data.user.accessLevel < dbConfig.apiCommands.ChangeUserLevels.accessLevel) {
+          newUser.accessLevel = undefined;
+          newUser.visibility = undefined;
+        }
+
+        manager.createUser({
+          user: newUser,
+          callback: ({ error: userError, data: userData }) => {
+            if (userError) {
+              if (userError.type === errorCreator.ErrorTypes.ALREADYEXISTS) {
+                res.status(403).json({
+                  error: {
+                    status: 403,
+                    title: 'User already exists',
+                    detail: `User with user name ${newUser.userName} already exists`,
+                  },
+                });
+
+                return;
+              } else if (userError.type === errorCreator.ErrorTypes.INVALIDDATA) {
+                res.status(400).json({
+                  error: {
+                    status: 400,
+                    title: 'Invalid data',
+                    detail: 'Invalid data',
+                  },
+                });
+
+                return;
+              }
+
+              res.status(500).json({
+                error: {
+                  status: 500,
+                  title: 'Internal Server Error',
+                  detail: 'Internal Server Error',
+                },
+              });
+
+              return;
+            }
+
+            res.json({ data: userData });
+          },
+        });
+      },
     });
   });
 
@@ -369,66 +403,76 @@ function handle() {
       return;
     }
 
-    // noinspection JSUnresolvedVariable
-    const auth = req.headers.authorization || '';
-
-    jwt.verify(auth, appConfig.jsonKey, (jwtErr, decoded) => {
-      if (jwtErr || !decoded || decoded.data.accessLevel < dbConfig.apiCommands.GetUser.accessLevel) {
-        res.status(401).json({
-          error: {
-            status: 401,
-            title: 'Unauthorized',
-            detail: 'Invalid token',
-          },
-        });
-
-        return;
-      }
-
-      const userName = req.params.id;
-
-      dbUser.getUser({
-        userName,
-        callback: ({ error, data }) => {
-          if (error) {
-            if (error.type === errorCreator.ErrorTypes.DOESNOTEXIST) {
-              res.status(404).json({
-                error: {
-                  status: 404,
-                  title: 'Failed to retrieve user',
-                  detail: 'Unable to retrieve user, due it it not existing or your user not having high enough access level',
-                },
-              });
-
-              return;
-            }
-
-            res.status(500).json({
+    authenticator.isUserAllowed({
+      commandName: dbConfig.apiCommands.GetUser.name,
+      token: req.headers.authorization,
+      callback: ({ error, data }) => {
+        if (error) {
+          if (error.type === errorCreator.ErrorTypes.DOESNOTEXIST) {
+            res.status(404).json({
               error: {
-                status: 500,
-                title: 'Internal Server Error',
-                detail: 'Internal Server Error',
+                status: 404,
+                title: 'Command does not exist',
+                detail: 'Command does not exist',
               },
             });
 
             return;
-          } else if (decoded.data.userName !== userName && (decoded.data.accessLevel < data.user.accessLevel || decoded.data.accessLevel < data.user.visibility)) {
-            res.status(404).json({
+          } else if (error.type === errorCreator.ErrorTypes.NOTALLOWED) {
+            res.status(401).json({
               error: {
-                status: 404,
-                title: 'Failed to retrieve user',
-                detail: 'Unable to retrieve user, due it it not existing or your user not having high enough access level',
+                status: 401,
+                title: 'Unauthorized',
+                detail: 'Invalid token',
               },
             });
 
             return;
           }
 
-          res.json({
-            data: { user: data.user },
+          res.status(500).json({
+            error: {
+              status: 500,
+              title: 'Internal Server Error',
+              detail: 'Internal Server Error',
+            },
           });
-        },
-      });
+
+          return;
+        }
+
+        manager.getUser({
+          userName: req.params.id,
+          user: data.user,
+          callback: ({ error: userError, data: userData }) => {
+            if (userError) {
+              if (userError.type === errorCreator.ErrorTypes.DOESNOTEXIST) {
+                res.status(404).json({
+                  error: {
+                    status: 404,
+                    title: 'Failed to retrieve user',
+                    detail: 'Unable to retrieve user, due it it not existing or your user not having high enough access level',
+                  },
+                });
+
+                return;
+              }
+
+              res.status(500).json({
+                error: {
+                  status: 500,
+                  title: 'Internal Server Error',
+                  detail: 'Internal Server Error',
+                },
+              });
+
+              return;
+            }
+
+            res.json({ data: userData });
+          },
+        });
+      },
     });
   });
 

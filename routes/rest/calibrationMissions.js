@@ -19,11 +19,9 @@
 const express = require('express');
 const dbConfig = require('../../config/defaults/config').databasePopulation;
 const objectValidator = require('../../utils/objectValidator');
-const dbCalibrationMission = require('../../db/connectors/calibrationMission');
-const dbUser = require('../../db/connectors/user');
 const errorCreator = require('../../objects/error/errorCreator');
-const manager = require('../../socketHelpers/manager');
-const authenticator = require('../../socketHelpers/authenticator');
+const manager = require('../../helpers/manager');
+const authenticator = require('../../helpers/authenticator');
 
 const router = new express.Router();
 
@@ -327,9 +325,9 @@ function handle(io) {
 
         const { mission } = req.body.data;
 
-        dbCalibrationMission.setMissionCompleted({
-          code: mission.code,
-          stationId: mission.stationId,
+        manager.cancelActiveCalibrationMission({
+          mission,
+          io,
           callback: ({ error: missionError, data: missionData }) => {
             if (missionError) {
               if (missionError.type === errorCreator.ErrorTypes.DOESNOTEXIST) {
@@ -355,32 +353,7 @@ function handle(io) {
               return;
             }
 
-            const updatedMission = missionData.mission;
-
-            dbUser.getUserByAlias({
-              alias: updatedMission.owner,
-              callback: ({ error: aliasError, data: aliasData }) => {
-                if (aliasError) {
-                  res.status(500).json({
-                    error: {
-                      status: 500,
-                      title: 'Internal Server Error',
-                      detail: 'Internal Server Error',
-                    },
-                  });
-
-                  return;
-                }
-
-                const { user } = aliasData;
-
-                if (user.socketId !== '') {
-                  io.to(user.socketId).emit('terminal', { mission: { missionType: 'calibrationMission', cancelled: true } });
-                }
-
-                res.json({ data: { mission: updatedMission, cancelled: true } });
-              },
-            });
+            res.json({ data: missionData });
           },
         });
       },

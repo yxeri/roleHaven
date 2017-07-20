@@ -16,31 +16,50 @@
 
 'use strict';
 
-const manager = require('../../socketHelpers/manager');
+const authenticator = require('../../helpers/authenticator');
+const manager = require('../../helpers/manager');
 const databasePopulation = require('../../config/defaults/config').databasePopulation;
+
+/**
+ * Get active calibration mission
+ * @param {Object} params.token jwt for user retrieving mission
+ * @param {Function} params.callback Callback
+ */
+function getCalibrationMission({ token, callback }) {
+  authenticator.isUserAllowed({
+    token,
+    commandName: databasePopulation.apiCommands.GetCalibrationMission.name,
+    callback: ({ error, data }) => {
+      if (error) {
+        callback({ error });
+
+        return;
+      }
+
+      manager.getActiveCalibrationMission({
+        userName: data.user.userName,
+        callback: ({ error: calibrationError, data: calibrationData }) => {
+          if (calibrationError) {
+            callback({ error: calibrationError });
+
+            return;
+          }
+
+          callback({ data: calibrationData });
+        },
+      });
+    },
+  });
+}
 
 /**
  * @param {object} socket - Socket.IO socket
  */
 function handle(socket) {
   socket.on('getCalibrationMission', ({ token }, callback = () => {}) => {
-    manager.userIsAllowed({
-      token,
-      commandName: databasePopulation.commands.calibrationMission.commandName,
-      callback: ({ error, allowedUser }) => {
-        if (error) {
-          callback({ error });
-
-          return;
-        }
-
-        manager.getActiveCalibrationMission({
-          userName: allowedUser.userName,
-          callback: () => {},
-        });
-      },
-    });
+    getCalibrationMission({ token, callback });
   });
 }
 
+exports.getCalibrationMission = getCalibrationMission;
 exports.handle = handle;
