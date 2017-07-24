@@ -29,6 +29,16 @@ const errorCreator = require('../../objects/error/errorCreator');
  * @param {object} io - Socket.IO
  */
 function handle(socket, io) {
+  socket.on('acceptTeamInvitation', ({ invitation, token }, callback = () => {}) => {
+    manager.acceptTeamInvitation({
+      invitation,
+      io,
+      socket,
+      callback,
+      token,
+    });
+  });
+
   socket.on('getTeam', ({ token }, callback = () => {}) => {
     manager.userIsAllowed({
       token,

@@ -184,8 +184,8 @@ describe('Teams', () => {
     });
   });
 
-  describe('List teams', () => {
-    it('Should NOT list teams with incorrect authorization on /api/teams GET', (done) => {
+  describe('Get teams', () => {
+    it('Should NOT get teams with incorrect authorization on /api/teams GET', (done) => {
       chai
         .request(app)
         .get('/api/teams')
@@ -199,7 +199,7 @@ describe('Teams', () => {
         });
     });
 
-    it('Should list teams on /api/lanternStations GET', (done) => {
+    it('Should get teams on /api/lanternStations GET', (done) => {
       chai
         .request(app)
         .get('/api/teams')
@@ -215,7 +215,7 @@ describe('Teams', () => {
   });
 
   describe('Get team', () => {
-    it('Should NOT get team with incorrect authorization on /api/teams/:id GET', (done) => {
+    it('Should NOT get team with incorrect authorization on /api/teams/:teamName GET', (done) => {
       chai
         .request(app)
         .get(`/api/teams/${teamData.teamToCreate.teamName}`)
@@ -229,7 +229,7 @@ describe('Teams', () => {
         });
     });
 
-    it('Should get existing team on /api/teams/:id GET', (done) => {
+    it('Should get existing team on /api/teams/:teamName GET', (done) => {
       chai
         .request(app)
         .get(`/api/teams/${teamData.teamToCreate.teamName}`)
@@ -243,7 +243,7 @@ describe('Teams', () => {
         });
     });
 
-    it('Should NOT get non-existing team on /api/teams/:id GET', (done) => {
+    it('Should NOT get non-existing team on /api/teams/:teamName GET', (done) => {
       chai
         .request(app)
         .get(`/api/teams/${teamData.teamDoesNotExist.teamName}`)
@@ -335,10 +335,10 @@ describe('Teams', () => {
         });
     });
 
-    it('Should NOT send team invite with incorrect authorization on /api/teams/:id/invite POST', (done) => {
+    it('Should NOT send team invite with incorrect authorization on /api/users/:userName/teamInvite POST', (done) => {
       chai
         .request(app)
-        .post(`/api/teams/users/${teamData.userToInvite.userName}/invite`)
+        .post(`/api/users/${teamData.userToInvite.userName}/teamInvite`)
         .set('Authorization', tokens.incorrectJwt)
         .end((error, response) => {
           response.should.have.status(401);
@@ -349,10 +349,10 @@ describe('Teams', () => {
         });
     });
 
-    it('Should NOT send team invite if not in team on /api/teams/:id/invite POST', (done) => {
+    it('Should NOT send team invite if not in team on /api/users/:userName/teamInvite POST', (done) => {
       chai
         .request(app)
-        .post(`/api/teams/users/${teamData.userToInvite.userName}/invite`)
+        .post(`/api/users/${teamData.userToInvite.userName}/teamInvite`)
         .set('Authorization', tokens.adminUser)
         .end((error, response) => {
           response.should.have.status(404);
@@ -363,10 +363,10 @@ describe('Teams', () => {
         });
     });
 
-    it('Should send team invite on /api/teams/:id/invite POST', (done) => {
+    it('Should send team invite on /api/users/:userName/teamInvite POST', (done) => {
       chai
         .request(app)
-        .post(`/api/teams/users/${teamData.userToInvite.userName}/invite`)
+        .post(`/api/users/${teamData.userToInvite.userName}/teamInvite`)
         .set('Authorization', teamTokens.teamInviter)
         .end((error, response) => {
           response.should.have.status(200);

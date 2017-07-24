@@ -19,6 +19,19 @@
 
 const schemas = {};
 
+const broadcastBase = {
+  type: 'object',
+  required: ['text', 'time', 'userName'],
+  properties: {
+    userName: { type: 'string' },
+    text: {
+      type: 'array',
+      items: { type: 'string' },
+    },
+    time: { type: 'string' },
+  },
+};
+
 schemas.broadcast = {
   type: 'object',
   required: ['data'],
@@ -27,17 +40,23 @@ schemas.broadcast = {
       type: 'object',
       required: ['message'],
       properties: {
-        message: {
-          type: 'object',
-          required: ['text', 'time', 'userName'],
-          properties: {
-            userName: { type: 'string' },
-            text: {
-              type: 'array',
-              items: { type: 'string' },
-            },
-            time: { type: 'string' },
-          },
+        message: broadcastBase,
+      },
+    },
+  },
+};
+
+schemas.broadcasts = {
+  type: 'object',
+  required: ['data'],
+  properties: {
+    data: {
+      type: 'object',
+      required: ['messages'],
+      properties: {
+        messages: {
+          type: 'array',
+          items: broadcastBase,
         },
       },
     },

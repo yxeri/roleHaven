@@ -315,7 +315,7 @@ function removePosition({ positionName, markerType, callback }) {
  * @param {string} params.markerType Marker type
  * @param {Function} params.callback Callback
  */
-function removePositions({ markerType, callback }) {
+function removePositionsByType({ markerType, callback }) {
   const query = { markerType };
 
   MapPosition.remove(query).lean().exec((err) => {
@@ -337,7 +337,7 @@ exports.getCustomPositions = getCustomPositions;
 exports.getPings = getPings;
 exports.getUserPositions = getUserPositions;
 exports.removePosition = removePosition;
-exports.removePositions = removePositions;
+exports.removePositionsByType = removePositionsByType;
 exports.getSignalBlockPositions = getSignalBlockPositions;
 exports.getUserPositionByDeviceId = getUserPositionByDeviceId;
 exports.getUserPosition = getUserPosition;

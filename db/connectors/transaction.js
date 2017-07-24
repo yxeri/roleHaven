@@ -69,7 +69,7 @@ function getAllTransactions({ owner, callback }) {
 
   Transaction.find(query).lean().exec((err, transactions = []) => {
     if (err) {
-      callback({ error: new errorCreator.Database({ errorObject: err, name: 'getAllTransactions' }) });
+      callback({ error: new errorCreator.Database({ errorObject: err, name: 'getTransactions' }) });
 
       return;
     }
@@ -96,7 +96,7 @@ function createTransaction({ transaction, callback }) {
         return;
       }
 
-      callback({ data });
+      callback({ data: { transaction: data.savedObject } });
     },
   });
 }

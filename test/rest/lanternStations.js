@@ -79,8 +79,8 @@ describe('LanternStations', () => {
     });
   });
 
-  describe('List lantern stations', () => {
-    it('Should NOT list lantern stations with incorrect authorization on /api/lanternStations GET', (done) => {
+  describe('Get lantern stations', () => {
+    it('Should NOT get lantern stations with incorrect authorization on /api/lanternStations GET', (done) => {
       chai
         .request(app)
         .get('/api/lanternStations')
@@ -94,7 +94,7 @@ describe('LanternStations', () => {
         });
     });
 
-    it('Should retrieve lantern stations on /api/lanternStations GET', (done) => {
+    it('Should get lantern stations on /api/lanternStations GET', (done) => {
       chai
         .request(app)
         .get('/api/lanternStations')

@@ -26,7 +26,7 @@ schemas.aliases = {
   properties: {
     data: {
       type: 'object',
-      required: ['aliases', 'user'],
+      required: ['aliases', 'userName'],
       properties: {
         aliases: {
           type: 'array',
@@ -35,13 +35,7 @@ schemas.aliases = {
             maxLength: appConfig.userNameMaxLength,
           },
         },
-        user: {
-          type: 'object',
-          required: ['userName'],
-          properties: {
-            userName: { type: 'string' },
-          },
-        },
+        userName: { type: 'string' },
       },
     },
   },

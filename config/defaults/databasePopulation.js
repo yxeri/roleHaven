@@ -188,6 +188,10 @@ config.apiCommands = {
     name: 'SendBroadcast',
     accessLevel: config.AccessLevels.LOWERADMIN,
   },
+  GetBroadcasts: config.apiCommands.GetBroadcasts || {
+    name: 'GetBroadcasts',
+    accessLevel: config.AccessLevels.LOWERADMIN,
+  },
   SendWhisper: config.apiCommands.SendWhisper || {
     name: 'SendWhisper',
     accessLevel: config.AccessLevels.BASIC,
@@ -222,11 +226,13 @@ config.apiCommands = {
   },
   CreateAlias: config.apiCommands.CreateAlias || {
     name: 'CreateAlias',
-    accessLevel: config.AccessLevels.ADVANCED,
+    accessLevel: config.AccessLevels.LOWERADMIN,
+    selfAccessLevel: config.AccessLevels.PRO,
   },
   GetAliases: config.apiCommands.GetAliases || {
     name: 'GetAliases',
     accessLevel: config.AccessLevels.ADVANCED,
+    selfAccessLevel: config.AccessLevels.ADVANCED,
   },
   CreateLanternRound: config.apiCommands.CreateLanternRound || {
     name: 'CreateLanternRound',
@@ -254,7 +260,12 @@ config.apiCommands = {
   },
   GetCalibrationMission: config.apiCommands.GetCalibrationMission || {
     name: 'GetCalibrationMission',
-    accessLevel: config.AccessLevels.BASIC,
+    accessLevel: config.AccessLevels.LOWERADMIN,
+  },
+  GetCalibrationMissions: config.apiCommands.GetCalibrationMissions || {
+    name: 'GetCalibrationMissions',
+    accessLevel: config.AccessLevels.LOWERADMIN,
+    selfAccessLevel: config.AccessLevels.BASIC,
   },
   CancelCalibrationMission: config.apiCommands.CancelCalibrationMission || {
     name: 'CancelCalibrationMission',
@@ -290,15 +301,18 @@ config.apiCommands = {
   },
   GetTransaction: config.apiCommands.GetTransaction || {
     name: 'GetTransaction',
-    accessLevel: config.AccessLevels.BASIC,
+    accessLevel: config.AccessLevels.LOWERADMIN,
+    selfAccessLevel: config.AccessLevels.BASIC,
   },
   FollowRoom: config.apiCommands.FollowRoom || {
     name: 'FollowRoom',
-    accessLevel: config.AccessLevels.BASIC,
+    accessLevel: config.AccessLevels.LOWERADMIN,
+    selfAccessLevel: config.AccessLevels.BASIC,
   },
   UnfollowRoom: config.apiCommands.UnfollowRoom || {
     name: 'UnfollowRoom',
-    accessLevel: config.AccessLevels.BASIC,
+    accessLevel: config.AccessLevels.LOWERADMIN,
+    selfAccessLevel: config.AccessLevels.BASIC,
   },
   CreateRoom: config.apiCommands.CreateRoom || {
     name: 'CreateRoom',
@@ -322,7 +336,8 @@ config.apiCommands = {
   },
   GetWallet: config.apiCommands.GetWallet || {
     name: 'GetWallet',
-    accessLevel: config.AccessLevels.BASIC,
+    accessLevel: config.AccessLevels.LOWERADMIN,
+    selfAccessLevel: config.AccessLevels.BASIC,
   },
   IncreaseWalletAmount: config.apiCommands.IncreaseWalletAmount || {
     name: 'IncreaseWalletAmount',
@@ -359,6 +374,18 @@ config.apiCommands = {
   UpdateDeviceAlias: config.apiCommands.UpdateDeviceAlias || {
     name: 'UpdateDeviceAlias',
     accessLevel: config.AccessLevels.LOWERADMIN,
+  },
+  CreateSignalBlock: config.apiCommands.CreateSignalBlock || {
+    name: 'CreateSignalBlock',
+    accessLevel: config.AccessLevels.PRO,
+  },
+  AcceptInvitation: config.apiCommands.AcceptInvitation || {
+    name: 'AcceptInvitation',
+    accessLevel: config.AccessLevels.BASIC,
+  },
+  GetInvitations: config.apiCommands.GetInvitations || {
+    name: 'GetInvitations',
+    accessLevel: config.AccessLevels.BASIC,
   },
 };
 

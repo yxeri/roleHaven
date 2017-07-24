@@ -25,10 +25,6 @@ data.teamToCreate = {
   teamName: tools.createRandString({ length: appConfig.teamNameMaxLength }),
   shortName: tools.createRandString({ length: appConfig.shortTeamMaxLength }),
 };
-data.teamToCreateAndInviteTo = {
-  teamName: tools.createRandString({ length: appConfig.teamNameMaxLength }),
-  shortName: tools.createRandString({ length: appConfig.shortTeamMaxLength }),
-};
 data.teamDoesNotExist = {
   teamName: tools.createRandString({ length: appConfig.teamNameMaxLength }),
   shortName: tools.createRandString({ length: appConfig.shortTeamMaxLength }),
@@ -52,6 +48,20 @@ data.userToCreateTeamWith = {
   mail: `${tools.createRandString({ length: 10 })}@${tools.createRandString({ length: 10 })}.com`,
   verified: true,
 };
+data.anotherUserToCreateTeam = {
+  userName: tools.createRandString({ length: appConfig.userNameMaxLength }),
+  password: tools.createRandString({ length: appConfig.passwordMaxLength }),
+  registerDevice: tools.createRandString({ length: appConfig.deviceIdLength }),
+  mail: `${tools.createRandString({ length: 10 })}@${tools.createRandString({ length: 10 })}.com`,
+  verified: true,
+};
+data.userTryingToCreateExistingTeam = {
+  userName: tools.createRandString({ length: appConfig.userNameMaxLength }),
+  password: tools.createRandString({ length: appConfig.passwordMaxLength }),
+  registerDevice: tools.createRandString({ length: appConfig.deviceIdLength }),
+  mail: `${tools.createRandString({ length: 10 })}@${tools.createRandString({ length: 10 })}.com`,
+  verified: true,
+};
 data.userToCreateTeamAndSendInvitation = {
   userName: tools.createRandString({ length: appConfig.userNameMaxLength }),
   password: tools.createRandString({ length: appConfig.passwordMaxLength }),
@@ -66,19 +76,9 @@ data.userToInvite = {
   mail: `${tools.createRandString({ length: 10 })}@${tools.createRandString({ length: 10 })}.com`,
   verified: true,
 };
-data.anotherUserToCreateTeam = {
-  userName: tools.createRandString({ length: appConfig.userNameMaxLength }),
-  password: tools.createRandString({ length: appConfig.passwordMaxLength }),
-  registerDevice: tools.createRandString({ length: appConfig.deviceIdLength }),
-  mail: `${tools.createRandString({ length: 10 })}@${tools.createRandString({ length: 10 })}.com`,
-  verified: true,
-};
-data.userTryingToCreateExistingTeam = {
-  userName: tools.createRandString({ length: appConfig.userNameMaxLength }),
-  password: tools.createRandString({ length: appConfig.passwordMaxLength }),
-  registerDevice: tools.createRandString({ length: appConfig.deviceIdLength }),
-  mail: `${tools.createRandString({ length: 10 })}@${tools.createRandString({ length: 10 })}.com`,
-  verified: true,
+data.teamToCreateAndInviteTo = {
+  teamName: tools.createRandString({ length: appConfig.teamNameMaxLength }),
+  shortName: tools.createRandString({ length: appConfig.shortTeamMaxLength }),
 };
 
 module.exports = data;

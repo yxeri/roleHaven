@@ -17,11 +17,9 @@
 'use strict';
 
 const express = require('express');
-const dbConfig = require('../../config/defaults/config').databasePopulation;
 const objectValidator = require('../../utils/objectValidator');
 const manager = require('../../helpers/manager');
-const errorCreator = require('../../objects/error/errorCreator');
-const authenticator = require('../../helpers/authenticator');
+const restErrorChecker = require('../../helpers/restErrorChecker');
 
 const router = new express.Router();
 
@@ -64,70 +62,25 @@ function handle() {
    *    }
    *  }
    */
-  router.get('/', (req, res) => {
-    authenticator.isUserAllowed({
-      commandName: dbConfig.apiCommands.GetDevices.name,
-      token: req.headers.authorization,
-      callback: ({ error }) => {
+  router.get('/', (request, response) => {
+    manager.getDevices({
+      token: request.headers.authorization,
+      callback: ({ error, data }) => {
         if (error) {
-          if (error.type === errorCreator.ErrorTypes.DOESNOTEXIST) {
-            res.status(404).json({
-              error: {
-                status: 404,
-                title: 'Command does not exist',
-                detail: 'Command does not exist',
-              },
-            });
-
-            return;
-          } else if (error.type === errorCreator.ErrorTypes.NOTALLOWED) {
-            res.status(401).json({
-              error: {
-                status: 401,
-                title: 'Unauthorized',
-                detail: 'Invalid token',
-              },
-            });
-
-            return;
-          }
-
-          res.status(500).json({
-            error: {
-              status: 500,
-              title: 'Internal Server Error',
-              detail: 'Internal Server Error',
-            },
-          });
+          restErrorChecker.checkAndSendError({ response, error });
 
           return;
         }
 
-        manager.getDevices({
-          callback: ({ error: deviceError, data: deviceData }) => {
-            if (deviceError) {
-              res.status(500).json({
-                error: {
-                  status: 500,
-                  title: 'Internal Server Error',
-                  detail: 'Internal Server Error',
-                },
-              });
-
-              return;
-            }
-
-            res.json({ data: deviceData });
-          },
-        });
+        response.json({ data });
       },
     });
   });
 
   /**
-   * @api {post} /devices/:id Update device
+   * @api {post} /devices/:deviceId Update device. Will be created if it doesn't exist
    * @apiVersion 6.0.0
-   * @apiName UpdateDevice
+   * @apiName UpdateDevices
    * @apiGroup Devices
    *
    * @apiHeader {String} Authorization Your JSON Web Token
@@ -154,9 +107,9 @@ function handle() {
    *    }
    *  }
    */
-  router.post('/:id', (req, res) => {
-    if (!objectValidator.isValidData(req.params, { id: true })) {
-      res.status(400).json({
+  router.post('/:deviceId', (request, response) => {
+    if (!objectValidator.isValidData(request.params, { deviceId: true })) {
+      response.status(400).json({
         error: {
           status: 400,
           title: 'Missing data',
@@ -167,69 +120,23 @@ function handle() {
       return;
     }
 
-    authenticator.isUserAllowed({
-      commandName: dbConfig.apiCommands.UpdateDevice.name,
-      token: req.headers.authorization,
+    manager.updateDevice({
+      token: request.headers.authorization,
+      device: { deviceId: request.params.deviceId },
       callback: ({ error, data }) => {
         if (error) {
-          if (error.type === errorCreator.ErrorTypes.DOESNOTEXIST) {
-            res.status(404).json({
-              error: {
-                status: 404,
-                title: 'Command does not exist',
-                detail: 'Command does not exist',
-              },
-            });
-
-            return;
-          } else if (error.type === errorCreator.ErrorTypes.NOTALLOWED) {
-            res.status(401).json({
-              error: {
-                status: 401,
-                title: 'Unauthorized',
-                detail: 'Invalid token',
-              },
-            });
-
-            return;
-          }
-
-          res.status(500).json({
-            error: {
-              status: 500,
-              title: 'Internal Server Error',
-              detail: 'Internal Server Error',
-            },
-          });
+          restErrorChecker.checkAndSendError({ response, error });
 
           return;
         }
 
-        manager.updateDevice({
-          device: { deviceId: req.params.id },
-          user: data.user,
-          callback: ({ error: deviceError, data: deviceData }) => {
-            if (deviceError) {
-              res.status(500).json({
-                error: {
-                  status: 500,
-                  title: 'Internal Server Error',
-                  detail: 'Internal Server Error',
-                },
-              });
-
-              return;
-            }
-
-            res.json({ data: deviceData });
-          },
-        });
+        response.json({ data });
       },
     });
   });
 
   /**
-   * @api {post} /devices/:id/alias Update device alias
+   * @api {post} /devices/:deviceId/alias Update device alias
    * @apiVersion 6.0.0
    * @apiName UpdateDeviceAlias
    * @apiGroup Devices
@@ -238,7 +145,7 @@ function handle() {
    *
    * @apiDescription Update device. It will update lastAlive with current time and lastUser from token, if set
    *
-   * @apiParam {String} id Device id
+   * @apiParam {String} deviceId Device deviceId
    *
    * @apiParam {Object} data
    * @apiParam {string} data.device Device
@@ -269,9 +176,9 @@ function handle() {
    *    }
    *  }
    */
-  router.post('/:id/alias', (req, res) => {
-    if (!objectValidator.isValidData(req.body, { data: { device: { deviceAlias: true } } })) {
-      res.status(400).json({
+  router.post('/:deviceId/alias', (request, response) => {
+    if (!objectValidator.isValidData(request.body, { data: { device: { deviceAlias: true } } })) {
+      response.status(400).json({
         error: {
           status: 400,
           title: 'Missing data',
@@ -280,8 +187,8 @@ function handle() {
       });
 
       return;
-    } else if (!objectValidator.isValidData(req.params, { id: true })) {
-      res.status(400).json({
+    } else if (!objectValidator.isValidData(request.params, { deviceId: true })) {
+      response.status(400).json({
         error: {
           status: 400,
           title: 'Missing data',
@@ -292,65 +199,20 @@ function handle() {
       return;
     }
 
-    authenticator.isUserAllowed({
-      commandName: dbConfig.apiCommands.UpdateDeviceAlias.name,
-      token: req.headers.authorization,
-      callback: ({ error }) => {
+    manager.updateDeviceAlias({
+      token: request.headers.authorization,
+      device: {
+        deviceId: request.params.deviceId,
+        deviceAlias: request.body.data.device.deviceAlias,
+      },
+      callback: ({ error, data }) => {
         if (error) {
-          if (error.type === errorCreator.ErrorTypes.DOESNOTEXIST) {
-            res.status(404).json({
-              error: {
-                status: 404,
-                title: 'Command does not exist',
-                detail: 'Command does not exist',
-              },
-            });
-
-            return;
-          } else if (error.type === errorCreator.ErrorTypes.NOTALLOWED) {
-            res.status(401).json({
-              error: {
-                status: 401,
-                title: 'Unauthorized',
-                detail: 'Invalid token',
-              },
-            });
-
-            return;
-          }
-
-          res.status(500).json({
-            error: {
-              status: 500,
-              title: 'Internal Server Error',
-              detail: 'Internal Server Error',
-            },
-          });
+          restErrorChecker.checkAndSendError({ response, error });
 
           return;
         }
 
-        manager.updateDeviceAlias({
-          device: {
-            deviceId: req.params.id,
-            deviceAlias: req.body.data.device.deviceAlias,
-          },
-          callback: ({ error: deviceError, data: deviceData }) => {
-            if (deviceError) {
-              res.status(500).json({
-                error: {
-                  status: 500,
-                  title: 'Internal Server Error',
-                  detail: 'Internal Server Error',
-                },
-              });
-
-              return;
-            }
-
-            res.json({ data: deviceData });
-          },
-        });
+        response.json({ data });
       },
     });
   });

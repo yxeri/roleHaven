@@ -33,7 +33,7 @@ const router = new express.Router();
  */
 function handle(io) {
   /**
-   * @api {get} /positions/users Retrieve all user positions
+   * @api {get} /positions/users Get all user positions
    * @apiVersion 6.0.0
    * @apiName GetUserPositions
    * @apiGroup Positions

@@ -70,7 +70,7 @@ describe('Devices', () => {
         });
     });
 
-    it('Should update device without user auth on /api/devices/:id POST', (done) => {
+    it('Should update device without user auth on /api/devices/:deviceId POST', (done) => {
       chai
         .request(app)
         .post(`/api/devices/${deviceData.deviceWithoutUser}`)
@@ -83,7 +83,7 @@ describe('Devices', () => {
         });
     });
 
-    it('Should update device with user authentication on /api/devices/:id POST', (done) => {
+    it('Should update device with user authentication on /api/devices/:deviceId POST', (done) => {
       chai
         .request(app)
         .post(`/api/devices/${deviceData.deviceWithUser.deviceId}`)
@@ -99,7 +99,7 @@ describe('Devices', () => {
     });
 
     describe('Update device alias', () => {
-      before('Update device without user on /api/devices/:id POST', (done) => {
+      before('Update device without user on /api/devices/:deviceId POST', (done) => {
         chai
           .request(app)
           .post(`/api/devices/${deviceData.deviceWithoutUser.deviceId}`)
@@ -112,7 +112,7 @@ describe('Devices', () => {
           });
       });
 
-      it('Should update device alias on existing device /api/devices/:id/alias POST', (done) => {
+      it('Should update device alias on existing device /api/devices/:deviceId/alias POST', (done) => {
         chai
           .request(app)
           .post(`/api/devices/${deviceData.deviceWithoutUser.deviceId}/alias`)
@@ -130,7 +130,7 @@ describe('Devices', () => {
     });
   });
 
-  describe('List devices', () => {
+  describe('Get devices', () => {
     it('Should NOT retrieve devices with incorrect authorization on /api/devices GET', (done) => {
       chai
         .request(app)
@@ -145,7 +145,7 @@ describe('Devices', () => {
         });
     });
 
-    it('Should retrieve devices on /api/devices GET', (done) => {
+    it('Should get devices on /api/devices GET', (done) => {
       chai
         .request(app)
         .get('/api/devices')

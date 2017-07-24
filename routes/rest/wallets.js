@@ -17,19 +17,17 @@
 'use strict';
 
 const express = require('express');
-const errorCreator = require('../../objects/error/errorCreator');
-const dbConfig = require('../../config/defaults/config').databasePopulation;
-const authenticator = require('../../helpers/authenticator');
-const dbWallet = require('../../db/connectors/wallet');
 const objectValidator = require('../../utils/objectValidator');
 const manager = require('../../helpers/manager');
+const restErrorChecker = require('../../helpers/restErrorChecker');
 
 const router = new express.Router();
 
 /**
+ * @param {Object} io Socket io
  * @returns {Object} Router
  */
-function handle() {
+function handle(io) {
   /**
    * @api {get} /wallets/ Get wallets
    * @apiVersion 6.0.0
@@ -59,76 +57,32 @@ function handle() {
    *    }
    *  }
    */
-  router.get('/', (req, res) => {
-    authenticator.isUserAllowed({
-      commandName: dbConfig.apiCommands.GetWallet.name,
-      token: req.headers.authorization,
+  router.get('/', (request, response) => {
+    manager.getWallets({
+      token: request.headers.authorization,
       callback: ({ error, data }) => {
         if (error) {
-          if (error.type === errorCreator.ErrorTypes.DOESNOTEXIST) {
-            res.status(404).json({
-              error: {
-                status: 404,
-                title: 'Command does not exist',
-                detail: 'Command does not exist',
-              },
-            });
-
-            return;
-          } else if (error.type === errorCreator.ErrorTypes.NOTALLOWED) {
-            res.status(401).json({
-              error: {
-                status: 401,
-                title: 'Unauthorized',
-                detail: 'Invalid token',
-              },
-            });
-
-            return;
-          }
-
-          res.status(500).json({
-            error: {
-              status: 500,
-              title: 'Internal Server Error',
-              detail: 'Internal Server Error',
-            },
-          });
+          restErrorChecker.checkAndSendError({ response, error });
 
           return;
         }
 
-        dbWallet.getWallets({
-          user: data.user,
-          callback: ({ error: walletError, data: walletsData }) => {
-            if (walletError) {
-              res.status(500).json({
-                error: {
-                  status: 500,
-                  title: 'Internal Server Error',
-                  detail: 'Internal Server Error',
-                },
-              });
-
-              return;
-            }
-
-            res.json({ data: walletsData });
-          },
-        });
+        response.json({ data });
       },
     });
   });
 
   /**
-   * @api {get} /wallets/:id Get wallet by owner
+   * @api {get} /wallets/:owner Get wallet by owner
    * @apiVersion 6.0.0
    * @apiName GetWallet
    * @apiGroup Wallets
    *
    * @apiHeader {String} Authorization Your JSON Web Token
    *
-   * @apiDescription RetriGeteve wallet by owner
+   * @apiDescription Get wallet by owner
+   *
+   * @apiParam {string} owner Name of the owner of the wallet
    *
    * @apiSuccess {Object} data
    * @apiSuccess {Object} data.wallet Found wallet
@@ -144,9 +98,9 @@ function handle() {
    *    }
    *  }
    */
-  router.get('/:id', (req, res) => {
-    if (!objectValidator.isValidData(req.params, { id: true })) {
-      res.status(400).json({
+  router.get('/:owner', (request, response) => {
+    if (!objectValidator.isValidData(request.params, { owner: true })) {
+      response.status(400).json({
         error: {
           status: 400,
           title: 'Missing data',
@@ -157,90 +111,23 @@ function handle() {
       return;
     }
 
-    authenticator.isUserAllowed({
-      commandName: dbConfig.apiCommands.GetWallet.name,
-      token: req.headers.authorization,
+    manager.getWallet({
+      owner: request.params.owner,
+      token: request.headers.authorization,
       callback: ({ error, data }) => {
         if (error) {
-          if (error.type === errorCreator.ErrorTypes.DOESNOTEXIST) {
-            res.status(404).json({
-              error: {
-                status: 404,
-                title: 'Command does not exist',
-                detail: 'Command does not exist',
-              },
-            });
-
-            return;
-          } else if (error.type === errorCreator.ErrorTypes.NOTALLOWED) {
-            res.status(401).json({
-              error: {
-                status: 401,
-                title: 'Unauthorized',
-                detail: 'Invalid token',
-              },
-            });
-
-            return;
-          }
-
-          res.status(500).json({
-            error: {
-              status: 500,
-              title: 'Internal Server Error',
-              detail: 'Internal Server Error',
-            },
-          });
+          restErrorChecker.checkAndSendError({ response, error });
 
           return;
         }
 
-        dbWallet.getWallet({
-          owner: req.params.id,
-          callback: ({ error: walletError, data: walletData }) => {
-            if (walletError) {
-              if (walletError.type === errorCreator.ErrorTypes.DOESNOTEXIST) {
-                res.status(404).json({
-                  error: {
-                    status: 404,
-                    title: 'Wallet does not exist',
-                    detail: 'Wallet does not exist',
-                  },
-                });
-
-                return;
-              }
-
-              res.status(500).json({
-                error: {
-                  status: 500,
-                  title: 'Internal Server Error',
-                  detail: 'Internal Server Error',
-                },
-              });
-
-              return;
-            } else if (walletData.wallet.accessLevel >= data.user.accessLevel) {
-              res.status(401).json({
-                error: {
-                  status: 401,
-                  title: 'Unable to retrieve wallet',
-                  detail: 'Does not have access to wallet',
-                },
-              });
-
-              return;
-            }
-
-            res.json({ data: walletData });
-          },
-        });
+        response.json({ data });
       },
     });
   });
 
   /**
-   * @api {post} /wallets/:id/increase Increase wallet amount
+   * @api {post} /wallets/:owner/increase Increase wallet amount
    * @apiVersion 6.0.0
    * @apiName IncreaseWalletAmount
    * @apiGroup Wallets
@@ -249,7 +136,7 @@ function handle() {
    *
    * @apiDescription Increase wallet amount
    *
-   * @apiParam {String} id Name of the owner of the wallet
+   * @apiParam {String} owner Name of the owner of the wallet
    *
    * @apiParam {Object} data
    * @apiParam {Object} data.amount Amount to increase
@@ -274,9 +161,9 @@ function handle() {
    *    }
    *  }
    */
-  router.post('/:id/increase', (req, res) => {
-    if (!objectValidator.isValidData(req.params, { id: true })) {
-      res.status(400).json({
+  router.post('/:owner/increase', (request, response) => {
+    if (!objectValidator.isValidData(request.params, { owner: true })) {
+      response.status(400).json({
         error: {
           status: 400,
           title: 'Missing data',
@@ -285,8 +172,8 @@ function handle() {
       });
 
       return;
-    } else if (!objectValidator.isValidData(req.body, { data: { amount: true } })) {
-      res.status(400).json({
+    } else if (!objectValidator.isValidData(request.body, { data: { amount: true } })) {
+      response.status(400).json({
         error: {
           status: 400,
           title: 'Missing data',
@@ -297,91 +184,24 @@ function handle() {
       return;
     }
 
-    authenticator.isUserAllowed({
-      commandName: dbConfig.apiCommands.IncreaseWalletAmount.name,
-      token: req.headers.authorization,
-      callback: ({ error }) => {
+    manager.increaseWalletAmount({
+      token: request.headers.authorization,
+      amount: request.body.data.amount,
+      owner: request.params.owner,
+      callback: ({ error, data }) => {
         if (error) {
-          if (error.type === errorCreator.ErrorTypes.DOESNOTEXIST) {
-            res.status(404).json({
-              error: {
-                status: 404,
-                title: 'Command does not exist',
-                detail: 'Command does not exist',
-              },
-            });
-
-            return;
-          } else if (error.type === errorCreator.ErrorTypes.NOTALLOWED) {
-            res.status(401).json({
-              error: {
-                status: 401,
-                title: 'Unauthorized',
-                detail: 'Invalid token',
-              },
-            });
-
-            return;
-          }
-
-          res.status(500).json({
-            error: {
-              status: 500,
-              title: 'Internal Server Error',
-              detail: 'Internal Server Error',
-            },
-          });
+          restErrorChecker.checkAndSendError({ response, error });
 
           return;
         }
 
-        manager.increaseWalletAmount({
-          owner: req.params.id,
-          amount: req.body.data.amount,
-          callback: ({ error: walletError, data: walletData }) => {
-            if (walletError) {
-              if (walletError.type === errorCreator.ErrorTypes.DOESNOTEXIST) {
-                res.status(404).json({
-                  error: {
-                    status: 404,
-                    title: 'Internal Server Error',
-                    detail: 'Internal Server Error',
-                  },
-                });
-
-                return;
-              } else if (walletError.type === errorCreator.ErrorTypes.INVALIDDATA) {
-                res.status(400).json({
-                  error: {
-                    status: 400,
-                    title: 'Amount must be higher than 0',
-                    detail: 'Amount must be higher than 0',
-                  },
-                });
-
-                return;
-              }
-
-              res.status(500).json({
-                error: {
-                  status: 500,
-                  title: 'Internal Server Error',
-                  detail: 'Internal Server Error',
-                },
-              });
-
-              return;
-            }
-
-            res.json({ data: walletData });
-          },
-        });
+        response.json({ data });
       },
     });
   });
 
   /**
-   * @api {post} /wallets/:id/decrease Decrease wallet amount
+   * @api {post} /wallets/:owner/decrease Decrease wallet amount
    * @apiVersion 6.0.0
    * @apiName DecreaseWalletAmount
    * @apiGroup Wallets
@@ -390,7 +210,7 @@ function handle() {
    *
    * @apiDescription Decrease wallet amount
    *
-   * @apiParam {String} id Name of the owner of the wallet
+   * @apiParam {String} owner Name of the owner of the wallet
    *
    * @apiParam {Object} data
    * @apiParam {Object} data.amount Amount to decrease
@@ -415,9 +235,9 @@ function handle() {
    *    }
    *  }
    */
-  router.post('/:id/decrease', (req, res) => {
-    if (!objectValidator.isValidData(req.params, { id: true })) {
-      res.status(400).json({
+  router.post('/:owner/decrease', (request, response) => {
+    if (!objectValidator.isValidData(request.params, { owner: true })) {
+      response.status(400).json({
         error: {
           status: 400,
           title: 'Missing data',
@@ -426,8 +246,8 @@ function handle() {
       });
 
       return;
-    } else if (!objectValidator.isValidData(req.body, { data: { amount: true } })) {
-      res.status(400).json({
+    } else if (!objectValidator.isValidData(request.body, { data: { amount: true } })) {
+      response.status(400).json({
         error: {
           status: 400,
           title: 'Missing data',
@@ -438,91 +258,24 @@ function handle() {
       return;
     }
 
-    authenticator.isUserAllowed({
-      commandName: dbConfig.apiCommands.DecreaseWalletAmount.name,
-      token: req.headers.authorization,
-      callback: ({ error }) => {
+    manager.decreaseWalletAmount({
+      owner: request.params.owner,
+      amount: request.body.data.amount,
+      token: request.headers.authorization,
+      callback: ({ error, data }) => {
         if (error) {
-          if (error.type === errorCreator.ErrorTypes.DOESNOTEXIST) {
-            res.status(404).json({
-              error: {
-                status: 404,
-                title: 'Command does not exist',
-                detail: 'Command does not exist',
-              },
-            });
-
-            return;
-          } else if (error.type === errorCreator.ErrorTypes.NOTALLOWED) {
-            res.status(401).json({
-              error: {
-                status: 401,
-                title: 'Unauthorized',
-                detail: 'Invalid token',
-              },
-            });
-
-            return;
-          }
-
-          res.status(500).json({
-            error: {
-              status: 500,
-              title: 'Internal Server Error',
-              detail: 'Internal Server Error',
-            },
-          });
+          restErrorChecker.checkAndSendError({ response, error });
 
           return;
         }
 
-        manager.decreaseWalletAmount({
-          owner: req.params.id,
-          amount: req.body.data.amount,
-          callback: ({ error: walletError, data: walletData }) => {
-            if (walletError) {
-              if (walletError.type === errorCreator.ErrorTypes.DOESNOTEXIST) {
-                res.status(404).json({
-                  error: {
-                    status: 404,
-                    title: 'Internal Server Error',
-                    detail: 'Internal Server Error',
-                  },
-                });
-
-                return;
-              } else if (walletError.type === errorCreator.ErrorTypes.INVALIDDATA) {
-                res.status(400).json({
-                  error: {
-                    status: 400,
-                    title: 'Amount must be higher than 0',
-                    detail: 'Amount must be higher than 0',
-                  },
-                });
-
-                return;
-              }
-
-              res.status(500).json({
-                error: {
-                  status: 500,
-                  title: 'Internal Server Error',
-                  detail: 'Internal Server Error',
-                },
-              });
-
-              return;
-            }
-
-            res.json({ data: walletData });
-          },
-        });
+        response.json({ data });
       },
     });
   });
 
   /**
-   * @api {post} /wallets/:id/empty Reset wallet amount to 0
+   * @api {post} /wallets/:owner/empty Reset wallet amount to 0
    * @apiVersion 6.0.0
    * @apiName EmptyWallet
    * @apiGroup Wallets
@@ -531,7 +284,7 @@ function handle() {
    *
    * @apiDescription Reset wallet amount to 0
    *
-   * @apiParam {String} id Name of the owner of the wallet
+   * @apiParam {String} owner Name of the owner of the wallet
    *
    * @apiSuccess {Object} data
    * @apiSuccess {Object} data.wallet Updated wallet
@@ -547,9 +300,9 @@ function handle() {
    *    }
    *  }
    */
-  router.post('/:id/empty', (req, res) => {
-    if (!objectValidator.isValidData(req.params, { id: true })) {
-      res.status(400).json({
+  router.post('/:owner/empty', (request, response) => {
+    if (!objectValidator.isValidData(request.params, { owner: true })) {
+      response.status(400).json({
         error: {
           status: 400,
           title: 'Missing data',
@@ -560,74 +313,168 @@ function handle() {
       return;
     }
 
-    authenticator.isUserAllowed({
-      commandName: dbConfig.apiCommands.DecreaseWalletAmount.name,
-      token: req.headers.authorization,
-      callback: ({ error }) => {
+    manager.emptyWallet({
+      owner: request.params.owner,
+      token: request.headers.authorization,
+      callback: ({ error, data }) => {
         if (error) {
-          if (error.type === errorCreator.ErrorTypes.DOESNOTEXIST) {
-            res.status(404).json({
-              error: {
-                status: 404,
-                title: 'Command does not exist',
-                detail: 'Command does not exist',
-              },
-            });
-
-            return;
-          } else if (error.type === errorCreator.ErrorTypes.NOTALLOWED) {
-            res.status(401).json({
-              error: {
-                status: 401,
-                title: 'Unauthorized',
-                detail: 'Invalid token',
-              },
-            });
-
-            return;
-          }
-
-          res.status(500).json({
-            error: {
-              status: 500,
-              title: 'Internal Server Error',
-              detail: 'Internal Server Error',
-            },
-          });
+          restErrorChecker.checkAndSendError({ response, error });
 
           return;
         }
 
-        dbWallet.resetWalletAmount({
-          owner: req.params.id,
-          callback: ({ error: walletError, data: walletData }) => {
-            if (walletError) {
-              if (walletError.type === errorCreator.ErrorTypes.DOESNOTEXIST) {
-                res.status(404).json({
-                  error: {
-                    status: 404,
-                    title: 'Internal Server Error',
-                    detail: 'Internal Server Error',
-                  },
-                });
+        response.json({ data });
+      },
+    });
+  });
 
-                return;
-              }
+  /**
+   * @api {get} /wallets/:owner/transactions Get transactions
+   * @apiVersion 6.0.0
+   * @apiName GetTransactions
+   * @apiGroup Transactions
+   *
+   * @apiHeader {string} Authorization Your JSON Web Token
+   *
+   * @apiDescription Get transactions
+   *
+   * @apiParam {string} owner Name of the owner of the wallet
+   *
+   * @apiSuccess {Object} data
+   * @apiSuccess {Object[]} data.toTransactions Transactions with the user being the receiver
+   * @apiSuccess {Object[]} data.fromTransactions Transactions with the user being the sender
+   * @apiSuccessExample {json} Success-Response:
+   *   {
+   *    "data": {
+   *      "toTransactions": [
+   *        {
+   *          "to": "rez",
+   *          "from": "n4",
+   *          "time": "2016-11-28T22:42:06.262Z",
+   *          "note": "Bounty payment",
+   *          "amount": 10
+   *        }
+   *      ],
+   *      "fromTransactions": [
+   *        {
+   *          "to": "bas",
+   *          "from": "rez",
+   *          "time:" "2016-10-28T22:42:06.262Z"
+   *          "amount:" 5
+   *        }
+   *      ]
+   *    }
+   *  }
+   */
+  router.get('/:owner/transactions', (request, response) => {
+    if (!objectValidator.isValidData(request.params, { owner: true })) {
+      response.status(400).json({
+        error: {
+          status: 400,
+          title: 'Missing data',
+          detail: 'Unable to parse data',
+        },
+      });
 
-              res.status(500).json({
-                error: {
-                  status: 500,
-                  title: 'Internal Server Error',
-                  detail: 'Internal Server Error',
-                },
-              });
+      return;
+    }
 
-              return;
-            }
+    manager.getTransactions({
+      owner: request.params.owner,
+      token: request.headers.authorization,
+      callback: ({ error, data }) => {
+        if (error) {
+          restErrorChecker.checkAndSendError({ response, error });
 
-            res.json({ data: walletData });
-          },
-        });
+          return;
+        }
+
+        response.json({ data });
+      },
+    });
+  });
+
+  /**
+   * @api {post} /wallets/:owner/transactions Create a transaction
+   * @apiVersion 6.0.0
+   * @apiName CreateTransaction
+   * @apiGroup Wallets
+   *
+   * @apiHeader {String} Authorization Your JSON Web Token
+   *
+   * @apiDescription Create a transaction
+   *
+   * @apiParam {Object} data
+   * @apiParam {Object} data.transaction Transaction
+   * @apiParam {string} data.transaction.to User or team name of the receiver
+   * @apiParam {string} data.transaction.amount Amount to transfer
+   * @apiParam {string} [data.transaction.note] Note to the receiver
+   * @apiParam {Object} [data.transaction.coordinates] GPS coordinates to where the transaction was made
+   * @apiParam {number} data.transaction.coordinates.longitude Longitude
+   * @apiParam {number} data.transaction.coordinates.latitude Latitude
+   * @apiParam {number} [data.isTeamWallet] Should the transaction be created on the user's team?
+   * @apiParamExample {json} Request-Example:
+   *   {
+   *    "data": {
+   *      "transaction": {
+   *        "to": "baz",
+   *        "amount": 10,
+   *        "note": "Bounty payment",
+   *        "coordinates": {
+   *          "longitude": 10.11,
+   *          "latitude": 12.4443
+   *        }
+   *      }
+   *    }
+   *  }
+   *
+   * @apiSuccess {Object} data
+   * @apiSuccess {Object} data.transaction Transaction created
+   * @apiSuccess {Object} data.wallet Wallet with new amount after transfer
+   * @apiSuccessExample {json} Success-Response:
+   *   {
+   *    "data": {
+   *      "transaction": {
+   *        "to": "baz",
+   *        "amount": 10,
+   *        "note": "Bounty payment",
+   *        "coordinates": {
+   *          "longitude": 10.11,
+   *          "latitude": 12.4443
+   *        }
+   *      },
+   *      "wallet": {
+   *        "amount": 23
+   *      }
+   *    }
+   *  }
+   */
+  router.post('/:owner/transactions', (request, response) => {
+    if (!objectValidator.isValidData(request.body, { data: { transaction: { to: true, amount: true } } }) || isNaN(request.body.data.transaction.amount)) {
+      response.status(400).json({
+        error: {
+          status: 400,
+          title: 'Missing data',
+          detail: 'Unable to parse data',
+        },
+      });
+
+      return;
+    }
+
+    manager.createTransaction({
+      io,
+      transaction: request.body.data.transaction,
+      fromTeam: request.body.data.isTeamWallet,
+      token: request.headers.authorization,
+      callback: ({ error, data }) => {
+        if (error) {
+          restErrorChecker.checkAndSendError({ response, error });
+
+          return;
+        }
+
+        response.json({ data });
       },
     });
   });

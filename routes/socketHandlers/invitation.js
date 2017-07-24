@@ -24,125 +24,49 @@ const errorCreator = require('../../objects/error/errorCreator');
 const dbTeam = require('../../db/connectors/team');
 const dbUser = require('../../db/connectors/user');
 const appConfig = require('../../config/defaults/config').app;
+const authenticator = require('../../helpers/authenticator');
+
+/**
+ * Get invitations from user
+ * @param {string} params.token jwt
+ * @param {Function} params.callback Callback
+ */
+function getInvitations({ token, callback }) {
+  authenticator.isUserAllowed({
+    token,
+    commandName: dbConfig.apiCommands.invitations.commandName,
+    callback: ({ error, data }) => {
+      if (error) {
+        callback({ error });
+
+        return;
+      }
+
+      dbInvitation.getInvitations({
+        userName: data.user.userName,
+        callback: ({ error: errorInvite, data: invitationsData }) => {
+          if (errorInvite) {
+            callback({ error: errorInvite });
+
+            return;
+          }
+
+          callback({ data: { invitations: invitationsData.list.invitations } });
+        },
+      });
+    },
+  });
+}
 
 /**
  * @param {Object} socket Socket.io socket
  * @param {Object} io Socket io
  */
-function handle(socket, io) {
-  socket.on('acceptInvitation', ({ invitation, token }, callback = () => {}) => {
-    if (!objectValidator.isValidData({ invitation }, { invitation: { invitationType: true, itemName: true } })) {
-      callback({ error: new errorCreator.InvalidData({ expected: '{ invitation: { invitationType, itemName } }' }) });
-
-      return;
-    }
-
-    manager.userIsAllowed({
-      token,
-      commandName: dbConfig.commands.invitations.commandName,
-      callback: ({ error, allowedUser }) => {
-        if (error) {
-          callback({ error });
-
-          return;
-        }
-
-        dbInvitation.getInvitations({
-          userName: allowedUser.userName,
-          callback: (invitationData) => {
-            if (invitationData.error) {
-              callback({ error: invitationData.error });
-
-              return;
-            }
-
-            const retrievedInvitation = invitationData.data.list.invitations.find(inv => inv.itemName === invitation.itemName && inv.invitationType === invitation.invitationType);
-
-            if (!retrievedInvitation) {
-              callback({ error: new errorCreator.DoesNotExist({ name: `invitation ${invitation.itemName} ${invitation.invitationType} for ${allowedUser.userName}` }) });
-
-              return;
-            }
-
-            switch (retrievedInvitation.invitationType) {
-              case 'team': {
-                dbTeam.getTeam({
-                  teamName: retrievedInvitation.itemName,
-                  callback: (teamData) => {
-                    if (teamData.error) {
-                      callback({ error: teamData.error });
-
-                      return;
-                    }
-
-                    manager.addUserToTeam({
-                      socket,
-                      io,
-                      team: teamData.data.team,
-                      user: allowedUser,
-                      callback: (addUserData) => {
-                        if (addUserData.error) {
-                          callback({ error: addUserData.error });
-
-                          return;
-                        }
-
-                        dbInvitation.removeInvitationTypeFromList({
-                          userName: allowedUser.userName,
-                          invitationType: retrievedInvitation.invitationType,
-                          callback: (removeData) => {
-                            if (removeData.error) {
-                              callback({ error });
-
-                              return;
-                            }
-
-                            callback({ data: addUserData.data });
-
-                            socket.broadcast.to(`${addUserData.data.team.teamName}${appConfig.teamAppend}`).emit('teamMember', { user: allowedUser });
-                          },
-                        });
-                      },
-                    });
-                  },
-                });
-
-                return;
-              }
-              default: {
-                callback({ error: new errorCreator.InvalidData({ expected: 'team' }) });
-              }
-            }
-          },
-        });
-      },
-    });
-  });
-
+function handle(socket) {
   socket.on('getInvitations', ({ token }, callback = () => {}) => {
-    manager.userIsAllowed({
+    getInvitations({
       token,
-      commandName: dbConfig.commands.invitations.commandName,
-      callback: ({ error, allowedUser }) => {
-        if (error) {
-          callback({ error });
-
-          return;
-        }
-
-        dbInvitation.getInvitations({
-          userName: allowedUser.userName,
-          callback: ({ error: errorInvite, data }) => {
-            if (errorInvite) {
-              callback({ error: errorInvite });
-
-              return;
-            }
-
-            callback({ data: { invitations: data.list.invitations } });
-          },
-        });
-      },
+      callback,
     });
   });
 

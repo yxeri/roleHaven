@@ -79,6 +79,27 @@ function getInactiveMissions({ owner, callback }) {
 }
 
 /**
+ * Get missions
+ * @param {Function} params.callback Callback
+ */
+function getMissions({ getInactive, callback }) {
+  const query = {};
+  const filter = { _id: 0 };
+
+  if (!getInactive) { query.completed = false; }
+
+  CalibrationMission.find(query, filter).lean().exec((err, foundMissions = []) => {
+    if (err) {
+      callback({ error: new errorCreator.Database({ errorObject: err, name: 'getMissions' }) });
+
+      return;
+    }
+
+    callback({ data: { missions: foundMissions } });
+  });
+}
+
+/**
  * Create and save mission
  * @param {Object} params.mission New mission
  * @param {Function} params.callback Callback
@@ -99,21 +120,28 @@ function createMission({ mission, callback }) {
     }
 
     databaseConnector.saveObject({
-      callback,
       object: newMission,
       objectType: 'calibrationMission',
+      callback: ({ error, data }) => {
+        if (error) {
+          callback({ error });
+
+          return;
+        }
+
+        callback({ data: { mission: data.savedObject } });
+      },
     });
   });
 }
 
 /**
  * Set mission completed
- * @param {number} params.code Mission code
- * @param {number} params.stationId Station ID
+ * @param {number} params.owner User name
  * @param {Function} params.callback Callback
  */
-function setMissionCompleted({ code, stationId, callback }) {
-  const query = { $and: [{ code }, { stationId }, { completed: false }] };
+function setMissionCompleted({ owner, callback }) {
+  const query = { owner, completed: false };
   const update = { $set: { completed: true, timeCompleted: new Date() } };
   const options = { new: true };
 
@@ -123,7 +151,7 @@ function setMissionCompleted({ code, stationId, callback }) {
 
       return;
     } else if (!foundMission) {
-      callback({ error: new errorCreator.DoesNotExist({ name: `Mission ${code}` }) });
+      callback({ error: new errorCreator.DoesNotExist({ name: `Mission owner: ${owner}` }) });
 
       return;
     }
@@ -136,3 +164,4 @@ exports.getActiveMission = getActiveMission;
 exports.createMission = createMission;
 exports.setMissionCompleted = setMissionCompleted;
 exports.getInactiveMissions = getInactiveMissions;
+exports.getMissions = getMissions;

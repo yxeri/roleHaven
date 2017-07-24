@@ -64,7 +64,7 @@ function handle(socket, io) {
     });
   });
 
-  socket.on('getAllTransactions', ({ isTeam, token }, callback = () => {}) => {
+  socket.on('getTransactions', ({ isTeam, token }, callback = () => {}) => {
     manager.userIsAllowed({
       token,
       commandName: dbConfig.commands.getWallet.commandName,
@@ -80,7 +80,7 @@ function handle(socket, io) {
         }
 
         const getTeamTransactions = ({ toTransactions, fromTransactions }) => {
-          manager.getAllTransactions({
+          manager.getTransactions({
             owner: allowedUser.team + appConfig.teamAppend,
             callback: (transactionData) => {
               if (transactionData.error) {
@@ -96,7 +96,7 @@ function handle(socket, io) {
           });
         };
 
-        manager.getAllTransactions({
+        manager.getTransactions({
           owner: allowedUser.userName,
           callback: (transactionData) => {
             if (transactionData.error) {

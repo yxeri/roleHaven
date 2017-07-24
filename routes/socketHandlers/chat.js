@@ -22,68 +22,6 @@ const messenger = require('../../helpers/messenger');
 const authenticator = require('../../helpers/authenticator');
 
 /**
- * Send chat message
- * @param {Object} params.message Message to send
- * @param {Object} params.image Image to attach to the message
- * @param {Object} params.token jwt token
- * @param {Object} params.socket Socket.io socket
- * @param {Object} params.io Socket.io
- * @param {Function} params.callback Callback
- */
-function sendChatMsg({ message, image, token, socket, io, callback }) {
-  authenticator.isUserAllowed({
-    token,
-    commandName: dbConfig.apiCommands.SendMessage.name,
-    callback: ({ error, data }) => {
-      if (error) {
-        callback({ error });
-
-        return;
-      }
-
-      messenger.sendChatMsg({
-        callback,
-        io,
-        socket,
-        image,
-        message,
-        user: data.user,
-      });
-    },
-  });
-}
-
-/**
- * Send whisper message
- * @param {Object} params.message Message to send
- * @param {Object} params.token jwt token
- * @param {Object} params.socket Socket.io socket
- * @param {Object} params.io Socket.io
- * @param {Function} params.callback Callback
- */
-function sendWhisperMsg({ message, token, socket, io, callback }) {
-  authenticator.isUserAllowed({
-    token,
-    commandName: dbConfig.apiCommands.SendWhisper.name,
-    callback: ({ error, data }) => {
-      if (error) {
-        callback({ error });
-
-        return;
-      }
-
-      messenger.sendWhisperMsg({
-        socket,
-        callback,
-        io,
-        message,
-        user: data.user,
-      });
-    },
-  });
-}
-
-/**
  * Send broadcast message
  * @param {Object} params.message Message to send
  * @param {Object} params.token jwt token
@@ -286,7 +224,7 @@ function listRooms({ socket, token, callback }) {
         return;
       }
 
-      manager.listRooms({
+      manager.getRooms({
         socket,
         callback,
         user: data.user,
@@ -441,10 +379,23 @@ function getRoom({ token, roomName, callback }) {
  */
 function handle(socket, io) {
   socket.on('chatMsg', ({ message, image, token }, callback = () => {}) => {
-    sendChatMsg({ message, image, token, socket, io, callback });
+    messenger.sendChatMsg({
+      callback,
+      io,
+      socket,
+      image,
+      message,
+      token,
+    });
   });
   socket.on('whisperMsg', ({ message, token }, callback = () => {}) => {
-    sendWhisperMsg({ message, token, callback, socket, io });
+    messenger.sendWhisperMsg({
+      socket,
+      callback,
+      io,
+      message,
+      token,
+    });
   });
   // TODO Unused
   socket.on('broadcastMsg', ({ message, token }, callback = () => {}) => {
@@ -536,15 +487,13 @@ function handle(socket, io) {
   });
 }
 
-exports.sendChatMsg = sendChatMsg;
-exports.sendWhisperMsg = sendWhisperMsg;
 exports.sendBroadcastMsg = sendBroadcastMsg;
 exports.createRoom = createRoom;
 exports.authUserToRoom = authUserToRoom;
 exports.followWhisperRoom = followWhisperRoom;
 exports.followRoom = followRoom;
 exports.unfollowRoom = unfollowRoom;
-exports.listRooms = listRooms;
+exports.getRooms = listRooms;
 exports.getHistory = getHistory;
 exports.removeRoom = removeRoom;
 exports.matchPartialMyRoomName = matchPartialMyRoomName;

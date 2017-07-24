@@ -575,10 +575,10 @@ function handle(socket, io) {
     });
   });
 
-  socket.on('addAlias', ({ alias, token }, callback = () => {}) => {
+  socket.on('createAlias', ({ alias, token }, callback = () => {}) => {
     manager.userIsAllowed({
       token,
-      commandName: dbConfig.commands.addAlias.commandName,
+      commandName: dbConfig.commands.createAlias.commandName,
       callback: ({ error, allowedUser }) => {
         if (error) {
           callback({ error });
@@ -586,7 +586,7 @@ function handle(socket, io) {
           return;
         }
 
-        manager.addAlias({
+        manager.createAlias({
           alias,
           callback,
           user: allowedUser,
@@ -606,7 +606,7 @@ function handle(socket, io) {
           return;
         }
 
-        dbUser.getAllUsers({
+        dbUser.getUsers({
           includeInactive: includeInactive && allowedUser.accessLevel >= dbConfig.AccessLevels.LOWERADMIN,
           user: allowedUser,
           callback: (usersData) => {
@@ -640,7 +640,7 @@ function handle(socket, io) {
           return;
         }
 
-        dbUser.getAllUsers({
+        dbUser.getUsers({
           includeInactive: includeInactive && allowedUser.accessLevel >= dbConfig.AccessLevels.LOWERADMIN,
           user: allowedUser,
           callback: (usersData) => {

@@ -437,7 +437,7 @@ function verifyAllUsers({ callback }) {
  * @param {boolean} params.includeInactive Include users that are banned or unverified
  * @param {Function} params.callback Function to be called on completion
  */
-function getAllUsers({ user, includeInactive, callback }) {
+function getUsers({ user, includeInactive, callback }) {
   const query = { visibility: { $lte: user.accessLevel } };
   const sort = { userName: 1 };
   const filter = { _id: 0, password: 0, socketId: 0 };
@@ -1006,7 +1006,7 @@ exports.getUserById = getUserById;
 exports.authUser = authUser;
 exports.createUser = createUser;
 exports.updateUserSocketId = updateUserSocketId;
-exports.getAllUsers = getAllUsers;
+exports.getUsers = getUsers;
 exports.getAllUserPositions = getAllUserPositions;
 exports.getUserPosition = getUserPosition;
 exports.addRoomToUser = addRoomToUser;
@@ -1031,7 +1031,7 @@ exports.getUsersFollowingRoom = getUsersFollowingRoom;
 exports.removeRoomFromAllUsers = removeRoomFromAllUsers;
 exports.updateUserIsTracked = updateUserIsTracked;
 exports.getUserByAlias = getUserByAlias;
-exports.addAlias = addAlias;
+exports.createAlias = addAlias;
 exports.getTeamUsers = getTeamUsers;
 exports.updateUserBlockedBy = updateUserBlockedBy;
 exports.removeAllUserBlockedBy = removeAllUserBlockedBy;

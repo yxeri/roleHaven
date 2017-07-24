@@ -25,7 +25,7 @@ const dbPosition = require('../../db/connectors/position');
 // const errorCreator = require('../../objects/error/errorCreator');
 // const textTools = require('../../utils/textTools');
 
-dbPosition.removePositions({
+dbPosition.removePositionsByType({
   markerType: 'signalBlock',
   callback: () => {},
 });

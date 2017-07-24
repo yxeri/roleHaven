@@ -30,6 +30,15 @@ data.newUserToCreate = {
   password: tools.createRandString({ length: appConfig.passwordMaxLength }),
   registerDevice: tools.createRandString({ length: appConfig.deviceIdLength }),
   mail: `${tools.createRandString({ length: 10 })}@${tools.createRandString({ length: 10 })}.com`,
+  accessLevel: dbConfig.AccessLevels.PRO,
+  verified: true,
+};
+data.newUserToCreateMissionWith = {
+  userName: tools.createRandString({ length: appConfig.userNameMaxLength }),
+  password: tools.createRandString({ length: appConfig.passwordMaxLength }),
+  registerDevice: tools.createRandString({ length: appConfig.deviceIdLength }),
+  mail: `${tools.createRandString({ length: 10 })}@${tools.createRandString({ length: 10 })}.com`,
+  accessLevel: dbConfig.AccessLevels.PRO,
   verified: true,
 };
 data.newAdminUserToCreate = {
@@ -41,12 +50,42 @@ data.newAdminUserToCreate = {
   visibility: dbConfig.AccessLevels.PRO,
   verified: true,
 };
-
 data.newUserToCreateWithValidMail = {
   userName: tools.createRandString({ length: appConfig.userNameMaxLength }),
   password: tools.createRandString({ length: appConfig.passwordMaxLength }),
   registerDevice: tools.createRandString({ length: appConfig.deviceIdLength }),
   mail: data.validMail,
 };
+data.nonExistingUser = {
+  userName: tools.createRandString({ length: appConfig.userNameMaxLength }),
+  password: tools.createRandString({ length: appConfig.passwordMaxLength }),
+  registerDevice: tools.createRandString({ length: appConfig.deviceIdLength }),
+  mail: data.validMail,
+};
+data.roomToCreate = {
+  roomName: tools.createRandString({ length: appConfig.roomNameMaxLength }),
+};
+data.publicRoomToCreate = {
+  roomName: tools.createRandString({ length: appConfig.roomNameMaxLength }),
+  visibility: dbConfig.AccessLevels.ANONYMOUS,
+  accessLevel: dbConfig.AccessLevels.BASIC,
+};
+data.passwordProtectedRoomToCreate = {
+  roomName: tools.createRandString({ length: appConfig.roomNameMaxLength }),
+  password: tools.createRandString({ length: appConfig.passwordMaxLength }),
+};
+data.invisibleRoomToCreate = {
+  roomName: tools.createRandString({ length: appConfig.roomNameMaxLength }),
+  visibility: dbConfig.AccessLevels.GOD,
+};
+data.highAccessLevelRoomToCreate = {
+  roomName: tools.createRandString({ length: appConfig.roomNameMaxLength }),
+  accessLevel: dbConfig.AccessLevels.GOD,
+};
+data.roomThatDoesNotExist = {
+  roomName: tools.createRandString({ length: appConfig.roomNameMaxLength }),
+};
+
+data.incorrectPassword = tools.createRandString({ length: appConfig.passwordMaxLength });
 
 module.exports = data;

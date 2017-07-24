@@ -31,64 +31,97 @@ chai.should();
 chai.use(chaiHttp);
 chai.use(chaiJson);
 
-describe('Send broadcast', () => {
-  it('Should NOT send broadcast message with incorrect authorization on /api/broadcasts POST', (done) => {
-    chai
-      .request(app)
-      .post('/api/broadcasts')
-      .set('Authorization', tokens.incorrectJwt)
-      .send({ data: { message: broadcastData.broadcastToCreate } })
-      .end((error, response) => {
-        response.should.have.status(401);
-        response.should.be.json;
-        response.body.should.be.jsonSchema(errorSchemas.error);
+describe('Broadcasts', () => {
+  describe('Send broadcast', () => {
+    it('Should NOT send broadcast message with incorrect authorization on /api/broadcasts POST', (done) => {
+      chai
+        .request(app)
+        .post('/api/broadcasts')
+        .set('Authorization', tokens.incorrectJwt)
+        .send({ data: { message: broadcastData.broadcastToCreate } })
+        .end((error, response) => {
+          response.should.have.status(401);
+          response.should.be.json;
+          response.body.should.be.jsonSchema(errorSchemas.error);
 
-        done();
-      });
+          done();
+        });
+    });
+
+    it('Should NOT send broadcast message that is too long on /api/broadcasts POST', (done) => {
+      chai
+        .request(app)
+        .post('/api/broadcasts')
+        .set('Authorization', tokens.adminUser)
+        .send({ data: { message: broadcastData.tooLongBroadcast } })
+        .end((error, response) => {
+          response.should.have.status(400);
+          response.should.be.json;
+          response.body.should.be.jsonSchema(errorSchemas.error);
+
+          done();
+        });
+    });
+
+    it('Should send broadcast message on /api/broadcasts POST', (done) => {
+      chai
+        .request(app)
+        .post('/api/broadcasts')
+        .set('Authorization', tokens.adminUser)
+        .send({ data: { message: broadcastData.broadcastToCreate } })
+        .end((error, response) => {
+          response.should.have.status(200);
+          response.should.be.json;
+          response.body.should.be.jsonSchema(broadcastSchemas.broadcast);
+
+          done();
+        });
+    });
+
+    it('Should NOT send broadcast message with too low access level /api/broadcasts POST', (done) => {
+      chai
+        .request(app)
+        .post('/api/broadcasts')
+        .set('Authorization', tokens.basicUser)
+        .send({ data: { message: broadcastData.broadcastToCreate } })
+        .end((error, response) => {
+          response.should.have.status(401);
+          response.should.be.json;
+          response.body.should.be.jsonSchema(errorSchemas.error);
+
+          done();
+        });
+    });
   });
 
-  it('Should NOT send broadcast message that is too long on /api/broadcasts POST', (done) => {
-    chai
-      .request(app)
-      .post('/api/broadcasts')
-      .set('Authorization', tokens.adminUser)
-      .send({ data: { message: broadcastData.tooLongBroadcast } })
-      .end((error, response) => {
-        response.should.have.status(400);
-        response.should.be.json;
-        response.body.should.be.jsonSchema(errorSchemas.error);
+  describe('Get broadcasts', () => {
+    it('Should NOT get broadcasts with incorrect auth on /api/broadcasts GET', (done) => {
+      chai
+        .request(app)
+        .get('/api/broadcasts')
+        .set('Authorization', tokens.incorrectJwt)
+        .end((error, response) => {
+          response.should.have.status(401);
+          response.should.be.json;
+          response.body.should.be.jsonSchema(errorSchemas.error);
 
-        done();
-      });
-  });
+          done();
+        });
+    });
 
-  it('Should send broadcast message on /api/broadcasts POST', (done) => {
-    chai
-      .request(app)
-      .post('/api/broadcasts')
-      .set('Authorization', tokens.adminUser)
-      .send({ data: { message: broadcastData.broadcastToCreate } })
-      .end((error, response) => {
-        response.should.have.status(200);
-        response.should.be.json;
-        response.body.should.be.jsonSchema(broadcastSchemas.broadcast);
+    it('Should get broadcasts on /api/broadcasts GET', (done) => {
+      chai
+        .request(app)
+        .get('/api/broadcasts')
+        .set('Authorization', tokens.adminUser)
+        .send({ data: { message: broadcastData.broadcastToCreate } })
+        .end((error, response) => {
+          response.should.have.status(200);
+          response.should.be.json;
+          response.body.should.be.jsonSchema(broadcastSchemas.broadcasts);
 
-        done();
-      });
-  });
-
-  it('Should NOT send broadcast message with too low access level /api/broadcasts POST', (done) => {
-    chai
-      .request(app)
-      .post('/api/broadcasts')
-      .set('Authorization', tokens.basicUser)
-      .send({ data: { message: broadcastData.broadcastToCreate } })
-      .end((error, response) => {
-        response.should.have.status(401);
-        response.should.be.json;
-        response.body.should.be.jsonSchema(errorSchemas.error);
-
-        done();
-      });
+          done();
+        });
+    });
   });
 });

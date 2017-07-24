@@ -30,6 +30,8 @@ data.adminUserToAuth = {
   accessLevel: dbConfig.AccessLevels.ADMIN,
   visibility: dbConfig.AccessLevels.PRO,
   verified: true,
+  registeredAt: new Date(),
+  fullName: tools.createRandString({ length: appConfig.userNameMaxLength }),
 };
 data.basicUserToAuth = {
   userName: tools.createRandString({ length: appConfig.userNameMaxLength }),
@@ -38,6 +40,8 @@ data.basicUserToAuth = {
   mail: `${tools.createRandString({ length: 10 })}@${tools.createRandString({ length: 10 })}.com`,
   verified: true,
   accessLevel: dbConfig.AccessLevels.BASIC,
+  registeredAt: new Date(),
+  fullName: tools.createRandString({ length: appConfig.userNameMaxLength }),
 };
 data.unverifiedUserToAuth = {
   userName: tools.createRandString({ length: appConfig.userNameMaxLength }),
@@ -45,6 +49,8 @@ data.unverifiedUserToAuth = {
   registerDevice: tools.createRandString({ length: appConfig.deviceIdLength }),
   mail: `${tools.createRandString({ length: 10 })}@${tools.createRandString({ length: 10 })}.com`,
   verified: false,
+  registeredAt: new Date(),
+  fullName: tools.createRandString({ length: appConfig.userNameMaxLength }),
 };
 data.bannedUserToAuth = {
   userName: tools.createRandString({ length: appConfig.userNameMaxLength }),
@@ -53,6 +59,8 @@ data.bannedUserToAuth = {
   mail: `${tools.createRandString({ length: 10 })}@${tools.createRandString({ length: 10 })}.com`,
   verified: true,
   banned: true,
+  registeredAt: new Date(),
+  fullName: tools.createRandString({ length: appConfig.userNameMaxLength }),
 };
 
 module.exports = data;

@@ -126,4 +126,7 @@ function handle(socket) {
   });
 }
 
+exports.getDevices = getDevices;
+exports.updateDevice = updateDevice;
+exports.updateDeviceAlias = updateDeviceAlias;
 exports.handle = handle;

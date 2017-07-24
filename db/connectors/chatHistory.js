@@ -22,26 +22,29 @@ const chatHistorySchema = new mongoose.Schema({
   roomName: { type: String, unique: true },
   anonymous: { type: Boolean, default: false },
   isWhisper: { type: Boolean, default: false },
-  messages: [{
-    text: [String],
-    time: Date,
-    userName: String,
-    roomName: String,
-    extraClass: String,
-    customSender: String,
-    team: String,
-    shortTeam: String,
-    coordinates: {
-      longitude: Number,
-      latitude: Number,
-    },
-    image: {
-      imageName: String,
-      fileName: String,
-      width: Number,
-      height: Number,
-    },
-  }],
+  messages: {
+    type: [{
+      text: [String],
+      time: Date,
+      userName: String,
+      roomName: String,
+      extraClass: String,
+      customSender: String,
+      team: String,
+      shortTeam: String,
+      coordinates: {
+        longitude: Number,
+        latitude: Number,
+      },
+      image: {
+        imageName: String,
+        fileName: String,
+        width: Number,
+        height: Number,
+      },
+    }],
+    default: [],
+  },
 }, { collection: 'chatHistories' });
 
 const ChatHistory = mongoose.model('ChatHistory', chatHistorySchema);

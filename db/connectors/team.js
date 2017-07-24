@@ -77,11 +77,16 @@ function createTeam({ team, callback }) {
 
 /**
  * Get team
- * @param {string} params.teamName Name of team to retrieve
+ * @param {string} params.teamName Short name of full name of team to retrieve
  * @param {Function} params.callback Callback
  */
 function getTeam({ teamName, callback }) {
-  const query = { teamName };
+  const query = {
+    $or: [
+      { shortName: teamName },
+      { teamName },
+    ],
+  };
   const filter = { _id: 0 };
 
   Team.findOne(query, filter).lean().exec((err, team) => {
