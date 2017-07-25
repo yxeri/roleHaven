@@ -17,13 +17,9 @@
 'use strict';
 
 const express = require('express');
-const dbConfig = require('../../config/defaults/config').databasePopulation;
-const manager = require('../../socketHelpers/manager');
+const manager = require('../../helpers/manager');
 const objectValidator = require('../../utils/objectValidator');
-const errorCreator = require('../../objects/error/errorCreator');
-const authenticator = require('../../socketHelpers/authenticator');
-const dbTeam = require('../../db/connectors/team');
-const appConfig = require('../../config/defaults/config').app;
+const restErrorChecker = require('../../helpers/restErrorChecker');
 
 const router = new express.Router();
 
@@ -33,14 +29,14 @@ const router = new express.Router();
  */
 function handle(io) {
   /**
-   * @api {get} /rooms Retrieve teams
+   * @api {get} /teams Get teams
    * @apiVersion 6.0.0
    * @apiName GetTeams
    * @apiGroup Teams
    *
    * @apiHeader {String} Authorization Your JSON Web Token
    *
-   * @apiDescription Retrieve teams
+   * @apiDescription Get teams
    *
    * @apiSuccess {Object} data
    * @apiSuccess {Object} data.teams Found teams
@@ -54,70 +50,32 @@ function handle(io) {
    *    }
    *  }
    */
-  router.get('/', (req, res) => {
-    authenticator.isUserAllowed({
-      commandName: dbConfig.apiCommands.GetTeams.name,
-      token: req.headers.authorization,
+  router.get('/', (request, response) => {
+    manager.getTeams({
+      token: request.headers.authorization,
       callback: ({ error, data }) => {
         if (error) {
-          if (error.type === errorCreator.ErrorTypes.DOESNOTEXIST) {
-            res.status(404).json({
-              error: {
-                status: 404,
-                title: 'Command does not exist',
-                detail: 'Command does not exist',
-              },
-            });
-
-            return;
-          } else if (error.type === errorCreator.ErrorTypes.NOTALLOWED) {
-            res.status(401).json({
-              error: {
-                status: 401,
-                title: 'Unauthorized',
-                detail: 'Invalid token',
-              },
-            });
-
-            return;
-          }
-
-          res.status(500).json({
-            error: {
-              status: 500,
-              title: 'Internal Server Error',
-              detail: 'Internal Server Error',
-            },
-          });
+          restErrorChecker.checkAndSendError({ response, error });
 
           return;
         }
 
-        dbTeam.getTeams({
-          user: data.user,
-          callback: ({ error: teamError, data: teamsData }) => {
-            if (teamError) {
-              return;
-            }
-
-            res.json({ data: teamsData });
-          },
-        });
+        response.json({ data });
       },
     });
   });
 
   /**
-   * @api {get} /teams/:id Get specific team
+   * @api {get} /teams/:teamName Get specific team
    * @apiVersion 6.0.0
    * @apiName GetTeam
    * @apiGroup Teams
    *
    * @apiHeader {String} Authorization Your JSON Web Token
    *
-   * @apiDescription Get a specific team
+   * @apiDescription Get a specific team by short or full name
    *
-   * @apiParam {String} id Name of the team to retrieve
+   * @apiParam {String} teamName Short or full name of the team to retrieve
    *
    * @apiSuccess {Object} data
    * @apiSuccess {Object} data.room Found team
@@ -136,9 +94,9 @@ function handle(io) {
    *    }
    *  }
    */
-  router.get('/:id', (req, res) => {
-    if (!objectValidator.isValidData(req.params, { id: true })) {
-      res.status(400).json({
+  router.get('/:teamName', (request, response) => {
+    if (!objectValidator.isValidData(request.params, { teamName: true })) {
+      response.status(400).json({
         error: {
           status: 400,
           title: 'Missing data',
@@ -149,73 +107,17 @@ function handle(io) {
       return;
     }
 
-    authenticator.isUserAllowed({
-      commandName: dbConfig.apiCommands.GetTeam.name,
-      token: req.headers.authorization,
-      callback: ({ error }) => {
+    manager.getTeam({
+      teamName: request.params.teamName,
+      token: request.headers.authorization,
+      callback: ({ error, data }) => {
         if (error) {
-          if (error.type === errorCreator.ErrorTypes.DOESNOTEXIST) {
-            res.status(404).json({
-              error: {
-                status: 404,
-                title: 'Command does not exist',
-                detail: 'Command does not exist',
-              },
-            });
-
-            return;
-          } else if (error.type === errorCreator.ErrorTypes.NOTALLOWED) {
-            res.status(401).json({
-              error: {
-                status: 401,
-                title: 'Unauthorized',
-                detail: 'Invalid token',
-              },
-            });
-
-            return;
-          }
-
-          res.status(500).json({
-            error: {
-              status: 500,
-              title: 'Internal Server Error',
-              detail: 'Internal Server Error',
-            },
-          });
+          restErrorChecker.checkAndSendError({ response, error });
 
           return;
         }
 
-        dbTeam.getTeam({
-          callback: ({ error: teamError, data: teamData }) => {
-            if (teamError) {
-              if (teamError.type === errorCreator.ErrorTypes.DOESNOTEXIST) {
-                res.status(404).json({
-                  error: {
-                    status: 404,
-                    title: 'Team does not exist',
-                    detail: 'Team does not exist',
-                  },
-                });
-
-                return;
-              }
-
-              res.status(500).json({
-                error: {
-                  status: 500,
-                  title: 'Internal Server Error',
-                  detail: 'Internal Server Error',
-                },
-              });
-
-              return;
-            }
-
-            res.json({ data: teamData });
-          },
-        });
+        response.json({ data });
       },
     });
   });
@@ -266,9 +168,9 @@ function handle(io) {
    *    }
    *  }
    */
-  router.post('/', (req, res) => {
-    if (!objectValidator.isValidData(req.body, { data: { team: { teamName: true, shortName: true } } })) {
-      res.status(400).json({
+  router.post('/', (request, response) => {
+    if (!objectValidator.isValidData(request.body, { data: { team: { teamName: true, shortName: true } } })) {
+      response.status(400).json({
         error: {
           status: 400,
           title: 'Missing data',
@@ -279,213 +181,18 @@ function handle(io) {
       return;
     }
 
-    authenticator.isUserAllowed({
-      commandName: dbConfig.apiCommands.CreateTeam.name,
-      token: req.headers.authorization,
+    manager.createTeam({
+      io,
+      team: request.body.data.team,
+      token: request.headers.authorization,
       callback: ({ error, data }) => {
         if (error) {
-          if (error.type === errorCreator.ErrorTypes.DOESNOTEXIST) {
-            res.status(404).json({
-              error: {
-                status: 404,
-                title: 'Command does not exist',
-                detail: 'Command does not exist',
-              },
-            });
-
-            return;
-          } else if (error.type === errorCreator.ErrorTypes.NOTALLOWED) {
-            res.status(401).json({
-              error: {
-                status: 401,
-                title: 'Unauthorized',
-                detail: 'Invalid token',
-              },
-            });
-
-            return;
-          }
-
-          res.status(500).json({
-            error: {
-              status: 500,
-              title: 'Internal Server Error',
-              detail: 'Internal Server Error',
-            },
-          });
+          restErrorChecker.checkAndSendError({ response, error });
 
           return;
         }
 
-        const { team } = req.body.data;
-        const { user } = data;
-
-        manager.createTeam({
-          team,
-          user,
-          io,
-          callback: ({ error: teamError, data: teamData }) => {
-            if (teamError) {
-              if (teamError.type === errorCreator.ErrorTypes.INVALIDDATA) {
-                res.status(400).json({
-                  error: {
-                    status: 400,
-                    title: 'Names too long',
-                    detail: `Max team name length ${appConfig.teamNameMaxLength}. Max short name length ${appConfig.shortTeamMaxLength}`,
-                  },
-                });
-
-                return;
-              } else if (teamError.type === errorCreator.ErrorTypes.ALREADYEXISTS) {
-                res.status(403).json({
-                  error: {
-                    status: 403,
-                    title: 'User already in team or team already exists',
-                    detail: 'User already in team or team already exists',
-                  },
-                });
-
-                return;
-              }
-
-              res.status(500).json({
-                error: {
-                  status: 500,
-                  title: 'Internal Server Error',
-                  detail: 'Internal Server Error',
-                },
-              });
-
-              return;
-            }
-
-            res.json({ data: teamData });
-          },
-        });
-      },
-    });
-  });
-
-  /**
-   * @api {post} /teams/users/:id/invite Invite user to team
-   * @apiVersion 6.0.0
-   * @apiName InviteToTeam
-   * @apiGroup Teams
-   *
-   * @apiHeader {String} Authorization Your JSON Web Token
-   *
-   * @apiDescription Invite user to team
-   *
-   * @apiParam {String} id Name of the user to invite
-   *
-   * @apiSuccess {Object} data
-   * @apiSuccess {Object} data.room Invitation created
-   * @apiSuccessExample {json} Success-Response:
-   *   {
-   *    "data": {
-   *      "invitation": {
-   *        "invitationType": "team",
-   *        "itemName": "bravo team",
-   *        "sender": "raz",
-   *        "time": "2016-10-14T09:54:18.694Z"
-   *      },
-   *      "to": "yathzee"
-   *    }
-   *  }
-   */
-  router.post('/users/:id/invite', (req, res) => {
-    if (!objectValidator.isValidData(req.params, { id: true })) {
-      res.status(400).json({
-        error: {
-          status: 400,
-          title: 'Missing data',
-          detail: 'Unable to parse data',
-        },
-      });
-
-      return;
-    }
-
-    authenticator.isUserAllowed({
-      commandName: dbConfig.apiCommands.InviteToTeam.name,
-      token: req.headers.authorization,
-      callback: ({ error, data }) => {
-        if (error) {
-          if (error.type === errorCreator.ErrorTypes.DOESNOTEXIST) {
-            res.status(404).json({
-              error: {
-                status: 404,
-                title: 'Command does not exist',
-                detail: 'Command does not exist',
-              },
-            });
-
-            return;
-          } else if (error.type === errorCreator.ErrorTypes.NOTALLOWED) {
-            res.status(401).json({
-              error: {
-                status: 401,
-                title: 'Unauthorized',
-                detail: 'Invalid token',
-              },
-            });
-
-            return;
-          }
-
-          res.status(500).json({
-            error: {
-              status: 500,
-              title: 'Internal Server Error',
-              detail: 'Internal Server Error',
-            },
-          });
-
-          return;
-        }
-
-        manager.inviteToTeam({
-          io,
-          user: data.user,
-          to: req.params.id,
-          callback: ({ error: inviteError, data: inviteData }) => {
-            if (inviteError) {
-              if (inviteError.type === errorCreator.ErrorTypes.DOESNOTEXIST) {
-                res.status(404).json({
-                  error: {
-                    status: 404,
-                    title: 'User or team does not exist',
-                    detail: 'User or team does not exist',
-                  },
-                });
-
-                return;
-              } else if (error.type === errorCreator.ErrorTypes.NOTALLOWED) {
-                res.status(401).json({
-                  error: {
-                    status: 401,
-                    title: 'Unauthorized',
-                    detail: 'Invalid token',
-                  },
-                });
-
-                return;
-              }
-
-              res.status(500).json({
-                error: {
-                  status: 500,
-                  title: 'Internal Server Error',
-                  detail: 'Internal Server Error',
-                },
-              });
-
-              return;
-            }
-
-            res.json({ data: inviteData });
-          },
-        });
+        response.json({ data });
       },
     });
   });

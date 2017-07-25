@@ -19,17 +19,68 @@
 
 const schemas = {};
 
-schemas.history = {
+schemas.histories = {
   type: 'object',
   required: ['data'],
   properties: {
     data: {
       type: 'object',
-      required: ['messages', 'anonymous', 'timeZoneOffset'],
+      required: ['histories', 'timeZoneOffset'],
       properties: {
-        messages: { type: 'array', items: { type: 'object' } },
-        anonymous: { type: 'boolean' },
         timeZoneOffset: { type: 'number' },
+        histories: {
+          required: [
+            'messages',
+            'anonymous',
+            'isWhisper',
+          ],
+          properties: {
+            messages: { type: 'array', items: { type: 'object' } },
+            anonymous: { type: 'boolean' },
+            timeZoneOffset: { type: 'number' },
+            isWhisper: { type: 'boolean' },
+          },
+        },
+      },
+    },
+  },
+};
+
+schemas.messages = {
+  type: 'object',
+  required: ['data'],
+  properties: {
+    data: {
+      type: 'object',
+      required: ['messages', 'timeZoneOffset'],
+      properties: {
+        messages: {
+          required: [
+            'messages',
+            'anonymous',
+            'isWhisper',
+          ],
+          properties: {
+            messages: {
+              type: 'array',
+              items: {
+                type: 'object',
+                required: [
+                  'text',
+                  'time',
+                  'roomName',
+                  'userName',
+                ],
+                properties: {
+                  text: { type: 'array', items: { type: 'string' } },
+                  time: { type: 'string' },
+                  roomName: { type: 'string' },
+                  userName: { type: 'string' },
+                },
+              },
+            },
+          },
+        },
       },
     },
   },

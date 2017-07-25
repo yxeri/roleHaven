@@ -119,14 +119,19 @@ function createLanternTeam({ team, callback }) {
 
 /**
  * Update lantern team
- * @param {string} params.teamName Name of the team to update
+ * @param {string} params.teamName Full or short name of the team to update
  * @param {boolean} [params.isActive] Is the team active?
  * @param {number} [params.points] Teams total points
  * @param {boolean} [params.resetPoints] Resets points on team to 0
  * @param {Function} params.callback Callback
  */
 function updateLanternTeam({ teamName, isActive, points, resetPoints, callback }) {
-  const query = { teamName };
+  const query = {
+    $or: [
+      { shortName: teamName },
+      { teamName },
+    ],
+  };
   const update = {};
   const options = { new: true };
 

@@ -23,7 +23,7 @@ const dbUser = require('../../db/connectors/user');
 const dbPosition = require('../../db/connectors/position');
 const errorCreator = require('../../objects/error/errorCreator');
 const dbConfig = require('../../config/defaults/config').databasePopulation;
-const authenticator = require('../../socketHelpers/authenticator');
+const authenticator = require('../../helpers/authenticator');
 
 const router = new express.Router();
 
@@ -33,7 +33,7 @@ const router = new express.Router();
  */
 function handle(io) {
   /**
-   * @api {get} /positions/users Retrieve all user positions
+   * @api {get} /positions/users Get all user positions
    * @apiVersion 6.0.0
    * @apiName GetUserPositions
    * @apiGroup Positions

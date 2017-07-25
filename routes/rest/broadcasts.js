@@ -17,11 +17,10 @@
 'use strict';
 
 const express = require('express');
-const messenger = require('../../socketHelpers/messenger');
+const messenger = require('../../helpers/messenger');
 const objectValidator = require('../../utils/objectValidator');
-const dbConfig = require('../../config/defaults/config').databasePopulation;
-const errorCreator = require('../../objects/error/errorCreator');
-const authenticator = require('../../socketHelpers/authenticator');
+const restErrorChecker = require('../../helpers/restErrorChecker');
+const manager = require('../../helpers/manager');
 
 const router = new express.Router();
 
@@ -71,9 +70,9 @@ function handle(io) {
      *    }
      *  }
    */
-  router.post('/', (req, res) => {
-    if (!objectValidator.isValidData(req.body, { data: { message: { text: true } } })) {
-      res.status(400).json({
+  router.post('/', (request, response) => {
+    if (!objectValidator.isValidData(request.body, { data: { message: { text: true } } })) {
+      response.status(400).json({
         error: {
           status: 400,
           title: 'Missing data',
@@ -84,84 +83,58 @@ function handle(io) {
       return;
     }
 
-    authenticator.isUserAllowed({
-      commandName: dbConfig.apiCommands.SendBroadcast.name,
-      token: req.headers.authorization,
+    messenger.sendBroadcastMsg({
+      io,
+      token: request.headers.authorization,
+      message: request.body.data.message,
       callback: ({ error, data }) => {
         if (error) {
-          if (error.type === errorCreator.ErrorTypes.DOESNOTEXIST) {
-            res.status(404).json({
-              error: {
-                status: 404,
-                title: 'Command does not exist',
-                detail: 'Command does not exist',
-              },
-            });
-
-            return;
-          } else if (error.type === errorCreator.ErrorTypes.NOTALLOWED) {
-            res.status(401).json({
-              error: {
-                status: 401,
-                title: 'Unauthorized',
-                detail: 'Invalid token',
-              },
-            });
-
-            return;
-          }
-
-          res.status(500).json({
-            error: {
-              status: 500,
-              title: 'Internal Server Error',
-              detail: 'Internal Server Error',
-            },
-          });
+          restErrorChecker.checkAndSendError({ response, error });
 
           return;
         }
 
-        messenger.sendBroadcastMsg({
-          io,
-          message: req.body.data.message,
-          user: data.user,
-          callback: ({ error: broadcastError, data: broadcastData }) => {
-            if (broadcastError) {
-              if (broadcastError.type === errorCreator.ErrorTypes.INVALIDCHARACTERS) {
-                res.status(400).json({
-                  error: {
-                    status: 400,
-                    title: 'Missing data',
-                    detail: 'Unable to parse data',
-                  },
-                });
+        response.json({ data });
+      },
+    });
+  });
 
-                return;
-              } else if (broadcastError.type === errorCreator.ErrorTypes.NOTALLOWED) {
-                res.status(401).json({
-                  error: {
-                    status: 401,
-                    title: 'Unauthorized user',
-                    detail: 'User not allowed to use feature',
-                  },
-                });
+  /**
+   * @api {post} /broadcasts Get broadcasts
+   * @apiVersion 6.0.0
+   * @apiName GetBroadcasts
+   * @apiGroup Broadcasts
+   *
+   * @apiHeader {String} Authorization Your JSON Web Token
+   *
+   * @apiDescription Get broadcasts
+   *
+   * @apiSuccess {Object} data
+   * @apiSuccess {Object[]} data.message Message sent
+   * @apiSuccessExample {json} Success-Response:
+   *   {
+   *    "data": {
+   *      "messages": [{
+   *        "text": [
+   *          "Hello world!"
+   *        ],
+   *        "userName": "rez",
+   *        "time": "2016-10-28T22:42:06.262Z"
+   *      }
+   *    }
+   *  }
+   */
+  router.get('/', (request, response) => {
+    manager.getBroadcasts({
+      token: request.headers.authorization,
+      callback: ({ error, data }) => {
+        if (error) {
+          restErrorChecker.checkAndSendError({ response, error });
 
-                return;
-              }
+          return;
+        }
 
-              res.status(500).json({
-                error: {
-                  status: 500,
-                  title: 'Internal Server Error',
-                  detail: 'Internal Server Error',
-                },
-              });
-            }
-
-            res.json({ data: broadcastData });
-          },
-        });
+        response.json({ data });
       },
     });
   });

@@ -117,16 +117,17 @@ function matchPartial({ callback, partialName, queryType, filter, sort, user, ty
   }
 
   const query = {};
+  const regex = { $regex: `^${partialName}.*` };
 
   if (partialName) {
     if (type === 'userName') {
       query.$and = [
         { banned: false },
         { verified: true },
-        { userName: { $regex: `^${partialName}.*` } },
+        { userName: regex },
       ];
     } else if (type === 'roomName') {
-      query.$and = [{ roomName: { $regex: `^${partialName}.*` } }];
+      query.$and = [{ roomName: regex }];
     }
   } else {
     query.$and = [];
@@ -134,14 +135,14 @@ function matchPartial({ callback, partialName, queryType, filter, sort, user, ty
 
   query.$and.push({ visibility: { $lte: user.accessLevel } });
 
-  queryType.find(query, filter).sort(sort).lean().exec((err, matches) => {
+  queryType.find(query, filter).sort(sort).lean().exec((err, matched = []) => {
     if (err) {
       callback({ error: new errorCreator.Database({ errorObject: err, name: 'matchPartialName' }) });
 
       return;
     }
 
-    callback({ data: { matches } });
+    callback({ data: { matched } });
   });
 }
 

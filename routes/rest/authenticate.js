@@ -18,8 +18,8 @@
 
 const express = require('express');
 const objectValidator = require('../../utils/objectValidator');
-const errorCreator = require('../../objects/error/errorCreator');
-const authenticator = require('../../socketHelpers/authenticator');
+const authenticator = require('../../helpers/authenticator');
+const restErrorChecker = require('../../helpers/restErrorChecker');
 
 const router = new express.Router();
 
@@ -58,9 +58,9 @@ function handle() {
    *    }
    *  }
    */
-  router.post('/', (req, res) => {
-    if (!objectValidator.isValidData(req.body, { data: { user: { userName: true, password: true } } })) {
-      res.status(400).json({
+  router.post('/', (request, response) => {
+    if (!objectValidator.isValidData(request.body, { data: { user: { userName: true, password: true } } })) {
+      response.status(400).json({
         error: {
           status: 400,
           title: 'Missing data',
@@ -71,37 +71,19 @@ function handle() {
       return;
     }
 
-    const { userName, password } = req.body.data.user;
+    const { userName, password } = request.body.data.user;
 
     authenticator.createToken({
       userName,
       password,
       callback: ({ error, data }) => {
         if (error) {
-          if (error.type === errorCreator.ErrorTypes.DOESNOTEXIST) {
-            res.status(401).json({
-              error: {
-                status: 401,
-                title: 'Unauthorized user',
-                detail: 'Incorrect username and/or password or user does not exist, is banned or has not been verified',
-              },
-            });
-
-            return;
-          }
-
-          res.status(500).json({
-            error: {
-              status: 500,
-              title: 'Internal Server Error',
-              detail: 'Internal Server Error',
-            },
-          });
+          restErrorChecker.checkAndSendError({ response, error });
 
           return;
         }
 
-        res.json({ data });
+        response.json({ data });
       },
     });
   });

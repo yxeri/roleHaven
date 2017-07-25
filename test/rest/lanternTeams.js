@@ -79,8 +79,8 @@ describe('LanternTeams', () => {
     });
   });
 
-  describe('List lantern teams', () => {
-    it('Should NOT list lantern teams with incorrect authorization on /api/lanternStations GET', (done) => {
+  describe('Get lantern teams', () => {
+    it('Should NOT get lantern teams with incorrect authorization on /api/lanternTeams GET', (done) => {
       chai
         .request(app)
         .get('/api/lanternTeams')
@@ -94,7 +94,7 @@ describe('LanternTeams', () => {
         });
     });
 
-    it('Should list lantern teams on /api/lanternStations GET', (done) => {
+    it('Should get lantern teams on /api/lanternTeams GET', (done) => {
       chai
         .request(app)
         .get('/api/lanternTeams')
@@ -125,10 +125,10 @@ describe('LanternTeams', () => {
         });
     });
 
-    it('Should NOT update lantern team with incorrect authorization on /api/lanternTeams/:id POST', (done) => {
+    it('Should NOT update lantern team with incorrect authorization on /api/lanternTeams/:shortName POST', (done) => {
       chai
         .request(app)
-        .post(`/api/lanternTeams/${lanternTeamData.lanternTeamToCreateAndModify.teamName}`)
+        .post(`/api/lanternTeams/${lanternTeamData.lanternTeamToCreateAndModify.shortName}`)
         .send({ data: { team: lanternTeamData.lanternTeamWithNewPoints } })
         .set('Authorization', tokens.incorrectJwt)
         .end((error, response) => {
@@ -140,10 +140,10 @@ describe('LanternTeams', () => {
         });
     });
 
-    it('Should NOT update points on inactive lantern team on /api/lanternTeams/:id', (done) => {
+    it('Should NOT update points on inactive lantern team on /api/lanternTeams/:shortName', (done) => {
       chai
         .request(app)
-        .post(`/api/lanternTeams/${lanternTeamData.lanternTeamToCreateAndModify.teamName}`)
+        .post(`/api/lanternTeams/${lanternTeamData.lanternTeamToCreateAndModify.shortName}`)
         .send({ data: { team: lanternTeamData.lanternTeamWithNewPoints } })
         .set('Authorization', tokens.adminUser)
         .end((error, response) => {
@@ -155,10 +155,10 @@ describe('LanternTeams', () => {
         });
     });
 
-    it('Should update active on lantern team on /api/lanternTeams/:id POST', (done) => {
+    it('Should update active on lantern team on /api/lanternTeams/:shortName POST', (done) => {
       chai
         .request(app)
-        .post(`/api/lanternTeams/${lanternTeamData.lanternTeamToCreateAndModify.teamName}`)
+        .post(`/api/lanternTeams/${lanternTeamData.lanternTeamToCreateAndModify.shortName}`)
         .send({ data: { team: lanternTeamData.lanternTeamWithIsActive } })
         .set('Authorization', tokens.adminUser)
         .end((error, response) => {
@@ -172,10 +172,10 @@ describe('LanternTeams', () => {
         });
     });
 
-    it('Should update points on active lantern team on /api/lanternTeams/:id POST', (done) => {
+    it('Should update points on active lantern team on /api/lanternTeams/:shortName POST', (done) => {
       chai
         .request(app)
-        .post(`/api/lanternTeams/${lanternTeamData.lanternTeamToCreateAndModify.teamName}`)
+        .post(`/api/lanternTeams/${lanternTeamData.lanternTeamToCreateAndModify.shortName}`)
         .send({ data: { team: lanternTeamData.lanternTeamWithNewPoints } })
         .set('Authorization', tokens.adminUser)
         .end((error, response) => {
@@ -189,10 +189,10 @@ describe('LanternTeams', () => {
         });
     });
 
-    it('Should reset points to 0 and ignore points parameter on lantern team on /api/lanternTeams/:id POST', (done) => {
+    it('Should reset points to 0 and ignore points parameter on lantern team on /api/lanternTeams/:shortName POST', (done) => {
       chai
         .request(app)
-        .post(`/api/lanternTeams/${lanternTeamData.lanternTeamToCreateAndModify.teamName}`)
+        .post(`/api/lanternTeams/${lanternTeamData.lanternTeamToCreateAndModify.shortName}`)
         .send({ data: { team: lanternTeamData.lanternTeamWithResetPoints } })
         .set('Authorization', tokens.adminUser)
         .end((error, response) => {
@@ -206,10 +206,10 @@ describe('LanternTeams', () => {
         });
     });
 
-    it('Should NOT update non-existing lantern team on /api/lanternTeams/:id POST', (done) => {
+    it('Should NOT update non-existing lantern team on /api/lanternTeams/:shortName POST', (done) => {
       chai
         .request(app)
-        .post(`/api/lanternTeams/${lanternTeamData.lanternTeamThatDoesNotExist.teamName}`)
+        .post(`/api/lanternTeams/${lanternTeamData.lanternTeamThatDoesNotExist.shortName}`)
         .send({ data: { team: lanternTeamData.lanternTeamWithIsActive } })
         .set('Authorization', tokens.adminUser)
         .end((error, response) => {

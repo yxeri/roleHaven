@@ -19,7 +19,7 @@
 const dbTeam = require('../../db/connectors/team');
 const dbUser = require('../../db/connectors/user');
 const dbConfig = require('../../config/defaults/config').databasePopulation;
-const manager = require('../../socketHelpers/manager');
+const manager = require('../../helpers/manager');
 const objectValidator = require('../../utils/objectValidator');
 const appConfig = require('../../config/defaults/config').app;
 const errorCreator = require('../../objects/error/errorCreator');
@@ -29,6 +29,16 @@ const errorCreator = require('../../objects/error/errorCreator');
  * @param {object} io - Socket.IO
  */
 function handle(socket, io) {
+  socket.on('acceptTeamInvitation', ({ invitation, token }, callback = () => {}) => {
+    manager.acceptTeamInvitation({
+      invitation,
+      io,
+      socket,
+      callback,
+      token,
+    });
+  });
+
   socket.on('getTeam', ({ token }, callback = () => {}) => {
     manager.userIsAllowed({
       token,

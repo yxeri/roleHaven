@@ -18,10 +18,8 @@
 
 const express = require('express');
 const objectValidator = require('../../utils/objectValidator');
-const dbConfig = require('../../config/defaults/config').databasePopulation;
-const dbLanternHack = require('../../db/connectors/lanternhack');
-const errorCreator = require('../../objects/error/errorCreator');
-const authenticator = require('../../socketHelpers/authenticator');
+const restErrorCheck = require('../../helpers/restErrorChecker');
+const manager = require('../../helpers/manager');
 
 const router = new express.Router();
 
@@ -34,7 +32,7 @@ function handle(io) {
    * @api {get} /lanternTeams Get all lantern teams
    * @apiVersion 6.0.0
    * @apiName GetLanternTeams
-   * @apiGroup LanternItems
+   * @apiGroup LanternTeams
    *
    * @apiHeader {String} Authorization Your JSON Web Token
    *
@@ -59,62 +57,17 @@ function handle(io) {
    *    }
    *  }
    */
-  router.get('/', (req, res) => {
-    authenticator.isUserAllowed({
-      commandName: dbConfig.apiCommands.GetLanternTeam.name,
-      token: req.headers.authorization,
-      callback: ({ error }) => {
+  router.get('/', (request, response) => {
+    manager.getLanternTeams({
+      token: request.headers.authorization,
+      callback: ({ error, data }) => {
         if (error) {
-          if (error.type === errorCreator.ErrorTypes.DOESNOTEXIST) {
-            res.status(404).json({
-              error: {
-                status: 404,
-                title: 'Command does not exist',
-                detail: 'Command does not exist',
-              },
-            });
-
-            return;
-          } else if (error.type === errorCreator.ErrorTypes.NOTALLOWED) {
-            res.status(401).json({
-              error: {
-                status: 401,
-                title: 'Unauthorized',
-                detail: 'Invalid token',
-              },
-            });
-
-            return;
-          }
-
-          res.status(500).json({
-            error: {
-              status: 500,
-              title: 'Internal Server Error',
-              detail: 'Internal Server Error',
-            },
-          });
+          restErrorCheck.checkAndSendError({ response, error });
 
           return;
         }
 
-        dbLanternHack.getTeams({
-          callback: ({ error: teamError, data: teamData }) => {
-            if (teamError) {
-              res.status(500).json({
-                error: {
-                  status: 500,
-                  title: 'Internal Server Error',
-                  detail: 'Internal Server Error',
-                },
-              });
-
-              return;
-            }
-
-            res.json({ data: teamData });
-          },
-        });
+        response.json({ data });
       },
     });
   });
@@ -123,11 +76,11 @@ function handle(io) {
    * @api {post} /lanternTeams Create a lantern team
    * @apiVersion 6.0.0
    * @apiName CreateLanternTeam
-   * @apiGroup LanternItems
+   * @apiGroup LanternTeams
    *
    * @apiHeader {String} Authorization Your JSON Web Token
    *
-   * @apiDescription Create a lantern station
+   * @apiDescription Create a lantern team
    *
    * @apiParam {Object} data
    * @apiParam {string} data.team New lantern team
@@ -158,9 +111,9 @@ function handle(io) {
    *    }
    *  }
    */
-  router.post('/', (req, res) => {
-    if (!objectValidator.isValidData(req.body, { data: { team: { shortName: true, teamName: true } } })) {
-      res.status(400).json({
+  router.post('/', (request, response) => {
+    if (!objectValidator.isValidData(request.body, { data: { team: { shortName: true, teamName: true } } })) {
+      response.status(400).json({
         error: {
           status: 400,
           title: 'Missing data',
@@ -171,92 +124,33 @@ function handle(io) {
       return;
     }
 
-    authenticator.isUserAllowed({
-      commandName: dbConfig.apiCommands.CreateLanternTeam.name,
-      token: req.headers.authorization,
-      callback: ({ error }) => {
+    manager.createLanternTeam({
+      io,
+      team: request.body.data.team,
+      token: request.headers.authorization,
+      callback: ({ error, data }) => {
         if (error) {
-          if (error.type === errorCreator.ErrorTypes.DOESNOTEXIST) {
-            res.status(404).json({
-              error: {
-                status: 404,
-                title: 'Command does not exist',
-                detail: 'Command does not exist',
-              },
-            });
-
-            return;
-          } else if (error.type === errorCreator.ErrorTypes.NOTALLOWED) {
-            res.status(401).json({
-              error: {
-                status: 401,
-                title: 'Unauthorized',
-                detail: 'Invalid token',
-              },
-            });
-
-            return;
-          }
-
-          res.status(500).json({
-            error: {
-              status: 500,
-              title: 'Internal Server Error',
-              detail: 'Internal Server Error',
-            },
-          });
+          restErrorCheck.checkAndSendError({ response, error });
 
           return;
         }
 
-        const { team } = req.body.data;
-
-        dbLanternHack.createLanternTeam({
-          team,
-          callback: ({ error: teamError, data: teamData }) => {
-            if (teamError) {
-              if (teamError.type === errorCreator.ErrorTypes.ALREADYEXISTS) {
-                res.status(403).json({
-                  error: {
-                    status: 403,
-                    title: 'Team already exists',
-                    detail: `Team ${team.shortName} ${team.teamName} already exists`,
-                  },
-                });
-
-                return;
-              }
-
-              res.status(500).json({
-                error: {
-                  status: 500,
-                  title: 'Internal Server Error',
-                  detail: 'Internal Server Error',
-                },
-              });
-
-              return;
-            }
-
-            io.emit('lanternTeams', { teams: [teamData.team] });
-            res.json({ data: teamData });
-          },
-        });
+        response.json({ data });
       },
     });
   });
 
   /**
-   * @api {post} /lanternTeams/:id Update an existing lantern team
+   * @api {post} /lanternTeams/:teamName Update an existing lantern team
    * @apiVersion 6.0.0
    * @apiName UpdateLanternTeam
-   * @apiGroup LanternItems
+   * @apiGroup LanternTeams
    *
    * @apiHeader {String} Authorization Your JSON Web Token
    *
    * @apiDescription Update an existing lantern team
    *
-   * @apiParam {Object} id Lantern team name
+   * @apiParam {Object} teamName Lantern team short or full name
    *
    * @apiParam {Object} data
    * @apiParam {string} data.team Lantern team
@@ -287,9 +181,9 @@ function handle(io) {
    *    }
    *  }
    */
-  router.post('/:id', (req, res) => {
-    if (!objectValidator.isValidData(req.params, { id: true })) {
-      res.status(400).json({
+  router.post('/:teamName', (request, response) => {
+    if (!objectValidator.isValidData(request.params, { teamName: true })) {
+      response.status(400).json({
         error: {
           status: 400,
           title: 'Incorrect data',
@@ -298,8 +192,8 @@ function handle(io) {
       });
 
       return;
-    } else if (!objectValidator.isValidData(req.body, { data: { team: true } })) {
-      res.status(400).json({
+    } else if (!objectValidator.isValidData(request.body, { data: { team: true } })) {
+      response.status(400).json({
         error: {
           status: 400,
           title: 'Incorrect data',
@@ -310,81 +204,19 @@ function handle(io) {
       return;
     }
 
-    authenticator.isUserAllowed({
-      commandName: dbConfig.apiCommands.UpdateLanternStation.name,
-      token: req.headers.authorization,
-      callback: ({ error }) => {
+    manager.updateLanternTeam({
+      io,
+      team: request.body.data.team,
+      teamName: request.params.teamName,
+      token: request.headers.authorization,
+      callback: ({ error, data }) => {
         if (error) {
-          if (error.type === errorCreator.ErrorTypes.DOESNOTEXIST) {
-            res.status(404).json({
-              error: {
-                status: 404,
-                title: 'Command does not exist',
-                detail: 'Command does not exist',
-              },
-            });
-
-            return;
-          } else if (error.type === errorCreator.ErrorTypes.NOTALLOWED) {
-            res.status(401).json({
-              error: {
-                status: 401,
-                title: 'Unauthorized',
-                detail: 'Invalid token',
-              },
-            });
-
-            return;
-          }
-
-          res.status(500).json({
-            error: {
-              status: 500,
-              title: 'Internal Server Error',
-              detail: 'Internal Server Error',
-            },
-          });
+          restErrorCheck.checkAndSendError({ response, error });
 
           return;
         }
 
-        const { team } = req.body.data;
-        const teamName = req.params.id;
-
-        dbLanternHack.updateLanternTeam({
-          teamName,
-          isActive: team.isActive,
-          points: team.points,
-          resetPoints: team.resetPoints,
-          callback: ({ error: teamError, data: teamData }) => {
-            if (teamError) {
-              if (teamError.type === errorCreator.ErrorTypes.DOESNOTEXIST) {
-                res.status(404).json({
-                  error: {
-                    status: 404,
-                    title: 'Failed to update lantern team',
-                    detail: 'Lantern team does not exist',
-                  },
-                });
-
-                return;
-              }
-
-              res.status(500).json({
-                error: {
-                  status: 500,
-                  title: 'Internal Server Error',
-                  detail: 'Internal Server Error',
-                },
-              });
-
-              return;
-            }
-
-            io.emit('lanternTeams', { teams: [teamData.team] });
-            res.json({ data: teamData });
-          },
-        });
+        response.json({ data });
       },
     });
   });

@@ -79,8 +79,8 @@ describe('LanternStations', () => {
     });
   });
 
-  describe('List lantern stations', () => {
-    it('Should NOT list lantern stations with incorrect authorization on /api/lanternStations GET', (done) => {
+  describe('Get lantern stations', () => {
+    it('Should NOT get lantern stations with incorrect authorization on /api/lanternStations GET', (done) => {
       chai
         .request(app)
         .get('/api/lanternStations')
@@ -94,7 +94,7 @@ describe('LanternStations', () => {
         });
     });
 
-    it('Should retrieve lantern stations on /api/lanternStations GET', (done) => {
+    it('Should get lantern stations on /api/lanternStations GET', (done) => {
       chai
         .request(app)
         .get('/api/lanternStations')
@@ -103,6 +103,51 @@ describe('LanternStations', () => {
           response.should.have.status(200);
           response.should.be.json;
           response.body.should.be.jsonSchema(lanternStationSchemas.lanternStations);
+
+          done();
+        });
+    });
+  });
+
+  describe('Get lantern station', () => {
+    before('Create lantern station on /api/lanternStations POST', (done) => {
+      chai
+        .request(app)
+        .post('/api/lanternStations/')
+        .send({ data: { station: lanternStationData.lanternStationToGet } })
+        .set('Authorization', tokens.adminUser)
+        .end((error, response) => {
+          response.should.have.status(200);
+          response.should.be.json;
+          response.body.should.be.jsonSchema(lanternStationSchemas.lanternStation);
+
+          done();
+        });
+    });
+
+    it('Should NOT get lantern station with incorrect authorization on /api/lanternStations/:stationId GET', (done) => {
+      chai
+        .request(app)
+        .get(`/api/lanternStations/${lanternStationData.lanternStationToGet.stationId}`)
+        .set('Authorization', tokens.incorrectJwt)
+        .end((error, response) => {
+          response.should.have.status(401);
+          response.should.be.json;
+          response.body.should.be.jsonSchema(errorSchemas.error);
+
+          done();
+        });
+    });
+
+    it('Should get lantern stations on /api/lanternStations/:stationId GET', (done) => {
+      chai
+        .request(app)
+        .get(`/api/lanternStations/${lanternStationData.lanternStationToGet.stationId}`)
+        .set('Authorization', tokens.adminUser)
+        .end((error, response) => {
+          response.should.have.status(200);
+          response.should.be.json;
+          response.body.should.be.jsonSchema(lanternStationSchemas.lanternStation);
 
           done();
         });

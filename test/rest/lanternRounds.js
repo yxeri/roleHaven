@@ -95,7 +95,7 @@ describe('LanternRounds', () => {
         });
     });
 
-    it('Should NOT update lantern round with incorrect authorization on /api/lanternRounds/:id POST', (done) => {
+    it('Should NOT update lantern round with incorrect authorization on /api/lanternRounds/:roundId POST', (done) => {
       chai
         .request(app)
         .post(`/api/lanternRounds/${lanternRoundData.lanternRoundToCreateAndModify.roundId}`)
@@ -110,7 +110,7 @@ describe('LanternRounds', () => {
         });
     });
 
-    it('Should update start time on lantern round on /api/lanternRounds/:id POST', (done) => {
+    it('Should update start time on lantern round on /api/lanternRounds/:roundId POST', (done) => {
       chai
         .request(app)
         .post(`/api/lanternRounds/${lanternRoundData.lanternRoundToCreateAndModify.roundId}`)
@@ -125,7 +125,7 @@ describe('LanternRounds', () => {
         });
     });
 
-    it('Should update end time on lantern round on /api/lanternRounds/:id POST', (done) => {
+    it('Should update end time on lantern round on /api/lanternRounds/:roundId POST', (done) => {
       chai
         .request(app)
         .post(`/api/lanternRounds/${lanternRoundData.lanternRoundToCreateAndModify.roundId}`)
@@ -142,7 +142,7 @@ describe('LanternRounds', () => {
 
     // TODO 'Should NOT update start time on active lantern round on /lanternRounds/:id POST'
 
-    it('Should NOT update non-existing lantern round /api/lanternRounds/:id POST', (done) => {
+    it('Should NOT update non-existing lantern round /api/lanternRounds/:roundId POST', (done) => {
       chai
         .request(app)
         .post(`/api/lanternRounds/${lanternRoundData.lanternRoundToCreateAndModify.roundId}`)
@@ -158,8 +158,8 @@ describe('LanternRounds', () => {
     });
   });
 
-  describe('List lantern rounds', () => {
-    it('Should NOT list lantern rounds with incorrect authorization on /api/lanternRounds GET', (done) => {
+  describe('Get lantern rounds', () => {
+    it('Should NOT get lantern rounds with incorrect authorization on /api/lanternRounds GET', (done) => {
       chai
         .request(app)
         .get('/api/lanternRounds')
@@ -173,7 +173,7 @@ describe('LanternRounds', () => {
         });
     });
 
-    it('Should list lantern rounds on /api/lanternRounds GET', (done) => {
+    it('Should get lantern rounds on /api/lanternRounds GET', (done) => {
       chai
         .request(app)
         .get('/api/lanternRounds')
@@ -182,6 +182,65 @@ describe('LanternRounds', () => {
           response.should.have.status(200);
           response.should.be.json;
           response.body.should.be.jsonSchema(lanternRoundSchemas.lanternRounds);
+
+          done();
+        });
+    });
+  });
+
+  describe('Get lantern round', () => {
+    before('Create lantern round on /api/lanternRounds POST', (done) => {
+      chai
+        .request(app)
+        .post('/api/lanternRounds/')
+        .send({ data: { round: lanternRoundData.lanternRoundToGet } })
+        .set('Authorization', tokens.adminUser)
+        .end((error, response) => {
+          response.should.have.status(200);
+          response.should.be.json;
+          response.body.should.be.jsonSchema(lanternRoundSchemas.lanternRound);
+
+          done();
+        });
+    });
+
+    it('Should NOT get lantern round with incorrect authorization on /api/lanternRounds/:roundId GET', (done) => {
+      chai
+        .request(app)
+        .get(`/api/lanternRounds/${lanternRoundData.lanternRoundToGet.roundId}`)
+        .set('Authorization', tokens.incorrectJwt)
+        .end((error, response) => {
+          response.should.have.status(401);
+          response.should.be.json;
+          response.body.should.be.jsonSchema(errorSchemas.error);
+
+          done();
+        });
+    });
+
+    it('Should NOT get non-existing lantern round on /api/lanternRounds/:roundId GET', (done) => {
+      chai
+        .request(app)
+        .get(`/api/lanternRounds/${lanternRoundData.lanternRoundThatDoesNotExist.roundId}`)
+        .set('Authorization', tokens.adminUser)
+        .end((error, response) => {
+          response.should.have.status(404);
+          response.should.be.json;
+          response.body.should.be.jsonSchema(errorSchemas.error);
+
+          done();
+        });
+    });
+
+    it('Should get lantern round on /api/lanternRounds/:roundId GET', (done) => {
+      chai
+        .request(app)
+        .get(`/api/lanternRounds/${lanternRoundData.lanternRoundToGet.roundId}`)
+        .set('Authorization', tokens.adminUser)
+        .end((error, response) => {
+          response.should.have.status(200);
+          response.should.be.json;
+          response.body.should.be.jsonSchema(lanternRoundSchemas.lanternRound);
 
           done();
         });

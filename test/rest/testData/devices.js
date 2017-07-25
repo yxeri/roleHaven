@@ -16,13 +16,28 @@
 
 'use strict';
 
-const dbConfig = require('../../../config/defaults/config').databasePopulation;
-const appConfig = require('../../../config/defaults/config').app;
 const tools = require('../helper/tools');
+const appConfig = require('../../../config/defaults/config').app;
+const dbConfig = require('../../../config/defaults/config').databasePopulation;
 
 const data = {};
 
-data.adminUserToAuth = {
+// deviceId: { type: String, unique: true },
+// socketId: String,
+//   deviceAlias: { type: String, unique: true },
+// lastUser: String,
+//   lastAlive: Date,
+
+data.deviceWithoutUser = {
+  deviceId: tools.createRandString({ length: appConfig.deviceIdLength }),
+};
+data.deviceWithNewAlias = {
+  deviceAlias: tools.createRandString({ length: appConfig.deviceAliasMaxLength }),
+};
+data.deviceWithUser = {
+  deviceId: tools.createRandString({ length: appConfig.deviceIdLength }),
+};
+data.adminUserToChangeDeviceAliasWith = {
   userName: tools.createRandString({ length: appConfig.userNameMaxLength }),
   password: tools.createRandString({ length: appConfig.passwordMaxLength }),
   registerDevice: tools.createRandString({ length: appConfig.deviceIdLength }),
@@ -30,37 +45,14 @@ data.adminUserToAuth = {
   accessLevel: dbConfig.AccessLevels.ADMIN,
   visibility: dbConfig.AccessLevels.PRO,
   verified: true,
-  registeredAt: new Date(),
-  fullName: tools.createRandString({ length: appConfig.userNameMaxLength }),
 };
-data.basicUserToAuth = {
+data.basicUserToUpdateDeviceWith = {
   userName: tools.createRandString({ length: appConfig.userNameMaxLength }),
   password: tools.createRandString({ length: appConfig.passwordMaxLength }),
   registerDevice: tools.createRandString({ length: appConfig.deviceIdLength }),
   mail: `${tools.createRandString({ length: 10 })}@${tools.createRandString({ length: 10 })}.com`,
   verified: true,
   accessLevel: dbConfig.AccessLevels.BASIC,
-  registeredAt: new Date(),
-  fullName: tools.createRandString({ length: appConfig.userNameMaxLength }),
-};
-data.unverifiedUserToAuth = {
-  userName: tools.createRandString({ length: appConfig.userNameMaxLength }),
-  password: tools.createRandString({ length: appConfig.passwordMaxLength }),
-  registerDevice: tools.createRandString({ length: appConfig.deviceIdLength }),
-  mail: `${tools.createRandString({ length: 10 })}@${tools.createRandString({ length: 10 })}.com`,
-  verified: false,
-  registeredAt: new Date(),
-  fullName: tools.createRandString({ length: appConfig.userNameMaxLength }),
-};
-data.bannedUserToAuth = {
-  userName: tools.createRandString({ length: appConfig.userNameMaxLength }),
-  password: tools.createRandString({ length: appConfig.passwordMaxLength }),
-  registerDevice: tools.createRandString({ length: appConfig.deviceIdLength }),
-  mail: `${tools.createRandString({ length: 10 })}@${tools.createRandString({ length: 10 })}.com`,
-  verified: true,
-  banned: true,
-  registeredAt: new Date(),
-  fullName: tools.createRandString({ length: appConfig.userNameMaxLength }),
 };
 
 module.exports = data;

@@ -4,7 +4,7 @@
  * @returns {string} Randomized string
  */
 function createRandString({ length }) {
-  const selection = 'abcdefghijklmnopqrstuvwxyz';
+  const selection = 'abcdefghijklmnopqrstuvwxyz0123456789';
   const randomLength = selection.length;
   let result = '';
 

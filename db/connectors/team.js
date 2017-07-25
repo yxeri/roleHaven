@@ -41,7 +41,12 @@ const Team = mongoose.model('Team', teamSchema);
  */
 function createTeam({ team, callback }) {
   const newTeam = new Team(team);
-  const query = { teamName: team.teamName };
+  const query = {
+    $or: [
+      { teamName: team.teamName },
+      { shortName: team.shortName },
+    ],
+  };
 
   Team.findOne(query).lean().exec((err, foundTeam) => {
     if (err) {
@@ -72,11 +77,16 @@ function createTeam({ team, callback }) {
 
 /**
  * Get team
- * @param {string} params.teamName Name of team to retrieve
+ * @param {string} params.teamName Short name of full name of team to retrieve
  * @param {Function} params.callback Callback
  */
 function getTeam({ teamName, callback }) {
-  const query = { teamName };
+  const query = {
+    $or: [
+      { shortName: teamName },
+      { teamName },
+    ],
+  };
   const filter = { _id: 0 };
 
   Team.findOne(query, filter).lean().exec((err, team) => {

@@ -130,6 +130,7 @@ function createRoom({ room, silentOnExists, callback }) {
     chatHistoryConnector.createHistory({
       roomName: room.roomName,
       anonymous: room.anonymous,
+      isWhisper: room.isWhisper,
       callback: ({ error }) => {
         if (error) {
           callback({ error });

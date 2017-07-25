@@ -35,6 +35,23 @@ const calibrationMissionBase = {
   },
 };
 
+schemas.calibrationMissions = {
+  type: 'object',
+  required: ['data'],
+  properties: {
+    data: {
+      type: 'object',
+      required: ['missions'],
+      properties: {
+        missions: {
+          type: 'array',
+          items: calibrationMissionBase,
+        },
+      },
+    },
+  },
+};
+
 schemas.calibrationMission = {
   type: 'object',
   required: ['data'],

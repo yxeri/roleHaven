@@ -43,7 +43,7 @@ data.lanternTeamWithResetPoints = {
 };
 data.lanternTeamThatDoesNotExist = {
   teamName: 'a',
-  shortTeam: 'b',
+  shortName: 'b',
 };
 
 module.exports = data;

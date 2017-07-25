@@ -102,7 +102,17 @@ function createWallet({ wallet, callback }) {
       return;
     }
 
-    databaseConnector.saveObject({ object: newWallet, objectType: 'wallet', callback });
+    databaseConnector.saveObject({
+      object: newWallet,
+      objectType: 'wallet',
+      callback: ({ error, data }) => {
+        if (error) {
+          callback({ error });
+        }
+
+        callback({ data: { wallet: data.savedObject } });
+      },
+    });
   });
 }
 

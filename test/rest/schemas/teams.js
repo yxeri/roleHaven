@@ -25,9 +25,13 @@ schemas.team = {
   properties: {
     data: {
       type: 'object',
-      required: ['team'],
+      required: [
+        'team',
+        'wallet',
+        'room',
+      ],
       properties: {
-        teams: {
+        team: {
           type: 'object',
           required: [
             'teamName',
@@ -45,6 +49,40 @@ schemas.team = {
             },
             owner: { type: 'string' },
             verified: { type: 'boolean' },
+          },
+        },
+        wallet: {
+          type: 'object',
+          required: [
+            'amount',
+            'owner',
+            'accessLevel',
+            'isProtected',
+            'team',
+          ],
+          properties: {
+            amount: { type: 'number' },
+            owner: { type: 'string' },
+            accessLevel: { type: 'number' },
+            isProtected: { type: 'boolean' },
+            team: { type: 'string' },
+          },
+        },
+        room: {
+          type: 'object',
+          required: [
+            'roomName',
+            'accessLevel',
+            'visibility',
+            'owner',
+            'anonymous',
+          ],
+          properties: {
+            roomName: { type: 'string' },
+            accessLevel: { type: 'number' },
+            visibility: { type: 'number' },
+            owner: { type: 'string' },
+            anonymous: { type: 'boolean' },
           },
         },
       },

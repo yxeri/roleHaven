@@ -16,82 +16,117 @@
 
 'use strict';
 
-const dbDevice = require('../../db/connectors/device');
-const manager = require('../../socketHelpers/manager');
+const manager = require('../../helpers/manager');
 const dbConfig = require('../../config/defaults/config').databasePopulation;
 const objectValidator = require('../../utils/objectValidator');
 const errorCreator = require('../../objects/error/errorCreator');
+const authenticator = require('../../helpers/authenticator');
+
+/**
+ * Get devices
+ * @param {Object} params.token jwt
+ * @param {Function} params.callback Callback
+ */
+function getDevices({ token, callback }) {
+  authenticator.isUserAllowed({
+    token,
+    commandName: dbConfig.apiCommands.GetDevices.name,
+    callback: ({ error }) => {
+      if (error) {
+        callback({ error });
+
+        return;
+      }
+
+      manager.getDevices({ callback });
+    },
+  });
+}
+
+/**
+ * Update device's lastAlive, lastUser and socketId, retrieved from the user account
+ * @param {Object} params.device Device
+ * @param {string} params.device.deviceId Device id of the device to update
+ * @param {Object} params.token jwt
+ * @param {Function} params.callback Callback
+ */
+function updateDevice({ device, token, callback }) {
+  if (!objectValidator.isValidData({ device }, { device: { deviceId: true } })) {
+    callback({ error: new errorCreator.InvalidData({ expected: '{ device: { deviceId } }' }) });
+
+    return;
+  }
+
+  authenticator.isUserAllowed({
+    token,
+    commandName: dbConfig.apiCommands.UpdateDevice.name,
+    callback: ({ error, data }) => {
+      if (error) {
+        callback({ error });
+
+        return;
+      }
+
+      manager.updateDevice({
+        device,
+        callback,
+        user: data.user,
+      });
+    },
+  });
+}
+
+/**
+ * Update device alias
+ * @param {Object} params.device Device
+ * @param {string} params.device.deviceId Id of the device to update
+ * @param {string} params.device.deviceAlias New alias for the device
+ * @param {Object} params.token jwt
+ * @param {Function} param.scallback Callback
+ */
+function updateDeviceAlias({ device, token, callback }) {
+  if (!objectValidator.isValidData({ device }, { device: { deviceId: true, deviceAlias: true } })) {
+    callback({ error: new errorCreator.InvalidData({ expected: '{ device: { deviceId, deviceAlias } }' }) });
+
+    return;
+  }
+
+  authenticator.isUserAllowed({
+    token,
+    commandName: dbConfig.apiCommands.UpdateDeviceAlias.name,
+    callback: ({ error }) => {
+      if (error) {
+        callback({ error });
+
+        return;
+      }
+
+      manager.updateDeviceAlias({
+        device,
+        callback,
+      });
+    },
+  });
+}
 
 /**
  * @param {Object} socket Socket.IO socket
  */
 function handle(socket) {
-  socket.on('listDevices', ({ token }, callback = () => {}) => {
-    manager.userIsAllowed({
-      token,
-      commandName: dbConfig.commands.listDevices.commandName,
-      callback: ({ error }) => {
-        if (error) {
-          callback({ error });
-
-          return;
-        }
-
-        dbDevice.getAllDevices({
-          callback: ({ error: deviceError, data }) => {
-            if (deviceError) {
-              callback({ error: deviceError });
-
-              return;
-            }
-
-            const { devices } = data;
-
-            callback({ data: { devices } });
-          },
-        });
-      },
-    });
+  socket.on('getDevices', ({ token }, callback = () => {}) => {
+    getDevices({ token, callback });
   });
 
   socket.on('updateDevice', ({ device, token }, callback = () => {}) => {
-    if (!objectValidator.isValidData({ device }, { device: { deviceId: true } })) {
-      callback({ error: new errorCreator.InvalidData({ expected: '{ device: { deviceId } }' }) });
+    updateDevice({ device, token, callback });
+  });
 
-      return;
-    }
-
-    manager.userIsAllowed({
-      token,
-      commandName: dbConfig.commands.updateDevice.commandName,
-      callback: ({ error, allowedUser }) => {
-        if (error) {
-          callback({ error });
-
-          return;
-        } else if (device.deviceAlias && allowedUser.accessLevel < dbConfig.commands.updateDeviceAlias.accessLevel) {
-          callback({ error: new errorCreator.NotAllowed({ name: 'device alias' }) });
-
-          return;
-        }
-
-        const deviceToUpdate = device;
-        deviceToUpdate.socketId = socket.id;
-        deviceToUpdate.lastUser = allowedUser.userName;
-
-        dbDevice.updateDevice({
-          device: deviceToUpdate,
-          callback: ({ error: updateError, data }) => {
-            if (updateError) {
-              callback({ error: updateError });
-            }
-
-            callback({ data: { device: data.device } });
-          },
-        });
-      },
-    });
+  socket.on('updateDeviceAlias', ({ device, token }, callback = () => {}) => {
+    updateDeviceAlias({ device, token, callback });
   });
 }
 
+exports.getDevices = getDevices;
+exports.updateDevice = updateDevice;
+exports.updateDeviceAlias = updateDeviceAlias;
 exports.handle = handle;

@@ -16,28 +16,23 @@
 
 'use strict';
 
-const manager = require('../../socketHelpers/manager');
-const databasePopulation = require('../../config/defaults/config').databasePopulation;
+const manager = require('../../helpers/manager');
 
 /**
  * @param {object} socket - Socket.IO socket
  */
 function handle(socket) {
   socket.on('getCalibrationMission', ({ token }, callback = () => {}) => {
-    manager.userIsAllowed({
+    manager.getActiveCalibrationMission({
       token,
-      commandName: databasePopulation.commands.calibrationMission.commandName,
-      callback: ({ error, allowedUser }) => {
-        if (error) {
-          callback({ error });
+      callback: ({ error: calibrationError, data: calibrationData }) => {
+        if (calibrationError) {
+          callback({ error: calibrationError });
 
           return;
         }
 
-        manager.getActiveCalibrationMission({
-          userName: allowedUser.userName,
-          callback: () => {},
-        });
+        callback({ data: calibrationData });
       },
     });
   });

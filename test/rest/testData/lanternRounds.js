@@ -40,5 +40,10 @@ data.lanternRoundThatDoesNotExist = {
   startTime: '2017-10-15T12:42:06.262Z',
   endTime: '2017-10-25T23:42:06.262Z',
 };
+data.lanternRoundToGet = {
+  roundId: 4,
+  startTime: '2017-10-15T12:42:06.262Z',
+  endTime: '2017-10-25T23:42:06.262Z',
+};
 
 module.exports = data;

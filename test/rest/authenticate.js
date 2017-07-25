@@ -67,7 +67,7 @@ describe('Authenticate', () => {
       .post('/api/authenticate')
       .send({ data: { user: authenticateData.unverifiedUserToAuth } })
       .end((error, response) => {
-        response.should.have.status(401);
+        response.should.have.status(404);
         response.should.be.json;
         response.body.should.be.jsonSchema(errorSchemas.error);
 
@@ -81,7 +81,7 @@ describe('Authenticate', () => {
       .post('/api/authenticate')
       .send({ data: { user: authenticateData.bannedUserToAuth } })
       .end((error, response) => {
-        response.should.have.status(401);
+        response.should.have.status(404);
         response.should.be.json;
         response.body.should.be.jsonSchema(errorSchemas.error);
 
@@ -95,7 +95,7 @@ describe('Authenticate', () => {
       .post('/api/authenticate')
       .send({ data: { user: authenticateData.userThatDoesNotExist } })
       .end((error, response) => {
-        response.should.have.status(401);
+        response.should.have.status(404);
         response.should.be.json;
         response.body.should.be.jsonSchema(errorSchemas.error);
 

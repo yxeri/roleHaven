@@ -34,7 +34,9 @@ function checkKeys(data, expected, options) {
     const expectedKey = expectedKeys[i];
 
     if ((!data[expectedKey] || data[expectedKey] === null) && typeof data[expectedKey] !== 'boolean') {
-      if (options.verbose && appConfig.mode !== 'test') { winston.error('Validation error', `Key missing: ${expectedKey}`); }
+      if (options.verbose && appConfig.mode !== 'test') {
+        winston.error('Validation error', `Key missing: ${expectedKey}`);
+      }
 
       return false;
     }

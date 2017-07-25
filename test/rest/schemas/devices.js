@@ -19,45 +19,46 @@
 
 const schemas = {};
 
-const broadcastBase = {
+const deviceBase = {
   type: 'object',
-  required: ['text', 'time', 'userName'],
+  required: [
+    'deviceId',
+    'lastAlive',
+    'deviceAlias',
+  ],
   properties: {
-    userName: { type: 'string' },
-    text: {
-      type: 'array',
-      items: { type: 'string' },
-    },
-    time: { type: 'string' },
+    deviceId: { type: 'string' },
+    lastAlive: { type: 'string' },
+    deviceAlias: { type: 'string' },
   },
 };
 
-schemas.broadcast = {
+schemas.devices = {
   type: 'object',
   required: ['data'],
   properties: {
     data: {
       type: 'object',
-      required: ['message'],
+      required: ['devices'],
       properties: {
-        message: broadcastBase,
+        devices: {
+          type: 'array',
+          items: deviceBase,
+        },
       },
     },
   },
 };
 
-schemas.broadcasts = {
+schemas.device = {
   type: 'object',
   required: ['data'],
   properties: {
     data: {
       type: 'object',
-      required: ['messages'],
+      required: ['device'],
       properties: {
-        messages: {
-          type: 'array',
-          items: broadcastBase,
-        },
+        device: deviceBase,
       },
     },
   },

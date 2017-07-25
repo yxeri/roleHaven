@@ -21,26 +21,30 @@ const dbConnector = require('../databaseConnector');
 const chatHistorySchema = new mongoose.Schema({
   roomName: { type: String, unique: true },
   anonymous: { type: Boolean, default: false },
-  messages: [{
-    text: [String],
-    time: Date,
-    userName: String,
-    roomName: String,
-    extraClass: String,
-    customSender: String,
-    team: String,
-    shortTeam: String,
-    coordinates: {
-      longitude: Number,
-      latitude: Number,
-    },
-    image: {
-      imageName: String,
-      fileName: String,
-      width: Number,
-      height: Number,
-    },
-  }],
+  isWhisper: { type: Boolean, default: false },
+  messages: {
+    type: [{
+      text: [String],
+      time: Date,
+      userName: String,
+      roomName: String,
+      extraClass: String,
+      customSender: String,
+      team: String,
+      shortTeam: String,
+      coordinates: {
+        longitude: Number,
+        latitude: Number,
+      },
+      image: {
+        imageName: String,
+        fileName: String,
+        width: Number,
+        height: Number,
+      },
+    }],
+    default: [],
+  },
 }, { collection: 'chatHistories' });
 
 const ChatHistory = mongoose.model('ChatHistory', chatHistorySchema);
@@ -95,10 +99,11 @@ function getHistories({ rooms, callback }) {
  * Create and save room history
  * @param {string} params.roomName Name of the room
  * @param {boolean} params.anonymous Should retrieved messages be anonymous?
+ * @param {boolean} [params.isWhisper] Are the messages whispers?
  * @param {Function} params.callback Callback
  */
-function createHistory({ roomName, anonymous, callback }) {
-  const newHistory = new ChatHistory({ roomName, anonymous });
+function createHistory({ roomName, anonymous, isWhisper, callback }) {
+  const newHistory = new ChatHistory({ roomName, anonymous, isWhisper });
   const query = { roomName };
 
   ChatHistory.findOne(query).lean().exec((histErr, history) => {

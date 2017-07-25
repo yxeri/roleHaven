@@ -42,5 +42,10 @@ data.lanternStationThatDoesNotExist = {
   stationId: 3,
   stationName: `${tools.createRandString({ length: 5 })}`,
 };
+data.lanternStationToGet = {
+  stationId: 5,
+  stationName: `${tools.createRandString({ length: 5 })}`,
+  owner: tools.createRandString({ length: appConfig.teamNameMaxLength }),
+};
 
 module.exports = data;

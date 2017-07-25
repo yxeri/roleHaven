@@ -28,6 +28,11 @@ const successSchemas = require('./schemas/successes');
 const errorSchemas = require('./schemas/errors');
 const tokens = require('./testData/tokens');
 const userData = require('./testData/users');
+const aliasData = require('./testData/aliases');
+const aliasSchemas = require('./schemas/aliases');
+const roomSchemas = require('./schemas/rooms');
+const starterData = require('./testData/starter');
+const calibrationMissionSchemas = require('./schemas/calibrationMissions');
 
 chai.should();
 
@@ -35,9 +40,16 @@ chai.use(chaiHttp);
 chai.use(chaiJson);
 
 describe('Users', () => {
-  const usersToken = {
+  const userTokens = {
     newUser: '',
+    adminUser: '',
   };
+
+  // /users POST Create user
+  // /users GET Get users
+  // /users/:userName GET Get specific user
+
+  // /users/:userName/resetPassword POST Send password recovery mail
 
   describe('Create user', () => {
     it('Should NOT create user with incorrect authorization on /api/users POST', (done) => {
@@ -92,18 +104,34 @@ describe('Users', () => {
           response.should.be.json;
           response.body.should.be.jsonSchema(authenticateSchemas.authenticate);
 
-          usersToken.newUser = response.body.data.token;
+          userTokens.newUser = response.body.data.token;
+
+          done();
+        });
+    });
+
+    after(`Authenticate ${userData.newAdminUserToCreate.userName} on /api/authenticate`, (done) => {
+      chai
+        .request(app)
+        .post('/api/authenticate')
+        .send({ data: { user: userData.newAdminUserToCreate } })
+        .end((error, response) => {
+          response.should.have.status(200);
+          response.should.be.json;
+          response.body.should.be.jsonSchema(authenticateSchemas.authenticate);
+
+          userTokens.adminUser = response.body.data.token;
 
           done();
         });
     });
   });
 
-  describe('Request password recovery', () => {
-    it('Should NOT create and send password reset with incorrect authorization on /api/users/:id/resetPassword POST', (done) => {
+  describe('Request password recovery for user', () => {
+    it('Should NOT create and send password reset with incorrect authorization on /api/users/:userName/resetPassword POST', (done) => {
       chai
         .request(app)
-        .post(`/api/users/${userData.newUserToCreate.mail}/resetPassword`)
+        .post(`/api/users/${userData.newUserToCreate.userName}/resetPassword`)
         .set('Authorization', tokens.incorrectJwt)
         .end((error, response) => {
           response.should.have.status(401);
@@ -114,11 +142,11 @@ describe('Users', () => {
         });
     });
 
-    it('Should create and send password reset to existing user by mail on /api/users/:id/resetPassword POST', (done) => {
+    it('Should create and send password reset mail to existing user on /api/users/:userName/resetPassword POST', (done) => {
       chai
         .request(app)
-        .post(`/api/users/${userData.newUserToCreate.mail}/resetPassword`)
-        .set('Authorization', usersToken.newUser)
+        .post(`/api/users/${userData.newUserToCreate.userName}/resetPassword`)
+        .set('Authorization', userTokens.newUser)
         .end((error, response) => {
           response.should.have.status(200);
           response.should.be.json;
@@ -128,10 +156,10 @@ describe('Users', () => {
         });
     });
 
-    it('Should NOT create and send password reset to non-existing user by mail on /api/users/:id/resetPassword POST', (done) => {
+    it('Should NOT create and send password reset to non-existing user by mail on /api/users/:userName/resetPassword POST', (done) => {
       chai
         .request(app)
-        .post(`/api/users/${userData.fakeMail}/resetPassword`)
+        .post(`/api/users/${userData.nonExistingUser.userName}/resetPassword`)
         .set('Authorization', tokens.adminUser)
         .end((error, response) => {
           response.should.have.status(404);
@@ -143,8 +171,8 @@ describe('Users', () => {
     });
   });
 
-  describe('List users', () => {
-    it('Should NOT list users with incorrect authorization set on /api/users GET', (done) => {
+  describe('Get users', () => {
+    it('Should NOT get users with incorrect authorization set on /api/users GET', (done) => {
       chai
         .request(app)
         .get('/api/users')
@@ -158,7 +186,7 @@ describe('Users', () => {
         });
     });
 
-    it('Should list users on /api/users GET', (done) => {
+    it('Should get users on /api/users GET', (done) => {
       chai
         .request(app)
         .get('/api/users')
@@ -176,7 +204,7 @@ describe('Users', () => {
   });
 
   describe('Get specific user', () => {
-    it('Should NOT retrieve specific user with incorrect authorization set on /api/users/:id GET', (done) => {
+    it('Should NOT retrieve specific user with incorrect authorization set on /api/users/:userName GET', (done) => {
       chai
         .request(app)
         .get(`/api/users/${userData.newUserToCreate.userName}`)
@@ -189,11 +217,11 @@ describe('Users', () => {
         });
     });
 
-    it('Should retrieve own user on /api/users/:id GET', (done) => {
+    it('Should retrieve own user on /api/users/:userName GET', (done) => {
       chai
         .request(app)
         .get(`/api/users/${userData.newUserToCreate.userName}`)
-        .set('Authorization', usersToken.newUser)
+        .set('Authorization', userTokens.newUser)
         .end((error, response) => {
           response.should.have.status(200);
           response.should.be.json;
@@ -202,11 +230,24 @@ describe('Users', () => {
         });
     });
 
-    it('Should NOT get user with higher access level than user on /api/users/:id GET', (done) => {
+    it('Should NOT get user with higher access level than user on /api/users/:userName GET', (done) => {
       chai
         .request(app)
         .get(`/api/users/${userData.newAdminUserToCreate.userName}`)
-        .set('Authorization', usersToken.newUser)
+        .set('Authorization', userTokens.newUser)
+        .end((error, response) => {
+          response.should.have.status(401);
+          response.should.be.json;
+          response.body.should.be.jsonSchema(errorSchemas.error);
+          done();
+        });
+    });
+
+    it('Should NOT get non-existing user on /api/users/:userName GET', (done) => {
+      chai
+        .request(app)
+        .get(`/api/users/${userData.nonExistingUser.userName}`)
+        .set('Authorization', userTokens.newUser)
         .end((error, response) => {
           response.should.have.status(404);
           response.should.be.json;
@@ -215,4 +256,645 @@ describe('Users', () => {
         });
     });
   });
+
+  describe('Create alias on user', () => {
+    describe('Create alias on self', () => {
+      it('Should NOT create an alias on self that is too long /api/users/:userName/aliases POST', (done) => {
+        chai
+          .request(app)
+          .post(`/api/users/${userData.newUserToCreate.userName}/aliases`)
+          .send({ data: { alias: aliasData.tooLongAlias } })
+          .set('Authorization', userTokens.newUser)
+          .end((error, response) => {
+            response.should.have.status(400);
+            response.should.be.json;
+            response.body.should.be.jsonSchema(errorSchemas.error);
+
+            done();
+          });
+      });
+
+      it('Should NOT create an alias on self with incorrect authorization on /api/users/:userName/aliases POST', (done) => {
+        chai
+          .request(app)
+          .post(`/api/users/${userData.newUserToCreate.userName}/aliases`)
+          .send({ data: { alias: aliasData.aliasToCreate } })
+          .set('Authorization', tokens.incorrectJwt)
+          .end((error, response) => {
+            response.should.have.status(401);
+            response.should.be.json;
+            response.body.should.be.jsonSchema(errorSchemas.error);
+
+            done();
+          });
+      });
+
+      it('Should create an alias on self on /api/users/:userName/aliases POST', (done) => {
+        chai
+          .request(app)
+          .post(`/api/users/${userData.newUserToCreate.userName}/aliases`)
+          .send({ data: { alias: aliasData.aliasToCreate } })
+          .set('Authorization', userTokens.newUser)
+          .end((error, response) => {
+            response.should.have.status(200);
+            response.should.be.json;
+            response.body.should.be.jsonSchema(aliasSchemas.alias);
+
+            done();
+          });
+      });
+
+      describe('Create existing alias', () => {
+        before('Create an alias on self on /api/users/:userName/aliases POST', (done) => {
+          chai
+            .request(app)
+            .post(`/api/users/${userData.newUserToCreate.userName}/aliases`)
+            .send({ data: { alias: aliasData.aliasThatExists } })
+            .set('Authorization', tokens.adminUser)
+            .end((error, response) => {
+              response.should.have.status(200);
+              response.should.be.json;
+              response.body.should.be.jsonSchema(aliasSchemas.alias);
+
+              done();
+            });
+        });
+
+        it('Should NOT create an existing alias on self on /api/users/:userName/aliases POST', (done) => {
+          chai
+            .request(app)
+            .post(`/api/users/${userData.newUserToCreate.userName}/aliases`)
+            .send({ data: { alias: aliasData.aliasThatExists } })
+            .set('Authorization', userTokens.adminUser)
+            .end((error, response) => {
+              response.should.have.status(403);
+              response.should.be.json;
+              response.body.should.be.jsonSchema(errorSchemas.error);
+
+              done();
+            });
+        });
+      });
+    });
+
+    describe('Create alias on user', () => {
+      it('Should create an alias on user on /api/users/:userName/aliases POST', (done) => {
+        chai
+          .request(app)
+          .post(`/api/users/${userData.newUserToCreate.userName}/aliases`)
+          .send({ data: { alias: aliasData.otherAliasToCreate } })
+          .set('Authorization', tokens.adminUser)
+          .end((error, response) => {
+            response.should.have.status(200);
+            response.should.be.json;
+            response.body.should.be.jsonSchema(aliasSchemas.alias);
+
+            done();
+          });
+      });
+    });
+
+    describe('Get aliases from user', () => {
+      it('Should NOT retrieve aliases with incorrect authorization on /api/users/:userName/aliases GET', (done) => {
+        chai
+          .request(app)
+          .get(`/api/users/${userData.newUserToCreate.userName}/aliases`)
+          .set('Authorization', tokens.incorrectJwt)
+          .end((error, response) => {
+            response.should.have.status(401);
+            response.should.be.json;
+            response.body.should.be.jsonSchema(errorSchemas.error);
+
+            done();
+          });
+      });
+
+      it('Should retrieve aliases from user on /api/users/:userName/aliases GET', (done) => {
+        chai
+          .request(app)
+          .get(`/api/users/${userData.newUserToCreate.userName}/aliases`)
+          .set('Authorization', tokens.adminUser)
+          .end((error, response) => {
+            response.should.have.status(200);
+            response.should.be.json;
+            response.body.should.be.jsonSchema(aliasSchemas.aliases);
+
+            done();
+          });
+      });
+    });
+  });
+
+  describe('Update rooms', () => {
+    describe('Follow room on user', () => {
+      before(`Create room ${userData.publicRoomToCreate.roomName} on /api/rooms`, (done) => {
+        chai
+          .request(app)
+          .post('/api/rooms')
+          .set('Authorization', tokens.adminUser)
+          .send({ data: { room: userData.publicRoomToCreate } })
+          .end((error, response) => {
+            response.should.have.status(200);
+            response.should.be.json;
+            response.body.should.be.jsonSchema(roomSchemas.room);
+
+            done();
+          });
+      });
+
+      before(`Create room ${userData.highAccessLevelRoomToCreate.roomName} on /api/rooms`, (done) => {
+        chai
+          .request(app)
+          .post('/api/rooms')
+          .set('Authorization', tokens.adminUser)
+          .send({ data: { room: userData.highAccessLevelRoomToCreate } })
+          .end((error, response) => {
+            response.should.have.status(200);
+            response.should.be.json;
+            response.body.should.be.jsonSchema(roomSchemas.room);
+
+            done();
+          });
+      });
+
+      before(`Create room ${userData.invisibleRoomToCreate.roomName} on /api/rooms`, (done) => {
+        chai
+          .request(app)
+          .post('/api/rooms')
+          .set('Authorization', tokens.adminUser)
+          .send({ data: { room: userData.invisibleRoomToCreate } })
+          .end((error, response) => {
+            response.should.have.status(200);
+            response.should.be.json;
+            response.body.should.be.jsonSchema(roomSchemas.room);
+
+            done();
+          });
+      });
+
+      it('Should NOT follow room with incorrect authorization on /api/users/:userName/rooms/:roomName/follow GET', (done) => {
+        chai
+          .request(app)
+          .post(`/api/users/${starterData.basicUserToAuth.userName}/rooms/${userData.publicRoomToCreate.roomName}/follow`)
+          .set('Authorization', tokens.incorrectJwt)
+          .end((error, response) => {
+            response.should.have.status(401);
+            response.should.be.json;
+            response.body.should.be.jsonSchema(errorSchemas.error);
+
+            done();
+          });
+      });
+
+      it('Should follow room with lower or equal access level to user\'s access level on /api/users/:userName/rooms/:roomName/follow POST', (done) => {
+        chai
+          .request(app)
+          .post(`/api/users/${starterData.basicUserToAuth.userName}/rooms/${userData.publicRoomToCreate.roomName}/follow`)
+          .set('Authorization', tokens.basicUser)
+          .end((error, response) => {
+            response.should.have.status(200);
+            response.should.be.json;
+            response.body.should.be.jsonSchema(roomSchemas.room);
+            response.body.data.room.accessLevel.should.satisfy(value => value <= userData.publicRoomToCreate.accessLevel);
+
+            done();
+          });
+      });
+
+      it('Should NOT follow room with higher access level than user\'s access level on /api/users/:userName/rooms/:roomName/follow POST', (done) => {
+        chai
+          .request(app)
+          .post(`/api/users/${starterData.basicUserToAuth.userName}/rooms/${userData.highAccessLevelRoomToCreate.roomName}/follow`)
+          .set('Authorization', tokens.basicUser)
+          .end((error, response) => {
+            response.should.have.status(401);
+            response.should.be.json;
+            response.body.should.be.jsonSchema(errorSchemas.error);
+
+            done();
+          });
+      });
+
+      it('Should follow room with higher visibility than user\'s access level on /api/users/:userName/rooms/:roomName/follow POST', (done) => {
+        chai
+          .request(app)
+          .post(`/api/users/${starterData.basicUserToAuth.userName}/rooms/${userData.invisibleRoomToCreate.roomName}/follow`)
+          .set('Authorization', tokens.basicUser)
+          .end((error, response) => {
+            response.should.have.status(200);
+            response.should.be.json;
+            response.body.should.be.jsonSchema(roomSchemas.room);
+
+            done();
+          });
+      });
+    });
+
+    describe('Follow password-protected room', () => {
+      before(`Create room ${userData.passwordProtectedRoomToCreate.roomName} on /api/rooms`, (done) => {
+        chai
+          .request(app)
+          .post('/api/rooms')
+          .set('Authorization', tokens.adminUser)
+          .send({ data: { room: userData.passwordProtectedRoomToCreate } })
+          .end((error, response) => {
+            response.should.have.status(200);
+            response.should.be.json;
+            response.body.should.be.jsonSchema(roomSchemas.room);
+
+            done();
+          });
+      });
+
+      it('Should NOT follow password-protected with incorrect authorization on /api/users/:userName/rooms/:roomName/follow POST', (done) => {
+        chai
+          .request(app)
+          .post(`/api/users/${starterData.basicUserToAuth.userName}/rooms/${userData.passwordProtectedRoomToCreate.roomName}/follow`)
+          .set('Authorization', tokens.incorrectJwt)
+          .send({ data: { room: { password: userData.passwordProtectedRoomToCreate.password } } })
+          .end((error, response) => {
+            response.should.have.status(401);
+            response.should.be.json;
+            response.body.should.be.jsonSchema(errorSchemas.error);
+
+            done();
+          });
+      });
+
+      it('Should NOT follow password-protected room with incorrect password on /api/users/:userName/rooms/:roomName/follow POST', (done) => {
+        chai
+          .request(app)
+          .post(`/api/users/${starterData.basicUserToAuth.userName}/rooms/${userData.passwordProtectedRoomToCreate.roomName}/follow`)
+          .set('Authorization', tokens.basicUser)
+          .send({ data: { room: { password: userData.incorrectPassword } } })
+          .end((error, response) => {
+            response.should.have.status(401);
+            response.should.be.json;
+            response.body.should.be.jsonSchema(errorSchemas.error);
+
+            done();
+          });
+      });
+
+      it('Should follow password-protected room with correct password on /api/users/:userName/rooms/:roomName/follow POST', (done) => {
+        chai
+          .request(app)
+          .post(`/api/users/${starterData.basicUserToAuth.userName}/rooms/${userData.passwordProtectedRoomToCreate.roomName}/follow`)
+          .set('Authorization', tokens.basicUser)
+          .send({ data: { room: { password: userData.passwordProtectedRoomToCreate.password } } })
+          .end((error, response) => {
+            response.should.have.status(200);
+            response.should.be.json;
+            response.body.should.be.jsonSchema(roomSchemas.room);
+
+            done();
+          });
+      });
+
+      it('Should follow password-protected room without password if owner on /api/users/:userName/rooms/:roomName/follow POST', (done) => {
+        chai
+          .request(app)
+          .post(`/api/users/${starterData.adminUserToAuth.userName}/rooms/${userData.passwordProtectedRoomToCreate.roomName}/follow`)
+          .set('Authorization', tokens.adminUser)
+          .end((error, response) => {
+            response.should.have.status(200);
+            response.should.be.json;
+            response.body.should.be.jsonSchema(roomSchemas.room);
+
+            done();
+          });
+      });
+    });
+
+    describe('Unfollow room', () => {
+      before(`Create room ${userData.roomToCreate.roomName} on /api/rooms`, (done) => {
+        chai
+          .request(app)
+          .post('/api/rooms')
+          .set('Authorization', tokens.basicUser)
+          .send({ data: { room: userData.roomToCreate } })
+          .end((error, response) => {
+            response.should.have.status(200);
+            response.should.be.json;
+            response.body.should.be.jsonSchema(roomSchemas.room);
+
+            done();
+          });
+      });
+
+      it('Follow room on /api/users/:userName/rooms/:roomName/follow POST', (done) => {
+        chai
+          .request(app)
+          .post(`/api/users/${starterData.basicUserToAuth.userName}/rooms/${userData.roomToCreate.roomName}/follow`)
+          .set('Authorization', tokens.basicUser)
+          .end((error, response) => {
+            response.should.have.status(200);
+            response.should.be.json;
+            response.body.should.be.jsonSchema(roomSchemas.room);
+
+            done();
+          });
+      });
+
+      it('Should NOT unfollow with incorrect authorization on /api/users/:userName/rooms/:roomName/unfollow GET', (done) => {
+        chai
+          .request(app)
+          .post(`/api/users/${starterData.basicUserToAuth.userName}/rooms/${userData.roomToCreate.roomName}/unfollow`)
+          .set('Authorization', tokens.incorrectJwt)
+          .end((error, response) => {
+            response.should.have.status(401);
+            response.should.be.json;
+            response.body.should.be.jsonSchema(errorSchemas.error);
+
+            done();
+          });
+      });
+
+      it('Should unfollow room that is followed /api/users/:userName/rooms/:roomName/unfollow POST', (done) => {
+        chai
+          .request(app)
+          .post(`/api/users/${starterData.basicUserToAuth.userName}/rooms/${userData.roomToCreate.roomName}/unfollow`)
+          .set('Authorization', tokens.basicUser)
+          .end((error, response) => {
+            response.should.have.status(200);
+            response.should.be.json;
+            response.body.should.be.jsonSchema(roomSchemas.unfollowRoom);
+
+            done();
+          });
+      });
+
+      it('Should NOT unfollow room that is not followed /api/users/rooms/:roomName/unfollow POST', (done) => {
+        chai
+          .request(app)
+          .post(`/api/users/${starterData.basicUserToAuth.userName}/rooms/${userData.roomThatDoesNotExist.roomName}/unfollow`)
+          .set('Authorization', tokens.adminUser)
+          .end((error, response) => {
+            response.should.have.status(404);
+            response.should.be.json;
+            response.body.should.be.jsonSchema(errorSchemas.error);
+
+            done();
+          });
+      });
+    });
+  });
+
+  describe('Update calibration mission', () => {
+    describe('Get calibration mission', () => {
+      it('Should NOT retrieve active calibration mission for user with incorrect authorization on /api/users/:userName/calibrationMission GET', (done) => {
+        chai
+          .request(app)
+          .get(`/api/users/${userData.newUserToCreate.userName}/calibrationMission`)
+          .set('Authorization', tokens.incorrectJwt)
+          .end((error, response) => {
+            response.should.have.status(401);
+            response.should.be.json;
+            response.body.should.be.jsonSchema(errorSchemas.error);
+
+            done();
+          });
+      });
+
+      it('Should get active calibration mission for other user with enough permission on /api/users/:userName/calibrationMission GET', (done) => {
+        chai
+          .request(app)
+          .get(`/api/users/${userData.newUserToCreate.userName}/calibrationMission`)
+          .set('Authorization', tokens.adminUser)
+          .end((error, response) => {
+            response.should.have.status(200);
+            response.should.be.json;
+            response.body.should.be.jsonSchema(calibrationMissionSchemas.calibrationMission);
+            response.body.data.mission.owner.should.equal(userData.newUserToCreate.userName);
+
+            done();
+          });
+      });
+
+      it('Should get active calibration mission for self on /api/users/:userName/calibrationMission GET', (done) => {
+        chai
+          .request(app)
+          .get(`/api/users/${userData.newUserToCreate.userName}/calibrationMission`)
+          .set('Authorization', userTokens.newUser)
+          .end((error, response) => {
+            response.should.have.status(200);
+            response.should.be.json;
+            response.body.should.be.jsonSchema(calibrationMissionSchemas.calibrationMission);
+            response.body.data.mission.owner.should.equal(userData.newUserToCreate.userName);
+
+            done();
+          });
+      });
+    });
+
+    describe('Complete calibration mission', () => {
+      before('Get calibration mission for user on /api/users/:userName/calibrationMission GET', (done) => {
+        chai
+          .request(app)
+          .get(`/api/users/${userData.newUserToCreate.userName}/calibrationMission`)
+          .set('Authorization', tokens.adminUser)
+          .end((error, response) => {
+            response.should.have.status(200);
+            response.should.be.json;
+            response.body.should.be.jsonSchema(calibrationMissionSchemas.calibrationMission);
+
+            done();
+          });
+      });
+
+      it('Should NOT complete calibration mission with incorrect authorization /api/users/:userName/calibrationMission/complete POST', (done) => {
+        chai
+          .request(app)
+          .post(`/api/users/${userData.newUserToCreate.userName}/calibrationMission/complete`)
+          .set('Authorization', tokens.incorrectJwt)
+          .end((error, response) => {
+            response.should.have.status(401);
+            response.should.be.json;
+            response.body.should.be.jsonSchema(errorSchemas.error);
+
+            done();
+          });
+      });
+
+      it('Should complete calibration mission for user on /api/users/:userName/calibrationMission/complete POST', (done) => {
+        chai
+          .request(app)
+          .post(`/api/users/${userData.newUserToCreate.userName}/calibrationMission/complete`)
+          .set('Authorization', tokens.adminUser)
+          .end((error, response) => {
+            response.should.have.status(200);
+            response.should.be.json;
+            response.body.should.be.jsonSchema(calibrationMissionSchemas.calibrationMission);
+            response.body.data.mission.completed.should.equal(true);
+            response.body.data.mission.timeCompleted.should.exist;
+
+            done();
+          });
+      });
+
+      describe('Correct completed mission data', () => {
+        let completedMission = {};
+
+        before('Get active calibration mission for user on /api/users/:userName/calibrationMission GET', (done) => {
+          chai
+            .request(app)
+            .get(`/api/users/${userData.newUserToCreate.userName}/calibrationMission`)
+            .set('Authorization', tokens.adminUser)
+            .end((error, response) => {
+              response.should.have.status(200);
+              response.should.be.json;
+              response.body.should.be.jsonSchema(calibrationMissionSchemas.calibrationMission);
+
+              completedMission = response.body.data.mission;
+
+              done();
+            });
+        });
+
+        before('Complete calibration mission for user on /api/users/:userName/calibrationMission/complete POST', (done) => {
+          chai
+            .request(app)
+            .post(`/api/users/${userData.newUserToCreate.userName}/calibrationMission/complete`)
+            .set('Authorization', tokens.adminUser)
+            .end((error, response) => {
+              response.should.have.status(200);
+              response.should.be.json;
+              response.body.should.be.jsonSchema(calibrationMissionSchemas.calibrationMission);
+
+              completedMission = response.body.data.mission;
+
+              done();
+            });
+        });
+
+        it('Should get new active calibration mission for user and it should NOT have the same station ID nor code as the completed mission on /api/users/:userName/calibrationMissions GET', (done) => {
+          chai
+            .request(app)
+            .get(`/api/users/${userData.newUserToCreate.userName}/calibrationMission`)
+            .set('Authorization', tokens.adminUser)
+            .end((error, response) => {
+              response.should.have.status(200);
+              response.should.be.json;
+              response.body.should.be.jsonSchema(calibrationMissionSchemas.calibrationMission);
+              response.body.data.mission.stationId.should.not.equal(completedMission.stationId);
+              response.body.data.mission.code.should.not.equal(completedMission.code);
+              response.body.data.mission.owner.should.equal(userData.newUserToCreate.userName);
+
+              done();
+            });
+        });
+      });
+    });
+
+    describe('Cancel calibration mission', () => {
+      before('Get active calibration mission for user on /api/users/:userName/calibrationMission GET', (done) => {
+        chai
+          .request(app)
+          .get(`/api/users/${userData.newUserToCreate.userName}/calibrationMission`)
+          .set('Authorization', tokens.adminUser)
+          .end((error, response) => {
+            response.should.have.status(200);
+            response.should.be.json;
+            response.body.should.be.jsonSchema(calibrationMissionSchemas.calibrationMission);
+
+            done();
+          });
+      });
+
+      it('Should NOT cancel calibration mission with incorrect authorization on /api/users/:userName/calibrationMission/cancel POST', (done) => {
+        chai
+          .request(app)
+          .post(`/api/users/${userData.newUserToCreate.userName}/calibrationMission/cancel`)
+          .set('Authorization', tokens.incorrectJwt)
+          .end((error, response) => {
+            response.should.have.status(401);
+            response.should.be.json;
+            response.body.should.be.jsonSchema(errorSchemas.error);
+
+            done();
+          });
+      });
+
+      it('Should cancel active calibration mission on /api/users/:userName/calibrationMission/cancel POST', (done) => {
+        chai
+          .request(app)
+          .post(`/api/users/${userData.newUserToCreate.userName}/calibrationMission/cancel`)
+          .set('Authorization', tokens.adminUser)
+          .end((error, response) => {
+            response.should.have.status(200);
+            response.should.be.json;
+            response.body.should.be.jsonSchema(calibrationMissionSchemas.calibrationMission);
+
+            done();
+          });
+      });
+
+      it('Should NOT cancel non-existing calibrationMission on /api/users/:userName/calibrationMission/cancel POST', (done) => {
+        chai
+          .request(app)
+          .post(`/api/users/${starterData.adminUserToAuth.userName}/calibrationMission/cancel`)
+          .set('Authorization', tokens.adminUser)
+          .end((error, response) => {
+            response.should.have.status(404);
+            response.should.be.json;
+            response.body.should.be.jsonSchema(errorSchemas.error);
+
+            done();
+          });
+      });
+
+      describe('Correct cancelled mission data', () => {
+        let cancelledMission = {};
+
+        before('Get active calibration mission for user on /api/users/:userName/calibrationMissions GET', (done) => {
+          chai
+            .request(app)
+            .get(`/api/users/${userData.newUserToCreate.userName}/calibrationMission`)
+            .set('Authorization', tokens.adminUser)
+            .end((error, response) => {
+              response.should.have.status(200);
+              response.should.be.json;
+              response.body.should.be.jsonSchema(calibrationMissionSchemas.calibrationMission);
+
+              cancelledMission = response.body.data.mission;
+
+              done();
+            });
+        });
+
+        before('Cancel active calibration mission for user on /api/users/:userName/calibrationMissions/cancel POST', (done) => {
+          chai
+            .request(app)
+            .post(`/api/users/${userData.newUserToCreate.userName}/calibrationMission/cancel`)
+            .set('Authorization', tokens.adminUser)
+            .end((error, response) => {
+              response.should.have.status(200);
+              response.should.be.json;
+              response.body.should.be.jsonSchema(calibrationMissionSchemas.calibrationMission);
+
+              cancelledMission = response.body.data.mission;
+
+              done();
+            });
+        });
+
+        it('Should get new active calibration mission for current user and it should NOT be the same as the cancelled mission on /api/users/:userName/calibrationMission GET', (done) => {
+          chai
+            .request(app)
+            .get(`/api/users/${userData.newUserToCreate.userName}/calibrationMission`)
+            .set('Authorization', userTokens.newUser)
+            .end((error, response) => {
+              response.should.have.status(200);
+              response.should.be.json;
+              response.body.should.be.jsonSchema(calibrationMissionSchemas.calibrationMission);
+              response.body.data.mission.stationId.should.not.equal(cancelledMission.stationId);
+              response.body.data.mission.should.not.equal(cancelledMission);
+
+              done();
+            });
+        });
+      });
+    });
+  });
+  // /users/:userName/team/leave POST Leave team
 });
