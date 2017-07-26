@@ -415,12 +415,15 @@ function handle(socket) {
   });
 
   socket.on('logout', (params, callback = () => {}) => {
+    console.log('logging out')
     manager.userAllowedCommand(socket.id, databasePopulation.commands.logout.commandName, (allowErr, allowed, user) => {
       if (allowErr || !allowed || !user) {
         callback({ error: {} });
 
         return;
       }
+
+      console.log('logging out user', user);
 
       const userName = user.userName;
 
