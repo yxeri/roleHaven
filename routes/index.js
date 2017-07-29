@@ -30,7 +30,7 @@ const walletHandler = require('./socketHandlers/wallet');
 const calibrationJobHandler = require('./socketHandlers/calibrationMission');
 const simpleMessageHandler = require('./socketHandlers/simpleMsg');
 const hackingHandler = require('./socketHandlers/hacking');
-const timedEventHandler = require('./socketHandlers/team');
+// const timedEventHandler = require('./socketHandlers/team');
 const chatHandler = require('./socketHandlers/chat');
 const userHandler = require('./socketHandlers/user');
 const gameCodeHandler = require('./socketHandlers/gameCode');
@@ -148,7 +148,7 @@ function handle(io) {
     calibrationJobHandler.handle(socket, io);
     simpleMessageHandler.handle(socket, io);
     hackingHandler.handle(socket, io);
-    timedEventHandler.handle(socket, io);
+    // timedEventHandler.handle(socket, io);
     gameCodeHandler.handle(socket, io);
     docFileHandler.handle(socket, io);
   });

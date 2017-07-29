@@ -22,56 +22,56 @@
 // const errorCreator = require('../../objects/error/errorCreator');
 // const dbTimedEvent = require('../../db/connectors/timedEvent');
 
-function handle() {
-  // TODO Timed event?
-  // socket.on('createTimedEvent', ({ timedEvent, token }, callback = () => {}) => {
-  //   if (!objectValidator.isValidData({ timedEvent }, { timedEvent: { triggerTime: true, eventType: true } })) {
-  //     callback({ error: new errorCreator.InvalidData({ expected: '{ timedEvent: { triggerTime, eventType } }' }) });
-  //
-  //     return;
-  //   } else if (!timedEvent.message && !timedEvent.coordinates) {
-  //     callback({ error: new errorCreator.InvalidData({ expected: '{ timedEvent: { message } } or { timedEvent: { coordinates } }' }) });
-  //
-  //     return;
-  //   } else if (timedEvent.coordinates && (typeof timedEvent.coordinates.longitude !== 'number' || typeof timedEvent.coordinates.latitude !== 'number')) {
-  //     callback({ error: new errorCreator.InvalidData({ expected: '{ timedEvent: { coordinates: { longitude, latitude } }' }) });
-  //
-  //     return;
-  //   }
-  //
-  //   // TODO Message limitations
-  //
-  //   manager.userIsAllowed({
-  //     token,
-  //     socketId: socket.id,
-  //     commandName: dbConfig.commands.createTimedEvent.commandName,
-  //     callback: ({ error, allowedUser }) => {
-  //       if (error) {
-  //         callback({ error });
-  //
-  //         return;
-  //       }
-  //
-  //       const newEvent = timedEvent;
-  //
-  //       newEvent.owner = allowedUser.userName;
-  //       newEvent.triggerTime = new Date(newEvent.triggerTime);
-  //
-  //       dbTimedEvent.createTimedEvent({
-  //         timedEvent: newEvent,
-  //         callback: (createData) => {
-  //           if (createData.error) {
-  //             callback({ error: createData.error });
-  //
-  //             return;
-  //           }
-  //
-  //           callback({ data: { event: createData.data.savedObject } });
-  //         },
-  //       });
-  //     },
-  //   });
-  // });
-}
+// function handle() {
+// TODO Timed event?
+// socket.on('createTimedEvent', ({ timedEvent, token }, callback = () => {}) => {
+//   if (!objectValidator.isValidData({ timedEvent }, { timedEvent: { triggerTime: true, eventType: true } })) {
+//     callback({ error: new errorCreator.InvalidData({ expected: '{ timedEvent: { triggerTime, eventType } }' }) });
+//
+//     return;
+//   } else if (!timedEvent.message && !timedEvent.coordinates) {
+//     callback({ error: new errorCreator.InvalidData({ expected: '{ timedEvent: { message } } or { timedEvent: { coordinates } }' }) });
+//
+//     return;
+//   } else if (timedEvent.coordinates && (typeof timedEvent.coordinates.longitude !== 'number' || typeof timedEvent.coordinates.latitude !== 'number')) {
+//     callback({ error: new errorCreator.InvalidData({ expected: '{ timedEvent: { coordinates: { longitude, latitude } }' }) });
+//
+//     return;
+//   }
+//
+//   // TODO Message limitations
+//
+//   manager.userIsAllowed({
+//     token,
+//     socketId: socket.id,
+//     commandName: dbConfig.commands.createTimedEvent.commandName,
+//     callback: ({ error, allowedUser }) => {
+//       if (error) {
+//         callback({ error });
+//
+//         return;
+//       }
+//
+//       const newEvent = timedEvent;
+//
+//       newEvent.owner = allowedUser.userName;
+//       newEvent.triggerTime = new Date(newEvent.triggerTime);
+//
+//       dbTimedEvent.createTimedEvent({
+//         timedEvent: newEvent,
+//         callback: (createData) => {
+//           if (createData.error) {
+//             callback({ error: createData.error });
+//
+//             return;
+//           }
+//
+//           callback({ data: { event: createData.data.savedObject } });
+//         },
+//       });
+//     },
+//   });
+// });
+// }
 
-exports.handle = handle;
+// exports.handle = handle;

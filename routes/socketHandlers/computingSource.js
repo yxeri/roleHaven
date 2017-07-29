@@ -21,42 +21,42 @@
 // const errorCreator = require('../../objects/error/errorCreator');
 // const dbSource = require('../../db/connectors/computingSource');
 
-function handle() {
-  // socket.on('getSources', ({ token }, callback = () => {}) => {
-  //   manager.userIsAllowed({
-  //     token,
-  //     commandName: dbConfig.commands.getSources.commandName,
-  //     callback: ({ error }) => {
-  //       if (error) {
-  //         callback({ error });
-  //
-  //         return;
-  //       }
-  //
-  //       dbSource.getSources(({ error: errorSource, data }) => {
-  //         if (errorSource) {
-  //           callback({ error: new errorCreator.Database({ errorObject: errorSource, name: 'getSources' }) });
-  //
-  //           return;
-  //         }
-  //
-  //         const { sources } = data;
-  //         const inactiveSources = [];
-  //         const activeSources = sources.filter((source) => {
-  //           if (!source.isActive) {
-  //             inactiveSources.push(source);
-  //
-  //             return false;
-  //           }
-  //
-  //           return true;
-  //         });
-  //
-  //         callback({ data: { inactiveSources, activeSources } });
-  //       });
-  //     },
-  //   });
-  // });
-}
+// function handle() {
+// socket.on('getSources', ({ token }, callback = () => {}) => {
+//   manager.userIsAllowed({
+//     token,
+//     commandName: dbConfig.commands.getSources.commandName,
+//     callback: ({ error }) => {
+//       if (error) {
+//         callback({ error });
+//
+//         return;
+//       }
+//
+//       dbSource.getSources(({ error: errorSource, data }) => {
+//         if (errorSource) {
+//           callback({ error: new errorCreator.Database({ errorObject: errorSource, name: 'getSources' }) });
+//
+//           return;
+//         }
+//
+//         const { sources } = data;
+//         const inactiveSources = [];
+//         const activeSources = sources.filter((source) => {
+//           if (!source.isActive) {
+//             inactiveSources.push(source);
+//
+//             return false;
+//           }
+//
+//           return true;
+//         });
+//
+//         callback({ data: { inactiveSources, activeSources } });
+//       });
+//     },
+//   });
+// });
+// }
 
-exports.handle = handle;
+// exports.handle = handle;
