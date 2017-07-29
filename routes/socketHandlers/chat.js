@@ -1,5 +1,5 @@
 /*
- Copyright 2015 Aleksandar Jankovic
+ Copyright 2017 Aleksandar Jankovic
 
  Licensed under the Apache License, Version 2.0 (the "License");
  you may not use this file except in compliance with the License.
@@ -16,362 +16,10 @@
 
 'use strict';
 
-const manager = require('../../helpers/manager');
-const dbConfig = require('../../config/defaults/config').databasePopulation;
+const roomManager = require('../../managers/rooms');
 const messenger = require('../../helpers/messenger');
 const authenticator = require('../../helpers/authenticator');
-
-/**
- * Send broadcast message
- * @param {Object} params.message Message to send
- * @param {Object} params.token jwt token
- * @param {Object} params.socket Socket.io socket
- * @param {Object} params.io Socket.io
- * @param {Function} params.callback Callback
- */
-function sendBroadcastMsg({ message, token, socket, io, callback }) {
-  authenticator.isUserAllowed({
-    token,
-    commandName: dbConfig.apiCommands.SendBroadcast.name,
-    callback: ({ error }) => {
-      if (error) {
-        callback({ error });
-
-        return;
-      }
-
-      messenger.sendBroadcastMsg({
-        socket,
-        io,
-        callback,
-        message,
-      });
-    },
-  });
-}
-
-/**
- * Create room
- * @param {Object} params.room Room to create
- * @param {Object} params.token jwt
- * @param {Object} params.socket Socket io.
- * @param {Object} params.io Socket io. Will be used if socket is not set
- * @param {Function} params.callback Callback
- */
-function createRoom({ room, token, io, socket, callback }) {
-  authenticator.isUserAllowed({
-    token,
-    commandName: dbConfig.apiCommands.CreateRoom.name,
-    callback: ({ error, data }) => {
-      if (error) {
-        callback({ error });
-
-        return;
-      }
-
-      manager.createRoom({
-        room,
-        callback,
-        io,
-        socket,
-        user: data.user,
-      });
-    },
-  });
-}
-
-/**
- * Check if user is allowed to enter the room
- * @param {Object} params.room Room to auth to
- * @param {Object} params.token jwt
- * @param {Function} params.callback Callback
- */
-function authUserToRoom({ room, token, callback }) {
-  authenticator.isUserAllowed({
-    token,
-    commandName: dbConfig.apiCommands.GetRoom.name,
-    callback: ({ error, data }) => {
-      if (error) {
-        callback({ error });
-
-        return;
-      }
-
-      manager.authUserToRoom({
-        room,
-        callback,
-        user: data.user,
-      });
-    },
-  });
-}
-
-/**
- * Make user follow whisper room
- * @param {Object} params.user User following whisper room
- * @param {string} params.whisperTo Message receiver name
- * @param {Object} params.sender User data sent from client
- * @param {Object} params.room Whisper room
- * @param {Object} params.socket Socket.io socket
- * @param {Object} params.io Socket.io. Used if socket is not set
- * @param {Function} params.callback Callback
- */
-function followWhisperRoom({ sender, whisperTo, room, token, socket, io, callback }) {
-  authenticator.isUserAllowed({
-    token,
-    commandName: dbConfig.apiCommands.FollowRoom.name,
-    callback: ({ error, data }) => {
-      if (error) {
-        callback({ error });
-
-        return;
-      }
-
-      manager.followWhisperRoom({
-        room,
-        callback,
-        sender,
-        socket,
-        whisperTo,
-        io,
-        user: data.user,
-      });
-    },
-  });
-}
-
-/**
- * Follow a new room on the user
- * @param {Object} params.room Room to follow
- * @param {Object} params.room.roomName Name of the room
- * @param {Object} [params.room.password] Password to the room
- * @param {Object} params.user User trying to follow a room
- * @param {Function} params.callback Callback
- * @param {Object} params.socket Socket.io socket
- * @param {Object} params.token jwt
- * @param {Object} params.io Socket.io. Used if socket is not set
- */
-function followRoom({ token, callback, room, socket, io }) {
-  authenticator.isUserAllowed({
-    token,
-    commandName: dbConfig.apiCommands.FollowRoom.name,
-    callback: ({ error, data }) => {
-      if (error) {
-        callback({ error });
-
-        return;
-      }
-
-      manager.followRoom({
-        io,
-        socket,
-        room,
-        callback,
-        user: data.user,
-      });
-    },
-  });
-}
-
-/**
- * Unfollow room
- * @param {Object} params.user User that is unfollowing a room
- * @param {boolean} params.isWhisperRoom Is it a whisper room?
- * @param {Object} params.room Room to unfollow
- * @param {Function} params.callback Callback
- * @param {Object} params.socket Socket io socket
- * @param {Object} params.io Socket io. Will be used if socket is not set
- * @param {Object} params.token jwt
- */
-function unfollowRoom({ token, callback, room, socket, io, isWhisperRoom }) {
-  authenticator.isUserAllowed({
-    token,
-    commandName: dbConfig.apiCommands.UnfollowRoom.name,
-    callback: ({ error, data }) => {
-      if (error) {
-        callback({ error });
-
-        return;
-      }
-
-      manager.unfollowRoom({
-        socket,
-        io,
-        callback,
-        isWhisperRoom,
-        room,
-        user: data.user,
-      });
-    },
-  });
-}
-
-/**
- * List rooms
- * @param {Object} params.user User listing rooms
- * @param {Object} params.socket Socket io
- * @param {Function} params.callback Callback
- * @param {Object} params.token jwt
- */
-function listRooms({ socket, token, callback }) {
-  authenticator.isUserAllowed({
-    token,
-    commandName: dbConfig.apiCommands.GetRoom,
-    callback: ({ error, data }) => {
-      if (error) {
-        callback({ error });
-
-        return;
-      }
-
-      manager.getRooms({
-        socket,
-        callback,
-        user: data.user,
-      });
-    },
-  });
-}
-
-/**
- * Gets getHistory (messages) from one or more rooms
- * @param {Object} params.user User retrieving history
- * @param {string[]} params.rooms The rooms to retrieve the getHistory from
- * @param {Object} params.io socket io. Will be used if socket is not set
- * @param {Object} params.socket Socket io
- * @param {Function} params.callback Callback
- * @param {Object} params.token jwt
- */
-function getHistory({ token, room, whisperTo, io, socket, callback }) {
-  authenticator.isUserAllowed({
-    token,
-    commandName: dbConfig.apiCommands.GetHistory.name,
-    callback: ({ error, data }) => {
-      if (error) {
-        callback({ error });
-
-        return;
-      }
-
-      manager.getHistory({
-        whisperTo,
-        callback,
-        socket,
-        io,
-        room,
-        user: data.user,
-      });
-    },
-  });
-}
-
-/**
- * Remove room
- * @param {Object} params.user Owner of the room
- * @param {Object} params.room Room to remove
- * @param {Object} [params.socket] Socket io
- * @param {Object} params.io socket io. Will be used if socket is not set
- * @param {Function} params.callback Callback
- */
-function removeRoom({ token, room, socket, io, callback }) {
-  authenticator.isUserAllowed({
-    token,
-    commandName: dbConfig.apiCommands.RemoveRoom.name,
-    callback: ({ error, data }) => {
-      if (error) {
-        callback({ error });
-
-        return;
-      }
-
-      manager.removeRoom({
-        room,
-        socket,
-        io,
-        callback,
-        user: data.user,
-      });
-    },
-  });
-}
-
-/**
- * Match sent partial room name to one or more rooms followed. Match will start from index 0
- * @param {Object} params.user User retrieving rooms
- * @param {string} params.partialName Partial room name
- * @param {Function} params.callback Callback
- */
-function matchPartialMyRoomName({ token, partialName, callback }) {
-  authenticator.isUserAllowed({
-    token,
-    commandName: dbConfig.apiCommands.GetRoom.name,
-    callback: ({ error, data }) => {
-      if (error) {
-        callback({ error });
-
-        return;
-      }
-
-      manager.matchMyPartialRoomName({
-        callback,
-        partialName,
-        user: data.user,
-      });
-    },
-  });
-}
-
-/**
- * Match sent partial room name to one or more rooms. Match will start from index 0
- * @param {Object} params.user User retrieving rooms
- * @param {string} params.partialName Partial room name
- * @param {Function} params.callback Callback
- */
-function matchPartialRoomName({ token, partialName, callback }) {
-  authenticator.isUserAllowed({
-    token,
-    commandName: dbConfig.apiCommands.GetRoom.name,
-    callback: ({ error, data }) => {
-      if (error) {
-        callback({ error });
-
-        return;
-      }
-
-      manager.matchMyPartialRoomName({
-        partialName,
-        callback,
-        user: data.user,
-      });
-    },
-  });
-}
-
-/**
- * Get room
- * @param {Object} params.token jwt
- * @param {string} params.roomName Name of the room to retrieve
- * @param {Function} params.callback Callback
- */
-function getRoom({ token, roomName, callback }) {
-  authenticator.isUserAllowed({
-    token,
-    commandName: dbConfig.apiCommands.GetRoom.name,
-    callback: ({ error, data }) => {
-      if (error) {
-        callback({ error });
-
-        return;
-      }
-
-      manager.getRoom({
-        roomName,
-        callback,
-        user: data.user,
-      });
-    },
-  });
-}
+const dbConfig = require('../../config/defaults/config').databasePopulation;
 
 /**
  * @param {object} socket - Socket.IO socket
@@ -397,89 +45,103 @@ function handle(socket, io) {
       token,
     });
   });
-  // TODO Unused
   socket.on('broadcastMsg', ({ message, token }, callback = () => {}) => {
-    sendBroadcastMsg({ message, token, callback, socket, io });
+    messenger.sendBroadcastMsg({
+      token,
+      socket,
+      io,
+      callback,
+      message,
+    });
   });
   socket.on('createRoom', ({ room, token }, callback = () => {}) => {
-    createRoom({ room, token, callback, socket, io });
+    roomManager.createRoom({
+      room,
+      token,
+      socket,
+      io,
+      callback,
+    });
   });
   socket.on('authUserToRoom', ({ room, token }, callback = () => {}) => {
-    authUserToRoom({ room, token, callback, socket, io });
-  });
-  socket.on('followWhisperRoom', ({ user, whisperTo, room, token }, callback = () => {}) => {
-    followWhisperRoom({
+    authenticator.isUserAllowed({
       token,
-      room,
-      whisperTo,
-      callback,
-      io,
-      socket,
-      sender: user,
+      commandName: dbConfig.apiCommands.GetRoom.name,
+      callback: ({ error, data }) => {
+        if (error) {
+          callback({ error });
+
+          return;
+        }
+
+        roomManager.authUserToRoom({
+          room,
+          callback,
+          user: data.user,
+        });
+      },
     });
   });
   socket.on('follow', ({ room, token }, callback = () => {}) => {
-    followRoom({
+    roomManager.followRoom({
       token,
-      callback,
-      room,
       socket,
       io,
+      room,
+      callback,
     });
   });
   socket.on('unfollow', ({ room, isWhisperRoom, token }, callback = () => {}) => {
-    unfollowRoom({
+    roomManager.unfollowRoom({
       token,
-      callback,
       room,
-      socket,
-      io,
       isWhisperRoom,
-    });
-  });
-  socket.on('listRooms', ({ token }, callback = () => {}) => {
-    listRooms({
-      token,
-      socket,
-      callback,
-    });
-  });
-  socket.on('getHistory', ({ room, whisperTo, token }, callback = () => {}) => {
-    getHistory({
-      token,
-      whisperTo,
-      room,
       socket,
       io,
       callback,
     });
   });
-  // TODO Unused
+  socket.on('getRooms', ({ token }, callback = () => {}) => {
+    roomManager.getRooms({
+      token,
+      socket,
+      callback,
+    });
+  });
+  socket.on('getHistory', ({ room, token }, callback = () => {}) => {
+    roomManager.getHistory({
+      token,
+      callback,
+      socket,
+      io,
+      rooms: [room.roomName],
+    });
+  });
   socket.on('removeRoom', ({ room, token }, callback = () => {}) => {
-    removeRoom({
-      token,
+    roomManager.removeRoom({
       room,
-      callback,
-    });
-  });
-  // TODO Unused
-  socket.on('matchPartialMyRoom', ({ partialName, token }, callback = () => {}) => {
-    matchPartialRoomName({
       token,
-      partialName,
+      socket,
+      io,
       callback,
     });
   });
-  // TODO Unused
+  socket.on('matchPartialMyRoom', ({ partialName, token }, callback = () => {}) => {
+    roomManager.matchMyPartialRoomName({
+      token,
+      callback,
+      partialName,
+    });
+  });
   socket.on('matchPartialRoom', ({ partialName, token }, callback = () => {}) => {
-    matchPartialMyRoomName({
+    roomManager.matchMyPartialRoomName({
       token,
       partialName,
       callback,
     });
   });
   socket.on('getRoom', ({ roomName, token }, callback = () => {}) => {
-    getRoom({
+    roomManager.getRoom({
       token,
       roomName,
       callback,
@@ -487,16 +149,4 @@ function handle(socket, io) {
   });
 }
 
-exports.sendBroadcastMsg = sendBroadcastMsg;
-exports.createRoom = createRoom;
-exports.authUserToRoom = authUserToRoom;
-exports.followWhisperRoom = followWhisperRoom;
-exports.followRoom = followRoom;
-exports.unfollowRoom = unfollowRoom;
-exports.getRooms = listRooms;
-exports.getHistory = getHistory;
-exports.removeRoom = removeRoom;
-exports.matchPartialMyRoomName = matchPartialMyRoomName;
-exports.matchPartialRoomName = matchPartialRoomName;
-exports.getRoom = getRoom;
 exports.handle = handle;

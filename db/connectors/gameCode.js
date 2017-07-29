@@ -1,5 +1,5 @@
 /*
- Copyright 2015 Aleksandar Jankovic
+ Copyright 2017 Aleksandar Jankovic
 
  Licensed under the Apache License, Version 2.0 (the "License");
  you may not use this file except in compliance with the License.
@@ -18,6 +18,8 @@
 
 const mongoose = require('mongoose');
 const errorCreator = require('../../objects/error/errorCreator');
+const textTools = require('../../utils/textTools');
+const dbConfig = require('../../config/defaults/config').databasePopulation;
 
 const gameCodeSchema = new mongoose.Schema({
   owner: String,
@@ -29,6 +31,14 @@ const gameCodeSchema = new mongoose.Schema({
 const GameCode = mongoose.model('GameCode', gameCodeSchema);
 
 /**
+ * Creates game code
+ * @returns {string} numerical game code
+ */
+function generateGameCode() {
+  return textTools.shuffleArray(['0', '1', '2', '3', '4', '5', '6', '7', '8', '9']).slice(0, 6).join('');
+}
+
+/**
  * Update (or create) game code
  * @param {string} params.owner Owner of the game code
  * @param {string} params.code Game code
@@ -37,37 +47,14 @@ const GameCode = mongoose.model('GameCode', gameCodeSchema);
  * @param {Function} params.callback Callback
  */
 function updateGameCode({ owner, code, codeType, renewable, callback }) {
-  const query = { owner, codeType, code };
-  const update = { $set: { owner, code, codeType, renewable } };
+  const newCode = code || generateGameCode();
+  const query = { owner, codeType, code: newCode };
+  const update = { $set: { owner, code: newCode, codeType, renewable } };
   const options = { new: true, upsert: true };
 
   GameCode.findOneAndUpdate(query, update, options).lean().exec((err, gameCode) => {
     if (err) {
       callback({ error: new errorCreator.Database({ errorObject: err, name: 'updateGameCode' }) });
-
-      return;
-    }
-
-    callback({ data: { gameCode } });
-  });
-}
-
-/**
- * Get game code
- * @param {string} params.owner Owner of the game code
- * @param {string} params.codeType Type of game code
- * @param {Function} params.callback Callback
- */
-function getGameCodeByUserName({ owner, codeType, callback }) {
-  const query = { owner, codeType };
-
-  GameCode.findOne(query).lean().exec((err, gameCode) => {
-    if (err) {
-      callback({ error: new errorCreator.Database({ errorObject: err, name: 'getGameCodeByUserName' }) });
-
-      return;
-    } else if (!gameCode) {
-      callback({ error: new errorCreator.DoesNotExist({ name: `game code for ${owner} typr ${codeType}` }) });
 
       return;
     }
@@ -141,8 +128,40 @@ function removeGameCode({ code, callback }) {
   });
 }
 
-exports.getGameCodeByUserName = getGameCodeByUserName;
+/**
+ * Get profile game code for owner
+ * @param {string} params.sowner Owner of game code
+ * @param {Function} params.callback Callback
+ */
+function getProfileGameCode({ owner, callback }) {
+  const query = {
+    owner,
+    codeType: dbConfig.GameCodeTypes.PROFILE,
+  };
+
+  GameCode.findOne(query).lean().exec((err, gameCode) => {
+    if (err) {
+      callback({ error: new errorCreator.Database({ errorObject: err, name: 'getProfileGameCode' }) });
+
+      return;
+    } else if (!gameCode) {
+      updateGameCode({
+        owner,
+        code: generateGameCode(),
+        codeType: dbConfig.GameCodeTypes.PROFILE,
+        renewable: true,
+        callback,
+      });
+
+      return;
+    }
+
+    callback({ data: { gameCode } });
+  });
+}
+
 exports.getGameCodeByCode = getGameCodeByCode;
 exports.updateGameCode = updateGameCode;
 exports.removeGameCode = removeGameCode;
 exports.getGameCodesByUserName = getGameCodesByUserName;
+exports.getProfileGameCode = getProfileGameCode;

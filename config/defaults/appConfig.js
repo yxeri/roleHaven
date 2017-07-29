@@ -1,5 +1,5 @@
 /*
- Copyright 2015 Aleksandar Jankovic
+ Copyright 2017 Aleksandar Jankovic
 
  Licensed under the Apache License, Version 2.0 (the "License");
  you may not use this file except in compliance with the License.
@@ -111,6 +111,7 @@ config.socketPath = (process.env.SOCKETPATH === 'cdn' || config.socketPath === '
 config.routes = config.routes || [
   { sitePath: '/', filePath: `${__dirname}/../../routes/index.js` },
   { sitePath: '/api/authenticate', filePath: `${__dirname}/../../routes/rest/authenticate.js` },
+  { sitePath: '/api/gameCodes', filePath: `${__dirname}/../../routes/rest/gameCodes.js` },
   { sitePath: '/api/rooms', filePath: `${__dirname}/../../routes/rest/rooms.js` },
   { sitePath: '/api/positions', filePath: `${__dirname}/../../routes/rest/positions.js` },
   { sitePath: '/api/docFiles', filePath: `${__dirname}/../../routes/rest/docFiles.js` },
@@ -123,6 +124,7 @@ config.routes = config.routes || [
   { sitePath: '/api/wallets', filePath: `${__dirname}/../../routes/rest/wallets` },
   { sitePath: '/api/teams', filePath: `${__dirname}/../../routes/rest/teams` },
   { sitePath: '/api/devices', filePath: `${__dirname}/../../routes/rest/devices` },
+  { sitePath: '/api/simpleMsgs', filePath: `${__dirname}/../../routes/rest/simpleMsgs` },
   { sitePath: '*', filePath: `${__dirname}/../../routes/error.js` },
 ];
 
@@ -166,7 +168,7 @@ config.gpsTracking = gpsTrackingEnv !== undefined ? gpsTrackingEnv : config.gpsT
 /**
  * Should users be able to register? Does not block register through rest api
  */
-config.disallowUserRegister = disallowRegisterEnv !== undefined ? disallowRegisterEnv : config.disallowUserRegister || false;
+config.disallowSocketUserRegister = disallowRegisterEnv !== undefined ? disallowRegisterEnv : config.disallowSocketUserRegister || false;
 
 /**
  * Appended to the user name to create a room which is used to store private
@@ -227,7 +229,7 @@ config.hackingTriesAmount = process.env.HACKINGTRIESAMOUNT || config.hackingTrie
 /**
  * Amount of credits transferred when a game code is used
  */
-config.gameCodeAmount = process.env.GAMECODEAMOUNT || config.gameCodeAmount || 5;
+config.gameCodeAmount = process.env.GAMECODEAMOUNT || config.gameCodeAmount || 2;
 
 /**
  * Amount of credits transferred when a game code is used
@@ -284,6 +286,10 @@ config.maxPositionAge = process.env.MAXPOSITIONAGE || config.maxPositionAge || 2
 config.verboseError = verboseErrorEnv !== undefined ? verboseErrorEnv : config.verboseError || false;
 
 config.allowMessageImage = allowMessageImageEnv !== undefined ? allowMessageImageEnv : config.allowMessageImage || false;
+
+config.defaultWalletAmount = process.env.DEFAULTWALLETAMOUNT || config.defaultWalletAmount || 5;
+
+config.calibrationRewardAmount = process.env.CALIBRATIONREWARDAMOUNT || config.calibrationRewardAmount || 5;
 
 /**
  * Secret key used for Mailgun

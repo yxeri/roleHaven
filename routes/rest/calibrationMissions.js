@@ -17,7 +17,7 @@
 'use strict';
 
 const express = require('express');
-const manager = require('../../helpers/manager');
+const calibrationMissionsManager = require('../../managers/calibrationMissions');
 const restErrorChecker = require('../../helpers/restErrorChecker');
 
 const router = new express.Router();
@@ -57,7 +57,7 @@ function handle() {
    *  }
    */
   router.get('/', (request, response) => {
-    manager.getCalibrationMissions({
+    calibrationMissionsManager.getCalibrationMissions({
       token: request.headers.authorization,
       getInactive: true,
       callback: ({ error: calibrationError, data: calibrationData }) => {
@@ -79,7 +79,7 @@ function handle() {
    *
    * @apiHeader {String} Authorization Your JSON Web Token
    *
-   * @apiDescription Get all calibration missions
+   * @apiDescription Get all active calibration missions
    *
    * @apiSuccess {Object} data
    * @apiSuccess {Object[]} data.mission Missions found
@@ -102,7 +102,7 @@ function handle() {
    *  }
    */
   router.get('/active', (request, response) => {
-    manager.getCalibrationMissions({
+    calibrationMissionsManager.getCalibrationMissions({
       token: request.headers.authorization,
       callback: ({ error: calibrationError, data: calibrationData }) => {
         if (calibrationError) {

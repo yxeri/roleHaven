@@ -33,6 +33,9 @@ const aliasSchemas = require('./schemas/aliases');
 const roomSchemas = require('./schemas/rooms');
 const starterData = require('./testData/starter');
 const calibrationMissionSchemas = require('./schemas/calibrationMissions');
+const dbMailEvent = require('../../db/connectors/mailEvent');
+const positionSchemas = require('./schemas/positions');
+const positionData = require('./testData/positions');
 
 chai.should();
 
@@ -128,10 +131,10 @@ describe('Users', () => {
   });
 
   describe('Request password recovery for user', () => {
-    it('Should NOT create and send password reset with incorrect authorization on /api/users/:userName/resetPassword POST', (done) => {
+    it('Should NOT create and send password reset with incorrect authorization on /api/users/:userName/password/reset POST', (done) => {
       chai
         .request(app)
-        .post(`/api/users/${userData.newUserToCreate.userName}/resetPassword`)
+        .post(`/api/users/${userData.newUserToCreate.userName}/password/reset`)
         .set('Authorization', tokens.incorrectJwt)
         .end((error, response) => {
           response.should.have.status(401);
@@ -142,10 +145,10 @@ describe('Users', () => {
         });
     });
 
-    it('Should create and send password reset mail to existing user on /api/users/:userName/resetPassword POST', (done) => {
+    it('Should create and send password reset mail to existing user on /api/users/:userName/password/reset POST', (done) => {
       chai
         .request(app)
-        .post(`/api/users/${userData.newUserToCreate.userName}/resetPassword`)
+        .post(`/api/users/${userData.newUserToCreate.userName}/password/reset`)
         .set('Authorization', userTokens.newUser)
         .end((error, response) => {
           response.should.have.status(200);
@@ -156,15 +159,83 @@ describe('Users', () => {
         });
     });
 
-    it('Should NOT create and send password reset to non-existing user by mail on /api/users/:userName/resetPassword POST', (done) => {
+    it('Should NOT create and send password reset to non-existing user by mail on /api/users/:userName/password/reset POST', (done) => {
       chai
         .request(app)
-        .post(`/api/users/${userData.nonExistingUser.userName}/resetPassword`)
+        .post(`/api/users/${userData.nonExistingUser.userName}/password/reset`)
         .set('Authorization', tokens.adminUser)
         .end((error, response) => {
           response.should.have.status(404);
           response.should.be.json;
           response.body.should.be.jsonSchema(errorSchemas.error);
+
+          done();
+        });
+    });
+  });
+
+  describe('Change password', () => {
+    let passwordKey = '';
+
+    before('Create and send password reset mail to existing user on /api/users/:userName/password/reset POST', (done) => {
+      chai
+        .request(app)
+        .post(`/api/users/${userData.newAdminUserToCreate.userName}/password/reset`)
+        .set('Authorization', userTokens.adminUser)
+        .end((error, response) => {
+          response.should.have.status(200);
+          response.should.be.json;
+          response.body.should.be.jsonSchema(successSchemas.success);
+
+          dbMailEvent.getMailEvent({
+            owner: userData.newAdminUserToCreate.userName,
+            eventType: 'password',
+            callback: ({ data }) => {
+              passwordKey = data.event.key;
+
+              done();
+            },
+          });
+        });
+    });
+
+    it('Should NOT change password with user name and event owner mismatch on /api/users/:userName/password POST', (done) => {
+      chai
+        .request(app)
+        .post(`/api/users/${userData.newUserToCreate.userName}/password`)
+        .send({ data: { key: passwordKey, password: '1234' } })
+        .end((error, response) => {
+          response.should.have.status(401);
+          response.should.be.json;
+          response.body.should.be.jsonSchema(errorSchemas.error);
+
+          done();
+        });
+    });
+
+    it('Should NOT change password with incorrect key on /api/users/:userName/password POST', (done) => {
+      chai
+        .request(app)
+        .post(`/api/users/${userData.newAdminUserToCreate.userName}/password`)
+        .send({ data: { key: `${passwordKey}a`, password: '1234' } })
+        .end((error, response) => {
+          response.should.have.status(404);
+          response.should.be.json;
+          response.body.should.be.jsonSchema(errorSchemas.error);
+
+          done();
+        });
+    });
+
+    it('Should change password with correct key on /api/users/:userName/password POST', (done) => {
+      chai
+        .request(app)
+        .post(`/api/users/${userData.newAdminUserToCreate.userName}/password`)
+        .send({ data: { key: passwordKey, password: '1234' } })
+        .end((error, response) => {
+          response.should.have.status(200);
+          response.should.be.json;
+          response.body.should.be.jsonSchema(successSchemas.success);
 
           done();
         });
@@ -195,6 +266,38 @@ describe('Users', () => {
           response.should.have.status(200);
           response.should.be.json;
           response.body.should.be.jsonSchema(userSchemas.users);
+
+          // TODO Check that users retrieved have lower access level/visibility
+
+          done();
+        });
+    });
+  });
+
+  describe('Get banned users', () => {
+    it('Should NOT get banned users with incorrect authorization set on /api/users/banned GET', (done) => {
+      chai
+        .request(app)
+        .get('/api/users/banned')
+        .set('Authorization', tokens.incorrectJwt)
+        .end((error, response) => {
+          response.should.have.status(401);
+          response.should.be.json;
+          response.body.should.be.jsonSchema(errorSchemas.error);
+
+          done();
+        });
+    });
+
+    it('Should get banned users on /api/users/banned GET', (done) => {
+      chai
+        .request(app)
+        .get('/api/users/banned')
+        .set('Authorization', tokens.adminUser)
+        .end((error, response) => {
+          response.should.have.status(200);
+          response.should.be.json;
+          response.body.should.be.jsonSchema(userSchemas.userNames);
 
           // TODO Check that users retrieved have lower access level/visibility
 
@@ -257,7 +360,7 @@ describe('Users', () => {
     });
   });
 
-  describe('Create alias on user', () => {
+  describe('Aliases', () => {
     describe('Create alias on self', () => {
       it('Should NOT create an alias on self that is too long /api/users/:userName/aliases POST', (done) => {
         chai
@@ -383,9 +486,39 @@ describe('Users', () => {
           });
       });
     });
+
+    describe('Match partial alias from user', () => {
+      it('Should NOT match partial alias with incorrect authorization on /api/users/:userName/aliases/:partialName/match GET', (done) => {
+        chai
+          .request(app)
+          .get(`/api/users/${userData.newUserToCreate.userName}/aliases/${userData.alias}/match`)
+          .set('Authorization', tokens.incorrectJwt)
+          .end((error, response) => {
+            response.should.have.status(401);
+            response.should.be.json;
+            response.body.should.be.jsonSchema(errorSchemas.error);
+
+            done();
+          });
+      });
+
+      it('Should match partial alias for user on /api/users/:userName/aliases GET', (done) => {
+        chai
+          .request(app)
+          .get(`/api/users/${starterData.adminUserToAuth.userName}/aliases/${userData.alias}/match`)
+          .set('Authorization', tokens.adminUser)
+          .end((error, response) => {
+            response.should.have.status(200);
+            response.should.be.json;
+            response.body.should.be.jsonSchema(aliasSchemas.matches);
+
+            done();
+          });
+      });
+    });
   });
 
-  describe('Update rooms', () => {
+  describe('Rooms', () => {
     describe('Follow room on user', () => {
       before(`Create room ${userData.publicRoomToCreate.roomName} on /api/rooms`, (done) => {
         chai
@@ -896,5 +1029,196 @@ describe('Users', () => {
       });
     });
   });
+
+  describe('User positions', () => {
+    const positionTokens = {
+      basic: '',
+      admin: '',
+    };
+
+    before('Create admin user on /api/users POST', (done) => {
+      chai
+        .request(app)
+        .post('/api/users')
+        .set('Authorization', tokens.adminUser)
+        .send({ data: { user: positionData.adminUserToCreateAndGetPositionFrom } })
+        .end((error, response) => {
+          response.should.have.status(200);
+          response.should.be.json;
+          response.body.should.be.jsonSchema(userSchemas.user);
+
+          done();
+        });
+    });
+
+    before('Create basic user on /api/users POST', (done) => {
+      chai
+        .request(app)
+        .post('/api/users')
+        .set('Authorization', tokens.adminUser)
+        .send({ data: { user: positionData.basicUserToCreateAndGetPositionFrom } })
+        .end((error, response) => {
+          response.should.have.status(200);
+          response.should.be.json;
+          response.body.should.be.jsonSchema(userSchemas.user);
+
+          done();
+        });
+    });
+
+    before('Authenticate admin user on /api/authenticate POST', (done) => {
+      chai
+        .request(app)
+        .post('/api/authenticate')
+        .send({ data: { user: positionData.adminUserToCreateAndGetPositionFrom } })
+        .end((error, response) => {
+          response.should.have.status(200);
+          response.should.be.json;
+          response.body.should.be.jsonSchema(authenticateSchemas.authenticate);
+
+          positionTokens.admin = response.body.data.token;
+
+          done();
+        });
+    });
+
+    before('Authenticate basic user on /api/authenticate POST', (done) => {
+      chai
+        .request(app)
+        .post('/api/authenticate')
+        .send({ data: { user: positionData.basicUserToCreateAndGetPositionFrom } })
+        .end((error, response) => {
+          response.should.have.status(200);
+          response.should.be.json;
+          response.body.should.be.jsonSchema(authenticateSchemas.authenticate);
+
+          positionTokens.basic = response.body.data.token;
+
+          done();
+        });
+    });
+
+    describe('Update user position', () => {
+      it('Should NOT update user position with incorrect authorization on /api/users/:userName/position POST', (done) => {
+        chai
+          .request(app)
+          .post(`/api/users/${positionData.basicUserToCreateAndGetPositionFrom.userName}/position`)
+          .set('Authorization', tokens.incorrectJwt)
+          .send({ data: { position: positionData.userPositionToUpdateWith } })
+          .end((error, response) => {
+            response.should.have.status(401);
+            response.should.be.json;
+            response.body.should.be.jsonSchema(errorSchemas.error);
+
+            done();
+          });
+      });
+
+      it('Should update basic user position on /api/users/:userName/position POST', (done) => {
+        chai
+          .request(app)
+          .post(`/api/users/${positionData.basicUserToCreateAndGetPositionFrom.userName}/position`)
+          .set('Authorization', positionTokens.basic)
+          .send({ data: { position: positionData.userPositionToUpdateWith } })
+          .end((error, response) => {
+            response.should.have.status(200);
+            response.should.be.json;
+            response.body.should.be.jsonSchema(positionSchemas.position);
+
+            done();
+          });
+      });
+
+      it('Should update admin user position on /api/users/:userName/position POST', (done) => {
+        chai
+          .request(app)
+          .post(`/api/users/${positionData.adminUserToCreateAndGetPositionFrom.userName}/position`)
+          .set('Authorization', positionTokens.admin)
+          .send({ data: { position: positionData.userPositionToUpdateWith } })
+          .end((error, response) => {
+            response.should.have.status(200);
+            response.should.be.json;
+            response.body.should.be.jsonSchema(positionSchemas.position);
+
+            done();
+          });
+      });
+    });
+
+    describe('Get user position', () => {
+      it('Should NOT get position for non-existent user on /api/users/:userName/position GET', (done) => {
+        chai
+          .request(app)
+          .get(`/api/users/${positionData.userThatDoesNotExist.userName}/position`)
+          .set('Authorization', tokens.adminUser)
+          .end((error, response) => {
+            response.should.have.status(404);
+            response.should.be.json;
+            response.body.should.be.jsonSchema(errorSchemas.error);
+
+            done();
+          });
+      });
+
+      it('Should get user position on /api/users/:userName/position', (done) => {
+        chai
+          .request(app)
+          .get(`/api/users/${positionData.basicUserToCreateAndGetPositionFrom.userName}/position`)
+          .set('Authorization', positionTokens.admin)
+          .end((error, response) => {
+            response.should.have.status(200);
+            response.should.be.json;
+            response.body.should.be.jsonSchema(positionSchemas.position);
+
+            done();
+          });
+      });
+
+      it('Should NOT get user position from user with higher visibility than user\'s access level on /api/users/:userName/position', (done) => {
+        chai
+          .request(app)
+          .get(`/api/users/${positionData.adminUserToCreateAndGetPositionFrom.userName}/position`)
+          .set('Authorization', positionTokens.basic)
+          .end((error, response) => {
+            response.should.have.status(404);
+            response.should.be.json;
+            response.body.should.be.jsonSchema(errorSchemas.error);
+
+            done();
+          });
+      });
+    });
+
+    describe('Get user positions', () => {
+      it('Should NOT get user positions with incorrect authorization on /api/users/positions', (done) => {
+        chai
+          .request(app)
+          .get('/api/users/positions')
+          .set('Authorization', tokens.incorrectJwt)
+          .end((error, response) => {
+            response.should.have.status(401);
+            response.should.be.json;
+            response.body.should.be.jsonSchema(errorSchemas.error);
+
+            done();
+          });
+      });
+
+      it('Should list user positions on /api/users/positions', (done) => {
+        chai
+          .request(app)
+          .get('/api/users/positions')
+          .set('Authorization', positionTokens.basic)
+          .end((error, response) => {
+            response.should.have.status(200);
+            response.should.be.json;
+            response.body.should.be.jsonSchema(positionSchemas.positions);
+
+            done();
+          });
+      });
+    });
+  });
+
   // /users/:userName/team/leave POST Leave team
 });

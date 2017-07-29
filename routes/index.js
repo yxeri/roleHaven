@@ -1,5 +1,5 @@
 /*
- Copyright 2015 Aleksandar Jankovic
+ Copyright 2017 Aleksandar Jankovic
 
  Licensed under the Apache License, Version 2.0 (the "License");
  you may not use this file except in compliance with the License.
@@ -17,23 +17,24 @@
 'use strict';
 
 const express = require('express');
-const chatHandler = require('./socketHandlers/chat');
-const userHandler = require('./socketHandlers/user');
 const dbUser = require('../db/connectors/user');
+const appConfig = require('../config/defaults/config').app;
+const databasePopulation = require('../config/defaults/config').databasePopulation;
+const dbDevice = require('../db/connectors/device');
 const teamHandler = require('./socketHandlers/team');
 const lanternHackingHandler = require('./socketHandlers/lanternHacking');
 const utilityHandler = require('./socketHandlers/utility');
 const locationHandler = require('./socketHandlers/position');
-const appConfig = require('../config/defaults/config').app;
-const databasePopulation = require('../config/defaults/config').databasePopulation;
 const deviceHandler = require('./socketHandlers/device');
 const walletHandler = require('./socketHandlers/wallet');
 const calibrationJobHandler = require('./socketHandlers/calibrationMission');
 const simpleMessageHandler = require('./socketHandlers/simpleMsg');
 const hackingHandler = require('./socketHandlers/hacking');
-const invitationHandler = require('./socketHandlers/invitation');
 const timedEventHandler = require('./socketHandlers/team');
-const dbDevice = require('../db/connectors/device');
+const chatHandler = require('./socketHandlers/chat');
+const userHandler = require('./socketHandlers/user');
+const gameCodeHandler = require('./socketHandlers/gameCode');
+const docFileHandler = require('./socketHandlers/docFile');
 
 const router = new express.Router();
 
@@ -147,8 +148,9 @@ function handle(io) {
     calibrationJobHandler.handle(socket, io);
     simpleMessageHandler.handle(socket, io);
     hackingHandler.handle(socket, io);
-    invitationHandler.handle(socket, io);
     timedEventHandler.handle(socket, io);
+    gameCodeHandler.handle(socket, io);
+    docFileHandler.handle(socket, io);
   });
 
   return router;

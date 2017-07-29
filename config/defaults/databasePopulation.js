@@ -1,5 +1,5 @@
 /*
- Copyright 2015 Aleksandar Jankovic
+ Copyright 2017 Aleksandar Jankovic
 
  Licensed under the Apache License, Version 2.0 (the "License");
  you may not use this file except in compliance with the License.
@@ -164,12 +164,24 @@ config.requiredRooms = [
   config.rooms.user.roomName,
 ];
 
-config.protectedUserNames = [
+config.protectedNames = [
   config.anonymousUserName.toLowerCase(),
   config.systemUserName.toLowerCase(),
   'superuser',
   'root',
   'admin',
+  'position',
+  'positions',
+  'active',
+  'messages',
+  'end',
+  'unverified',
+  'verify',
+  'verified',
+  'ban',
+  'banned',
+  'alias',
+  'aliases',
 ];
 
 config.roomsToBeHidden = [
@@ -179,7 +191,16 @@ config.roomsToBeHidden = [
   config.rooms.schedule.roomName,
 ];
 
+config.GameCodeTypes = {
+  LOOT: 'loot',
+  PROFILE: 'profile',
+};
+
 config.apiCommands = {
+  LeaveTeam: config.apiCommands.LeaveTeam || {
+    name: 'LeaveTeam',
+    accessLevel: config.AccessLevels.BASIC,
+  },
   SendMessage: config.apiCommands.SendMessage || {
     name: 'SendMessage',
     accessLevel: config.AccessLevels.BASIC,
@@ -212,6 +233,10 @@ config.apiCommands = {
     name: 'CreateUser',
     accessLevel: config.AccessLevels.LOWERADMIN,
   },
+  CreateUserThroughSocket: config.apiCommands.CreateUserThroughSocket || {
+    name: 'CreateUserThroughSocket',
+    accessLevel: config.AccessLevels.BASIC,
+  },
   ChangeUserLevels: config.apiCommands.ChangeUserLevels || {
     name: 'ChangeUserLevels',
     accessLevel: config.AccessLevels.ADMIN,
@@ -219,6 +244,10 @@ config.apiCommands = {
   GetUser: config.apiCommands.GetUser || {
     name: 'GetUser',
     accessLevel: config.AccessLevels.BASIC,
+  },
+  GetUserDetails: config.apiCommands.GetUserDetails || {
+    name: 'GetUserDetails',
+    accessLevel: config.AccessLevels.LOWERADMIN,
   },
   RequestPasswordReset: config.apiCommands.RequestPasswordReset || {
     name: 'RequestPasswordReset',
@@ -232,7 +261,15 @@ config.apiCommands = {
   GetAliases: config.apiCommands.GetAliases || {
     name: 'GetAliases',
     accessLevel: config.AccessLevels.ADVANCED,
-    selfAccessLevel: config.AccessLevels.ADVANCED,
+    selfAccessLevel: config.AccessLevels.BASIC,
+  },
+  GetAllAliases: config.apiCommands.GetAllAliases || {
+    name: 'GetAllAliases',
+    accessLevel: config.AccessLevels.BASIC,
+  },
+  GetInactiveUsers: config.apiCommands.GetInactiveUsers || {
+    name: 'GetInactiveUsers',
+    accessLevel: config.AccessLevels.LOWERADMIN,
   },
   CreateLanternRound: config.apiCommands.CreateLanternRound || {
     name: 'CreateLanternRound',
@@ -324,13 +361,18 @@ config.apiCommands = {
   },
   RemoveRoom: config.apiCommands.RemoveRoom || {
     name: 'RemoveRoom',
-    accessLevel: config.AccessLevels.BASIC,
+    accessLevel: config.AccessLevels.LOWERADMIN,
+    selfAccessLevel: config.AccessLevels.BASIC,
   },
   GetUserPosition: config.apiCommands.GetUserPosition || {
     name: 'GetUserPosition',
     accessLevel: config.AccessLevels.BASIC,
   },
   UpdateUserPosition: config.apiCommands.UpdateUserPosition || {
+    name: 'UpdateUserPosition',
+    accessLevel: config.AccessLevels.BASIC,
+  },
+  UpdatePosition: config.apiCommands.UpdateUserPosition || {
     name: 'UpdateUserPosition',
     accessLevel: config.AccessLevels.BASIC,
   },
@@ -386,6 +428,52 @@ config.apiCommands = {
   GetInvitations: config.apiCommands.GetInvitations || {
     name: 'GetInvitations',
     accessLevel: config.AccessLevels.BASIC,
+  },
+  UpdateId: config.apiCommands.UpdateId || {
+    name: 'UpdateId',
+    accessLevel: config.AccessLevels.ANONYMOUS,
+  },
+  Logout: config.apiCommands.Logout || {
+    name: 'Login',
+    accessLevel: config.AccessLevels.BASIC,
+  },
+  GetPositions: config.apiCommands.GetPositions || {
+    name: 'GetPositions',
+    accessLevel: config.AccessLevels.ANONYMOUS,
+  },
+  RebootAll: config.apiCommands.RebootAll || {
+    name: 'RebootAll',
+    accessLevel: config.AccessLevels.ADMIN,
+  },
+  GetGameCode: config.apiCommands.GetGameCode || {
+    name: 'GetGameCode',
+    accessLevel: config.AccessLevels.ADMIN,
+    selfAccessLevel: config.AccessLevels.BASIC,
+  },
+  CreateGameCode: config.apiCommands.CreateGameCode || {
+    name: 'CreateGameCode',
+    selfAccessLevel: config.AccessLevels.BASIC,
+    accessLevel: config.AccessLevels.LOWERADMIN,
+  },
+  UseGameCode: config.apiCommands.UseGameCode || {
+    name: 'UseGameCode',
+    accessLevel: config.AccessLevels.BASIC,
+  },
+  HackLantern: config.apiCommands || {
+    name: 'HackLantern',
+    accessLevel: config.AccessLevels.BASIC,
+  },
+  BanUser: config.apiCommands || {
+    name: 'BanUser',
+    accessLevel: config.AccessLevels.LOWERADMIN,
+  },
+  SendSimpleMsg: config.apiCommands.SendSimpleMsg || {
+    name: 'SendSimpleMsg',
+    accessLevel: config.AccessLevels.BASIC,
+  },
+  GetSimpleMsgs: config.apiCommands.GetSimpleMsgs || {
+    name: 'GetSimpleMsgs',
+    accessLevel: config.AccessLevels.ANONYMOUS,
   },
 };
 

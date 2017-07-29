@@ -32,11 +32,8 @@ data.lanternStationToCreateAndModify = {
 data.lanternStationWithNewOwner = {
   owner: tools.createRandString({ length: appConfig.teamNameMaxLength }),
 };
-data.lanternStationWithNewAttacker = {
-  attacker: {
-    name: tools.createRandString({ length: appConfig.teamNameMaxLength }),
-    time: 1,
-  },
+data.lanternStationUnderAttack = {
+  isUnderAttack: true,
 };
 data.lanternStationThatDoesNotExist = {
   stationId: 3,

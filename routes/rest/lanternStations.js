@@ -18,7 +18,7 @@
 
 const express = require('express');
 const objectValidator = require('../../utils/objectValidator');
-const manager = require('../../helpers/manager');
+const lanternStationManager = require('../../managers/lanternStations');
 const restErrorChecker = require('../../helpers/restErrorChecker');
 
 const router = new express.Router();
@@ -60,7 +60,7 @@ function handle(io) {
    *  }
    */
   router.get('/', (request, response) => {
-    manager.getLanternStations({
+    lanternStationManager.getLanternStations({
       token: request.headers.authorization,
       callback: ({ error, data }) => {
         if (error) {
@@ -75,7 +75,7 @@ function handle(io) {
   });
 
   /**
-   * @api {get} /lanternStations Get lantern station
+   * @api {get} /lanternStations/:stationId Get lantern station
    * @apiVersion 6.0.0
    * @apiName GetLanternStation
    * @apiGroup LanternStations
@@ -106,7 +106,7 @@ function handle(io) {
    *  }
    */
   router.get('/:stationId', (request, response) => {
-    manager.getLanternStation({
+    lanternStationManager.getLanternStation({
       stationId: request.params.stationId,
       token: request.headers.authorization,
       callback: ({ error, data }) => {
@@ -174,7 +174,7 @@ function handle(io) {
       return;
     }
 
-    manager.createLanternStation({
+    lanternStationManager.createLanternStation({
       io,
       station: request.body.data.station,
       token: request.headers.authorization,
@@ -206,20 +206,15 @@ function handle(io) {
    * @apiParam {string} data.station Station
    * @apiParam {string} [data.station.stationName] Location name of the station
    * @apiParam {boolean} [data.station.isActive] Is the station active?
-   * @apiParam {boolean} [data.station.owner] Owner name of the station
-   * @apiParam {Object} [data.station.attacker] Attacker object. data.station.owner will be ignored if data.attacker is set
-   * @apiParam {string} data.station.attacker.name Name of the attacker that is trying to take over the station
-   * @apiParam {string} data.station.attacker.time Amount of time till the attack succeeds.
+   * @apiParam {string} [data.station.owner] Name of the owner of the station
+   * @apiParam {Object} [data.station.isUnderAttack] Is the station under attack?
    * @apiParamExample {json} Request-Example:
    *   {
    *    "data": {
    *      "station": {
    *        "stationName": "North forest",
    *        "isActive": true,
-   *        "attacker": {
-   *          "name": "Bad peoples",
-   *          "time": "2016-10-14T09:54:18.694Z"
-   *        }
+   *        "isUnderAttack": true
    *      }
    *    }
    *  }
@@ -234,10 +229,7 @@ function handle(io) {
    *        "stationName": "North forest",
    *        "isActive": true,
    *        "signalValue": 0,
-   *        "attacker": {
-   *          "name": "Bad peoples",
-   *          "time": "time": "2016-10-14T09:54:18.694Z"
-   *        }
+   *        "isUnderAttack": true
    *      }
    *    }
    *  }
@@ -265,7 +257,7 @@ function handle(io) {
       return;
     }
 
-    manager.updateLanternStation({
+    lanternStationManager.updateLanternStation({
       io,
       stationId: request.params.stationId,
       station: request.body.data.station,

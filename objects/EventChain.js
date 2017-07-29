@@ -1,5 +1,4 @@
 const GameEvent = require('./GameEvent');
-// const manager = require('../socketHelpers/manager');
 
 /**
  * Unlock item

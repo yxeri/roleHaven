@@ -18,7 +18,7 @@
 
 const express = require('express');
 const objectValidator = require('../../utils/objectValidator');
-const manager = require('../../helpers/manager');
+const lanternRoundManager = require('../../managers/lanternRounds');
 const restErrorChecker = require('../../helpers/restErrorChecker');
 
 const router = new express.Router();
@@ -56,7 +56,7 @@ function handle(io) {
    *  }
    */
   router.get('/', (request, response) => {
-    manager.getLanternRounds({
+    lanternRoundManager.getLanternRounds({
       token: request.headers.authorization,
       callback: ({ error, data }) => {
         if (error) {
@@ -98,7 +98,7 @@ function handle(io) {
    *  }
    */
   router.get('/:roundId', (request, response) => {
-    manager.getLanternRound({
+    lanternRoundManager.getLanternRound({
       roundId: request.params.roundId,
       token: request.headers.authorization,
       callback: ({ error, data }) => {
@@ -138,7 +138,7 @@ function handle(io) {
    *  }
    */
   router.get('/active', (request, response) => {
-    manager.getActiveLanternRound({
+    lanternRoundManager.getActiveLanternRound({
       token: request.headers.authorization,
       callback: ({ error, data }) => {
         if (error) {
@@ -204,7 +204,7 @@ function handle(io) {
       return;
     }
 
-    manager.createLanternRound({
+    lanternRoundManager.createLanternRound({
       round: request.body.data.round,
       token: request.headers.authorization,
       callback: ({ error, data }) => {
@@ -243,7 +243,7 @@ function handle(io) {
    *  }
    */
   router.post('/:roundId/start', (request, response) => {
-    manager.startLanternRound({
+    lanternRoundManager.startLanternRound({
       roundId: request.params.roundId,
       token: request.headers.authorization,
       callback: ({ error, data }) => {
@@ -278,7 +278,7 @@ function handle(io) {
    *  }
    */
   router.post('/end', (request, response) => {
-    manager.endLanternRound({
+    lanternRoundManager.endLanternRound({
       io,
       token: request.headers.authorization,
       callback: ({ error, data }) => {
@@ -363,7 +363,7 @@ function handle(io) {
     const { startTime, endTime } = request.body.data.round;
     const roundId = request.params.roundId;
 
-    manager.updateLanternRound({
+    lanternRoundManager.updateLanternRound({
       roundId,
       startTime,
       endTime,

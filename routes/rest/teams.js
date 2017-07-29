@@ -1,5 +1,5 @@
 /*
- Copyright 2015 Aleksandar Jankovic
+ Copyright 2017 Aleksandar Jankovic
 
  Licensed under the Apache License, Version 2.0 (the "License");
  you may not use this file except in compliance with the License.
@@ -17,7 +17,7 @@
 'use strict';
 
 const express = require('express');
-const manager = require('../../helpers/manager');
+const teamManager = require('../../managers/teams');
 const objectValidator = require('../../utils/objectValidator');
 const restErrorChecker = require('../../helpers/restErrorChecker');
 
@@ -51,7 +51,7 @@ function handle(io) {
    *  }
    */
   router.get('/', (request, response) => {
-    manager.getTeams({
+    teamManager.getTeams({
       token: request.headers.authorization,
       callback: ({ error, data }) => {
         if (error) {
@@ -107,7 +107,7 @@ function handle(io) {
       return;
     }
 
-    manager.getTeam({
+    teamManager.getTeam({
       teamName: request.params.teamName,
       token: request.headers.authorization,
       callback: ({ error, data }) => {
@@ -181,7 +181,7 @@ function handle(io) {
       return;
     }
 
-    manager.createTeam({
+    teamManager.createTeam({
       io,
       team: request.body.data.team,
       token: request.headers.authorization,

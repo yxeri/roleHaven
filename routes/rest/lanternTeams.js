@@ -19,7 +19,7 @@
 const express = require('express');
 const objectValidator = require('../../utils/objectValidator');
 const restErrorCheck = require('../../helpers/restErrorChecker');
-const manager = require('../../helpers/manager');
+const lanternTeamManager = require('../../managers/lanternTeams');
 
 const router = new express.Router();
 
@@ -58,7 +58,7 @@ function handle(io) {
    *  }
    */
   router.get('/', (request, response) => {
-    manager.getLanternTeams({
+    lanternTeamManager.getLanternTeams({
       token: request.headers.authorization,
       callback: ({ error, data }) => {
         if (error) {
@@ -124,7 +124,7 @@ function handle(io) {
       return;
     }
 
-    manager.createLanternTeam({
+    lanternTeamManager.createLanternTeam({
       io,
       team: request.body.data.team,
       token: request.headers.authorization,
@@ -204,7 +204,7 @@ function handle(io) {
       return;
     }
 
-    manager.updateLanternTeam({
+    lanternTeamManager.updateLanternTeam({
       io,
       team: request.body.data.team,
       teamName: request.params.teamName,

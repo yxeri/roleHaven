@@ -16,7 +16,7 @@
 
 'use strict';
 
-const alphaNumbericRegex = /^[\w\d]+$/;
+const alphaNumericRegex = /^[\w\d]+$/;
 const fullTextRegex = /^[\w\d\såäöÅÄÖ-]+$/;
 
 /**
@@ -25,7 +25,7 @@ const fullTextRegex = /^[\w\d\såäöÅÄÖ-]+$/;
  * @returns {boolean} Does the string contain only alphanumeric values?
  */
 function isAlphaNumeric(text) {
-  return alphaNumbericRegex.test(text);
+  return alphaNumericRegex.test(text);
 }
 
 /**

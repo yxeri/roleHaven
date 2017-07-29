@@ -16,24 +16,16 @@
 
 'use strict';
 
-const manager = require('../../helpers/manager');
+const calibrationMissionManager = require('../../managers/calibrationMissions');
 
 /**
  * @param {object} socket - Socket.IO socket
  */
 function handle(socket) {
   socket.on('getCalibrationMission', ({ token }, callback = () => {}) => {
-    manager.getActiveCalibrationMission({
+    calibrationMissionManager.getActiveCalibrationMission({
       token,
-      callback: ({ error: calibrationError, data: calibrationData }) => {
-        if (calibrationError) {
-          callback({ error: calibrationError });
-
-          return;
-        }
-
-        callback({ data: calibrationData });
-      },
+      callback,
     });
   });
 }

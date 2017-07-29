@@ -18,7 +18,8 @@
 
 const express = require('express');
 const objectValidator = require('../../utils/objectValidator');
-const manager = require('../../helpers/manager');
+const walletManager = require('../../managers/wallets');
+const transactionManager = require('../../managers/transactions');
 const restErrorChecker = require('../../helpers/restErrorChecker');
 
 const router = new express.Router();
@@ -36,7 +37,7 @@ function handle(io) {
    *
    * @apiHeader {String} Authorization Your JSON Web Token
    *
-   * @apiDescription Get wallets with lower access level than user, user being the owner or having the same team
+   * @apiDescription Get wallets that is owned by the user ot their team
    *
    * @apiSuccess {Object} data
    * @apiSuccess {Object} data.wallet Found wallets
@@ -58,7 +59,7 @@ function handle(io) {
    *  }
    */
   router.get('/', (request, response) => {
-    manager.getWallets({
+    walletManager.getWallets({
       token: request.headers.authorization,
       callback: ({ error, data }) => {
         if (error) {
@@ -111,7 +112,7 @@ function handle(io) {
       return;
     }
 
-    manager.getWallet({
+    walletManager.getWallet({
       owner: request.params.owner,
       token: request.headers.authorization,
       callback: ({ error, data }) => {
@@ -184,7 +185,7 @@ function handle(io) {
       return;
     }
 
-    manager.increaseWalletAmount({
+    walletManager.increaseWalletAmount({
       token: request.headers.authorization,
       amount: request.body.data.amount,
       owner: request.params.owner,
@@ -258,7 +259,7 @@ function handle(io) {
       return;
     }
 
-    manager.decreaseWalletAmount({
+    walletManager.decreaseWalletAmount({
       owner: request.params.owner,
       amount: request.body.data.amount,
       token: request.headers.authorization,
@@ -313,7 +314,7 @@ function handle(io) {
       return;
     }
 
-    manager.emptyWallet({
+    walletManager.emptyWallet({
       owner: request.params.owner,
       token: request.headers.authorization,
       callback: ({ error, data }) => {
@@ -379,7 +380,7 @@ function handle(io) {
       return;
     }
 
-    manager.getTransactions({
+    transactionManager.getTransactions({
       owner: request.params.owner,
       token: request.headers.authorization,
       callback: ({ error, data }) => {
@@ -462,7 +463,7 @@ function handle(io) {
       return;
     }
 
-    manager.createTransaction({
+    transactionManager.createTransactionBasedOnToken({
       io,
       transaction: request.body.data.transaction,
       fromTeam: request.body.data.isTeamWallet,

@@ -1,5 +1,5 @@
 /*
- Copyright 2015 Aleksandar Jankovic
+ Copyright 2017 Aleksandar Jankovic
 
  Licensed under the Apache License, Version 2.0 (the "License");
  you may not use this file except in compliance with the License.
@@ -18,7 +18,7 @@
 
 const express = require('express');
 const objectValidator = require('../../utils/objectValidator');
-const manager = require('../../helpers/manager');
+const docFileManager = require('../../managers/docFiles');
 const restErrorChecker = require('../../helpers/restErrorChecker');
 
 const router = new express.Router();
@@ -59,7 +59,7 @@ function handle(io) {
    *  }
    */
   router.get('/', (request, response) => {
-    manager.getDocFiles({
+    docFileManager.getDocFiles({
       token: request.headers.authorization,
       callback: ({ error, data }) => {
         if (error) {
@@ -120,8 +120,8 @@ function handle(io) {
       return;
     }
 
-    manager.getDocFile({
-      docFileId: request.params.docFileId,
+    docFileManager.getDocFile({
+      docFile: { docFileId: request.params.docFileId },
       token: request.headers.authorization,
       callback: ({ error, data }) => {
         if (error) {
@@ -200,7 +200,7 @@ function handle(io) {
       return;
     }
 
-    manager.createDocFile({
+    docFileManager.createDocFile({
       io,
       token: request.headers.authorization,
       docFile: request.body.data.docFile,

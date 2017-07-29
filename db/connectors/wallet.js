@@ -42,9 +42,34 @@ function getWallets({ user, callback }) {
         $or: [
           { owner: user.userName },
           { isProtected: false },
+          { team: user.team },
         ],
       },
       { accessLevel: { $lt: user.accessLevel } },
+    ],
+  };
+
+  Wallet.find(query).lean().exec((err, wallets = []) => {
+    if (err) {
+      callback({ error: new errorCreator.Database({ errorObject: err, name: 'getWallets' }) });
+
+      return;
+    }
+
+    callback({ data: { wallets } });
+  });
+}
+
+/**
+ * Get wallets owned by user or their team
+ * @param {Object} params.user User retrieving wallets
+ * @param {Function} params.callback Callback
+ */
+function getUserWallets({ user, callback }) {
+  const query = {
+    $or: [
+      { owner: user.userName },
+      { team: user.team },
     ],
   };
 
@@ -199,3 +224,4 @@ exports.getWallet = getWallet;
 exports.createWallet = createWallet;
 exports.getWallets = getWallets;
 exports.resetWalletAmount = resetWalletAmount;
+exports.getUserWallets = getUserWallets;

@@ -41,6 +41,23 @@ schemas.aliases = {
   },
 };
 
+schemas.matches = {
+  type: 'object',
+  required: ['data'],
+  properties: {
+    data: {
+      type: 'object',
+      required: ['matches'],
+      properties: {
+        matches: {
+          type: 'array',
+          items: { type: 'string' },
+        },
+      },
+    },
+  },
+};
+
 schemas.alias = {
   type: 'object',
   required: ['data'],

@@ -52,10 +52,7 @@ const stationSchema = new mongoose.Schema({
   signalValue: { type: Number, default: 0 },
   isActive: { type: Boolean, default: false },
   owner: String,
-  attacker: {
-    name: String,
-    time: Number,
-  },
+  isUnderAttack: { type: Boolean, default: false },
 }, { collection: 'stations' });
 const lanternRoundSchema = new mongoose.Schema({
   roundId: Number,
@@ -474,12 +471,10 @@ function createStation({ station, callback }) {
  * @param {boolean} [params.station.isActive] Is the station active?
  * @param {string} [params.station.stationName] Name of the station
  * @param {string} [params.station.owner] Owner name of the station
- * @param {Object} [params.attacker] Attacker
- * @param {string} params.attacker.name Name of the attacker
- * @param {Date} params.attacker.time Time when the attack succeeds
+ * @param {Object} [params.isUnderAttack] Is the station under attack?
  * @param {Function} params.callback Callback
  */
-function updateLanternStation({ stationId, isActive, stationName, owner, attacker, callback }) {
+function updateLanternStation({ stationId, isActive, stationName, owner, isUnderAttack, callback }) {
   const query = { stationId };
   const update = {};
   const options = { new: true };
@@ -491,9 +486,9 @@ function updateLanternStation({ stationId, isActive, stationName, owner, attacke
 
   if (owner) {
     set.owner = owner;
-    unset.attacker = '';
-  } else if (attacker) {
-    set.attacker = attacker;
+    set.isUnderAttack = false;
+  } else if (isUnderAttack) {
+    set.isUnderAttack = isUnderAttack;
   }
 
   if (Object.keys(set).length > 0) { update.$set = set; }

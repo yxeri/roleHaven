@@ -40,9 +40,17 @@ function createSimpleMsg({ simpleMsg, callback }) {
   const newSimpleMsg = new SimpleMsgs(simpleMsg);
 
   dbConnector.saveObject({
-    callback,
     object: newSimpleMsg,
     objectType: 'Simple smsg',
+    callback: ({ error, data }) => {
+      if (error) {
+        callback({ error });
+
+        return;
+      }
+
+      callback({ data: { simpleMsg: data.savedObject } });
+    },
   });
 }
 

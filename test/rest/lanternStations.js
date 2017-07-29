@@ -204,7 +204,7 @@ describe('LanternStations', () => {
       chai
         .request(app)
         .post(`/api/lanternStations/${lanternStationData.lanternStationToCreateAndModify.stationId}`)
-        .send({ data: { station: lanternStationData.lanternStationWithNewAttacker } })
+        .send({ data: { station: lanternStationData.lanternStationUnderAttack } })
         .set('Authorization', tokens.adminUser)
         .end((error, response) => {
           response.should.have.status(200);

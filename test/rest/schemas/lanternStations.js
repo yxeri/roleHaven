@@ -49,9 +49,16 @@ schemas.lanternStations = {
   properties: {
     data: {
       type: 'object',
-      required: ['stations'],
+      required: [
+        'inactiveStations',
+        'activeStations',
+      ],
       properties: {
-        stations: {
+        inactiveStations: {
+          type: 'array',
+          items: lanternStationBase,
+        },
+        activeStations: {
           type: 'array',
           items: lanternStationBase,
         },

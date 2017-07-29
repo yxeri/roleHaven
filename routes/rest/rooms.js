@@ -1,5 +1,5 @@
 /*
- Copyright 2015 Aleksandar Jankovic
+ Copyright 2017 Aleksandar Jankovic
 
  Licensed under the Apache License, Version 2.0 (the "License");
  you may not use this file except in compliance with the License.
@@ -17,7 +17,7 @@
 'use strict';
 
 const express = require('express');
-const manager = require('../../helpers/manager');
+const roomManager = require('../../managers/rooms');
 const objectValidator = require('../../utils/objectValidator');
 const restErrorChecker = require('../../helpers/restErrorChecker');
 const messenger = require('../../helpers/messenger');
@@ -52,7 +52,7 @@ function handle(io) {
    *  }
    */
   router.get('/', (request, response) => {
-    manager.getRooms({
+    roomManager.getRooms({
       token: request.headers.authorization,
       callback: ({ error, data }) => {
         if (error) {
@@ -112,7 +112,7 @@ function handle(io) {
       return;
     }
 
-    manager.getRoom({
+    roomManager.getRoom({
       token: request.headers.authorization,
       roomName: request.params.roomName,
       callback: ({ error, data }) => {
@@ -184,7 +184,7 @@ function handle(io) {
       return;
     }
 
-    manager.createRoom({
+    roomManager.createRoom({
       token: require.headers.authorization,
       room: require.body.data.room,
       callback: ({ error, data }) => {
@@ -237,7 +237,7 @@ function handle(io) {
       return;
     }
 
-    manager.matchPartialRoomName({
+    roomManager.matchPartialRoomName({
       token: request.headers.authorization,
       partialName: request.params.partialName,
       callback: ({ error, data }) => {
@@ -290,7 +290,7 @@ function handle(io) {
       return;
     }
 
-    manager.matchMyPartialRoomName({
+    roomManager.matchMyPartialRoomName({
       token: request.headers.authorization,
       partialName: request.params.roomName,
       callback: ({ error, data }) => {
@@ -349,7 +349,7 @@ function handle(io) {
       return;
     }
 
-    manager.getHistory({
+    roomManager.getHistory({
       io,
       token: request.headers.authorization,
       rooms: [request.params.roomName],

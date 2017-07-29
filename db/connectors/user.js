@@ -1,5 +1,5 @@
 /*
- Copyright 2015 Aleksandar Jankovic
+ Copyright 2017 Aleksandar Jankovic
 
  Licensed under the Apache License, Version 2.0 (the "License");
  you may not use this file except in compliance with the License.
@@ -57,13 +57,17 @@ const User = mongoose.model('User', userSchema);
 /**
  * Remove private parameters from user
  * @param {Object} params.user User
+ * @param {boolean} params.noClean Should less parameters be removed before returning object?
  * @returns {Object} Clean user
  */
-function cleanUserParameters({ user }) {
+function cleanUserParameters({ user, noClean }) {
   const cleanUser = user;
 
   cleanUser.password = typeof cleanUser.password === 'string';
-  cleanUser.mail = typeof cleanUser.mail === 'string';
+
+  if (!noClean) {
+    cleanUser.mail = typeof cleanUser.mail === 'string';
+  }
 
   return cleanUser;
 }
@@ -709,9 +713,10 @@ function setUserLastOnline({ userName, date, callback }) {
 /**
  * Ban user
  * @param {string} params.userName Name of the user
+ * @param {boolean} params.noClean Should less parameters be removed before returning object?
  * @param {Function} params.callback Callback
  */
-function banUser({ userName, callback }) {
+function banUser({ userName, noClean, callback }) {
   const query = { userName };
   const update = {
     $set: { banned: true },
@@ -730,7 +735,7 @@ function banUser({ userName, callback }) {
       return;
     }
 
-    callback({ data: { user: cleanUserParameters({ user }) } });
+    callback({ data: { user: cleanUserParameters({ user, noClean }) } });
   });
 }
 

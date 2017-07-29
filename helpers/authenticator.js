@@ -49,10 +49,10 @@ function createToken({ userName, password, callback }) {
  * Checks if the user is allowed to use the command
  * @param {string} params.token Json web token
  * @param {string} params.commandName Name of the command
- * @param {string} [params.matchUserNameTo] Checks if sent user name is the same as authenticated. Used for current user get, as they need less permission than get from other users
+ * @param {string} [params.matchNameTo] Checks if sent user name is the same as authenticated. Used for current user get, as they need less permission than get from other users
  * @param {Function} params.callback callback
  */
-function isUserAllowed({ commandName, token, matchUserNameTo = '', callback = () => {} }) {
+function isUserAllowed({ commandName, token, matchNameTo = '', callback = () => {} }) {
   const commandUsed = dbConfig.apiCommands[commandName];
   const anonUser = dbConfig.anonymousUser;
 
@@ -78,8 +78,6 @@ function isUserAllowed({ commandName, token, matchUserNameTo = '', callback = ()
         return;
       }
 
-      const commandAccessLevel = decoded.data.userName === matchUserNameTo ? commandUsed.selfAccessLevel : commandUsed.accessLevel;
-
       dbUser.getUserByAlias({
         alias: decoded.data.userName,
         callback: ({ error, data }) => {
@@ -87,13 +85,22 @@ function isUserAllowed({ commandName, token, matchUserNameTo = '', callback = ()
             callback({ error });
 
             return;
-          } else if (commandAccessLevel > data.user.accessLevel) {
+          }
+
+          const user = data.user;
+          const commandAccessLevel = user.userName === matchNameTo
+          || (user.team && `${user.team}${appConfig.teamAppend}` === matchNameTo)
+          || user.shortTeam === matchNameTo
+            ? commandUsed.selfAccessLevel
+            : commandUsed.accessLevel;
+
+          if (commandAccessLevel > user.accessLevel) {
             callback({ error: new errorCreator.NotAllowed({ name: commandName }) });
 
             return;
           }
 
-          callback({ data: { user: data.user, matchedUserName: decoded.data.userName === matchUserNameTo } });
+          callback({ data: { user: data.user, matchedUserName: user.userName === matchNameTo } });
         },
       });
     });

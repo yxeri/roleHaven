@@ -110,7 +110,6 @@ describe('Wallets', () => {
       amount: 100,
       callback: ({ data }) => {
         data.should.have.property('wallet');
-        data.wallet.amount.should.equal(100);
 
         done();
       },
@@ -123,7 +122,6 @@ describe('Wallets', () => {
       amount: 100,
       callback: ({ data }) => {
         data.should.have.property('wallet');
-        data.wallet.amount.should.equal(100);
 
         done();
       },
