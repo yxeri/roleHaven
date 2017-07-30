@@ -48,7 +48,7 @@ function sendVerification({ address, userName, callback }) {
           callback({ error: mailEventData.error });
 
           return;
-        } else if (appConfig.mode === 'test') {
+        } else if (appConfig.mode === appConfig.Modes.TEST) {
           callback({ data: { success: true } });
 
           return;
@@ -118,7 +118,7 @@ function sendPasswordReset({ address, userName, callback }) {
           callback({ error: mailEventData.error });
 
           return;
-        } else if (appConfig.mode === 'test') {
+        } else if (appConfig.mode === appConfig.Modes.TEST) {
           callback({ data: { success: true } });
 
           return;

@@ -44,9 +44,7 @@ app.use(bodyParser.json());
 // noinspection JSCheckFunctionSignatures
 app.use(compression());
 // Logging
-if (appConfig.mode !== 'test') {
-  app.use(morgan(appConfig.logLevel));
-}
+app.use(morgan(appConfig.logLevel));
 
 // Serve files from public path
 app.use(express.static(appConfig.publicBase));
@@ -57,7 +55,7 @@ appConfig.routes.forEach((route) => {
   app.use(route.sitePath, require(path.resolve(route.filePath))(app.io));
 });
 
-if (appConfig.mode !== 'test') {
+if (appConfig.mode !== appConfig.Modes.TEST) {
   dbRoom.populateDbRooms({ rooms: databasePopulation.rooms });
   dbCommand.populateDbCommands({ commands: databasePopulation.commands });
 }
