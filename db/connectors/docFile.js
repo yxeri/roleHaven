@@ -1,5 +1,5 @@
 /*
- Copyright 2015 Aleksandar Jankovic
+ Copyright 2017 Aleksandar Jankovic
 
  Licensed under the Apache License, Version 2.0 (the "License");
  you may not use this file except in compliance with the License.
@@ -130,6 +130,45 @@ function addAccessUser({ docFileId, userName, callback }) {
 }
 
 /**
+ * Get docFile
+ * @param {string} params.docFileId ID of docFile
+ * @param {Object} params.user User retrieving docfile
+ * @param {Function} params.callback Callback
+ */
+function getDocFile({ title, docFileId, user, callback }) {
+  const query = {
+    $or: [
+      {
+        creator: user.userName,
+      }, {
+        accessUsers: { $in: [user.userName] },
+      }, {
+        accessLevel: { $lte: user.accessLevel },
+        docFileId,
+      }, {
+        title,
+        team: user.team,
+        accessLevel: { $lte: user.accessLevel },
+      },
+    ],
+  };
+
+  DocFile.findOne(query).lean().exec((err, docFile) => {
+    if (err) {
+      callback({ error: new errorCreator.Database({ errorObject: err, name: 'getDocFile' }) });
+
+      return;
+    } else if (!docFile) {
+      callback({ error: new errorCreator.DoesNotExist({ name: `docfile ${docFileId}` }) });
+
+      return;
+    }
+
+    callback({ data: { docFile } });
+  });
+}
+
+/**
  * Get docFile by docFile ID
  * @param {string} params.docFileId ID of docFile
  * @param {Object} params.user User retrieving docfile
@@ -139,6 +178,7 @@ function getDocFileById({ docFileId, user, callback }) {
   const query = {
     docFileId,
     $or: [
+      { creator: user.userName },
       { accessLevel: { $lte: user.accessLevel } },
       { accessUsers: { $in: [user.userName] } },
     ],
@@ -165,7 +205,7 @@ function getDocFileById({ docFileId, user, callback }) {
  * @param {string} params.userName User name
  * @param {Function} params.callback Callback
  */
-function getDocFilesList({ accessLevel, userName, callback }) {
+function getDocFiles({ accessLevel, userName, callback }) {
   const query = {
     $and: [
       { $or: [
@@ -183,7 +223,7 @@ function getDocFilesList({ accessLevel, userName, callback }) {
 
   DocFile.find(query, filter).lean().exec((err, docFiles = []) => {
     if (err) {
-      callback({ error: new errorCreator.Database({ errorObject: err, name: 'getDocFilesList' }) });
+      callback({ error: new errorCreator.Database({ errorObject: err, name: 'getDocFiles' }) });
 
       return;
     }
@@ -194,6 +234,7 @@ function getDocFilesList({ accessLevel, userName, callback }) {
 
 exports.createDocFile = createDocFile;
 exports.getDocFileById = getDocFileById;
-exports.getDocFilesList = getDocFilesList;
+exports.getDocFiles = getDocFiles;
 exports.updateDocFile = updateDocFile;
 exports.addAccessUser = addAccessUser;
+exports.getDocFile = getDocFile;

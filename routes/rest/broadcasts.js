@@ -20,7 +20,7 @@ const express = require('express');
 const messenger = require('../../helpers/messenger');
 const objectValidator = require('../../utils/objectValidator');
 const restErrorChecker = require('../../helpers/restErrorChecker');
-const manager = require('../../helpers/manager');
+const broadcastManager = require('../../managers/broadcasts');
 
 const router = new express.Router();
 
@@ -60,7 +60,7 @@ function handle(io) {
    * @apiSuccessExample {json} Success-Response:
    *   {
      *    "data": {
-     *      "message": [{
+     *      "message": {
      *        "text": [
      *          "Hello world!"
      *        ],
@@ -89,7 +89,7 @@ function handle(io) {
       message: request.body.data.message,
       callback: ({ error, data }) => {
         if (error) {
-          restErrorChecker.checkAndSendError({ response, error });
+          restErrorChecker.checkAndSendError({ response, error, sentData: request.body.data });
 
           return;
         }
@@ -125,11 +125,11 @@ function handle(io) {
    *  }
    */
   router.get('/', (request, response) => {
-    manager.getBroadcasts({
+    broadcastManager.getBroadcasts({
       token: request.headers.authorization,
       callback: ({ error, data }) => {
         if (error) {
-          restErrorChecker.checkAndSendError({ response, error });
+          restErrorChecker.checkAndSendError({ response, error, sentData: request.body.data });
 
           return;
         }

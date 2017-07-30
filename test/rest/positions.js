@@ -23,91 +23,23 @@ const chaiHttp = require('chai-http');
 const app = require('../../app');
 const chaiJson = require('chai-json-schema');
 const errorSchemas = require('./schemas/errors');
-const userSchemas = require('./schemas/users');
-const positionSchemas = require('./schemas/positions');
 const tokens = require('./testData/tokens');
+const positionSchemas = require('./schemas/positions');
 const positionData = require('./testData/positions');
-const authenticateSchemas = require('./schemas/authentications');
 
 chai.should();
+
 chai.use(chaiHttp);
 chai.use(chaiJson);
 
 describe('Positions', () => {
-  const positionTokens = {
-    basic: '',
-    admin: '',
-  };
-
-  before('Create admin user on /api/users POST', (done) => {
-    chai
-      .request(app)
-      .post('/api/users')
-      .set('Authorization', tokens.adminUser)
-      .send({ data: { user: positionData.adminUserToCreateAndGetPositionFrom } })
-      .end((error, response) => {
-        response.should.have.status(200);
-        response.should.be.json;
-        response.body.should.be.jsonSchema(userSchemas.user);
-
-        done();
-      });
-  });
-
-  before('Create basic user on /api/users POST', (done) => {
-    chai
-      .request(app)
-      .post('/api/users')
-      .set('Authorization', tokens.adminUser)
-      .send({ data: { user: positionData.basicUserToCreateAndGetPositionFrom } })
-      .end((error, response) => {
-        response.should.have.status(200);
-        response.should.be.json;
-        response.body.should.be.jsonSchema(userSchemas.user);
-
-        done();
-      });
-  });
-
-  before('Authenticate admin user on /api/authenticate POST', (done) => {
-    chai
-      .request(app)
-      .post('/api/authenticate')
-      .send({ data: { user: positionData.adminUserToCreateAndGetPositionFrom } })
-      .end((error, response) => {
-        response.should.have.status(200);
-        response.should.be.json;
-        response.body.should.be.jsonSchema(authenticateSchemas.authenticate);
-
-        positionTokens.admin = response.body.data.token;
-
-        done();
-      });
-  });
-
-  before('Authenticate basic user on /api/authenticate POST', (done) => {
-    chai
-      .request(app)
-      .post('/api/authenticate')
-      .send({ data: { user: positionData.basicUserToCreateAndGetPositionFrom } })
-      .end((error, response) => {
-        response.should.have.status(200);
-        response.should.be.json;
-        response.body.should.be.jsonSchema(authenticateSchemas.authenticate);
-
-        positionTokens.basic = response.body.data.token;
-
-        done();
-      });
-  });
-
-  describe('Update user position', () => {
-    it('Should NOT update user position with incorrect authorization on /api/positions/users POST', (done) => {
+  describe('Create position', () => {
+    it('Should NOT create position with incorrect authorization on /api/positions POST', (done) => {
       chai
         .request(app)
-        .post('/api/positions/users')
+        .post('/api/positions')
+        .send({ data: { position: positionData.updatePositionData } })
         .set('Authorization', tokens.incorrectJwt)
-        .send({ data: { position: positionData.userPositionToUpdateWith } })
         .end((error, response) => {
           response.should.have.status(401);
           response.should.be.json;
@@ -117,58 +49,13 @@ describe('Positions', () => {
         });
     });
 
-    it('Should update basic user position on /api/positions/users POST', (done) => {
+    it('Should create position on /api/positions POST', (done) => {
       chai
         .request(app)
-        .post('/api/positions/users')
-        .set('Authorization', positionTokens.basic)
-        .send({ data: { position: positionData.userPositionToUpdateWith } })
-        .end((error, response) => {
-          response.should.have.status(200);
-          response.should.be.json;
-          response.body.should.be.jsonSchema(positionSchemas.position);
-
-          done();
-        });
-    });
-
-    it('Should update admin user position on /api/positions/users POST', (done) => {
-      chai
-        .request(app)
-        .post('/api/positions/users')
-        .set('Authorization', positionTokens.admin)
-        .send({ data: { position: positionData.otherUserPositionToUpdateWith } })
-        .end((error, response) => {
-          response.should.have.status(200);
-          response.should.be.json;
-          response.body.should.be.jsonSchema(positionSchemas.position);
-
-          done();
-        });
-    });
-  });
-
-  describe('Get user position', () => {
-    it('Should NOT get position for non-existent user on /api/positions/users/:id', (done) => {
-      chai
-        .request(app)
-        .get(`/api/positions/users/${positionData.userThatDoesNotExist}`)
+        .post('/api/positions')
+        .send({ data: { position: positionData.updatePositionData } })
         .set('Authorization', tokens.adminUser)
         .end((error, response) => {
-          response.should.have.status(404);
-          response.should.be.json;
-          response.body.should.be.jsonSchema(errorSchemas.error);
-
-          done();
-        });
-    });
-
-    it('Should get user position on /api/positions/users/:id', (done) => {
-      chai
-        .request(app)
-        .get(`/api/positions/users/${positionData.basicUserToCreateAndGetPositionFrom.userName}`)
-        .set('Authorization', positionTokens.admin)
-        .end((error, response) => {
           response.should.have.status(200);
           response.should.be.json;
           response.body.should.be.jsonSchema(positionSchemas.position);
@@ -176,27 +63,13 @@ describe('Positions', () => {
           done();
         });
     });
-
-    it('Should NOT get user position from user with higher visibility than user\'s access level on /api/positions/users/:id', (done) => {
-      chai
-        .request(app)
-        .get(`/api/positions/users/${positionData.adminUserToCreateAndGetPositionFrom.userName}`)
-        .set('Authorization', positionTokens.basic)
-        .end((error, response) => {
-          response.should.have.status(404);
-          response.should.be.json;
-          response.body.should.be.jsonSchema(errorSchemas.error);
-
-          done();
-        });
-    });
   });
 
-  describe('List user positions', () => {
-    it('Should NOT list user positions with incorrect authorization on /api/positions/users', (done) => {
+  describe('Get positions', () => {
+    it('Should NOT get positions with incorrect authorization on /api/positions GET', (done) => {
       chai
         .request(app)
-        .get('/api/positions/users')
+        .get('/api/positions')
         .set('Authorization', tokens.incorrectJwt)
         .end((error, response) => {
           response.should.have.status(401);
@@ -207,11 +80,11 @@ describe('Positions', () => {
         });
     });
 
-    it('Should list user positions on /api/positions/users', (done) => {
+    it('Should get positions on /api/positions GET', (done) => {
       chai
         .request(app)
-        .get('/api/positions/users')
-        .set('Authorization', positionTokens.basic)
+        .get('/api/positions')
+        .set('Authorization', tokens.basicUser)
         .end((error, response) => {
           response.should.have.status(200);
           response.should.be.json;

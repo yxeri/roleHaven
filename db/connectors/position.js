@@ -1,5 +1,5 @@
 /*
- Copyright 2015 Aleksandar Jankovic
+ Copyright 2017 Aleksandar Jankovic
 
  Licensed under the Apache License, Version 2.0 (the "License");
  you may not use this file except in compliance with the License.
@@ -51,7 +51,7 @@ const MapPosition = mongoose.model('MapPosition', mapPositionSchema);
  * @param {number} params.position.coordinates.latitude Latitude
  * @param {string} params.position.owner User name of the owner of the position
  * @param {string} params.position.markerType Type of position
- * @param {string} params.position.deviceId Device ID
+ * @param {string} [params.position.deviceId] Device ID
  * @param {Date} params.position.lastUpdated Date when the position was last updated
  * @param {string} [params.position.team] Name of the team with access to the location
  * @param {boolean} [params.position.isStatic] Is the position static? (most commonly used on everything non-user)
@@ -62,7 +62,6 @@ const MapPosition = mongoose.model('MapPosition', mapPositionSchema);
 function updatePosition({ position: { deviceId, positionName, coordinates, owner, team, isStatic, markerType, description, isPublic, lastUpdated }, callback }) {
   const query = { $and: [{ positionName }, { owner }] };
   const update = {
-    deviceId,
     owner,
     coordinates,
     markerType,
@@ -84,6 +83,10 @@ function updatePosition({ position: { deviceId, positionName, coordinates, owner
 
   if (typeof isStatic !== 'undefined') {
     update.team = isStatic;
+  }
+
+  if (typeof deviceId !== 'undefined') {
+    update.deviceId = deviceId;
   }
 
   MapPosition.findOneAndUpdate(query, update, options).lean().exec((err, position) => {

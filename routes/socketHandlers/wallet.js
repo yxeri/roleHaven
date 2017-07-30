@@ -16,177 +16,36 @@
 
 'use strict';
 
-const dbWallet = require('../../db/connectors/wallet');
-const dbConfig = require('../../config/defaults/config').databasePopulation;
-const appConfig = require('../../config/defaults/config').app;
-const manager = require('../../helpers/manager');
-const objectValidator = require('../../utils/objectValidator');
-const errorCreator = require('../../objects/error/errorCreator');
-const dbPosition = require('../../db/connectors/position');
+const walletManager = require('../../managers/wallets');
+const transactionManager = require('../../managers/transactions');
 
 /**
  * @param {object} socket - Socket.IO socket
  * @param {object} io - Socket.io io
  */
 function handle(socket, io) {
-  socket.on('getWallet', ({ isTeam, token }, callback = () => {}) => {
-    manager.userIsAllowed({
+  socket.on('getWallets', ({ token }, callback = () => {}) => {
+    walletManager.getWallets({
       token,
-      commandName: dbConfig.commands.getWallet.commandName,
-      callback: ({ error, allowedUser }) => {
-        if (error) {
-          callback({ error });
-
-          return;
-        } else if (isTeam && !allowedUser.team) {
-          callback({ error: new errorCreator.DoesNotExist({ name: 'not part of team' }) });
-
-          return;
-        }
-
-        const walletOwner = isTeam ? allowedUser.team + appConfig.teamAppend : allowedUser.userName;
-
-        dbWallet.getWallet({
-          owner: walletOwner,
-          callback: (walletData) => {
-            if (walletData.error) {
-              callback({ error: walletData.error });
-
-              return;
-            }
-
-            const { wallet } = walletData.data;
-
-            callback({ data: { wallet } });
-          },
-        });
-      },
+      callback,
     });
   });
 
-  socket.on('getTransactions', ({ isTeam, token }, callback = () => {}) => {
-    manager.userIsAllowed({
+  socket.on('getTransactions', ({ owner, token }, callback = () => {}) => {
+    transactionManager.getTransactions({
+      owner,
       token,
-      commandName: dbConfig.commands.getWallet.commandName,
-      callback: ({ error, allowedUser }) => {
-        if (error) {
-          callback({ error });
-
-          return;
-        } else if (isTeam && !allowedUser.team) {
-          callback({ error: new errorCreator.DoesNotExist({ name: 'not part of team' }) });
-
-          return;
-        }
-
-        const getTeamTransactions = ({ toTransactions, fromTransactions }) => {
-          manager.getTransactions({
-            owner: allowedUser.team + appConfig.teamAppend,
-            callback: (transactionData) => {
-              if (transactionData.error) {
-                callback({ error: transactionData.error });
-
-                return;
-              }
-
-              const { toTransactions: teamToTransactions, fromTransactions: teamFromTransactions } = transactionData.data;
-
-              callback({ data: { toTransactions: toTransactions.concat(teamToTransactions), fromTransactions: fromTransactions.concat(teamFromTransactions) } });
-            },
-          });
-        };
-
-        manager.getTransactions({
-          owner: allowedUser.userName,
-          callback: (transactionData) => {
-            if (transactionData.error) {
-              callback({ error: transactionData.error });
-
-              return;
-            }
-
-            if (!isTeam) {
-              callback(transactionData);
-            } else {
-              getTeamTransactions(transactionData.data);
-            }
-          },
-        });
-      },
+      callback,
     });
   });
 
   socket.on('createTransaction', ({ transaction, fromTeam, token }, callback = () => {}) => {
-    if (!objectValidator.isValidData({ transaction }, { transaction: { to: true, amount: true } })) {
-      callback({ error: new errorCreator.InvalidData({ expected: '{ transaction: { to, amount } }' }) });
-
-      return;
-    } else if (isNaN(transaction.amount)) {
-      callback({ error: new errorCreator.Insufficient({ name: 'wallet' }) });
-
-      return;
-    }
-
-    const newTransaction = transaction;
-
-    const transactionCallback = ({ user, transaction: transactionToCreate }) => {
-      manager.createTransaction({
-        io,
-        user,
-        fromTeam,
-        transaction: transactionToCreate,
-        callback: (transactionData) => {
-          if (transactionData.error) {
-            callback({ error: transactionData.error });
-
-            return;
-          }
-
-          callback({ data: transactionData.data });
-        },
-      });
-    };
-
-    manager.userIsAllowed({
+    transactionManager.createTransactionBasedOnToken({
+      transaction,
+      io,
+      fromTeam,
       token,
-      socketId: socket.id,
-      commandName: dbConfig.commands.getWallet.commandName,
-      callback: ({ error, allowedUser }) => {
-        if (error) {
-          callback({ error });
-
-          return;
-        }
-
-        dbPosition.getUserPosition({
-          userName: allowedUser.userName,
-          callback: (positionData) => {
-            if (positionData.error) {
-              if (positionData.type === errorCreator.ErrorTypes.DOESNOTEXIST) {
-                transactionCallback({
-                  fromTeam,
-                  io,
-                  user: allowedUser,
-                  transaction: newTransaction,
-                });
-
-                return;
-              }
-
-              callback({ error: positionData.error });
-
-              return;
-            }
-
-            newTransaction.coordinates = positionData.data.position.coordinates;
-
-            transactionCallback({
-              user: allowedUser,
-              transaction: newTransaction,
-            });
-          },
-        });
-      },
+      callback,
     });
   });
 }

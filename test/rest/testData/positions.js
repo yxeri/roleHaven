@@ -22,6 +22,16 @@ const dbConfig = require('../../../config/defaults/config').databasePopulation;
 
 const data = {};
 
+data.updatePositionData = {
+  description: [tools.createRandString({ length: appConfig.docFileMaxLength })],
+  title: tools.createRandString({ length: appConfig.docFileTitleMaxLength }),
+  positionName: tools.createRandString({ length: 5 }),
+  coordinates: {
+    longitude: 59,
+    latitude: 49,
+  },
+  markerType: 'custom',
+};
 data.userPositionToUpdateWith = {
   coordinates: {
     longitude: 10,

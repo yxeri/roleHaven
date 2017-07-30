@@ -31,12 +31,46 @@ schemas.users = {
           type: 'array',
           items: {
             type: 'object',
-            required: ['userName', 'online'],
+            required: ['userName'],
             properties: {
               userName: { type: 'string' },
               online: { type: 'boolean' },
             },
           },
+        },
+      },
+    },
+  },
+};
+
+schemas.userNames = {
+  type: 'object',
+  required: ['data'],
+  properties: {
+    data: {
+      type: 'object',
+      required: ['users'],
+      properties: {
+        users: {
+          type: 'array',
+          items: { type: 'string' },
+        },
+      },
+    },
+  },
+};
+
+schemas.matches = {
+  type: 'object',
+  required: ['data'],
+  properties: {
+    data: {
+      type: 'object',
+      required: ['matches'],
+      properties: {
+        matches: {
+          type: 'array',
+          items: { type: 'string' },
         },
       },
     },

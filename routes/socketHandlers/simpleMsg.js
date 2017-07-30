@@ -16,81 +16,27 @@
 
 'use strict';
 
-const manager = require('../../helpers/manager');
-const databasePopulation = require('../../config/defaults/config').databasePopulation;
-const objectValidator = require('../../utils/objectValidator');
-const dbSimpleMsg = require('../../db/connectors/simpleMsg');
-const errorCreator = require('../../objects/error/errorCreator');
+const simpleMsgManager = require('../../managers/simpleMsgs');
 
 /**
- * @param {Object} socket - Socket.IO socket
+ * @param {Object} socket Socket.IO socket
+ * @param {Object} io Socket.IO socket
  */
-function handle(socket) {
+function handle(socket, io) {
   socket.on('simpleMsg', ({ text, token }, callback = () => {}) => {
-    if (!objectValidator.isValidData({ text }, { text: true })) {
-      callback({ error: new errorCreator.InvalidData({ expected: '{ text }' }) });
-
-      return;
-    }
-
-    manager.userIsAllowed({
+    simpleMsgManager.sendSimpleMsg({
+      text,
+      socket,
+      io,
       token,
-      commandName: databasePopulation.commands.simpleMsg.commandName,
-      callback: ({ error, allowedUser }) => {
-        if (error) {
-          callback({ error });
-
-          return;
-        }
-
-        const simpleMsg = {
-          text,
-          time: new Date(),
-          userName: allowedUser.userName,
-        };
-
-        dbSimpleMsg.createSimpleMsg({
-          simpleMsg,
-          callback: (simpleMsgData) => {
-            if (simpleMsgData.error) {
-              callback({ error: simpleMsgData.error });
-
-              return;
-            }
-
-            callback({ data: { simpleMsg } });
-            socket.broadcast.emit('simpleMsg', simpleMsg);
-          },
-        });
-      },
+      callback,
     });
   });
 
   socket.on('getSimpleMessages', ({ token }, callback = () => {}) => {
-    manager.userIsAllowed({
+    simpleMsgManager.getSimpleMsgs({
       token,
-      commandName: databasePopulation.commands.getSimpleMsgs.commandName,
-      callback: ({ error }) => {
-        if (error) {
-          callback({ error });
-
-          return;
-        }
-
-        dbSimpleMsg.getAllSimpleMsgs({
-          callback: (simpleMsgsData) => {
-            if (simpleMsgsData.error) {
-              callback({ error: simpleMsgsData.error });
-
-              return;
-            }
-
-            const { simpleMsgs } = simpleMsgsData.data;
-
-            callback({ data: { simpleMsgs } });
-          },
-        });
-      },
+      callback,
     });
   });
 }

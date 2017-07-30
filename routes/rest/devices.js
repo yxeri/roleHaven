@@ -18,7 +18,7 @@
 
 const express = require('express');
 const objectValidator = require('../../utils/objectValidator');
-const manager = require('../../helpers/manager');
+const deviceManager = require('../../managers/devices');
 const restErrorChecker = require('../../helpers/restErrorChecker');
 
 const router = new express.Router();
@@ -63,11 +63,11 @@ function handle() {
    *  }
    */
   router.get('/', (request, response) => {
-    manager.getDevices({
+    deviceManager.getDevices({
       token: request.headers.authorization,
       callback: ({ error, data }) => {
         if (error) {
-          restErrorChecker.checkAndSendError({ response, error });
+          restErrorChecker.checkAndSendError({ response, error, sentData: request.body.data });
 
           return;
         }
@@ -92,7 +92,7 @@ function handle() {
    * @apiSuccess {Object} data
    * @apiSuccess {Object} data.device Updated device
    * @apiSuccess {Object} data.device.deviceId Device id
-   * @apiSuccess {Object} data.device.deviceAlias Device alias
+   * @apiSuccess {Object} [data.device.deviceAlias] Device alias
    * @apiSuccess {Object} data.device.lastAlive Date when the device was last updated (now)
    * @apiSuccess {string} [data.devices.lastUser] Name of the last user logged in on device
    * @apiSuccessExample {json} Success-Response:
@@ -120,12 +120,12 @@ function handle() {
       return;
     }
 
-    manager.updateDevice({
+    deviceManager.updateDevice({
       token: request.headers.authorization,
       device: { deviceId: request.params.deviceId },
       callback: ({ error, data }) => {
         if (error) {
-          restErrorChecker.checkAndSendError({ response, error });
+          restErrorChecker.checkAndSendError({ response, error, sentData: request.body.data });
 
           return;
         }
@@ -199,7 +199,7 @@ function handle() {
       return;
     }
 
-    manager.updateDeviceAlias({
+    deviceManager.updateDeviceAlias({
       token: request.headers.authorization,
       device: {
         deviceId: request.params.deviceId,
@@ -207,7 +207,7 @@ function handle() {
       },
       callback: ({ error, data }) => {
         if (error) {
-          restErrorChecker.checkAndSendError({ response, error });
+          restErrorChecker.checkAndSendError({ response, error, sentData: request.body.data });
 
           return;
         }

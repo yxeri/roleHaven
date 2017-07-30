@@ -1,5 +1,5 @@
 /*
- Copyright 2015 Aleksandar Jankovic
+ Copyright 2017 Aleksandar Jankovic
 
  Licensed under the Apache License, Version 2.0 (the "License");
  you may not use this file except in compliance with the License.
@@ -19,7 +19,6 @@
 const appConfig = require('../config/defaults/config').app;
 const request = require('request');
 const xml2json = require('xml2json');
-const errorCreator = require('../objects/error/errorCreator');
 
 /**
  * Convert xml to json
@@ -115,14 +114,14 @@ function createPosition({ position, layerName }) {
  */
 function getGooglePositions({ callback }) {
   if (!appConfig.mapLayersPath) {
-    callback({ error: new errorCreator.General({ name: 'No map layers set' }) });
+    callback({ data: { note: 'Map layers path is not set', positions: [] } });
 
     return;
   }
 
   request.get(appConfig.mapLayersPath, (err, response, body) => {
     if (err || response.statusCode !== 200) {
-      callback({ error: new errorCreator.External({ errorObject: err, name: 'Unable to retrieve Google maps layer' }) });
+      callback({ data: { note: 'Unable to get positions from Google', positions: [] } });
 
       return;
     }

@@ -84,11 +84,10 @@ function getMailEventByKey({ key, callback }) {
 
       return;
     } else if (event.expiresAt < new Date()) {
+      callback({ error: new errorCreator.Expired({ name: `${event.owner}`, expiredAt: event.expiresAt }) });
       removeMailEventByKey({
         key,
-        callback: () => {
-          callback({ error: new errorCreator.Expired({ name: `${event.owner}`, expiredAt: event.expiresAt }) });
-        },
+        callback: () => {},
       });
 
       return;

@@ -85,6 +85,7 @@ data.highAccessLevelRoomToCreate = {
 data.roomThatDoesNotExist = {
   roomName: tools.createRandString({ length: appConfig.roomNameMaxLength }),
 };
+data.alias = tools.createRandString({ length: appConfig.userNameMaxLength });
 
 data.incorrectPassword = tools.createRandString({ length: appConfig.passwordMaxLength });
 

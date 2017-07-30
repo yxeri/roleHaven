@@ -32,9 +32,12 @@ function sendVerification({ address, userName, callback }) {
       text: `Your account ${userName} has been created, but to be able to login you will need to activate your account. Go to ${url.href} to activate your account`,
       html: `Your account ${userName} has been created, but to be able to login you will need to activate your account. Click <a href="${url.href}">here</a> to activate your account`,
     });
+    const expiresAt = new Date();
+    expiresAt.setHours(expiresAt.getHours() + 2);
 
     dbMailEvent.createMailEvent({
       mailEvent: {
+        expiresAt,
         owner: userName,
         key: key.toString('hex'),
         eventType: 'userVerify',

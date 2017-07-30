@@ -1,4 +1,5 @@
 const errorCreator = require('../objects/error/errorCreator');
+const appConfig = require('../config/defaults/config').app;
 
 /**
  * Checks the type of error and sends it in response
@@ -6,45 +7,48 @@ const errorCreator = require('../objects/error/errorCreator');
  * @param {Object} params.error Error object
  * @param {string} [params.title] Error title
  * @param {string} [params.detail] Error detail
+ * @param {Object} [params.sentData] Data sent
  */
-function checkAndSendError({ response, error, title, detail }) {
+function checkAndSendError({ response, error, title, detail, sentData }) {
   const sendError = {
-    statusCode: 500,
+    status: 500,
     title: title || 'Internal server error',
     detail: detail || 'Internal server error',
   };
 
+  if ((appConfig.mode === appConfig.Modes.TEST || appConfig.mode === appConfig.Modes.DEV) && sentData) { sendError.data = sentData; }
+
   switch (error.type) {
     case errorCreator.ErrorTypes.DOESNOTEXIST: {
-      sendError.statusCode = 404;
+      sendError.status = 404;
       sendError.title = title || 'Does not exist';
       sendError.detail = detail || 'Does not exist';
 
       break;
     }
     case errorCreator.ErrorTypes.NOTALLOWED: {
-      sendError.statusCode = 401;
+      sendError.status = 401;
       sendError.title = title || 'Unauthorized';
       sendError.detail = detail || 'Not allowed';
 
       break;
     }
     case errorCreator.ErrorTypes.INVALIDCHARACTERS: {
-      sendError.statusCode = 400;
+      sendError.status = 400;
       sendError.title = title || 'Invalid characters or length';
       sendError.detail = detail || 'Invalid characters or length';
 
       break;
     }
     case errorCreator.ErrorTypes.ALREADYEXISTS: {
-      sendError.statusCode = 403;
+      sendError.status = 403;
       sendError.title = title || 'Already exists';
       sendError.detail = detail || 'Already exists';
 
       break;
     }
     case errorCreator.ErrorTypes.INVALIDDATA: {
-      sendError.statusCode = 400;
+      sendError.status = 400;
       sendError.title = title || 'Invalid data';
       sendError.detail = detail || 'Invalid data';
 
@@ -55,12 +59,8 @@ function checkAndSendError({ response, error, title, detail }) {
     }
   }
 
-  response.status(sendError.statusCode).json({
-    error: {
-      status: sendError.statusCode,
-      title: sendError.title,
-      detail: sendError.detail,
-    },
+  response.status(sendError.status).json({
+    error: sendError,
   });
 }
 

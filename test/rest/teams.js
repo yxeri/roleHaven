@@ -29,6 +29,7 @@ const teamSchemas = require('./schemas/teams');
 const authenticateSchemas = require('./schemas/authentications');
 const userSchemas = require('./schemas/users');
 const invitationSchemas = require('./schemas/invitations');
+const starterData = require('./testData/starter');
 
 chai.should();
 chai.use(chaiHttp);
@@ -258,7 +259,7 @@ describe('Teams', () => {
     });
   });
 
-  describe('Invite user to team', () => {
+  describe('Team invitations', () => {
     before('Create user to create team with on /api/users POST', (done) => {
       chai
         .request(app)
@@ -335,48 +336,86 @@ describe('Teams', () => {
         });
     });
 
-    it('Should NOT send team invite with incorrect authorization on /api/users/:userName/teamInvite POST', (done) => {
-      chai
-        .request(app)
-        .post(`/api/users/${teamData.userToInvite.userName}/teamInvite`)
-        .set('Authorization', tokens.incorrectJwt)
-        .end((error, response) => {
-          response.should.have.status(401);
-          response.should.be.json;
-          response.body.should.be.jsonSchema(errorSchemas.error);
+    describe('Invite user to team', () => {
+      it('Should NOT send team invite with incorrect authorization on /api/users/:userName/teamInvite POST', (done) => {
+        chai
+          .request(app)
+          .post(`/api/users/${teamData.userToInvite.userName}/teamInvite`)
+          .set('Authorization', tokens.incorrectJwt)
+          .end((error, response) => {
+            response.should.have.status(401);
+            response.should.be.json;
+            response.body.should.be.jsonSchema(errorSchemas.error);
 
-          done();
-        });
+            done();
+          });
+      });
+
+      it('Should NOT send team invite if not in team on /api/users/:userName/teamInvite POST', (done) => {
+        chai
+          .request(app)
+          .post(`/api/users/${teamData.userToInvite.userName}/teamInvite`)
+          .set('Authorization', tokens.adminUser)
+          .end((error, response) => {
+            response.should.have.status(404);
+            response.should.be.json;
+            response.body.should.be.jsonSchema(errorSchemas.error);
+
+            done();
+          });
+      });
+
+      it('Should send team invite on /api/users/:userName/teamInvite POST', (done) => {
+        chai
+          .request(app)
+          .post(`/api/users/${teamData.userToInvite.userName}/teamInvite`)
+          .set('Authorization', teamTokens.teamInviter)
+          .end((error, response) => {
+            response.should.have.status(200);
+            response.should.be.json;
+            response.body.should.be.jsonSchema(invitationSchemas.invitation);
+
+            done();
+          });
+      });
     });
 
-    it('Should NOT send team invite if not in team on /api/users/:userName/teamInvite POST', (done) => {
-      chai
-        .request(app)
-        .post(`/api/users/${teamData.userToInvite.userName}/teamInvite`)
-        .set('Authorization', tokens.adminUser)
-        .end((error, response) => {
-          response.should.have.status(404);
-          response.should.be.json;
-          response.body.should.be.jsonSchema(errorSchemas.error);
+    describe('Invite already invited user', () => {
+      before('Send team invite on /api/users/:userName/teamInvite POST', (done) => {
+        chai
+          .request(app)
+          .post(`/api/users/${starterData.adminUserToAuth.userName}/teamInvite`)
+          .set('Authorization', teamTokens.teamInviter)
+          .end((error, response) => {
+            response.should.have.status(200);
+            response.should.be.json;
+            response.body.should.be.jsonSchema(invitationSchemas.invitation);
 
-          done();
-        });
+            done();
+          });
+      });
+
+      it('Should NOT send team invite to already invited user on /api/users/:userName/teamInvite POST', (done) => {
+        chai
+          .request(app)
+          .post(`/api/users/${starterData.adminUserToAuth.userName}/teamInvite`)
+          .set('Authorization', teamTokens.teamInviter)
+          .end((error, response) => {
+            response.should.have.status(403);
+            response.should.be.json;
+            response.body.should.be.jsonSchema(errorSchemas.error);
+
+            done();
+          });
+      });
     });
 
-    it('Should send team invite on /api/users/:userName/teamInvite POST', (done) => {
-      chai
-        .request(app)
-        .post(`/api/users/${teamData.userToInvite.userName}/teamInvite`)
-        .set('Authorization', teamTokens.teamInviter)
-        .end((error, response) => {
-          response.should.have.status(200);
-          response.should.be.json;
-          response.body.should.be.jsonSchema(invitationSchemas.invitation);
+    describe('Answer invitation', () => {
 
-          done();
-        });
     });
+  });
 
-    // TODO Should NOT send invite already exists
+  describe('Leave team', () => {
+
   });
 });
