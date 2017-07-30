@@ -60,7 +60,7 @@ function handle(io) {
       token: request.headers.authorization,
       callback: ({ error, data }) => {
         if (error) {
-          restErrorChecker.checkAndSendError({ response, error });
+          restErrorChecker.checkAndSendError({ response, error, sentData: request.body.data });
 
           return;
         }
@@ -103,7 +103,7 @@ function handle(io) {
       token: request.headers.authorization,
       callback: ({ error, data }) => {
         if (error) {
-          restErrorChecker.checkAndSendError({ response, error });
+          restErrorChecker.checkAndSendError({ response, error, sentData: request.body.data });
 
           return;
         }
@@ -142,7 +142,7 @@ function handle(io) {
       token: request.headers.authorization,
       callback: ({ error, data }) => {
         if (error) {
-          restErrorChecker.checkAndSendError({ response, error });
+          restErrorChecker.checkAndSendError({ response, error, sentData: request.body.data });
 
           return;
         }
@@ -209,7 +209,7 @@ function handle(io) {
       token: request.headers.authorization,
       callback: ({ error, data }) => {
         if (error) {
-          restErrorChecker.checkAndSendError({ response, error });
+          restErrorChecker.checkAndSendError({ response, error, sentData: request.body.data });
 
           return;
         }
@@ -248,7 +248,7 @@ function handle(io) {
       token: request.headers.authorization,
       callback: ({ error, data }) => {
         if (error) {
-          restErrorChecker.checkAndSendError({ response, error });
+          restErrorChecker.checkAndSendError({ response, error, sentData: request.body.data });
 
           return;
         }
@@ -283,7 +283,7 @@ function handle(io) {
       token: request.headers.authorization,
       callback: ({ error, data }) => {
         if (error) {
-          restErrorChecker.checkAndSendError({ response, error });
+          restErrorChecker.checkAndSendError({ response, error, sentData: request.body.data });
 
           return;
         }
@@ -370,7 +370,7 @@ function handle(io) {
       token: request.headers.authorization,
       callback: ({ error, data }) => {
         if (error) {
-          restErrorChecker.checkAndSendError({ response, error });
+          restErrorChecker.checkAndSendError({ response, error, sentData: request.body.data });
 
           return;
         }

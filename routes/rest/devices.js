@@ -67,7 +67,7 @@ function handle() {
       token: request.headers.authorization,
       callback: ({ error, data }) => {
         if (error) {
-          restErrorChecker.checkAndSendError({ response, error });
+          restErrorChecker.checkAndSendError({ response, error, sentData: request.body.data });
 
           return;
         }
@@ -125,7 +125,7 @@ function handle() {
       device: { deviceId: request.params.deviceId },
       callback: ({ error, data }) => {
         if (error) {
-          restErrorChecker.checkAndSendError({ response, error });
+          restErrorChecker.checkAndSendError({ response, error, sentData: request.body.data });
 
           return;
         }
@@ -207,7 +207,7 @@ function handle() {
       },
       callback: ({ error, data }) => {
         if (error) {
-          restErrorChecker.checkAndSendError({ response, error });
+          restErrorChecker.checkAndSendError({ response, error, sentData: request.body.data });
 
           return;
         }

@@ -66,11 +66,15 @@ config.scriptsPath = 'scripts';
 config.requiredPath = 'required';
 config.faviconPath = 'images/favicon.ico';
 
+config.Modes = {
+  TEST: 'test',
+  PROD: 'prod',
+  DEV: 'dev',
+};
 /**
- * Server mode. Options:
- * prod, dev, test
+ * Server mode.
  */
-config.mode = process.env.MODE || config.mode || 'prod';
+config.mode = process.env.MODE || config.mode || config.Modes.PROD;
 
 // Morgan log level
 config.logLevel = process.env.LOGLEVEL || config.logLevel || 'tiny';
