@@ -20,6 +20,7 @@ const express = require('express');
 const objectValidator = require('../../utils/objectValidator');
 const lanternRoundManager = require('../../managers/lanternRounds');
 const restErrorChecker = require('../../helpers/restErrorChecker');
+const errorCreator = require('../../objects/error/errorCreator');
 
 const router = new express.Router();
 
@@ -193,13 +194,7 @@ function handle(io) {
    */
   router.post('/', (request, response) => {
     if (!objectValidator.isValidData(request.body, { data: { round: { roundId: true, startTime: true, endTime: true } } })) {
-      response.status(400).json({
-        error: {
-          status: 400,
-          title: 'Missing data',
-          detail: 'Unable to parse data',
-        },
-      });
+      restErrorChecker({ response, error: new errorCreator.InvalidData({ expected: '' }), sentData: request.body.data });
 
       return;
     }
@@ -338,23 +333,11 @@ function handle(io) {
    */
   router.post('/:roundId', (request, response) => {
     if (!objectValidator.isValidData(request.params, { roundId: true })) {
-      response.status(400).json({
-        error: {
-          status: 400,
-          title: 'Missing data',
-          detail: 'Unable to parse data',
-        },
-      });
+      restErrorChecker({ response, error: new errorCreator.InvalidData({ expected: '' }), sentData: request.body.data });
 
       return;
     } else if (!objectValidator.isValidData(request.body, { data: { round: true } })) {
-      response.status(400).json({
-        error: {
-          status: 400,
-          title: 'Incorrect data',
-          detail: 'Unable to parse data',
-        },
-      });
+      restErrorChecker({ response, error: new errorCreator.InvalidData({ expected: '' }), sentData: request.body.data });
 
       return;
     }

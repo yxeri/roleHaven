@@ -21,6 +21,7 @@ const roomManager = require('../../managers/rooms');
 const objectValidator = require('../../utils/objectValidator');
 const restErrorChecker = require('../../helpers/restErrorChecker');
 const messenger = require('../../helpers/messenger');
+const errorCreator = require('../../objects/error/errorCreator');
 
 const router = new express.Router();
 
@@ -101,13 +102,7 @@ function handle(io) {
    */
   router.get('/:roomName', (request, response) => {
     if (!objectValidator.isValidData(request.params, { roomName: true })) {
-      response.status(400).json({
-        error: {
-          status: 400,
-          title: 'Missing data',
-          detail: 'Unable to parse data',
-        },
-      });
+      restErrorChecker({ response, error: new errorCreator.InvalidData({ expected: '' }), sentData: request.body.data });
 
       return;
     }
@@ -173,13 +168,7 @@ function handle(io) {
    */
   router.post('/', (request, response) => {
     if (!objectValidator.isValidData(request.body, { data: { room: { roomName: true } } })) {
-      response.status(400).json({
-        error: {
-          status: 400,
-          title: 'Missing data',
-          detail: 'Unable to parse data',
-        },
-      });
+      restErrorChecker({ response, error: new errorCreator.InvalidData({ expected: '' }), sentData: request.body.data });
 
       return;
     }
@@ -226,13 +215,7 @@ function handle(io) {
    */
   router.get('/:partialName/match', (request, response) => {
     if (!objectValidator.isValidData(request.params, { partialName: true })) {
-      response.status(400).json({
-        error: {
-          status: 400,
-          title: 'Missing data',
-          detail: 'Unable to parse data',
-        },
-      });
+      restErrorChecker({ response, error: new errorCreator.InvalidData({ expected: '' }), sentData: request.body.data });
 
       return;
     }
@@ -279,13 +262,7 @@ function handle(io) {
    */
   router.get('/:roomName/match/followed', (request, response) => {
     if (!objectValidator.isValidData(request.params, { roomName: true })) {
-      response.status(400).json({
-        error: {
-          status: 400,
-          title: 'Missing data',
-          detail: 'Unable to parse data',
-        },
-      });
+      restErrorChecker({ response, error: new errorCreator.InvalidData({ expected: '' }), sentData: request.body.data });
 
       return;
     }
@@ -338,13 +315,7 @@ function handle(io) {
    */
   router.get('/:roomName/messages', (request, response) => {
     if (!objectValidator.isValidData(request.params, { roomName: true })) {
-      response.status(400).json({
-        error: {
-          status: 400,
-          title: 'Missing data',
-          detail: 'Unable to parse data',
-        },
-      });
+      restErrorChecker({ response, error: new errorCreator.InvalidData({ expected: '' }), sentData: request.body.data });
 
       return;
     }
@@ -417,13 +388,7 @@ function handle(io) {
    */
   router.post('/:roomName/messages', (request, response) => {
     if (!objectValidator.isValidData(request.body, { data: true })) {
-      response.status(400).json({
-        error: {
-          status: 400,
-          title: 'Missing data',
-          detail: 'Unable to parse data',
-        },
-      });
+      restErrorChecker({ response, error: new errorCreator.InvalidData({ expected: '' }), sentData: request.body.data });
 
       return;
     }

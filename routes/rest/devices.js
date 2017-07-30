@@ -20,6 +20,7 @@ const express = require('express');
 const objectValidator = require('../../utils/objectValidator');
 const deviceManager = require('../../managers/devices');
 const restErrorChecker = require('../../helpers/restErrorChecker');
+const errorCreator = require('../../objects/error/errorCreator');
 
 const router = new express.Router();
 
@@ -109,13 +110,7 @@ function handle() {
    */
   router.post('/:deviceId', (request, response) => {
     if (!objectValidator.isValidData(request.params, { deviceId: true })) {
-      response.status(400).json({
-        error: {
-          status: 400,
-          title: 'Missing data',
-          detail: 'Unable to parse data',
-        },
-      });
+      restErrorChecker({ response, error: new errorCreator.InvalidData({ expected: '' }), sentData: request.body.data });
 
       return;
     }
@@ -178,23 +173,11 @@ function handle() {
    */
   router.post('/:deviceId/alias', (request, response) => {
     if (!objectValidator.isValidData(request.body, { data: { device: { deviceAlias: true } } })) {
-      response.status(400).json({
-        error: {
-          status: 400,
-          title: 'Missing data',
-          detail: 'Unable to parse data',
-        },
-      });
+      restErrorChecker({ response, error: new errorCreator.InvalidData({ expected: '' }), sentData: request.body.data });
 
       return;
     } else if (!objectValidator.isValidData(request.params, { deviceId: true })) {
-      response.status(400).json({
-        error: {
-          status: 400,
-          title: 'Missing data',
-          detail: 'Unable to parse data',
-        },
-      });
+      restErrorChecker.checkAndSendError({ response, error: new errorCreator.InvalidData({ expected: '' }), sentData: request.body.data });
 
       return;
     }

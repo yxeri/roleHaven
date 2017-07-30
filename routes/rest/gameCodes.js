@@ -67,7 +67,7 @@ function handle(io) {
    */
   router.post('/:code/use', (request, response) => {
     if (!objectValidator.isValidData(request.params, { code: true })) {
-      restErrorChecker.checkAndSendError({ response, error: new errorCreator.InvalidData({ expected: 'params: { code }' }) });
+      restErrorChecker.checkAndSendError({ response, error: new errorCreator.InvalidData({ expected: 'params: { code }' }), sentData: request.body.data });
 
       return;
     }
