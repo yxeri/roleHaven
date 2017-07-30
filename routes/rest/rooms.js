@@ -102,7 +102,7 @@ function handle(io) {
    */
   router.get('/:roomName', (request, response) => {
     if (!objectValidator.isValidData(request.params, { roomName: true })) {
-      restErrorChecker({ response, error: new errorCreator.InvalidData({ expected: '' }), sentData: request.body.data });
+      restErrorChecker.checkAndSendError({ response, error: new errorCreator.InvalidData({ expected: '' }), sentData: request.body.data });
 
       return;
     }
@@ -168,7 +168,7 @@ function handle(io) {
    */
   router.post('/', (request, response) => {
     if (!objectValidator.isValidData(request.body, { data: { room: { roomName: true } } })) {
-      restErrorChecker({ response, error: new errorCreator.InvalidData({ expected: '' }), sentData: request.body.data });
+      restErrorChecker.checkAndSendError({ response, error: new errorCreator.InvalidData({ expected: '' }), sentData: request.body.data });
 
       return;
     }
@@ -215,7 +215,7 @@ function handle(io) {
    */
   router.get('/:partialName/match', (request, response) => {
     if (!objectValidator.isValidData(request.params, { partialName: true })) {
-      restErrorChecker({ response, error: new errorCreator.InvalidData({ expected: '' }), sentData: request.body.data });
+      restErrorChecker.checkAndSendError({ response, error: new errorCreator.InvalidData({ expected: '' }), sentData: request.body.data });
 
       return;
     }
@@ -262,7 +262,7 @@ function handle(io) {
    */
   router.get('/:roomName/match/followed', (request, response) => {
     if (!objectValidator.isValidData(request.params, { roomName: true })) {
-      restErrorChecker({ response, error: new errorCreator.InvalidData({ expected: '' }), sentData: request.body.data });
+      restErrorChecker.checkAndSendError({ response, error: new errorCreator.InvalidData({ expected: '' }), sentData: request.body.data });
 
       return;
     }
@@ -315,7 +315,7 @@ function handle(io) {
    */
   router.get('/:roomName/messages', (request, response) => {
     if (!objectValidator.isValidData(request.params, { roomName: true })) {
-      restErrorChecker({ response, error: new errorCreator.InvalidData({ expected: '' }), sentData: request.body.data });
+      restErrorChecker.checkAndSendError({ response, error: new errorCreator.InvalidData({ expected: '' }), sentData: request.body.data });
 
       return;
     }
@@ -388,7 +388,7 @@ function handle(io) {
    */
   router.post('/:roomName/messages', (request, response) => {
     if (!objectValidator.isValidData(request.body, { data: true })) {
-      restErrorChecker({ response, error: new errorCreator.InvalidData({ expected: '' }), sentData: request.body.data });
+      restErrorChecker.checkAndSendError({ response, error: new errorCreator.InvalidData({ expected: '' }), sentData: request.body.data });
 
       return;
     }

@@ -108,7 +108,7 @@ function handle(io) {
    */
   router.get('/:userName/gameCodes/profile', (request, response) => {
     if (!objectValidator.isValidData(request.params, { userName: true })) {
-      restErrorChecker({ response, error: new errorCreator.InvalidData({ expected: 'params: { userName}' }) });
+      restErrorChecker.checkAndSendError({ response, error: new errorCreator.InvalidData({ expected: 'params: { userName}' }) });
 
       return;
     }

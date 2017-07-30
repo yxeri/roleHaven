@@ -194,7 +194,7 @@ function handle(io) {
    */
   router.post('/', (request, response) => {
     if (!objectValidator.isValidData(request.body, { data: { round: { roundId: true, startTime: true, endTime: true } } })) {
-      restErrorChecker({ response, error: new errorCreator.InvalidData({ expected: '' }), sentData: request.body.data });
+      restErrorChecker.checkAndSendError({ response, error: new errorCreator.InvalidData({ expected: '' }), sentData: request.body.data });
 
       return;
     }
@@ -333,11 +333,11 @@ function handle(io) {
    */
   router.post('/:roundId', (request, response) => {
     if (!objectValidator.isValidData(request.params, { roundId: true })) {
-      restErrorChecker({ response, error: new errorCreator.InvalidData({ expected: '' }), sentData: request.body.data });
+      restErrorChecker.checkAndSendError({ response, error: new errorCreator.InvalidData({ expected: '' }), sentData: request.body.data });
 
       return;
     } else if (!objectValidator.isValidData(request.body, { data: { round: true } })) {
-      restErrorChecker({ response, error: new errorCreator.InvalidData({ expected: '' }), sentData: request.body.data });
+      restErrorChecker.checkAndSendError({ response, error: new errorCreator.InvalidData({ expected: '' }), sentData: request.body.data });
 
       return;
     }

@@ -97,7 +97,7 @@ function handle(io) {
    */
   router.get('/:teamName', (request, response) => {
     if (!objectValidator.isValidData(request.params, { teamName: true })) {
-      restErrorChecker({ response, error: new errorCreator.InvalidData({ expected: '' }), sentData: request.body.data });
+      restErrorChecker.checkAndSendError({ response, error: new errorCreator.InvalidData({ expected: '' }), sentData: request.body.data });
 
       return;
     }
