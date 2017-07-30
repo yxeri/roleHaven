@@ -40,7 +40,7 @@ const allowMessageImageEnv = textTools.convertToBoolean(process.env.ALLOWMESSAGE
  */
 config.title = process.env.TITLE || config.title || 'roleHaven';
 
-config.host = process.env.VIRTUAL_HOST || 'localhost';
+config.host = process.env.VIRTUAL_HOST || '127.0.0.1';
 
 /**
  * Default language for clients connecting.
@@ -80,7 +80,7 @@ config.mode = process.env.MODE || config.mode || config.Modes.PROD;
 config.logLevel = process.env.LOGLEVEL || config.logLevel || 'tiny';
 
 // Database host name
-config.dbHost = process.env.DBHOST || config.dbHost || 'localhost';
+config.dbHost = process.env.DBHOST || config.dbHost || '127.0.0.1';
 
 // Database port
 config.dbPort = process.env.DBPORT || config.dbPort || 27017;
@@ -309,7 +309,7 @@ if (config.mailKey && config.publicMailKey) {
   /**
    * Mail domain used by Mailgun
    */
-  config.mailDomain = process.env.MAILDOMAIN || config.mailDomain || config.mode === 'test' ? 'localhost' : undefined;
+  config.mailDomain = process.env.MAILDOMAIN || config.mailDomain || config.mode === 'test' ? '127.0.0.1' : undefined;
 
   /**
    * Mail sender name. Will append mailDomain to name
