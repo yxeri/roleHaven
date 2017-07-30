@@ -72,7 +72,7 @@ function isValidData(data, expected, options = {}) {
 
   const isValid = checkKeys(data, expected, validationOptions);
 
-  if (!isValid && (validationOptions.verbose || appConfig.verboseError) {
+  if (!isValid && (validationOptions.verbose || appConfig.verboseError)) {
     winston.error('Validation error', `Expected: ${JSON.stringify(expected)}`);
   }
 
