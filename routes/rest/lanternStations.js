@@ -164,7 +164,7 @@ function handle(io) {
    */
   router.post('/', (request, response) => {
     if (!objectValidator.isValidData(request.body, { data: { station: { stationId: true, stationName: true } } })) {
-      restErrorChecker({ response, error: new errorCreator.InvalidData({ expected: '' }), sentData: request.body.data });
+      restErrorChecker.checkAndSendError({ response, error: new errorCreator.InvalidData({ expected: '' }), sentData: request.body.data });
 
       return;
     }
@@ -231,11 +231,11 @@ function handle(io) {
    */
   router.post('/:stationId', (request, response) => {
     if (!objectValidator.isValidData(request.params, { stationId: true })) {
-      restErrorChecker({ response, error: new errorCreator.InvalidData({ expected: '' }), sentData: request.body.data });
+      restErrorChecker.checkAndSendError({ response, error: new errorCreator.InvalidData({ expected: '' }), sentData: request.body.data });
 
       return;
     } else if (!objectValidator.isValidData(request.body, { data: { station: true } })) {
-      restErrorChecker({ response, error: new errorCreator.InvalidData({ expected: '' }), sentData: request.body.data });
+      restErrorChecker.checkAndSendError({ response, error: new errorCreator.InvalidData({ expected: '' }), sentData: request.body.data });
 
       return;
     }

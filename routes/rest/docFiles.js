@@ -110,7 +110,7 @@ function handle(io) {
    */
   router.get('/:docFileId', (request, response) => {
     if (!objectValidator.isValidData(request.params, { docFileId: true })) {
-      restErrorChecker({ response, error: new errorCreator.InvalidData({ expected: '' }), sentData: request.body.data });
+      restErrorChecker.checkAndSendError({ response, error: new errorCreator.InvalidData({ expected: '' }), sentData: request.body.data });
 
       return;
     }
@@ -120,7 +120,7 @@ function handle(io) {
       token: request.headers.authorization,
       callback: ({ error, data }) => {
         if (error) {
-          restErrorChecker.checkAndSendError({ response, error, sentData: request.body.data });
+          restErrorChecker.checkAndSendError.checkAndSendError({ response, error, sentData: request.body.data });
 
           return;
         }

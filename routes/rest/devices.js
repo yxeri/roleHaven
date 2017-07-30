@@ -110,7 +110,7 @@ function handle() {
    */
   router.post('/:deviceId', (request, response) => {
     if (!objectValidator.isValidData(request.params, { deviceId: true })) {
-      restErrorChecker({ response, error: new errorCreator.InvalidData({ expected: '' }), sentData: request.body.data });
+      restErrorChecker.checkAndSendError({ response, error: new errorCreator.InvalidData({ expected: '' }), sentData: request.body.data });
 
       return;
     }
@@ -173,7 +173,7 @@ function handle() {
    */
   router.post('/:deviceId/alias', (request, response) => {
     if (!objectValidator.isValidData(request.body, { data: { device: { deviceAlias: true } } })) {
-      restErrorChecker({ response, error: new errorCreator.InvalidData({ expected: '' }), sentData: request.body.data });
+      restErrorChecker.checkAndSendError({ response, error: new errorCreator.InvalidData({ expected: '' }), sentData: request.body.data });
 
       return;
     } else if (!objectValidator.isValidData(request.params, { deviceId: true })) {

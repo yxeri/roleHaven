@@ -71,7 +71,7 @@ function handle(io) {
    */
   router.post('/', (request, response) => {
     if (!objectValidator.isValidData(request.body, { data: { simpleMsg: true } })) {
-      restErrorChecker({ response, error: new errorCreator.InvalidData({ expected: '{ data { simpleMsg } }' }) });
+      restErrorChecker.checkAndSendError({ response, error: new errorCreator.InvalidData({ expected: '{ data { simpleMsg } }' }) });
 
       return;
     }
