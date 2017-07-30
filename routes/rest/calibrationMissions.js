@@ -62,7 +62,7 @@ function handle() {
       getInactive: true,
       callback: ({ error: calibrationError, data: calibrationData }) => {
         if (calibrationError) {
-          restErrorChecker.checkAndSendError({ response, error: calibrationError });
+          restErrorChecker.checkAndSendError({ response, error: calibrationError, sentData: request.body.data });
 
           return;
         }
@@ -106,7 +106,7 @@ function handle() {
       token: request.headers.authorization,
       callback: ({ error: calibrationError, data: calibrationData }) => {
         if (calibrationError) {
-          restErrorChecker.checkAndSendError({ response, error: calibrationError });
+          restErrorChecker.checkAndSendError({ response, error: calibrationError, sentData: request.body.data });
 
           return;
         }

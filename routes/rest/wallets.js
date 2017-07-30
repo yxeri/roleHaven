@@ -21,6 +21,7 @@ const objectValidator = require('../../utils/objectValidator');
 const walletManager = require('../../managers/wallets');
 const transactionManager = require('../../managers/transactions');
 const restErrorChecker = require('../../helpers/restErrorChecker');
+const errorCreator = require('../../objects/error/errorCreator');
 
 const router = new express.Router();
 
@@ -101,13 +102,7 @@ function handle(io) {
    */
   router.get('/:owner', (request, response) => {
     if (!objectValidator.isValidData(request.params, { owner: true })) {
-      response.status(400).json({
-        error: {
-          status: 400,
-          title: 'Missing data',
-          detail: 'Unable to parse data',
-        },
-      });
+      restErrorChecker.checkAndSendError({ response, error: new errorCreator.InvalidData({ expected: '' }), sentData: request.body.data });
 
       return;
     }
@@ -164,23 +159,11 @@ function handle(io) {
    */
   router.post('/:owner/increase', (request, response) => {
     if (!objectValidator.isValidData(request.params, { owner: true })) {
-      response.status(400).json({
-        error: {
-          status: 400,
-          title: 'Missing data',
-          detail: 'Unable to parse data',
-        },
-      });
+      restErrorChecker.checkAndSendError({ response, error: new errorCreator.InvalidData({ expected: '' }), sentData: request.body.data });
 
       return;
     } else if (!objectValidator.isValidData(request.body, { data: { amount: true } })) {
-      response.status(400).json({
-        error: {
-          status: 400,
-          title: 'Missing data',
-          detail: 'Unable to parse data',
-        },
-      });
+      restErrorChecker.checkAndSendError({ response, error: new errorCreator.InvalidData({ expected: '' }), sentData: request.body.data });
 
       return;
     }
@@ -238,23 +221,11 @@ function handle(io) {
    */
   router.post('/:owner/decrease', (request, response) => {
     if (!objectValidator.isValidData(request.params, { owner: true })) {
-      response.status(400).json({
-        error: {
-          status: 400,
-          title: 'Missing data',
-          detail: 'Unable to parse data',
-        },
-      });
+      restErrorChecker.checkAndSendError({ response, error: new errorCreator.InvalidData({ expected: '' }), sentData: request.body.data });
 
       return;
     } else if (!objectValidator.isValidData(request.body, { data: { amount: true } })) {
-      response.status(400).json({
-        error: {
-          status: 400,
-          title: 'Missing data',
-          detail: 'Unable to parse data',
-        },
-      });
+      restErrorChecker.checkAndSendError({ response, error: new errorCreator.InvalidData({ expected: '' }), sentData: request.body.data });
 
       return;
     }
@@ -303,13 +274,7 @@ function handle(io) {
    */
   router.post('/:owner/empty', (request, response) => {
     if (!objectValidator.isValidData(request.params, { owner: true })) {
-      response.status(400).json({
-        error: {
-          status: 400,
-          title: 'Missing data',
-          detail: 'Unable to parse data',
-        },
-      });
+      restErrorChecker.checkAndSendError({ response, error: new errorCreator.InvalidData({ expected: '' }), sentData: request.body.data });
 
       return;
     }
@@ -369,13 +334,7 @@ function handle(io) {
    */
   router.get('/:owner/transactions', (request, response) => {
     if (!objectValidator.isValidData(request.params, { owner: true })) {
-      response.status(400).json({
-        error: {
-          status: 400,
-          title: 'Missing data',
-          detail: 'Unable to parse data',
-        },
-      });
+      restErrorChecker.checkAndSendError({ response, error: new errorCreator.InvalidData({ expected: '' }), sentData: request.body.data });
 
       return;
     }
@@ -452,13 +411,7 @@ function handle(io) {
    */
   router.post('/:owner/transactions', (request, response) => {
     if (!objectValidator.isValidData(request.body, { data: { transaction: { to: true, amount: true } } }) || isNaN(request.body.data.transaction.amount)) {
-      response.status(400).json({
-        error: {
-          status: 400,
-          title: 'Missing data',
-          detail: 'Unable to parse data',
-        },
-      });
+      restErrorChecker.checkAndSendError({ response, error: new errorCreator.InvalidData({ expected: '' }), sentData: request.body.data });
 
       return;
     }

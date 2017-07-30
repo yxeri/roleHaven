@@ -20,6 +20,7 @@ const express = require('express');
 const objectValidator = require('../../utils/objectValidator');
 const authenticator = require('../../helpers/authenticator');
 const restErrorChecker = require('../../helpers/restErrorChecker');
+const errorCreator = require('../../objects/error/errorCreator');
 
 const router = new express.Router();
 
@@ -60,13 +61,7 @@ function handle() {
    */
   router.post('/', (request, response) => {
     if (!objectValidator.isValidData(request.body, { data: { user: { userName: true, password: true } } })) {
-      response.status(400).json({
-        error: {
-          status: 400,
-          title: 'Missing data',
-          detail: 'Unable to parse data',
-        },
-      });
+      restErrorChecker({ response, error: new errorCreator.InvalidData({ expected: '' }), sentData: request.body.data });
 
       return;
     }

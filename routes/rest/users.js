@@ -242,7 +242,7 @@ function handle(io) {
    */
   router.get('/:partialName/match', (request, response) => {
     if (!objectValidator.isValidData(request.params, { partialName: true })) {
-      restErrorChecker.checkAndSendError({ response, error: new errorCreator.InvalidData({ expected: '{ partialName }' }) });
+      restErrorChecker.checkAndSendError({ response, error: new errorCreator.InvalidData({ expected: '{ partialName }' }), sentData: request.body.data });
 
       return;
     }
@@ -298,7 +298,7 @@ function handle(io) {
    */
   router.get('/:userName/position', (request, response) => {
     if (!objectValidator.isValidData(request.params, { userName: true })) {
-      restErrorChecker.checkAndSendError({ response, error: new errorCreator.InvalidData({ expected: '{ userName }' }) });
+      restErrorChecker.checkAndSendError({ response, error: new errorCreator.InvalidData({ expected: '{ userName }' }), sentData: request.body.data });
 
       return;
     }
@@ -372,7 +372,7 @@ function handle(io) {
    */
   router.post('/:userName/position', (request, response) => {
     if (!objectValidator.isValidData(request.params, { userName: true }) || !objectValidator.isValidData(request.body, { data: true })) {
-      restErrorChecker.checkAndSendError({ response, error: new errorCreator.InvalidData({ expected: 'params: { userName }, body: { data }' }) });
+      restErrorChecker.checkAndSendError({ response, error: new errorCreator.InvalidData({ expected: 'params: { userName }, body: { data }' }), sentData: request.body.data });
 
       return;
     }
@@ -504,7 +504,7 @@ function handle(io) {
    */
   router.post('/:userName/password/reset', (request, response) => {
     if (!objectValidator.isValidData(request.params, { userName: true })) {
-      restErrorChecker.checkAndSendError({ response, error: new errorCreator.InvalidData({ expected: 'params: { userName }' }) });
+      restErrorChecker.checkAndSendError({ response, error: new errorCreator.InvalidData({ expected: 'params: { userName }' }), sentData: request.body.data });
 
       return;
     }
@@ -558,7 +558,7 @@ function handle(io) {
    */
   router.post('/:userName/password', (request, response) => {
     if (!objectValidator.isValidData(request.body, { data: true }) || !objectValidator.isValidData(request.params, { userName: true })) {
-      restErrorChecker.checkAndSendError({ response, error: new errorCreator.InvalidData({ expected: 'params: { userName }, body: { data }' }) });
+      restErrorChecker.checkAndSendError({ response, error: new errorCreator.InvalidData({ expected: 'params: { userName }, body: { data }' }), sentData: request.body.data });
 
       return;
     }
@@ -623,7 +623,7 @@ function handle(io) {
    */
   router.post('/', (request, response) => {
     if (!objectValidator.isValidData(request.body, { data: { user: true } })) {
-      restErrorChecker.checkAndSendError({ response, error: new errorCreator.InvalidData({ expected: 'body: { data: { user } }' }) });
+      restErrorChecker.checkAndSendError({ response, error: new errorCreator.InvalidData({ expected: 'body: { data: { user } }' }), sentData: request.body.data });
 
       return;
     }
@@ -670,7 +670,7 @@ function handle(io) {
    */
   router.get('/:userName', (request, response) => {
     if (!objectValidator.isValidData(request.params, { userName: true })) {
-      restErrorChecker.checkAndSendError({ response, error: new errorCreator.InvalidData({ expected: 'params: { userName }' }) });
+      restErrorChecker.checkAndSendError({ response, error: new errorCreator.InvalidData({ expected: 'params: { userName }' }), sentData: request.body.data });
 
       return;
     }
@@ -725,7 +725,7 @@ function handle(io) {
    */
   router.post('/:userName/rooms/:roomName/follow', (request, response) => {
     if (!objectValidator.isValidData(request.params, { userName: true, roomName: true })) {
-      restErrorChecker.checkAndSendError({ response, error: new errorCreator.InvalidData({ expected: 'params: { userName, roomName }' }) });
+      restErrorChecker.checkAndSendError({ response, error: new errorCreator.InvalidData({ expected: 'params: { userName, roomName }' }), sentData: request.body.data });
 
       return;
     }
@@ -776,7 +776,7 @@ function handle(io) {
    */
   router.post('/:userName/rooms/:roomName/unfollow', (request, response) => {
     if (!objectValidator.isValidData(request.params, { userName: true, roomName: true })) {
-      restErrorChecker.checkAndSendError({ response, error: new errorCreator.InvalidData({ expected: 'params: { userName, roomName }' }) });
+      restErrorChecker.checkAndSendError({ response, error: new errorCreator.InvalidData({ expected: 'params: { userName, roomName }' }), sentData: request.body.data });
 
       return;
     }
@@ -819,7 +819,7 @@ function handle(io) {
    */
   router.get('/:userName/aliases/:partialName/match', (request, response) => {
     if (!objectValidator.isValidData(request.params, { userName: true, partialName: true })) {
-      restErrorChecker.checkAndSendError({ response, error: new errorCreator.InvalidData({ expected: 'params: { userName, partialName }' }) });
+      restErrorChecker.checkAndSendError({ response, error: new errorCreator.InvalidData({ expected: 'params: { userName, partialName }' }), sentData: request.body.data });
 
       return;
     }
@@ -909,13 +909,7 @@ function handle(io) {
    */
   router.post('/:userName/aliases', (request, response) => {
     if (!objectValidator.isValidData(request.body, { data: { alias: true } })) {
-      response.status(400).json({
-        error: {
-          status: 400,
-          title: 'Missing data',
-          detail: 'Unable to parse data',
-        },
-      });
+      restErrorChecker.checkAndSendError({ response, error: new errorCreator.InvalidData({ expected: '' }), sentData: request.body.data });
 
       return;
     }
@@ -966,7 +960,7 @@ function handle(io) {
       userName: request.params.userName,
       callback: ({ error: calibrationError, data: calibrationData }) => {
         if (calibrationError) {
-          restErrorChecker.checkAndSendError({ response, error: calibrationError });
+          restErrorChecker.checkAndSendError({ response, error: calibrationError, sentData: request.body.data });
 
           return;
         }
@@ -1005,13 +999,7 @@ function handle(io) {
    */
   router.post('/:userName/teamInvite', (request, response) => {
     if (!objectValidator.isValidData(request.params, { userName: true })) {
-      response.status(400).json({
-        error: {
-          status: 400,
-          title: 'Missing data',
-          detail: 'Unable to parse data',
-        },
-      });
+      restErrorChecker.checkAndSendError({ response, error: new errorCreator.InvalidData({ expected: '' }), sentData: request.body.data });
 
       return;
     }

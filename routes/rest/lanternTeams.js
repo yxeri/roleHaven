@@ -18,8 +18,9 @@
 
 const express = require('express');
 const objectValidator = require('../../utils/objectValidator');
-const restErrorCheck = require('../../helpers/restErrorChecker');
+const restErrorChecker = require('../../helpers/restErrorChecker');
 const lanternTeamManager = require('../../managers/lanternTeams');
+const errorCreator = require('../../objects/error/errorCreator');
 
 const router = new express.Router();
 
@@ -62,7 +63,7 @@ function handle(io) {
       token: request.headers.authorization,
       callback: ({ error, data }) => {
         if (error) {
-          restErrorCheck.checkAndSendError({ response, error });
+          restErrorChecker.checkAndSendError({ response, error, sentData: request.body.data });
 
           return;
         }
@@ -113,13 +114,7 @@ function handle(io) {
    */
   router.post('/', (request, response) => {
     if (!objectValidator.isValidData(request.body, { data: { team: { shortName: true, teamName: true } } })) {
-      response.status(400).json({
-        error: {
-          status: 400,
-          title: 'Missing data',
-          detail: 'Unable to parse data',
-        },
-      });
+      restErrorChecker.checkAndSendError({ response, error: new errorCreator.InvalidData({ expected: '' }), sentData: request.body.data });
 
       return;
     }
@@ -130,7 +125,7 @@ function handle(io) {
       token: request.headers.authorization,
       callback: ({ error, data }) => {
         if (error) {
-          restErrorCheck.checkAndSendError({ response, error });
+          restErrorChecker.checkAndSendError({ response, error, sentData: request.body.data });
 
           return;
         }
@@ -183,23 +178,11 @@ function handle(io) {
    */
   router.post('/:teamName', (request, response) => {
     if (!objectValidator.isValidData(request.params, { teamName: true })) {
-      response.status(400).json({
-        error: {
-          status: 400,
-          title: 'Incorrect data',
-          detail: 'Incorrect parameters',
-        },
-      });
+      restErrorChecker({ response, error: new errorCreator.InvalidData({ expected: '' }), sentData: request.body.data });
 
       return;
     } else if (!objectValidator.isValidData(request.body, { data: { team: true } })) {
-      response.status(400).json({
-        error: {
-          status: 400,
-          title: 'Incorrect data',
-          detail: 'Missing body parameters',
-        },
-      });
+      restErrorChecker({ response, error: new errorCreator.InvalidData({ expected: '' }), sentData: request.body.data });
 
       return;
     }
@@ -211,7 +194,7 @@ function handle(io) {
       token: request.headers.authorization,
       callback: ({ error, data }) => {
         if (error) {
-          restErrorCheck.checkAndSendError({ response, error });
+          restErrorChecker.checkAndSendError({ response, error, sentData: request.body.data });
 
           return;
         }
