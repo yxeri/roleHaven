@@ -151,7 +151,7 @@ function matchPartial({ callback, partialName, queryType, filter, sort, user, ty
  * @param {Function} params.callback Callback
  */
 function dropDatabase({ callback }) {
-  if (appConfig.mode === 'test') {
+  if (appConfig.mode === appConfig.Modes.TEST || appConfig.mode === appConfig.Modes.DEV) {
     mongoose.connection.dropDatabase((error) => {
       if (error) {
         callback({ error: 'Failed to drop test db', errorObject: error });

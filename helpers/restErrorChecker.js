@@ -16,7 +16,7 @@ function checkAndSendError({ response, error, title, detail, sentData }) {
     detail: detail || 'Internal server error',
   };
 
-  if ((appConfig.mode === appConfig.Modes.TEST || appConfig.mode === appConfig.Modes.DEV) && sentData) { sendError.data = sentData; }
+  if ((appConfig.mode === appConfig.Modes.TEST || appConfig.mode === appConfig.Modes.DEV) && sentData) { sendError.sentData = sentData; }
 
   switch (error.type) {
     case errorCreator.ErrorTypes.DOESNOTEXIST: {

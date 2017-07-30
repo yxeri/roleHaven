@@ -34,7 +34,7 @@ function checkKeys(data, expected, options) {
     const expectedKey = expectedKeys[i];
 
     if ((!data[expectedKey] || data[expectedKey] === null) && typeof data[expectedKey] !== 'boolean') {
-      if (options.verbose && appConfig.mode !== 'test') {
+      if (options.verbose || appConfig.verboseError) {
         winston.error('Validation error', `Key missing: ${expectedKey}`);
       }
 
@@ -65,14 +65,14 @@ function isValidData(data, expected, options = {}) {
   validationOptions.verbose = typeof validationOptions.verbose === 'undefined' ? true : validationOptions.verbose;
 
   if ((!data || data === null) || (!expected || expected === null)) {
-    if (validationOptions.verbose && appConfig.mode !== 'test') { winston.error('Validation error', 'Data and expected structure have to be set'); }
+    if (validationOptions.verbose || appConfig.verboseError) { winston.error('Validation error', 'Data and expected structure have to be set'); }
 
     return false;
   }
 
   const isValid = checkKeys(data, expected, validationOptions);
 
-  if (!isValid && validationOptions.verbose && appConfig.mode !== 'test') {
+  if (!isValid && (validationOptions.verbose || appConfig.verboseError)) {
     winston.error('Validation error', `Expected: ${JSON.stringify(expected)}`);
   }
 

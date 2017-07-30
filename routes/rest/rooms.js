@@ -56,7 +56,7 @@ function handle(io) {
       token: request.headers.authorization,
       callback: ({ error, data }) => {
         if (error) {
-          restErrorChecker.checkAndSendError({ response, error });
+          restErrorChecker.checkAndSendError({ response, error, sentData: request.body.data });
 
           return;
         }
@@ -117,7 +117,7 @@ function handle(io) {
       roomName: request.params.roomName,
       callback: ({ error, data }) => {
         if (error) {
-          restErrorChecker.checkAndSendError({ response, error });
+          restErrorChecker.checkAndSendError({ response, error, sentData: request.body.data });
 
           return;
         }
@@ -171,8 +171,8 @@ function handle(io) {
    *    }
    *  }
    */
-  router.post('/', (require, response) => {
-    if (!objectValidator.isValidData(require.body, { data: { room: { roomName: true } } })) {
+  router.post('/', (request, response) => {
+    if (!objectValidator.isValidData(request.body, { data: { room: { roomName: true } } })) {
       response.status(400).json({
         error: {
           status: 400,
@@ -185,11 +185,11 @@ function handle(io) {
     }
 
     roomManager.createRoom({
-      token: require.headers.authorization,
-      room: require.body.data.room,
+      token: request.headers.authorization,
+      room: request.body.data.room,
       callback: ({ error, data }) => {
         if (error) {
-          restErrorChecker.checkAndSendError({ response, error });
+          restErrorChecker.checkAndSendError({ response, error, sentData: request.body.data });
 
           return;
         }
@@ -242,7 +242,7 @@ function handle(io) {
       partialName: request.params.partialName,
       callback: ({ error, data }) => {
         if (error) {
-          restErrorChecker.checkAndSendError({ response, error });
+          restErrorChecker.checkAndSendError({ response, error, sentData: request.body.data });
 
           return;
         }
@@ -295,7 +295,7 @@ function handle(io) {
       partialName: request.params.roomName,
       callback: ({ error, data }) => {
         if (error) {
-          restErrorChecker.checkAndSendError({ response, error });
+          restErrorChecker.checkAndSendError({ response, error, sentData: request.body.data });
 
           return;
         }
@@ -355,7 +355,7 @@ function handle(io) {
       rooms: [request.params.roomName],
       callback: ({ error, data }) => {
         if (error) {
-          restErrorChecker.checkAndSendError({ response, error });
+          restErrorChecker.checkAndSendError({ response, error, sentData: request.body.data });
 
           return;
         }
@@ -439,7 +439,7 @@ function handle(io) {
         token,
         callback: ({ data, error }) => {
           if (error) {
-            restErrorChecker.checkAndSendError({ response, error });
+            restErrorChecker.checkAndSendError({ response, error, sentData: request.body.data });
 
             return;
           }
