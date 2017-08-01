@@ -183,7 +183,6 @@ function handle(io) {
    * @apiDescription Create game code
    *
    * @apiParam {string} userName Name of the user
-   * @apiParam {string}
    *
    * @apiSuccess {Object} data
    * @apiSuccess {Object[]} data.gameCode New game code
@@ -532,7 +531,7 @@ function handle(io) {
    *
    * @apiHeader {string} Authorization Your JSON Web Token
    *
-   * @apiDescription
+   * @apiDescription Update user password
    *
    * @apiParam {string} userName User name of the user that will receive a new password
    *
