@@ -85,11 +85,6 @@ function authUserToRoom({ user, roomName, callback, password }) {
       return;
     }
 
-    console.log('sent user', user);
-    console.log('sent roomname', roomName);
-    console.log('sent password', password);
-    console.log('found', foundRoom);
-
     if (!foundRoom) {
       callback({ data: { isAllowed: false } });
 

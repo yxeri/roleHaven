@@ -19,8 +19,6 @@
 const express = require('express');
 const lanternRoundManager = require('../../managers/lanternRounds');
 const restErrorChecker = require('../../helpers/restErrorChecker');
-const objectValidator = require('../../utils/objectValidator');
-const errorCreator = require('../../objects/error/errorCreator');
 
 const router = new express.Router();
 

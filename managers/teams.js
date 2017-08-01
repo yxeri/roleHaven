@@ -624,6 +624,12 @@ function getTeamInvitations({ token, callback }) {
   });
 }
 
+/**
+ * Decline team invitation
+ * @param {Object} params.invitation Invitation to remove
+ * @param {string} params.token jwt
+ * @param {Function} params.callback Callback
+ */
 function declineTeamInvitation({ invitation, token, callback }) {
   authenticator.isUserAllowed({
     token,

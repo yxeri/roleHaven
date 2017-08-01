@@ -163,8 +163,6 @@ function sendAndStoreChatMsg({ user, callback, message, io, socket }) {
             newMessage.time.setSeconds(0);
           }
 
-          console.log('sending', data);
-
           if (socket) {
             socket.broadcast.to(newMessage.roomName).emit('chatMsg', { data });
           } else {
@@ -248,7 +246,6 @@ function sendChatMsg({ token, image, message, io, socket, callback = () => {} })
       const user = data.user;
 
       const sendMessage = ({ newMessage }) => {
-        console.log('messenger', newMessage);
         if (newMessage.userName) {
           dbUser.getUserByAlias({
             alias: newMessage.userName,
@@ -286,8 +283,6 @@ function sendChatMsg({ token, image, message, io, socket, callback = () => {} })
           socket,
           message: modifiedMessage,
         });
-
-        return;
       };
 
       const newMessage = message;
