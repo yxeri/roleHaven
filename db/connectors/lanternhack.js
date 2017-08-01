@@ -195,11 +195,11 @@ function updateLanternRound({ startTime, endTime, callback }) {
   const options = { new: true };
 
   if (startTime) {
-    update.$set.startTime = startTime;
+    update.$set.startTime = new Date(startTime);
   }
 
   if (endTime) {
-    update.$set.endTime = endTime;
+    update.$set.endTime = new Date(endTime);
   }
 
   LanternRound.findOneAndUpdate(query, update, options).lean().exec((err, updatedRound) => {
@@ -228,7 +228,7 @@ function startLanternRound({ endTime, callback }) {
   const options = { new: true };
 
   if (endTime) {
-    update.$set.endTime = endTime;
+    update.$set.endTime = new Date(endTime);
   }
 
   LanternRound.findOneAndUpdate(query, update, options).lean().exec((err, updatedRound) => {
@@ -257,7 +257,7 @@ function endLanternRound({ startTime, callback }) {
   const options = { new: true };
 
   if (startTime) {
-    update.$set.startTime = startTime;
+    update.$set.startTime = new Date(startTime);
   }
 
   LanternRound.findOneAndUpdate(query, update, options).lean().exec((err, updatedRound) => {

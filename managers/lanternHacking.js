@@ -67,66 +67,70 @@ function postRequest({ host, path, data, callback }) {
  * @param {Function} params.callback Callback
  */
 function resetStations({ callback = () => {} }) {
-  dbLanternHack.getAllStations({
-    callback: ({ error, data }) => {
-      if (error) {
-        callback({ error });
+  dbLanternHack.getLanternRound({
+    callback: () => {
+      dbLanternHack.getAllStations({
+        callback: ({ error, data }) => {
+          if (error) {
+            callback({ error });
 
-        return;
-      }
-
-      const { stations } = data;
-
-      stations.forEach((station) => {
-        const signalValue = station.signalValue;
-        const stationId = station.stationId;
-        let newSignalValue = signalValue;
-
-        if (signalValue !== signalDefault) {
-          if (signalValue > signalDefault) {
-            newSignalValue -= 1;
-          } else {
-            newSignalValue += 1;
+            return;
           }
 
-          dbLanternHack.updateSignalValue({
-            stationId,
-            signalValue: newSignalValue,
-            callback: ({ error: updateError }) => {
-              if (updateError) {
-                callback({ error: updateError });
+          const { stations } = data;
 
-                return;
+          stations.forEach((station) => {
+            const signalValue = station.signalValue;
+            const stationId = station.stationId;
+            let newSignalValue = signalValue;
+
+            if (signalValue !== signalDefault) {
+              if (signalValue > signalDefault) {
+                newSignalValue -= 1;
+              } else {
+                newSignalValue += 1;
               }
 
-              if (appConfig.hackingApiHost && appConfig.hackingApiKey) {
-                postRequest({
-                  host: appConfig.hackingApiHost,
-                  path: '/reports/set_boost',
-                  data: {
-                    station: stationId,
-                    boost: newSignalValue,
-                    key: appConfig.hackingApiKey,
-                  },
-                  callback: () => {
-                  },
-                });
-              }
-            },
+              dbLanternHack.updateSignalValue({
+                stationId,
+                signalValue: newSignalValue,
+                callback: ({ error: updateError }) => {
+                  if (updateError) {
+                    callback({ error: updateError });
+
+                    return;
+                  }
+
+                  if (appConfig.hackingApiHost && appConfig.hackingApiKey) {
+                    postRequest({
+                      host: appConfig.hackingApiHost,
+                      path: '/reports/set_boost',
+                      data: {
+                        station: stationId,
+                        boost: newSignalValue,
+                        key: appConfig.hackingApiKey,
+                      },
+                      callback: () => {
+                      },
+                    });
+                  }
+                },
+              });
+            }
           });
-        }
+        },
       });
+
+      if (appConfig.signalResetTimeout !== 0) {
+        if (resetInterval === null) {
+          resetInterval = setInterval(resetStations, appConfig.signalResetTimeout, {});
+        } else {
+          clearInterval(resetInterval);
+          resetInterval = setInterval(resetStations, appConfig.signalResetTimeout, {});
+        }
+      }
     },
   });
-
-  if (appConfig.signalResetTimeout !== 0) {
-    if (resetInterval === null) {
-      resetInterval = setInterval(resetStations, appConfig.signalResetTimeout);
-    } else {
-      clearInterval(resetInterval);
-      resetInterval = setInterval(resetStations, appConfig.signalResetTimeout);
-    }
-  }
 }
 
 /**
@@ -446,13 +450,11 @@ function getLanternHack({ stationId, token, callback }) {
             return;
           }
 
-          const lanternHack = lanternHackData.lanternHack;
-
           /**
            * Generates a new hack if the chosen station is different from the users previous choice
            * Different users + passwords are connected to specific stations
            */
-          if (lanternHack.stationId !== stationId) {
+          if (!lanternHackData || lanternHackData.lanternHack.stationId !== stationId) {
             createLanternHack({
               stationId,
               owner: user.userName,
@@ -483,7 +485,7 @@ function getLanternHack({ stationId, token, callback }) {
           }
 
           createHackData({
-            lanternHack,
+            lanternHack: lanternHackData.lanternHack,
             callback: ({ error: hackDataErr, data: hackData }) => {
               if (hackDataErr) {
                 callback({ error: hackDataErr });
