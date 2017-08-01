@@ -127,7 +127,7 @@ function endLanternRound({ startTime, io, token, callback }) {
  * @param {string} params.token jwt
  * @param {Function} params.callback Callback
  */
-function updateLanternRound({ io, token, startTime, endTime, callback }) {
+function updateLanternRound({ io, token, startTime, endTime, isActive, callback }) {
   authenticator.isUserAllowed({
     token,
     commandName: dbConfig.apiCommands.StartLanternRound.name,
@@ -141,6 +141,7 @@ function updateLanternRound({ io, token, startTime, endTime, callback }) {
       dbLanternHack.updateLanternRound({
         startTime,
         endTime,
+        isActive,
         callback: ({ error: roundError, data }) => {
           if (roundError) {
             callback({ error: roundError });

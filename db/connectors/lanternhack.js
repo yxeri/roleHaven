@@ -189,7 +189,7 @@ function updateSignalValue({ stationId, signalValue, callback }) {
  * @param {Date} params.endTime End time
  * @param {Function} params.callback Callback
  */
-function updateLanternRound({ startTime, endTime, callback }) {
+function updateLanternRound({ startTime, endTime, isActive, callback }) {
   const query = {};
   const update = { $set: {} };
   const options = { new: true };
@@ -200,6 +200,10 @@ function updateLanternRound({ startTime, endTime, callback }) {
 
   if (endTime) {
     update.$set.endTime = endTime;
+  }
+
+  if (typeof isActive !== 'undefined') {
+    update.$set.isActive = isActive;
   }
 
   LanternRound.findOneAndUpdate(query, update, options).lean().exec((err, updatedRound) => {
