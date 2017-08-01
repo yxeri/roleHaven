@@ -85,41 +85,12 @@ function handle(socket, io) {
   });
 
   socket.on('verifyUser', ({ key }, callback = () => {}) => {
-    // TODO verify user
-    callback(key, callback);
-    // if (!objectValidator.isValidData({ key }, { key: true })) {
-    //   callback({ error: new errorCreator.InvalidData({ expected: '{ key }' }) });
-    //
-    //   return;
-    // }
-    //
-    // dbMailEvent.getMailEventByKey({
-    //   key,
-    //   callback: ({ error, data }) => {
-    //     if (error) {
-    //       callback({ error });
-    //
-    //       return;
-    //     }
-    //
-    //     dbUser.verifyUser({
-    //       userName: data.event.owner,
-    //       callback: (verifyData) => {
-    //         if (verifyData.error) {
-    //           callback({ error: verifyData.error });
-    //
-    //           return;
-    //         }
-    //
-    //         const user = verifyData.data.verified;
-    //
-    //         dbMailEvent.removeMailEvent({ key, callback: () => {} });
-    //         callback({ data: { userName: user.userName } });
-    //         socket.broadcast.emit('users', { user: [{ userName: user.userName }] });
-    //       },
-    //     });
-    //   },
-    // });
+    userManager.verifyUser({
+      key,
+      callback,
+      socket,
+      io,
+    });
   });
 
   socket.on('register', ({ user }, callback = () => {}) => {

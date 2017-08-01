@@ -23,11 +23,26 @@ const teamManager = require('../../managers/teams');
  * @param {object} io - Socket.IO
  */
 function handle(socket, io) {
+  socket.on('getTeamInvitations', ({ token }, callback = () => {}) => {
+    teamManager.getTeamInvitations({
+      token,
+      callback,
+    });
+  });
+
   socket.on('inviteToTeam', ({ to, token }, callback = () => {}) => {
     teamManager.inviteToTeam({
       to,
       socket,
       io,
+      token,
+      callback,
+    });
+  });
+
+  socket.on('declineTeamInvitation', ({ invitation, token }, callback = () => {}) => {
+    teamManager.declineTeamInvitation({
+      invitation,
       token,
       callback,
     });
@@ -47,6 +62,17 @@ function handle(socket, io) {
     teamManager.getTeam({
       teamName,
       token,
+      callback,
+    });
+  });
+
+  // function createTeam({ team, socket, io, callback, token }) {
+  socket.on('createTeam', ({ team, token }, callback = () => {}) => {
+    teamManager.createTeam({
+      team,
+      token,
+      socket,
+      io,
       callback,
     });
   });

@@ -116,11 +116,11 @@ function handle(io) {
     }
 
     docFileManager.getDocFile({
-      docFile: { docFileId: request.params.docFileId },
+      docFileId: request.params.docFileId,
       token: request.headers.authorization,
       callback: ({ error, data }) => {
         if (error) {
-          restErrorChecker.checkAndSendError.checkAndSendError({ response, error, sentData: request.body.data });
+          restErrorChecker.checkAndSendError({ response, error, sentData: request.body.data });
 
           return;
         }

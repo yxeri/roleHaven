@@ -18,8 +18,6 @@
 
 const roomManager = require('../../managers/rooms');
 const messenger = require('../../helpers/messenger');
-const authenticator = require('../../helpers/authenticator');
-const dbConfig = require('../../config/defaults/config').databasePopulation;
 
 /**
  * @param {object} socket - Socket.IO socket
@@ -64,30 +62,30 @@ function handle(socket, io) {
     });
   });
   socket.on('authUserToRoom', ({ room, token }, callback = () => {}) => {
-    authenticator.isUserAllowed({
+    roomManager.authUserToRoom({
+      room,
       token,
-      commandName: dbConfig.apiCommands.GetRoom.name,
-      callback: ({ error, data }) => {
-        if (error) {
-          callback({ error });
-
-          return;
-        }
-
-        roomManager.authUserToRoom({
-          room,
-          callback,
-          user: data.user,
-        });
-      },
+      callback,
     });
   });
-  socket.on('follow', ({ room, token }, callback = () => {}) => {
+  socket.on('followWhisperRoom', ({ token, sender, whisperTo, room }, callback = () => {}) => {
+    roomManager.followWhisperRoom({
+      token,
+      sender,
+      whisperTo,
+      room,
+      socket,
+      io,
+      callback,
+    });
+  });
+  socket.on('follow', ({ user, room, token }, callback = () => {}) => {
     roomManager.followRoom({
       token,
       socket,
       io,
       room,
+      user,
       callback,
     });
   });
@@ -108,13 +106,14 @@ function handle(socket, io) {
       callback,
     });
   });
-  socket.on('getHistory', ({ room, token }, callback = () => {}) => {
+  socket.on('getHistory', ({ roomName, whisperTo, token }, callback = () => {}) => {
     roomManager.getHistory({
       token,
-      callback,
       socket,
       io,
-      rooms: [room.roomName],
+      callback,
+      roomName,
+      whisperTo,
     });
   });
   socket.on('removeRoom', ({ room, token }, callback = () => {}) => {

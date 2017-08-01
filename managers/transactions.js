@@ -16,7 +16,6 @@
 
 'use strict';
 
-const dbUser = require('../db/connectors/user');
 const dbWallet = require('../db/connectors/wallet');
 const appConfig = require('../config/defaults/config').app;
 const dbConfig = require('../config/defaults/config').databasePopulation;
@@ -112,15 +111,15 @@ function getTransactions({ owner, token, callback }) {
 
 /**
  * Create transaction
- * @param {string} [params.senderName] Name of the currency sender
- * @param {Object} [params.user] User of the sender. Will be used if senderName is not set
+ * @param {Object} [params.user] User of the sender
  * @param {Object} params.transaction Transaction to create
- * @param {Object} params.io Socket io
- * @param {boolean} [params.emitToSender] Should an event be sent to sender?
- * @param {boolean} [param.sfromTeam] Is the transaction made from a team?
+ * @param {Object} [params.socket] Socket io
+ * @param {Object} params.io Socket io. Used if socket is not set
+ * @param {boolean} [params.fromTeam] Is the transaction made from a team?
+ * @param {boolean} [params.toTeam] Is the transaction made to a team?
  * @param {Function} callback Callback
  */
-function createTransaction({ senderName, user, transaction, io, emitToSender, fromTeam, callback }) {
+function createTransaction({ user, transaction, io, fromTeam, socket, callback }) {
   if (fromTeam && !user.team) {
     callback({ error: new errorCreator.DoesNotExist({ name: 'not part of team' }) });
 
@@ -135,14 +134,18 @@ function createTransaction({ senderName, user, transaction, io, emitToSender, fr
     return;
   }
 
+  const toTeam = transaction.to.indexOf(appConfig.teamAppend) > -1;
+  const fromRoom = fromTeam ? user.team + appConfig.teamAppend : user.userName + appConfig.whisperAppend;
+  const toRoom = toTeam ? transaction.to : transaction.to + appConfig.whisperAppend;
   const newTransaction = transaction;
   newTransaction.amount = Math.abs(newTransaction.amount);
   newTransaction.time = new Date();
+  newTransaction.from = fromTeam ? user.team + appConfig.teamAppend : user.userName;
 
-  if (senderName) {
-    newTransaction.from = senderName;
-  } else {
-    newTransaction.from = fromTeam ? user.team + appConfig.teamAppend : user.userName;
+  if (newTransaction.from === newTransaction.to) {
+    callback({ error: new errorCreator.InvalidData({ name: 'send to same' }) });
+
+    return;
   }
 
   dbWallet.getWallet({
@@ -152,7 +155,7 @@ function createTransaction({ senderName, user, transaction, io, emitToSender, fr
         callback({ error: walletData.error });
 
         return;
-      } else if (walletData.data.wallet.amount - newTransaction.amount <= 0) {
+      } else if (walletData.data.wallet.amount - newTransaction.amount < 0) {
         callback({ error: new errorCreator.NotAllowed({ name: 'transfer too much' }) });
 
         return;
@@ -192,103 +195,46 @@ function createTransaction({ senderName, user, transaction, io, emitToSender, fr
                   const { wallet: increasedWallet } = increasedWalletData.data;
                   const { wallet: decreasedWallet } = decreasedWalletData.data;
 
-                  callback({ data: { transaction, wallet: decreasedWallet } });
-
-                  if (fromTeam) {
-                    io.to(createdTransaction.to).emit('transaction', {
-                      data: {
-                        transaction: createdTransaction,
-                        wallet: increasedWallet,
-                      },
-                    });
-                    io.to(createdTransaction.from).emit('transaction', {
+                  if (socket) {
+                    socket.broadcast.to(fromRoom).emit('transaction', {
                       data: {
                         transaction: createdTransaction,
                         wallet: decreasedWallet,
                       },
                     });
 
-                    return;
-                  }
-
-                  if (createdTransaction.to.indexOf(appConfig.teamAppend) > -1) {
-                    io.to(createdTransaction.to).emit('transaction', {
+                    socket.broadcast.to(toRoom).emit('transaction', {
+                      data: {
+                        transaction: createdTransaction,
+                        wallet: increasedWallet,
+                      },
+                    });
+                  } else {
+                    io.to(toRoom).emit('transaction', {
                       data: {
                         transaction: createdTransaction,
                         wallet: increasedWallet,
                       },
                     });
 
-                    if (emitToSender) {
-                      dbUser.getUserByAlias({
-                        alias: senderName || user.userName,
-                        callback: ({ error: senderError, data: senderData }) => {
-                          if (senderError) {
-                            callback({ error: senderError });
-
-                            return;
-                          }
-
-                          if (senderData.socketId) {
-                            io.to(senderData.socketId).emit('transaction', {
-                              data: {
-                                transaction: createdTransaction,
-                                wallet: decreasedWallet,
-                              },
-                            });
-                          }
-                        },
-                      });
-                    }
-
-                    return;
+                    io.to(fromRoom).emit('transaction', {
+                      data: {
+                        transaction: createdTransaction,
+                        wallet: decreasedWallet,
+                      },
+                    });
                   }
 
-                  dbUser.getUserByAlias({
-                    alias: createdTransaction.to,
-                    callback: (aliasData) => {
-                      if (aliasData.error) {
-                        callback({ error: aliasData.error });
+                  const dataToSend = {
+                    transaction,
+                    wallet: decreasedWallet,
+                  };
 
-                        return;
-                      }
+                  if (user.team && createdTransaction.to === user.team + appConfig.teamAppend) {
+                    dataToSend.toWallet = increasedWallet;
+                  }
 
-                      const { user: receiver } = aliasData.data;
-
-                      if (receiver.socketId !== '') {
-                        io.to(receiver.socketId).emit('transaction', {
-                          data: {
-                            transaction: createdTransaction,
-                            wallet: increasedWallet,
-                          },
-                        });
-                      }
-
-                      if (emitToSender) {
-                        dbUser.getUserByAlias({
-                          alias: user.userName,
-                          callback: (senderData) => {
-                            if (senderData.error) {
-                              callback({ error: senderData.error });
-
-                              return;
-                            }
-
-                            const { user: sender } = senderData.data;
-
-                            if (sender.socketId) {
-                              io.to(sender.socketId).emit('transaction', {
-                                data: {
-                                  transaction: createdTransaction,
-                                  wallet: decreasedWallet,
-                                },
-                              });
-                            }
-                          },
-                        });
-                      }
-                    },
-                  });
+                  callback({ data: dataToSend });
                 },
               });
             },
@@ -300,15 +246,14 @@ function createTransaction({ senderName, user, transaction, io, emitToSender, fr
 }
 
 /**
- *
+ * Create transaction based on jwt token
  * @param {Object} params.transaction New transaction
- * @param {Object} params.io Socket.io io
- * @param {boolean} [params.fromTeam] Is the transaction made by a team?
- * @param {boolean} [params.emitToSender] Should event be emitted to sender?
- * @param {Object} [params.fromUser] Uses
+ * @param {Object} params.io Socket.io. Will be used if socket is not set
+ * @param {boolean} params.fromTeam Is the transaction made by a team?
+ * @param {Object} [params.socket] Socket.io
  * @param {Function} params.callback Callback
  */
-function createTransactionBasedOnToken({ transaction, io, emitToSender, fromTeam, token, callback }) {
+function createTransactionBasedOnToken({ transaction, io, socket, fromTeam, token, callback }) {
   authenticator.isUserAllowed({
     token,
     commandName: dbConfig.apiCommands.CreateTransaction.name,
@@ -322,9 +267,9 @@ function createTransactionBasedOnToken({ transaction, io, emitToSender, fromTeam
       createTransaction({
         transaction,
         io,
-        emitToSender,
-        fromTeam,
+        socket,
         callback,
+        fromTeam,
         user: data.user,
       });
     },

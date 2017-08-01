@@ -69,7 +69,10 @@ function getUserWallets({ user, callback }) {
   const query = {
     $or: [
       { owner: user.userName },
-      { team: user.team },
+      { $and: [
+        { team: { $exists: true } },
+        { team: user.team },
+      ] },
     ],
   };
 

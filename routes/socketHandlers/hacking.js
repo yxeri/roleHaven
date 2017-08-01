@@ -127,11 +127,18 @@ function createSignalBlock({ token, description, socket, callback }) {
 
                           if (hackedUser.userName !== allowedUser.userName) {
                             socket.to(hackedUser.userName + appConfig.whisperAppend).emit('signalBlock', {
-                              blockedBy: allowedUser.userName,
-                              position: newPosition,
+                              data: {
+                                blockedBy: allowedUser.userName,
+                                position: newPosition,
+                              },
                             });
                           } else {
-                            socket.emit('signalBlock', { blockedBy: allowedUser.userName, position: newPosition });
+                            socket.emit('signalBlock', {
+                              data: {
+                                blockedBy: allowedUser.userName,
+                                position: newPosition,
+                              },
+                            });
                           }
 
                           dbUser.updateUserBlockedBy({
@@ -145,8 +152,10 @@ function createSignalBlock({ token, description, socket, callback }) {
                   });
 
                   socket.broadcast.to(databasePopulation.rooms.public.roomName).emit('mapPositions', {
-                    positions: [newPosition],
-                    currentTime: new Date(),
+                    data: {
+                      positions: [newPosition],
+                      currentTime: new Date(),
+                    },
                   });
 
                   callback({ data: { position: newPosition } });
@@ -157,8 +166,10 @@ function createSignalBlock({ token, description, socket, callback }) {
                       positionName: blockPosition.positionName,
                       callback: () => {
                         socket.broadcast.to(databasePopulation.rooms.public.roomName).emit('mapPositions', {
-                          positions: [newPosition],
-                          shouldRemove: true,
+                          data: {
+                            positions: [newPosition],
+                            shouldRemove: true,
+                          },
                         });
 
                         blockedUsers.forEach((blockedUser) => {
@@ -178,13 +189,17 @@ function createSignalBlock({ token, description, socket, callback }) {
 
                               if (removeUser.userName !== allowedUser.userName) {
                                 socket.to(removeUser.userName + appConfig.whisperAppend).emit('signalBlock', {
-                                  blockedBy: allowedUser.userName,
-                                  removeBlocker: true,
+                                  data: {
+                                    blockedBy: allowedUser.userName,
+                                    removeBlocker: true,
+                                  },
                                 });
                               } else {
                                 socket.emit('signalBlock', {
-                                  blockedBy: allowedUser.userName,
-                                  removeBlocker: true,
+                                  data: {
+                                    blockedBy: allowedUser.userName,
+                                    removeBlocker: true,
+                                  },
                                 });
                               }
                             },

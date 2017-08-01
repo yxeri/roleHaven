@@ -21,46 +21,11 @@ const authenticator = require('../helpers/authenticator');
 const dbLanternHack = require('../db/connectors/lanternhack');
 
 /**
- * Get lantern rounds
- * @param {string} params.token jwt
- * @param {Function} params.callback Callback
- */
-function getLanternRounds({ token, callback }) {
-  authenticator.isUserAllowed({
-    token,
-    commandName: dbConfig.apiCommands.GetLanternRound.name,
-    callback: ({ error }) => {
-      if (error) {
-        callback({ error });
-
-        return;
-      }
-
-      dbLanternHack.getLanternRounds({
-        callback: ({ error: roundError, data: roundData }) => {
-          if (roundError) {
-            callback({ error: roundError });
-
-            return;
-          }
-
-          const currentTime = new Date();
-          const rounds = roundData.rounds.filter(round => currentTime >= new Date(round.endTime));
-
-          callback({ data: { rounds } });
-        },
-      });
-    },
-  });
-}
-
-/**
  * Get lantern round
- * @param {number} params.roundId Id of the lantern round to get
  * @param {string} params.token jwt
  * @param {Function} params.callback Callback
  */
-function getLanternRound({ roundId, token, callback }) {
+function getLanternRound({ token, callback }) {
   authenticator.isUserAllowed({
     token,
     commandName: dbConfig.apiCommands.GetLanternRound.name,
@@ -72,85 +37,14 @@ function getLanternRound({ roundId, token, callback }) {
       }
 
       dbLanternHack.getLanternRound({
-        roundId,
-        callback: ({ error: roundError, data: roundData }) => {
+        callback: ({ error: roundError, data }) => {
           if (roundError) {
             callback({ error: roundError });
 
             return;
           }
 
-          callback({ data: roundData });
-        },
-      });
-    },
-  });
-}
-
-/**
- * Get active lantern round
- * @param {string} params.token jwt
- * @param {Function} params.callback Callback
- */
-function getActiveLanternRound({ token, callback }) {
-  authenticator.isUserAllowed({
-    token,
-    commandName: db.apiCommands.GetActiveLanternRound.name,
-    callback: ({ error }) => {
-      if (error) {
-        callback({ error });
-
-        return;
-      }
-
-      dbLanternHack.getActiveLanternRound({
-        callback: ({ error: roundError, data: roundData }) => {
-          if (roundError) {
-            callback({ error: roundError });
-
-            return;
-          }
-
-          const round = roundData;
-          const dataToSend = {
-            round,
-            noActiveRound: typeof round === 'undefined',
-          };
-
-          callback({ data: dataToSend });
-        },
-      });
-    },
-  });
-}
-
-/**
- * Create lantern round
- * @param {Object} params.round Round to create
- * @param {string} params.token jwt
- * @param {Function} params.callback Callback
- */
-function createLanternRound({ round, token, callback }) {
-  authenticator.isUserAllowed({
-    token,
-    commandName: dbConfig.apiCommands.CreateLanternRound.name,
-    callback: ({ error }) => {
-      if (error) {
-        callback({ error });
-
-        return;
-      }
-
-      dbLanternHack.createLanternRound({
-        round,
-        callback: ({ error: lanternError, data: lanternData }) => {
-          if (lanternError) {
-            callback({ error: lanternError });
-
-            return;
-          }
-
-          callback({ data: lanternData });
+          callback({ data });
         },
       });
     },
@@ -163,7 +57,7 @@ function createLanternRound({ round, token, callback }) {
  * @param {string} params.token jwt
  * @param {Function} params.callback Callback
  */
-function startLanternRound({ roundId, token, callback }) {
+function startLanternRound({ io, endTime, token, callback }) {
   authenticator.isUserAllowed({
     token,
     commandName: dbConfig.apiCommands.StartLanternRound.name,
@@ -174,26 +68,18 @@ function startLanternRound({ roundId, token, callback }) {
         return;
       }
 
-      dbLanternHack.getActiveLanternRound({
-        callback: ({ error: activeLanternError }) => {
-          if (activeLanternError) {
-            callback({ error: activeLanternError });
+      dbLanternHack.startLanternRound({
+        endTime,
+        callback: ({ error: startLanternError, data: startLanternData }) => {
+          if (startLanternError) {
+            callback({ error: startLanternError });
 
             return;
           }
 
-          dbLanternHack.startLanternRound({
-            roundId,
-            callback: ({ error: startLanternError, data: startLanternData }) => {
-              if (startLanternError) {
-                callback({ error: startLanternError });
+          io.emit('startLanternRound');
 
-                return;
-              }
-
-              callback({ data: startLanternData });
-            },
-          });
+          callback({ data: startLanternData });
         },
       });
     },
@@ -206,7 +92,7 @@ function startLanternRound({ roundId, token, callback }) {
  * @param {string} params.token jwt
  * @param {Function} params.callback Callback
  */
-function endLanternRound({ io, token, callback }) {
+function endLanternRound({ startTime, io, token, callback }) {
   authenticator.isUserAllowed({
     token,
     commandName: dbConfig.apiCommands.EndLanternRound.name,
@@ -218,17 +104,17 @@ function endLanternRound({ io, token, callback }) {
       }
 
       dbLanternHack.endLanternRound({
-        callback: ({ error: roundError }) => {
+        startTime,
+        callback: ({ error: roundError, data }) => {
           if (roundError) {
             callback({ error: roundError });
 
             return;
           }
 
-          // TODO Emit to clients
           io.emit('endLanternRound');
 
-          callback({ data: { success: true } });
+          callback({ data });
         },
       });
     },
@@ -236,17 +122,15 @@ function endLanternRound({ io, token, callback }) {
 }
 
 /**
- * Update lantern round
- * @param {number} params.roundId Id of the round to update
- * @param {Date} params.startTime Start time of the round
- * @param {Date} params.endTime Ending time of the round
+ * Update lantern round times
+ * @param {Object} params.io socket io
  * @param {string} params.token jwt
  * @param {Function} params.callback Callback
  */
-function updateLanternRound({ roundId, startTime, endTime, token, callback }) {
+function updateLanternRound({ io, token, startTime, endTime, callback }) {
   authenticator.isUserAllowed({
     token,
-    commandName: dbConfig.apiCommands.UpdateLanternRound.name,
+    commandName: dbConfig.apiCommands.StartLanternRound.name,
     callback: ({ error }) => {
       if (error) {
         callback({ error });
@@ -255,29 +139,27 @@ function updateLanternRound({ roundId, startTime, endTime, token, callback }) {
       }
 
       dbLanternHack.updateLanternRound({
-        roundId,
         startTime,
         endTime,
-        callback: ({ error: lanternError, data: lanternData }) => {
-          if (lanternError) {
-            callback({ error: lanternError });
+        callback: ({ error: roundError, data }) => {
+          if (roundError) {
+            callback({ error: roundError });
 
             return;
           }
 
-          // TODO Push to clients, if next round
+          if (endTime) {
+            io.emit('changeLanternRound');
+          }
 
-          callback({ data: lanternData });
+          callback({ data });
         },
       });
     },
   });
 }
 
-exports.getLanternRounds = getLanternRounds;
-exports.getActiveLanternRound = getActiveLanternRound;
-exports.createLanternRound = createLanternRound;
 exports.startLanternRound = startLanternRound;
 exports.endLanternRound = endLanternRound;
-exports.updateLanternRound = updateLanternRound;
 exports.getLanternRound = getLanternRound;
+exports.updateLanternRound = updateLanternRound;

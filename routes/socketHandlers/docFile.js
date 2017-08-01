@@ -28,6 +28,7 @@ function handle(socket, io) {
       docFile,
       token,
       io,
+      socket,
       callback,
     });
   });
@@ -37,13 +38,14 @@ function handle(socket, io) {
       docFile,
       token,
       io,
+      socket,
       callback,
     });
   });
 
-  socket.on('getDocFile', ({ docFile, token }, callback = () => {}) => {
+  socket.on('getDocFile', ({ docFileId, token }, callback = () => {}) => {
     docFileManager.getDocFile({
-      docFile,
+      docFileId,
       token,
       callback,
     });

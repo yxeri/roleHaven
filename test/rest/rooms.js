@@ -30,7 +30,6 @@ const starterData = require('./testData/starter');
 const historyData = require('./testData/histories');
 const historySchemas = require('./schemas/histories');
 const messageData = require('./testData/messages');
-const messageSchemas = require('./schemas/messages');
 
 chai.should();
 
@@ -407,7 +406,7 @@ describe('Rooms', () => {
           .end((error, response) => {
             response.should.have.status(200);
             response.should.be.json;
-            response.body.should.be.jsonSchema(historySchemas.messages);
+            response.body.should.be.jsonSchema(historySchemas.history);
 
             done();
           });
@@ -527,7 +526,7 @@ describe('Rooms', () => {
           .end((error, response) => {
             response.should.have.status(200);
             response.should.be.json;
-            response.body.should.be.jsonSchema(messageSchemas.messages);
+            response.body.should.be.jsonSchema(historySchemas.message);
 
             done();
           });

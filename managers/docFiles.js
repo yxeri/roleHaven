@@ -28,9 +28,11 @@ const objectValidator = require('../utils/objectValidator');
  * Create a docFile
  * @param {Object} params.user User creating doc file
  * @param {Object} params.docFile DocFile to create
+ * @param {Object} [params.socket] Socket io
+ * @param {Object} params.io Socket io. Will be used if socket is not set
  * @param {Function} params.callback Callback
  */
-function createDocFile({ token, io, docFile, callback }) {
+function createDocFile({ token, socket, io, docFile, callback }) {
   authenticator.isUserAllowed({
     token,
     commandName: dbConfig.apiCommands.CreateDocFile.name,
@@ -74,8 +76,19 @@ function createDocFile({ token, io, docFile, callback }) {
             return;
           }
 
-          io.emit('docFile', { docFile: createData.data.docFile });
           callback({ data: { docFile: createData.data.docFile } });
+
+          const docFileToSend = createData.data.docFile;
+
+          if (!docFileToSend.isPublic) {
+            docFileToSend.docFileId = null;
+          }
+
+          if (socket) {
+            socket.broadcast.emit('docFile', { data: { docFile: docFileToSend } });
+          } else {
+            io.emit('docFile', { data: { docFile: docFileToSend } });
+          }
         },
       });
     },
@@ -138,6 +151,8 @@ function updateDocFile({ docFile, socket, io, token, callback }) {
 
                 return;
               }
+
+              // TODO Filter out information
 
               if (socket) {
                 socket.broadcast.emit('docFile', { data: updateData });
@@ -263,18 +278,13 @@ function getDocFiles({ token, callback }) {
 }
 
 /**
- * Get DocFile
- * @param {string} params.docFile ID of docfile to retrieve
+ * Get doc file by team
+ * @param {string} [params.title] Title of the doc file. Will be used together with team name
+ * @param {string} [params.docFileId] ID of Docfile to retrieve
  * @param {string} params.token jwt
  * @param {Function} params.callback Callback
  */
-function getDocFile({ docFile, token, callback }) {
-  if (!objectValidator.isValidData({ docFile }, { docFile: true })) {
-    callback({ error: new errorCreator.InvalidData({ expected: '{ docFile }' }) });
-
-    return;
-  }
-
+function getDocFile({ title, docFileId, token, callback }) {
   authenticator.isUserAllowed({
     token,
     commandName: dbConfig.apiCommands.GetDocFile.name,
@@ -283,11 +293,15 @@ function getDocFile({ docFile, token, callback }) {
         callback({ error });
 
         return;
+      } else if (!objectValidator.isValidData({ docFileId }, { docFileId: true })) {
+        callback({ error: new errorCreator.InvalidData({ expected: '{ docFile }' }) });
+
+        return;
       }
 
       dbDocFile.getDocFile({
-        title: docFile.title,
-        docFileId: docFile.docFileId,
+        docFileId,
+        title,
         user: data.user,
         callback: ({ error: docError, data: docData }) => {
           if (docError) {
@@ -296,7 +310,7 @@ function getDocFile({ docFile, token, callback }) {
             return;
           }
 
-          if (!docData.docFile.accessUsers || docData.docFile.accessUsers.indexOf(data.user.userName) === -1) {
+          if (!data.user.isAnonymous && docData.docFile.accessUsers.indexOf(data.user.userName) === -1) {
             dbDocFile.addAccessUser({
               docFileId: docData.docFile.docFileId,
               userName: data.user.userName,
@@ -307,7 +321,7 @@ function getDocFile({ docFile, token, callback }) {
                   return;
                 }
 
-                callback({ data: { docFile: docData.docFile } });
+                callback({ data: docData });
               },
             });
 

@@ -78,7 +78,7 @@ function createLanternTeam({ io, team, token, callback }) {
             return;
           }
 
-          io.emit('lanternTeams', { teams: [teamData.team] });
+          io.emit('lanternTeams', { data: { teams: [teamData.team] } });
           callback({ data: teamData });
         },
       });
@@ -117,7 +117,7 @@ function updateLanternTeam({ io, team, teamName, token, callback }) {
             return;
           }
 
-          io.emit('lanternTeams', { teams: [teamData.team] });
+          io.emit('lanternTeams', { data: { teams: [teamData.team] } });
           callback({ data: teamData });
         },
       });

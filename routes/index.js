@@ -68,21 +68,23 @@ function handle(io) {
     socket.join(databasePopulation.rooms.public.roomName);
 
     socket.emit('startup', {
-      defaultLanguage: appConfig.defaultLanguage,
-      forceFullscreen: appConfig.forceFullscreen,
-      gpsTracking: appConfig.gpsTracking,
-      customFlags: appConfig.customFlags,
-      centerLat: appConfig.centerLat,
-      centerLong: appConfig.centerLong,
-      cornerOneLat: appConfig.cornerOneLat,
-      cornerOneLong: appConfig.cornerOneLong,
-      cornerTwoLat: appConfig.cornerTwoLat,
-      cornerTwoLong: appConfig.cornerTwoLong,
-      defaultZoomLevel: appConfig.defaultZoomLevel,
-      radioChannels: appConfig.radioChannels,
-      yearModification: appConfig.yearModification,
-      mode: appConfig.mode,
-      welcomeMessage: appConfig.welcomeMessage,
+      data: {
+        defaultLanguage: appConfig.defaultLanguage,
+        forceFullscreen: appConfig.forceFullscreen,
+        gpsTracking: appConfig.gpsTracking,
+        customFlags: appConfig.customFlags,
+        centerLat: appConfig.centerLat,
+        centerLong: appConfig.centerLong,
+        cornerOneLat: appConfig.cornerOneLat,
+        cornerOneLong: appConfig.cornerOneLong,
+        cornerTwoLat: appConfig.cornerTwoLat,
+        cornerTwoLong: appConfig.cornerTwoLong,
+        defaultZoomLevel: appConfig.defaultZoomLevel,
+        radioChannels: appConfig.radioChannels,
+        yearModification: appConfig.yearModification,
+        mode: appConfig.mode,
+        welcomeMessage: appConfig.welcomeMessage,
+      },
     });
 
     socket.on('disconnect', (params, callback = () => {}) => {

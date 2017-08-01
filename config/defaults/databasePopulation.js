@@ -189,6 +189,7 @@ config.roomsToBeHidden = [
   config.rooms.important.roomName,
   config.rooms.news.roomName,
   config.rooms.schedule.roomName,
+  config.rooms.user.roomName,
 ];
 
 config.GameCodeTypes = {
@@ -235,7 +236,7 @@ config.apiCommands = {
   },
   CreateUserThroughSocket: config.apiCommands.CreateUserThroughSocket || {
     name: 'CreateUserThroughSocket',
-    accessLevel: config.AccessLevels.BASIC,
+    accessLevel: config.AccessLevels.ANONYMOUS,
   },
   ChangeUserLevels: config.apiCommands.ChangeUserLevels || {
     name: 'ChangeUserLevels',
@@ -364,6 +365,10 @@ config.apiCommands = {
     accessLevel: config.AccessLevels.LOWERADMIN,
     selfAccessLevel: config.AccessLevels.BASIC,
   },
+  IsRoomFollowed: config.apiCommands.IsRoomFollowed || {
+    name: 'IsRoomFollowed',
+    accessLevel: config.AccessLevels.ANONYMOUS,
+  },
   GetUserPosition: config.apiCommands.GetUserPosition || {
     name: 'GetUserPosition',
     accessLevel: config.AccessLevels.BASIC,
@@ -395,7 +400,7 @@ config.apiCommands = {
   },
   GetTeams: config.apiCommands.GetTeams || {
     name: 'GetTeams',
-    accessLevel: config.AccessLevels.PRIVILEGED,
+    accessLevel: config.AccessLevels.BASIC,
   },
   CreateTeam: config.apiCommands.CreateTeam || {
     name: 'CreateTeam',
@@ -474,6 +479,15 @@ config.apiCommands = {
   GetSimpleMsgs: config.apiCommands.GetSimpleMsgs || {
     name: 'GetSimpleMsgs',
     accessLevel: config.AccessLevels.ANONYMOUS,
+  },
+  FollowWhisperRoom: config.apiCommands.FollowWhisperRoom || {
+    name: 'FollowWhisperRoom',
+    accessLevel: config.AccessLevels.GOD,
+    selfAccessLevel: config.AccessLevels.BASIC,
+  },
+  DeclineInvitation: config.apiCommands.DeclineInvitation || {
+    name: 'DeclineInvitation',
+    accessLevel: config.AccessLevels.BASIC,
   },
 };
 

@@ -42,29 +42,42 @@ const messageSort = (a, b) => {
 
 /**
  * Authenticate user to room
- * @param {Objecr} params.user User to authenticate with
+ * @param {Object} params.token jwt
  * @param {Object} params.room Room to auth agaisnt
  * @param {Object} params.callback Callback
  */
-function authUserToRoom({ user, room, callback }) {
-  if (!objectValidator.isValidData({ room }, { room: { roomName: true } })) {
-    callback({ error: new errorCreator.InvalidData({ expected: '{ room: { roomName } }' }) });
-
-    return;
-  }
-
-  dbRoom.authUserToRoom({
-    user,
-    roomName: room.roomName,
-    password: room.password,
+function authUserToRoom({ token, room, callback }) {
+  authenticator.isUserAllowed({
+    token,
+    commandName: dbConfig.apiCommands.GetRoom.name,
     callback: ({ error, data }) => {
       if (error) {
         callback({ error });
 
         return;
+      } else if (!objectValidator.isValidData({ room }, { room: { roomName: true } })) {
+        callback({ error: new errorCreator.InvalidData({ expected: '{ room: { roomName } }' }) });
+
+        return;
       }
 
-      callback({ data });
+      dbRoom.authUserToRoom({
+        user: data.user,
+        roomName: room.roomName,
+        password: room.password,
+        callback: ({ error: roomError, data: roomData }) => {
+          if (roomError) {
+            callback({ error: roomError });
+
+            return;
+          }
+
+          const dataToSend = roomData;
+          dataToSend.isFollowing = roomData.isAllowed && data.user.rooms.indexOf(roomData.room.roomName) > -1;
+
+          callback({ data: dataToSend });
+        },
+      });
     },
   });
 }
@@ -91,9 +104,10 @@ function isRequiredRoom({ roomName, socketId, user }) {
  * @param {string[]} params.rooms The rooms to retrieve the getHistory from
  * @param {Object} params.io socket io. Will be used if socket is not set
  * @param {Object} [params.socket] Socket io
+ * @param {boolean} [params.whisperTo] Is it whispers to a user?
  * @param {Function} params.callback Callback
  */
-function getHistory({ token, callback, socket, io, rooms }) {
+function getHistory({ token, callback, socket, io, roomName, whisperTo }) {
   authenticator.isUserAllowed({
     token,
     commandName: dbConfig.apiCommands.GetHistory.name,
@@ -102,14 +116,21 @@ function getHistory({ token, callback, socket, io, rooms }) {
         callback({ error });
 
         return;
-      } else if (!objectValidator.isValidData({ rooms }, { rooms: true })) {
-        callback({ error: new errorCreator.InvalidData({ expected: '{ rooms }' }) });
+      } else if (!objectValidator.isValidData({ roomName }, { roomName: true })) {
+        callback({ error: new errorCreator.InvalidData({ expected: '{ roomName }' }) });
 
         return;
       }
 
       const user = data.user;
+      let roomToGet = roomName;
       let allUserRooms = [];
+
+      if (whisperTo) {
+        roomToGet = `${roomName}${appConfig.whisperAppend}`;
+      } else if (roomName === 'team') {
+        roomToGet = user.team + appConfig.teamAppend;
+      }
 
       if (socket) {
         allUserRooms = allUserRooms.concat(Object.keys(socket.rooms));
@@ -119,24 +140,14 @@ function getHistory({ token, callback, socket, io, rooms }) {
         allUserRooms = allUserRooms.concat(user.rooms);
       }
 
-      const roomsToGet = rooms.map((roomName) => {
-        if (roomName === 'team') {
-          return user.team + appConfig.teamAppend;
-        }
-
-        return roomName;
-      }).filter((roomName) => {
-        return allUserRooms.indexOf(roomName) > -1;
-      });
-
-      if (roomsToGet.length === 0) {
-        callback({ error: new errorCreator.NotAllowed({ name: 'not following rooms' }) });
+      if (allUserRooms.indexOf(roomToGet) === -1) {
+        callback({ error: new errorCreator.NotAllowed({ name: 'not following room' }) });
 
         return;
       }
 
-      dbChatHistory.getHistories({
-        rooms: roomsToGet,
+      dbChatHistory.getHistory({
+        roomName: roomToGet,
         callback: ({ error: historyError, data: historyData }) => {
           if (historyError) {
             callback({ error: historyError });
@@ -144,32 +155,34 @@ function getHistory({ token, callback, socket, io, rooms }) {
             return;
           }
 
-          const histories = historyData.histories.map((history) => {
-            history.messages.map((message) => {
-              if (history.anonymous) {
-                const anonMessage = message;
+          const history = historyData.history;
 
-                anonMessage.time = new Date();
-                anonMessage.time.setHours(0);
-                anonMessage.time.setMinutes(0);
-                anonMessage.time.setSeconds(0);
-                anonMessage.userName = dbConfig.anonymousUserName;
+          const messages = history.messages.map((message) => {
+            if (history.anonymous) {
+              const anonMessage = message;
 
-                return anonMessage;
-              }
+              anonMessage.time = new Date();
+              anonMessage.time.setHours(0);
+              anonMessage.time.setMinutes(0);
+              anonMessage.time.setSeconds(0);
+              anonMessage.userName = dbConfig.anonymousUserName;
 
-              return message;
-            }).sort(messageSort);
+              return anonMessage;
+            }
 
-            return history;
-          });
+            return message;
+          }).sort(messageSort);
 
-          callback({
-            data: {
-              histories,
-              timeZoneOffset: new Date().getTimezoneOffset(),
-            },
-          });
+          const historyToSend = history;
+          historyToSend.timeZoneOffset = new Date().getTimezoneOffset();
+
+          if (whisperTo) {
+            historyToSend.messages = messages.filter(message => message.roomName === `${whisperTo}${appConfig.whisperAppend}` || message.userName === whisperTo);
+          } else {
+            historyToSend.messages = messages;
+          }
+
+          callback({ data: { history: historyToSend } });
         },
       });
     },
@@ -316,10 +329,10 @@ function joinRooms({ rooms, socket, deviceId }) {
  * @param {Object} [params.socket] Socket.io socket
  * @param {Object} params.io Socket.io. Used if sockket is not set
  */
-function followRoom({ token, socket, io, room, user, callback }) {
+function followRoom({ token, socket, io, room, callback, user: sentUser = {} }) {
   authenticator.isUserAllowed({
     token,
-    matchNameTo: user.userName,
+    matchNameTo: sentUser.userName,
     commandName: dbConfig.apiCommands.FollowRoom.name,
     callback: ({ error, data }) => {
       if (error) {
@@ -331,6 +344,8 @@ function followRoom({ token, socket, io, room, user, callback }) {
 
         return;
       }
+
+      const user = data.user;
 
       const roomCallback = ({ error: userError, data: userData }) => {
         if (userError) {
@@ -344,11 +359,15 @@ function followRoom({ token, socket, io, room, user, callback }) {
         roomToFollow.roomName = roomToFollow.roomName.toLowerCase();
 
         authUserToRoom({
+          token,
           room: roomToFollow,
-          user: userFollowing,
           callback: ({ error: authError, data: authData }) => {
             if (authError) {
               callback({ error: authError });
+
+              return;
+            } else if (!authData.isAllowed) {
+              callback({ error: new errorCreator.NotAllowed({ name: `follow ${room.roomName}` }) });
 
               return;
             }
@@ -419,56 +438,65 @@ function leaveSocketRooms({ socket }) {
  * @param {Object} params.io Socket.io. Used if socket is not set
  * @param {Function} params.callback Callback
  */
-function followWhisperRoom({ user, whisperTo, sender, room, socket, io, callback }) {
-  // TODO Auth check. How?
+function followWhisperRoom({ token, whisperTo, sender, room, socket, io, callback }) {
+  authenticator.isUserAllowed({
+    token,
+    matchNameTo: sender.userName,
+    commandName: dbConfig.apiCommands.FollowWhisperRoom.name,
+    callback: ({ error, data }) => {
+      if (error) {
+        callback({ error });
 
-  if (!objectValidator.isValidData({ user, room, whisperTo, sender }, { user: { userName: true }, room: { roomName: true }, whisperTo: true, sender: { userName: true } })) {
-    callback({ error: new errorCreator.InvalidData({ expected: '{ user: { userName: true }, room: { roomName: true }, whisperTo: true, sender: { userName: true } }' }) });
+        return;
+      } else if (!objectValidator.isValidData({ room, whisperTo, sender }, { room: { roomName: true }, whisperTo: true, sender: { userName: true } })) {
+        callback({ error: new errorCreator.InvalidData({ expected: '{ user: { userName: true }, room: { roomName: true }, whisperTo: true, sender: { userName: true } }' }) });
 
-    return;
-  } else if (user.aliases.indexOf(sender.userName) === -1 && user.userName !== sender.userName) {
-    callback({ error: new errorCreator.NotAllowed({ name: 'alias not in user' }) });
-
-    return;
-  }
-
-  dbUser.addWhisperRoomToUser({
-    userName: sender.userName,
-    roomName: room.roomName,
-    callback: ({ error: whisperError }) => {
-      if (whisperError) {
-        callback({ error: whisperError });
+        return;
+      } else if (data.user.aliases.indexOf(sender.userName) === -1 && data.user.userName !== sender.userName) {
+        callback({ error: new errorCreator.NotAllowed({ name: 'alias not in user' }) });
 
         return;
       }
 
-      const whisperToRoomName = `${whisperTo}-whisper-${sender.userName}`;
-
       dbUser.addWhisperRoomToUser({
-        userName: whisperTo,
-        roomName: whisperToRoomName,
-        callback: (whisperData) => {
-          if (whisperData.error) {
-            callback({ error: whisperData.error });
+        userName: sender.userName,
+        roomName: room.roomName,
+        callback: ({ error: whisperError }) => {
+          if (whisperError) {
+            callback({ error: whisperError });
 
             return;
           }
 
-          const emitTo = `${whisperTo}${appConfig.whisperAppend}`;
-          const dataToEmit = {
-            whisperTo: sender.userName,
-            data: whisperToRoomName,
-            room: { roomName: whisperToRoomName },
-            whisper: true,
-          };
+          const whisperToRoomName = `${whisperTo}-whisper-${sender.userName}`;
 
-          if (socket) {
-            socket.to(emitTo).emit('follow', { data: dataToEmit });
-          } else {
-            io.to(emitTo).emit('follow', { data: dataToEmit });
-          }
+          dbUser.addWhisperRoomToUser({
+            userName: whisperTo,
+            roomName: whisperToRoomName,
+            callback: (whisperData) => {
+              if (whisperData.error) {
+                callback({ error: whisperData.error });
 
-          callback({ data: { room } });
+                return;
+              }
+
+              const emitTo = `${whisperTo}${appConfig.whisperAppend}`;
+              const dataToEmit = {
+                whisperTo: sender.userName,
+                data: whisperToRoomName,
+                room: { roomName: whisperToRoomName },
+                whisper: true,
+              };
+
+              if (socket) {
+                socket.to(emitTo).emit('follow', { data: dataToEmit });
+              } else {
+                io.to(emitTo).emit('follow', { data: dataToEmit });
+              }
+
+              callback({ data: { room } });
+            },
+          });
         },
       });
     },
@@ -582,7 +610,7 @@ function getRooms({ token, socket, callback }) {
           const filteredRooms = roomsData.rooms.map((room) => {
             return {
               roomName: room.roomName,
-              password: room.password !== '',
+              password: room.password && room.password !== '',
             };
           });
 

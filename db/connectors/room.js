@@ -23,6 +23,7 @@ const dbUser = require('./user');
 const errorCreator = require('../../objects/error/errorCreator');
 const dbConfig = require('../../config/defaults/config').databasePopulation;
 const winston = require('winston');
+const appConfig = require('../../config/defaults/config').app;
 
 const roomSchema = new mongoose.Schema({
   accessLevel: { type: Number, default: dbConfig.AccessLevels.BASIC },
@@ -64,41 +65,33 @@ function cleanRoomParameters({ room }) {
 function authUserToRoom({ user, roomName, callback, password }) {
   const query = {
     roomName,
-    $or: [
-      { owner: user.userName },
-      {
-        $and: [
-          { team: { $exists: true, $eq: user.team } },
-          { $or: [
-            { accessUsers: { $in: [user.userName] } },
-            { accessLevel: { $lte: user.accessLevel } },
-          ] },
-        ],
-      },
-      {
-        $and: [
-          { password },
-          { $or: [
-            { accessUsers: { $in: [user.userName] } },
-            { accessLevel: { $lte: user.accessLevel } },
-          ] },
-        ],
-      },
-    ],
   };
+
+  if (roomName.indexOf(appConfig.teamAppend) > -1) {
+    query.team = user.team;
+  } else {
+    query.$or = [
+      { owner: user.userName },
+      { accessUsers: { $in: [user.userName] } },
+      { password, accessLevel: { $lte: user.accessLevel } },
+      { password: { $exists: false }, accessLevel: { $lte: user.accessLevel } },
+    ];
+  }
 
   Room.findOne(query).lean().exec((err, foundRoom) => {
     if (err) {
       callback({ error: new errorCreator.Database({ errorObject: err, name: 'authUserToRoom' }) });
 
       return;
-    } else if (!foundRoom) {
-      callback({ error: new errorCreator.NotAllowed({ name: `Room ${roomName}` }) });
+    }
+
+    if (!foundRoom) {
+      callback({ data: { isAllowed: false } });
 
       return;
     }
 
-    callback({ data: { room: cleanRoomParameters({ room: foundRoom }) } });
+    callback({ data: { room: foundRoom, isAllowed: true } });
   });
 }
 
