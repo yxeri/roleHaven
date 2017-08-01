@@ -282,7 +282,7 @@ config.apiCommands = {
   },
   GetLanternRound: config.apiCommands.GetLanternRound || {
     name: 'GetLanternRound',
-    accessLevel: config.AccessLevels.LOWERADMIN,
+    accessLevel: config.AccessLevels.ANONYMOUS,
   },
   GetActiveLanternRound: config.apiCommands.GetActiveLanternRound || {
     name: 'GetActiveLanternRound',
@@ -464,7 +464,7 @@ config.apiCommands = {
     name: 'UseGameCode',
     accessLevel: config.AccessLevels.BASIC,
   },
-  HackLantern: config.apiCommands || {
+  HackLantern: config.apiCommands.HackLantern || {
     name: 'HackLantern',
     accessLevel: config.AccessLevels.BASIC,
   },
