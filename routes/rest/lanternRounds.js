@@ -129,6 +129,7 @@ function handle(io) {
    *
    * @apiParam {boolean} [data.endTime] End time of the round
    * @apiParam {boolean} [data.startTime] Start time of the next round
+   * @apiParam {boolean} [data.isActive] Is the round active?
    * @apiParamExample {json} Request-Example:
    *   {
    *    "data": {
@@ -151,6 +152,7 @@ function handle(io) {
   router.post('/time', (request, response) => {
     lanternRoundManager.updateLanternRound({
       io,
+      isActive: request.body.data ? request.body.data.isActive : undefined,
       startTime: request.body.data ? request.body.data.startTime : undefined,
       endTime: request.body.data ? request.body.data.endTime : undefined,
       token: request.headers.authorization,
