@@ -17,7 +17,6 @@
 'use strict';
 
 const lanternHackManager = require('../../managers/lanternHacking');
-const lanternStationManager = require('../../managers/lanternStations');
 
 /**
  * @param {Object} socket - Socket.IO socket
@@ -40,8 +39,8 @@ function handle(socket) {
     });
   });
 
-  socket.on('getStations', ({ token }, callback = () => {}) => {
-    lanternStationManager.getLanternStations({
+  socket.on('getLanternInfo', ({ token }, callback = () => {}) => {
+    lanternHackManager.getLanternInfo({
       token,
       callback,
     });

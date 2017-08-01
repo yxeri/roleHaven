@@ -24,18 +24,21 @@ const errorCreator = require('../objects/error/errorCreator');
 const dbLanternHack = require('../db/connectors/lanternhack');
 const textTools = require('../utils/textTools');
 const authenticator = require('../helpers/authenticator');
+const lanternRoundManager = require('../managers/lanternRounds');
+const lanternStationManager = require('../managers/lanternStations');
 
 const signalThreshold = 50;
 const signalDefault = 100;
 const changePercentage = 0.2;
 const signalMaxChange = 10;
+let resetInterval = null;
 
 /**
  * Post request to external server
- * @param {string} params.host - Host name
- * @param {string} params.path - Path
- * @param {Function} params.callback - Path
- * @param {Object} params.data - Data to send
+ * @param {string} params.host Host name
+ * @param {string} params.path Path
+ * @param {Function} params.callback Callback
+ * @param {Object} params.data Data to send
  */
 function postRequest({ host, path, data, callback }) {
   const dataString = JSON.stringify({ data });
@@ -96,25 +99,34 @@ function resetStations({ callback = () => {} }) {
                 return;
               }
 
-              postRequest({
-                host: appConfig.hackingApiHost,
-                path: '/reports/set_boost',
-                data: {
-                  station: stationId,
-                  boost: newSignalValue,
-                  key: appConfig.hackingApiKey,
-                },
-                callback: () => {
-                },
-              });
-
-              setTimeout(resetStations, appConfig.signalResetTimeout, {});
+              if (appConfig.hackingApiHost && appConfig.hackingApiKey) {
+                postRequest({
+                  host: appConfig.hackingApiHost,
+                  path: '/reports/set_boost',
+                  data: {
+                    station: stationId,
+                    boost: newSignalValue,
+                    key: appConfig.hackingApiKey,
+                  },
+                  callback: () => {
+                  },
+                });
+              }
             },
           });
         }
       });
     },
   });
+
+  if (appConfig.signalResetTimeout !== 0) {
+    if (resetInterval === null) {
+      resetInterval = setInterval(resetStations, appConfig.signalResetTimeout);
+    } else {
+      clearInterval(resetInterval);
+      resetInterval = setInterval(resetStations, appConfig.signalResetTimeout);
+    }
+  }
 }
 
 /**
@@ -415,7 +427,7 @@ function getLanternHack({ stationId, token, callback }) {
 
   authenticator.isUserAllowed({
     token,
-    commandName: dbConfig.commands.hackLantern.commandName,
+    commandName: dbConfig.apiCommands.HackLantern.name,
     callback: ({ error, data }) => {
       if (error) {
         callback({ error });
@@ -488,9 +500,59 @@ function getLanternHack({ stationId, token, callback }) {
   });
 }
 
-resetStations({});
+/**
+ * Get round and stations
+ * @param {string} params.token jwt
+ * @param {Function} params.callback Callback
+ */
+function getLanternInfo({ token, callback }) {
+  lanternRoundManager.getLanternRound({
+    token,
+    callback: ({ error, data }) => {
+      if (error) {
+        callback({ error });
+
+        return;
+      }
+
+      const { isActive, startTime, endTime } = data;
+      const round = {
+        isActive,
+        startTime,
+        endTime,
+      };
+
+      if (!data.isActive) {
+        callback({ data: { round } });
+
+        return;
+      }
+
+      lanternStationManager.getLanternStations({
+        token,
+        callback: ({ error: stationError, data: stationData }) => {
+          if (stationError) {
+            callback({ error: stationError });
+
+            return;
+          }
+
+          callback({
+            data: {
+              round,
+              activeStations: stationData.activeStations,
+              inactiveStations: stationData.inactiveStations,
+            },
+          });
+        },
+      });
+    },
+  });
+}
 
 exports.createLanternHack = createLanternHack;
 exports.updateSignalValue = updateSignalValue;
 exports.manipulateStation = manipulateStation;
 exports.getLanternHack = getLanternHack;
+exports.getLanternInfo = getLanternInfo;
+exports.resetStations = resetStations;
