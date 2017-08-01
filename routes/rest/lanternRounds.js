@@ -37,7 +37,7 @@ function handle(io) {
    *
    * @apiDescription Start a lantern round
    *
-   * @apiParam {boolean} [data.endTime] Start time of the round
+   * @apiParam {boolean} [data.endTime] End time of the round
    * @apiParamExample {json} Request-Example:
    *   {
    *    "data": {
@@ -82,7 +82,7 @@ function handle(io) {
    *
    * @apiDescription End active lantern round
    *
-   * @apiParam {boolean} [data.startTime] Start time of the round
+   * @apiParam {boolean} [data.startTime] Start time of next round
    * @apiParamExample {json} Request-Example:
    *   {
    *    "data": {
@@ -128,7 +128,7 @@ function handle(io) {
    * @apiDescription Change start or end time of round
    *
    * @apiParam {boolean} [data.endTime] End time of the round
-   * @apiParam {boolean} [data.startTime] Start time of the round
+   * @apiParam {boolean} [data.startTime] Start time of the next round
    * @apiParamExample {json} Request-Example:
    *   {
    *    "data": {
