@@ -19,66 +19,64 @@
 
 const schemas = {};
 
-schemas.histories = {
+const messageBase = {
+  type: 'object',
+  required: [
+    'text',
+    'time',
+    'roomName',
+    'userName',
+  ],
+  properties: {
+    text: { type: 'array', items: { type: 'string' } },
+    time: { type: 'string' },
+    roomName: { type: 'string' },
+    userName: { type: 'string' },
+  },
+};
+
+schemas.message = {
   type: 'object',
   required: ['data'],
   properties: {
     data: {
       type: 'object',
-      required: ['histories', 'timeZoneOffset'],
+      required: ['message', 'roomName', 'timeZoneOffset'],
       properties: {
+        message: messageBase,
+        roomName: { type: 'string' },
         timeZoneOffset: { type: 'number' },
-        histories: {
-          required: [
-            'messages',
-            'anonymous',
-            'isWhisper',
-          ],
-          properties: {
-            messages: { type: 'array', items: { type: 'object' } },
-            anonymous: { type: 'boolean' },
-            timeZoneOffset: { type: 'number' },
-            isWhisper: { type: 'boolean' },
-          },
-        },
       },
     },
   },
 };
 
-schemas.messages = {
+schemas.history = {
   type: 'object',
   required: ['data'],
   properties: {
     data: {
       type: 'object',
-      required: ['messages', 'timeZoneOffset'],
+      required: ['history'],
       properties: {
-        messages: {
+        history: {
+          type: 'object',
           required: [
+            'roomName',
             'messages',
+            'timeZoneOffset',
             'anonymous',
             'isWhisper',
           ],
           properties: {
+            roomName: { type: 'string' },
             messages: {
               type: 'array',
-              items: {
-                type: 'object',
-                required: [
-                  'text',
-                  'time',
-                  'roomName',
-                  'userName',
-                ],
-                properties: {
-                  text: { type: 'array', items: { type: 'string' } },
-                  time: { type: 'string' },
-                  roomName: { type: 'string' },
-                  userName: { type: 'string' },
-                },
-              },
+              items: messageBase,
             },
+            timeZoneOffset: { type: 'number' },
+            anonymous: { type: 'boolean' },
+            isWhisper: { type: 'boolean' },
           },
         },
       },

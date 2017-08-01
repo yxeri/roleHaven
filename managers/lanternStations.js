@@ -125,7 +125,7 @@ function createLanternStation({ io, station, token, callback }) {
             return;
           }
 
-          io.emit('lanternStations', { stations: [stationData.station] });
+          io.emit('lanternStations', { data: { stations: [stationData.station] } });
           callback({ data: stationData });
         },
       });
@@ -167,7 +167,7 @@ function updateLanternStation({ io, station, stationId, token, callback }) {
             return;
           }
 
-          io.emit('lanternStations', { stations: [updateData.station] });
+          io.emit('lanternStations', { data: { stations: [updateData.station] } });
           callback({ data: updateData });
         },
       });

@@ -74,7 +74,7 @@ function sendSelfMsg({ messages, socket }) {
     return;
   }
 
-  socket.emit('messages', { messages });
+  socket.emit('messages', { data: { messages } });
 }
 
 /**
@@ -106,11 +106,11 @@ function sendMsg({ socket, message, io }) {
 
   if (socket) {
     socket.broadcast.to(messageToSend.roomName).emit('message', {
-      message: messageToSend,
+      data: { message: messageToSend },
     });
   } else {
     io.to(messageToSend.roomName).emit('message', {
-      message: messageToSend,
+      data: { message: messageToSend },
     });
   }
 }
@@ -151,8 +151,9 @@ function sendAndStoreChatMsg({ user, callback, message, io, socket }) {
           }
 
           const data = {
-            messages: [newMessage],
-            room: { roomName: newMessage.roomName },
+            message: newMessage,
+            roomName: newMessage.roomName,
+            timeZoneOffset: new Date().getTimezoneOffset(),
           };
 
           if (newMessage.anonymous) {
@@ -162,10 +163,12 @@ function sendAndStoreChatMsg({ user, callback, message, io, socket }) {
             newMessage.time.setSeconds(0);
           }
 
+          console.log('sending', data);
+
           if (socket) {
-            socket.broadcast.to(newMessage.roomName).emit('chatMsgs', data);
+            socket.broadcast.to(newMessage.roomName).emit('chatMsg', { data });
           } else {
-            io.to(message.roomName).emit('chatMsgs', data);
+            io.to(message.roomName).emit('chatMsg', { data });
           }
 
           callback({ data });
@@ -245,6 +248,7 @@ function sendChatMsg({ token, image, message, io, socket, callback = () => {} })
       const user = data.user;
 
       const sendMessage = ({ newMessage }) => {
+        console.log('messenger', newMessage);
         if (newMessage.userName) {
           dbUser.getUserByAlias({
             alias: newMessage.userName,
@@ -268,19 +272,24 @@ function sendChatMsg({ token, image, message, io, socket, callback = () => {} })
               });
             },
           });
-        } else {
-          const modifiedMessage = newMessage;
-          modifiedMessage.userName = user.userName;
 
-          sendAndStoreChatMsg({
-            io,
-            user,
-            callback,
-            socket,
-            message: modifiedMessage,
-          });
+          return;
         }
+
+        const modifiedMessage = newMessage;
+        modifiedMessage.userName = user.userName;
+
+        sendAndStoreChatMsg({
+          io,
+          user,
+          callback,
+          socket,
+          message: modifiedMessage,
+        });
+
+        return;
       };
+
       const newMessage = message;
       newMessage.text = textTools.cleanText(newMessage.text);
 
@@ -386,14 +395,14 @@ function sendWhisperMsg({ io, token, message, socket, callback = () => {} }) {
 
                   const sendData = {
                     message: newMessage,
-                    room: { roomName: newMessage.roomName },
-                    whisper: true,
+                    roomName: newMessage.roomName,
+                    isWhisper: true,
                   };
 
                   if (socket) {
-                    socket.broadcast.to(newMessage.roomName).emit('chatMsg', sendData);
+                    socket.broadcast.to(newMessage.roomName).emit('chatMsg', { data: sendData });
                   } else {
-                    io.to(newMessage.roomName).emit('chatMsg', sendData);
+                    io.to(newMessage.roomName).emit('chatMsg', { data: sendData });
                   }
 
 
@@ -455,9 +464,9 @@ function sendBroadcastMsg({ token, message, socket, callback, io }) {
           const data = { message: newMessage };
 
           if (socket) {
-            socket.broadcast.to(newMessage.roomName).emit('bcastMsg', data);
+            socket.broadcast.to(newMessage.roomName).emit('bcastMsg', { data });
           } else {
-            io.to(newMessage.roomName).emit('bcastMsg', data);
+            io.to(newMessage.roomName).emit('bcastMsg', { data });
           }
 
           callback({ data });

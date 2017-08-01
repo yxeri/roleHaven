@@ -67,9 +67,9 @@ function sendSimpleMsg({ text, socket, io, token, callback }) {
           }
 
           if (socket) {
-            socket.broadcast.emit('simpleMsg', newData.simpleMsg);
+            socket.broadcast.emit('simpleMsg', { data: newData });
           } else {
-            io.emit('simpleMsg', newData.simpleMsg);
+            io.emit('simpleMsg', { data: newData });
           }
 
           callback({ data: newData });

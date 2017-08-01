@@ -80,18 +80,22 @@ function addMsgToHistory({ roomName, message, callback }) {
  * @param {string[]} params.rooms Name of the rooms
  * @param {Function} params.callback Callback
  */
-function getHistories({ rooms, callback }) {
-  const query = { roomName: { $in: rooms } };
+function getHistory({ roomName, callback }) {
+  const query = { roomName };
   const filter = { 'messages._id': 0, _id: 0 };
 
-  ChatHistory.find(query, filter).lean().exec((err, histories = []) => {
+  ChatHistory.findOne(query, filter).lean().exec((err, history) => {
     if (err) {
-      callback({ error: new errorCreator.Database({ errorObject: err, name: 'getHistories' }) });
+      callback({ error: new errorCreator.Database({ errorObject: err, name: 'getHistory' }) });
+
+      return;
+    } else if (!history) {
+      callback({ error: new errorCreator.DoesNotExist({ name: `history for ${roomName}` }) });
 
       return;
     }
 
-    callback({ data: { histories } });
+    callback({ data: { history } });
   });
 }
 
@@ -153,6 +157,6 @@ function removeHistory({ roomName, callback }) {
 }
 
 exports.addMsgToHistory = addMsgToHistory;
-exports.getHistories = getHistories;
+exports.getHistory = getHistory;
 exports.createHistory = createHistory;
 exports.removeHistory = removeHistory;

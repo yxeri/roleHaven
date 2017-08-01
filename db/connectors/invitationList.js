@@ -22,12 +22,15 @@ const dbConnector = require('../databaseConnector');
 
 const invitationListSchema = new mongoose.Schema({
   userName: { type: String, unique: true },
-  invitations: [{
-    invitationType: String,
-    itemName: String,
-    sender: String,
-    time: Date,
-  }],
+  invitations: {
+    type: [{
+      invitationType: String,
+      itemName: String,
+      sender: String,
+      time: Date,
+    }],
+    default: [],
+  },
 }, { collection: 'invitationLists' });
 
 const InvitationList = mongoose.model('InvitationList', invitationListSchema);

@@ -17,7 +17,7 @@ const { URL } = require('url');
  * @param {Function} params.callback Callback
  */
 function sendVerification({ address, userName, callback }) {
-  if (!mailgun) {
+  if (!mailgun && appConfig.mode !== appConfig.Modes.TEST && appConfig.mode !== appConfig.Modes.DEV) {
     callback({ error: new errorCreator.Internal({ name: 'Mailgun mailKey, mailDomain, publicMailKey not set' }) });
 
     return;
@@ -48,7 +48,7 @@ function sendVerification({ address, userName, callback }) {
           callback({ error: mailEventData.error });
 
           return;
-        } else if (appConfig.mode === appConfig.Modes.TEST) {
+        } else if (appConfig.mode === appConfig.Modes.TEST || appConfig.mode === appConfig.Modes.DEV) {
           callback({ data: { success: true } });
 
           return;

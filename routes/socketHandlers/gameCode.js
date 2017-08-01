@@ -39,9 +39,13 @@ function handle(socket, io) {
     });
   });
 
-  socket.on('getGameCode', ({ codeType, token }, callback = () => {}) => {
-    gameCodeManager.getGameCode({
-      codeType,
+  socket.on('getProfileGameCode', ({ owner, token }, callback = () => {}) => {
+    if (!owner) {
+      return;
+    }
+
+    gameCodeManager.getProfileGameCode({
+      owner,
       token,
       callback,
     });

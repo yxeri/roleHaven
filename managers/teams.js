@@ -103,6 +103,9 @@ function addUserToTeam({ team, user, io, socket, callback }) {
 
           callback({
             data: {
+              room: {
+                roomName: room.roomName,
+              },
               team: {
                 teamName: team.teamName,
                 shortName: team.shortName,
@@ -146,13 +149,15 @@ function createTeam({ team, socket, io, callback, token }) {
         return;
       } else if (dbConfig.protectedNames.indexOf(team.teamName.toLowerCase()) > -1 || dbConfig.protectedNames.indexOf(team.shortName.toLowerCase()) > -1) {
         callback({ error: new errorCreator.InvalidData({ expected: 'team name !== team' }) });
+
+        return;
       }
 
       const user = data.user;
       const newTeam = team;
       newTeam.owner = user.userName;
       newTeam.teamName = newTeam.teamName.toLowerCase();
-      newTeam.verified = false;
+      newTeam.verified = !appConfig.teamVerify;
 
       dbTeam.createTeam({
         team: newTeam,
@@ -181,6 +186,7 @@ function createTeam({ team, socket, io, callback, token }) {
               roomManager.createSpecialRoom({
                 user,
                 room: {
+                  team: createdTeam.team,
                   owner: dbConfig.systemUserName,
                   roomName: createdTeam.teamName + appConfig.teamAppend,
                   accessLevel: dbConfig.AccessLevels.SUPERUSER,
@@ -317,7 +323,7 @@ function inviteToTeam({ to, socket, io, callback, token }) {
                   const emitRoomName = `${to}${appConfig.whisperAppend}`;
 
                   if (socket) {
-                    socket.to(emitRoomName).emit('invitation', { data: dataToSend });
+                    socket.broadcast.to(emitRoomName).emit('invitation', { data: dataToSend });
                   } else {
                     io.to(emitRoomName).emit('invitation', { data: dataToSend });
                   }
@@ -399,7 +405,7 @@ function acceptTeamInvitation({ token, invitation, io, socket, callback }) {
 
                   dbInvitation.removeInvitationTypeFromList({
                     userName,
-                    invitationType: retrievedInvitation.invitationType,
+                    invitationType: 'team',
                     callback: (removeData) => {
                       if (removeData.error) {
                         callback({ error: removeData.error });
@@ -586,6 +592,67 @@ function leaveTeam({ token, io, socket, callback }) {
   });
 }
 
+/**
+ * Get team invitations from user
+ * @param {string} params.token jwt
+ * @param {Function} params.callback Callback
+ */
+function getTeamInvitations({ token, callback }) {
+  authenticator.isUserAllowed({
+    token,
+    commandName: dbConfig.apiCommands.GetInvitations.name,
+    callback: ({ error, data }) => {
+      if (error) {
+        callback({ error });
+
+        return;
+      }
+
+      dbInvitation.getInvitations({
+        userName: data.user.userName,
+        callback: ({ error: invitationError, data: invitationData }) => {
+          if (invitationError) {
+            callback({ error: invitationError });
+
+            return;
+          }
+
+          callback({ data: { invitations: invitationData.list.invitations.filter(invitation => invitation.invitationType === 'team') } });
+        },
+      });
+    },
+  });
+}
+
+function declineTeamInvitation({ invitation, token, callback }) {
+  authenticator.isUserAllowed({
+    token,
+    commandName: dbConfig.apiCommands.DeclineInvitation.name,
+    callback: ({ error, data }) => {
+      if (error) {
+        callback({ error });
+
+        return;
+      }
+
+      dbInvitation.removeInvitationFromList({
+        userName: data.user.userName,
+        itemName: invitation.itemName,
+        invitationType: 'team',
+        callback: ({ error: declineError }) => {
+          if (declineError) {
+            callback({ error: declineError });
+
+            return;
+          }
+
+          callback({ data: { success: true } });
+        },
+      });
+    },
+  });
+}
+
 exports.updateUserTeam = updateUserTeam;
 exports.addUserToTeam = addUserToTeam;
 exports.createTeam = createTeam;
@@ -594,3 +661,5 @@ exports.acceptTeamInvitation = acceptTeamInvitation;
 exports.getTeams = getTeams;
 exports.getTeam = getTeam;
 exports.leaveTeam = leaveTeam;
+exports.getTeamInvitations = getTeamInvitations;
+exports.declineTeamInvitation = declineTeamInvitation;

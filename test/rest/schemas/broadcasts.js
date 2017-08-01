@@ -52,11 +52,19 @@ schemas.broadcasts = {
   properties: {
     data: {
       type: 'object',
-      required: ['messages'],
+      required: ['history'],
       properties: {
-        messages: {
-          type: 'array',
-          items: broadcastBase,
+        history: {
+          type: 'object',
+          required: [
+            'messages',
+          ],
+          properties: {
+            messages: {
+              type: 'array',
+              items: broadcastBase,
+            },
+          },
         },
       },
     },

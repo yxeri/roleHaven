@@ -132,55 +132,30 @@ function addAccessUser({ docFileId, userName, callback }) {
 /**
  * Get docFile
  * @param {string} params.docFileId ID of docFile
+ * @param {string} params.title Title of doc file
  * @param {Object} params.user User retrieving docfile
  * @param {Function} params.callback Callback
  */
-function getDocFile({ title, docFileId, user, callback }) {
+function getDocFile({ docFileId, title, user, callback }) {
   const query = {
-    $or: [
+    $and: [
       {
-        creator: user.userName,
+        $or: [
+          { docFileId },
+          { $and: [
+            { title },
+            { team: { $exists: true } },
+            { team: user.team },
+          ] },
+        ],
       }, {
-        accessUsers: { $in: [user.userName] },
-      }, {
-        accessLevel: { $lte: user.accessLevel },
-        docFileId,
-      }, {
-        title,
-        team: user.team,
-        accessLevel: { $lte: user.accessLevel },
+        $or: [
+          { creator: user.userName },
+          { accessUsers: { $in: [user.userName] } },
+          { team: user.team },
+          { accessLevel: { $lte: user.accessLevel } },
+        ],
       },
-    ],
-  };
-
-  DocFile.findOne(query).lean().exec((err, docFile) => {
-    if (err) {
-      callback({ error: new errorCreator.Database({ errorObject: err, name: 'getDocFile' }) });
-
-      return;
-    } else if (!docFile) {
-      callback({ error: new errorCreator.DoesNotExist({ name: `docfile ${docFileId}` }) });
-
-      return;
-    }
-
-    callback({ data: { docFile } });
-  });
-}
-
-/**
- * Get docFile by docFile ID
- * @param {string} params.docFileId ID of docFile
- * @param {Object} params.user User retrieving docfile
- * @param {Function} params.callback Callback
- */
-function getDocFileById({ docFileId, user, callback }) {
-  const query = {
-    docFileId,
-    $or: [
-      { creator: user.userName },
-      { accessLevel: { $lte: user.accessLevel } },
-      { accessUsers: { $in: [user.userName] } },
     ],
   };
 
@@ -233,7 +208,6 @@ function getDocFiles({ accessLevel, userName, callback }) {
 }
 
 exports.createDocFile = createDocFile;
-exports.getDocFileById = getDocFileById;
 exports.getDocFiles = getDocFiles;
 exports.updateDocFile = updateDocFile;
 exports.addAccessUser = addAccessUser;

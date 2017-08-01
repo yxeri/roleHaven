@@ -323,7 +323,7 @@ function handle(io) {
     roomManager.getHistory({
       io,
       token: request.headers.authorization,
-      rooms: [request.params.roomName],
+      roomName: request.params.roomName,
       callback: ({ error, data }) => {
         if (error) {
           restErrorChecker.checkAndSendError({ response, error, sentData: request.body.data });
@@ -331,12 +331,7 @@ function handle(io) {
           return;
         }
 
-        response.json({
-          data: {
-            messages: data.histories[0].messages,
-            timeZoneOffset: data.timeZoneOffset,
-          },
-        });
+        response.json({ data });
       },
     });
   });
@@ -412,22 +407,24 @@ function handle(io) {
           response.json({ data });
         },
       });
-    } else {
-      messenger.sendChatMsg({
-        io,
-        message,
-        token,
-        callback: ({ data, error }) => {
-          if (error) {
-            restErrorChecker.checkAndSendError({ response, error });
 
-            return;
-          }
-
-          response.json({ data });
-        },
-      });
+      return;
     }
+
+    messenger.sendChatMsg({
+      io,
+      message,
+      token,
+      callback: ({ data, error }) => {
+        if (error) {
+          restErrorChecker.checkAndSendError({ response, error, sentData: request.body.data });
+
+          return;
+        }
+
+        response.json({ data });
+      },
+    });
   });
 
   return router;

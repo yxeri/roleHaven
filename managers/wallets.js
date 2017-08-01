@@ -125,12 +125,14 @@ function increaseWalletAmount({ owner, amount, token, callback }) {
 
 /**
  * Get wallets
+ * @param {string} prams.userName Name of the user retrieving wallets
  * @param {string} params.token jwt
  * @param {Function} params.callback Callback
  */
-function getWallets({ token, callback }) {
+function getWallets({ userName, token, callback }) {
   authenticator.isUserAllowed({
     token,
+    matchNameTo: userName,
     commandName: dbConfig.apiCommands.GetWallet.name,
     callback: ({ error, data }) => {
       if (error) {

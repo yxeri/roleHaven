@@ -153,9 +153,9 @@ function updateUserPosition({ position, token, socket, io, callback }) {
               };
 
               if (socket) {
-                socket.broadcast.to(dbConfig.rooms.public.roomName).emit('mapPositions', dataToSend);
+                socket.broadcast.to(dbConfig.rooms.public.roomName).emit('mapPositions', { data: dataToSend });
               } else {
-                io.to(dbConfig.rooms.public.roomName).emit('mapPositions', dataToSend);
+                io.to(dbConfig.rooms.public.roomName).emit('mapPositions', { data: dataToSend });
               }
 
               callback({ data: { position: positionData.position } });
@@ -230,14 +230,14 @@ function updatePosition({ position, token, socket, io, callback }) {
             const roomName = `${updatedPosition}${appConfig.teamAppend}`;
 
             if (socket) {
-              socket.broadcast.to(roomName).emit('mapPositions', dataToSend);
+              socket.broadcast.to(roomName).emit('mapPositions', { data: dataToSend });
             } else {
-              io.to(roomName).emit('mapPositions', dataToSend);
+              io.to(roomName).emit('mapPositions', { data: dataToSend });
             }
           } else if (socket) {
-            socket.broadcast.emit('mapPositions', dataToSend);
+            socket.broadcast.emit('mapPositions', { data: dataToSend });
           } else {
-            io.emit('mapPositions', dataToSend);
+            io.emit('mapPositions', { data: dataToSend });
           }
 
           callback({ data: { position: updatedPosition } });

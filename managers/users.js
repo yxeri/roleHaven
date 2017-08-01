@@ -210,7 +210,6 @@ function listUsers({ includeInactive, token, callback, team = {} }) {
 
           users.filter((currentUser) => {
             if (teamName) {
-              // All the user
               if (shouldEqual && currentUser.team && currentUser.team === user.team) {
                 return true;
               } else if (!shouldEqual && ((!currentUser.team && user.team) || currentUser.team !== user.team)) {
@@ -553,9 +552,11 @@ function logout({ device, token, socket, callback }) {
                       }
 
                       socket.broadcast.to(dbConfig.rooms.public.roomName).emit('mapPositions', {
-                        positions: [positionData.data.position],
-                        currentTime: new Date(),
-                        shouldRemove: true,
+                        data: {
+                          positions: [positionData.data.position],
+                          currentTime: new Date(),
+                          shouldRemove: true,
+                        },
                       });
                     },
                   });
@@ -709,6 +710,54 @@ function banUser({ user, io, token, callback }) {
   });
 }
 
+/**
+ * Verify user
+ * @param {string} params.key Verification key
+ * @param {Object} params.callback Callback
+ * @param {Object} params.socket Socket.io
+ * @param {Object} params.io Socket io. Will be used if socket is not set
+ */
+function verifyUser({ key, callback, socket, io }) {
+  if (!objectValidator.isValidData({ key }, { key: true })) {
+    callback({ error: new errorCreator.InvalidData({ expected: '{ key }' }) });
+
+    return;
+  }
+
+  dbMailEvent.getMailEventByKey({
+    key,
+    callback: ({ error, data }) => {
+      if (error) {
+        callback({ error });
+
+        return;
+      }
+
+      dbUser.verifyUser({
+        userName: data.event.owner,
+        callback: (verifyData) => {
+          if (verifyData.error) {
+            callback({ error: verifyData.error });
+
+            return;
+          }
+
+          const user = verifyData.data.verified;
+
+          dbMailEvent.removeMailEvent({ key, callback: () => {} });
+          callback({ data: { userName: user.userName } });
+
+          if (socket) {
+            socket.broadcast.emit('user', { user: { userName: user.userName } });
+          } else {
+            io.emit('user', { user: { userName: user.userName } });
+          }
+        },
+      });
+    },
+  });
+}
+
 exports.createUser = createUser;
 exports.getUsers = listUsers;
 exports.sendPasswordReset = sendPasswordReset;
@@ -720,3 +769,4 @@ exports.getBannedUsers = getBannedUsers;
 exports.matchPartialUserName = matchPartialUserName;
 exports.listUsers = listUsers;
 exports.banUser = banUser;
+exports.verifyUser = verifyUser;

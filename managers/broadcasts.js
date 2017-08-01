@@ -36,8 +36,8 @@ function getBroadcasts({ token, callback }) {
         return;
       }
 
-      dbChatHistory.getHistories({
-        rooms: [dbConfig.rooms.bcast.roomName],
+      dbChatHistory.getHistory({
+        roomName: dbConfig.rooms.bcast.roomName,
         callback: ({ error: historyError, data: historyData }) => {
           if (historyError) {
             callback({ error: historyError });
@@ -45,7 +45,7 @@ function getBroadcasts({ token, callback }) {
             return;
           }
 
-          callback({ data: { messages: historyData.histories[0].messages } });
+          callback({ data: historyData });
         },
       });
     },
