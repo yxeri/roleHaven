@@ -67,10 +67,11 @@ function createUser({ token, user, callback, origin = '' }) {
         return;
       }
 
-      const { userName = user.userName.toLowerCase(), fullName, password, registerDevice, mail, banned, verified, accessLevel, visibility } = user;
+      const { userName, fullName, password, registerDevice, mail, banned, verified, accessLevel, visibility } = user;
+      const lowerCaseUserName = userName.toLowerCase();
 
       const newUser = {
-        userName,
+        userName: lowerCaseUserName,
         password,
         registerDevice,
         mail,
@@ -79,7 +80,7 @@ function createUser({ token, user, callback, origin = '' }) {
         accessLevel,
         visibility,
         registeredAt: new Date(),
-        fullName: fullName || userName,
+        fullName: fullName || lowerCaseUserName,
         rooms: [
           dbConfig.rooms.public.roomName,
           dbConfig.rooms.bcast.roomName,

@@ -19,6 +19,7 @@
 const dbConfig = require('../config/defaults/config').databasePopulation;
 const authenticator = require('../helpers/authenticator');
 const dbLanternHack = require('../db/connectors/lanternhack');
+const lanternStationManager = require('./lanternStations');
 
 /**
  * Get lantern round
@@ -67,6 +68,8 @@ function startLanternRound({ io, endTime, token, callback }) {
 
         return;
       }
+
+      lanternStationManager.resetStations({ callback: () => {} });
 
       dbLanternHack.startLanternRound({
         endTime,

@@ -89,4 +89,20 @@ data.alias = tools.createRandString({ length: appConfig.userNameMaxLength });
 
 data.incorrectPassword = tools.createRandString({ length: appConfig.passwordMaxLength });
 
+data.lanternStationToCreate = {
+  stationId: 20,
+  stationName: `${tools.createRandString({ length: 5 })}`,
+  isActive: true,
+};
+data.anotherLanternStationToCreate = {
+  stationId: 21,
+  stationName: `${tools.createRandString({ length: 5 })}`,
+  isActive: true,
+};
+data.aThirdLanternStationToCreate = {
+  stationId: 22,
+  stationName: `${tools.createRandString({ length: 5 })}`,
+  isActive: true,
+};
+
 module.exports = data;

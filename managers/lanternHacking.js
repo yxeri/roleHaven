@@ -27,12 +27,6 @@ const authenticator = require('../helpers/authenticator');
 const lanternRoundManager = require('../managers/lanternRounds');
 const lanternStationManager = require('../managers/lanternStations');
 
-const signalThreshold = 50;
-const signalDefault = 100;
-const changePercentage = 0.2;
-const signalMaxChange = 10;
-let resetInterval = null;
-
 /**
  * Post request to external server
  * @param {string} params.host Host name
@@ -67,8 +61,20 @@ function postRequest({ host, path, data, callback }) {
  * @param {Function} params.callback Callback
  */
 function resetStations({ callback = () => {} }) {
+  if (appConfig.mode === appConfig.Modes.TEST || appConfig.signalResetTimeout !== 0) {
+    return;
+  }
+
   dbLanternHack.getLanternRound({
-    callback: () => {
+    callback: ({ error: roundError, data: roundData }) => {
+      if (roundError) {
+        callback({ error: roundError });
+
+        return;
+      } else if (!roundData.isActive) {
+        return;
+      }
+
       dbLanternHack.getAllStations({
         callback: ({ error, data }) => {
           if (error) {
@@ -84,8 +90,8 @@ function resetStations({ callback = () => {} }) {
             const stationId = station.stationId;
             let newSignalValue = signalValue;
 
-            if (signalValue !== signalDefault) {
-              if (signalValue > signalDefault) {
+            if (signalValue !== appConfig.signalDefaultValue) {
+              if (signalValue > appConfig.signalDefaultValue) {
                 newSignalValue -= 1;
               } else {
                 newSignalValue += 1;
@@ -99,39 +105,33 @@ function resetStations({ callback = () => {} }) {
                     callback({ error: updateError });
 
                     return;
+                  } else if (!appConfig.hackingApiKey || !appConfig.hackingApiHost) {
+                    callback({ error: new errorCreator.Internal({ name: 'hacking api host or key not set ' }) });
+
+                    return;
                   }
 
-                  if (appConfig.hackingApiHost && appConfig.hackingApiKey) {
-                    postRequest({
-                      host: appConfig.hackingApiHost,
-                      path: '/reports/set_boost',
-                      data: {
-                        station: stationId,
-                        boost: newSignalValue,
-                        key: appConfig.hackingApiKey,
-                      },
-                      callback: () => {
-                      },
-                    });
-                  }
+                  postRequest({
+                    host: appConfig.hackingApiHost,
+                    path: '/reports/set_boost',
+                    data: {
+                      station: stationId,
+                      boost: newSignalValue,
+                      key: appConfig.hackingApiKey,
+                    },
+                    callback: () => {},
+                  });
                 },
               });
             }
           });
         },
       });
-
-      if (appConfig.signalResetTimeout !== 0) {
-        if (resetInterval === null) {
-          resetInterval = setInterval(resetStations, appConfig.signalResetTimeout, {});
-        } else {
-          clearInterval(resetInterval);
-          resetInterval = setInterval(resetStations, appConfig.signalResetTimeout, {});
-        }
-      }
     },
   });
 }
+
+setInterval(resetStations, appConfig.signalResetTimeout, {});
 
 /**
  * Update signal value on a station
@@ -157,8 +157,8 @@ function updateSignalValue({ stationId, boostingSignal, callback }) {
        * @param {number} params.signalValue New signal value
        */
       function setNewValue({ signalValue }) {
-        const minValue = signalDefault - signalThreshold;
-        const maxValue = signalDefault + signalThreshold;
+        const minValue = appConfig.signalDefaultValue - appConfig.signalThreshold;
+        const maxValue = appConfig.signalDefaultValue + appConfig.signalThreshold;
         let ceilSignalValue = Math.ceil(signalValue);
 
         if (ceilSignalValue > maxValue) {
@@ -177,32 +177,34 @@ function updateSignalValue({ stationId, boostingSignal, callback }) {
               return;
             }
 
-            // TODO Temporary until external server is up
-            callback({ data: { success: true } });
-            postRequest({
-              host: appConfig.hackingApiHost,
-              path: '/reports/set_boost',
-              data: {
-                station: stationId,
-                boost: ceilSignalValue,
-                key: appConfig.hackingApiKey,
-              },
-              callback: (response) => {
-                callback({ data: { response } });
-              },
-            });
+            if (appConfig.hackingApiHost && appConfig.hackingApiKey) {
+              postRequest({
+                host: appConfig.hackingApiHost,
+                path: '/reports/set_boost',
+                data: {
+                  station: stationId,
+                  boost: ceilSignalValue,
+                  key: appConfig.hackingApiKey,
+                },
+                callback: (response) => {
+                  callback({ data: { response } });
+                },
+              });
+            } else {
+              callback({ error: new errorCreator.Internal({ name: 'hacking api host or key not set ' }) });
+            }
           },
         });
       }
 
       const signalValue = station.signalValue;
-      const difference = Math.abs(signalValue - signalDefault);
-      let signalChange = (signalThreshold - difference) * changePercentage;
+      const difference = Math.abs(signalValue - appConfig.signalDefaultValue);
+      let signalChange = (appConfig.signalThreshold - difference) * appConfig.signalChangePercentage;
 
-      if (boostingSignal && signalValue < signalDefault) {
-        signalChange = signalMaxChange;
-      } else if (!boostingSignal && signalValue > signalDefault) {
-        signalChange = signalMaxChange;
+      if (boostingSignal && signalValue < appConfig.signalDefaultValue) {
+        signalChange = appConfig.signalMaxChange;
+      } else if (!boostingSignal && signalValue > appConfig.signalDefaultValue) {
+        signalChange = appConfig.signalMaxChange;
       }
 
       setNewValue({ signalValue: signalValue + (boostingSignal ? signalChange : -Math.abs(signalChange)) });
@@ -224,12 +226,12 @@ function createHackData({ lanternHack, callback }) {
         return;
       }
 
-      const { fakePasswords } = data;
+      const passwords = data.passwords;
       const correctUser = lanternHack.gameUsers.find(gameUser => gameUser.isCorrect);
 
       callback({
         data: {
-          passwords: textTools.shuffleArray(fakePasswords.map(password => password.password)).slice(0, 13).concat(lanternHack.gameUsers.map(gameUser => gameUser.password)),
+          passwords: textTools.shuffleArray(passwords).slice(0, 13).concat(lanternHack.gameUsers.map(gameUser => gameUser.password)),
           triesLeft: lanternHack.triesLeft,
           userName: correctUser.userName,
           passwordType: correctUser.passwordType,
@@ -269,8 +271,6 @@ function createLanternHack({ stationId, owner, triesLeft, callback }) {
 
         return {
           password,
-          // 97 === a
-          passwordType: String.fromCharCode(97 + passwordRand).toUpperCase(),
           userName: gameUser.userName,
           passwordHint: { index: randomIndex, character: password.charAt(randomIndex) },
         };

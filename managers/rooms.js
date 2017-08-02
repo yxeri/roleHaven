@@ -393,7 +393,7 @@ function followRoom({ token, socket, io, room, callback, user: sentUser = {} }) 
                   socket.broadcast.to(roomName).emit('roomFollower', { data: dataToSend });
                   socket.join(roomName);
                 } else {
-                  io.to(user.socketId).emit('follow', { data: { room: authData.room } });
+                  io.to(user.userName + appConfig.whisperAppend).emit('follow', { data: { room: authData.room } });
                   io.to(roomName).emit('roomFollower', { data: dataToSend });
                 }
 
@@ -569,7 +569,7 @@ function unfollowRoom({ token, socket, io, isWhisperRoom, room, callback, user =
 
             if (allSocketIds.indexOf(user.socketId) > -1) {
               io.sockets.sockets[user.socketId].leave(roomToUnfollow.roomName);
-              io.to(user.socketId).emit('unfollow', { data: dataToEmit });
+              io.to(user.userName + appConfig.whisperAppend).emit('unfollow', { data: dataToEmit });
             }
           }
 

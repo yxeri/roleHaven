@@ -36,6 +36,7 @@ const calibrationMissionSchemas = require('./schemas/calibrationMissions');
 const dbMailEvent = require('../../db/connectors/mailEvent');
 const positionSchemas = require('./schemas/positions');
 const positionData = require('./testData/positions');
+const lanternStationSchemas = require('./schemas/lanternStations');
 
 chai.should();
 
@@ -774,6 +775,51 @@ describe('Users', () => {
   });
 
   describe('Update calibration mission', () => {
+    before('Create lantern station on /api/lanternStations POST', (done) => {
+      chai
+        .request(app)
+        .post('/api/lanternStations/')
+        .send({ data: { station: userData.lanternStationToCreate } })
+        .set('Authorization', tokens.adminUser)
+        .end((error, response) => {
+          response.should.have.status(200);
+          response.should.be.json;
+          response.body.should.be.jsonSchema(lanternStationSchemas.lanternStation);
+
+          done();
+        });
+    });
+
+    before('Create lantern station on /api/lanternStations POST', (done) => {
+      chai
+        .request(app)
+        .post('/api/lanternStations/')
+        .send({ data: { station: userData.anotherLanternStationToCreate } })
+        .set('Authorization', tokens.adminUser)
+        .end((error, response) => {
+          response.should.have.status(200);
+          response.should.be.json;
+          response.body.should.be.jsonSchema(lanternStationSchemas.lanternStation);
+
+          done();
+        });
+    });
+
+    before('Create lantern station on /api/lanternStations POST', (done) => {
+      chai
+        .request(app)
+        .post('/api/lanternStations/')
+        .send({ data: { station: userData.aThirdLanternStationToCreate } })
+        .set('Authorization', tokens.adminUser)
+        .end((error, response) => {
+          response.should.have.status(200);
+          response.should.be.json;
+          response.body.should.be.jsonSchema(lanternStationSchemas.lanternStation);
+
+          done();
+        });
+    });
+
     describe('Get calibration mission', () => {
       it('Should NOT retrieve active calibration mission for user with incorrect authorization on /api/users/:userName/calibrationMission GET', (done) => {
         chai

@@ -137,13 +137,14 @@ function handle(io) {
    * @apiParam {number} data.station.stationId Station id
    * @apiParam {string} data.station.stationName Location name of the station
    * @apiParam {boolean} [data.station.isActive] Is the station active? Defaults to false
+   * @apiParam {number} [data.station.calibrationReward] Amount of digital currency sent to user
    * @apiParamExample {json} Request-Example:
    *   {
    *    "data": {
    *      "station": {
    *        "stationId": 1,
    *        "stationName": "North forest",
-   *        "isActive": true,
+   *        "isActive": true
    *      }
    *    }
    *  }
@@ -157,7 +158,8 @@ function handle(io) {
    *        "stationId": 1,
    *        "stationName": "North forest,
    *        "isActive": true,
-   *        "signalValue": 0
+   *        "signalValue": 100,
+   *        "calibrationReward": 10
    *      }
    *    }
    *  }
@@ -203,6 +205,7 @@ function handle(io) {
    * @apiParam {boolean} [data.station.isActive] Is the station active?
    * @apiParam {string} [data.station.owner] Name of the owner of the station
    * @apiParam {Object} [data.station.isUnderAttack] Is the station under attack?
+   * @apiParam {number} [data.station.calibrationReward] Amount of digital currency sent to user
    * @apiParamExample {json} Request-Example:
    *   {
    *    "data": {
@@ -224,7 +227,8 @@ function handle(io) {
    *        "stationName": "North forest",
    *        "isActive": true,
    *        "signalValue": 0,
-   *        "isUnderAttack": true
+   *        "isUnderAttack": true,
+   *        "calibrationReward": 5
    *      }
    *    }
    *  }

@@ -20,13 +20,14 @@ const mongoose = require('mongoose');
 const errorCreator = require('../../objects/error/errorCreator');
 const databaseConnector = require('../databaseConnector');
 const winston = require('winston');
+const appConfig = require('../../config/defaults/config').app;
 
 // Access levels: Lowest / Lower / Middle / Higher / Highest / God
 // 1 / 3 / 5 / 7 / 9 / 11
 
 const lanternHackSchema = new mongoose.Schema({
   owner: { type: String, unique: true },
-  triesLeft: { type: Number, default: 3 },
+  triesLeft: { type: Number, default: appConfig.hackingTriesAmount },
   stationId: Number,
   gameUsers: [{
     userName: String,
@@ -45,7 +46,7 @@ const gameUserSchema = new mongoose.Schema({
   stationId: Number,
 }, { collection: 'gameUsers' });
 const fakePasswordSchema = new mongoose.Schema({
-  password: { type: String, unique: true },
+  passwords: { type: [String], default: [] },
 }, { collection: 'fakePasswords' });
 const stationSchema = new mongoose.Schema({
   stationId: { type: Number, unique: true },
@@ -54,6 +55,7 @@ const stationSchema = new mongoose.Schema({
   isActive: { type: Boolean, default: false },
   owner: String,
   isUnderAttack: { type: Boolean, default: false },
+  calibrationReward: { type: Number, default: appConfig.calibrationRewardAmount },
 }, { collection: 'stations' });
 const lanternRoundSchema = new mongoose.Schema({
   isActive: { type: Boolean, default: false },
@@ -384,6 +386,27 @@ function createStation({ station, callback }) {
 }
 
 /**
+ * Set all lantern station to value
+ * @param {number} params.signalValue New value
+ * @param {Function} params.callback Callback
+ */
+function resetLanternStations({ signalValue, callback }) {
+  const query = {};
+  const update = { $set: { signalValue } };
+  const options = { multi: true };
+
+  Station.update(query, update, options).lean().exec((error, data) => {
+    if (error) {
+      callback({ error });
+
+      return;
+    }
+
+    callback({ data });
+  });
+}
+
+/**
  * Set new isActive on station
  * @param {Object} params.station Lantern station
  * @param {number} params.station.stationId ID of station
@@ -544,48 +567,22 @@ function getLanternHack({ owner, callback }) {
 }
 
 /**
- * Create and save game user
- * @param {Object} params.gameUser Game user
+ * Create and save game users
+ * @param {Object} params.gameUsers Game users
  * @param {Function} params.callback Callback
  */
-function createGameUser({ gameUser, callback }) {
-  const newGameUser = new GameUser(gameUser);
-  const query = { userName: gameUser.userName };
+function createGameUsers({ gameUsers = [] }) {
+  gameUsers.forEach((gameUser) => {
+    const newGameUser = new GameUser(gameUser);
+    const query = { userName: gameUser.userName };
 
-  GameUser.findOne(query).lean().exec((err, foundGameUser) => {
-    if (err) {
-      callback({ error: new errorCreator.Database({ errorObject: err }) });
+    GameUser.findOne(query).lean().exec((err, foundGameUser) => {
+      if (err || foundGameUser) {
+        return;
+      }
 
-      return;
-    } else if (foundGameUser) {
-      callback({ error: new errorCreator.AlreadyExists({ name: `game user ${gameUser.userName}` }) });
-    }
-
-    databaseConnector.saveObject({ object: newGameUser, objectType: 'gameUser', callback });
-  });
-}
-
-/**
- * Get game user
- * @param {string} params.userName Game user to retrieve
- * @param {Function} params.callback Callback
- */
-function getGameUser({ userName, callback }) {
-  const query = { userName };
-  const filter = { _id: 0 };
-
-  GameUser.findOne(query, filter).lean().exec((err, foundGameUser) => {
-    if (err) {
-      callback({ error: new errorCreator.Database({ errorObject: err }) });
-
-      return;
-    } else if (!foundGameUser) {
-      callback({ error: new errorCreator.DoesNotExist({ name: `get game user ${userName}` }) });
-
-      return;
-    }
-
-    callback({ data: { gameUser: foundGameUser } });
+      databaseConnector.saveObject({ object: newGameUser, objectType: 'gameUser', callback: () => {} });
+    });
   });
 }
 
@@ -610,26 +607,23 @@ function getGameUsers({ stationId, callback }) {
 }
 
 /**
- * Create and save fake password
- * @param {Object} params.fakePassword Fake password
+ * Add new fake passwords. Duplicates will be ignored
+ * @param {Object} params.fakePasswords Fake passwords to add
  * @param {Function} params.callback Callback
  */
-function createFakePassword({ fakePassword, callback }) {
-  const newFakePassword = new FakePassword(fakePassword);
-  const query = { password: fakePassword.password };
+function addFakePasswords({ passwords, callback }) {
+  const query = {};
+  const update = { $addToSet: { passwords: { $each: passwords } } };
+  const options = { new: true };
 
-  FakePassword.findOne(query).lean().exec((err, foundFakePassword) => {
+  FakePassword.findOneAndUpdate(query, update, options).lean().exec((err, passwordData) => {
     if (err) {
       callback({ error: new errorCreator.Database({ errorObject: err }) });
 
       return;
-    } else if (foundFakePassword) {
-      callback({ error: new errorCreator.AlreadyExists({ name: `create ${fakePassword.password}` }) });
-
-      return;
     }
 
-    databaseConnector.saveObject({ object: newFakePassword, objectType: 'fakePassword', callback });
+    callback({ data: { passwords: passwordData.passwords } });
   });
 }
 
@@ -641,14 +635,14 @@ function getAllFakePasswords({ callback }) {
   const query = {};
   const filter = { _id: 0 };
 
-  FakePassword.find(query, filter).lean().exec((err, fakePasswords = []) => {
+  FakePassword.findOne(query, filter).lean().exec((err, passwordData) => {
     if (err) {
       callback({ error: new errorCreator.Database({ errorObject: err }) });
 
       return;
     }
 
-    callback({ data: { fakePasswords } });
+    callback({ data: { passwords: passwordData.passwords } });
   });
 }
 
@@ -671,7 +665,6 @@ function getTeams({ callback }) {
   });
 }
 
-// TODO Hack. Remove
 /**
  * Create first round
  * @param {Function} callback Callback
@@ -691,6 +684,25 @@ function createFirstRound(callback) {
   });
 }
 
+/**
+ * Create fake passsword container
+ * @param {Function} callback Callback
+ */
+function createFakePasswordsContainer(callback) {
+  const newFakePasswords = new FakePassword({});
+  const query = {};
+
+  FakePassword.findOne(query).lean().exec((error, data) => {
+    if (error) {
+      callback({ error });
+    } else if (!data) {
+      databaseConnector.saveObject({ object: newFakePasswords, objectType: 'fakePasswords', callback });
+    } else {
+      callback({ data: { exists: true } });
+    }
+  });
+}
+
 createFirstRound(({ error, data }) => {
   if (error) {
     winston.log('Failed to create first round');
@@ -701,11 +713,20 @@ createFirstRound(({ error, data }) => {
   winston.log('Created ', data);
 });
 
-exports.createGameUser = createGameUser;
-exports.getGameUser = getGameUser;
-exports.createFakePassword = createFakePassword;
-exports.getAllFakePasswords = getAllFakePasswords;
+createFakePasswordsContainer(({ error, data }) => {
+  if (error) {
+    winston.log('Failed to create fake password container');
+
+    return;
+  }
+
+  winston.log('Created ', data);
+});
+
+exports.createGameUsers = createGameUsers;
 exports.getGameUsers = getGameUsers;
+exports.addFakePasswords = addFakePasswords;
+exports.getAllFakePasswords = getAllFakePasswords;
 exports.updateLanternHack = updateLanternHack;
 exports.getLanternHack = getLanternHack;
 exports.lowerHackTries = lowerHackTries;
@@ -723,3 +744,6 @@ exports.updateLanternTeam = updateLanternTeam;
 exports.createLanternTeam = createLanternTeam;
 exports.getTeams = getTeams;
 exports.updateLanternRound = updateLanternRound;
+exports.createFirstRound = createFirstRound;
+exports.createfakePasswordContainer = createFakePasswordsContainer;
+exports.resetLanternStations = resetLanternStations;
