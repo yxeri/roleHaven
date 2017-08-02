@@ -25,12 +25,59 @@ const chaiJson = require('chai-json-schema');
 const errorSchemas = require('./schemas/errors');
 const tokens = require('./testData/tokens');
 const calibrationMissionSchemas = require('./schemas/calibrationMissions');
+const lanternStationSchemas = require('./schemas/lanternStations');
+const calibrationMissionData = require('./testData/calibrationMissions');
 
 chai.should();
 chai.use(chaiHttp);
 chai.use(chaiJson);
 
 describe('Calibration Missions', () => {
+  before('Create lantern station on /api/lanternStations POST', (done) => {
+    chai
+      .request(app)
+      .post('/api/lanternStations/')
+      .send({ data: { station: calibrationMissionData.lanternStationToCreate } })
+      .set('Authorization', tokens.adminUser)
+      .end((error, response) => {
+        response.should.have.status(200);
+        response.should.be.json;
+        response.body.should.be.jsonSchema(lanternStationSchemas.lanternStation);
+
+        done();
+      });
+  });
+
+  before('Create lantern station on /api/lanternStations POST', (done) => {
+    chai
+      .request(app)
+      .post('/api/lanternStations/')
+      .send({ data: { station: calibrationMissionData.anotherLanternStationToCreate } })
+      .set('Authorization', tokens.adminUser)
+      .end((error, response) => {
+        response.should.have.status(200);
+        response.should.be.json;
+        response.body.should.be.jsonSchema(lanternStationSchemas.lanternStation);
+
+        done();
+      });
+  });
+
+  before('Create lantern station on /api/lanternStations POST', (done) => {
+    chai
+      .request(app)
+      .post('/api/lanternStations/')
+      .send({ data: { station: calibrationMissionData.aThirdLanternStationToCreate } })
+      .set('Authorization', tokens.adminUser)
+      .end((error, response) => {
+        response.should.have.status(200);
+        response.should.be.json;
+        response.body.should.be.jsonSchema(lanternStationSchemas.lanternStation);
+
+        done();
+      });
+  });
+
   describe('Get calibration missions', () => {
     it('Should NOT get calibration missions with incorrect auth on /api/calibrationMissions GET', (done) => {
       chai

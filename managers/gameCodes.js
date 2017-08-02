@@ -262,9 +262,9 @@ function useGameCode({ socket, io, code, token, callback }) {
                           }
 
                           if (socket) {
-                            socket.to(userData.user.socketId).emit('gameCode', { data: { gameCode: newCodeData.gameCode } });
+                            socket.to(userData.user.userName + appConfig.whisperAppend).emit('gameCode', { data: { gameCode: newCodeData.gameCode } });
                           } else {
-                            io.to(userData.user.socketId).emit('gameCode', { data: { gameCode: newCodeData.gameCode } });
+                            io.to(userData.user.userName + appConfig.whisperAppend).emit('gameCode', { data: { gameCode: newCodeData.gameCode } });
                           }
                         },
                       });

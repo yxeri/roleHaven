@@ -17,15 +17,23 @@
 'use strict';
 
 const tools = require('../helper/tools');
-const appConfig = require('../../../config/defaults/config').app;
 
 const data = {};
 
-data.simpleMsgToSend = {
-  text: tools.createRandString({ length: appConfig.messageMaxLength }),
+data.lanternStationToCreate = {
+  stationId: 10,
+  stationName: `${tools.createRandString({ length: 5 })}`,
+  isActive: true,
 };
-data.tooLongMsg = {
-  text: tools.createRandString({ length: appConfig.messageMaxLength + 3 }),
+data.anotherLanternStationToCreate = {
+  stationId: 11,
+  stationName: `${tools.createRandString({ length: 5 })}`,
+  isActive: true,
+};
+data.aThirdLanternStationToCreate = {
+  stationId: 12,
+  stationName: `${tools.createRandString({ length: 5 })}`,
+  isActive: true,
 };
 
 module.exports = data;

@@ -19,6 +19,7 @@
 const dbConfig = require('../config/defaults/config').databasePopulation;
 const authenticator = require('../helpers/authenticator');
 const dbLanternHack = require('../db/connectors/lanternhack');
+const appConfig = require('../config/defaults/config').app;
 
 /**
  * Get lantern stations
@@ -175,7 +176,19 @@ function updateLanternStation({ io, station, stationId, token, callback }) {
   });
 }
 
+/**
+ * Reset station to default value
+ * @param {Function} params.callback Callback
+ */
+function resetStations({ callback }) {
+  dbLanternHack.resetLanternStations({
+    signalValue: appConfig.signalDefaultValue,
+    callback,
+  });
+}
+
 exports.getLanternStations = getLanternStations;
 exports.createLanternStation = createLanternStation;
 exports.updateLanternStation = updateLanternStation;
 exports.getLanternStation = getLanternStation;
+exports.resetStations = resetStations;

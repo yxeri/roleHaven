@@ -489,6 +489,14 @@ config.apiCommands = {
     name: 'DeclineInvitation',
     accessLevel: config.AccessLevels.BASIC,
   },
+  CreateGameItems: config.apiCommands.CreateGameItems || {
+    name: 'CreateGameItems',
+    accessLevel: config.AccessLevels.LOWERADMIN,
+  },
+  GetGameItems: config.apiCommands.GetGameItems || {
+    name: 'GetGameItems',
+    accessLevel: config.AccessLevels.LOWERADMIN,
+  },
 };
 
 module.exports = config;

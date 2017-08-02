@@ -115,6 +115,7 @@ config.socketPath = (process.env.SOCKETPATH === 'cdn' || config.socketPath === '
 config.routes = config.routes || [
   { sitePath: '/', filePath: `${__dirname}/../../routes/index.js` },
   { sitePath: '/api/authenticate', filePath: `${__dirname}/../../routes/rest/authenticate.js` },
+  { sitePath: '/api/gameItems', filePath: `${__dirname}/../../routes/rest/gameItems.js` },
   { sitePath: '/api/gameCodes', filePath: `${__dirname}/../../routes/rest/gameCodes.js` },
   { sitePath: '/api/rooms', filePath: `${__dirname}/../../routes/rest/rooms.js` },
   { sitePath: '/api/positions', filePath: `${__dirname}/../../routes/rest/positions.js` },
@@ -204,6 +205,14 @@ config.yearModification = process.env.YEARMODIFICATION || config.yearModificatio
  * @type {number}
  */
 config.signalResetTimeout = process.env.SIGNALRESETINTERVAL || config.signalResetTimeout || 0;
+
+config.signalDefaultValue = process.env.SIGNALDEFAULTVALUE || config.signalDefaultValue || 100;
+
+config.signalThreshold = process.env.SIGNALTRESHHOLD || config.signalThreshold || 50;
+
+config.signalChangePercentage = process.env.SIGNALCHANGEPERCENTAGE || config.signalChangePercentage || 0.2;
+
+config.signalMaxChange = process.env.SIGNALMAXCHANGE || config.signalMaxChange || 10;
 
 /**
  * Message that will be sent to client and can be printed

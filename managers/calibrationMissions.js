@@ -23,6 +23,8 @@ const dbTransaction = require('../db/connectors/transaction');
 const dbCalibrationMission = require('../db/connectors/calibrationMission');
 const authenticator = require('../helpers/authenticator');
 const appConfig = require('../config/defaults/config').app;
+const dbLanternHack = require('../db/connectors/lanternhack');
+const errorCreator = require('../objects/error/errorCreator');
 
 /**
  * Get active calibration mission for user. Creates a new one if there is none for the user
@@ -43,61 +45,91 @@ function getActiveCalibrationMission({ token, callback, userName }) {
 
       const owner = userName || data.user.userName;
 
-      dbCalibrationMission.getActiveMission({
-        owner,
-        silentOnDoesNotExist: true,
-        callback: ({ error: activeErr, data: missionData }) => {
-          if (activeErr) {
-            callback({ error: activeErr });
+      dbLanternHack.getLanternRound({
+        callback: ({ error: lanternError, data: lanternData }) => {
+          if (lanternError) {
+            callback({ error: lanternError });
+
+            return;
+          } else if (lanternData.isActive) {
+            callback({ error: new errorCreator.External({ name: 'lantern hack active' }) });
 
             return;
           }
 
-          /**
-           * Return active mission, if it exists, or continue with creating a new one
-           */
-          if (missionData.mission) {
-            callback({ data: missionData });
-
-            return;
-          }
-
-          dbCalibrationMission.getInactiveMissions({
+          dbCalibrationMission.getActiveMission({
             owner,
-            callback: ({ error: inactiveErr, data: inactiveData }) => {
-              if (inactiveErr) {
-                callback({ error: inactiveErr });
+            silentOnDoesNotExist: true,
+            callback: ({ error: activeErr, data: missionData }) => {
+              if (activeErr) {
+                callback({ error: activeErr });
 
                 return;
               }
 
-              const { missions: inactiveMissions } = inactiveData;
-              const stationIds = [1, 2, 3, 4]; // TODO This is just for testing purposes. Remove when organisers have their backend ready
+              /**
+               * Return active mission, if it exists, or continue with creating a new one
+               */
+              if (missionData.mission) {
+                callback({ data: missionData });
 
-              if (inactiveMissions && inactiveMissions.length > 0) {
-                const previousStationId = inactiveMissions[inactiveMissions.length - 1].stationId;
-
-                stationIds.splice(stationIds.indexOf(previousStationId), 1);
+                return;
               }
 
-              const newStationId = stationIds[Math.floor(Math.random() * (stationIds.length))];
-              const newCode = Math.floor(Math.random() * (((99999999 - 10000000) + 1) + 10000000));
-              const missionToCreate = {
+              dbCalibrationMission.getInactiveMissions({
                 owner,
-                stationId: newStationId,
-                code: newCode,
-              };
-
-              dbCalibrationMission.createMission({
-                mission: missionToCreate,
-                callback: ({ error: createError, data: createData }) => {
-                  if (createError) {
-                    callback({ error: createError });
+                callback: ({ error: inactiveErr, data: inactiveData }) => {
+                  if (inactiveErr) {
+                    callback({ error: inactiveErr });
 
                     return;
                   }
 
-                  callback({ data: { mission: createData.mission, isNew: true } });
+                  dbLanternHack.getActiveStations({
+                    callback: ({ error: stationsError, data: stationsData }) => {
+                      if (stationsError) {
+                        callback({ error: stationsError });
+
+                        return;
+                      } else if (stationsData.stations.length < 1) {
+                        callback({ error: new errorCreator.DoesNotExist({ name: 'no active stations' }) });
+
+                        return;
+                      }
+
+                      const stationIds = stationsData.stations.map(station => station.stationId);
+                      const { missions: inactiveMissions } = inactiveData;
+
+                      if (inactiveMissions && inactiveMissions.length > 0) {
+                        const previousStationId = inactiveMissions[inactiveMissions.length - 1].stationId;
+
+                        stationIds.splice(stationIds.indexOf(previousStationId), 1);
+                      }
+
+                      const newStationId = stationIds[Math.floor(Math.random() * (stationIds.length))];
+                      const newCode = Math.floor(Math.random() * (((99999999 - 10000000) + 1) + 10000000));
+                      const missionToCreate = {
+                        owner,
+                        stationId: newStationId,
+                        code: newCode,
+                      };
+
+                      dbCalibrationMission.createMission({
+                        mission: missionToCreate,
+                        callback: ({ error: createError, data: createData }) => {
+                          if (createError) {
+                            callback({ error: createError });
+
+                            return;
+                          }
+
+                          // TODO Send to external
+
+                          callback({ data: { mission: createData.mission, isNew: true } });
+                        },
+                      });
+                    },
+                  });
                 },
               });
             },
@@ -137,52 +169,49 @@ function completeActiveCalibrationMission({ token, owner, io, callback }) {
 
           const completedMission = missionData.mission;
 
-          const transaction = {
-            to: completedMission.owner,
-            from: 'SYSTEM',
-            amount: appConfig.calibrationRewardAmount,
-            time: new Date(),
-            note: `CALIBRATION OF STATION ${completedMission.stationId}`,
-          };
-
-          dbTransaction.createTransaction({
-            transaction,
-            callback: (createTransactionData) => {
-              if (createTransactionData.error) {
-                callback({ error: createTransactionData.error });
+          dbLanternHack.getStation({
+            stationId: completedMission.stationId,
+            callback: ({ error: stationError, data: stationData }) => {
+              if (stationError) {
+                callback({ error: stationError });
 
                 return;
               }
 
-              const createdTransaction = createTransactionData.data.transaction;
+              const transaction = {
+                to: completedMission.owner,
+                from: 'SYSTEM',
+                amount: stationData.calibrationReward || appConfig.calibrationRewardAmount,
+                time: new Date(),
+                note: `CALIBRATION OF STATION ${completedMission.stationId}`,
+              };
 
-              dbWallet.increaseAmount({
-                owner: completedMission.owner,
-                amount: createdTransaction.amount,
-                callback: ({ error: walletError, data: walletData }) => {
-                  if (walletError) {
-                    callback({ error: walletError });
+              dbTransaction.createTransaction({
+                transaction,
+                callback: (createTransactionData) => {
+                  if (createTransactionData.error) {
+                    callback({ error: createTransactionData.error });
 
                     return;
                   }
 
-                  const updatedWallet = walletData.wallet;
+                  const createdTransaction = createTransactionData.data.transaction;
 
-                  dbUser.getUserByAlias({
-                    alias: createdTransaction.to,
-                    callback: ({ error: aliasError, data: aliasData }) => {
-                      if (aliasError) {
-                        callback({ error: aliasError });
+                  dbWallet.increaseAmount({
+                    owner: completedMission.owner,
+                    amount: createdTransaction.amount,
+                    callback: ({ error: walletError, data: walletData }) => {
+                      if (walletError) {
+                        callback({ error: walletError });
 
                         return;
                       }
 
-                      const { user } = aliasData;
+                      const updatedWallet = walletData.wallet;
+                      const userRoom = completedMission.owner + appConfig.whisperAppend;
 
-                      if (user.socketId && user.socketId !== '') {
-                        io.to(user.socketId).emit('transaction', { data: { transaction, wallet: updatedWallet } });
-                        io.to(user.socketId).emit('terminal', { data: { mission: { missionType: 'calibrationMission', completed: true } } });
-                      }
+                      io.to(userRoom).emit('transaction', { data: { transaction, wallet: updatedWallet } });
+                      io.to(userRoom).emit('terminal', { data: { mission: { missionType: 'calibrationMission', completed: true } } });
 
                       callback({
                         data: {
@@ -241,9 +270,7 @@ function cancelActiveCalibrationMission({ token, io, callback, owner }) {
 
               const { user } = aliasData;
 
-              if (user.socketId !== '') {
-                io.to(user.socketId).emit('terminal', { data: { mission: { missionType: 'calibrationMission', cancelled: true } } });
-              }
+              io.to(user.userName + appConfig.whisperAppend).emit('terminal', { data: { mission: { missionType: 'calibrationMission', cancelled: true } } });
 
               callback({ data: { mission: updatedMission, cancelled: true } });
             },

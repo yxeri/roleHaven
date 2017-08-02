@@ -44,7 +44,7 @@ function sendSimpleMsg({ text, socket, io, token, callback }) {
         callback({ error: new errorCreator.InvalidData({ expected: '{ text }' }) });
 
         return;
-      } else if (text.join('').length > appConfig.messageMaxLength) {
+      } else if (text.length > appConfig.messageMaxLength) {
         callback({ error: new errorCreator.InvalidCharacters({ expected: `text length ${appConfig.messageMaxLength}` }) });
 
         return;
