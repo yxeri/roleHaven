@@ -25,6 +25,7 @@ const authenticator = require('../helpers/authenticator');
 const appConfig = require('../config/defaults/config').app;
 const dbLanternHack = require('../db/connectors/lanternhack');
 const errorCreator = require('../objects/error/errorCreator');
+const poster = require('../helpers/poster');
 
 /**
  * Get active calibration mission for user. Creates a new one if there is none for the user
@@ -123,9 +124,39 @@ function getActiveCalibrationMission({ token, callback, userName }) {
                             return;
                           }
 
-                          // TODO Send to external
+                          const mission = createData.mission;
 
-                          callback({ data: { mission: createData.mission, isNew: true } });
+                          poster.postRequest({
+                            shouldBypass: !appConfig.hackingApiHost || !appConfig.hackingApiKey,
+                            host: appConfig.hackingApiHost,
+                            path: '/reports/set_mission',
+                            data: {
+                              station: createData,
+                              owner: mission.owner,
+                              code: mission.code,
+                              key: appConfig.hackingApiKey,
+                            },
+                            callback: (statusCode) => {
+                              if (statusCode !== 200) {
+                                dbCalibrationMission.removeMission({
+                                  mission,
+                                  callback: ({ error: removeError }) => {
+                                    if (removeError) {
+                                      callback({ error });
+
+                                      return;
+                                    }
+
+                                    callback({ error: new errorCreator.External({ name: 'hacking api no answer' }) });
+                                  },
+                                });
+
+                                return;
+                              }
+
+                              callback({ data: { mission: createData.mission, isNew: true } });
+                            },
+                          });
                         },
                       });
                     },
@@ -181,7 +212,7 @@ function completeActiveCalibrationMission({ token, owner, io, callback }) {
               const transaction = {
                 to: completedMission.owner,
                 from: 'SYSTEM',
-                amount: stationData.calibrationReward || appConfig.calibrationRewardAmount,
+                amount: stationData.station.calibrationReward || appConfig.calibrationRewardAmount,
                 time: new Date(),
                 note: `CALIBRATION OF STATION ${completedMission.stationId}`,
               };

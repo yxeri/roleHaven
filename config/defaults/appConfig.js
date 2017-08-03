@@ -300,9 +300,13 @@ config.verboseError = verboseErrorEnv !== undefined ? verboseErrorEnv : config.v
 
 config.allowMessageImage = allowMessageImageEnv !== undefined ? allowMessageImageEnv : config.allowMessageImage || false;
 
-config.defaultWalletAmount = process.env.DEFAULTWALLETAMOUNT || config.defaultWalletAmount || 5;
+config.defaultWalletAmount = process.env.DEFAULTWALLETAMOUNT || config.defaultWalletAmount || 3;
 
 config.calibrationRewardAmount = process.env.CALIBRATIONREWARDAMOUNT || config.calibrationRewardAmount || 5;
+
+config.calibrationRewardMinimum = process.env.CALIBRATIONREWARDMINIMUM || config.calibrationRewardMinimum || 0;
+
+config.calibrationRewardMax = process.env.CALIBRATIONREWARDMAX || config.calibrationRewardMax || 20;
 
 /**
  * Secret key used for Mailgun

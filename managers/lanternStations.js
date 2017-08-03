@@ -117,6 +117,12 @@ function createLanternStation({ io, station, token, callback }) {
         return;
       }
 
+      const newStation = station;
+      newStation.calibrationReward = newStation.calibrationReward
+      && newStation.calibrationReward >= appConfig.calibrationRewardMinimum
+      && newStation.calibrationReward <= appConfig.calibrationRewardMax
+        ? newStation.calibrationReward : undefined;
+
       dbLanternHack.createStation({
         station,
         callback: ({ error: stationError, data: stationData }) => {
@@ -153,7 +159,7 @@ function updateLanternStation({ io, station, stationId, token, callback }) {
         return;
       }
 
-      const { isUnderAttack, isActive, stationName, owner } = station;
+      const { isUnderAttack, isActive, stationName, owner, calibrationReward } = station;
 
       dbLanternHack.updateLanternStation({
         isUnderAttack,
@@ -161,6 +167,7 @@ function updateLanternStation({ io, station, stationId, token, callback }) {
         isActive,
         stationName,
         owner,
+        calibrationReward: calibrationReward && calibrationReward >= appConfig.calibrationRewardMinimum && calibrationReward <= appConfig.calibrationRewardMax ? calibrationReward : undefined,
         callback: ({ error: updateError, data: updateData }) => {
           if (updateError) {
             callback({ error: updateError });

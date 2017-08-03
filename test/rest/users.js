@@ -32,11 +32,11 @@ const aliasData = require('./testData/aliases');
 const aliasSchemas = require('./schemas/aliases');
 const roomSchemas = require('./schemas/rooms');
 const starterData = require('./testData/starter');
-const calibrationMissionSchemas = require('./schemas/calibrationMissions');
+// const calibrationMissionSchemas = require('./schemas/calibrationMissions');
 const dbMailEvent = require('../../db/connectors/mailEvent');
 const positionSchemas = require('./schemas/positions');
 const positionData = require('./testData/positions');
-const lanternStationSchemas = require('./schemas/lanternStations');
+// const lanternStationSchemas = require('./schemas/lanternStations');
 
 chai.should();
 
@@ -774,307 +774,307 @@ describe('Users', () => {
     });
   });
 
-  describe('Update calibration mission', () => {
-    before('Create lantern station on /api/lanternStations POST', (done) => {
-      chai
-        .request(app)
-        .post('/api/lanternStations/')
-        .send({ data: { station: userData.lanternStationToCreate } })
-        .set('Authorization', tokens.adminUser)
-        .end((error, response) => {
-          response.should.have.status(200);
-          response.should.be.json;
-          response.body.should.be.jsonSchema(lanternStationSchemas.lanternStation);
-
-          done();
-        });
-    });
-
-    before('Create lantern station on /api/lanternStations POST', (done) => {
-      chai
-        .request(app)
-        .post('/api/lanternStations/')
-        .send({ data: { station: userData.anotherLanternStationToCreate } })
-        .set('Authorization', tokens.adminUser)
-        .end((error, response) => {
-          response.should.have.status(200);
-          response.should.be.json;
-          response.body.should.be.jsonSchema(lanternStationSchemas.lanternStation);
-
-          done();
-        });
-    });
-
-    before('Create lantern station on /api/lanternStations POST', (done) => {
-      chai
-        .request(app)
-        .post('/api/lanternStations/')
-        .send({ data: { station: userData.aThirdLanternStationToCreate } })
-        .set('Authorization', tokens.adminUser)
-        .end((error, response) => {
-          response.should.have.status(200);
-          response.should.be.json;
-          response.body.should.be.jsonSchema(lanternStationSchemas.lanternStation);
-
-          done();
-        });
-    });
-
-    describe('Get calibration mission', () => {
-      it('Should NOT retrieve active calibration mission for user with incorrect authorization on /api/users/:userName/calibrationMission GET', (done) => {
-        chai
-          .request(app)
-          .get(`/api/users/${userData.newUserToCreate.userName}/calibrationMission`)
-          .set('Authorization', tokens.incorrectJwt)
-          .end((error, response) => {
-            response.should.have.status(401);
-            response.should.be.json;
-            response.body.should.be.jsonSchema(errorSchemas.error);
-
-            done();
-          });
-      });
-
-      it('Should get active calibration mission for other user with enough permission on /api/users/:userName/calibrationMission GET', (done) => {
-        chai
-          .request(app)
-          .get(`/api/users/${userData.newUserToCreate.userName}/calibrationMission`)
-          .set('Authorization', tokens.adminUser)
-          .end((error, response) => {
-            response.should.have.status(200);
-            response.should.be.json;
-            response.body.should.be.jsonSchema(calibrationMissionSchemas.calibrationMission);
-            response.body.data.mission.owner.should.equal(userData.newUserToCreate.userName);
-
-            done();
-          });
-      });
-
-      it('Should get active calibration mission for self on /api/users/:userName/calibrationMission GET', (done) => {
-        chai
-          .request(app)
-          .get(`/api/users/${userData.newUserToCreate.userName}/calibrationMission`)
-          .set('Authorization', userTokens.newUser)
-          .end((error, response) => {
-            response.should.have.status(200);
-            response.should.be.json;
-            response.body.should.be.jsonSchema(calibrationMissionSchemas.calibrationMission);
-            response.body.data.mission.owner.should.equal(userData.newUserToCreate.userName);
-
-            done();
-          });
-      });
-    });
-
-    describe('Complete calibration mission', () => {
-      before('Get calibration mission for user on /api/users/:userName/calibrationMission GET', (done) => {
-        chai
-          .request(app)
-          .get(`/api/users/${userData.newUserToCreate.userName}/calibrationMission`)
-          .set('Authorization', tokens.adminUser)
-          .end((error, response) => {
-            response.should.have.status(200);
-            response.should.be.json;
-            response.body.should.be.jsonSchema(calibrationMissionSchemas.calibrationMission);
-
-            done();
-          });
-      });
-
-      it('Should NOT complete calibration mission with incorrect authorization /api/users/:userName/calibrationMission/complete POST', (done) => {
-        chai
-          .request(app)
-          .post(`/api/users/${userData.newUserToCreate.userName}/calibrationMission/complete`)
-          .set('Authorization', tokens.incorrectJwt)
-          .end((error, response) => {
-            response.should.have.status(401);
-            response.should.be.json;
-            response.body.should.be.jsonSchema(errorSchemas.error);
-
-            done();
-          });
-      });
-
-      it('Should complete calibration mission for user on /api/users/:userName/calibrationMission/complete POST', (done) => {
-        chai
-          .request(app)
-          .post(`/api/users/${userData.newUserToCreate.userName}/calibrationMission/complete`)
-          .set('Authorization', tokens.adminUser)
-          .end((error, response) => {
-            response.should.have.status(200);
-            response.should.be.json;
-            response.body.should.be.jsonSchema(calibrationMissionSchemas.calibrationMission);
-            response.body.data.mission.completed.should.equal(true);
-            response.body.data.mission.timeCompleted.should.exist;
-
-            done();
-          });
-      });
-
-      describe('Correct completed mission data', () => {
-        let completedMission = {};
-
-        before('Get active calibration mission for user on /api/users/:userName/calibrationMission GET', (done) => {
-          chai
-            .request(app)
-            .get(`/api/users/${userData.newUserToCreate.userName}/calibrationMission`)
-            .set('Authorization', tokens.adminUser)
-            .end((error, response) => {
-              response.should.have.status(200);
-              response.should.be.json;
-              response.body.should.be.jsonSchema(calibrationMissionSchemas.calibrationMission);
-
-              completedMission = response.body.data.mission;
-
-              done();
-            });
-        });
-
-        before('Complete calibration mission for user on /api/users/:userName/calibrationMission/complete POST', (done) => {
-          chai
-            .request(app)
-            .post(`/api/users/${userData.newUserToCreate.userName}/calibrationMission/complete`)
-            .set('Authorization', tokens.adminUser)
-            .end((error, response) => {
-              response.should.have.status(200);
-              response.should.be.json;
-              response.body.should.be.jsonSchema(calibrationMissionSchemas.calibrationMission);
-
-              completedMission = response.body.data.mission;
-
-              done();
-            });
-        });
-
-        it('Should get new active calibration mission for user and it should NOT have the same station ID nor code as the completed mission on /api/users/:userName/calibrationMissions GET', (done) => {
-          chai
-            .request(app)
-            .get(`/api/users/${userData.newUserToCreate.userName}/calibrationMission`)
-            .set('Authorization', tokens.adminUser)
-            .end((error, response) => {
-              response.should.have.status(200);
-              response.should.be.json;
-              response.body.should.be.jsonSchema(calibrationMissionSchemas.calibrationMission);
-              response.body.data.mission.stationId.should.not.equal(completedMission.stationId);
-              response.body.data.mission.code.should.not.equal(completedMission.code);
-              response.body.data.mission.owner.should.equal(userData.newUserToCreate.userName);
-
-              done();
-            });
-        });
-      });
-    });
-
-    describe('Cancel calibration mission', () => {
-      before('Get active calibration mission for user on /api/users/:userName/calibrationMission GET', (done) => {
-        chai
-          .request(app)
-          .get(`/api/users/${userData.newUserToCreate.userName}/calibrationMission`)
-          .set('Authorization', tokens.adminUser)
-          .end((error, response) => {
-            response.should.have.status(200);
-            response.should.be.json;
-            response.body.should.be.jsonSchema(calibrationMissionSchemas.calibrationMission);
-
-            done();
-          });
-      });
-
-      it('Should NOT cancel calibration mission with incorrect authorization on /api/users/:userName/calibrationMission/cancel POST', (done) => {
-        chai
-          .request(app)
-          .post(`/api/users/${userData.newUserToCreate.userName}/calibrationMission/cancel`)
-          .set('Authorization', tokens.incorrectJwt)
-          .end((error, response) => {
-            response.should.have.status(401);
-            response.should.be.json;
-            response.body.should.be.jsonSchema(errorSchemas.error);
-
-            done();
-          });
-      });
-
-      it('Should cancel active calibration mission on /api/users/:userName/calibrationMission/cancel POST', (done) => {
-        chai
-          .request(app)
-          .post(`/api/users/${userData.newUserToCreate.userName}/calibrationMission/cancel`)
-          .set('Authorization', tokens.adminUser)
-          .end((error, response) => {
-            response.should.have.status(200);
-            response.should.be.json;
-            response.body.should.be.jsonSchema(calibrationMissionSchemas.calibrationMission);
-
-            done();
-          });
-      });
-
-      it('Should NOT cancel non-existing calibrationMission on /api/users/:userName/calibrationMission/cancel POST', (done) => {
-        chai
-          .request(app)
-          .post(`/api/users/${starterData.adminUserToAuth.userName}/calibrationMission/cancel`)
-          .set('Authorization', tokens.adminUser)
-          .end((error, response) => {
-            response.should.have.status(404);
-            response.should.be.json;
-            response.body.should.be.jsonSchema(errorSchemas.error);
-
-            done();
-          });
-      });
-
-      describe('Correct cancelled mission data', () => {
-        let cancelledMission = {};
-
-        before('Get active calibration mission for user on /api/users/:userName/calibrationMissions GET', (done) => {
-          chai
-            .request(app)
-            .get(`/api/users/${userData.newUserToCreate.userName}/calibrationMission`)
-            .set('Authorization', tokens.adminUser)
-            .end((error, response) => {
-              response.should.have.status(200);
-              response.should.be.json;
-              response.body.should.be.jsonSchema(calibrationMissionSchemas.calibrationMission);
-
-              cancelledMission = response.body.data.mission;
-
-              done();
-            });
-        });
-
-        before('Cancel active calibration mission for user on /api/users/:userName/calibrationMissions/cancel POST', (done) => {
-          chai
-            .request(app)
-            .post(`/api/users/${userData.newUserToCreate.userName}/calibrationMission/cancel`)
-            .set('Authorization', tokens.adminUser)
-            .end((error, response) => {
-              response.should.have.status(200);
-              response.should.be.json;
-              response.body.should.be.jsonSchema(calibrationMissionSchemas.calibrationMission);
-
-              cancelledMission = response.body.data.mission;
-
-              done();
-            });
-        });
-
-        it('Should get new active calibration mission for current user and it should NOT be the same as the cancelled mission on /api/users/:userName/calibrationMission GET', (done) => {
-          chai
-            .request(app)
-            .get(`/api/users/${userData.newUserToCreate.userName}/calibrationMission`)
-            .set('Authorization', userTokens.newUser)
-            .end((error, response) => {
-              response.should.have.status(200);
-              response.should.be.json;
-              response.body.should.be.jsonSchema(calibrationMissionSchemas.calibrationMission);
-              response.body.data.mission.stationId.should.not.equal(cancelledMission.stationId);
-              response.body.data.mission.should.not.equal(cancelledMission);
-
-              done();
-            });
-        });
-      });
-    });
-  });
+  // describe('Update calibration mission', () => {
+  //   before('Create lantern station on /api/lanternStations POST', (done) => {
+  //     chai
+  //       .request(app)
+  //       .post('/api/lanternStations/')
+  //       .send({ data: { station: userData.lanternStationToCreate } })
+  //       .set('Authorization', tokens.adminUser)
+  //       .end((error, response) => {
+  //         response.should.have.status(200);
+  //         response.should.be.json;
+  //         response.body.should.be.jsonSchema(lanternStationSchemas.lanternStation);
+  //
+  //         done();
+  //       });
+  //   });
+  //
+  //   before('Create lantern station on /api/lanternStations POST', (done) => {
+  //     chai
+  //       .request(app)
+  //       .post('/api/lanternStations/')
+  //       .send({ data: { station: userData.anotherLanternStationToCreate } })
+  //       .set('Authorization', tokens.adminUser)
+  //       .end((error, response) => {
+  //         response.should.have.status(200);
+  //         response.should.be.json;
+  //         response.body.should.be.jsonSchema(lanternStationSchemas.lanternStation);
+  //
+  //         done();
+  //       });
+  //   });
+  //
+  //   before('Create lantern station on /api/lanternStations POST', (done) => {
+  //     chai
+  //       .request(app)
+  //       .post('/api/lanternStations/')
+  //       .send({ data: { station: userData.aThirdLanternStationToCreate } })
+  //       .set('Authorization', tokens.adminUser)
+  //       .end((error, response) => {
+  //         response.should.have.status(200);
+  //         response.should.be.json;
+  //         response.body.should.be.jsonSchema(lanternStationSchemas.lanternStation);
+  //
+  //         done();
+  //       });
+  //   });
+  //
+  //   describe('Get calibration mission', () => {
+  //     it('Should NOT retrieve active calibration mission for user with incorrect authorization on /api/users/:userName/calibrationMission GET', (done) => {
+  //       chai
+  //         .request(app)
+  //         .get(`/api/users/${userData.newUserToCreate.userName}/calibrationMission`)
+  //         .set('Authorization', tokens.incorrectJwt)
+  //         .end((error, response) => {
+  //           response.should.have.status(401);
+  //           response.should.be.json;
+  //           response.body.should.be.jsonSchema(errorSchemas.error);
+  //
+  //           done();
+  //         });
+  //     });
+  //
+  //     it('Should get active calibration mission for other user with enough permission on /api/users/:userName/calibrationMission GET', (done) => {
+  //       chai
+  //         .request(app)
+  //         .get(`/api/users/${userData.newUserToCreate.userName}/calibrationMission`)
+  //         .set('Authorization', tokens.adminUser)
+  //         .end((error, response) => {
+  //           response.should.have.status(200);
+  //           response.should.be.json;
+  //           response.body.should.be.jsonSchema(calibrationMissionSchemas.calibrationMission);
+  //           response.body.data.mission.owner.should.equal(userData.newUserToCreate.userName);
+  //
+  //           done();
+  //         });
+  //     });
+  //
+  //     it('Should get active calibration mission for self on /api/users/:userName/calibrationMission GET', (done) => {
+  //       chai
+  //         .request(app)
+  //         .get(`/api/users/${userData.newUserToCreate.userName}/calibrationMission`)
+  //         .set('Authorization', userTokens.newUser)
+  //         .end((error, response) => {
+  //           response.should.have.status(200);
+  //           response.should.be.json;
+  //           response.body.should.be.jsonSchema(calibrationMissionSchemas.calibrationMission);
+  //           response.body.data.mission.owner.should.equal(userData.newUserToCreate.userName);
+  //
+  //           done();
+  //         });
+  //     });
+  //   });
+  //
+  //   describe('Complete calibration mission', () => {
+  //     before('Get calibration mission for user on /api/users/:userName/calibrationMission GET', (done) => {
+  //       chai
+  //         .request(app)
+  //         .get(`/api/users/${userData.newUserToCreate.userName}/calibrationMission`)
+  //         .set('Authorization', tokens.adminUser)
+  //         .end((error, response) => {
+  //           response.should.have.status(200);
+  //           response.should.be.json;
+  //           response.body.should.be.jsonSchema(calibrationMissionSchemas.calibrationMission);
+  //
+  //           done();
+  //         });
+  //     });
+  //
+  //     it('Should NOT complete calibration mission with incorrect authorization /api/users/:userName/calibrationMission/complete POST', (done) => {
+  //       chai
+  //         .request(app)
+  //         .post(`/api/users/${userData.newUserToCreate.userName}/calibrationMission/complete`)
+  //         .set('Authorization', tokens.incorrectJwt)
+  //         .end((error, response) => {
+  //           response.should.have.status(401);
+  //           response.should.be.json;
+  //           response.body.should.be.jsonSchema(errorSchemas.error);
+  //
+  //           done();
+  //         });
+  //     });
+  //
+  //     it('Should complete calibration mission for user on /api/users/:userName/calibrationMission/complete POST', (done) => {
+  //       chai
+  //         .request(app)
+  //         .post(`/api/users/${userData.newUserToCreate.userName}/calibrationMission/complete`)
+  //         .set('Authorization', tokens.adminUser)
+  //         .end((error, response) => {
+  //           response.should.have.status(200);
+  //           response.should.be.json;
+  //           response.body.should.be.jsonSchema(calibrationMissionSchemas.calibrationMission);
+  //           response.body.data.mission.completed.should.equal(true);
+  //           response.body.data.mission.timeCompleted.should.exist;
+  //
+  //           done();
+  //         });
+  //     });
+  //
+  //     describe('Correct completed mission data', () => {
+  //       let completedMission = {};
+  //
+  //       before('Get active calibration mission for user on /api/users/:userName/calibrationMission GET', (done) => {
+  //         chai
+  //           .request(app)
+  //           .get(`/api/users/${userData.newUserToCreate.userName}/calibrationMission`)
+  //           .set('Authorization', tokens.adminUser)
+  //           .end((error, response) => {
+  //             response.should.have.status(200);
+  //             response.should.be.json;
+  //             response.body.should.be.jsonSchema(calibrationMissionSchemas.calibrationMission);
+  //
+  //             completedMission = response.body.data.mission;
+  //
+  //             done();
+  //           });
+  //       });
+  //
+  //       before('Complete calibration mission for user on /api/users/:userName/calibrationMission/complete POST', (done) => {
+  //         chai
+  //           .request(app)
+  //           .post(`/api/users/${userData.newUserToCreate.userName}/calibrationMission/complete`)
+  //           .set('Authorization', tokens.adminUser)
+  //           .end((error, response) => {
+  //             response.should.have.status(200);
+  //             response.should.be.json;
+  //             response.body.should.be.jsonSchema(calibrationMissionSchemas.calibrationMission);
+  //
+  //             completedMission = response.body.data.mission;
+  //
+  //             done();
+  //           });
+  //       });
+  //
+  //       it('Should get new active calibration mission for user and it should NOT have the same station ID nor code as the completed mission on /api/users/:userName/calibrationMissions GET', (done) => {
+  //         chai
+  //           .request(app)
+  //           .get(`/api/users/${userData.newUserToCreate.userName}/calibrationMission`)
+  //           .set('Authorization', tokens.adminUser)
+  //           .end((error, response) => {
+  //             response.should.have.status(200);
+  //             response.should.be.json;
+  //             response.body.should.be.jsonSchema(calibrationMissionSchemas.calibrationMission);
+  //             response.body.data.mission.stationId.should.not.equal(completedMission.stationId);
+  //             response.body.data.mission.code.should.not.equal(completedMission.code);
+  //             response.body.data.mission.owner.should.equal(userData.newUserToCreate.userName);
+  //
+  //             done();
+  //           });
+  //       });
+  //     });
+  //   });
+  //
+  //   describe('Cancel calibration mission', () => {
+  //     before('Get active calibration mission for user on /api/users/:userName/calibrationMission GET', (done) => {
+  //       chai
+  //         .request(app)
+  //         .get(`/api/users/${userData.newUserToCreate.userName}/calibrationMission`)
+  //         .set('Authorization', tokens.adminUser)
+  //         .end((error, response) => {
+  //           response.should.have.status(200);
+  //           response.should.be.json;
+  //           response.body.should.be.jsonSchema(calibrationMissionSchemas.calibrationMission);
+  //
+  //           done();
+  //         });
+  //     });
+  //
+  //     it('Should NOT cancel calibration mission with incorrect authorization on /api/users/:userName/calibrationMission/cancel POST', (done) => {
+  //       chai
+  //         .request(app)
+  //         .post(`/api/users/${userData.newUserToCreate.userName}/calibrationMission/cancel`)
+  //         .set('Authorization', tokens.incorrectJwt)
+  //         .end((error, response) => {
+  //           response.should.have.status(401);
+  //           response.should.be.json;
+  //           response.body.should.be.jsonSchema(errorSchemas.error);
+  //
+  //           done();
+  //         });
+  //     });
+  //
+  //     it('Should cancel active calibration mission on /api/users/:userName/calibrationMission/cancel POST', (done) => {
+  //       chai
+  //         .request(app)
+  //         .post(`/api/users/${userData.newUserToCreate.userName}/calibrationMission/cancel`)
+  //         .set('Authorization', tokens.adminUser)
+  //         .end((error, response) => {
+  //           response.should.have.status(200);
+  //           response.should.be.json;
+  //           response.body.should.be.jsonSchema(calibrationMissionSchemas.calibrationMission);
+  //
+  //           done();
+  //         });
+  //     });
+  //
+  //     it('Should NOT cancel non-existing calibrationMission on /api/users/:userName/calibrationMission/cancel POST', (done) => {
+  //       chai
+  //         .request(app)
+  //         .post(`/api/users/${starterData.adminUserToAuth.userName}/calibrationMission/cancel`)
+  //         .set('Authorization', tokens.adminUser)
+  //         .end((error, response) => {
+  //           response.should.have.status(404);
+  //           response.should.be.json;
+  //           response.body.should.be.jsonSchema(errorSchemas.error);
+  //
+  //           done();
+  //         });
+  //     });
+  //
+  //     describe('Correct cancelled mission data', () => {
+  //       let cancelledMission = {};
+  //
+  //       before('Get active calibration mission for user on /api/users/:userName/calibrationMissions GET', (done) => {
+  //         chai
+  //           .request(app)
+  //           .get(`/api/users/${userData.newUserToCreate.userName}/calibrationMission`)
+  //           .set('Authorization', tokens.adminUser)
+  //           .end((error, response) => {
+  //             response.should.have.status(200);
+  //             response.should.be.json;
+  //             response.body.should.be.jsonSchema(calibrationMissionSchemas.calibrationMission);
+  //
+  //             cancelledMission = response.body.data.mission;
+  //
+  //             done();
+  //           });
+  //       });
+  //
+  //       before('Cancel active calibration mission for user on /api/users/:userName/calibrationMissions/cancel POST', (done) => {
+  //         chai
+  //           .request(app)
+  //           .post(`/api/users/${userData.newUserToCreate.userName}/calibrationMission/cancel`)
+  //           .set('Authorization', tokens.adminUser)
+  //           .end((error, response) => {
+  //             response.should.have.status(200);
+  //             response.should.be.json;
+  //             response.body.should.be.jsonSchema(calibrationMissionSchemas.calibrationMission);
+  //
+  //             cancelledMission = response.body.data.mission;
+  //
+  //             done();
+  //           });
+  //       });
+  //
+  //       it('Should get new active calibration mission for current user and it should NOT be the same as the cancelled mission on /api/users/:userName/calibrationMission GET', (done) => {
+  //         chai
+  //           .request(app)
+  //           .get(`/api/users/${userData.newUserToCreate.userName}/calibrationMission`)
+  //           .set('Authorization', userTokens.newUser)
+  //           .end((error, response) => {
+  //             response.should.have.status(200);
+  //             response.should.be.json;
+  //             response.body.should.be.jsonSchema(calibrationMissionSchemas.calibrationMission);
+  //             response.body.data.mission.stationId.should.not.equal(cancelledMission.stationId);
+  //             response.body.data.mission.should.not.equal(cancelledMission);
+  //
+  //             done();
+  //           });
+  //       });
+  //     });
+  //   });
+  // });
 
   describe('User positions', () => {
     const positionTokens = {

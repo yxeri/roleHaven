@@ -30,6 +30,7 @@ const starterData = require('./testData/starter');
 const app = require('../../app');
 const authenticateSchemas = require('./schemas/authentications');
 const dbUser = require('../../db/connectors/user');
+const dbLanternHack = require('../../db/connectors/lanternhack');
 
 chai.should();
 
@@ -141,4 +142,25 @@ before('Authenticate basic user on /api/authenticate', (done) => {
 
       done();
     });
+});
+
+before('Create fake password container', (done) => {
+  dbLanternHack.createfakePasswordContainer(() => {
+    done();
+  });
+});
+
+before('Create lantern round', (done) => {
+  dbLanternHack.createFirstRound(() => {
+    done();
+  });
+});
+
+before('Activate lantern round', (done) => {
+  dbLanternHack.updateLanternRound({
+    isActive: true,
+    callback: () => {
+      done();
+    },
+  });
 });

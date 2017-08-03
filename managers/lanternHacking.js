@@ -19,7 +19,6 @@
 const objectValidator = require('../utils/objectValidator');
 const appConfig = require('../config/defaults/config').app;
 const dbConfig = require('../config/defaults/config').databasePopulation;
-const http = require('http');
 const errorCreator = require('../objects/error/errorCreator');
 const dbLanternHack = require('../db/connectors/lanternhack');
 const textTools = require('../utils/textTools');
@@ -27,34 +26,30 @@ const authenticator = require('../helpers/authenticator');
 const lanternRoundManager = require('../managers/lanternRounds');
 const lanternStationManager = require('../managers/lanternStations');
 const lanternTeamManager = require('../managers/lanternTeams');
+const poster = require('../helpers/poster');
 
 /**
- * Post request to external server
- * @param {string} params.host Host name
- * @param {string} params.path Path
- * @param {Function} params.callback Callback
- * @param {Object} params.data Data to send
+ * Beautifies number by adding a 0 before the number if it is lower than 10
+ * @param {Number} number Number to be beautified
+ * @returns {Number|string} Single number or string with 0 + number
  */
-function postRequest({ host, path, data, callback }) {
-  const dataString = JSON.stringify({ data });
-  const options = {
-    host,
-    path,
-    headers: {
-      'Content-Type': 'application/json',
-      'Content-Length': dataString.length,
-    },
-    method: 'POST',
-  };
+function beautifyNumber(number) {
+  return number > 9 ? number : `0${number}`;
+}
 
-  const req = http.request(options, (response) => {
-    response.on('end', () => {
-      callback(response.statusCode);
-    });
-  });
+/**
+ * Takes date and returns shorter human-readable time
+ * @param {Date|number} params.date Date
+ * @returns {Object} Human-readable time and date
+ */
+function generateHoursMinutes({ date }) {
+  const newDate = new Date(date);
+  const timeStamp = {};
 
-  req.write(dataString);
-  req.end();
+  timeStamp.mins = beautifyNumber(newDate.getUTCMinutes());
+  timeStamp.hours = beautifyNumber(newDate.getUTCHours());
+
+  return `${timeStamp.hours}:${timeStamp.mins}`;
 }
 
 /**
@@ -108,22 +103,19 @@ function resetStations({ callback = () => {} }) {
                     return;
                   }
 
-                  if (appConfig.hackingApiHost && appConfig.hackingApiKey) {
-                    postRequest({
-                      host: appConfig.hackingApiHost,
-                      path: '/reports/set_boost',
-                      data: {
-                        station: stationId,
-                        boost: newSignalValue,
-                        key: appConfig.hackingApiKey,
-                      },
-                      callback: (response) => {
-                        callback({ data: { response } });
-                      },
-                    });
-                  } else {
-                    callback({ data: {} });
-                  }
+                  poster.postRequest({
+                    shouldBypass: !appConfig.hackingApiHost || !appConfig.hackingApiKey,
+                    host: appConfig.hackingApiHost,
+                    path: '/reports/set_boost',
+                    data: {
+                      station: stationId,
+                      boost: newSignalValue,
+                      key: appConfig.hackingApiKey,
+                    },
+                    callback: (response) => {
+                      callback({ data: { response } });
+                    },
+                  });
                 },
               });
             }
@@ -180,23 +172,19 @@ function updateSignalValue({ stationId, boostingSignal, callback }) {
               return;
             }
 
-
-            if (appConfig.hackingApiHost && appConfig.hackingApiKey) {
-              postRequest({
-                host: appConfig.hackingApiHost,
-                path: '/reports/set_boost',
-                data: {
-                  station: stationId,
-                  boost: ceilSignalValue,
-                  key: appConfig.hackingApiKey,
-                },
-                callback: (response) => {
-                  callback({ data: { response } });
-                },
-              });
-            } else {
-              callback({ data: {} });
-            }
+            poster.postRequest({
+              shouldBypass: !appConfig.hackingApiHost || !appConfig.hackingApiKey,
+              host: appConfig.hackingApiHost,
+              path: '/reports/set_boost',
+              data: {
+                station: stationId,
+                boost: ceilSignalValue,
+                key: appConfig.hackingApiKey,
+              },
+              callback: (statusCode) => {
+                callback({ data: { statusCode } });
+              },
+            });
           },
         });
       }
@@ -519,18 +507,16 @@ function getLanternInfo({ token, callback }) {
         return;
       }
 
-      const { isActive, startTime, endTime } = data;
-      const round = {
-        isActive,
-        startTime,
-        endTime,
-      };
+      const now = new Date();
+      const startTime = new Date(data.startTime);
+      const endTime = new Date(data.endTime);
+
 
       if (!data.isActive) {
         callback({
           data: {
-            round,
-            timeLeft: textTools.calculateMinutesDifference({ firstDate: new Date(startTime), secondDate: new Date() }),
+            round: data,
+            timeLeft: startTime > now ? generateHoursMinutes({ date: startTime - now }) : '----',
           },
         });
 
@@ -555,10 +541,11 @@ function getLanternInfo({ token, callback }) {
                 return;
               }
 
+
               callback({
                 data: {
-                  round,
-                  timeLeft: textTools.calculateMinutesDifference({ firstDate: new Date(endTime), secondDate: new Date() }),
+                  round: data,
+                  timeLeft: endTime > now ? generateHoursMinutes({ date: endTime - now }) : '----',
                   teams: teamsData.teams,
                   activeStations: stationData.activeStations,
                   inactiveStations: stationData.inactiveStations,

@@ -80,7 +80,7 @@ function startLanternRound({ io, endTime, token, callback }) {
             return;
           }
 
-          io.emit('startLanternRound');
+          io.emit('lanternRound', { data: { round: startLanternData } });
 
           callback({ data: startLanternData });
         },
@@ -115,7 +115,7 @@ function endLanternRound({ startTime, io, token, callback }) {
             return;
           }
 
-          io.emit('endLanternRound');
+          io.emit('lanternRound', { data: { round: data } });
 
           callback({ data });
         },
@@ -152,9 +152,7 @@ function updateLanternRound({ io, token, startTime, endTime, isActive, callback 
             return;
           }
 
-          if (endTime) {
-            io.emit('changeLanternRound');
-          }
+          io.emit('lanternRound', { data: { round: data } });
 
           callback({ data });
         },
