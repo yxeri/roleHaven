@@ -115,13 +115,15 @@ function shuffleArray(array) {
 }
 
 /**
- * Gets minutes between two dates
- * @param {Date} params.firstDate From date
- * @param {Date} params.secondDate To date
- * @returns {number} Amount of minutes
+ * Get minutes between dates
+ * @param {Date} params.startDate Start date
+ * @param {Date} params.endDate Later date
+ * @returns {number} Minutes
  */
 function calculateMinutesDifference({ firstDate, secondDate }) {
-  return Math.floor(Math.abs(new Date(firstDate) - secondDate) / 1000 / 60);
+  const difference = new Date(firstDate) - new Date(secondDate);
+
+  return Math.floor((difference / 1000) / 60);
 }
 
 exports.isAlphaNumeric = isAlphaNumeric;

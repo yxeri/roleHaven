@@ -52,6 +52,31 @@ function getLanternTeams({ token, callback }) {
 }
 
 /**
+ * Delete lantern team
+ * @param {string} params.token jwt
+ * @param {number} params.teamId Id of the team to delete
+ * @param {Function} params.callback Callback
+ */
+function deleteLanternTeam({ token, teamId, callback }) {
+  authenticator.isUserAllowed({
+    token,
+    commandName: dbConfig.apiCommands.DeleteLanternTeam.name,
+    callback: ({ error }) => {
+      if (error) {
+        callback({ error });
+
+        return;
+      }
+
+      dbLanternHack.deleteTeam({
+        teamId,
+        callback,
+      });
+    },
+  });
+}
+
+/**
  * Create lantern team
  * @param {Object} params.io socket io
  * @param {Object} params.team Team to create
@@ -68,6 +93,10 @@ function createLanternTeam({ io, team, token, callback }) {
 
         return;
       }
+
+      const newTeam = team;
+      newTeam.teamName = newTeam.teamName.toLowerCase();
+      newTeam.shortName.toLowerCase();
 
       dbLanternHack.createLanternTeam({
         team,
@@ -88,13 +117,13 @@ function createLanternTeam({ io, team, token, callback }) {
 
 /**
  * Update lantern team
+ * @param {number} params.teamId ID of team to update
  * @param {Object} params.io Socket io
  * @param {Object} params.team Parameters to update in teawm
- * @param {string} params.teamName Full or short name of team to update
  * @param {string} params.token jwt
  * @param {Function} params.callback Callback
  */
-function updateLanternTeam({ io, team, teamName, token, callback }) {
+function updateLanternTeam({ teamId, io, team, token, callback }) {
   authenticator.isUserAllowed({
     token,
     commandName: dbConfig.apiCommands.UpdateLanternStation.name,
@@ -106,7 +135,9 @@ function updateLanternTeam({ io, team, teamName, token, callback }) {
       }
 
       dbLanternHack.updateLanternTeam({
-        teamName,
+        teamId,
+        teamName: team.teamName ? team.teamName.toLowerCase() : undefined,
+        shortName: team.shortName ? team.shortName.toLowerCase() : undefined,
         isActive: team.isActive,
         points: team.points,
         resetPoints: team.resetPoints,
@@ -125,6 +156,7 @@ function updateLanternTeam({ io, team, teamName, token, callback }) {
   });
 }
 
+exports.deleteLanternTeam = deleteLanternTeam;
 exports.getLanternTeams = getLanternTeams;
 exports.createLanternTeam = createLanternTeam;
 exports.updateLanternTeam = updateLanternTeam;

@@ -21,8 +21,9 @@ const schemas = {};
 
 const lanternTeamBase = {
   type: 'object',
-  required: ['teamName', 'shortName', 'isActive', 'points'],
+  required: ['teamId', 'teamName', 'shortName', 'isActive', 'points'],
   properties: {
+    teamId: { type: 'number' },
     teamName: { type: 'string' },
     shortName: { type: 'string' },
     isActive: { type: 'boolean' },

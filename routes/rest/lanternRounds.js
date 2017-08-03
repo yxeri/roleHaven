@@ -168,6 +168,44 @@ function handle(io) {
     });
   });
 
+  /**
+   * @api {get} /lanternRounds Get lantern round
+   * @apiVersion 6.0.0
+   * @apiName GetLanternRound
+   * @apiGroup LanternRounds
+   *
+   * @apiHeader {String} Authorization Your JSON Web Token
+   *
+   * @apiDescription Get lantern round
+   *
+   * @apiSuccess {Object} data
+   * @apiSuccess {string[]} data.lanternRound Lantern round
+   * @apiSuccessExample {json} Success-Response:
+   *   {
+   *    "data": {
+   *      "round": {
+   *        "isActive": true,
+   *        "startTime": "2016-10-14T11:54:18.694Z",
+   *        "endTime": "2016-10-14T11:54:18.694Z"
+   *      }
+   *    }
+   *  }
+   */
+  router.get('/', (request, response) => {
+    lanternRoundManager.getLanternRound({
+      token: request.headers.authorization,
+      callback: ({ error, data }) => {
+        if (error) {
+          restErrorChecker.checkAndSendError({ response, error });
+
+          return;
+        }
+
+        response.json({ data });
+      },
+    });
+  });
+
   return router;
 }
 

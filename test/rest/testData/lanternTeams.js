@@ -21,11 +21,18 @@ const appConfig = require('../../../config/defaults/config').app;
 
 const data = {};
 
+data.lanternTeamToDelete = {
+  teamId: 5,
+  teamName: tools.createRandString({ length: appConfig.teamNameMaxLength }),
+  shortName: tools.createRandString({ length: appConfig.shortTeamMaxLength }),
+};
 data.lanternTeamToCreate = {
+  teamId: 2,
   teamName: tools.createRandString({ length: appConfig.teamNameMaxLength }),
   shortName: tools.createRandString({ length: appConfig.shortTeamMaxLength }),
 };
 data.lanternTeamToCreateAndModify = {
+  teamId: 1,
   teamName: tools.createRandString({ length: appConfig.teamNameMaxLength }),
   shortName: tools.createRandString({ length: appConfig.shortTeamMaxLength }),
   points: 22,
@@ -42,6 +49,7 @@ data.lanternTeamWithResetPoints = {
   resetPoints: true,
 };
 data.lanternTeamThatDoesNotExist = {
+  teamId: 0,
   teamName: 'a',
   shortName: 'b',
 };

@@ -17,7 +17,6 @@
 'use strict';
 
 const tools = require('../helper/tools');
-const appConfig = require('../../../config/defaults/config').app;
 
 const data = {};
 
@@ -30,7 +29,7 @@ data.lanternStationToCreateAndModify = {
   stationName: `${tools.createRandString({ length: 5 })}`,
 };
 data.lanternStationWithNewOwner = {
-  owner: tools.createRandString({ length: appConfig.teamNameMaxLength }),
+  owner: 1,
 };
 data.lanternStationUnderAttack = {
   isUnderAttack: true,
@@ -42,7 +41,7 @@ data.lanternStationThatDoesNotExist = {
 data.lanternStationToGet = {
   stationId: 5,
   stationName: `${tools.createRandString({ length: 5 })}`,
-  owner: tools.createRandString({ length: appConfig.teamNameMaxLength }),
+  owner: 2,
 };
 
 module.exports = data;
