@@ -527,7 +527,12 @@ function getLanternInfo({ token, callback }) {
       };
 
       if (!data.isActive) {
-        callback({ data: { round } });
+        callback({
+          data: {
+            round,
+            timeLeft: textTools.calculateMinutesDifference({ firstDate: new Date(startTime), secondDate: new Date() }),
+          },
+        });
 
         return;
       }
@@ -553,6 +558,7 @@ function getLanternInfo({ token, callback }) {
               callback({
                 data: {
                   round,
+                  timeLeft: textTools.calculateMinutesDifference({ firstDate: new Date(endTime), secondDate: new Date() }),
                   teams: teamsData.teams,
                   activeStations: stationData.activeStations,
                   inactiveStations: stationData.inactiveStations,
