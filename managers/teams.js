@@ -156,6 +156,7 @@ function createTeam({ team, socket, io, callback, token }) {
       const user = data.user;
       const newTeam = team;
       newTeam.owner = user.userName;
+      newTeam.shortName = newTeam.shortName.toLowerCase();
       newTeam.teamName = newTeam.teamName.toLowerCase();
       newTeam.verified = !appConfig.teamVerify;
 

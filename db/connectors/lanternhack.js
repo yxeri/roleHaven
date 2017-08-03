@@ -53,7 +53,7 @@ const stationSchema = new mongoose.Schema({
   stationName: String,
   signalValue: { type: Number, default: 0 },
   isActive: { type: Boolean, default: false },
-  owner: String,
+  owner: Number,
   isUnderAttack: { type: Boolean, default: false },
   calibrationReward: { type: Number, default: appConfig.calibrationRewardAmount },
 }, { collection: 'stations' });
@@ -63,6 +63,7 @@ const lanternRoundSchema = new mongoose.Schema({
   endTime: { type: Date, default: new Date() },
 }, { collection: 'lanternRounds' });
 const lanternTeamSchema = new mongoose.Schema({
+  teamId: { type: Number, unique: true },
   teamName: { type: String, unique: true },
   shortName: { type: String, unique: true },
   points: { type: Number, default: 0 },
@@ -85,6 +86,7 @@ function createLanternTeam({ team, callback }) {
   const newLanternTeam = new LanternTeam(team);
   const query = {
     $or: [
+      { teamId: team.teamId },
       { teamName: team.teamName },
       { shortName: team.shortName },
     ],
@@ -119,23 +121,22 @@ function createLanternTeam({ team, callback }) {
 
 /**
  * Update lantern team
- * @param {string} params.teamName Full or short name of the team to update
+ * @param {number} [params.teamId] Id of team to get
  * @param {boolean} [params.isActive] Is the team active?
  * @param {number} [params.points] Teams total points
  * @param {boolean} [params.resetPoints] Resets points on team to 0
+ * @param {string} [params.teamName] Team name
+ * @param {string} [params.shortName] Short team name
  * @param {Function} params.callback Callback
  */
-function updateLanternTeam({ teamName, isActive, points, resetPoints, callback }) {
-  const query = {
-    $or: [
-      { shortName: teamName },
-      { teamName },
-    ],
-  };
+function updateLanternTeam({ teamId, teamName, shortName, isActive, points, resetPoints, callback }) {
+  const query = { teamId };
   const update = {};
   const options = { new: true };
 
   if (typeof isActive === 'boolean') { update.isActive = isActive; }
+  if (teamName) { update.teamName = teamName; }
+  if (shortName) { update.shortName = shortName; }
 
   if (typeof resetPoints === 'boolean' && resetPoints) {
     update.points = 0;
@@ -150,7 +151,7 @@ function updateLanternTeam({ teamName, isActive, points, resetPoints, callback }
 
       return;
     } else if (!team) {
-      callback({ error: new errorCreator.DoesNotExist({ name: `${teamName} team. updateLanternTeam` }) });
+      callback({ error: new errorCreator.DoesNotExist({ name: `Team id ${teamId}. updateLanternTeam` }) });
 
       return;
     }
@@ -412,7 +413,7 @@ function resetLanternStations({ signalValue, callback }) {
  * @param {number} params.station.stationId ID of station
  * @param {boolean} [params.station.isActive] Is the station active?
  * @param {string} [params.station.stationName] Name of the station
- * @param {string} [params.station.owner] Owner name of the station
+ * @param {number} [params.station.owner] Owner Team id of the owner
  * @param {Object} [params.isUnderAttack] Is the station under attack?
  * @param {Function} params.callback Callback
  */
@@ -666,6 +667,25 @@ function getTeams({ callback }) {
 }
 
 /**
+ * Delete team
+ * @param {number} params.teamId ID of team to delete
+ * @param {Function} params.callback Callback
+ */
+function deleteTeam({ teamId, callback }) {
+  const query = { teamId };
+
+  LanternTeam.remove(query).lean().exec((error) => {
+    if (error) {
+      callback({ error });
+
+      return;
+    }
+
+    callback({ data: { success: true } });
+  });
+}
+
+/**
  * Create first round
  * @param {Function} callback Callback
  */
@@ -747,3 +767,4 @@ exports.updateLanternRound = updateLanternRound;
 exports.createFirstRound = createFirstRound;
 exports.createfakePasswordContainer = createFakePasswordsContainer;
 exports.resetLanternStations = resetLanternStations;
+exports.deleteTeam = deleteTeam;

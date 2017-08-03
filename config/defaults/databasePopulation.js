@@ -333,6 +333,10 @@ config.apiCommands = {
     name: 'GetLanternTeam',
     accessLevel: config.AccessLevels.BASIC,
   },
+  DeleteLanternTeam: config.apiCommands.DeleteLanternTeam || {
+    name: 'DeleteLanternTeam',
+    accessLevel: config.AccessLevels.LOWERADMIN,
+  },
   CreateTransaction: config.apiCommands.CreateTransaction || {
     name: 'CreateTransaction',
     accessLevel: config.AccessLevels.BASIC,

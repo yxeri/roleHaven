@@ -30,6 +30,49 @@ const router = new express.Router();
  */
 function handle(io) {
   /**
+   * @api {delete} /lanternTeams/:teamId Delete existing lantern team
+   * @apiVersion 6.0.0
+   * @apiName DeleteLanternTeam
+   * @apiGroup LanternTeams
+   *
+   * @apiHeader {String} Authorization Your JSON Web Token
+   *
+   * @apiDescription Delete existing lantern team
+   *
+   * @apiParam {number} teamId Team id
+   *
+   * @apiSuccess {Object} data
+   * @apiSuccess {Object[]} data.station Updated lantern team
+   * @apiSuccessExample {json} Success-Response:
+   *   {
+   *    "data": {
+   *      "success": true
+   *    }
+   *  }
+   */
+  router.delete('/:teamId', (request, response) => {
+    if (!objectValidator.isValidData(request.params, { teamId: true })) {
+      restErrorChecker.checkAndSendError({ response, error: new errorCreator.InvalidData({ expected: '' }), sentData: request.body.data });
+
+      return;
+    }
+
+    lanternTeamManager.deleteLanternTeam({
+      token: request.headers.authorization,
+      teamId: request.params.teamId,
+      callback: ({ error, data }) => {
+        if (error) {
+          restErrorChecker.checkAndSendError({ response, error });
+
+          return;
+        }
+
+        response.json({ data });
+      },
+    });
+  });
+
+  /**
    * @api {get} /lanternTeams Get all lantern teams
    * @apiVersion 6.0.0
    * @apiName GetLanternTeams
@@ -45,11 +88,13 @@ function handle(io) {
    *   {
    *    "data": {
    *      "teams": [{
+   *        "teamId": 3,
    *        "shortName": "org",
    *        "teamName": "organica",
    *        "isActive": true,
    *        "points": 200
    *      }, {
+   *        "teamId": 2,
    *        "shortName": "raz",
    *        "teamName": "razor",
    *        "isActive": false,
@@ -92,6 +137,7 @@ function handle(io) {
    *   {
    *    "data": {
    *      "team": {
+   *        "teamId": 1,
    *        "shortName": "org",
    *        "teamName": "organica",
    *        "isActive": true
@@ -105,6 +151,7 @@ function handle(io) {
    *   {
    *    "data": {
    *      "team": {
+   *        "teamId": 1,
    *        "shortName": "org",
    *        "teamName": "organica",
    *        "isActive": true
@@ -136,7 +183,7 @@ function handle(io) {
   });
 
   /**
-   * @api {post} /lanternTeams/:teamName Update an existing lantern team
+   * @api {post} /lanternTeams/:teamId Update an existing lantern team
    * @apiVersion 6.0.0
    * @apiName UpdateLanternTeam
    * @apiGroup LanternTeams
@@ -145,10 +192,12 @@ function handle(io) {
    *
    * @apiDescription Update an existing lantern team
    *
-   * @apiParam {Object} teamName Lantern team short or full name
+   * @apiParam {number} teamId Team id
    *
    * @apiParam {Object} data
    * @apiParam {string} data.team Lantern team
+   * @apiParam {string} [data.team.shortName] Team short name (acronym)
+   * @apiParam {string} [data.team.teamName] Team name
    * @apiParam {boolean} [data.team.isActive] Is the team active?
    * @apiParam {number} [data.team.points] Teams total points
    * @apiParam {boolean} [data.team.resetPoints] Should the teams total points be reset to 0? data.team.points will be ignored if set
@@ -168,6 +217,7 @@ function handle(io) {
    *   {
    *    "data": {
    *      "team": {
+   *        "teamId": 1,
    *        "shortName": "org",
    *        "teamName": "organica",
    *        "isActive": true,
@@ -176,8 +226,8 @@ function handle(io) {
    *    }
    *  }
    */
-  router.post('/:teamName', (request, response) => {
-    if (!objectValidator.isValidData(request.params, { teamName: true })) {
+  router.post('/:teamId', (request, response) => {
+    if (!objectValidator.isValidData(request.params, { teamId: true })) {
       restErrorChecker.checkAndSendError({ response, error: new errorCreator.InvalidData({ expected: '' }), sentData: request.body.data });
 
       return;
@@ -189,8 +239,8 @@ function handle(io) {
 
     lanternTeamManager.updateLanternTeam({
       io,
+      teamId: request.params.teamId,
       team: request.body.data.team,
-      teamName: request.params.teamName,
       token: request.headers.authorization,
       callback: ({ error, data }) => {
         if (error) {

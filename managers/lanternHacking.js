@@ -26,6 +26,7 @@ const textTools = require('../utils/textTools');
 const authenticator = require('../helpers/authenticator');
 const lanternRoundManager = require('../managers/lanternRounds');
 const lanternStationManager = require('../managers/lanternStations');
+const lanternTeamManager = require('../managers/lanternTeams');
 
 /**
  * Post request to external server
@@ -61,7 +62,7 @@ function postRequest({ host, path, data, callback }) {
  * @param {Function} params.callback Callback
  */
 function resetStations({ callback = () => {} }) {
-  if (appConfig.mode === appConfig.Modes.TEST || appConfig.signalResetTimeout !== 0) {
+  if (appConfig.mode === appConfig.Modes.TEST || appConfig.signalResetTimeout === 0) {
     return;
   }
 
@@ -105,22 +106,24 @@ function resetStations({ callback = () => {} }) {
                     callback({ error: updateError });
 
                     return;
-                  } else if (!appConfig.hackingApiKey || !appConfig.hackingApiHost) {
-                    callback({ error: new errorCreator.Internal({ name: 'hacking api host or key not set ' }) });
-
-                    return;
                   }
 
-                  postRequest({
-                    host: appConfig.hackingApiHost,
-                    path: '/reports/set_boost',
-                    data: {
-                      station: stationId,
-                      boost: newSignalValue,
-                      key: appConfig.hackingApiKey,
-                    },
-                    callback: () => {},
-                  });
+                  if (appConfig.hackingApiHost && appConfig.hackingApiKey) {
+                    postRequest({
+                      host: appConfig.hackingApiHost,
+                      path: '/reports/set_boost',
+                      data: {
+                        station: stationId,
+                        boost: newSignalValue,
+                        key: appConfig.hackingApiKey,
+                      },
+                      callback: (response) => {
+                        callback({ data: { response } });
+                      },
+                    });
+                  } else {
+                    callback({ data: {} });
+                  }
                 },
               });
             }
@@ -177,6 +180,7 @@ function updateSignalValue({ stationId, boostingSignal, callback }) {
               return;
             }
 
+
             if (appConfig.hackingApiHost && appConfig.hackingApiKey) {
               postRequest({
                 host: appConfig.hackingApiHost,
@@ -191,7 +195,7 @@ function updateSignalValue({ stationId, boostingSignal, callback }) {
                 },
               });
             } else {
-              callback({ error: new errorCreator.Internal({ name: 'hacking api host or key not set ' }) });
+              callback({ data: {} });
             }
           },
         });
@@ -423,18 +427,16 @@ function manipulateStation({ password, boostingSignal, token, callback }) {
  * @param {Function} params.callback Callback
  */
 function getLanternHack({ stationId, token, callback }) {
-  if (!objectValidator.isValidData({ stationId }, { stationId: true })) {
-    callback({ error: new errorCreator.InvalidData({ expected: '{ stationId }' }) });
-
-    return;
-  }
-
   authenticator.isUserAllowed({
     token,
     commandName: dbConfig.apiCommands.HackLantern.name,
     callback: ({ error, data }) => {
       if (error) {
         callback({ error });
+
+        return;
+      } else if (!objectValidator.isValidData({ stationId }, { stationId: true })) {
+        callback({ error: new errorCreator.InvalidData({ expected: '{ stationId }' }) });
 
         return;
       }
@@ -539,11 +541,23 @@ function getLanternInfo({ token, callback }) {
             return;
           }
 
-          callback({
-            data: {
-              round,
-              activeStations: stationData.activeStations,
-              inactiveStations: stationData.inactiveStations,
+          lanternTeamManager.getLanternTeams({
+            token,
+            callback: ({ error: teamsError, data: teamsData }) => {
+              if (teamsError) {
+                callback({ error: teamsError });
+
+                return;
+              }
+
+              callback({
+                data: {
+                  round,
+                  teams: teamsData.teams,
+                  activeStations: stationData.activeStations,
+                  inactiveStations: stationData.inactiveStations,
+                },
+              });
             },
           });
         },

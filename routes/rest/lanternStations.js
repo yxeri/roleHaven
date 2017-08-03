@@ -46,13 +46,13 @@ function handle(io) {
    *    "data": {
    *      "stations": [{
    *        "stationId": 1,
-   *        "owner": "alpha"
+   *        "owner": 1,
    *        "isActive": true,
    *        "stationName:" "North forest",
    *        "signalValue": 137
    *      }, {
    *        "stationId": 2,
-   *        "owner": "beta"
+   *        "owner": 3,
    *        "isActive": fale,
    *        "stationName:" "West bunker",
    *        "signalValue": 66
@@ -92,13 +92,13 @@ function handle(io) {
    *    "data": {
    *      "stations": [{
    *        "stationId": 1,
-   *        "owner": "alpha"
+   *        "owner": 3
    *        "isActive": true,
    *        "stationName:" "North forest",
    *        "signalValue": 137
    *      }, {
    *        "stationId": 2,
-   *        "owner": "beta"
+   *        "owner": 1
    *        "isActive": fale,
    *        "stationName:" "West bunker",
    *        "signalValue": 66
@@ -203,7 +203,7 @@ function handle(io) {
    * @apiParam {string} data.station Station
    * @apiParam {string} [data.station.stationName] Location name of the station
    * @apiParam {boolean} [data.station.isActive] Is the station active?
-   * @apiParam {string} [data.station.owner] Name of the owner of the station
+   * @apiParam {number} [data.station.owner] Team id of the owner
    * @apiParam {Object} [data.station.isUnderAttack] Is the station under attack?
    * @apiParam {number} [data.station.calibrationReward] Amount of digital currency sent to user
    * @apiParamExample {json} Request-Example:
