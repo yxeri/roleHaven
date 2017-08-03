@@ -26,25 +26,12 @@ const errorSchemas = require('./schemas/errors');
 const tokens = require('./testData/tokens');
 const gameItemData = require('./testData/gameItems');
 const gameItemSchemas = require('./schemas/gameItems');
-const dbLanternHack = require('../../db/connectors/lanternhack');
 
 chai.should();
 chai.use(chaiHttp);
 chai.use(chaiJson);
 
 describe('GameItems', () => {
-  before('Create fake password container', (done) => {
-    dbLanternHack.createfakePasswordContainer(() => {
-      done();
-    });
-  });
-
-  before('Create lantern round', (done) => {
-    dbLanternHack.createFirstRound(() => {
-      done();
-    });
-  });
-
   describe('Create fake passwords', () => {
     it('Should NOT create fake passwords with incorrect auth on /api/gameItems/gamePasswords POST', (done) => {
       chai

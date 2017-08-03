@@ -100,6 +100,25 @@ function getMissions({ getInactive, callback }) {
 }
 
 /**
+ * Removes mission based on owner
+ * @param {Object} params.mission Mission
+ * @param {Function} params.callback Callback
+ */
+function removeMission({ mission, callback}) {
+  const query = { owner: mission.owner, completed: false };
+
+  CalibrationMission.findOneAndRemove(query).lean().exec((error) => {
+    if (error) {
+      callback({ error });
+
+      return;
+    }
+
+    callback({ data: { success: true } });
+  });
+}
+
+/**
  * Create and save mission
  * @param {Object} params.mission New mission
  * @param {Function} params.callback Callback
@@ -165,3 +184,4 @@ exports.createMission = createMission;
 exports.setMissionCompleted = setMissionCompleted;
 exports.getInactiveMissions = getInactiveMissions;
 exports.getMissions = getMissions;
+exports.removeMission = removeMission;

@@ -19,7 +19,6 @@
 const objectValidator = require('../utils/objectValidator');
 const appConfig = require('../config/defaults/config').app;
 const dbConfig = require('../config/defaults/config').databasePopulation;
-const http = require('http');
 const errorCreator = require('../objects/error/errorCreator');
 const dbLanternHack = require('../db/connectors/lanternhack');
 const textTools = require('../utils/textTools');
@@ -27,35 +26,7 @@ const authenticator = require('../helpers/authenticator');
 const lanternRoundManager = require('../managers/lanternRounds');
 const lanternStationManager = require('../managers/lanternStations');
 const lanternTeamManager = require('../managers/lanternTeams');
-
-/**
- * Post request to external server
- * @param {string} params.host Host name
- * @param {string} params.path Path
- * @param {Function} params.callback Callback
- * @param {Object} params.data Data to send
- */
-function postRequest({ host, path, data, callback }) {
-  const dataString = JSON.stringify({ data });
-  const options = {
-    host,
-    path,
-    headers: {
-      'Content-Type': 'application/json',
-      'Content-Length': dataString.length,
-    },
-    method: 'POST',
-  };
-
-  const req = http.request(options, (response) => {
-    response.on('end', () => {
-      callback(response.statusCode);
-    });
-  });
-
-  req.write(dataString);
-  req.end();
-}
+const poster = require('../helpers/poster');
 
 /**
  * Lower/increase signal value on all stations towards default value
@@ -108,22 +79,19 @@ function resetStations({ callback = () => {} }) {
                     return;
                   }
 
-                  if (appConfig.hackingApiHost && appConfig.hackingApiKey) {
-                    postRequest({
-                      host: appConfig.hackingApiHost,
-                      path: '/reports/set_boost',
-                      data: {
-                        station: stationId,
-                        boost: newSignalValue,
-                        key: appConfig.hackingApiKey,
-                      },
-                      callback: (response) => {
-                        callback({ data: { response } });
-                      },
-                    });
-                  } else {
-                    callback({ data: {} });
-                  }
+                  poster.postRequest({
+                    shouldBypass: !appConfig.hackingApiHost || !appConfig.hackingApiKey,
+                    host: appConfig.hackingApiHost,
+                    path: '/reports/set_boost',
+                    data: {
+                      station: stationId,
+                      boost: newSignalValue,
+                      key: appConfig.hackingApiKey,
+                    },
+                    callback: (response) => {
+                      callback({ data: { response } });
+                    },
+                  });
                 },
               });
             }
@@ -180,23 +148,19 @@ function updateSignalValue({ stationId, boostingSignal, callback }) {
               return;
             }
 
-
-            if (appConfig.hackingApiHost && appConfig.hackingApiKey) {
-              postRequest({
-                host: appConfig.hackingApiHost,
-                path: '/reports/set_boost',
-                data: {
-                  station: stationId,
-                  boost: ceilSignalValue,
-                  key: appConfig.hackingApiKey,
-                },
-                callback: (response) => {
-                  callback({ data: { response } });
-                },
-              });
-            } else {
-              callback({ data: {} });
-            }
+            poster.postRequest({
+              shouldBypass: !appConfig.hackingApiHost || !appConfig.hackingApiKey,
+              host: appConfig.hackingApiHost,
+              path: '/reports/set_boost',
+              data: {
+                station: stationId,
+                boost: ceilSignalValue,
+                key: appConfig.hackingApiKey,
+              },
+              callback: (statusCode) => {
+                callback({ data: { statusCode } });
+              },
+            });
           },
         });
       }
