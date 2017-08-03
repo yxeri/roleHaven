@@ -104,7 +104,7 @@ function getMissions({ getInactive, callback }) {
  * @param {Object} params.mission Mission
  * @param {Function} params.callback Callback
  */
-function removeMission({ mission, callback}) {
+function removeMission({ mission, callback }) {
   const query = { owner: mission.owner, completed: false };
 
   CalibrationMission.findOneAndRemove(query).lean().exec((error) => {
