@@ -308,6 +308,8 @@ config.calibrationRewardMinimum = process.env.CALIBRATIONREWARDMINIMUM || config
 
 config.calibrationRewardMax = process.env.CALIBRATIONREWARDMAX || config.calibrationRewardMax || 20;
 
+config.bypassExternalConnections = process.env.BYPASSEXTERNALCONNECTIONS || config.bypassExternalConnections || true;
+
 /**
  * Secret key used for Mailgun
  */

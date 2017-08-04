@@ -127,17 +127,18 @@ function getActiveCalibrationMission({ token, callback, userName }) {
                           const mission = createData.mission;
 
                           poster.postRequest({
-                            shouldBypass: !appConfig.hackingApiHost || !appConfig.hackingApiKey,
                             host: appConfig.hackingApiHost,
                             path: '/reports/set_mission',
                             data: {
-                              station: createData,
-                              owner: mission.owner,
-                              code: mission.code,
+                              mission: {
+                                stationId: mission.stationId,
+                                owner: mission.owner,
+                                code: mission.code,
+                              },
                               key: appConfig.hackingApiKey,
                             },
-                            callback: (statusCode) => {
-                              if (statusCode !== 200) {
+                            callback: ({ error: requestError }) => {
+                              if (requestError) {
                                 dbCalibrationMission.removeMission({
                                   mission,
                                   callback: ({ error: removeError }) => {
@@ -147,7 +148,7 @@ function getActiveCalibrationMission({ token, callback, userName }) {
                                       return;
                                     }
 
-                                    callback({ error: new errorCreator.External({ name: 'hacking api no answer' }) });
+                                    callback({ error: requestError });
                                   },
                                 });
 
