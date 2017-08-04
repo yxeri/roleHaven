@@ -244,7 +244,8 @@ config.apiCommands = {
   },
   GetUser: config.apiCommands.GetUser || {
     name: 'GetUser',
-    accessLevel: config.AccessLevels.BASIC,
+    accessLevel: config.AccessLevels.LOWERADMIN,
+    selfAccessLevel: config.AccessLevels.BASIC,
   },
   GetUserDetails: config.apiCommands.GetUserDetails || {
     name: 'GetUserDetails',

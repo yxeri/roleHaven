@@ -104,7 +104,6 @@ function resetStations({ callback = () => {} }) {
                   }
 
                   poster.postRequest({
-                    shouldBypass: !appConfig.hackingApiHost || !appConfig.hackingApiKey,
                     host: appConfig.hackingApiHost,
                     path: '/reports/set_boost',
                     data: {
@@ -112,8 +111,14 @@ function resetStations({ callback = () => {} }) {
                       boost: newSignalValue,
                       key: appConfig.hackingApiKey,
                     },
-                    callback: (response) => {
-                      callback({ data: { response } });
+                    callback: ({ error: requestError, data: requestData }) => {
+                      if (requestError) {
+                        callback({ error: requestError });
+
+                        return;
+                      }
+
+                      callback({ data: requestData });
                     },
                   });
                 },
@@ -173,7 +178,6 @@ function updateSignalValue({ stationId, boostingSignal, callback }) {
             }
 
             poster.postRequest({
-              shouldBypass: !appConfig.hackingApiHost || !appConfig.hackingApiKey,
               host: appConfig.hackingApiHost,
               path: '/reports/set_boost',
               data: {
@@ -181,8 +185,14 @@ function updateSignalValue({ stationId, boostingSignal, callback }) {
                 boost: ceilSignalValue,
                 key: appConfig.hackingApiKey,
               },
-              callback: (statusCode) => {
-                callback({ data: { statusCode } });
+              callback: ({ error: requestError, data: requestData }) => {
+                if (requestError) {
+                  callback({ error: requestError });
+
+                  return;
+                }
+
+                callback({ data: requestData });
               },
             });
           },

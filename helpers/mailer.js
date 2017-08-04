@@ -25,12 +25,18 @@ function sendVerification({ address, userName, callback }) {
 
   crypto.randomBytes(20, (err, key) => {
     const url = new URL(`https://${appConfig.host}/?key=${key.toString('hex')}&mailEvent=userVerify`);
+    const text = [
+      `Your account ${userName} on ${appConfig.host} has been created.`,
+      'ou have to verify your account before you can login with it.',
+      `Clicking <a href=${url.href}>here</a> will verify and activate active your account`,
+      '<br />',
+      '// The Third Gift Games',
+    ];
     const mail = mailcomposer({
       from: appConfig.mailSender,
       to: address,
-      subject: `${appConfig.title} User Verification`,
-      text: `Your account ${userName} has been created, but to be able to login you will need to activate your account. Go to ${url.href} to activate your account`,
-      html: `Your account ${userName} has been created, but to be able to login you will need to activate your account. Click <a href="${url.href}">here</a> to activate your account`,
+      subject: `User Verification on ${appConfig.host}`,
+      html: text.join('<br />'),
     });
     const expiresAt = new Date();
     expiresAt.setHours(expiresAt.getHours() + 2);
@@ -96,12 +102,18 @@ function sendPasswordReset({ address, userName, callback }) {
 
   crypto.randomBytes(20, (err, key) => {
     const url = new URL(`https://${appConfig.host}/?key=${key.toString('hex')}&mailEvent=passwordReset`);
+    const text = [
+      `A password reset request has been made for user ${userName}`,
+      'You can ignore this mail if you did not request a new password',
+      `Clicking <a href=${url}>here</a> to reset and choose a new password`,
+      '<br />',
+      '// The Third Gift Games',
+    ];
     const mail = mailcomposer({
       from: appConfig.mailSender,
       to: address,
       subject: `${appConfig.title} Password Recovery`,
-      text: `A password reset request has been made for user ${userName}. Go to ${url} to reset your password. You can ignore this mail if you did not request a new password`,
-      html: `A password reset request has been made for user ${userName}. Click <a href=${url}>here</a> to reset your password. You can ignore this mail if you did not request a new password`,
+      html: text.join('<br />'),
     });
     const expiresAt = new Date();
     expiresAt.setHours(expiresAt.getHours() + 2);

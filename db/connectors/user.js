@@ -63,7 +63,9 @@ const User = mongoose.model('User', userSchema);
 function cleanUserParameters({ user, noClean }) {
   const cleanUser = user;
 
-  cleanUser.password = typeof cleanUser.password === 'string';
+  if (cleanUser.password) {
+    cleanUser.password = typeof cleanUser.password === 'string';
+  }
 
   if (!noClean) {
     cleanUser.mail = typeof cleanUser.mail === 'string';

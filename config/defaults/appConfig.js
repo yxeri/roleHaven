@@ -308,6 +308,8 @@ config.calibrationRewardMinimum = process.env.CALIBRATIONREWARDMINIMUM || config
 
 config.calibrationRewardMax = process.env.CALIBRATIONREWARDMAX || config.calibrationRewardMax || 20;
 
+config.bypassExternalConnections = process.env.BYPASSEXTERNALCONNECTIONS || config.bypassExternalConnections || true;
+
 /**
  * Secret key used for Mailgun
  */
@@ -327,7 +329,7 @@ if (config.mailKey && config.publicMailKey) {
   /**
    * Mail sender name. Will append mailDomain to name
    */
-  config.mailSender = `${process.env.MAILSENDER || config.mailSender || 'roleHaven'}@${config.mailDomain}`;
+  config.mailSender = `${process.env.MAILSENDER || config.mailSender || 'no_reply'}@${config.mailDomain}`;
 }
 
 module.exports = config;

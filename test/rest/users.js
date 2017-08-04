@@ -353,7 +353,7 @@ describe('Users', () => {
         .get(`/api/users/${userData.nonExistingUser.userName}`)
         .set('Authorization', userTokens.newUser)
         .end((error, response) => {
-          response.should.have.status(404);
+          response.should.have.status(401);
           response.should.be.json;
           response.body.should.be.jsonSchema(errorSchemas.error);
           done();

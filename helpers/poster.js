@@ -18,6 +18,7 @@
 
 const appConfig = require('../config/defaults/config').app;
 const http = require('http');
+const errorCreator = require('../objects/error/errorCreator');
 
 /**
  * Post request to external server
@@ -27,14 +28,20 @@ const http = require('http');
  * @param {Function} params.callback Callback
  * @param {Object} params.data Data to send
  */
-function postRequest({ host, path, data, shouldBypass, callback }) {
-  if (shouldBypass || appConfig.mode === appConfig.Modes.TEST) {
-    callback(200);
+function postRequest({ host, path, data, callback }) {
+  if (appConfig.bypassExternalConnections || appConfig.mode === appConfig.Modes.TEST) {
+    callback({ data: { statusCode: 200 } });
 
     return;
   }
 
-  const dataString = JSON.stringify({ data });
+  if (!host || !path) {
+    callback({ error: new errorCreator.InvalidData({ name: 'post request host or path missing' }) });
+
+    return;
+  }
+
+  const dataString = JSON.stringify(data);
   const options = {
     host,
     path,
@@ -46,8 +53,24 @@ function postRequest({ host, path, data, shouldBypass, callback }) {
   };
 
   const req = http.request(options, (response) => {
+    response.on('aborted', () => {
+      if (response.statusCode >= 400) {
+        callback({ error: new errorCreator.External({ name: `status code ${response.statusCode}` }) });
+      }
+
+      callback({ data: { statusCode: response.statusCode } });
+
+      req.end();
+    });
+
     response.on('end', () => {
-      callback(response.statusCode);
+      if (response.statusCode >= 400) {
+        callback({ error: new errorCreator.External({ name: `status code ${response.statusCode}` }) });
+
+        return;
+      }
+
+      callback({ data: { statusCode: response.statusCode } });
     });
   });
 

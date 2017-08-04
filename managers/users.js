@@ -357,6 +357,7 @@ function sendPasswordReset({ token, userName, callback }) {
 function getUser({ token, userName, callback }) {
   authenticator.isUserAllowed({
     token,
+    matchNameTo: userName,
     commandName: dbConfig.apiCommands.GetUser.name,
     callback: ({ error, data }) => {
       if (error) {
@@ -365,7 +366,11 @@ function getUser({ token, userName, callback }) {
         return;
       }
 
-      const allowedUser = data.user;
+      if (userName === data.user.userName) {
+        callback({ data });
+
+        return;
+      }
 
       dbUser.getUser({
         userName: userName.toLowerCase(),
@@ -374,13 +379,13 @@ function getUser({ token, userName, callback }) {
             callback({ error: userError });
 
             return;
-          } else if (userData.user.userName !== allowedUser.userName && (userData.user.accessLevel > allowedUser.accessLevel || userData.user.accessLevel > allowedUser.visibility)) {
-            callback({ error: new errorCreator.NotAllowed({ name: `user ${userName}` }) });
+          } else if (userData.user.accessLevel > data.user.accessLevel) {
+            callback({ error: new errorCreator.NotAllowed({ name: 'retrieved user too high access' }) });
 
             return;
           }
 
-          callback({ data });
+          callback({ data: userData });
         },
       });
     },
