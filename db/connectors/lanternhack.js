@@ -141,7 +141,6 @@ function updateLanternTeam({ teamId, teamName, shortName, isActive, points, rese
   if (typeof resetPoints === 'boolean' && resetPoints) {
     update.points = 0;
   } else if (points) {
-    query.isActive = true;
     update.points = points;
   }
 
