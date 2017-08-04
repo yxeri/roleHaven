@@ -329,7 +329,7 @@ if (config.mailKey && config.publicMailKey) {
   /**
    * Mail sender name. Will append mailDomain to name
    */
-  config.mailSender = `${process.env.MAILSENDER || config.mailSender || 'roleHaven'}@${config.mailDomain}`;
+  config.mailSender = `${process.env.MAILSENDER || config.mailSender || 'no_reply'}@${config.mailDomain}`;
 }
 
 module.exports = config;
