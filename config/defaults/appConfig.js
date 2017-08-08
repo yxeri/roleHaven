@@ -130,6 +130,7 @@ config.routes = config.routes || [
   { sitePath: '/api/teams', filePath: `${__dirname}/../../routes/rest/teams` },
   { sitePath: '/api/devices', filePath: `${__dirname}/../../routes/rest/devices` },
   { sitePath: '/api/simpleMsgs', filePath: `${__dirname}/../../routes/rest/simpleMsgs` },
+  { sitePath: '/api/mailEvents', filePath: `${__dirname}/../../routes/rest/mailEvents` },
   { sitePath: '*', filePath: `${__dirname}/../../routes/error.js` },
 ];
 

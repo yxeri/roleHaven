@@ -481,49 +481,6 @@ function handle(io) {
   });
 
   /**
-   * @api {post} /users/:userName/password/reset Request user password reset
-   * @apiVersion 6.0.0
-   * @apiName RequestPasswordRecovery
-   * @apiGroup Users
-   *
-   * @apiHeader {String} Authorization Your JSON Web Token
-   *
-   * @apiDescription Request user password reset. A mail will be sent to the user's registered mail address
-   *
-   * @apiParam {String} userName User name of the user that will receive a password recovery mail
-   *
-   * @apiSuccess {Object} data
-   * @apiSuccess {Object[]} data.success Was the reset mail properly sent?
-   * @apiSuccessExample {json} Success-Response:
-   *   {
-   *    "data": {
-   *      "success": true
-   *    }
-   *  }
-   */
-  router.post('/:userName/password/reset', (request, response) => {
-    if (!objectValidator.isValidData(request.params, { userName: true })) {
-      restErrorChecker.checkAndSendError({ response, error: new errorCreator.InvalidData({ expected: 'params: { userName }' }), sentData: request.body.data });
-
-      return;
-    }
-
-    userManager.sendPasswordReset({
-      token: request.headers.authorization,
-      userName: request.params.userName,
-      callback: ({ error, data }) => {
-        if (error) {
-          restErrorChecker.checkAndSendError({ response, error, sentData: request.body.data });
-
-          return;
-        }
-
-        response.json({ data });
-      },
-    });
-  });
-
-  /**
    * @api {post} /users/:userName/password Update user password
    * @apiVersion 6.0.0
    * @apiName ChangePassword
@@ -567,7 +524,6 @@ function handle(io) {
     userManager.changePassword({
       key,
       password,
-      userName: request.params.userName,
       callback: ({ error, data }) => {
         if (error) {
           restErrorChecker.checkAndSendError({ response, error, sentData: request.body.data });

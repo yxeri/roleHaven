@@ -262,12 +262,11 @@ function listUsers({ includeInactive, token, callback, team = {} }) {
  * Change password
  * @param {string} params.key Password request key
  * @param {string} params.password Password
- * @param {string} params.userName Name of the user changing password
  * @param {Function} params.callback Callback
  */
-function changePassword({ key, password, userName, callback }) {
-  if (!objectValidator.isValidData({ key, password, userName }, { key: true, password: true, userName: true })) {
-    callback({ error: new errorCreator.InvalidData({ expected: '{ key, password, userName }' }) });
+function changePassword({ key, password, callback }) {
+  if (!objectValidator.isValidData({ key, password }, { key: true, password: true })) {
+    callback({ error: new errorCreator.InvalidData({ expected: '{ key, password }' }) });
 
     return;
   }
@@ -277,10 +276,6 @@ function changePassword({ key, password, userName, callback }) {
     callback: ({ error, data }) => {
       if (error) {
         callback({ error });
-
-        return;
-      } else if (data.event.owner !== userName) {
-        callback({ error: new errorCreator.NotAllowed({ name: `Change password for ${userName}` }) });
 
         return;
       }
@@ -304,44 +299,30 @@ function changePassword({ key, password, userName, callback }) {
 
 /**
  * Send password reset mail
- * @param {string} params.userName User name of the user receiving a password recovery mail
+ * @param {string} params.mail Mail address to send password recovery to
  * @param {Function} params.callback Callback
  */
-function sendPasswordReset({ token, userName, callback }) {
-  authenticator.isUserAllowed({
-    token,
-    commandName: dbConfig.apiCommands.RequestPasswordReset.name,
-    callback: ({ error }) => {
-      if (error) {
-        callback({ error });
+function sendPasswordReset({ mail, callback }) {
+  dbUser.getUserByMail({
+    mail,
+    callback: ({ error: userError, data: userData }) => {
+      if (userError) {
+        callback({ error: userError });
 
         return;
-      } else if (!objectValidator.isValidData({ token, userName, callback }, { token: true, userName: true, callback: true })) {
-        callback({ error: new errorCreator.InvalidData({ expected: '{ token, userName, callback }' }) });
       }
 
-      dbUser.getUser({
-        userName,
-        callback: ({ error: userError, data: userData }) => {
-          if (userError) {
-            callback({ error: userError });
+      mailer.sendPasswordReset({
+        address: userData.user.mail,
+        userName: userData.user.userName,
+        callback: ({ error: resetError }) => {
+          if (resetError) {
+            callback({ error: resetError });
 
             return;
           }
 
-          mailer.sendPasswordReset({
-            address: userData.user.mail,
-            userName: userData.user.userName,
-            callback: ({ error: resetError }) => {
-              if (resetError) {
-                callback({ error: resetError });
-
-                return;
-              }
-
-              callback({ data: { success: true } });
-            },
-          });
+          callback({ data: { success: true } });
         },
       });
     },
@@ -748,9 +729,9 @@ function verifyUser({ key, callback, socket, io }) {
             return;
           }
 
-          const user = verifyData.data.verified;
+          const user = verifyData.data.user;
 
-          dbMailEvent.removeMailEvent({ key, callback: () => {} });
+          dbMailEvent.removeMailEventByKey({ key, callback: () => {} });
           callback({ data: { userName: user.userName } });
 
           if (socket) {
@@ -764,6 +745,47 @@ function verifyUser({ key, callback, socket, io }) {
   });
 }
 
+/**
+ * Sends mail with verification link to mail address
+ * @param {string} params.mail Mail address
+ * @param {Function} params.callback Callback
+ */
+function sendVerification({ mail, callback}) {
+  if (!objectValidator.isValidData({ mail }, { mail: true })) {
+    callback({ error: new errorCreator.InvalidData({ expected: '{ mail }' }) });
+
+    return;
+  }
+
+  dbUser.getUserByMail({
+    mail,
+    callback: ({ error, data }) => {
+      if (error) {
+        callback({ error });
+
+        return;
+      }
+
+      const { user } = data;
+
+      mailer.sendVerification({
+        address: mail,
+        userName: user.userName,
+        callback: (verificationData) => {
+          if (verificationData.error) {
+            callback({ error: verificationData.error });
+
+            return;
+          }
+
+          callback({ data: { success: true } });
+        },
+      });
+    },
+  });
+}
+
+exports.sendVerification = sendVerification;
 exports.createUser = createUser;
 exports.getUsers = listUsers;
 exports.sendPasswordReset = sendPasswordReset;

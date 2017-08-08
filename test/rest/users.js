@@ -131,57 +131,13 @@ describe('Users', () => {
     });
   });
 
-  describe('Request password recovery for user', () => {
-    it('Should NOT create and send password reset with incorrect authorization on /api/users/:userName/password/reset POST', (done) => {
-      chai
-        .request(app)
-        .post(`/api/users/${userData.newUserToCreate.userName}/password/reset`)
-        .set('Authorization', tokens.incorrectJwt)
-        .end((error, response) => {
-          response.should.have.status(401);
-          response.should.be.json;
-          response.body.should.be.jsonSchema(errorSchemas.error);
-
-          done();
-        });
-    });
-
-    it('Should create and send password reset mail to existing user on /api/users/:userName/password/reset POST', (done) => {
-      chai
-        .request(app)
-        .post(`/api/users/${userData.newUserToCreate.userName}/password/reset`)
-        .set('Authorization', userTokens.newUser)
-        .end((error, response) => {
-          response.should.have.status(200);
-          response.should.be.json;
-          response.body.should.be.jsonSchema(successSchemas.success);
-
-          done();
-        });
-    });
-
-    it('Should NOT create and send password reset to non-existing user by mail on /api/users/:userName/password/reset POST', (done) => {
-      chai
-        .request(app)
-        .post(`/api/users/${userData.nonExistingUser.userName}/password/reset`)
-        .set('Authorization', tokens.adminUser)
-        .end((error, response) => {
-          response.should.have.status(404);
-          response.should.be.json;
-          response.body.should.be.jsonSchema(errorSchemas.error);
-
-          done();
-        });
-    });
-  });
-
   describe('Change password', () => {
     let passwordKey = '';
 
-    before('Create and send password reset mail to existing user on /api/users/:userName/password/reset POST', (done) => {
+    before('Create and send password reset mail to existing user on /api/mailEvents/:mail/password POST', (done) => {
       chai
         .request(app)
-        .post(`/api/users/${userData.newAdminUserToCreate.userName}/password/reset`)
+        .post(`/api/mailEvents/${userData.newAdminUserToCreate.mail}/password`)
         .set('Authorization', userTokens.adminUser)
         .end((error, response) => {
           response.should.have.status(200);
@@ -197,20 +153,6 @@ describe('Users', () => {
               done();
             },
           });
-        });
-    });
-
-    it('Should NOT change password with user name and event owner mismatch on /api/users/:userName/password POST', (done) => {
-      chai
-        .request(app)
-        .post(`/api/users/${userData.newUserToCreate.userName}/password`)
-        .send({ data: { key: passwordKey, password: '1234' } })
-        .end((error, response) => {
-          response.should.have.status(401);
-          response.should.be.json;
-          response.body.should.be.jsonSchema(errorSchemas.error);
-
-          done();
         });
     });
 
