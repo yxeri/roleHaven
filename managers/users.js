@@ -184,7 +184,7 @@ function createUser({ token, user, callback, origin = '' }) {
 function listUsers({ includeInactive, token, callback, team = {} }) {
   authenticator.isUserAllowed({
     token,
-    commandName: dbConfig.apiCommands.GetUser.name,
+    commandName: dbConfig.apiCommands.GetUsers.name,
     callback: ({ error, data }) => {
       if (error) {
         callback({ error });
@@ -787,7 +787,6 @@ function sendVerification({ mail, callback}) {
 
 exports.sendVerification = sendVerification;
 exports.createUser = createUser;
-exports.getUsers = listUsers;
 exports.sendPasswordReset = sendPasswordReset;
 exports.getUser = getUser;
 exports.changePassword = changePassword;

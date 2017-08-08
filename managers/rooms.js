@@ -61,6 +61,12 @@ function authUserToRoom({ token, room, callback }) {
         return;
       }
 
+      if (room.roomName.toLowerCase() === appConfig.rooms.public.roomName) {
+        callback({ data: { isFollowing: true } });
+
+        return;
+      }
+
       dbRoom.authUserToRoom({
         user: data.user,
         roomName: room.roomName,

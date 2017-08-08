@@ -11,6 +11,12 @@ const dbConfig = require('../config/defaults/config').databasePopulation;
  * @param {Function} params.callback Callback
  */
 function createToken({ userName, password, callback }) {
+  if (!appConfig.jsonKey) {
+    callback({ error: new errorCreator.Internal({ name: 'json key not set' }) });
+
+    return;
+  }
+
   dbUser.authUser({
     userName,
     password,

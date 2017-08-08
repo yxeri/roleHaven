@@ -466,7 +466,7 @@ function handle(io) {
    *  }
    */
   router.get('/', (request, response) => {
-    userManager.getUsers({
+    userManager.listUsers({
       token: request.headers.authorization,
       callback: ({ error, data }) => {
         if (error) {
