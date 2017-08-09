@@ -179,7 +179,7 @@ function updatePosition({ position, token, socket, io, callback }) {
   authenticator.isUserAllowed({
     token,
     matchNameTo: position.positionName,
-    commandName: dbConfig.apiCommands.UpdateUserPosition.name,
+    commandName: dbConfig.apiCommands.UpdatePosition.name,
     callback: ({ error, data }) => {
       if (error) {
         callback({ error });

@@ -141,21 +141,6 @@ describe('LanternTeams', () => {
         });
     });
 
-    it('Should NOT update points on inactive lantern team on /api/lanternTeams/:teamId', (done) => {
-      chai
-        .request(app)
-        .post(`/api/lanternTeams/${lanternTeamData.lanternTeamToCreateAndModify.teamId}`)
-        .send({ data: { team: lanternTeamData.lanternTeamWithNewPoints } })
-        .set('Authorization', tokens.adminUser)
-        .end((error, response) => {
-          response.should.have.status(404);
-          response.should.be.json;
-          response.body.should.be.jsonSchema(errorSchemas.error);
-
-          done();
-        });
-    });
-
     it('Should update active on lantern team on /api/lanternTeams/:teamId POST', (done) => {
       chai
         .request(app)

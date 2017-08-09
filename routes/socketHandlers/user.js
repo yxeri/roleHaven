@@ -32,49 +32,19 @@ dbUser.removeAllUserBlockedBy({ callback: () => {} });
  * @param {object} io Socket.IO
  */
 function handle(socket, io) {
-  socket.on('sendPasswordReset', ({ userName, token }, callback = () => {}) => {
+  socket.on('sendPasswordReset', ({ mail }, callback = () => {}) => {
     userManager.sendPasswordReset({
-      token,
-      userName,
+      mail,
       callback,
     });
   });
 
-  // socket.on('sendVerification', ({ userName }, callback = () => {}) => {
-  // TODO Resend verification
-  // if (!objectValidator.isValidData({ mail }, { mail: true })) {
-  //   callback({ error: new errorCreator.InvalidData({ expected: '{ mail }' }) });
-  //
-  //   return;
-  // }
-  //
-  // dbUser.getUserByMail({
-  //   mail,
-  //   callback: ({ error, data }) => {
-  //     if (error) {
-  //       callback({ error });
-  //
-  //       return;
-  //     }
-  //
-  //     const { user } = data;
-  //
-  //     mailer.sendVerification({
-  //       address: mail,
-  //       userName: user.userName,
-  //       callback: (verificationData) => {
-  //         if (verificationData.error) {
-  //           callback({ error: verificationData.error });
-  //
-  //           return;
-  //         }
-  //
-  //         callback({ data: { success: true } });
-  //       },
-  //     });
-  //   },
-  // });
-  // });
+  socket.on('sendVerification', ({ mail }, callback = () => {}) => {
+    userManager.sendVerification({
+      mail,
+      callback,
+    });
+  });
 
   socket.on('changePassword', ({ key, password }, callback = () => {}) => {
     userManager.changePassword({

@@ -38,12 +38,9 @@ function sendVerification({ address, userName, callback }) {
       subject: `User Verification on ${appConfig.host}`,
       html: text.join('<br />'),
     });
-    const expiresAt = new Date();
-    expiresAt.setHours(expiresAt.getHours() + 2);
 
     dbMailEvent.createMailEvent({
       mailEvent: {
-        expiresAt,
         owner: userName,
         key: key.toString('hex'),
         eventType: 'userVerify',
@@ -94,7 +91,7 @@ function sendVerification({ address, userName, callback }) {
  * @param {Function} params.callback Callback
  */
 function sendPasswordReset({ address, userName, callback }) {
-  if (!mailgun) {
+  if (!mailgun && appConfig.mode !== appConfig.Modes.TEST && appConfig.mode !== appConfig.Modes.DEV) {
     callback({ error: new errorCreator.Internal({ name: 'Mailgun mailKey, mailDomain, publicMailKey not set' }) });
 
     return;
@@ -130,7 +127,7 @@ function sendPasswordReset({ address, userName, callback }) {
           callback({ error: mailEventData.error });
 
           return;
-        } else if (appConfig.mode === appConfig.Modes.TEST) {
+        } else if (appConfig.mode === appConfig.Modes.TEST || appConfig.mode === appConfig.Modes.DEV) {
           callback({ data: { success: true } });
 
           return;

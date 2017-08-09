@@ -247,6 +247,10 @@ config.apiCommands = {
     accessLevel: config.AccessLevels.LOWERADMIN,
     selfAccessLevel: config.AccessLevels.BASIC,
   },
+  GetUsers: config.apiCommands.GetUsers || {
+    name: 'GetUsers',
+    accessLevel: config.AccessLevels.BASIC,
+  },
   GetUserDetails: config.apiCommands.GetUserDetails || {
     name: 'GetUserDetails',
     accessLevel: config.AccessLevels.LOWERADMIN,
@@ -363,7 +367,7 @@ config.apiCommands = {
   },
   GetRoom: config.apiCommands.GetRoom || {
     name: 'GetRoom',
-    accessLevel: config.AccessLevels.BASIC,
+    accessLevel: config.AccessLevels.ANONYMOUS,
   },
   RemoveRoom: config.apiCommands.RemoveRoom || {
     name: 'RemoveRoom',
@@ -376,14 +380,14 @@ config.apiCommands = {
   },
   GetUserPosition: config.apiCommands.GetUserPosition || {
     name: 'GetUserPosition',
-    accessLevel: config.AccessLevels.BASIC,
+    accessLevel: config.AccessLevels.ANONYMOUS,
   },
   UpdateUserPosition: config.apiCommands.UpdateUserPosition || {
     name: 'UpdateUserPosition',
     accessLevel: config.AccessLevels.BASIC,
   },
-  UpdatePosition: config.apiCommands.UpdateUserPosition || {
-    name: 'UpdateUserPosition',
+  UpdatePosition: config.apiCommands.UpdatePosition || {
+    name: 'UpdatePosition',
     accessLevel: config.AccessLevels.BASIC,
   },
   GetWallet: config.apiCommands.GetWallet || {
