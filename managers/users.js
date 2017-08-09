@@ -750,7 +750,7 @@ function verifyUser({ key, callback, socket, io }) {
  * @param {string} params.mail Mail address
  * @param {Function} params.callback Callback
  */
-function sendVerification({ mail, callback}) {
+function sendVerification({ mail, callback }) {
   if (!objectValidator.isValidData({ mail }, { mail: true })) {
     callback({ error: new errorCreator.InvalidData({ expected: '{ mail }' }) });
 
