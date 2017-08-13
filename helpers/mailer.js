@@ -17,7 +17,7 @@ const { URL } = require('url');
  * @param {Function} params.callback Callback
  */
 function sendVerification({ address, userName, callback }) {
-  if (!mailgun && appConfig.mode !== appConfig.Modes.TEST && appConfig.mode !== appConfig.Modes.DEV) {
+  if (!mailgun && !appConfig.bypassMailer) {
     callback({ error: new errorCreator.Internal({ name: 'Mailgun mailKey, mailDomain, publicMailKey not set' }) });
 
     return;
@@ -51,7 +51,7 @@ function sendVerification({ address, userName, callback }) {
           callback({ error: mailEventData.error });
 
           return;
-        } else if (appConfig.mode === appConfig.Modes.TEST || appConfig.mode === appConfig.Modes.DEV) {
+        } else if (appConfig.bypassMailer) {
           callback({ data: { success: true } });
 
           return;
@@ -91,7 +91,7 @@ function sendVerification({ address, userName, callback }) {
  * @param {Function} params.callback Callback
  */
 function sendPasswordReset({ address, userName, callback }) {
-  if (!mailgun && appConfig.mode !== appConfig.Modes.TEST && appConfig.mode !== appConfig.Modes.DEV) {
+  if (!mailgun && !appConfig.bypassMailer) {
     callback({ error: new errorCreator.Internal({ name: 'Mailgun mailKey, mailDomain, publicMailKey not set' }) });
 
     return;
@@ -127,7 +127,7 @@ function sendPasswordReset({ address, userName, callback }) {
           callback({ error: mailEventData.error });
 
           return;
-        } else if (appConfig.mode === appConfig.Modes.TEST || appConfig.mode === appConfig.Modes.DEV) {
+        } else if (appConfig.bypassMailer) {
           callback({ data: { success: true } });
 
           return;
