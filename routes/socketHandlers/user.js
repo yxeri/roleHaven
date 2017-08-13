@@ -24,6 +24,7 @@ const errorCreator = require('../../objects/error/errorCreator');
 const authenticator = require('../../helpers/authenticator');
 const roomManager = require('../../managers/rooms');
 const aliasManager = require('../../managers/aliases');
+const dbLanternHack = require('../../db/connectors/lanternhack');
 
 dbUser.removeAllUserBlockedBy({ callback: () => {} });
 
@@ -98,26 +99,39 @@ function handle(socket, io) {
               return;
             }
 
-            const { user: updatedUser } = userData.data;
+            dbLanternHack.getLanternStats({
+              callback: ({ error: lanternError, data: lanternData }) => {
+                if (lanternError) {
+                  callback({ error: lanternError });
 
-            const dataToSend = {
-              user: {
-                userName: updatedUser.userName,
-                accessLevel: updatedUser.accessLevel,
-                aliases: updatedUser.aliases,
-                team: updatedUser.team,
-                shortTeam: updatedUser.shortTeam,
-                blockedBy: updatedUser.blockedBy,
+                  return;
+                }
+
+                console.log('stats', lanternData);
+
+                const { user: updatedUser } = userData.data;
+
+                const dataToSend = {
+                  lanternStats: lanternData.lanternStats,
+                  user: {
+                    userName: updatedUser.userName,
+                    accessLevel: updatedUser.accessLevel,
+                    aliases: updatedUser.aliases,
+                    team: updatedUser.team,
+                    shortTeam: updatedUser.shortTeam,
+                    blockedBy: updatedUser.blockedBy,
+                  },
+                };
+
+                roomManager.joinRooms({
+                  socket,
+                  rooms: updatedUser.rooms,
+                  deviceId: device.deviceId,
+                });
+
+                callback({ data: dataToSend });
               },
-            };
-
-            roomManager.joinRooms({
-              socket,
-              rooms: updatedUser.rooms,
-              deviceId: device.deviceId,
             });
-
-            callback({ data: dataToSend });
           },
         });
       },
