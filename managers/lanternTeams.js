@@ -19,6 +19,8 @@
 const dbConfig = require('../config/defaults/config').databasePopulation;
 const authenticator = require('../helpers/authenticator');
 const dbLanternHack = require('../db/connectors/lanternhack');
+const objectValidator = require('../utils/objectValidator');
+const errorCreator = require('../objects/error/errorCreator');
 
 /**
  * Get lantern teams
@@ -90,6 +92,10 @@ function createLanternTeam({ io, team, token, callback }) {
     callback: ({ error }) => {
       if (error) {
         callback({ error });
+
+        return;
+      } else if (!objectValidator.isValidData({ team }, { team: { teamName: true, shortName: true, teamId: true } })) {
+        callback({ error: new errorCreator.InvalidData({ expected: '{ team: { teamName, shortName, teamId } }' }) });
 
         return;
       }
