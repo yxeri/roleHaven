@@ -73,8 +73,8 @@ function handle(socket, io) {
   });
 
   socket.on('updateId', ({ token, device }, callback = () => {}) => {
-    if (!objectValidator.isValidData({ token, device }, { token: true, device: { deviceId: true } }, { verbose: false })) {
-      callback({ error: new errorCreator.InvalidData({ expected: '{ token, device: { deviceId } }', verbose: false }) });
+    if (!objectValidator.isValidData({ device }, { device: { deviceId: true } }, { verbose: false })) {
+      callback({ error: new errorCreator.InvalidData({ expected: '{ device: { deviceId } }', verbose: false }) });
 
       return;
     }
@@ -85,6 +85,28 @@ function handle(socket, io) {
       callback: ({ error, data }) => {
         if (error) {
           callback({ error });
+
+          return;
+        }
+
+        // TODO Fix hack
+        if (data.user.isAnonymous) {
+          dbLanternHack.getLanternStats({
+            callback: ({ error: lanternError, data: lanternData }) => {
+              if (lanternError) {
+                callback({ error: lanternError });
+
+                return;
+              }
+
+              const dataToSend = {
+                lanternStats: lanternData.lanternStats,
+                user: { isAnonymous: true },
+              };
+
+              callback({ data: dataToSend });
+            },
+          });
 
           return;
         }
@@ -107,10 +129,7 @@ function handle(socket, io) {
                   return;
                 }
 
-                console.log('stats', lanternData);
-
                 const { user: updatedUser } = userData.data;
-
                 const dataToSend = {
                   lanternStats: lanternData.lanternStats,
                   user: {
