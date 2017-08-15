@@ -30,10 +30,10 @@ const poster = require('../helpers/poster');
 /**
  * Get active calibration mission for user. Creates a new one if there is none for the user
  * @param {string} [params.userName] Owner of the mission. Will default to current user
- * @param {number} [params.chosenStationId] Station ID for the mission
+ * @param {number} [params.stationId] Station ID for the mission
  * @param {Function} params.callback Callback
  */
-function getActiveCalibrationMission({ token, chosenStationId, callback, userName }) {
+function getActiveCalibrationMission({ token, stationId, callback, userName }) {
   authenticator.isUserAllowed({
     token,
     matchNameTo: userName,
@@ -105,7 +105,7 @@ function getActiveCalibrationMission({ token, chosenStationId, callback, userNam
                       if (inactiveMissions && inactiveMissions.length > 0) {
                         const previousStationId = inactiveMissions[inactiveMissions.length - 1].stationId;
 
-                        if (previousStationId === chosenStationId) {
+                        if (previousStationId === stationId) {
                           callback({ error: new errorCreator.InvalidData({ name: 'equals previous' }) });
 
                           return;
@@ -114,7 +114,7 @@ function getActiveCalibrationMission({ token, chosenStationId, callback, userNam
                         stationIds.splice(stationIds.indexOf(previousStationId), 1);
                       }
 
-                      const newStationId = chosenStationId || stationIds[Math.floor(Math.random() * (stationIds.length))];
+                      const newStationId = stationId || stationIds[Math.floor(Math.random() * (stationIds.length))];
                       const newCode = Math.floor(Math.random() * (((99999999 - 10000000) + 1) + 10000000));
                       const missionToCreate = {
                         owner,
