@@ -347,7 +347,7 @@ function createUser({ user, silentOnExists, callback }) {
           return;
         }
 
-        callback({ data: { user: cleanUserParameters({ user: data.savedObject }) } });
+        callback({ data: { user: cleanUserParameters({ user: data.savedObject, noClean: true }) } });
       },
     });
   });

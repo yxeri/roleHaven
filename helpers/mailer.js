@@ -61,7 +61,7 @@ function sendVerification({ address, userName, callback }) {
 
         mail.build((compileError, message) => {
           if (compileError) {
-            callback({ error: new errorCreator.Internal({ name: 'sendVerification', errorObject: compileError }) });
+            callback({ error: new errorCreator.External({ name: 'sendVerification', errorObject: compileError }) });
 
             return;
           }
@@ -73,7 +73,7 @@ function sendVerification({ address, userName, callback }) {
 
           mailgun.messages().sendMime(mailData, (error, body) => {
             if (error) {
-              callback({ error: new errorCreator.Internal({ name: 'sendVerification', errorObject: error }) });
+              callback({ error: new errorCreator.External({ name: 'sendVerification', errorObject: error }) });
 
               return;
             }
@@ -139,7 +139,7 @@ function sendPasswordReset({ address, userName, callback }) {
 
         mail.build((compileError, message) => {
           if (compileError) {
-            callback({ error: new errorCreator.Internal({ name: 'sendPasswordReset', errorObject: compileError }) });
+            callback({ error: new errorCreator.External({ name: 'sendPasswordReset', errorObject: compileError }) });
 
             return;
           }
@@ -151,7 +151,7 @@ function sendPasswordReset({ address, userName, callback }) {
 
           mailgun.messages().sendMime(mailData, (error, body) => {
             if (error) {
-              callback({ error: new errorCreator.Internal({ name: 'sendPasswordReset', errorObject: error }) });
+              callback({ error: new errorCreator.External({ name: 'sendPasswordReset', errorObject: error }) });
 
               return;
             }
