@@ -34,6 +34,7 @@ const teamVerifyEnv = textTools.convertToBoolean(process.env.TEAMVERIFY);
 const disallowRegisterEnv = textTools.convertToBoolean(process.env.DISALLOWUSERREGISTER);
 const verboseErrorEnv = textTools.convertToBoolean(process.env.VERBOSEERROR);
 const allowMessageImageEnv = textTools.convertToBoolean(process.env.ALLOWMESSAGEIMAGE);
+const bypassMailerEnv = textTools.convertToBoolean(process.env.BYPASSMAILER);
 
 /**
  * Name of the system. Human-readable name that will be sent to clients, such as in the subject field of mail or page title
@@ -425,7 +426,7 @@ config.bypassExternalConnections = process.env.BYPASSEXTERNALCONNECTIONS || conf
 /**
  * Should the mails for user verification on register or password request be disabled?
  */
-config.bypassMailer = process.env.BYPASSMAILER || config.bypassMailer || true;
+config.bypassMailer = bypassMailerEnv !== undefined ? bypassMailerEnv : config.bypassMailer || true;
 
 /**
  * Secret key used for Mailgun
