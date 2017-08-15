@@ -724,6 +724,38 @@ function createFakePasswordsContainer(callback) {
   });
 }
 
+/**
+ * Get lantern stations, round and teams
+ * @param {Function} params.callback Callback
+ */
+function getLanternStats({ callback }) {
+  LanternRound.findOne({}).lean().exec((roundError, round) => {
+    if (roundError) {
+      callback({ error: roundError });
+
+      return;
+    }
+
+    LanternTeam.find({}).lean().exec((teamError, teams) => {
+      if (teamError) {
+        callback({ error: teamError });
+
+        return;
+      }
+
+      Station.find({}).lean().exec((stationError, stations) => {
+        if (stationError) {
+          callback({ error: stationError });
+
+          return;
+        }
+
+        callback({ data: { lanternStats: { round, teams, stations } } });
+      });
+    });
+  });
+}
+
 createFirstRound(({ error, data }) => {
   if (error) {
     winston.log('Failed to create first round');
@@ -769,3 +801,4 @@ exports.createFirstRound = createFirstRound;
 exports.createfakePasswordContainer = createFakePasswordsContainer;
 exports.resetLanternStations = resetLanternStations;
 exports.deleteTeam = deleteTeam;
+exports.getLanternStats = getLanternStats;

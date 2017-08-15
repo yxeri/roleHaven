@@ -57,7 +57,7 @@ function createUser({ token, user, callback, origin = '' }) {
         callback({ error: new errorCreator.InvalidCharacters({ name: `User name length: ${appConfig.userNameMaxLength} Password length: ${appConfig.userNameMaxLength} Device length: ${appConfig.deviceIdLength}` }) });
 
         return;
-      } else if ((user.visibility || user.accessLevel) && dbConfig.apiCommands.ChangeUserLevels.accessLevel > data.user.accessLevel) {
+      } else if ((user.visibility || user.accessLevel || user.verified) && dbConfig.apiCommands.ChangeUserLevels.accessLevel > data.user.accessLevel) {
         callback({ error: new errorCreator.NotAllowed({ name: 'set access or visibility level' }) });
 
         return;

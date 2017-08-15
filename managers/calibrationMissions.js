@@ -30,9 +30,10 @@ const poster = require('../helpers/poster');
 /**
  * Get active calibration mission for user. Creates a new one if there is none for the user
  * @param {string} [params.userName] Owner of the mission. Will default to current user
+ * @param {number} [params.chosenStationId] Station ID for the mission
  * @param {Function} params.callback Callback
  */
-function getActiveCalibrationMission({ token, callback, userName }) {
+function getActiveCalibrationMission({ token, chosenStationId, callback, userName }) {
   authenticator.isUserAllowed({
     token,
     matchNameTo: userName,
@@ -104,10 +105,16 @@ function getActiveCalibrationMission({ token, callback, userName }) {
                       if (inactiveMissions && inactiveMissions.length > 0) {
                         const previousStationId = inactiveMissions[inactiveMissions.length - 1].stationId;
 
+                        if (previousStationId === chosenStationId) {
+                          callback({ error: new errorCreator.InvalidData({ name: 'equals previous' }) });
+
+                          return;
+                        }
+
                         stationIds.splice(stationIds.indexOf(previousStationId), 1);
                       }
 
-                      const newStationId = stationIds[Math.floor(Math.random() * (stationIds.length))];
+                      const newStationId = chosenStationId || stationIds[Math.floor(Math.random() * (stationIds.length))];
                       const newCode = Math.floor(Math.random() * (((99999999 - 10000000) + 1) + 10000000));
                       const missionToCreate = {
                         owner,
@@ -338,6 +345,78 @@ function getCalibrationMissions({ token, getInactive, callback }) {
   });
 }
 
+/**
+ * Get valid station options for user
+ * @param {string} params.token jwt token
+ * @param {Function} params.callback Callback
+ */
+function getValidStations({ token, callback }) {
+  authenticator.isUserAllowed({
+    token,
+    commandName: dbConfig.apiCommands.GetCalibrationMissions.name,
+    callback: ({ error, data }) => {
+      if (error) {
+        callback({ error });
+
+        return;
+      }
+
+      dbCalibrationMission.getActiveMission({
+        owner: data.user.userName,
+        silentOnDoesNotExist: true,
+        callback: ({ error: activeError, data: activeData }) => {
+          if (activeError) {
+            callback({ error: activeError });
+
+            return;
+          } else if (activeData.mission) {
+            callback({ data: activeData });
+
+            return;
+          }
+
+          dbCalibrationMission.getInactiveMissions({
+            owner: data.user.userName,
+            callback: ({ error: inactiveErr, data: inactiveData }) => {
+              if (inactiveErr) {
+                callback({ error: inactiveErr });
+
+                return;
+              }
+
+              dbLanternHack.getActiveStations({
+                callback: ({ error: stationsError, data: stationsData }) => {
+                  if (stationsError) {
+                    callback({ error: stationsError });
+
+                    return;
+                  } else if (stationsData.stations.length < 1) {
+                    callback({ error: new errorCreator.DoesNotExist({ name: 'no active stations' }) });
+
+                    return;
+                  }
+
+                  const stationIds = stationsData.stations.map(station => station.stationId);
+                  const { missions } = inactiveData;
+
+                  if (missions && missions.length > 0) {
+                    const previousStationId = missions[missions.length - 1].stationId;
+
+                    stationIds.splice(stationIds.indexOf(previousStationId), 1);
+                  }
+
+                  callback({ data: { stations: stationsData.stations.filter(station => stationIds.indexOf(station.stationId) > -1) } });
+                },
+              });
+            },
+          });
+        },
+      });
+    },
+  });
+}
+
+exports.getValidStations = getValidStations;
 exports.getActiveCalibrationMission = getActiveCalibrationMission;
 exports.completeActiveCalibrationMission = completeActiveCalibrationMission;
 exports.cancelActiveCalibrationMission = cancelActiveCalibrationMission;

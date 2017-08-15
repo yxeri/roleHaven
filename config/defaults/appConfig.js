@@ -47,25 +47,61 @@ config.host = process.env.VIRTUAL_HOST || '127.0.0.1';
  * Default language is English.
  * Don't set this var if you want English to be the default language.
  * Valid options: se
+ * @type {string}
  */
 config.defaultLanguage = process.env.DEFAULTLANGUAGE || config.defaultLanguage || '';
 
-/*
- * Base directory for public and private files
+/**
+ * Base directory for public files
+ * @type {string}
  */
 config.publicBase = path.normalize(`${__dirname}/../../../../public`);
+
+/**
+ * Base directory for private files
+ * @type {string}
+ */
 config.privateBase = path.normalize(`${__dirname}/../../../../private`);
 
-/*
- * Sub directories for public and private files
+/**
+ * Path to directory with views
  * Will be appended to the base directories
+ * @type {string}
  */
 config.viewsPath = 'views';
+
+/**
+ * Path to directory with stylesheets
+ * Will be appended to the base directories
+ * @type {string}
+ */
 config.stylesPath = 'styles';
+
+/**
+ * Path to directory with scripts. Will be minified
+ * Will be appended to the base directories
+ * @type {string}
+ */
 config.scriptsPath = 'scripts';
+
+/**
+ * Path to directory with scripts that should not be minified
+ * Will be appended to the base directories
+ * @type {string}
+ */
 config.requiredPath = 'required';
+
+/**
+ * Path to favicon
+ * Will be appended to the base directories
+ * @type {string}
+ */
 config.faviconPath = 'images/favicon.ico';
 
+/**
+ * Allowed server modes
+ * @type {{string}}
+ */
 config.Modes = {
   TEST: 'test',
   PROD: 'prod',
@@ -76,22 +112,39 @@ config.Modes = {
  */
 config.mode = process.env.MODE || config.mode || config.Modes.PROD;
 
-// Morgan log level
-config.logLevel = process.env.LOGLEVEL || config.logLevel || 'tiny';
+/**
+ * Allowed log levels
+ */
+config.LogLevels = {
+  TINY: 'tiny',
+};
 
-// Database host name
+/**
+ * Morgan log level
+ */
+config.logLevel = process.env.LOGLEVEL || config.logLevel || config.LogLevels.TINY;
+
+/**
+ * Database host name
+ */
 config.dbHost = process.env.DBHOST || config.dbHost || '127.0.0.1';
 
-// Database port
+/**
+ * Database port
+ */
 config.dbPort = process.env.DBPORT || config.dbPort || 27017;
 
-// Database database name
+/**
+ * Database database name
+ */
 config.dbName = `${config.mode}-${process.env.DBNAME || config.dbName || 'roleHaven'}`;
 
-// Node server port number
+/**
+ * Node server port number
+ */
 config.port = process.env.PORT || config.port || 8888;
 
-/*
+/**
  * Retrieve socket.io from local server or cdn
  * Note! Android 2.2 fails when using cdn
  */
@@ -146,7 +199,10 @@ config.cornerTwoLat = textTools.convertToFloat(process.env.CORNERTWOLAT || confi
 config.cornerTwoLong = textTools.convertToFloat(process.env.CORNERTWOLONG || config.cornerTwoLong || 15.2048731);
 config.defaultZoomLevel = textTools.convertToInt(process.env.DEFAULTZOOMLEVEL || config.defaultZoomLevel || 15);
 
-// Amount of messages retrieved with the history command
+/**
+ * Amount of messages retrieved with the history command
+ * @type {number}
+ */
 config.historyLines = process.env.MAXHISTORY || config.historyLines || 80;
 
 /**
@@ -265,42 +321,94 @@ config.signalBlockBufferArea = process.env.SIGNALBLOCKBUFFERAREA || config.signa
  */
 config.docFileMaxLength = process.env.DOCFILEMAXLENGTH || config.docFileMaxLength || 6000;
 
+/**
+ * Maximum amount of characters in a document title
+ */
 config.docFileTitleMaxLength = process.env.DOCFILETITLEMAXLENGTH || config.docFileTitleMaxLength || 100;
 
+/**
+ * Maximum amount of alphanumeric in a document id
+ */
 config.docFileIdMaxLength = process.env.DOCFILEIDMAXLENGTH || config.docFileIdMaxLength || 20;
 
+/**
+ * Maximum amount of characters in a message
+ */
 config.messageMaxLength = process.env.MESSAGEMAXLENGTH || config.messageMaxLength || 6000;
 
-config.messageMaxLength = process.env.MESSAGEMAXLENGTH || config.messageMaxLength || 6000;
-
+/**
+ * Maximum amount of characters in a broadcast
+ */
 config.broadcastMaxLength = process.env.BROADCASTMAXLENGTH || config.broadcastMaxLength || 600;
 
+/**
+ * Maximum amount of characters in a user name
+ */
 config.userNameMaxLength = process.env.USERNAMEMAXLENGTH || config.userNameMaxLength || 20;
 
+/**
+ * Maximum amount of characters in a team name
+ */
 config.teamNameMaxLength = process.env.TEAMNAMEMAXLENGTH || config.teamNameMaxLength || 20;
 
+/**
+ * Maximum amount of characters in a team acronym
+ */
 config.shortTeamMaxLength = process.env.SHORTEAMMAXLENGTH || config.shortTeamMaxLength || 5;
 
+/**
+ * Maximum amount of characters in a password
+ */
 config.passwordMaxLength = process.env.PASSWORDMAXLENGTH || config.passwordMaxLength || 100;
 
+/**
+ * Maximum amount of alphanumeric in a device id
+ */
 config.deviceIdLength = process.env.DEVICEIDLENGTH || config.deviceIdLength || 16;
 
+/**
+ * Maximum amount of characters in a device alias
+ */
 config.deviceAliasMaxLength = process.env.DEVICEALIASMAXLENGTH || config.deviceAliasMaxLength || 20;
 
+/**
+ * Maximum amount of characters in a room name
+ */
 config.roomNameMaxLength = process.env.ROOMNAMEMAXLENGTH || config.roomNameMaxLength || 20;
 
+/**
+ * Maximum amount of characters in a whisper room name
+ */
 config.whisperRoomNameLength = config.roomNameMaxLength + config.whisperAppend.length;
 
+/**
+ * Maximum amount warnings before a user account is banned
+ */
 config.maxUserWarnings = process.env.MAXUSERWARNINGS || config.maxUserWarnings || 2;
 
+/**
+ * Minimum position accuracy. Positions with worse accuracy will not be stored nor sent to clients
+ */
 config.minimumPositionAccuracy = process.env.MINIMUMPOSITIONACCURACY || config.minimumPositionAccuracy || 70;
 
+/**
+ * Maximum amount of time before a position is no longer valid. Used on clients
+ */
 config.maxPositionAge = process.env.MAXPOSITIONAGE || config.maxPositionAge || 2;
 
+/**
+ * Should errors be printe to log?
+ */
 config.verboseError = verboseErrorEnv !== undefined ? verboseErrorEnv : config.verboseError || false;
 
+/**
+ * Should messagesbe allowed to have an attached image?
+ */
 config.allowMessageImage = allowMessageImageEnv !== undefined ? allowMessageImageEnv : config.allowMessageImage || false;
 
+/**
+ * Default amount that is added when a wallet is created
+ */
 config.defaultWalletAmount = process.env.DEFAULTWALLETAMOUNT || config.defaultWalletAmount || 3;
 
 config.calibrationRewardAmount = process.env.CALIBRATIONREWARDAMOUNT || config.calibrationRewardAmount || 5;
@@ -309,7 +417,15 @@ config.calibrationRewardMinimum = process.env.CALIBRATIONREWARDMINIMUM || config
 
 config.calibrationRewardMax = process.env.CALIBRATIONREWARDMAX || config.calibrationRewardMax || 20;
 
+/**
+ * Should external calls be disabled?
+ */
 config.bypassExternalConnections = process.env.BYPASSEXTERNALCONNECTIONS || config.bypassExternalConnections || true;
+
+/**
+ * Should the mails for user verification on register or password request be disabled?
+ */
+config.bypassMailer = process.env.BYPASSMAILER || config.bypassMailer || true;
 
 /**
  * Secret key used for Mailgun

@@ -315,7 +315,12 @@ function getUser({ userName, callback }) {
  */
 function createUser({ user, silentOnExists, callback }) {
   const newUser = new User(user);
-  const query = { userName: user.userName, mail: user.mail };
+  const query = {
+    $or: [
+      { userName: user.userName },
+      { mail: user.mail },
+    ],
+  };
 
   User.findOne(query).lean().exec((err, foundUser) => {
     if (err) {
