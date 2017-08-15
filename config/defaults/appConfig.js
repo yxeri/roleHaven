@@ -448,6 +448,4 @@ config.mailDomain = process.env.MAILDOMAIN || config.mailDomain || undefined;
  */
 config.mailSender = `${process.env.MAILSENDER || config.mailSender || 'no_reply'}@${config.mailDomain}`;
 
-console.log(config);
-
 module.exports = config;
