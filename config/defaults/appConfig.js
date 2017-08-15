@@ -431,23 +431,23 @@ config.bypassMailer = bypassMailerEnv !== undefined ? bypassMailerEnv : config.b
 /**
  * Secret key used for Mailgun
  */
-config.mailKey = process.env.MAILKEY || config.mode === 'test' ? 'TESTKEY' : undefined;
+config.mailKey = process.env.MAILKEY || undefined;
 
 /**
  * Public key used for Mailgun
  */
-config.publicMailKey = process.env.PUBLICMAILKEY || config.mode === 'test' ? 'TESTKEY' : undefined;
+config.publicMailKey = process.env.PUBLICMAILKEY || undefined;
 
-if (config.mailKey && config.publicMailKey) {
-  /**
-   * Mail domain used by Mailgun
-   */
-  config.mailDomain = process.env.MAILDOMAIN || config.mailDomain || config.mode === 'test' ? '127.0.0.1' : undefined;
+/**
+ * Mail domain used by Mailgun
+ */
+config.mailDomain = process.env.MAILDOMAIN || config.mailDomain || undefined;
 
-  /**
-   * Mail sender name. Will append mailDomain to name
-   */
-  config.mailSender = `${process.env.MAILSENDER || config.mailSender || 'no_reply'}@${config.mailDomain}`;
-}
+/**
+ * Mail sender name. Will append mailDomain to name
+ */
+config.mailSender = `${process.env.MAILSENDER || config.mailSender || 'no_reply'}@${config.mailDomain}`;
+
+console.log(config);
 
 module.exports = config;

@@ -986,7 +986,7 @@ function getUserByMail({ mail, callback }) {
       return;
     }
 
-    callback({ data: { user: cleanUserParameters({ user }) } });
+    callback({ data: { user: cleanUserParameters({ user, noClean: true }) } });
   });
 }
 

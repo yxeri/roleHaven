@@ -26,9 +26,11 @@ function sendVerification({ address, userName, callback }) {
   crypto.randomBytes(20, (err, key) => {
     const url = new URL(`https://${appConfig.host}/?key=${key.toString('hex')}&mailEvent=userVerify`);
     const text = [
+      `Hi, ${userName}!`,
       `Your account ${userName} on ${appConfig.host} has been created.`,
-      'ou have to verify your account before you can login with it.',
-      `Clicking <a href=${url.href}>here</a> will verify and activate active your account`,
+      'You need to verify your account before you can login with it.',
+      '<br />',
+      `Clicking <a href=${url.href}>here</a> will redirect you to ${appConfig.host} and allow you to verify and activate your account`,
       '<br />',
       '// The Third Gift Games',
     ];
@@ -100,9 +102,11 @@ function sendPasswordReset({ address, userName, callback }) {
   crypto.randomBytes(20, (err, key) => {
     const url = new URL(`https://${appConfig.host}/?key=${key.toString('hex')}&mailEvent=passwordReset`);
     const text = [
-      `A password reset request has been made for user ${userName}`,
+      `Hi, ${userName}!`,
+      `A password reset request has been made for your user at ${appConfig.host}`,
       'You can ignore this mail if you did not request a new password',
-      `Clicking <a href=${url}>here</a> to reset and choose a new password`,
+      '<br />',
+      `Clicking <a href=${url}>here</a> will redirect you to ${appConfig.host} where you can reset and choose a new password`,
       '<br />',
       '// The Third Gift Games',
     ];
