@@ -412,12 +412,13 @@ function resetLanternStations({ signalValue, callback }) {
  * @param {number} params.station.stationId ID of station
  * @param {boolean} [params.station.isActive] Is the station active?
  * @param {string} [params.station.stationName] Name of the station
- * @param {number} [params.station.owner] Owner Team id of the owner
+ * @param {number} [params.station.resetOwner] Remove owner and set isUnderAttack to false
+ * @param {number} [params.station.owner] Team id of the owner
  * @param {Object} [params.isUnderAttack] Is the station under attack?
  * @param {number} [params.calibrationReward] Amount of digital currency that will be sent to user when they complete mission with this stations ID
  * @param {Function} params.callback Callback
  */
-function updateLanternStation({ stationId, isActive, stationName, owner, isUnderAttack, calibrationReward, callback }) {
+function updateLanternStation({ resetOwner, stationId, isActive, stationName, owner, isUnderAttack, calibrationReward, callback }) {
   const query = { stationId };
   const update = {};
   const options = { new: true };
@@ -428,7 +429,10 @@ function updateLanternStation({ stationId, isActive, stationName, owner, isUnder
   if (stationName) { set.stationName = stationName; }
   if (calibrationReward) { set.calibrationReward = calibrationReward; }
 
-  if (owner) {
+  if (resetOwner || (owner && owner === -1)) {
+    unset.owner = '';
+    set.isUnderAttack = false;
+  } else if (owner) {
     set.owner = owner;
     set.isUnderAttack = false;
   } else if (isUnderAttack) {

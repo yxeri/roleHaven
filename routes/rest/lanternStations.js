@@ -201,11 +201,12 @@ function handle(io) {
    *
    * @apiParam {Object} data
    * @apiParam {string} data.station Station
-   * @apiParam {string} [data.station.stationName] Location name of the station
+   * @apiParam {string} [data.station.stationName] Location name of the station.
    * @apiParam {boolean} [data.station.isActive] Is the station active?
-   * @apiParam {number} [data.station.owner] Team id of the owner
-   * @apiParam {Object} [data.station.isUnderAttack] Is the station under attack?
-   * @apiParam {number} [data.station.calibrationReward] Amount of digital currency sent to user
+   * @apiParam {number} [data.station.owner] Team id of the owner. Will be ignored if resetOwner is set. owner === -1 act the same as setting resetOwner to true.
+   * @apiParam {number} [data.station.resetOwner] Should the owner be removed? Will also set isUnderAttack to false.
+   * @apiParam {Object} [data.station.isUnderAttack] Is the station under attack? Will be ignored if resetOwner or owner === -1 is set.
+   * @apiParam {number} [data.station.calibrationReward] Amount of digital currency sent to user.
    * @apiParamExample {json} Request-Example:
    *   {
    *    "data": {

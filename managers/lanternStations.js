@@ -159,9 +159,10 @@ function updateLanternStation({ io, station, stationId, token, callback }) {
         return;
       }
 
-      const { isUnderAttack, isActive, stationName, owner, calibrationReward } = station;
+      const { isUnderAttack, isActive, stationName, owner, calibrationReward, resetOwner } = station;
 
       dbLanternHack.updateLanternStation({
+        resetOwner,
         isUnderAttack,
         stationId,
         isActive,
