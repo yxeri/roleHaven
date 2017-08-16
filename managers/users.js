@@ -65,6 +65,10 @@ function createUser({ token, user, callback, origin = '' }) {
         callback({ error: new errorCreator.InvalidCharacters({ name: `protected name ${user.userName}` }) });
 
         return;
+      } else if (!textTools.isValidMail(user.mail)) {
+        callback({ error: new errorCreator.InvalidMail({}) });
+
+        return;
       }
 
       const { userName, fullName, password, registerDevice, mail, banned, verified, accessLevel, visibility } = user;
@@ -308,6 +312,10 @@ function sendPasswordReset({ mail, callback }) {
     callback: ({ error: userError, data: userData }) => {
       if (userError) {
         callback({ error: userError });
+
+        return;
+      } else if (!textTools.isValidMail(mail)) {
+        callback({ error: new errorCreator.InvalidMail({}) });
 
         return;
       }
@@ -755,6 +763,10 @@ function sendVerification({ mail, callback }) {
     callback({ error: new errorCreator.InvalidData({ expected: '{ mail }' }) });
 
     return;
+  } else if (!textTools.isValidMail(mail)) {
+    callback({ error: new errorCreator.InvalidMail({}) });
+
+    return;
   }
 
   dbUser.getUserByMail({
@@ -785,6 +797,53 @@ function sendVerification({ mail, callback }) {
   });
 }
 
+/**
+ * Sends mail with verification link to mail address
+ * @param {string} params.mail Mail address
+ * @param {Function} params.callback Callback
+ */
+function sendAllVerificationMails({ mail, callback }) {
+  if (!objectValidator.isValidData({ mail }, { mail: true })) {
+    callback({ error: new errorCreator.InvalidData({ expected: '{ mail }' }) });
+
+    return;
+  } else if (!textTools.isValidMail(mail)) {
+    callback({ error: new errorCreator.InvalidMail({}) });
+
+    return;
+  }
+
+  dbUser.getUnverifiedUsers({
+    callback: ({ error, data }) => {
+      if (error) {
+        callback({ error });
+
+        return;
+      }
+
+      const users = data.users;
+
+      users.forEach((user) => {
+        if (textTools.isValidMail(user.mail)) {
+          mailer.sendVerification({
+            address: user.mail,
+            userName: user.userName,
+            callback: (verificationData) => {
+              if (verificationData.error) {
+                callback({ error: verificationData.error });
+
+                return;
+              }
+
+              callback({ data: { success: true } });
+            },
+          });
+        }
+      });
+    },
+  });
+}
+
 exports.sendVerification = sendVerification;
 exports.createUser = createUser;
 exports.sendPasswordReset = sendPasswordReset;
@@ -797,3 +856,4 @@ exports.matchPartialUserName = matchPartialUserName;
 exports.listUsers = listUsers;
 exports.banUser = banUser;
 exports.verifyUser = verifyUser;
+exports.sendAllVerificationMails = sendAllVerificationMails;

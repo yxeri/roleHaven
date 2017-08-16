@@ -32,12 +32,14 @@ function sendVerification({ address, userName, callback }) {
       '<br />',
       `Clicking <a href=${url.href}>here</a> will redirect you to ${appConfig.host} and allow you to verify and activate your account`,
       '<br />',
+      `We hope that you will have a great experience at ${appConfig.eventName}!`,
+      '// Aleksandar Jankovic',
       '// The Third Gift Games',
     ];
     const mail = mailcomposer({
       from: appConfig.mailSender,
       to: address,
-      subject: `User Verification on ${appConfig.host}`,
+      subject: `User Verification for ${appConfig.eventName} on ${appConfig.host}`,
       html: text.join('<br />'),
     });
 
@@ -108,12 +110,14 @@ function sendPasswordReset({ address, userName, callback }) {
       '<br />',
       `Clicking <a href=${url}>here</a> will redirect you to ${appConfig.host} where you can reset and choose a new password`,
       '<br />',
+      `We hope that you will have a great experience at ${appConfig.eventName}!`,
+      '// Aleksandar Jankovic',
       '// The Third Gift Games',
     ];
     const mail = mailcomposer({
       from: appConfig.mailSender,
       to: address,
-      subject: `${appConfig.title} Password Recovery`,
+      subject: `User password recovery for ${appConfig.eventName} on ${appConfig.host}`,
       html: text.join('<br />'),
     });
     const expiresAt = new Date();

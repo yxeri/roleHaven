@@ -30,10 +30,43 @@ const router = new express.Router();
  */
 function handle() {
   /**
-   * @api {post} /users/:userName/password Request user password reset
+   * @api {post} /mailEvents/verifications Resend verification mail to all unverified users
+   * @apiVersion 6.0.0
+   * @apiName ResendAllVerificationMail
+   * @apiGroup MailEvents
+   *
+   * @apiHeader {String} Authorization Your JSON Web Token
+   *
+   * @apiDescription Resend verification mail to all unverified users
+   *
+   * @apiSuccess {Object} data
+   * @apiSuccess {Object[]} data.success Were the mails sent?
+   * @apiSuccessExample {json} Success-Response:
+   *   {
+   *    "data": {
+   *      "success": true
+   *    }
+   *  }
+   */
+  router.post('/verifications', (request, response) => {
+    userManager.sendAllVerificationMails({
+      token: request.headers.authorization,
+      callback: ({ error, data }) => {
+        if (error) {
+          restErrorChecker.checkAndSendError({ response, error, sentData: request.body.data });
+
+          return;
+        }
+
+        response.json({ data });
+      },
+    });
+  });
+  /**
+   * @api {post} /mailEvents/:mail/password Request user password reset
    * @apiVersion 6.0.0
    * @apiName RequestPasswordRecovery
-   * @apiGroup Users
+   * @apiGroup MailEvents
    *
    * @apiHeader {String} Authorization Your JSON Web Token
    *

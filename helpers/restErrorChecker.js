@@ -10,10 +10,11 @@ const appConfig = require('../config/defaults/config').app;
  * @param {Object} [params.sentData] Data sent
  */
 function checkAndSendError({ response, error, title, detail, sentData }) {
+  const errorDetail = error.text.join('') || detail;
   const sendError = {
     status: 500,
     title: title || 'Internal server error',
-    detail: detail || 'Internal server error',
+    detail: errorDetail || 'Internal server error',
   };
 
   if ((appConfig.mode === appConfig.Modes.TEST || appConfig.mode === appConfig.Modes.DEV) && sentData) { sendError.sentData = sentData; }
@@ -22,35 +23,42 @@ function checkAndSendError({ response, error, title, detail, sentData }) {
     case errorCreator.ErrorTypes.DOESNOTEXIST: {
       sendError.status = 404;
       sendError.title = title || 'Does not exist';
-      sendError.detail = detail || 'Does not exist';
+      sendError.detail = errorDetail || 'Does not exist';
 
       break;
     }
     case errorCreator.ErrorTypes.NOTALLOWED: {
       sendError.status = 401;
       sendError.title = title || 'Unauthorized';
-      sendError.detail = detail || 'Not allowed';
+      sendError.detail = errorDetail || 'Not allowed';
 
       break;
     }
     case errorCreator.ErrorTypes.INVALIDCHARACTERS: {
       sendError.status = 400;
       sendError.title = title || 'Invalid characters or length';
-      sendError.detail = detail || 'Invalid characters or length';
+      sendError.detail = errorDetail || 'Invalid characters or length';
 
       break;
     }
     case errorCreator.ErrorTypes.ALREADYEXISTS: {
       sendError.status = 403;
       sendError.title = title || 'Already exists';
-      sendError.detail = detail || 'Already exists';
+      sendError.detail = errorDetail || 'Already exists';
 
       break;
     }
     case errorCreator.ErrorTypes.INVALIDDATA: {
       sendError.status = 400;
       sendError.title = title || 'Invalid data';
-      sendError.detail = detail || 'Invalid data';
+      sendError.detail = errorDetail || 'Invalid data';
+
+      break;
+    }
+    case errorCreator.ErrorTypes.INVALIDMAIL: {
+      sendError.status = 400;
+      sendError.title = title || 'Invalid mail address';
+      sendError.detail = errorDetail || 'Invalid mail address';
 
       break;
     }
