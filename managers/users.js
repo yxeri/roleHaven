@@ -796,10 +796,24 @@ function sendVerification({ mail, callback }) {
     },
   });
 }
+
+/**
+ * Sends mail with verification link to mail address
+ * @param {string} params.mail Mail address
+ * @param {Function} params.callback Callback
+ */
+function sendAllVerificationMails({ mail, callback }) {
+  if (!objectValidator.isValidData({ mail }, { mail: true })) {
+    callback({ error: new errorCreator.InvalidData({ expected: '{ mail }' }) });
+
+    return;
+  } else if (!textTools.isValidMail(mail)) {
+    callback({ error: new errorCreator.InvalidMail({}) });
+
+    return;
   }
 
-  dbUser.getUserByMail({
-    mail,
+  dbUser.getUnverifiedUsers({
     callback: ({ error, data }) => {
       if (error) {
         callback({ error });
@@ -807,20 +821,24 @@ function sendVerification({ mail, callback }) {
         return;
       }
 
-      const { user } = data;
+      const users = data.users;
 
-      mailer.sendVerification({
-        address: mail,
-        userName: user.userName,
-        callback: (verificationData) => {
-          if (verificationData.error) {
-            callback({ error: verificationData.error });
+      users.forEach((user) => {
+        if (textTools.isValidMail(user.mail)) {
+          mailer.sendVerification({
+            address: user.mail,
+            userName: user.userName,
+            callback: (verificationData) => {
+              if (verificationData.error) {
+                callback({ error: verificationData.error });
 
-            return;
-          }
+                return;
+              }
 
-          callback({ data: { success: true } });
-        },
+              callback({ data: { success: true } });
+            },
+          });
+        }
       });
     },
   });
@@ -838,3 +856,4 @@ exports.matchPartialUserName = matchPartialUserName;
 exports.listUsers = listUsers;
 exports.banUser = banUser;
 exports.verifyUser = verifyUser;
+exports.sendAllVerificationMails = sendAllVerificationMails;

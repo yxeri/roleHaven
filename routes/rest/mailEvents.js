@@ -50,7 +50,7 @@ function handle() {
    */
   router.post('/verifications', (request, response) => {
     userManager.sendAllVerificationMails({
-      mail: request.params.mail,
+      token: request.headers.authorization,
       callback: ({ error, data }) => {
         if (error) {
           restErrorChecker.checkAndSendError({ response, error, sentData: request.body.data });

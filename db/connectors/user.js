@@ -470,6 +470,24 @@ function getUsers({ user, includeInactive, callback }) {
 }
 
 /**
+ * Get unverified users
+ * @param {Function} params.callback Callback
+ */
+function getUnverifiedUsers({ callback }) {
+  const query = { verified: false, banned: false };
+
+  User.find(query).lean().exec((err, users = []) => {
+    if (err) {
+      callback({ error: new errorCreator.Database({ errorObject: err, name: 'getUnverifiedUsers' }) });
+
+      return;
+    }
+
+    callback({ data: { users: users.map(userToClean => cleanUserParameters({ user: userToClean, noClean: true })) } });
+  });
+}
+
+/**
  * Gets all users in a team
  * @param {Object} params.user User that is retrieving all users
  * @param {Function} params.callback Function to be called on completion
@@ -1052,3 +1070,4 @@ exports.removeAllUserTeam = removeAllUserTeam;
 exports.removeUserTeam = removeUserTeam;
 exports.getUserByMail = getUserByMail;
 exports.getUserFollowingRooms = getUserFollowingRooms;
+exports.getUnverifiedUsers = getUnverifiedUsers;
