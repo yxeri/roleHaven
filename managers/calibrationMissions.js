@@ -87,7 +87,7 @@ function getActiveCalibrationMission({ token, stationId, callback, userName }) {
                     return;
                   }
 
-                  dbLanternHack.getActiveStations({
+                  dbLanternHack.getAllStations({
                     callback: ({ error: stationsError, data: stationsData }) => {
                       if (stationsError) {
                         callback({ error: stationsError });
@@ -384,7 +384,7 @@ function getValidStations({ token, callback }) {
                 return;
               }
 
-              dbLanternHack.getActiveStations({
+              dbLanternHack.getAllStations({
                 callback: ({ error: stationsError, data: stationsData }) => {
                   if (stationsError) {
                     callback({ error: stationsError });
