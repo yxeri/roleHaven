@@ -23,8 +23,9 @@ const gameCodeManager = require('../../managers/gameCodes');
  * @param {Object} io Socket.io
  */
 function handle(socket, io) {
-  socket.on('createGameCode', ({ codeType, token }, callback = () => {}) => {
+  socket.on('createGameCode', ({ codeType, owner, token }, callback = () => {}) => {
     gameCodeManager.createGameCode({
+      owner,
       codeType,
       token,
       callback,
