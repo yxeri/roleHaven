@@ -448,4 +448,9 @@ config.mailDomain = process.env.MAILDOMAIN || config.mailDomain || undefined;
  */
 config.mailSender = `${process.env.MAILSENDER || config.mailSender || 'no_reply'}@${config.mailDomain}`;
 
+/**
+ * Participant-friendly event name
+ */
+config.eventName = process.env.EVENTNAME || config.eventName || 'roleHaven larp';
+
 module.exports = config;
