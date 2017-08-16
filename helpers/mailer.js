@@ -29,20 +29,16 @@ function sendVerification({ address, userName, callback }) {
       `Hi, ${userName}!`,
       `Your account ${userName} on ${appConfig.host} has been created.`,
       'You need to verify your account before you can login with it.',
-      '<br />',
-      'By verifying and creating your account you accept all sections in the User Agreement document, which you can find <a href="https://thethirdgift.com/agreement.html">here</a>.',
-      '<br />',
-      `Clicking <a href=${url.href}>here</a> will redirect you to ${appConfig.host} and allow you to verify and activate your account`,
-      '<br />',
-      `We hope that you will have a great experience at ${appConfig.eventName}!`,
-      '<br />',
-      'Aleksandar Jankovic',
+      '<br />By verifying and creating your account you accept all sections in the User Agreement document, which you can find <a href="https://thethirdgift.com/agreement.html">here</a>.',
+      `<br />Clicking <a href=${url.href}>here</a> redirect you to the app and allow you to verify and activate your account.`,
+      `<br />We hope that you will have a great experience at ${appConfig.eventName}!`,
+      '<br />Aleksandar Jankovic',
       'The Third Gift Games',
     ];
     const mail = mailcomposer({
       from: appConfig.mailSender,
       to: address,
-      subject: `User Verification for ${appConfig.eventName} on ${appConfig.host}`,
+      subject: `User Verification for ${appConfig.eventName}`,
       html: text.join('<br />'),
     });
 
@@ -108,20 +104,17 @@ function sendPasswordReset({ address, userName, callback }) {
     const url = new URL(`https://${appConfig.host}/?key=${key.toString('hex')}&mailEvent=passwordReset`);
     const text = [
       `Hi, ${userName}!`,
-      `A password reset request has been made for your user at ${appConfig.host}`,
-      'You can ignore this mail if you did not request a new password',
-      '<br />',
-      `Clicking <a href=${url}>here</a> will redirect you to ${appConfig.host} where you can reset and choose a new password`,
-      '<br />',
-      `We hope that you will have a great experience at ${appConfig.eventName}!`,
-      '<br />',
-      'Aleksandar Jankovic',
+      `A password reset request has been made for your user at ${appConfig.host}.`,
+      'You can ignore this mail if you did not request a new password.',
+      `<br />Clicking <a href=${url}>here</a> will redirect you to the app, where you can reset and choose a new password.`,
+      `<br />We hope that you will have a great experience at ${appConfig.eventName}!`,
+      '<br />Aleksandar Jankovic',
       'The Third Gift Games',
     ];
     const mail = mailcomposer({
       from: appConfig.mailSender,
       to: address,
-      subject: `User password recovery for ${appConfig.eventName} on ${appConfig.host}`,
+      subject: `User password recovery for ${appConfig.eventName}`,
       html: text.join('<br />'),
     });
     const expiresAt = new Date();
