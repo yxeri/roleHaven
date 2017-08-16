@@ -148,7 +148,7 @@ function updateUserPosition({ position, token, socket, io, callback }) {
               }
 
               const dataToSend = {
-                positions: [data.position],
+                positions: [positionData.position],
                 currentTime: (new Date()),
               };
 
