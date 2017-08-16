@@ -35,6 +35,8 @@ function handle(socket, io) {
 
   socket.on('updateUserPosition', ({ position, token }, callback = () => {}) => {
     positionManager.updateUserPosition({
+      socket,
+      io,
       position,
       token,
       callback,
