@@ -87,7 +87,7 @@ function getActiveCalibrationMission({ token, stationId, callback, userName }) {
                     return;
                   }
 
-                  dbLanternHack.getActiveStations({
+                  dbLanternHack.getAllStations({
                     callback: ({ error: stationsError, data: stationsData }) => {
                       if (stationsError) {
                         callback({ error: stationsError });
@@ -384,7 +384,7 @@ function getValidStations({ token, callback }) {
                 return;
               }
 
-              dbLanternHack.getActiveStations({
+              dbLanternHack.getAllStations({
                 callback: ({ error: stationsError, data: stationsData }) => {
                   if (stationsError) {
                     callback({ error: stationsError });
@@ -416,8 +416,53 @@ function getValidStations({ token, callback }) {
   });
 }
 
+/**
+ * Cancels all calibration missions based on station id
+ * @param {string} params.token jwt token
+ * @param {Object} params.io Socket.io
+ * @param {number} params.stationId ID of the station
+ * @param {Function} params.callback Callback
+ */
+function cancelCalibrationMissionsById({ token, io, stationId, callback }) {
+  authenticator.isUserAllowed({
+    token,
+    commandName: dbConfig.apiCommands.CancelCalibrationMission.name,
+    callback: ({ error }) => {
+      if (error) {
+        callback({ error });
+
+        return;
+      }
+
+      dbCalibrationMission.getMissions({
+        callback: ({ error: missionError, data: missionData }) => {
+          if (missionError) {
+            callback({ error: missionError });
+
+            return;
+          }
+
+          missionData.missions.forEach((mission) => {
+            if (stationId === mission.stationId) {
+              cancelActiveCalibrationMission({
+                io,
+                token,
+                owner: mission.owner,
+                callback: () => {},
+              });
+            }
+          });
+
+          callback({ data: { success: true } });
+        },
+      });
+    },
+  });
+}
+
 exports.getValidStations = getValidStations;
 exports.getActiveCalibrationMission = getActiveCalibrationMission;
 exports.completeActiveCalibrationMission = completeActiveCalibrationMission;
 exports.cancelActiveCalibrationMission = cancelActiveCalibrationMission;
 exports.getCalibrationMissions = getCalibrationMissions;
+exports.cancelCalibrationMissionsById = cancelCalibrationMissionsById;

@@ -19,6 +19,8 @@
 const express = require('express');
 const calibrationMissionsManager = require('../../managers/calibrationMissions');
 const restErrorChecker = require('../../helpers/restErrorChecker');
+const objectValidator = require('../../utils/objectValidator');
+const errorCreator = require('../../objects/error/errorCreator');
 
 const router = new express.Router();
 
@@ -26,7 +28,7 @@ const router = new express.Router();
  * @param {Object} io Socket.io
  * @returns {Object} Router
  */
-function handle() {
+function handle(io) {
   /**
    * @api {get} /calibrationMissions/ Get all calibration missions
    * @apiVersion 6.0.0
@@ -71,6 +73,59 @@ function handle() {
       },
     });
   });
+
+  /**
+   * @api {delete} /calibrationMissions/ Delete all calibration missions for a specific station
+   * @apiVersion 6.0.0
+   * @apiName RemoveCalibrationMissionsByStationId
+   * @apiGroup CalibrationMissions
+   *
+   * @apiHeader {String} Authorization Your JSON Web Token
+   *
+   * @apiDescription Delete all calibration missions for a specific station
+   *
+   * @apiParam {Object} data
+   * @apiParam {string} data.alias Alias
+   * @apiParamExample {json} Request-Example:
+   *   {
+   *    "data": {
+   *      "stationId": 1
+   *    }
+   *  }
+   *
+   * @apiSuccess {Object} data
+   * @apiSuccess {Object[]} data.mission Missions found
+   * @apiSuccessExample {json} Success-Response:
+   *   {
+   *    "data": {
+   *      "success": true
+   *    }
+   *  }
+   */
+  router.delete('/', (request, response) => {
+    if (!objectValidator.isValidData(request.body, { data: { stationId: true } })) {
+      restErrorChecker.checkAndSendError({ response, error: new errorCreator.InvalidData({ expected: '' }), sentData: request.body.data });
+
+      return;
+    }
+
+    calibrationMissionsManager.cancelCalibrationMissionsById({
+      io,
+      stationId: request.body.data.stationId,
+      token: request.headers.authorization,
+      getInactive: true,
+      callback: ({ error: calibrationError, data: calibrationData }) => {
+        if (calibrationError) {
+          restErrorChecker.checkAndSendError({ response, error: calibrationError, sentData: request.body.data });
+
+          return;
+        }
+
+        response.json({ data: calibrationData });
+      },
+    });
+  });
+
   /**
    * @api {get} /calibrationMissions/active Get all active calibration missions
    * @apiVersion 6.0.0
