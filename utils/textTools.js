@@ -126,6 +126,15 @@ function calculateMinutesDifference({ firstDate, secondDate }) {
   return Math.floor((difference / 1000) / 60);
 }
 
+/**
+ * Is the sent address a valid mail address?
+ * @param {string} address Mail address to check
+ * @returns {boolean} Is it valid?
+ */
+function isValidMail(address) {
+  return /^[-!#$%&'*+/0-9=?A-Z^_a-z{|}~](\.?[-!#$%&'*+/0-9=?A-Z^_a-z`{|}~])*@[a-zA-Z0-9](-?\.?[a-zA-Z0-9])*\.[a-zA-Z](-?[a-zA-Z0-9])+$/.test(address);
+}
+
 exports.isAlphaNumeric = isAlphaNumeric;
 exports.isAllowedFull = isAllowedFull;
 exports.cleanText = cleanText;
@@ -134,3 +143,4 @@ exports.convertToFloat = convertToFloat;
 exports.convertToInt = convertToInt;
 exports.shuffleArray = shuffleArray;
 exports.calculateMinutesDifference = calculateMinutesDifference;
+exports.isValidMail = isValidMail;

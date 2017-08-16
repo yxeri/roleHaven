@@ -54,6 +54,13 @@ function checkAndSendError({ response, error, title, detail, sentData }) {
 
       break;
     }
+    case errorCreator.ErrorTypes.INVALIDMAIL: {
+      sendError.status = 400;
+      sendError.title = title || 'Invalid mail address';
+      sendError.detail = detail || 'Invalid mail address';
+
+      break;
+    }
     default: {
       break;
     }
