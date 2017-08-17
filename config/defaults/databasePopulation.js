@@ -448,7 +448,7 @@ config.apiCommands = {
     accessLevel: config.AccessLevels.ANONYMOUS,
   },
   Logout: config.apiCommands.Logout || {
-    name: 'Login',
+    name: 'Logout',
     accessLevel: config.AccessLevels.BASIC,
   },
   GetPositions: config.apiCommands.GetPositions || {

@@ -711,7 +711,7 @@ function banUser({ user, io, token, callback }) {
               const bannedSocket = io.sockets.connected[bannedSocketId];
 
               if (bannedSocket) {
-                io.to(bannedSocketId).emit('ban');
+                io.to(userName + appConfig.whisperAppend).emit('ban');
                 roomManager.leaveSocketRooms({ socket: bannedSocket });
               }
 
