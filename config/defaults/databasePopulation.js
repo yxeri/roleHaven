@@ -509,7 +509,7 @@ config.apiCommands = {
   AddBlockedMail: config.apiCommands.AddBlockedMail || {
     name: 'AddBlockedMail',
     accessLevel: config.AccessLevels.ADMIN,
-  }
+  },
 };
 
 module.exports = config;
