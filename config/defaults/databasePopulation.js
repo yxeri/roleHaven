@@ -262,7 +262,7 @@ config.apiCommands = {
   CreateAlias: config.apiCommands.CreateAlias || {
     name: 'CreateAlias',
     accessLevel: config.AccessLevels.LOWERADMIN,
-    selfAccessLevel: config.AccessLevels.PRO,
+    selfAccessLevel: config.AccessLevels.BASIC,
   },
   GetAliases: config.apiCommands.GetAliases || {
     name: 'GetAliases',
@@ -448,7 +448,7 @@ config.apiCommands = {
     accessLevel: config.AccessLevels.ANONYMOUS,
   },
   Logout: config.apiCommands.Logout || {
-    name: 'Login',
+    name: 'Logout',
     accessLevel: config.AccessLevels.BASIC,
   },
   GetPositions: config.apiCommands.GetPositions || {
@@ -505,6 +505,10 @@ config.apiCommands = {
   GetGameItems: config.apiCommands.GetGameItems || {
     name: 'GetGameItems',
     accessLevel: config.AccessLevels.LOWERADMIN,
+  },
+  AddBlockedMail: config.apiCommands.AddBlockedMail || {
+    name: 'AddBlockedMail',
+    accessLevel: config.AccessLevels.ADMIN,
   },
 };
 

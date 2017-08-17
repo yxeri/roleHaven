@@ -30,6 +30,63 @@ const router = new express.Router();
  */
 function handle() {
   /**
+   * @api {post} /mailEvents/bannedMail
+   * @apiVersion 6.0.0
+   * @apiName AddBannedMail
+   * @apiGroup MailEvents
+   *
+   * @apiHeader {String} Authorization Your JSON Web Token
+   *
+   * @apiDescription Adds mail domains or mail addresses to blacklist. These will not be allowed to use during user registration
+   *
+   * @apiParam {Object} data
+   * @apiParam {string[]} [data.mailDomains] Mail domains to ban
+   * @apiParam {string[]} [data.addresses] Mail addresses to ban
+   * @apiParamExample {json} Request-Example:
+   *   {
+   *    "data": {
+   *      "addresses": [
+   *        "banana@harakiri.com",
+   *      ],
+   *      "mailDomains": [
+   *        "0paq.com"
+   *      ]
+   *    }
+   *  }
+   *
+   * @apiSuccess {Object} data
+   * @apiSuccess {Object[]} data.success Were the mails sent?
+   * @apiSuccessExample {json} Success-Response:
+   *   {
+   *    "data": {
+   *      "success": true
+   *    }
+   *  }
+   */
+  router.post('/bannedMail', (request, response) => {
+    if (!objectValidator.isValidData(request.body, { data: true })) {
+      restErrorChecker.checkAndSendError({ response, error: new errorCreator.InvalidData({}), sentData: request.body.data });
+
+      return;
+    }
+
+    userManager.addBlockedMail({
+      mailDomains: request.body.data.mailDomains,
+      addresses: request.body.data.addresses,
+      token: request.headers.authorization,
+      callback: ({ error, data }) => {
+        if (error) {
+          restErrorChecker.checkAndSendError({ response, error, sentData: request.body.data });
+
+          return;
+        }
+
+        response.json({ data });
+      },
+    });
+  });
+
+  /**
    * @api {post} /mailEvents/verifications Resend verification mail to all unverified users
    * @apiVersion 6.0.0
    * @apiName ResendAllVerificationMail
@@ -62,6 +119,7 @@ function handle() {
       },
     });
   });
+
   /**
    * @api {post} /mailEvents/:mail/password Request user password reset
    * @apiVersion 6.0.0

@@ -210,9 +210,10 @@ function handle(socket, io) {
     });
   });
 
-  socket.on('createAlias', ({ alias, token }, callback = () => {}) => {
+  socket.on('createAlias', ({ user, alias, token }, callback = () => {}) => {
     aliasManager.createAlias({
       token,
+      user,
       alias,
       callback,
     });

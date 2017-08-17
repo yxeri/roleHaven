@@ -4,7 +4,6 @@ const objectValidator = require('../utils/objectValidator');
 const dbGameCode = require('../db/connectors/gameCode');
 const errorCreator = require('../objects/error/errorCreator');
 const dbConfig = require('../config/defaults/config').databasePopulation;
-const dbUser = require('../db/connectors/user');
 const appConfig = require('../config/defaults/config').app;
 const transactionManager = require('../managers/transactions');
 
@@ -234,7 +233,16 @@ function useGameCode({ socket, io, code, token, callback }) {
                   };
 
                   if (!gameCode.renewable) {
+                    const usedGameCode = gameCode;
+                    usedGameCode.used = true;
+
                     callback({ data: rewardData });
+
+                    if (socket) {
+                      socket.to(gameCode.owner + appConfig.whisperAppend).emit('gameCode', { data: { gameCode: usedGameCode } });
+                    } else {
+                      io.to(gameCode.owner + appConfig.whisperAppend).emit('gameCode', { data: { gameCode: usedGameCode } });
+                    }
 
                     return;
                   }
@@ -252,22 +260,11 @@ function useGameCode({ socket, io, code, token, callback }) {
 
                       callback({ data: rewardData });
 
-                      dbUser.getUserByAlias({
-                        alias: gameCode.owner,
-                        callback: ({ error: userError, data: userData }) => {
-                          if (userError) {
-                            callback({ error: userError });
-
-                            return;
-                          }
-
-                          if (socket) {
-                            socket.to(userData.user.userName + appConfig.whisperAppend).emit('gameCode', { data: { gameCode: newCodeData.gameCode } });
-                          } else {
-                            io.to(userData.user.userName + appConfig.whisperAppend).emit('gameCode', { data: { gameCode: newCodeData.gameCode } });
-                          }
-                        },
-                      });
+                      if (socket) {
+                        socket.to(gameCode.owner + appConfig.whisperAppend).emit('gameCode', { data: { gameCode: newCodeData.gameCode } });
+                      } else {
+                        io.to(gameCode.owner + appConfig.whisperAppend).emit('gameCode', { data: { gameCode: newCodeData.gameCode } });
+                      }
                     },
                   });
                 },

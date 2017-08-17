@@ -71,105 +71,124 @@ function createUser({ token, user, callback, origin = '' }) {
         return;
       }
 
-      const { userName, fullName, password, registerDevice, mail, banned, verified, accessLevel, visibility } = user;
-      const lowerCaseUserName = userName.toLowerCase();
+      const createUserFunc = () => {
+        const { userName, fullName, password, registerDevice, mail, banned, verified, accessLevel, visibility } = user;
+        const lowerCaseUserName = userName.toLowerCase();
 
-      const newUser = {
-        userName: lowerCaseUserName,
-        password,
-        registerDevice,
-        mail,
-        banned,
-        verified,
-        accessLevel,
-        visibility,
-        registeredAt: new Date(),
-        fullName: fullName || lowerCaseUserName,
-        rooms: [
-          dbConfig.rooms.public.roomName,
-          dbConfig.rooms.bcast.roomName,
-          dbConfig.rooms.important.roomName,
-          dbConfig.rooms.user.roomName,
-          dbConfig.rooms.news.roomName,
-          dbConfig.rooms.schedule.roomName,
-        ],
+        const newUser = {
+          userName: lowerCaseUserName,
+          password,
+          registerDevice,
+          mail: mail.toLowerCase(),
+          banned,
+          verified,
+          accessLevel,
+          visibility,
+          registeredAt: new Date(),
+          fullName: fullName || lowerCaseUserName,
+          rooms: [
+            dbConfig.rooms.public.roomName,
+            dbConfig.rooms.bcast.roomName,
+            dbConfig.rooms.important.roomName,
+            dbConfig.rooms.user.roomName,
+            dbConfig.rooms.news.roomName,
+            dbConfig.rooms.schedule.roomName,
+          ],
+        };
+
+        dbUser.createUser({
+          user: newUser,
+          callback: (userData) => {
+            if (userData.error) {
+              callback({ error: userData.error });
+
+              return;
+            }
+
+            const createdUser = userData.data.user;
+
+            roomManager.createSpecialRoom({
+              room: {
+                owner: createdUser.userName,
+                roomName: createdUser.userName + appConfig.whisperAppend,
+                visibility: dbConfig.AccessLevels.SUPERUSER,
+                accessLevel: dbConfig.AccessLevels.SUPERUSER,
+                isWhisper: true,
+              },
+              user: createdUser,
+              callback: ({ error: roomError }) => {
+                if (roomError) {
+                  callback({ error: roomError });
+
+                  return;
+                }
+
+                const wallet = {
+                  accessLevel: createdUser.accessLevel,
+                  owner: createdUser.userName,
+                  amount: appConfig.defaultWalletAmount,
+                };
+
+                dbWallet.createWallet({
+                  wallet,
+                  callback: ({ error: walletError, data: walletData }) => {
+                    if (walletError) {
+                      callback({ error: walletError });
+
+                      return;
+                    }
+
+                    dbInvitation.createInvitationList({
+                      userName: createdUser.userName,
+                      callback: ({ error: listError }) => {
+                        if (listError) {
+                          callback({ error: listError });
+
+                          return;
+                        }
+
+                        mailer.sendVerification({
+                          address: createdUser.mail,
+                          userName: createdUser.userName,
+                          callback: ({ error: mailError }) => {
+                            if (mailError) {
+                              callback({ error: mailError });
+
+                              return;
+                            }
+
+                            callback({
+                              data: {
+                                user: createdUser,
+                                wallet: walletData.wallet,
+                              },
+                            });
+                          },
+                        });
+                      },
+                    });
+                  },
+                });
+              },
+            });
+          },
+        });
       };
 
-      dbUser.createUser({
-        user: newUser,
-        callback: (userData) => {
-          if (userData.error) {
-            callback({ error: userData.error });
+      dbMailEvent.isBlockedMail({
+        address: user.mail.toLowerCase(),
+        callback: ({ error: mailError, data: mailData }) => {
+          if (mailError) {
+            callback({ mailError });
+
+            return;
+          } else if (mailData.isBlocked) {
+            callback({ error: new errorCreator.InvalidMail({}) });
 
             return;
           }
 
-          const createdUser = userData.data.user;
-
-          roomManager.createSpecialRoom({
-            room: {
-              owner: createdUser.userName,
-              roomName: createdUser.userName + appConfig.whisperAppend,
-              visibility: dbConfig.AccessLevels.SUPERUSER,
-              accessLevel: dbConfig.AccessLevels.SUPERUSER,
-              isWhisper: true,
-            },
-            user: createdUser,
-            callback: ({ error: roomError }) => {
-              if (roomError) {
-                callback({ error: roomError });
-
-                return;
-              }
-
-              const wallet = {
-                accessLevel: createdUser.accessLevel,
-                owner: createdUser.userName,
-                amount: appConfig.defaultWalletAmount,
-              };
-
-              dbWallet.createWallet({
-                wallet,
-                callback: ({ error: walletError, data: walletData }) => {
-                  if (walletError) {
-                    callback({ error: walletError });
-
-                    return;
-                  }
-
-                  dbInvitation.createInvitationList({
-                    userName: createdUser.userName,
-                    callback: ({ error: listError }) => {
-                      if (listError) {
-                        callback({ error: listError });
-
-                        return;
-                      }
-
-                      mailer.sendVerification({
-                        address: createdUser.mail,
-                        userName: createdUser.userName,
-                        callback: ({ error: mailError }) => {
-                          if (mailError) {
-                            callback({ error: mailError });
-
-                            return;
-                          }
-
-                          callback({
-                            data: {
-                              user: createdUser,
-                              wallet: walletData.wallet,
-                            },
-                          });
-                        },
-                      });
-                    },
-                  });
-                },
-              });
-            },
-          });
+          createUserFunc();
         },
       });
     },
@@ -644,7 +663,7 @@ function matchPartialUserName({ partialName, token, callback }) {
  * @param {Function} params.callback Callback
  */
 function banUser({ user, io, token, callback }) {
-  authenticator.userIsAllowed({
+  authenticator.isUserAllowed({
     token,
     commandName: dbConfig.apiCommands.BanUser.name,
     callback: ({ error }) => {
@@ -692,7 +711,7 @@ function banUser({ user, io, token, callback }) {
               const bannedSocket = io.sockets.connected[bannedSocketId];
 
               if (bannedSocket) {
-                io.to(bannedSocketId).emit('ban');
+                io.to(userName + appConfig.whisperAppend).emit('ban');
                 roomManager.leaveSocketRooms({ socket: bannedSocket });
               }
 
@@ -844,6 +863,47 @@ function sendAllVerificationMails({ mail, callback }) {
   });
 }
 
+/**
+ * Add blocked addresses and mail domains
+ * @param {string} params.token jwt token
+ * @param {string[]} [params.mailDomains] Mail domains
+ * @param {string[]} [params.addresses] Mail addresses
+ * @param {Function} params.callback Callback
+ */
+function addBlockedMail({ token, mailDomains, addresses, callback }) {
+  if (!mailDomains && !addresses) {
+    callback({ error: new errorCreator.InvalidData({ expected: 'mailDomains or addresses' }) });
+
+    return;
+  }
+
+  authenticator.isUserAllowed({
+    token,
+    commandName: dbConfig.apiCommands.AddBlockedMail.name,
+    callback: ({ error }) => {
+      if (error) {
+        callback({ error });
+
+        return;
+      }
+
+      dbMailEvent.addBlockedMail({
+        mailDomains,
+        addresses,
+        callback: ({ error: blockedError }) => {
+          if (blockedError) {
+            callback({ error: blockedError });
+
+            return;
+          }
+
+          callback({ data: { success: true } });
+        },
+      });
+    },
+  });
+}
+
 exports.sendVerification = sendVerification;
 exports.createUser = createUser;
 exports.sendPasswordReset = sendPasswordReset;
@@ -857,3 +917,4 @@ exports.listUsers = listUsers;
 exports.banUser = banUser;
 exports.verifyUser = verifyUser;
 exports.sendAllVerificationMails = sendAllVerificationMails;
+exports.addBlockedMail = addBlockedMail;
