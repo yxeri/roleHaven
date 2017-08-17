@@ -287,10 +287,16 @@ function authUser({ userName, password, callback }) {
 /**
  * Get user
  * @param {string} params.userName User name
+ * @param {boolean} params.includeInactive Should banned or unverified users be returned?
  * @param {Function} params.callback Callback
  */
-function getUser({ userName, callback }) {
-  const query = { userName, banned: false, verified: true };
+function getUser({ userName, includeInactive, callback }) {
+  const query = { userName };
+
+  if (!includeInactive) {
+    query.banned = false;
+    query.verified = true;
+  }
 
   User.findOne(query).lean().exec((err, foundUser) => {
     if (err) {
@@ -445,10 +451,11 @@ function verifyAllUsers({ callback }) {
 /**
  * Gets all user
  * @param {Object} params.user User that is retrieving all users
- * @param {boolean} params.includeInactive Include users that are banned or unverified
+ * @param {boolean} [params.includeInactive] Include users that are banned or unverified?
+ * @param {boolean} [params.noClean] Should the users not have its personal info parameters cleaned?
  * @param {Function} params.callback Function to be called on completion
  */
-function getUsers({ user, includeInactive, callback }) {
+function getUsers({ user, includeInactive, noClean, callback }) {
   const query = { visibility: { $lte: user.accessLevel } };
   const sort = { userName: 1 };
   const filter = { _id: 0, password: 0, socketId: 0 };
@@ -465,7 +472,7 @@ function getUsers({ user, includeInactive, callback }) {
       return;
     }
 
-    callback({ data: { users: users.map(userToClean => cleanUserParameters({ user: userToClean })) } });
+    callback({ data: { users: users.map(userToClean => cleanUserParameters({ user: userToClean, noClean })) } });
   });
 }
 

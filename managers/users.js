@@ -219,7 +219,8 @@ function listUsers({ includeInactive, token, callback, team = {} }) {
 
       dbUser.getUsers({
         user,
-        includeInactive: includeInactive && user.accessLevel >= dbConfig.apiCommands.GetInactiveUsers,
+        includeInactive: includeInactive && user.accessLevel >= dbConfig.apiCommands.GetInactiveUsers.accessLevel,
+        noClean: user.accessLevel >= dbConfig.apiCommands.GetUserDetails.accessLevel,
         callback: (usersData) => {
           if (usersData.error) {
             callback({ error: usersData.error });
@@ -256,10 +257,12 @@ function listUsers({ includeInactive, token, callback, team = {} }) {
               };
 
               if (user.accessLevel >= dbConfig.apiCommands.GetUserDetails.accessLevel) {
+                filteredUser.mail = currentUser.mail;
                 filteredUser.verified = currentUser.verified;
                 filteredUser.banned = currentUser.banned;
                 filteredUser.fullName = currentUser.fullName;
                 filteredUser.warnings = currentUser.warnings;
+                filteredUser.aliases = currentUser.aliases;
               }
 
               usersToSend.push(filteredUser);
@@ -415,26 +418,35 @@ function login({ user, device, socket, io, callback }) {
     return;
   }
 
-  authenticator.createToken({
+  dbUser.getUser({
     userName: user.userName,
-    password: user.password,
-    callback: ({ error, data: tokenData }) => {
-      if (error) {
-        callback({ error });
+    includeInactive: true,
+    callback: ({ error: userError, data: userData }) => {
+      if (userError) {
+        callback({ error: userError });
+
+        return;
+      } else if (userData.user.banned) {
+        callback({ error: new errorCreator.Banned({}) });
+
+        return;
+      } else if (!userData.user.verified) {
+        callback({ error: new errorCreator.NeedsVerification({}) });
 
         return;
       }
 
-      dbUser.getUser({
+      const authUser = userData.user;
+
+      authenticator.createToken({
         userName: user.userName,
-        callback: ({ error: userError, data: userData }) => {
-          if (userError) {
-            callback({ error: userError });
+        password: user.password,
+        callback: ({ error, data: tokenData }) => {
+          if (error) {
+            callback({ error });
 
             return;
           }
-
-          const authUser = userData.user;
 
           dbUser.updateUserSocketId({
             userName: authUser.userName,
@@ -656,6 +668,43 @@ function matchPartialUserName({ partialName, token, callback }) {
 }
 
 /**
+ * Unban user
+ * @param {string} params.token jwt token
+ * @param {Object} params.user User to unban
+ * @param {Function} params.callback Callback
+ */
+function unbanUser({ token, user, callback }) {
+  authenticator.isUserAllowed({
+    token,
+    commandName: dbConfig.apiCommands.BanUser.name,
+    callback: ({ error }) => {
+      if (error) {
+        callback({ error });
+
+        return;
+      } else if (!objectValidator.isValidData({ user }, { user: { userName: true } })) {
+        callback({ error: new errorCreator.InvalidData({ expected: '{ user: { userName } }' }) });
+
+        return;
+      }
+
+      dbUser.unbanUser({
+        userName: user.userName.toLowerCase(),
+        callback: ({ error: unbanError }) => {
+          if (unbanError) {
+            callback({ error: unbanError });
+
+            return;
+          }
+
+          callback({ data: { success: true } });
+        },
+      });
+    },
+  });
+}
+
+/**
  * Ban user
  * @param {Object} params.user User to ban
  * @param {Object} params.io socket io
@@ -679,41 +728,32 @@ function banUser({ user, io, token, callback }) {
 
       const userName = user.userName.toLowerCase();
 
-      dbUser.banUser({
+      dbUser.updateUserSocketId({
         userName,
-        noClean: true,
-        callback: ({ error: banError, data: banData }) => {
-          if (banError) {
-            callback({ error: banError });
+        callback: ({ error: updateError }) => {
+          if (updateError) {
+            callback({ error: updateError });
 
             return;
           }
 
-          // TODO Send mail to user
-
-          const bannedSocketId = banData.user.socketId;
-
-          dbUser.updateUserSocketId({
+          dbUser.banUser({
             userName,
-            callback: ({ error: updateError }) => {
-              if (updateError) {
-                if (updateError.type === errorCreator.ErrorTypes.DOESNOTEXIST) {
-                  callback({ data: { success: true } });
-
-                  return;
-                }
-
-                callback({ error: updateError });
+            noClean: true,
+            callback: ({ error: banError, data: banData }) => {
+              if (banError) {
+                callback({ error: banError });
 
                 return;
               }
 
-              const bannedSocket = io.sockets.connected[bannedSocketId];
+              const bannedSocket = io.sockets.connected[banData.user.socketId];
 
               if (bannedSocket) {
-                io.to(userName + appConfig.whisperAppend).emit('ban');
                 roomManager.leaveSocketRooms({ socket: bannedSocket });
               }
+
+              io.to(userName + appConfig.whisperAppend).emit('ban');
 
               callback({ data: { success: true } });
             },
@@ -918,3 +958,4 @@ exports.banUser = banUser;
 exports.verifyUser = verifyUser;
 exports.sendAllVerificationMails = sendAllVerificationMails;
 exports.addBlockedMail = addBlockedMail;
+exports.unbanUser = unbanUser;

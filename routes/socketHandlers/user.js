@@ -186,6 +186,16 @@ function handle(socket, io) {
     });
   });
 
+  socket.on('unban', ({ user, token }, callback = () => {}) => {
+    userManager.unbanUser({
+      user,
+      socket,
+      io,
+      token,
+      callback,
+    });
+  });
+
   socket.on('getBannedUsers', ({ token }, callback = () => {}) => {
     userManager.getBannedUsers({
       token,
