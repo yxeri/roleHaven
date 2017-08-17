@@ -95,6 +95,7 @@ function isUserAllowed({ commandName, token, matchNameTo = '', callback = () => 
 
           const user = data.user;
           const commandAccessLevel = user.userName === matchNameTo
+          || user.aliases.indexOf(matchNameTo) > -1
           || (user.team && `${user.team}${appConfig.teamAppend}` === matchNameTo)
           || user.shortTeam === matchNameTo
             ? commandUsed.selfAccessLevel

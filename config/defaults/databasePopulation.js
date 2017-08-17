@@ -262,7 +262,7 @@ config.apiCommands = {
   CreateAlias: config.apiCommands.CreateAlias || {
     name: 'CreateAlias',
     accessLevel: config.AccessLevels.LOWERADMIN,
-    selfAccessLevel: config.AccessLevels.PRO,
+    selfAccessLevel: config.AccessLevels.BASIC,
   },
   GetAliases: config.apiCommands.GetAliases || {
     name: 'GetAliases',
@@ -506,6 +506,10 @@ config.apiCommands = {
     name: 'GetGameItems',
     accessLevel: config.AccessLevels.LOWERADMIN,
   },
+  AddBlockedMail: config.apiCommands.AddBlockedMail || {
+    name: 'AddBlockedMail',
+    accessLevel: config.AccessLevels.ADMIN,
+  }
 };
 
 module.exports = config;

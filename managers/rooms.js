@@ -62,7 +62,7 @@ function authUserToRoom({ token, room, callback }) {
       }
 
       if (room.roomName.toLowerCase() === dbConfig.rooms.public.roomName) {
-        callback({ data: { isFollowing: true } });
+        callback({ data: { isFollowing: true, room: { roomName: dbConfig.rooms.public.roomName } } });
 
         return;
       }
@@ -267,6 +267,7 @@ function createRoom({ room, token, socket, io, callback }) {
       const newRoom = room;
       newRoom.roomName = room.roomName.toLowerCase();
       newRoom.owner = user.userName;
+      newRoom.password = newRoom.password && newRoom.password !== '' ? newRoom.password : undefined;
 
       dbRoom.createRoom({
         room: newRoom,
@@ -458,14 +459,10 @@ function followWhisperRoom({ token, whisperTo, sender, room, socket, io, callbac
         callback({ error: new errorCreator.InvalidData({ expected: '{ user: { userName: true }, room: { roomName: true }, whisperTo: true, sender: { userName: true } }' }) });
 
         return;
-      } else if (data.user.aliases.indexOf(sender.userName) === -1 && data.user.userName !== sender.userName) {
-        callback({ error: new errorCreator.NotAllowed({ name: 'alias not in user' }) });
-
-        return;
       }
 
       dbUser.addWhisperRoomToUser({
-        userName: sender.userName,
+        userName: data.user.userName,
         roomName: room.roomName,
         callback: ({ error: whisperError }) => {
           if (whisperError) {
@@ -474,33 +471,44 @@ function followWhisperRoom({ token, whisperTo, sender, room, socket, io, callbac
             return;
           }
 
-          const whisperToRoomName = `${whisperTo}-whisper-${sender.userName}`;
-
-          dbUser.addWhisperRoomToUser({
+          dbUser.getUserByAlias({
             userName: whisperTo,
-            roomName: whisperToRoomName,
-            callback: (whisperData) => {
-              if (whisperData.error) {
-                callback({ error: whisperData.error });
+            callback: ({ error: aliasError, data: aliasData }) => {
+              if (aliasError) {
+                callback({ error: aliasError });
 
                 return;
               }
 
-              const emitTo = `${whisperTo}${appConfig.whisperAppend}`;
-              const dataToEmit = {
-                whisperTo: sender.userName,
-                data: whisperToRoomName,
-                room: { roomName: whisperToRoomName },
-                whisper: true,
-              };
+              const whisperToRoomName = `${whisperTo}-whisper-${sender.userName}`;
 
-              if (socket) {
-                socket.to(emitTo).emit('follow', { data: dataToEmit });
-              } else {
-                io.to(emitTo).emit('follow', { data: dataToEmit });
-              }
+              dbUser.addWhisperRoomToUser({
+                userName: aliasData.user.userName,
+                roomName: whisperToRoomName,
+                callback: (whisperData) => {
+                  if (whisperData.error) {
+                    callback({ error: whisperData.error });
 
-              callback({ data: { room } });
+                    return;
+                  }
+
+                  const emitTo = `${whisperTo}${appConfig.whisperAppend}`;
+                  const dataToEmit = {
+                    whisperTo: sender.userName,
+                    data: whisperToRoomName,
+                    room: { roomName: whisperToRoomName },
+                    whisper: true,
+                  };
+
+                  if (socket) {
+                    socket.to(emitTo).emit('follow', { data: dataToEmit });
+                  } else {
+                    io.to(emitTo).emit('follow', { data: dataToEmit });
+                  }
+
+                  callback({ data: { room } });
+                },
+              });
             },
           });
         },

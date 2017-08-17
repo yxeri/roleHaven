@@ -24,8 +24,69 @@ const mailEventSchema = new mongoose.Schema({
   eventType: String,
   expiresAt: Date,
 }, { collection: 'mailEvents' });
+const blockedMailSchema = new mongoose.Schema({
+  mailDomains: { type: [String], default: [] },
+  addresses: { type: [String], default: [] },
+}, { collection: 'blockedMailAddresses' });
 
 const MailEvent = mongoose.model('MailEvent', mailEventSchema);
+const BlockedMail = mongoose.model('BlockedMailAddress', blockedMailSchema);
+
+/**
+ * Add mail addresses and mail domains to block list
+ * @param {string[]} params.mailDomains Mail domains to add
+ * @param {string[]} params.addresses Mail addresses to add
+ * @param {Function} params.callback Callback
+ */
+function addBlockedMail({ mailDomains = [], addresses = [], callback }) {
+  const query = {};
+  const update = {
+    $addToSet: {
+      mailDomains: { $each: mailDomains },
+      addresses: { $each: addresses },
+    },
+  };
+  const options = { upsert: true };
+
+  BlockedMail.findOneAndUpdate(query, update, options).lean().exec((error) => {
+    if (error) {
+      callback({ error });
+
+      return;
+    }
+
+    callback({ data: { success: true } });
+  });
+}
+
+/**
+ * Checks if the sent mail address or its its mail domain are blocked
+ * @param {string} params.address Mail address
+ * @param {Function} params.callback Callback
+ */
+function isBlockedMail({ address, callback }) {
+  const domain = address.split('@')[1];
+  const query = {
+    $or: [
+      { addresses: { $in: [address] } },
+      { mailDomains: { $in: [domain] } },
+    ],
+  };
+
+  BlockedMail.findOne(query).lean().exec((error, found) => {
+    if (error) {
+      callback({ error });
+
+      return;
+    } else if (!found) {
+      callback({ data: { isBlocked: false } });
+
+      return;
+    }
+
+    callback({ data: { isBlocked: true } });
+  });
+}
 
 /**
  * Remove mail event
@@ -142,3 +203,5 @@ exports.createMailEvent = createMailEvent;
 exports.getMailEventByKey = getMailEventByKey;
 exports.removeMailEventByKey = removeMailEventByKey;
 exports.getMailEvent = getMailEvent;
+exports.addBlockedMail = addBlockedMail;
+exports.isBlockedMail = isBlockedMail;

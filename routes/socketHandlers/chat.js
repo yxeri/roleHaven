@@ -89,9 +89,10 @@ function handle(socket, io) {
       callback,
     });
   });
-  socket.on('unfollow', ({ room, isWhisperRoom, token }, callback = () => {}) => {
+  socket.on('unfollow', ({ user, room, isWhisperRoom, token }, callback = () => {}) => {
     roomManager.unfollowRoom({
       token,
+      user,
       room,
       isWhisperRoom,
       socket,
