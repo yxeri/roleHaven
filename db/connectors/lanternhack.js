@@ -208,7 +208,10 @@ function updateLanternRound({ startTime, endTime, isActive, callback }) {
     update.$set.isActive = isActive;
   }
 
+  console.log('going to uodate', update.$set);
+
   LanternRound.findOneAndUpdate(query, update, options).lean().exec((err, updatedRound) => {
+    console.log('found', err, updatedRound);
     if (err) {
       callback({ error: new errorCreator.Database({ errorObject: err, name: 'startLanternRound' }) });
 
