@@ -134,7 +134,6 @@ function endLanternRound({ startTime, io, token, callback }) {
  * @param {Function} params.callback Callback
  */
 function updateLanternRound({ io, token, startTime, endTime, isActive, callback }) {
-  console.log(typeof io !== 'undefined', startTime, endTime, isActive);
   authenticator.isUserAllowed({
     token,
     commandName: dbConfig.apiCommands.StartLanternRound.name,
@@ -144,8 +143,6 @@ function updateLanternRound({ io, token, startTime, endTime, isActive, callback 
 
         return;
       }
-
-      console.log('Started');
 
       dbLanternHack.updateLanternRound({
         startTime,
@@ -157,7 +154,6 @@ function updateLanternRound({ io, token, startTime, endTime, isActive, callback 
 
             return;
           }
-          console.log('data returned', data);
 
           io.emit('lanternRound', { data: { round: data } });
 
