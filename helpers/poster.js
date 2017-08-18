@@ -56,22 +56,22 @@ function postRequest({ host, path, data, callback }) {
     response.on('aborted', () => {
       if (response.statusCode >= 400) {
         callback({ error: new errorCreator.External({ name: `status code ${response.statusCode}` }) });
+      } else {
+        callback({ data: { statusCode: response.statusCode } });
       }
-
-      callback({ data: { statusCode: response.statusCode } });
-
-      req.end();
     });
 
     response.on('end', () => {
       if (response.statusCode >= 400) {
         callback({ error: new errorCreator.External({ name: `status code ${response.statusCode}` }) });
-
-        return;
+      } else {
+        callback({ data: { statusCode: response.statusCode } });
       }
-
-      callback({ data: { statusCode: response.statusCode } });
     });
+  }).on('error', (error) => {
+    callback({ error: new errorCreator.Internal({ name: 'hacking api host', errorObject: error }) });
+
+    req.end();
   });
 
   req.write(dataString);
