@@ -47,122 +47,134 @@ function getActiveCalibrationMission({ token, stationId, callback, userName }) {
 
       const owner = userName || data.user.userName;
 
-      dbLanternHack.getLanternRound({
-        callback: ({ error: lanternError, data: lanternData }) => {
-          if (lanternError) {
-            callback({ error: lanternError });
-
-            return;
-          } else if (lanternData.isActive) {
-            callback({ error: new errorCreator.External({ name: 'lantern hack active' }) });
+      dbUser.getUserByAlias({
+        alias: owner,
+        callback: ({ error: userError }) => {
+          if (userError) {
+            callback({ error: userError });
 
             return;
           }
 
-          dbCalibrationMission.getActiveMission({
-            owner,
-            silentOnDoesNotExist: true,
-            callback: ({ error: activeErr, data: missionData }) => {
-              if (activeErr) {
-                callback({ error: activeErr });
+          dbLanternHack.getLanternRound({
+            callback: ({ error: lanternError, data: lanternData }) => {
+              if (lanternError) {
+                callback({ error: lanternError });
+
+                return;
+              } else if (lanternData.isActive) {
+                callback({ error: new errorCreator.External({ name: 'lantern hack active' }) });
 
                 return;
               }
 
-              /**
-               * Return active mission, if it exists, or continue with creating a new one
-               */
-              if (missionData.mission) {
-                callback({ data: missionData });
-
-                return;
-              }
-
-              dbCalibrationMission.getInactiveMissions({
+              dbCalibrationMission.getActiveMission({
                 owner,
-                callback: ({ error: inactiveErr, data: inactiveData }) => {
-                  if (inactiveErr) {
-                    callback({ error: inactiveErr });
+                silentOnDoesNotExist: true,
+                callback: ({ error: activeErr, data: missionData }) => {
+                  if (activeErr) {
+                    callback({ error: activeErr });
 
                     return;
                   }
 
-                  dbLanternHack.getAllStations({
-                    callback: ({ error: stationsError, data: stationsData }) => {
-                      if (stationsError) {
-                        callback({ error: stationsError });
+                  /**
+                   * Return active mission, if it exists, or continue with creating a new one
+                   */
+                  if (missionData.mission) {
+                    console.log('m', missionData.mission);
+                    callback({ data: missionData });
 
-                        return;
-                      } else if (stationsData.stations.length < 1) {
-                        callback({ error: new errorCreator.DoesNotExist({ name: 'no active stations' }) });
+                    return;
+                  }
+
+                  dbCalibrationMission.getInactiveMissions({
+                    owner,
+                    callback: ({ error: inactiveErr, data: inactiveData }) => {
+                      if (inactiveErr) {
+                        callback({ error: inactiveErr });
 
                         return;
                       }
 
-                      const stationIds = stationsData.stations.map(station => station.stationId);
-                      const { missions: inactiveMissions } = inactiveData;
+                      dbLanternHack.getAllStations({
+                        callback: ({ error: stationsError, data: stationsData }) => {
+                          if (stationsError) {
+                            callback({ error: stationsError });
 
-                      if (inactiveMissions && inactiveMissions.length > 0) {
-                        const previousStationId = inactiveMissions[inactiveMissions.length - 1].stationId;
-
-                        if (previousStationId === stationId) {
-                          callback({ error: new errorCreator.InvalidData({ name: 'equals previous' }) });
-
-                          return;
-                        }
-
-                        stationIds.splice(stationIds.indexOf(previousStationId), 1);
-                      }
-
-                      const newStationId = stationId || stationIds[Math.floor(Math.random() * (stationIds.length))];
-                      const newCode = Math.floor(Math.random() * (((99999999 - 10000000) + 1) + 10000000));
-                      const missionToCreate = {
-                        owner,
-                        stationId: newStationId,
-                        code: newCode,
-                      };
-
-                      dbCalibrationMission.createMission({
-                        mission: missionToCreate,
-                        callback: ({ error: createError, data: createData }) => {
-                          if (createError) {
-                            callback({ error: createError });
+                            return;
+                          } else if (stationsData.stations.length < 1) {
+                            callback({ error: new errorCreator.DoesNotExist({ name: 'no active stations' }) });
 
                             return;
                           }
 
-                          const mission = createData.mission;
+                          const stationIds = stationsData.stations.map(station => station.stationId);
+                          const { missions: inactiveMissions } = inactiveData;
 
-                          poster.postRequest({
-                            host: appConfig.hackingApiHost,
-                            path: '/reports/set_mission',
-                            data: {
-                              mission: {
-                                stationId: mission.stationId,
-                                owner: mission.owner,
-                                code: mission.code,
-                              },
-                              key: appConfig.hackingApiKey,
-                            },
-                            callback: ({ error: requestError }) => {
-                              if (requestError) {
-                                dbCalibrationMission.removeMission({
-                                  mission,
-                                  callback: ({ error: removeError }) => {
-                                    if (removeError) {
-                                      callback({ error });
+                          if (inactiveMissions && inactiveMissions.length > 0) {
+                            const previousStationId = inactiveMissions[inactiveMissions.length - 1].stationId;
 
-                                      return;
-                                    }
+                            if (previousStationId === stationId) {
+                              callback({ error: new errorCreator.InvalidData({ name: 'equals previous' }) });
 
-                                    callback({ error: requestError });
-                                  },
-                                });
+                              return;
+                            }
+
+                            stationIds.splice(stationIds.indexOf(previousStationId), 1);
+                          }
+
+                          const newStationId = stationId || stationIds[Math.floor(Math.random() * (stationIds.length))];
+                          const newCode = Math.floor(Math.random() * (((99999999 - 10000000) + 1) + 10000000));
+                          const missionToCreate = {
+                            owner,
+                            stationId: newStationId,
+                            code: newCode,
+                          };
+
+                          dbCalibrationMission.createMission({
+                            mission: missionToCreate,
+                            callback: ({ error: createError, data: createData }) => {
+                              if (createError) {
+                                callback({ error: createError });
 
                                 return;
                               }
 
-                              callback({ data: { mission: createData.mission, isNew: true } });
+                              const mission = createData.mission;
+
+                              poster.postRequest({
+                                host: appConfig.hackingApiHost,
+                                path: '/reports/set_mission',
+                                data: {
+                                  mission: {
+                                    stationId: mission.stationId,
+                                    owner: mission.owner,
+                                    code: mission.code,
+                                  },
+                                  key: appConfig.hackingApiKey,
+                                },
+                                callback: ({ error: requestError }) => {
+                                  if (requestError) {
+                                    dbCalibrationMission.removeMission({
+                                      mission,
+                                      callback: ({ error: removeError }) => {
+                                        if (removeError) {
+                                          callback({ error: removeError });
+
+                                          return;
+                                        }
+
+                                        callback({ error: requestError });
+                                      },
+                                    });
+
+                                    return;
+                                  }
+
+                                  callback({ data: { mission: createData.mission, isNew: true } });
+                                },
+                              });
                             },
                           });
                         },
