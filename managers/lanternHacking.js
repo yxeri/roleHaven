@@ -56,7 +56,7 @@ function generateHoursMinutes({ date }) {
  * Lower/increase signal value on all stations towards default value
  * @param {Function} params.callback Callback
  */
-function resetStations({ callback = () => {} }) {
+function resetStations({ io, callback = () => {} }) {
   if (appConfig.mode === appConfig.Modes.TEST || appConfig.signalResetTimeout === 0) {
     return;
   }
@@ -96,7 +96,7 @@ function resetStations({ callback = () => {} }) {
               dbLanternHack.updateSignalValue({
                 stationId,
                 signalValue: newSignalValue,
-                callback: ({ error: updateError }) => {
+                callback: ({ error: updateError, data: stationData }) => {
                   if (updateError) {
                     callback({ error: updateError });
 
@@ -118,6 +118,7 @@ function resetStations({ callback = () => {} }) {
                         return;
                       }
 
+                      io.emit('lanternStations', { data: { stations: [stationData.station] } });
                       callback({ data: requestData });
                     },
                   });
@@ -131,7 +132,13 @@ function resetStations({ callback = () => {} }) {
   });
 }
 
-setInterval(resetStations, appConfig.signalResetTimeout, {});
+/**
+ * Starts reset interval for stations
+ * @param {Object} params.io Socket io
+ */
+function startResetInterval({ io }) {
+  setInterval(resetStations, appConfig.signalResetTimeout, { io });
+}
 
 /**
  * Update signal value on a station
@@ -575,3 +582,4 @@ exports.manipulateStation = manipulateStation;
 exports.getLanternHack = getLanternHack;
 exports.getLanternInfo = getLanternInfo;
 exports.resetStations = resetStations;
+exports.startResetInterval = startResetInterval;

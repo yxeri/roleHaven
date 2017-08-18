@@ -27,6 +27,7 @@ const databasePopulation = require('./config/defaults/config').databasePopulatio
 const dbRoom = require('./db/connectors/room');
 const dbCommand = require('./db/connectors/command');
 const winston = require('winston');
+const lanternHacking = require('./managers/lanternHacking');
 
 const app = express();
 
@@ -59,6 +60,8 @@ if (appConfig.mode !== appConfig.Modes.TEST) {
   dbRoom.populateDbRooms({ rooms: databasePopulation.rooms });
   dbCommand.populateDbCommands({ commands: databasePopulation.commands });
 }
+
+lanternHacking.startResetInterval({ io: app.io });
 
 /*
  * Catches all exceptions and keeps the server running
