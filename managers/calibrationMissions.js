@@ -82,7 +82,6 @@ function getActiveCalibrationMission({ token, stationId, callback, userName }) {
                    * Return active mission, if it exists, or continue with creating a new one
                    */
                   if (missionData.mission) {
-                    console.log('m', missionData.mission);
                     callback({ data: missionData });
 
                     return;

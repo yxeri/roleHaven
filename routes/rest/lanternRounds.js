@@ -150,7 +150,6 @@ function handle(io) {
    *  }
    */
   router.post('/time', (request, response) => {
-    console.log('/time', request.body.data);
     lanternRoundManager.updateLanternRound({
       io,
       isActive: request.body.data ? request.body.data.isActive : undefined,
