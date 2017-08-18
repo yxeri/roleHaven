@@ -477,7 +477,7 @@ config.apiCommands = {
     name: 'HackLantern',
     accessLevel: config.AccessLevels.BASIC,
   },
-  BanUser: config.apiCommands || {
+  BanUser: config.apiCommands.BanUser || {
     name: 'BanUser',
     accessLevel: config.AccessLevels.LOWERADMIN,
   },

@@ -35,6 +35,7 @@ const disallowRegisterEnv = textTools.convertToBoolean(process.env.DISALLOWUSERR
 const verboseErrorEnv = textTools.convertToBoolean(process.env.VERBOSEERROR);
 const allowMessageImageEnv = textTools.convertToBoolean(process.env.ALLOWMESSAGEIMAGE);
 const bypassMailerEnv = textTools.convertToBoolean(process.env.BYPASSMAILER);
+const bypassExternalConnectionEnv = textTools.convertToBoolean(process.env.BYPASSEXTERNALCONNECTIONS);
 
 /**
  * Name of the system. Human-readable name that will be sent to clients, such as in the subject field of mail or page title
@@ -216,22 +217,22 @@ config.maxHistoryLines = process.env.MAXHISTORYLINES || config.maxHistoryLines |
 config.chunkLength = process.env.MAXCHUNK || config.chunkLength || 10;
 
 // Does the team have to be verified before being created?
-config.teamVerify = teamVerifyEnv !== undefined ? teamVerifyEnv : config.teamVerify || false;
+config.teamVerify = typeof teamVerifyEnv !== 'undefined' ? teamVerifyEnv : config.teamVerify || false;
 
 /**
  * Should the frontend force full screen on click?
  */
-config.forceFullscreen = forceFullscreenEnv !== undefined ? forceFullscreenEnv : config.forceFullscreen || true;
+config.forceFullscreen = typeof forceFullscreenEnv !== 'undefined' ? forceFullscreenEnv : config.forceFullscreen || true;
 
 /**
  * Should the frontend ask for user tracking?
  */
-config.gpsTracking = gpsTrackingEnv !== undefined ? gpsTrackingEnv : config.gpsTracking || true;
+config.gpsTracking = typeof gpsTrackingEnv !== 'undefined' ? gpsTrackingEnv : config.gpsTracking || true;
 
 /**
  * Should users be able to register? Does not block register through rest api
  */
-config.disallowSocketUserRegister = disallowRegisterEnv !== undefined ? disallowRegisterEnv : config.disallowSocketUserRegister || false;
+config.disallowSocketUserRegister = typeof disallowRegisterEnv !== 'undefined' ? disallowRegisterEnv : config.disallowSocketUserRegister || false;
 
 /**
  * Appended to the user name to create a room which is used to store private
@@ -400,12 +401,12 @@ config.maxPositionAge = process.env.MAXPOSITIONAGE || config.maxPositionAge || 2
 /**
  * Should errors be printe to log?
  */
-config.verboseError = verboseErrorEnv !== undefined ? verboseErrorEnv : config.verboseError || false;
+config.verboseError = typeof verboseErrorEnv !== 'undefined' ? verboseErrorEnv : config.verboseError || false;
 
 /**
  * Should messagesbe allowed to have an attached image?
  */
-config.allowMessageImage = allowMessageImageEnv !== undefined ? allowMessageImageEnv : config.allowMessageImage || false;
+config.allowMessageImage = typeof allowMessageImageEnv !== 'undefined' ? allowMessageImageEnv : config.allowMessageImage || false;
 
 /**
  * Default amount that is added when a wallet is created
@@ -421,12 +422,12 @@ config.calibrationRewardMax = process.env.CALIBRATIONREWARDMAX || config.calibra
 /**
  * Should external calls be disabled?
  */
-config.bypassExternalConnections = process.env.BYPASSEXTERNALCONNECTIONS || config.bypassExternalConnections || true;
+config.bypassExternalConnections = typeof bypassExternalConnectionEnv !== 'undefined' ? bypassExternalConnectionEnv : config.bypassExternalConnections || true;
 
 /**
  * Should the mails for user verification on register or password request be disabled?
  */
-config.bypassMailer = bypassMailerEnv !== undefined ? bypassMailerEnv : config.bypassMailer || true;
+config.bypassMailer = typeof bypassMailerEnv !== 'undefined' ? bypassMailerEnv : config.bypassMailer || true;
 
 /**
  * Secret key used for Mailgun
