@@ -109,11 +109,11 @@ function handle() {
    * @apiDescription Create fake passwords
    *
    * @apiParam {Object} data
-   * @apiParam {string[]} data.fakePasswords Fake passwords
+   * @apiParam {string[]} data.passwords Fake passwords
    * @apiParamExample {json} Request-Example:
    *   {
    *     "data": {
-   *      "fakePasswords": [
+   *      "passwords": [
    *        "computer",
    *        "banan",
    *        "apple",
@@ -123,11 +123,11 @@ function handle() {
    *  }
    *
    * @apiSuccess {Object} data
-   * @apiSuccess {Object[]} data.fakePasswords Fake passwords created
+   * @apiSuccess {Object[]} data.passwords Fake passwords created
    * @apiSuccessExample {json} Success-Response:
    *   {
    *     "data": {
-   *      "fakePasswords": [
+   *      "passwords": [
    *        "computer",
    *        "banan",
    *        "apple",
