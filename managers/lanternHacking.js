@@ -82,49 +82,51 @@ function resetStations({ io, callback = () => {} }) {
           const { stations } = data;
 
           stations.forEach((station) => {
+            if (station.signalValue !== appConfig.signalDefaultValue) {
+              return;
+            }
+
             const signalValue = station.signalValue;
             const stationId = station.stationId;
             let newSignalValue = signalValue;
 
-            if (signalValue !== appConfig.signalDefaultValue) {
-              if (signalValue > appConfig.signalDefaultValue) {
-                newSignalValue -= 1;
-              } else {
-                newSignalValue += 1;
-              }
-
-              dbLanternHack.updateSignalValue({
-                stationId,
-                signalValue: newSignalValue,
-                callback: ({ error: updateError, data: stationData }) => {
-                  if (updateError) {
-                    callback({ error: updateError });
-
-                    return;
-                  }
-
-                  poster.postRequest({
-                    host: appConfig.hackingApiHost,
-                    path: '/reports/set_boost',
-                    data: {
-                      station: stationId,
-                      boost: newSignalValue,
-                      key: appConfig.hackingApiKey,
-                    },
-                    callback: ({ error: requestError, data: requestData }) => {
-                      if (requestError) {
-                        callback({ error: requestError });
-
-                        return;
-                      }
-
-                      io.emit('lanternStations', { data: { stations: [stationData.station] } });
-                      callback({ data: requestData });
-                    },
-                  });
-                },
-              });
+            if (signalValue > appConfig.signalDefaultValue) {
+              newSignalValue -= 1;
+            } else {
+              newSignalValue += 1;
             }
+
+            dbLanternHack.updateSignalValue({
+              stationId,
+              signalValue: newSignalValue,
+              callback: ({ error: updateError, data: stationData }) => {
+                if (updateError) {
+                  callback({ error: updateError });
+
+                  return;
+                }
+
+                poster.postRequest({
+                  host: appConfig.hackingApiHost,
+                  path: '/reports/set_boost',
+                  data: {
+                    station: stationId,
+                    boost: newSignalValue,
+                    key: appConfig.hackingApiKey,
+                  },
+                  callback: ({ error: requestError, data: requestData }) => {
+                    if (requestError) {
+                      callback({ error: requestError });
+
+                      return;
+                    }
+
+                    io.emit('lanternStations', { data: { stations: [stationData.station] } });
+                    callback({ data: requestData });
+                  },
+                });
+              },
+            });
           });
         },
       });
