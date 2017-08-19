@@ -144,8 +144,8 @@ function updateLanternTeam({ teamId, io, team, token, callback }) {
         teamId,
         teamName: team.teamName ? team.teamName.toLowerCase() : undefined,
         shortName: team.shortName ? team.shortName.toLowerCase() : undefined,
+        points: typeof team.points === 'number' && team.points > -1 ? team.points : undefined,
         isActive: team.isActive,
-        points: team.points,
         resetPoints: team.resetPoints,
         callback: ({ error: teamError, data: teamData }) => {
           if (teamError) {
