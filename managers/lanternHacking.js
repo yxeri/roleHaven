@@ -29,30 +29,6 @@ const lanternTeamManager = require('../managers/lanternTeams');
 const poster = require('../helpers/poster');
 
 /**
- * Beautifies number by adding a 0 before the number if it is lower than 10
- * @param {Number} number Number to be beautified
- * @returns {Number|string} Single number or string with 0 + number
- */
-function beautifyNumber(number) {
-  return number > 9 ? number : `0${number}`;
-}
-
-/**
- * Takes date and returns shorter human-readable time
- * @param {Date|number} params.date Date
- * @returns {Object} Human-readable time and date
- */
-function generateHoursMinutes({ date }) {
-  const newDate = new Date(date);
-  const timeStamp = {};
-
-  timeStamp.mins = beautifyNumber(newDate.getUTCMinutes());
-  timeStamp.hours = beautifyNumber(newDate.getUTCHours());
-
-  return `${timeStamp.hours}:${timeStamp.mins}`;
-}
-
-/**
  * Lower/increase signal value on all stations towards default value
  * @param {Function} params.callback Callback
  */
@@ -525,16 +501,16 @@ function getLanternInfo({ token, callback }) {
         return;
       }
 
-      const now = new Date();
-      const startTime = new Date(data.startTime);
-      const endTime = new Date(data.endTime);
-
+      const nowTime = new Date();
+      const startTime = data.startTime ? new Date(data.startTime) : 0;
+      const endTime = data.endTime ? new Date(data.endTime) : 0;
 
       if (!data.isActive) {
         callback({
           data: {
             round: data,
-            timeLeft: startTime > now ? generateHoursMinutes({ date: startTime - now }) : '----',
+            nowDate: nowTime,
+            dateToNext: startTime,
           },
         });
 
@@ -563,7 +539,8 @@ function getLanternInfo({ token, callback }) {
               callback({
                 data: {
                   round: data,
-                  timeLeft: endTime > now ? generateHoursMinutes({ date: endTime - now }) : '----',
+                  nowDate: nowTime,
+                  dateToNext: endTime,
                   teams: teamsData.teams,
                   activeStations: stationData.activeStations,
                   inactiveStations: stationData.inactiveStations,
