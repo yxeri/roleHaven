@@ -69,8 +69,6 @@ function startLanternRound({ io, endTime, token, callback }) {
         return;
       }
 
-      lanternStationManager.resetStations({ callback: () => {} });
-
       dbLanternHack.startLanternRound({
         endTime,
         callback: ({ error: startLanternError, data: startLanternData }) => {
@@ -118,6 +116,8 @@ function endLanternRound({ startTime, io, token, callback }) {
           io.emit('lanternRound', { data: { round: data } });
 
           callback({ data });
+
+          lanternStationManager.resetStations({ callback: () => {} });
         },
       });
     },
@@ -158,6 +158,10 @@ function updateLanternRound({ io, token, startTime, endTime, isActive, callback 
           io.emit('lanternRound', { data: { round: data } });
 
           callback({ data });
+
+          if (!isActive) {
+            lanternStationManager.resetStations({ callback: () => {} });
+          }
         },
       });
     },
