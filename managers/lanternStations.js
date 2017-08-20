@@ -118,7 +118,7 @@ function createLanternStation({ io, station, token, callback }) {
       }
 
       const newStation = station;
-      newStation.calibrationReward = newStation.calibrationReward
+      newStation.calibrationReward = typeof newStation.calibrationReward === 'number'
       && newStation.calibrationReward >= appConfig.calibrationRewardMinimum
       && newStation.calibrationReward <= appConfig.calibrationRewardMax
         ? newStation.calibrationReward : undefined;
@@ -168,7 +168,7 @@ function updateLanternStation({ io, station, stationId, token, callback }) {
         isActive,
         stationName,
         owner,
-        calibrationReward: calibrationReward && calibrationReward >= appConfig.calibrationRewardMinimum && calibrationReward <= appConfig.calibrationRewardMax ? calibrationReward : undefined,
+        calibrationReward: typeof calibrationReward === 'number' && calibrationReward >= appConfig.calibrationRewardMinimum && calibrationReward <= appConfig.calibrationRewardMax ? calibrationReward : undefined,
         callback: ({ error: updateError, data: updateData }) => {
           if (updateError) {
             callback({ error: updateError });
