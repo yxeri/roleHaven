@@ -98,7 +98,7 @@ function resetStations({ io, callback = () => {} }) {
                     boost: newSignalValue,
                     key: appConfig.hackingApiKey,
                   },
-                  callback: ({}) => {},
+                  callback: () => {},
                 });
               },
             });
