@@ -86,8 +86,8 @@ function resetStations({ io, callback = () => {} }) {
               return;
             }
 
-            const signalValue = station.signalValue;
             const stationId = station.stationId;
+            const signalValue = station.signalValue;
             let newSignalValue = signalValue;
 
             if (signalValue > appConfig.signalDefaultValue) {
@@ -96,13 +96,21 @@ function resetStations({ io, callback = () => {} }) {
               newSignalValue += 1;
             }
 
+            stations.find(foundStation => foundStation.stationId === stationId).signalValue = newSignalValue;
+          });
+
+          io.emit('lanternStations', { data: { stations } });
+          callback({ data: { success: true } });
+
+          stations.forEach((station) => {
+            const stationId = station.stationId;
+            const newSignalValue = station.signalValue;
+
             dbLanternHack.updateSignalValue({
               stationId,
               signalValue: newSignalValue,
-              callback: ({ error: updateError, data: stationData }) => {
+              callback: ({ error: updateError }) => {
                 if (updateError) {
-                  callback({ error: updateError });
-
                   return;
                 }
 
@@ -114,16 +122,7 @@ function resetStations({ io, callback = () => {} }) {
                     boost: newSignalValue,
                     key: appConfig.hackingApiKey,
                   },
-                  callback: ({ error: requestError, data: requestData }) => {
-                    if (requestError) {
-                      callback({ error: requestError });
-
-                      return;
-                    }
-
-                    io.emit('lanternStations', { data: { stations: [stationData.station] } });
-                    callback({ data: requestData });
-                  },
+                  callback: ({}) => {},
                 });
               },
             });
