@@ -418,8 +418,10 @@ function login({ user, device, socket, io, callback }) {
     return;
   }
 
+  const userName = user.userName.toLowerCase();
+
   dbUser.getUser({
-    userName: user.userName,
+    userName,
     includeInactive: true,
     callback: ({ error: userError, data: userData }) => {
       if (userError) {
@@ -439,7 +441,7 @@ function login({ user, device, socket, io, callback }) {
       const authUser = userData.user;
 
       authenticator.createToken({
-        userName: user.userName,
+        userName: authUser.userName,
         password: user.password,
         callback: ({ error, data: tokenData }) => {
           if (error) {
