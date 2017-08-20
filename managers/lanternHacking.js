@@ -82,7 +82,7 @@ function resetStations({ io, callback = () => {} }) {
           const { stations } = data;
 
           stations.forEach((station) => {
-            if (station.signalValue !== appConfig.signalDefaultValue) {
+            if (station.signalValue === appConfig.signalDefaultValue) {
               return;
             }
 
@@ -269,7 +269,7 @@ function createLanternHack({ stationId, owner, triesLeft, callback }) {
         callback({ error });
 
         return;
-      } else if (data.gameUsers.length < 1) {
+      } else if (data.gameUsers.length <= 0) {
         callback({ error: new errorCreator.DoesNotExist({ name: 'game users' }) });
 
         return;
