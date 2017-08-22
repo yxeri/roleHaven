@@ -356,7 +356,7 @@ config.teamNameMaxLength = process.env.TEAMNAMEMAXLENGTH || config.teamNameMaxLe
 /**
  * Maximum amount of characters in a team acronym
  */
-config.shortTeamMaxLength = process.env.SHORTEAMMAXLENGTH || config.shortTeamMaxLength || 5;
+config.shortTeamMaxLength = process.env.SHORTEAMMAXLENGTH || config.shortTeamMaxLength || 6;
 
 /**
  * Maximum amount of characters in a password
