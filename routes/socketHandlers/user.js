@@ -25,6 +25,7 @@ const authenticator = require('../../helpers/authenticator');
 const roomManager = require('../../managers/rooms');
 const aliasManager = require('../../managers/aliases');
 const dbLanternHack = require('../../db/connectors/lanternhack');
+const textTools = require('../../utils/textTools');
 
 dbUser.removeAllUserBlockedBy({ callback: () => {} });
 
@@ -99,6 +100,11 @@ function handle(socket, io) {
                 return;
               }
 
+              const round = lanternData.lanternStats.round;
+              const lanternStats = lanternData.lanternStats;
+              lanternStats.timeLeft = round.isActive
+                ? textTools.getDifference({ firstDate: new Date(), laterDate: round.endTime })
+                : textTools.getDifference({ firstDate: new Date(), laterDate: round.startTime });
               const dataToSend = {
                 lanternStats: lanternData.lanternStats,
                 user: { isAnonymous: true },
@@ -129,9 +135,15 @@ function handle(socket, io) {
                   return;
                 }
 
+                const round = lanternData.lanternStats.round;
+                const lanternStats = lanternData.lanternStats;
+                lanternStats.timeLeft = round.isActive
+                  ? textTools.getDifference({ laterDate: round.endTime, firstDate: new Date() })
+                  : textTools.getDifference({ laterDate: round.startTime, firstDate: new Date() });
+
                 const { user: updatedUser } = userData.data;
                 const dataToSend = {
-                  lanternStats: lanternData.lanternStats,
+                  lanternStats,
                   user: {
                     userName: updatedUser.userName,
                     accessLevel: updatedUser.accessLevel,

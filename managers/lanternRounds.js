@@ -20,6 +20,7 @@ const dbConfig = require('../config/defaults/config').databasePopulation;
 const authenticator = require('../helpers/authenticator');
 const dbLanternHack = require('../db/connectors/lanternhack');
 const lanternStationManager = require('./lanternStations');
+const textTools = require('../utils/textTools');
 
 /**
  * Get lantern round
@@ -78,9 +79,15 @@ function startLanternRound({ io, endTime, token, callback }) {
             return;
           }
 
-          io.emit('lanternRound', { data: { round: startLanternData } });
 
-          callback({ data: startLanternData });
+          const dataToSend = {
+            timeLeft: textTools.getDifference({ laterDate: startLanternData.endTime, firstDate: new Date() }),
+            round: startLanternData,
+          };
+
+          io.emit('lanternRound', { data: dataToSend });
+
+          callback({ data: dataToSend });
         },
       });
     },
@@ -113,7 +120,12 @@ function endLanternRound({ startTime, io, token, callback }) {
             return;
           }
 
-          io.emit('lanternRound', { data: { round: data } });
+          const dataToSend = {
+            timeLeft: textTools.getDifference({ laterDate: data.startTime, firstDate: new Date() }),
+            round: data,
+          };
+
+          io.emit('lanternRound', { data: dataToSend });
 
           callback({ data });
 
@@ -155,7 +167,14 @@ function updateLanternRound({ io, token, startTime, endTime, isActive, callback 
             return;
           }
 
-          io.emit('lanternRound', { data: { round: data } });
+          const next = data.isActive ? data.endTime : data.startTime;
+
+          const dataToSend = {
+            timeLeft: textTools.getDifference({ laterDate: next, firstDate: new Date() }),
+            round: data,
+          };
+
+          io.emit('lanternRound', { data: dataToSend });
 
           callback({ data });
 

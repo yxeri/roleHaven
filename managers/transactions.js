@@ -57,8 +57,8 @@ function getTransactions({ owner, token, callback }) {
             const dataToSend = {};
 
             if (transactions.length > 0) {
-              dataToSend.toTransactions = transactions.filter(transaction => transaction.to === walletOwner);
-              dataToSend.fromTransactions = transactions.filter(transaction => transaction.from === walletOwner);
+              dataToSend.toTransactions = transactions.filter(transaction => transaction.to === ownerName);
+              dataToSend.fromTransactions = transactions.filter(transaction => transaction.from === ownerName);
             } else {
               dataToSend.toTransactions = [];
               dataToSend.fromTransactions = [];
@@ -84,6 +84,8 @@ function getTransactions({ owner, token, callback }) {
             return;
           }
 
+          const { fromTransactions, toTransactions } = transData;
+
           getOwnerTransactions({
             ownerName: `${data.user.team}${appConfig.teamAppend}`,
             callback: ({ error: teamError, data: teamData }) => {
@@ -93,12 +95,13 @@ function getTransactions({ owner, token, callback }) {
                 return;
               }
 
-              const { fromTransactions, toTransactions } = transData;
+              const teamFromTransactions = teamData.fromTransactions.filter(transaction => transaction.to !== walletOwner && transaction.from !== walletOwner);
+              const teamToTransactions = teamData.toTransactions.filter(transaction => transaction.to !== walletOwner && transaction.from !== walletOwner);
 
               callback({
                 data: {
-                  fromTransactions: fromTransactions.concat(teamData.fromTransactions),
-                  toTransactions: toTransactions.concat(teamData.toTransactions),
+                  fromTransactions: fromTransactions.concat(teamFromTransactions),
+                  toTransactions: toTransactions.concat(teamToTransactions),
                 },
               });
             },

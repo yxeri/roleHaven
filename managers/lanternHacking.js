@@ -501,16 +501,14 @@ function getLanternInfo({ token, callback }) {
         return;
       }
 
-      const nowTime = new Date();
       const startTime = data.startTime ? new Date(data.startTime) : 0;
       const endTime = data.endTime ? new Date(data.endTime) : 0;
 
       if (!data.isActive) {
         callback({
           data: {
+            timeLeft: textTools.getDifference({ laterDate: startTime, firstDate: new Date() }),
             round: data,
-            nowDate: nowTime,
-            dateToNext: startTime,
           },
         });
 
@@ -539,8 +537,7 @@ function getLanternInfo({ token, callback }) {
               callback({
                 data: {
                   round: data,
-                  nowDate: nowTime,
-                  dateToNext: endTime,
+                  timeLeft: textTools.getDifference({ laterDate: endTime, firstDate: new Date() }),
                   teams: teamsData.teams,
                   activeStations: stationData.activeStations,
                   inactiveStations: stationData.inactiveStations,
