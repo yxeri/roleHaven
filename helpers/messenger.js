@@ -345,9 +345,10 @@ function sendWhisperMsg({ io, token, message, socket, callback = () => {} }) {
       }
 
       const user = data.user;
+      const to = message.roomName;
 
       const newMessage = message;
-      newMessage.userName = user.userName;
+      newMessage.userName = user.userName.toLowerCase();
       newMessage.text = textTools.cleanText(newMessage.text);
       newMessage.roomName += appConfig.whisperAppend;
       newMessage.extraClass = 'whisperMsg';
@@ -376,32 +377,43 @@ function sendWhisperMsg({ io, token, message, socket, callback = () => {} }) {
                 return;
               }
 
-              const senderRoomName = newMessage.userName + appConfig.whisperAppend;
-
-              addMsgToHistory({
-                message: newMessage,
-                roomName: senderRoomName,
-                callback: ({ error: sendError }) => {
-                  if (sendError) {
-                    callback({ error: sendError });
+              dbUser.addWhisperRoomToUser({
+                userName: to,
+                roomName: `${to}-whisper-${message.userName}`,
+                callback: (whisperData) => {
+                  if (whisperData.error) {
+                    callback({ error: whisperData.error });
 
                     return;
                   }
+                  const senderRoomName = newMessage.userName + appConfig.whisperAppend;
 
-                  const sendData = {
+                  addMsgToHistory({
                     message: newMessage,
-                    roomName: newMessage.roomName,
-                    isWhisper: true,
-                  };
+                    roomName: senderRoomName,
+                    callback: ({ error: sendError }) => {
+                      if (sendError) {
+                        callback({ error: sendError });
 
-                  if (socket) {
-                    socket.broadcast.to(newMessage.roomName).emit('chatMsg', { data: sendData });
-                  } else {
-                    io.to(newMessage.roomName).emit('chatMsg', { data: sendData });
-                  }
+                        return;
+                      }
+
+                      const sendData = {
+                        message: newMessage,
+                        roomName: newMessage.roomName,
+                        isWhisper: true,
+                      };
+
+                      if (socket) {
+                        socket.broadcast.to(newMessage.roomName).emit('chatMsg', { data: sendData });
+                      } else {
+                        io.to(newMessage.roomName).emit('chatMsg', { data: sendData });
+                      }
 
 
-                  callback({ data: sendData });
+                      callback({ data: sendData });
+                    },
+                  });
                 },
               });
             },

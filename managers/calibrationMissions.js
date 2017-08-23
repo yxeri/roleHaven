@@ -380,9 +380,10 @@ function getCalibrationMissions({ token, getInactive, callback }) {
  * @param {string} params.token jwt token
  * @param {Function} params.callback Callback
  */
-function getValidStations({ token, callback }) {
+function getValidStations({ token, userName, callback }) {
   authenticator.isUserAllowed({
     token,
+    matchNameTo: userName,
     commandName: dbConfig.apiCommands.GetCalibrationMissions.name,
     callback: ({ error, data }) => {
       if (error) {

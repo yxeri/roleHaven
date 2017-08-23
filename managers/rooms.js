@@ -472,7 +472,7 @@ function followWhisperRoom({ token, whisperTo, sender, room, socket, io, callbac
           }
 
           dbUser.getUserByAlias({
-            userName: whisperTo,
+            alias: whisperTo,
             callback: ({ error: aliasError, data: aliasData }) => {
               if (aliasError) {
                 callback({ error: aliasError });
