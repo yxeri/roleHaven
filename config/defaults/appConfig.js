@@ -420,6 +420,11 @@ config.calibrationRewardMinimum = process.env.CALIBRATIONREWARDMINIMUM || config
 config.calibrationRewardMax = process.env.CALIBRATIONREWARDMAX || config.calibrationRewardMax || 20;
 
 /**
+ * Amount of time between calibration missions can be generated in minutes
+ */
+config.calibrationTimeout = process.env.CALIBRATIONTIMEOUT || config.calibrationTimeout || 20;
+
+/**
  * Should external calls be disabled?
  */
 config.bypassExternalConnections = typeof bypassExternalConnectionEnv !== 'undefined' ? bypassExternalConnectionEnv : config.bypassExternalConnections || true;

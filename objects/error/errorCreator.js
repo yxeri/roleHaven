@@ -32,3 +32,4 @@ exports.Insufficient = require('./Insufficient');
 exports.Internal = require('./Internal');
 exports.Expired = require('./Expired');
 exports.InvalidMail = require('./InvalidMail');
+exports.TooFrequent = require('./TooFrequent');

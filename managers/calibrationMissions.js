@@ -94,6 +94,15 @@ function getActiveCalibrationMission({ token, stationId, callback, userName }) {
                         callback({ error: inactiveErr });
 
                         return;
+                      } else if (inactiveData.missions.length > 0 && new Date().getTime() < new Date(inactiveData.missions[inactiveData.missions.length - 1].timeCreated).getTime() + (appConfig.calibrationTimeout * 60000)) {
+                        callback({
+                          error: new errorCreator.TooFrequent({ name: 'calibration mission' }),
+                          extraData: {
+                            timeLeft: new Date().getTime() - (new Date(inactiveData.missions[inactiveData.missions.length - 1].timeCreated).getTime() + (appConfig.calibrationTimeout * 60000)),
+                          },
+                        });
+
+                        return;
                       }
 
                       dbLanternHack.getAllStations({
@@ -112,15 +121,25 @@ function getActiveCalibrationMission({ token, stationId, callback, userName }) {
                           const { missions: inactiveMissions } = inactiveData;
 
                           if (inactiveMissions && inactiveMissions.length > 0) {
-                            const previousStationId = inactiveMissions[inactiveMissions.length - 1].stationId;
+                            const previousStationIds = inactiveMissions.length > 1
+                              ? [inactiveMissions[inactiveMissions.length - 1].stationId, inactiveMissions[inactiveMissions.length - 2].stationId]
+                              : [inactiveMissions[inactiveMissions.length - 1].stationId];
 
-                            if (previousStationId === stationId) {
-                              callback({ error: new errorCreator.InvalidData({ name: 'equals previous' }) });
+                            if (stationId && previousStationIds.indexOf(stationId) > -1) {
+                              callback({ error: new errorCreator.InvalidData({ expected: 'not equal station' }) });
 
                               return;
                             }
 
-                            stationIds.splice(stationIds.indexOf(previousStationId), 1);
+                            previousStationIds.forEach((stationIdToRemove) => {
+                              stationIds.splice(stationIds.indexOf(stationIdToRemove), 1);
+                            });
+                          }
+
+                          if (stationIds.length === 0) {
+                            callback({ error: new errorCreator.DoesNotExist({ name: 'no active stations' }) });
+
+                            return;
                           }
 
                           const newStationId = stationId || stationIds[Math.floor(Math.random() * (stationIds.length))];
@@ -393,6 +412,15 @@ function getValidStations({ token, callback }) {
                 callback({ error: inactiveErr });
 
                 return;
+              } else if (inactiveData.missions.length > 0 && new Date().getTime() < new Date(inactiveData.missions[inactiveData.missions.length - 1].timeCreated).getTime() + (appConfig.calibrationTimeout * 60000)) {
+                callback({
+                  error: new errorCreator.TooFrequent({ name: 'calibration mission' }),
+                  extraData: {
+                    timeLeft: new Date().getTime() - (new Date(inactiveData.missions[inactiveData.missions.length - 1].timeCreated).getTime() + (appConfig.calibrationTimeout * 60000)),
+                  },
+                });
+
+                return;
               }
 
               dbLanternHack.getAllStations({
@@ -411,9 +439,13 @@ function getValidStations({ token, callback }) {
                   const { missions } = inactiveData;
 
                   if (missions && missions.length > 0) {
-                    const previousStationId = missions[missions.length - 1].stationId;
+                    const previousStationIds = missions.length > 1
+                      ? [missions[missions.length - 1].stationId, missions[missions.length - 2].stationId]
+                      : [missions[missions.length - 1].stationId];
 
-                    stationIds.splice(stationIds.indexOf(previousStationId), 1);
+                    previousStationIds.forEach((stationIdToRemove) => {
+                      stationIds.splice(stationIds.indexOf(stationIdToRemove), 1);
+                    });
                   }
 
                   callback({ data: { stations: stationsData.stations.filter(station => stationIds.indexOf(station.stationId) > -1) } });

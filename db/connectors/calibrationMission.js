@@ -24,6 +24,7 @@ const calibrationMissionSchema = new mongoose.Schema({
   code: Number,
   completed: { type: Boolean, default: false },
   timeCompleted: Date,
+  timeCreated: { type: Date, default: new Date() },
 }, { collection: 'calibrationMissions' });
 
 const CalibrationMission = mongoose.model('CalibrationMission', calibrationMissionSchema);
