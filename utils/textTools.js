@@ -117,13 +117,13 @@ function shuffleArray(array) {
 /**
  * Get minutes between dates
  * @param {Date} params.startDate Start date
- * @param {Date} params.endDate Later date
- * @returns {number} Minutes
+ * @param {Date} params.laterDate Later date
+ * @returns {Date} Difference date
  */
-function calculateMinutesDifference({ firstDate, secondDate }) {
-  const difference = new Date(firstDate) - new Date(secondDate);
+function getDifference({ firstDate, laterDate }) {
+  const difference = new Date(laterDate) - new Date(firstDate);
 
-  return Math.floor((difference / 1000) / 60);
+  return new Date(difference);
 }
 
 /**
@@ -135,6 +135,18 @@ function isValidMail(address) {
   return /^[-!#$%&'*+/0-9=?A-Z^_a-z{|}~](\.?[-!#$%&'*+/0-9=?A-Z^_a-z`{|}~])*@[a-zA-Z0-9](-?\.?[a-zA-Z0-9])*\.[a-zA-Z](-?[a-zA-Z0-9])+$/.test(address);
 }
 
+/**
+ * Get minutes between dates
+ * @param {Date} params.startDate Start date
+ * @param {Date} params.endDate Later date
+ * @returns {number} Minutes
+ */
+function calculateMinutesDifference({ firstDate, secondDate }) {
+  const difference = new Date(firstDate) - new Date(secondDate);
+
+  return Math.floor((difference / 1000) / 60);
+}
+
 exports.isAlphaNumeric = isAlphaNumeric;
 exports.isAllowedFull = isAllowedFull;
 exports.cleanText = cleanText;
@@ -142,5 +154,6 @@ exports.convertToBoolean = convertToBoolean;
 exports.convertToFloat = convertToFloat;
 exports.convertToInt = convertToInt;
 exports.shuffleArray = shuffleArray;
-exports.calculateMinutesDifference = calculateMinutesDifference;
+exports.getDifference = getDifference;
 exports.isValidMail = isValidMail;
+exports.calculateMinutesDifference = calculateMinutesDifference;

@@ -356,7 +356,7 @@ config.teamNameMaxLength = process.env.TEAMNAMEMAXLENGTH || config.teamNameMaxLe
 /**
  * Maximum amount of characters in a team acronym
  */
-config.shortTeamMaxLength = process.env.SHORTEAMMAXLENGTH || config.shortTeamMaxLength || 5;
+config.shortTeamMaxLength = process.env.SHORTEAMMAXLENGTH || config.shortTeamMaxLength || 6;
 
 /**
  * Maximum amount of characters in a password
@@ -418,6 +418,11 @@ config.calibrationRewardAmount = process.env.CALIBRATIONREWARDAMOUNT || config.c
 config.calibrationRewardMinimum = process.env.CALIBRATIONREWARDMINIMUM || config.calibrationRewardMinimum || 0;
 
 config.calibrationRewardMax = process.env.CALIBRATIONREWARDMAX || config.calibrationRewardMax || 20;
+
+/**
+ * Amount of time between calibration missions can be generated in minutes
+ */
+config.calibrationTimeout = process.env.CALIBRATIONTIMEOUT || config.calibrationTimeout || 20;
 
 /**
  * Should external calls be disabled?

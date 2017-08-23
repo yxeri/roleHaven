@@ -66,7 +66,6 @@ function handle(socket, io) {
     });
   });
 
-  // function createTeam({ team, socket, io, callback, token }) {
   socket.on('createTeam', ({ team, token }, callback = () => {}) => {
     teamManager.createTeam({
       team,

@@ -33,6 +33,7 @@ const ErrorTypes = {
   INTERNAL: 'general internal error',
   EXPIRED: 'expired',
   INVALIDMAIL: 'invalid mail',
+  TOOFREQUENT: 'too frequent',
 };
 
 /**
