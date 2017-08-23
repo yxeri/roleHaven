@@ -86,7 +86,7 @@ function authUserToRoom({ user, roomName, callback, password }) {
     }
 
     if (!foundRoom) {
-      callback({ data: { isAllowed: false } });
+      callback({ data: { room: { roomName }, isAllowed: false } });
 
       return;
     }
