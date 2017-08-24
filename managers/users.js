@@ -815,8 +815,8 @@ function verifyUserWithoutMail({ userName, callback, io, token }) {
               const user = verifyData.data.user;
 
               dbMailEvent.removeMailEventByKey({ key: event.key, callback: () => {} });
-              callback({ data: { userName: user.userName } });
 
+              callback({ data: { userName: user.userName } });
               io.emit('user', { data: { user: { userName: user.userName } } });
             },
           });

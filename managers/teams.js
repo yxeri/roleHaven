@@ -96,6 +96,7 @@ function addUserToTeam({ team, user, io, socket, callback }) {
           if (socket) {
             socket.broadcast.to(roomName).emit('roomFollower', { data: dataToSend });
             socket.join(roomName);
+            socket.emit('follow', { data: { room } });
           } else {
             io.to(user.socketId).emit('follow', { data: { room } });
             io.to(roomName).emit('roomFollower', { data: dataToSend });
@@ -187,7 +188,7 @@ function createTeam({ team, socket, io, callback, token }) {
               roomManager.createSpecialRoom({
                 user,
                 room: {
-                  team: createdTeam.team,
+                  team: createdTeam.teamName,
                   owner: dbConfig.systemUserName,
                   roomName: createdTeam.teamName + appConfig.teamAppend,
                   accessLevel: dbConfig.AccessLevels.SUPERUSER,
