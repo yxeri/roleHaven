@@ -1027,6 +1027,44 @@ function handle(io) {
   });
 
   /**
+   * @api {post} /users/:userName/verify Verify user
+   * @apiVersion 6.0.0
+   * @apiName VerifyUser
+   * @apiGroup Users
+   *
+   * @apiHeader {string} Authorization Your JSON Web Token
+   *
+   * @apiDescription Verify user
+   *
+   * @apiParam {String} userName Name of the user to verify
+   *
+   * @apiSuccess {Object} data
+   * @apiSuccess {Object[]} data.userName Name of user that was verified
+   * @apiSuccessExample {json} Success-Response:
+   *   {
+   *    "data": {
+   *      "userName": "greger"
+   *    }
+   *  }
+   */
+  router.post('/:userName/verify', (request, response) => {
+    userManager.verifyUserWithoutMail({
+      userName: request.params.userName,
+      token: request.headers.authorization,
+      io,
+      callback: ({ error, data }) => {
+        if (error) {
+          restErrorChecker.checkAndSendError({ response, error, sentData: request.body.data });
+
+          return;
+        }
+
+        response.json({ data });
+      },
+    });
+  });
+
+  /**
    * @api {post} /users/:userName/calibrationMission/cancel Cancel user's mission
    * @apiVersion 6.0.0
    * @apiName CancelCalibrationMission
