@@ -96,10 +96,12 @@ function getActiveCalibrationMission({ token, stationId, callback, userName }) {
                         return;
                       } else if (inactiveData.missions.length > 0 && new Date().getTime() < new Date(inactiveData.missions[inactiveData.missions.length - 1].timeCreated).getTime() + (appConfig.calibrationTimeout * 60000)) {
                         callback({
-                          error: new errorCreator.TooFrequent({ name: 'calibration mission' }),
-                          extraData: {
-                            timeLeft: new Date().getTime() - (new Date(inactiveData.missions[inactiveData.missions.length - 1].timeCreated).getTime() + (appConfig.calibrationTimeout * 60000)),
-                          },
+                          error: new errorCreator.TooFrequent({
+                            name: 'calibration mission',
+                            extraData: {
+                              timeLeft: new Date().getTime() - (new Date(inactiveData.missions[inactiveData.missions.length - 1].timeCreated).getTime() + (appConfig.calibrationTimeout * 60000)),
+                            },
+                          }),
                         });
 
                         return;
@@ -416,10 +418,12 @@ function getValidStations({ token, userName, callback }) {
                 return;
               } else if (inactiveData.missions.length > 0 && new Date().getTime() < new Date(inactiveData.missions[inactiveData.missions.length - 1].timeCreated).getTime() + (appConfig.calibrationTimeout * 60000)) {
                 callback({
-                  error: new errorCreator.TooFrequent({ name: 'calibration mission' }),
-                  extraData: {
-                    timeLeft: new Date().getTime() - (new Date(inactiveData.missions[inactiveData.missions.length - 1].timeCreated).getTime() + (appConfig.calibrationTimeout * 60000)),
-                  },
+                  error: new errorCreator.TooFrequent({
+                    name: 'calibration mission',
+                    extraData: {
+                      timeLeft: new Date().getTime() - (new Date(inactiveData.missions[inactiveData.missions.length - 1].timeCreated).getTime() + (appConfig.calibrationTimeout * 60000)),
+                    },
+                  }),
                 });
 
                 return;

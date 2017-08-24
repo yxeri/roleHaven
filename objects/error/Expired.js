@@ -24,9 +24,10 @@ class Expired extends GeneralError.create {
    * @param {Date} [params.expiredAt] When the object expired
    * @param {Error} [params.errorObject] Error object
    */
-  constructor({ name = '-', expiredAt, errorObject }) {
+  constructor({ name = '-', expiredAt, errorObject, extraData }) {
     super({
       errorObject,
+      extraData,
       type: GeneralError.ErrorTypes.INTERNAL,
       text: [`Object has exired for ${name} at ${expiredAt}`],
     });

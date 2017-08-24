@@ -54,11 +54,13 @@ class GeneralError {
    * @param {string} [params.text] Human-readable text to send back with the error
    * @param {string} [params.type] Type of error
    * @param {Error} [params.errorObject] Error object
-   * @param {boolean} verbose Should error messages be printed?
+   * @param {Object} [params.extraData] Extra data that client can use when an error is sent
+   * @param {boolean} [params.verbose] Should error messages be printed?
    */
-  constructor({ text = ['Something went wrong'], type = ErrorTypes.GENERAL, errorObject, verbose = true }) {
+  constructor({ text = ['Something went wrong'], type = ErrorTypes.GENERAL, errorObject, verbose = true, extraData }) {
     this.text = text;
     this.type = type;
+    this.extraData = extraData;
 
     if (appConfig.verboseError || verbose) {
       winston.error(`Error Type: ${type}. `, text.join(' '));

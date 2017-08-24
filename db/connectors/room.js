@@ -63,9 +63,7 @@ function cleanRoomParameters({ room }) {
  * @param {Function} params.callback Callback
  */
 function authUserToRoom({ user, roomName, callback, password }) {
-  const query = {
-    roomName,
-  };
+  const query = { roomName };
 
   if (roomName.indexOf(appConfig.teamAppend) > -1) {
     query.team = user.team;

@@ -22,10 +22,11 @@ class InvalidDataError extends GeneralError.create {
    * @param {string} [params.expected] Expected data structure
    * @param {Object} [params.errorObject] Error object
    */
-  constructor({ expected = '-', errorObject, verbose }) {
+  constructor({ expected = '-', errorObject, verbose, extraData }) {
     super({
       verbose,
       errorObject,
+      extraData,
       type: GeneralError.ErrorTypes.INVALIDDATA,
       text: [
         'Invalid data sent',

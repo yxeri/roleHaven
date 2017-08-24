@@ -21,10 +21,12 @@ class AlreadyExists extends GeneralError.create {
    * Create already exists error
    * @param {string} [params.name] Name of type of object that already exists
    * @param {Object} [params.errorObject] Error object
+   * @param {Object} [params.extraData] Extra data that client can use when an error is sent
    */
-  constructor({ name = '', errorObject }) {
+  constructor({ name = '', errorObject, extraData }) {
     super({
       errorObject,
+      extraData,
       type: GeneralError.ErrorTypes.ALREADYEXISTS,
       text: [`${name} already exists`],
     });

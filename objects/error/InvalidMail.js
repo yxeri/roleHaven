@@ -21,10 +21,11 @@ class InvalidDataError extends GeneralError.create {
    * Create invalid data error
    * @param {Object} [params.errorObject] Error object
    */
-  constructor({ errorObject, verbose }) {
+  constructor({ errorObject, verbose, extraData }) {
     super({
       verbose,
       errorObject,
+      extraData,
       type: GeneralError.ErrorTypes.INVALIDMAIL,
       text: [
         'Invalid mail address',

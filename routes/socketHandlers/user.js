@@ -148,6 +148,7 @@ function handle(socket, io) {
                     userName: updatedUser.userName,
                     accessLevel: updatedUser.accessLevel,
                     aliases: updatedUser.aliases,
+                    creatorAliases: updatedUser.creatorAliases,
                     team: updatedUser.team,
                     shortTeam: updatedUser.shortTeam,
                     blockedBy: updatedUser.blockedBy,
@@ -236,6 +237,15 @@ function handle(socket, io) {
     aliasManager.createAlias({
       token,
       user,
+      alias,
+      callback,
+    });
+  });
+
+  socket.on('addCreatorAlias', ({ userName, alias, token }, callback = () => {}) => {
+    aliasManager.addCreatorAlias({
+      token,
+      userName,
       alias,
       callback,
     });

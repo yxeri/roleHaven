@@ -23,9 +23,10 @@ class InvalidCharacters extends GeneralError.create {
    * @param {string} [params.expected] Expected valid characters
    * @param {Object} [params.errorObject] Error object
    */
-  constructor({ name = '-', expected = '-', errorObject }) {
+  constructor({ name = '-', expected = '-', errorObject, extraData }) {
     super({
       errorObject,
+      extraData,
       type: GeneralError.ErrorTypes.INVALIDCHARACTERS,
       text: [
         `Property ${name} has invalid characters`,

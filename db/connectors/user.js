@@ -50,6 +50,7 @@ const userSchema = new mongoose.Schema({
   isTracked: Boolean,
   aliases: [String],
   blockedBy: String,
+  creatorAliases: { type: [String], default: [] },
 }, { collection: 'users' });
 
 const User = mongoose.model('User', userSchema);
@@ -963,6 +964,40 @@ function getUserByAlias({ alias, callback }) {
 
 /**
  * Add an alias to the user, if a user with the alias or a matching user name doesn't already exist
+ * @param {object} params.user User to update
+ * @param {string} params.user.team User team. Will be allowed to add existing alias, if team is the same as other user
+ * @param {string} params.user.userName User name to update
+ * @param {string} params.alias User alias
+ * @param {Function} params.callback Callback
+ */
+function addCreatorAlias({ user, alias, callback }) {
+  const query = {
+    $or: [
+      { userName: alias },
+      { aliases: { $in: [alias] } },
+      { creatorAliases: { $in: [alias] } },
+    ],
+  };
+
+  User.find(query).lean().exec((err, foundUsers = []) => {
+    if (err) {
+      callback({ error: new errorCreator.Database({ errorObject: err }) });
+
+      return;
+    } else if (foundUsers.length > 0 && (foundUsers.find(foundUser => foundUser.userName === user.userName) || !foundUsers[0].team || !user.team || foundUsers[0].team !== user.team)) {
+      callback({ error: new errorCreator.AlreadyExists({ name: `creator alias ${alias}` }) });
+
+      return;
+    }
+
+    const update = { $addToSet: { creatorAliases: alias } };
+
+    updateUserValue({ userName: user.userName, update, callback });
+  });
+}
+
+/**
+ * Add an alias to the user, if a user with the alias or a matching user name doesn't already exist
  * @param {string} params.userName Name of the user to update
  * @param {string} params.alias User alias
  * @param {Function} params.callback Callback
@@ -1078,3 +1113,4 @@ exports.removeUserTeam = removeUserTeam;
 exports.getUserByMail = getUserByMail;
 exports.getUserFollowingRooms = getUserFollowingRooms;
 exports.getUnverifiedUsers = getUnverifiedUsers;
+exports.addCreatorAlias = addCreatorAlias;

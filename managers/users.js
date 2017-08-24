@@ -804,9 +804,9 @@ function verifyUser({ key, callback, socket, io }) {
           callback({ data: { userName: user.userName } });
 
           if (socket) {
-            socket.broadcast.emit('user', { user: { userName: user.userName } });
+            socket.broadcast.emit('user', { data: { user: { userName: user.userName } } });
           } else {
-            io.emit('user', { user: { userName: user.userName } });
+            io.emit('user', { data: { user: { userName: user.userName } } });
           }
         },
       });

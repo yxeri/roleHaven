@@ -23,9 +23,10 @@ const docFileManager = require('../../managers/docFiles');
  * @param {Object} io Socket.io
  */
 function handle(socket, io) {
-  socket.on('createDocFile', ({ docFile, token }, callback = () => {}) => {
+  socket.on('createDocFile', ({ docFile, token, userName }, callback = () => {}) => {
     docFileManager.createDocFile({
       docFile,
+      userName,
       token,
       io,
       socket,
@@ -33,9 +34,10 @@ function handle(socket, io) {
     });
   });
 
-  socket.on('updateDocFile', ({ docFile, token }, callback = () => {}) => {
+  socket.on('updateDocFile', ({ docFile, token, userName }, callback = () => {}) => {
     docFileManager.updateDocFile({
       docFile,
+      userName,
       token,
       io,
       socket,

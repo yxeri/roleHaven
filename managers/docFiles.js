@@ -28,17 +28,24 @@ const objectValidator = require('../utils/objectValidator');
  * Create a docFile
  * @param {Object} params.user User creating doc file
  * @param {Object} params.docFile DocFile to create
+ * @param {string} [params.customCreator] Custom creator name that will be shown instead of default creator
+ * @param {string} params.userName Creator user name
  * @param {Object} [params.socket] Socket io
  * @param {Object} params.io Socket io. Will be used if socket is not set
  * @param {Function} params.callback Callback
  */
-function createDocFile({ token, socket, io, docFile, callback }) {
+function createDocFile({ token, userName, socket, io, docFile, callback }) {
   authenticator.isUserAllowed({
     token,
+    matchNameTo: userName,
     commandName: dbConfig.apiCommands.CreateDocFile.name,
     callback: ({ error, data }) => {
       if (error) {
         callback({ error });
+
+        return;
+      } else if (docFile.customCreator && docFile.customCreator !== data.user.userName && data.user.creatorAliases.indexOf(docFile.customCreator) === -1 && data.user.aliases.indexOf(docFile.customCreator) === -1) {
+        callback({ error: new errorCreator.NotAllowed({ name: 'custom creator' }) });
 
         return;
       } else if (!objectValidator.isValidData({ docFile }, { docFile: { docFileId: true, text: true, title: true } })) {
@@ -66,6 +73,11 @@ function createDocFile({ token, socket, io, docFile, callback }) {
       const newDocFile = docFile;
       newDocFile.creator = data.user.userName;
       newDocFile.docFileId = newDocFile.docFileId.toLowerCase();
+
+      if (docFile.customCreator) {
+        newDocFile.customCreator = docFile.customCreator;
+        newDocFile.accessUsers = [newDocFile.creator];
+      }
 
       dbDocFile.createDocFile({
         docFile: newDocFile,
@@ -99,13 +111,15 @@ function createDocFile({ token, socket, io, docFile, callback }) {
  * Update existing docFile
  * @param {Object} params.docFile Doc file changes
  * @param {Object} [params.socket] Socket io
+ * @param {string} params.userName Creator user name
  * @param {Object} params.io Socket io. Will be used if socket is undefined
  * @param {Object} params.user User that is updating docFile
  * @param {Function} params.callback Callback
  */
-function updateDocFile({ docFile, socket, io, token, callback }) {
+function updateDocFile({ docFile, socket, io, token, userName, callback }) {
   authenticator.isUserAllowed({
     token,
+    matchNameTo: userName,
     commandName: dbConfig.apiCommands.CreateDocFile.name,
     callback: ({ error, data }) => {
       if (error) {
@@ -127,6 +141,7 @@ function updateDocFile({ docFile, socket, io, token, callback }) {
 
       dbDocFile.getDocFile({
         docFileId,
+        user,
         accessLevel: user.accessLevel,
         callback: ({ error: getError, data: foundData }) => {
           if (getError) {
@@ -152,15 +167,16 @@ function updateDocFile({ docFile, socket, io, token, callback }) {
                 return;
               }
 
-              // TODO Filter out information
+              const dataToSend = updateData;
+              dataToSend.updating = true;
 
               if (socket) {
-                socket.broadcast.emit('docFile', { data: updateData });
+                socket.broadcast.emit('docFile', { data: dataToSend });
               } else {
-                io.emit('docFile', { data: updateData });
+                io.emit('docFile', { data: dataToSend });
               }
 
-              callback({ data: updateData });
+              callback({ data: dataToSend });
             },
           });
         },
@@ -190,6 +206,7 @@ function getAllDocFiles({ token, callback }) {
       dbDocFile.getDocFiles({
         accessLevel: user.accessLevel,
         userName: user.userName,
+        creatorAliases: user.creatorAliases,
         callback: ({ error: getError, data: docData }) => {
           if (getError) {
             callback({ error: getError });
@@ -202,8 +219,8 @@ function getAllDocFiles({ token, callback }) {
           const filteredDocFiles = docFiles.map((docFile) => {
             const filteredDocFile = docFile;
 
-            if ((docFile.team && user.team && docFile.team !== user.team) || (!docFile.isPublic && docFile.creator !== user.userName)) {
-              if (!docFile.accessUsers || docFile.accessUsers.indexOf(user.userName) === -1) {
+            if ((docFile.team && user.team && docFile.team !== user.team) || (!docFile.isPublic && docFile.creator !== user.userName && user.creatorAliases.indexOf(docFile.customCreator) === -1)) {
+              if (docFile.accessUsers.indexOf(user.userName) === -1) {
                 filteredDocFile.docFileId = null;
                 filteredDocFile.isLocked = true;
               }
@@ -220,7 +237,7 @@ function getAllDocFiles({ token, callback }) {
               return true;
             }
 
-            if (docFile.creator === user.userName) {
+            if (docFile.creator === user.userName || user.creatorAliases.indexOf(docFile.customCreator) > -1) {
               myDocFiles.push(docFile);
             }
 
