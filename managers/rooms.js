@@ -108,12 +108,11 @@ function isRequiredRoom({ roomName, socketId, user }) {
 /**
  * Gets getHistory (messages) from one or more rooms
  * @param {string[]} params.rooms The rooms to retrieve the getHistory from
- * @param {Object} params.io socket io. Will be used if socket is not set
  * @param {Object} [params.socket] Socket io
  * @param {boolean} [params.whisperTo] Is it whispers to a user?
  * @param {Function} params.callback Callback
  */
-function getHistory({ token, callback, socket, io, roomName, whisperTo }) {
+function getHistory({ token, callback, socket, roomName, whisperTo }) {
   authenticator.isUserAllowed({
     token,
     commandName: dbConfig.apiCommands.GetHistory.name,
@@ -129,16 +128,17 @@ function getHistory({ token, callback, socket, io, roomName, whisperTo }) {
       }
 
       const user = data.user;
-      let roomToGet = roomName;
       const allUserRooms = user.rooms;
+      const socketRoom = socket ? socket.id : user.socketId || '';
+      let roomToGet = roomName;
+
+      allUserRooms.push(socketRoom);
 
       if (whisperTo) {
         roomToGet = `${roomName}${appConfig.whisperAppend}`;
       } else if (roomName === 'team') {
         roomToGet = user.team + appConfig.teamAppend;
       }
-
-      allUserRooms.push(socket.id || user.socketId);
 
       if (allUserRooms.indexOf(roomToGet) === -1) {
         callback({ error: new errorCreator.NotAllowed({ name: 'not following room' }) });

@@ -980,7 +980,6 @@ function addCreatorAlias({ user, alias, callback }) {
   };
 
   User.find(query).lean().exec((err, foundUsers = []) => {
-    console.log(foundUsers);
     if (err) {
       callback({ error: new errorCreator.Database({ errorObject: err }) });
 

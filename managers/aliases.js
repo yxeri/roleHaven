@@ -24,6 +24,13 @@ const textTools = require('../utils/textTools');
 const authenticator = require('../helpers/authenticator');
 const roomManager = require('./rooms');
 
+/**
+ * Add creator alias to user
+ * @param {string} params.alias Alias
+ * @param {string} params.userName Name of the user name that will get new alias
+ * @param {Function} params.callback Callback
+ * @param {string} params.token jwt token
+ */
 function addCreatorAlias({ alias, userName, callback, token }) {
   authenticator.isUserAllowed({
     token,
