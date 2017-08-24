@@ -146,7 +146,7 @@ config.anonymousUser = {
   visibility: config.AccessLevels.ANONYMOUS,
   creatorAliases: [],
   aliases: [],
-  rooms: [],
+  rooms: [config.rooms.public.roomName, config.rooms.anonymous.roomName],
   whisperRooms: [],
   isTracked: false,
   team: null,
@@ -462,7 +462,7 @@ config.apiCommands = {
   },
   GetGameCode: config.apiCommands.GetGameCode || {
     name: 'GetGameCode',
-    accessLevel: config.AccessLevels.ADMIN,
+    accessLevel: config.AccessLevels.LOWERADMIN,
     selfAccessLevel: config.AccessLevels.BASIC,
   },
   CreateGameCode: config.apiCommands.CreateGameCode || {
@@ -509,7 +509,11 @@ config.apiCommands = {
   },
   AddBlockedMail: config.apiCommands.AddBlockedMail || {
     name: 'AddBlockedMail',
-    accessLevel: config.AccessLevels.ADMIN,
+    accessLevel: config.AccessLevels.LOWERADMIN,
+  },
+  VerifyUser: config.apiCommands.VerifyUser || {
+    name: 'VerifyUser',
+    accessLevel: config.AccessLevels.LOWERADMIN,
   },
 };
 

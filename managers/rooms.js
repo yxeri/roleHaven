@@ -61,7 +61,9 @@ function authUserToRoom({ token, room, callback }) {
         return;
       }
 
-      if (room.roomName.toLowerCase() === dbConfig.rooms.public.roomName) {
+      const lowerRoomName = room.roomName.toLowerCase();
+
+      if (lowerRoomName === dbConfig.rooms.public.roomName) {
         callback({ data: { isFollowing: true, room: { roomName: dbConfig.rooms.public.roomName } } });
 
         return;
@@ -69,7 +71,7 @@ function authUserToRoom({ token, room, callback }) {
 
       dbRoom.authUserToRoom({
         user: data.user,
-        roomName: room.roomName,
+        roomName: lowerRoomName,
         password: room.password,
         callback: ({ error: roomError, data: roomData }) => {
           if (roomError) {

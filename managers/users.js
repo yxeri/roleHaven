@@ -768,6 +768,66 @@ function banUser({ user, io, token, callback }) {
 
 /**
  * Verify user
+ * @param {Object} params.callback Callback
+ * @param {Object} params.socket Socket.io
+ * @param {string} params.userName Name of user to verify
+ * @param {Object} params.io Socket io. Will be used if socket is not set
+ * @param {string} params.token jwt token
+ */
+function verifyUserWithoutMail({ userName, callback, io, token }) {
+  if (!objectValidator.isValidData({ userName }, { userName: true })) {
+    callback({ error: new errorCreator.InvalidData({ expected: '{ userName }' }) });
+
+    return;
+  }
+
+  authenticator.isUserAllowed({
+    commandName: dbConfig.apiCommands.VerifyUser.name,
+    token,
+    callback: ({ error: authError }) => {
+      if (authError) {
+        callback({ error: authError });
+
+        return;
+      }
+
+      dbMailEvent.getMailEvent({
+        owner: userName,
+        eventType: 'userVerify',
+        callback: ({ error: eventError, data: eventData }) => {
+          if (eventError) {
+            callback({ error: eventError });
+
+            return;
+          }
+
+          const event = eventData.event;
+
+          dbUser.verifyUser({
+            userName,
+            callback: (verifyData) => {
+              if (verifyData.error) {
+                callback({ error: verifyData.error });
+
+                return;
+              }
+
+              const user = verifyData.data.user;
+
+              dbMailEvent.removeMailEventByKey({ key: event.key, callback: () => {} });
+
+              callback({ data: { userName: user.userName } });
+              io.emit('user', { data: { user: { userName: user.userName } } });
+            },
+          });
+        },
+      });
+    },
+  });
+}
+
+/**
+ * Verify user
  * @param {string} params.key Verification key
  * @param {Object} params.callback Callback
  * @param {Object} params.socket Socket.io
@@ -961,3 +1021,4 @@ exports.verifyUser = verifyUser;
 exports.sendAllVerificationMails = sendAllVerificationMails;
 exports.addBlockedMail = addBlockedMail;
 exports.unbanUser = unbanUser;
+exports.verifyUserWithoutMail = verifyUserWithoutMail;
