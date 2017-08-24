@@ -147,6 +147,7 @@ function getActiveCalibrationMission({ token, stationId, callback, userName }) {
                           const missionToCreate = {
                             owner,
                             stationId: newStationId,
+                            timeCreated: new Date(),
                             code: newCode,
                           };
 
