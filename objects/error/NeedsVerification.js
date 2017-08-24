@@ -22,9 +22,10 @@ class NeedsVerification extends GeneralError.create {
    * @param {string} [params.name] Name of object that needs to be verified
    * @param {Object} [params.errorObject] Error object
    */
-  constructor({ name = '', errorObject }) {
+  constructor({ name = '', errorObject, extraData }) {
     super({
       errorObject,
+      extraData,
       type: GeneralError.ErrorTypes.NEEDSVERIFICATION,
       text: [`${name} needs to be verified`],
     });

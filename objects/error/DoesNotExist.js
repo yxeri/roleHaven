@@ -22,10 +22,11 @@ class DoesNotExist extends GeneralError.create {
    * @param {string} [params.name] Name of whatever did not exist
    * @param {Error} [params.errorObject] Error object
    */
-  constructor({ name = '-', errorObject, verbose }) {
+  constructor({ name = '-', errorObject, verbose, extraData }) {
     super({
       errorObject,
       verbose,
+      extraData,
       type: GeneralError.ErrorTypes.DOESNOTEXIST,
       text: [`${name} does not exist`],
     });

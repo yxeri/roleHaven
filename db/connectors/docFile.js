@@ -32,6 +32,7 @@ const docFileSchema = new mongoose.Schema({
   title: { type: String, unique: true },
   text: [String],
   team: String,
+  customCreator: String,
 }, { collection: 'docFiles' });
 
 const DocFile = mongoose.model('DocFile', docFileSchema);
@@ -56,7 +57,15 @@ function createDocFile({ docFile, callback }) {
 
       return;
     } else if (foundDocFile) {
-      callback({ error: new errorCreator.AlreadyExists({ name: `Docfile ${docFile.docFileId}. Title ${docFile.title}` }) });
+      callback({
+        error: new errorCreator.AlreadyExists({
+          name: 'Docfile',
+          extraData: {
+            title: foundDocFile.title === docFile.title,
+            docFileId: foundDocFile.docFileId === docFile.docFileId,
+          },
+        }),
+      });
 
       return;
     }
@@ -178,9 +187,10 @@ function getDocFile({ docFileId, title, user, callback }) {
  * Get list of docFiles
  * @param {number} params.accessLevel Access level
  * @param {string} params.userName User name
+ * @param {string[]} params.creatorAliases User's aliases for file creation
  * @param {Function} params.callback Callback
  */
-function getDocFiles({ accessLevel, userName, callback }) {
+function getDocFiles({ accessLevel, userName, creatorAliases, callback }) {
   const query = {
     $and: [
       { $or: [
@@ -191,6 +201,7 @@ function getDocFiles({ accessLevel, userName, callback }) {
         { isPublic: true },
         { visibility: { $lte: accessLevel } },
         { creator: userName },
+        { customCreator: { $exists: true, $in: creatorAliases } },
       ] },
     ],
   };

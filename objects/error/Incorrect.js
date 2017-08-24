@@ -22,9 +22,10 @@ class Incorrect extends GeneralError.create {
    * @param {string} [params.name] Name of whatever was sent
    * @param {Object} [params.errorObject] Error object
    */
-  constructor({ name = '-', errorObject }) {
+  constructor({ name = '-', errorObject, extraData }) {
     super({
       errorObject,
+      extraData,
       type: GeneralError.ErrorTypes.INCORRECT,
       text: [`Incorrect ${name}`],
     });

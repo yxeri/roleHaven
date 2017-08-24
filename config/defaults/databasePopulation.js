@@ -144,6 +144,7 @@ config.anonymousUser = {
   userName: '',
   accessLevel: config.AccessLevels.ANONYMOUS,
   visibility: config.AccessLevels.ANONYMOUS,
+  creatorAliases: [],
   aliases: [],
   rooms: [],
   whisperRooms: [],

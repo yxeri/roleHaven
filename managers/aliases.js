@@ -24,6 +24,34 @@ const textTools = require('../utils/textTools');
 const authenticator = require('../helpers/authenticator');
 const roomManager = require('./rooms');
 
+function addCreatorAlias({ alias, userName, callback, token }) {
+  authenticator.isUserAllowed({
+    token,
+    matchNameTo: userName,
+    commandName: dbConfig.apiCommands.CreateAlias.name,
+    callback: ({ error, data }) => {
+      if (error) {
+        callback({ error });
+
+        return;
+      }
+
+      dbUser.addCreatorAlias({
+        alias: alias.toLowerCase(),
+        user: data.user,
+        callback: ({ error: aliasError, data: aliasData }) => {
+          if (aliasError) {
+            callback({ error: aliasError });
+
+            return;
+          }
+
+          callback({ data: aliasData });
+        },
+      });
+    },
+  });
+}
 /**
  * Create and add alias to user
  * @param {Object} [params.user] User that will get a new alias. Will default to current user
@@ -213,3 +241,4 @@ exports.createAlias = createAlias;
 exports.getAliases = getAliases;
 exports.matchPartialAlias = matchPartialAlias;
 exports.getAllAliases = getAllAliases;
+exports.addCreatorAlias = addCreatorAlias;

@@ -23,10 +23,11 @@ class Internal extends GeneralError.create {
    * @param {string} [params.name] Retrieval source
    * @param {Error} [params.errorObject] Error object
    */
-  constructor({ name = '-', errorObject, verbose }) {
+  constructor({ name = '-', errorObject, verbose, extraData }) {
     super({
       errorObject,
       verbose,
+      extraData,
       type: GeneralError.ErrorTypes.INTERNAL,
       text: [`Failed to retrieve data from ${name}`],
     });

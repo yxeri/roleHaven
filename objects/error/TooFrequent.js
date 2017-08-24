@@ -21,10 +21,12 @@ class TooFrequent extends GeneralError.create {
    * Create too frequent error
    * @param {string} [params.name] Name of whatever was sent
    * @param {Object} [params.errorObject] Error object
+   * @param {Object} [params.extraData] Extra data that client can use when an error is sent
    */
-  constructor({ name = '-', errorObject }) {
+  constructor({ name = '-', errorObject, extraData }) {
     super({
       errorObject,
+      extraData,
       type: GeneralError.ErrorTypes.TOOFREQUENT,
       text: [`${name} is used too frequently`],
     });

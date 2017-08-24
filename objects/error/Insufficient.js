@@ -22,9 +22,10 @@ class Insufficient extends GeneralError.create {
    * @param {string} [params.name] Name of the insufficient type
    * @param {Object} [params.errorObject] Error object
    */
-  constructor({ name = '', errorObject }) {
+  constructor({ name = '', errorObject, extraData }) {
     super({
       errorObject,
+      extraData,
       type: GeneralError.ErrorTypes.INSUFFICIENT,
       text: [`${name} not enough`],
     });

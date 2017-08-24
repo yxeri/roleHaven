@@ -130,7 +130,7 @@ function getHistory({ token, callback, socket, io, roomName, whisperTo }) {
 
       const user = data.user;
       let roomToGet = roomName;
-      let allUserRooms = [];
+      const allUserRooms = user.rooms;
 
       if (whisperTo) {
         roomToGet = `${roomName}${appConfig.whisperAppend}`;
@@ -138,13 +138,7 @@ function getHistory({ token, callback, socket, io, roomName, whisperTo }) {
         roomToGet = user.team + appConfig.teamAppend;
       }
 
-      if (socket) {
-        allUserRooms = allUserRooms.concat(Object.keys(socket.rooms));
-      } else if (io.sockets.sockets[user.socketId]) {
-        allUserRooms = allUserRooms.concat(Object.keys(io.sockets.sockets[user.socketId].rooms));
-      } else {
-        allUserRooms = allUserRooms.concat(user.rooms);
-      }
+      allUserRooms.push(socket.id || user.socketId);
 
       if (allUserRooms.indexOf(roomToGet) === -1) {
         callback({ error: new errorCreator.NotAllowed({ name: 'not following room' }) });
