@@ -332,8 +332,9 @@ function sendChatMsg({ token, image, message, io, socket, callback = () => {} })
 function sendWhisperMsg({ io, token, message, socket, callback = () => {} }) {
   authenticator.isUserAllowed({
     token,
+    matchNameTo: message.userName,
     commandName: dbConfig.apiCommands.SendWhisper.name,
-    callback: ({ error, data }) => {
+    callback: ({ error }) => {
       if (error) {
         callback({ error });
 
@@ -344,27 +345,20 @@ function sendWhisperMsg({ io, token, message, socket, callback = () => {} }) {
         return;
       }
 
-      const user = data.user;
       const to = message.roomName;
 
       const newMessage = message;
-      newMessage.userName = user.userName.toLowerCase();
+      newMessage.userName = newMessage.userName.toLowerCase();
       newMessage.text = textTools.cleanText(newMessage.text);
       newMessage.roomName += appConfig.whisperAppend;
       newMessage.extraClass = 'whisperMsg';
       newMessage.time = new Date();
 
       dbUser.getUserByAlias({
-        alias: message.userName,
+        alias: to,
         callback: ({ error: aliasError, data: aliasData }) => {
           if (aliasError) {
             callback({ error: aliasError });
-
-            return;
-          } else if (aliasData.user.userName !== user.userName) {
-            callback({ error: new errorCreator.NotAllowed({ name: 'user names do not match' }) });
-
-            return;
           }
 
           addMsgToHistory({
@@ -378,7 +372,7 @@ function sendWhisperMsg({ io, token, message, socket, callback = () => {} }) {
               }
 
               dbUser.addWhisperRoomToUser({
-                userName: to,
+                userName: aliasData.user.userName,
                 roomName: `${to}-whisper-${message.userName}`,
                 callback: (whisperData) => {
                   if (whisperData.error) {
@@ -386,11 +380,10 @@ function sendWhisperMsg({ io, token, message, socket, callback = () => {} }) {
 
                     return;
                   }
-                  const senderRoomName = newMessage.userName + appConfig.whisperAppend;
 
                   addMsgToHistory({
                     message: newMessage,
-                    roomName: senderRoomName,
+                    roomName: newMessage.userName + appConfig.whisperAppend,
                     callback: ({ error: sendError }) => {
                       if (sendError) {
                         callback({ error: sendError });

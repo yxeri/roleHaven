@@ -982,11 +982,26 @@ function addCreatorAlias({ user, alias, callback }) {
   };
 
   User.find(query).lean().exec((err, foundUsers = []) => {
+    const matchedUsers = foundUsers.filter((foundUser) => {
+      const inAliases = foundUser.aliases.indexOf(alias) > -1;
+      const inCreatorAliases = foundUser.creatorAliases.indexOf(alias) > -1;
+      const equalUserName = foundUser.userName === alias;
+      const equalToSelf = foundUser.userName === user.userName;
+
+      if (inAliases || equalUserName || (equalToSelf && inCreatorAliases)) {
+        return true;
+      } else if (inCreatorAliases && (!foundUser.team || !user.team || foundUser.team !== user.team)) {
+        return true;
+      }
+
+      return false;
+    });
+
     if (err) {
       callback({ error: new errorCreator.Database({ errorObject: err }) });
 
       return;
-    } else if (foundUsers.length > 0 && (foundUsers.find(foundUser => foundUser.userName === user.userName) || !foundUsers[0].team || !user.team || foundUsers[0].team !== user.team)) {
+    } else if (matchedUsers.length > 0) {
       callback({ error: new errorCreator.AlreadyExists({ name: `creator alias ${alias}` }) });
 
       return;
