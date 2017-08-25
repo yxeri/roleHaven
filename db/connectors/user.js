@@ -988,8 +988,6 @@ function addCreatorAlias({ user, alias, callback }) {
       const equalUserName = foundUser.userName === alias;
       const equalToSelf = foundUser.userName === user.userName;
 
-      console.log(inAliases, inCreatorAliases, equalUserName, equalToSelf);
-
       if (inAliases || equalUserName || (equalToSelf && inCreatorAliases)) {
         return true;
       } else if (inCreatorAliases && (!foundUser.team || !user.team || foundUser.team !== user.team)) {
