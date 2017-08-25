@@ -326,6 +326,8 @@ function createUser({ user, silentOnExists, callback }) {
     $or: [
       { userName: user.userName },
       { mail: user.mail },
+      { aliases: { $in: [user.userName] } },
+      { creatorAliases: { $in: [user.userName] } },
     ],
   };
 
@@ -1007,6 +1009,7 @@ function addAlias({ userName, alias, callback }) {
     $or: [
       { userName: alias },
       { aliases: { $in: [alias] } },
+      { creatorAliases: { $in: [alias] } },
     ],
   };
 
