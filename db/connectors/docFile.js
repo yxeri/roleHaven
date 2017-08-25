@@ -164,12 +164,18 @@ function getDocFile({ docFileId, title, user, callback }) {
           { docFileId },
           { $and: [
             { title },
-            { team: { $exists: true } },
-            { team: user.team },
+            { $or: [
+              { customCreator: { $in: user.creatorAliases } },
+              { $and: [
+                { team: { $exists: true } },
+                { team: user.team },
+              ] },
+            ] },
           ] },
         ],
       }, {
         $or: [
+          { customCreator: { $in: user.creatorAliases } },
           { creator: user.userName },
           { accessUsers: { $in: [user.userName] } },
           { team: user.team },
@@ -178,14 +184,13 @@ function getDocFile({ docFileId, title, user, callback }) {
       },
     ],
   };
-
   DocFile.findOne(query).lean().exec((err, docFile) => {
     if (err) {
       callback({ error: new errorCreator.Database({ errorObject: err, name: 'getDocFile' }) });
 
       return;
     } else if (!docFile) {
-      callback({ error: new errorCreator.DoesNotExist({ name: `docfile ${docFileId}` }) });
+      callback({ error: new errorCreator.DoesNotExist({ name: `docfile ${title}` }) });
 
       return;
     }
