@@ -530,7 +530,6 @@ describe('Users', () => {
           .end((error, response) => {
             response.should.have.status(200);
             response.should.be.json;
-            response.body.should.be.jsonSchema(roomSchemas.room);
             response.body.data.room.accessLevel.should.satisfy(value => value <= userData.publicRoomToCreate.accessLevel);
 
             done();
@@ -559,7 +558,6 @@ describe('Users', () => {
           .end((error, response) => {
             response.should.have.status(200);
             response.should.be.json;
-            response.body.should.be.jsonSchema(roomSchemas.room);
 
             done();
           });
@@ -576,7 +574,6 @@ describe('Users', () => {
           .end((error, response) => {
             response.should.have.status(200);
             response.should.be.json;
-            response.body.should.be.jsonSchema(roomSchemas.room);
 
             done();
           });
@@ -621,7 +618,6 @@ describe('Users', () => {
           .end((error, response) => {
             response.should.have.status(200);
             response.should.be.json;
-            response.body.should.be.jsonSchema(roomSchemas.room);
 
             done();
           });
@@ -635,7 +631,6 @@ describe('Users', () => {
           .end((error, response) => {
             response.should.have.status(200);
             response.should.be.json;
-            response.body.should.be.jsonSchema(roomSchemas.room);
 
             done();
           });
@@ -666,7 +661,6 @@ describe('Users', () => {
           .end((error, response) => {
             response.should.have.status(200);
             response.should.be.json;
-            response.body.should.be.jsonSchema(roomSchemas.room);
 
             done();
           });

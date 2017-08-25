@@ -64,7 +64,11 @@ function authUserToRoom({ token, room, callback }) {
       const lowerRoomName = room.roomName.toLowerCase();
 
       if (lowerRoomName === dbConfig.rooms.public.roomName) {
-        callback({ data: { isFollowing: true, room: { roomName: dbConfig.rooms.public.roomName } } });
+        callback({ data: { isAllowed: true, isFollowing: true, room: { roomName: dbConfig.rooms.public.roomName } } });
+
+        return;
+      } else if (data.user.rooms.indexOf(lowerRoomName) > -1) {
+        callback({ data: { isAllowed: true, isFollowing: true, room: { roomName: lowerRoomName } } });
 
         return;
       }
