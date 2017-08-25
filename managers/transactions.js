@@ -132,7 +132,7 @@ function createTransaction({ user, transaction, io, fromTeam, socket, callback }
 
     return;
   } else if (transaction.amount <= 0) {
-    callback({ error: new errorCreator.InvalidData({ name: 'amount is 0 or less' }) });
+    callback({ error: new errorCreator.Insufficient({ name: 'amount is 0 or less' }) });
 
     return;
   }
@@ -159,7 +159,7 @@ function createTransaction({ user, transaction, io, fromTeam, socket, callback }
 
         return;
       } else if (walletData.data.wallet.amount - newTransaction.amount < 0) {
-        callback({ error: new errorCreator.NotAllowed({ name: 'transfer too much' }) });
+        callback({ error: new errorCreator.Insufficient({ name: 'transfer too much' }) });
 
         return;
       }

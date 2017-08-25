@@ -506,7 +506,7 @@ describe('Wallets', () => {
           .set('Authorization', transactionTokens.poor)
           .send({ data: { transaction: { to: transactionData.newUserToSendCredits.userName, amount: 25 } } })
           .end((error, response) => {
-            response.should.have.status(401);
+            response.should.have.status(400);
             response.should.be.json;
             response.body.should.be.jsonSchema(errorSchemas.error);
 
