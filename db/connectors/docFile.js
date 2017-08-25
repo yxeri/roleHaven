@@ -93,17 +93,28 @@ function createDocFile({ docFile, callback }) {
  * @param {string} [params.title] Title
  * @param {number} [params.visibility] Minimum access level required to see document
  * @param {boolean} [params.isPublic] Is the document visible to the public?
+ * @param {string} [params.team] Team name
  * @param {Function} params.callback Callback
  */
-function updateDocFile({ docFileId, text, title, visibility, isPublic, callback }) {
+function updateDocFile({ docFileId, text, title, visibility, isPublic, team, callback }) {
   const query = { docFileId };
   const update = {};
+  const set = {};
+  const unset = {};
   const options = { new: true };
 
-  if (text) { update.text = text; }
-  if (title) { update.title = title; }
-  if (visibility) { update.visibility = visibility; }
-  if (isPublic) { update.isPublic = isPublic; }
+  if (text) { set.text = text; }
+  if (title) { set.title = title; }
+  if (visibility) { set.visibility = visibility; }
+  if (typeof isPublic === 'boolean') { set.isPublic = isPublic; }
+  if (team) {
+    set.team = team;
+  } else {
+    unset.team = '';
+  }
+
+  if (Object.keys(set).length > 0) { update.$set = set; }
+  if (Object.keys(unset).length > 0) { update.$unset = unset; }
 
   DocFile.findOneAndUpdate(query, update, options).lean().exec((err, docFile) => {
     if (err) {

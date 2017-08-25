@@ -41,6 +41,13 @@ function checkAndSendError({ response, error, title, detail, sentData }) {
 
       break;
     }
+    case errorCreator.ErrorTypes.INSUFFICIENT: {
+      sendError.status = 400;
+      sendError.title = title || 'Insufficient';
+      sendError.detail = errorDetail || 'Insufficient';
+
+      break;
+    }
     case errorCreator.ErrorTypes.ALREADYEXISTS: {
       sendError.status = 403;
       sendError.title = title || 'Already exists';

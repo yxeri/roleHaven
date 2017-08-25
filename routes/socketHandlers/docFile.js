@@ -45,9 +45,10 @@ function handle(socket, io) {
     });
   });
 
-  socket.on('getDocFile', ({ docFileId, token }, callback = () => {}) => {
+  socket.on('getDocFile', ({ docFileId, title, token }, callback = () => {}) => {
     docFileManager.getDocFile({
       docFileId,
+      title,
       token,
       callback,
     });

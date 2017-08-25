@@ -73,6 +73,7 @@ function createDocFile({ token, userName, socket, io, docFile, callback }) {
       const newDocFile = docFile;
       newDocFile.creator = data.user.userName;
       newDocFile.docFileId = newDocFile.docFileId.toLowerCase();
+      newDocFile.team = newDocFile.team ? data.user.team : undefined;
 
       if (docFile.customCreator) {
         newDocFile.customCreator = docFile.customCreator;
@@ -160,6 +161,7 @@ function updateDocFile({ docFile, socket, io, token, userName, callback }) {
             text,
             visibility,
             isPublic,
+            team: docFile.team ? data.user.team : undefined,
             callback: ({ error: updateError, data: updateData }) => {
               if (updateError) {
                 callback({ error: updateError });
@@ -167,8 +169,16 @@ function updateDocFile({ docFile, socket, io, token, userName, callback }) {
                 return;
               }
 
-              const dataToSend = updateData;
-              dataToSend.updating = true;
+              const previousDocFile = foundData.docFile;
+              const updatedDocFile = updateData.docFile;
+              updatedDocFile.docFileId = updatedDocFile.isPublic ? updatedDocFile.docFileId : null;
+
+              const dataToSend = {
+                docFile: updatedDocFile,
+                updating: true,
+                oldTeam: previousDocFile.team,
+                oldTitle: foundData.docFile.title,
+              };
 
               if (socket) {
                 socket.broadcast.emit('docFile', { data: dataToSend });
@@ -176,7 +186,7 @@ function updateDocFile({ docFile, socket, io, token, userName, callback }) {
                 io.emit('docFile', { data: dataToSend });
               }
 
-              callback({ data: dataToSend });
+              callback({ data: updateData });
             },
           });
         },
@@ -308,10 +318,6 @@ function getDocFile({ title, docFileId, token, callback }) {
     callback: ({ error, data }) => {
       if (error) {
         callback({ error });
-
-        return;
-      } else if (!objectValidator.isValidData({ docFileId }, { docFileId: true })) {
-        callback({ error: new errorCreator.InvalidData({ expected: '{ docFile }' }) });
 
         return;
       }
