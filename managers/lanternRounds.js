@@ -21,6 +21,7 @@ const authenticator = require('../helpers/authenticator');
 const dbLanternHack = require('../db/connectors/lanternhack');
 const lanternStationManager = require('./lanternStations');
 const textTools = require('../utils/textTools');
+const messenger = require('../helpers/messenger');
 
 /**
  * Get lantern round
@@ -87,6 +88,20 @@ function startLanternRound({ io, endTime, token, callback }) {
 
           io.emit('lanternRound', { data: dataToSend });
 
+          messenger.sendBroadcastMsg({
+            io,
+            token,
+            message: {
+              text: [
+                'LANTERN ACTIVITY DETECTED',
+                'LANTERN ONLINE',
+              ],
+              intro: ['ATTENTION! SIGNAL DETECTED', '----------'],
+              extro: ['----------', 'END OF MESSAGE'],
+            },
+            callback: () => {},
+          });
+
           callback({ data: dataToSend });
         },
       });
@@ -130,6 +145,19 @@ function endLanternRound({ startTime, io, token, callback }) {
           callback({ data });
 
           lanternStationManager.resetStations({ callback: () => {} });
+          messenger.sendBroadcastMsg({
+            io,
+            token,
+            message: {
+              text: [
+                'DISCONNECTING',
+                'LANTERN OFFLINE',
+              ],
+              intro: ['ATTENTION! SIGNAL LOST', '----------'],
+              extro: ['----------', 'END OF MESSAGE'],
+            },
+            callback: () => {},
+          });
         },
       });
     },
@@ -156,31 +184,74 @@ function updateLanternRound({ io, token, startTime, endTime, isActive, callback 
         return;
       }
 
-      dbLanternHack.updateLanternRound({
-        startTime,
-        endTime,
-        isActive,
-        callback: ({ error: roundError, data }) => {
-          if (roundError) {
-            callback({ error: roundError });
+      dbLanternHack.getLanternRound({
+        callback: ({ error: currentError, data: currentData }) => {
+          if (currentError) {
+            callback({ error: currentError });
 
             return;
           }
 
-          const next = data.isActive ? data.endTime : data.startTime;
 
-          const dataToSend = {
-            timeLeft: textTools.getDifference({ laterDate: next, firstDate: new Date() }),
-            round: data,
-          };
+          dbLanternHack.updateLanternRound({
+            startTime,
+            endTime,
+            isActive,
+            callback: ({ error: roundError, data }) => {
+              if (roundError) {
+                callback({ error: roundError });
 
-          io.emit('lanternRound', { data: dataToSend });
+                return;
+              }
 
-          callback({ data });
+              const next = data.isActive ? data.endTime : data.startTime;
 
-          if (!isActive) {
-            lanternStationManager.resetStations({ callback: () => {} });
-          }
+              const dataToSend = {
+                timeLeft: textTools.getDifference({ laterDate: next, firstDate: new Date() }),
+                round: data,
+              };
+
+              io.emit('lanternRound', { data: dataToSend });
+
+              callback({ data });
+
+              if (!isActive) {
+                lanternStationManager.resetStations({ callback: () => {} });
+              }
+
+              if (isActive !== currentData.isActive) {
+                if (isActive) {
+                  messenger.sendBroadcastMsg({
+                    io,
+                    token,
+                    message: {
+                      text: [
+                        'LANTERN ACTIVITY DETECTED',
+                        'LANTERN ONLINE',
+                      ],
+                      intro: ['ATTENTION! SIGNAL DETECTED', '----------'],
+                      extro: ['----------', 'END OF MESSAGE'],
+                    },
+                    callback: () => {},
+                  });
+                } else {
+                  messenger.sendBroadcastMsg({
+                    io,
+                    token,
+                    message: {
+                      text: [
+                        'DISCONNECTING',
+                        'LANTERN OFFLINE',
+                      ],
+                      intro: ['ATTENTION! SIGNAL LOST', '----------'],
+                      extro: ['----------', 'END OF MESSAGE'],
+                    },
+                    callback: () => {},
+                  });
+                }
+              }
+            },
+          });
         },
       });
     },
