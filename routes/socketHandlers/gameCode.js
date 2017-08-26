@@ -32,10 +32,11 @@ function handle(socket, io) {
     });
   });
 
-  socket.on('getGameCodes', ({ codeType, token }, callback = () => {}) => {
+  socket.on('getGameCodes', ({ codeType, token, userName }, callback = () => {}) => {
     gameCodeManager.getGameCodes({
       codeType,
       token,
+      userName,
       callback,
     });
   });

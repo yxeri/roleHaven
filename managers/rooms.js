@@ -336,7 +336,7 @@ function joinRooms({ rooms, socket, deviceId }) {
  * @param {Object} [params.socket] Socket.io socket
  * @param {Object} params.io Socket.io. Used if sockket is not set
  */
-function followRoom({ token, socket, io, room, callback, user: sentUser = {} }) {
+function followRoom({ token, socket, io, room, callback, user: sentUser }) {
   authenticator.isUserAllowed({
     token,
     matchNameTo: sentUser.userName,
@@ -352,7 +352,7 @@ function followRoom({ token, socket, io, room, callback, user: sentUser = {} }) 
         return;
       }
 
-      const user = data.user;
+      const user = sentUser || data.user;
 
       const roomCallback = ({ error: userError, data: userData }) => {
         if (userError) {
