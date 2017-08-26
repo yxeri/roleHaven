@@ -583,9 +583,10 @@ function unfollowRoom({ token, socket, io, isWhisperRoom, room, callback, user =
 
             if (allSocketIds.indexOf(user.socketId) > -1) {
               io.sockets.sockets[user.socketId].leave(roomToUnfollow.roomName);
-              io.to(user.userName + appConfig.whisperAppend).emit('unfollow', { data: dataToEmit });
             }
           }
+
+          io.to(userUnfollowing.userName + appConfig.whisperAppend).emit('unfollow', { data: dataToEmit });
 
           callback({ data: dataToEmit });
         },
