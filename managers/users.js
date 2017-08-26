@@ -570,26 +570,6 @@ function logout({ device, token, socket, callback }) {
 
                   roomManager.leaveSocketRooms({ socket });
                   callback({ data: { success: true } });
-
-                  dbUser.getUserPosition({
-                    user,
-                    userName: user.userName,
-                    callback: (positionData) => {
-                      if (positionData.error) {
-                        callback({ error: positionData.error });
-
-                        return;
-                      }
-
-                      socket.broadcast.to(dbConfig.rooms.public.roomName).emit('mapPositions', {
-                        data: {
-                          positions: [positionData.data.position],
-                          currentTime: new Date(),
-                          shouldRemove: true,
-                        },
-                      });
-                    },
-                  });
                 },
               });
             },
