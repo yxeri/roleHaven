@@ -64,6 +64,8 @@ function cleanRoomParameters({ room }) {
  */
 function authUserToRoom({ user, roomName, callback, password }) {
   const query = { roomName };
+  const update = { $addToSet: { accessUsers: user.userName } };
+  const options = { new: true };
 
   if (roomName.indexOf(appConfig.teamAppend) > -1) {
     query.team = user.team;
@@ -76,14 +78,12 @@ function authUserToRoom({ user, roomName, callback, password }) {
     ];
   }
 
-  Room.findOne(query).lean().exec((err, foundRoom) => {
+  Room.findOneAndUpdate(query, update, options).lean().exec((err, foundRoom) => {
     if (err) {
       callback({ error: new errorCreator.Database({ errorObject: err, name: 'authUserToRoom' }) });
 
       return;
-    }
-
-    if (!foundRoom) {
+    } else if (!foundRoom) {
       callback({ data: { room: { roomName }, isAllowed: false } });
 
       return;
