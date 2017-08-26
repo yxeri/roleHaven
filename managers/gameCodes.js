@@ -56,11 +56,13 @@ function createGameCode({ owner, codeType, token, callback }) {
  * Get game codes
  * @param {string} params.codeType Code type
  * @param {string} params.token jwt
+ * @param {string} [params.userName] Name of the user to retrieve codes for
  * @param {Function} params.callback Callback
  */
-function getGameCodes({ token, callback }) {
+function getGameCodes({ token, userName, callback }) {
   authenticator.isUserAllowed({
     token,
+    matchNameTo: userName,
     commandName: dbConfig.apiCommands.GetGameCode.name,
     callback: ({ error, data }) => {
       if (error) {
