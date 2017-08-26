@@ -63,9 +63,11 @@ function addCreatorAlias({ alias, userName, callback, token }) {
  * Create and add alias to user
  * @param {Object} [params.user] User that will get a new alias. Will default to current user
  * @param {string} params.alias Alias to add
+ * @param {Object} [params.socket] Socket io
+ * @param {Object} [params.io] Socket io. Will be used if socket is not set
  * @param {Function} params.callback Callback
  */
-function createAlias({ token, alias, callback, user = {} }) {
+function createAlias({ token, socket, io, alias, callback, user = {} }) {
   const newAlias = alias.toLowerCase();
 
   authenticator.isUserAllowed({
@@ -116,6 +118,19 @@ function createAlias({ token, alias, callback, user = {} }) {
               }
 
               callback({ data: { alias: newAlias } });
+
+              if (socket) {
+                socket.join(newAlias + appConfig.whisperAppend);
+                socket.broadcast.emit('user', { data: { user: { userName: newAlias } } });
+              } else {
+                const allSocketIds = Object.keys(io.sockets.sockets);
+
+                if (allSocketIds.indexOf(user.socketId) > -1) {
+                  io.sockets.sockets[user.socketId].join(newAlias + appConfig.whisperAppend);
+                }
+
+                io.emit('user', { data: { user: { userName: newAlias } } });
+              }
             },
           });
         },
