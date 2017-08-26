@@ -36,6 +36,8 @@ const chatHistorySchema = new mongoose.Schema({
         longitude: Number,
         latitude: Number,
       },
+      intro: [String],
+      extro: [String],
       image: {
         imageName: String,
         fileName: String,
