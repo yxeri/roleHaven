@@ -528,7 +528,8 @@ function getTeamUsers({ user, callback }) {
  * @param {Function} params.callback Callback
  */
 function getAllUserPositions({ user, callback }) {
-  const query = { visibility: { $lte: user.accessLevel }, banned: false, verified: true };
+  const accessLevel = user.accessLevel > dbConfig.AccessLevels.BASIC ? user.accessLevel : dbConfig.AccessLevels.BASIC;
+  const query = { visibility: { $lte: accessLevel }, banned: false, verified: true };
   const sort = { userName: 1 };
   const filter = { _id: 0, userName: 1 };
 
