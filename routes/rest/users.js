@@ -871,6 +871,7 @@ function handle(io) {
     }
 
     aliasManager.createAlias({
+      io,
       token: request.headers.authorization,
       alias: request.body.data.alias,
       user: { userName: request.params.userName },
