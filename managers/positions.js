@@ -203,7 +203,7 @@ function updatePosition({ position, token, socket, io, callback }) {
       const newPosition = position;
 
       if (newPosition.markerType === 'ping' && newPosition.description.length > 0) {
-        newPosition.description = [newPosition.description[0].slice(0, 20)];
+        newPosition.description = [newPosition.description[0].slice(0, 21)];
       }
 
       newPosition.owner = user.userName;
