@@ -543,7 +543,7 @@ function getAllUserPositions({ user, callback }) {
     const userNames = users.map(userObj => userObj.userName);
 
     positionConnector.getPositions({
-      userNames,
+      positionNames: userNames,
       callback: ({ error, data }) => {
         if (error) {
           callback({ error });
