@@ -467,6 +467,7 @@ function handle(io) {
    */
   router.get('/', (request, response) => {
     userManager.listUsers({
+      includeInactive: true,
       token: request.headers.authorization,
       callback: ({ error, data }) => {
         if (error) {

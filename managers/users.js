@@ -329,15 +329,17 @@ function changePassword({ key, password, callback }) {
  * @param {Function} params.callback Callback
  */
 function sendPasswordReset({ mail, callback }) {
+  if (!textTools.isValidMail(mail)) {
+    callback({ error: new errorCreator.InvalidMail({}) });
+
+    return;
+  }
+
   dbUser.getUserByMail({
     mail,
     callback: ({ error: userError, data: userData }) => {
       if (userError) {
         callback({ error: userError });
-
-        return;
-      } else if (!textTools.isValidMail(mail)) {
-        callback({ error: new errorCreator.InvalidMail({}) });
 
         return;
       }
@@ -568,26 +570,6 @@ function logout({ device, token, socket, callback }) {
 
                   roomManager.leaveSocketRooms({ socket });
                   callback({ data: { success: true } });
-
-                  dbUser.getUserPosition({
-                    user,
-                    userName: user.userName,
-                    callback: (positionData) => {
-                      if (positionData.error) {
-                        callback({ error: positionData.error });
-
-                        return;
-                      }
-
-                      socket.broadcast.to(dbConfig.rooms.public.roomName).emit('mapPositions', {
-                        data: {
-                          positions: [positionData.data.position],
-                          currentTime: new Date(),
-                          shouldRemove: true,
-                        },
-                      });
-                    },
-                  });
                 },
               });
             },

@@ -57,9 +57,10 @@ function createGameCode({ owner, codeType, token, callback }) {
  * @param {string} params.codeType Code type
  * @param {string} params.token jwt
  * @param {string} [params.userName] Name of the user to retrieve codes for
+ * @param {string} [params.codeType] Type of codes to retrieve
  * @param {Function} params.callback Callback
  */
-function getGameCodes({ token, userName, callback }) {
+function getGameCodes({ token, userName, codeType, callback }) {
   authenticator.isUserAllowed({
     token,
     matchNameTo: userName,
@@ -80,7 +81,11 @@ function getGameCodes({ token, userName, callback }) {
             return;
           }
 
-          callback({ data: gameCodeData });
+          const dataToEmit = {
+            gameCodes: codeType ? gameCodeData.gameCodes.filter(gameCode => gameCode.codeType === codeType) : gameCodeData.gameCodes,
+          };
+
+          callback({ data: dataToEmit });
         },
       });
     },
