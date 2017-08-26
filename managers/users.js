@@ -329,15 +329,17 @@ function changePassword({ key, password, callback }) {
  * @param {Function} params.callback Callback
  */
 function sendPasswordReset({ mail, callback }) {
+  if (!textTools.isValidMail(mail)) {
+    callback({ error: new errorCreator.InvalidMail({}) });
+
+    return;
+  }
+
   dbUser.getUserByMail({
     mail,
     callback: ({ error: userError, data: userData }) => {
       if (userError) {
         callback({ error: userError });
-
-        return;
-      } else if (!textTools.isValidMail(mail)) {
-        callback({ error: new errorCreator.InvalidMail({}) });
 
         return;
       }
