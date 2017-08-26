@@ -235,6 +235,8 @@ function handle(socket, io) {
 
   socket.on('createAlias', ({ user, alias, token }, callback = () => {}) => {
     aliasManager.createAlias({
+      socket,
+      io,
       token,
       user,
       alias,
