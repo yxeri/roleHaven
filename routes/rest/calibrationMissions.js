@@ -109,11 +109,10 @@ function handle(io) {
       return;
     }
 
-    calibrationMissionsManager.cancelCalibrationMissionsById({
+    calibrationMissionsManager.removeCalibrationMissionsById({
       io,
       stationId: request.body.data.stationId,
       token: request.headers.authorization,
-      getInactive: true,
       callback: ({ error: calibrationError, data: calibrationData }) => {
         if (calibrationError) {
           restErrorChecker.checkAndSendError({ response, error: calibrationError, sentData: request.body.data });
