@@ -281,7 +281,7 @@ config.welcomeMessage = process.env.WELCOMEMESSAGE || config.welcomeMessage;
 /**
  * Secret key used with JSON Web Token
  */
-config.jsonKey = process.env.JSONKEY || undefined;
+config.jsonKey = process.env.JSONKEY || (config.mode === config.Modes.TEST ? 'TESTKEY' : undefined);
 
 /**
  * Secret key used with BBR events
