@@ -468,11 +468,10 @@ function getValidStations({ token, userName, callback }) {
 /**
  * Cancels all calibration missions based on station id
  * @param {string} params.token jwt token
- * @param {Object} params.io Socket.io
  * @param {number} params.stationId ID of the station
  * @param {Function} params.callback Callback
  */
-function cancelCalibrationMissionsById({ token, io, stationId, callback }) {
+function removeCalibrationMissionsById({ token, stationId, callback }) {
   authenticator.isUserAllowed({
     token,
     commandName: dbConfig.apiCommands.CancelCalibrationMission.name,
@@ -493,10 +492,8 @@ function cancelCalibrationMissionsById({ token, io, stationId, callback }) {
 
           missionData.missions.forEach((mission) => {
             if (stationId === mission.stationId) {
-              cancelActiveCalibrationMission({
-                io,
-                token,
-                owner: mission.owner,
+              dbCalibrationMission.removeMission({
+                mission,
                 callback: () => {},
               });
             }
@@ -514,4 +511,4 @@ exports.getActiveCalibrationMission = getActiveCalibrationMission;
 exports.completeActiveCalibrationMission = completeActiveCalibrationMission;
 exports.cancelActiveCalibrationMission = cancelActiveCalibrationMission;
 exports.getCalibrationMissions = getCalibrationMissions;
-exports.cancelCalibrationMissionsById = cancelCalibrationMissionsById;
+exports.removeCalibrationMissionsById = removeCalibrationMissionsById;
