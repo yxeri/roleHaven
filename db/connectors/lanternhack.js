@@ -673,6 +673,25 @@ function getTeams({ callback }) {
 }
 
 /**
+ * Delete station
+ * @param {number} params.stationId ID of station to delete
+ * @param {Function} params.callback Callback
+ */
+function deleteStation({ stationId, callback }) {
+  const query = { stationId };
+
+  Station.remove(query).lean().exec((error) => {
+    if (error) {
+      callback({ error });
+
+      return;
+    }
+
+    callback({ data: { success: true } });
+  });
+}
+
+/**
  * Delete team
  * @param {number} params.teamId ID of team to delete
  * @param {Function} params.callback Callback
@@ -807,3 +826,4 @@ exports.createfakePasswordContainer = createFakePasswordsContainer;
 exports.resetLanternStations = resetLanternStations;
 exports.deleteTeam = deleteTeam;
 exports.getLanternStats = getLanternStats;
+exports.deleteStation = deleteStation;
