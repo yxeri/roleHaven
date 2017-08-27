@@ -331,6 +331,10 @@ config.apiCommands = {
     name: 'GetLanternStations',
     accessLevel: config.AccessLevels.ANONYMOUS,
   },
+  DeleteLanternStation: config.apiCommands.DeleteLanternStation || {
+    name: 'DeleteLanternStation',
+    accessLevel: config.AccessLevels.LOWERADMIN,
+  },
   CreateLanternTeam: config.apiCommands.CreateLanternTeam || {
     name: 'CreateLanternTeam',
     accessLevel: config.AccessLevels.LOWERADMIN,

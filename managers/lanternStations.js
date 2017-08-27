@@ -195,8 +195,34 @@ function resetStations({ callback }) {
   });
 }
 
+/**
+ * Delete lantern station
+ * @param {string} params.token jwt
+ * @param {number} params.stationId Id of the station to delete
+ * @param {Function} params.callback Callback
+ */
+function deleteLanternStation({ token, stationId, callback }) {
+  authenticator.isUserAllowed({
+    token,
+    commandName: dbConfig.apiCommands.DeleteLanternStation.name,
+    callback: ({ error }) => {
+      if (error) {
+        callback({ error });
+
+        return;
+      }
+
+      dbLanternHack.deleteStation({
+        stationId,
+        callback,
+      });
+    },
+  });
+}
+
 exports.getLanternStations = getLanternStations;
 exports.createLanternStation = createLanternStation;
 exports.updateLanternStation = updateLanternStation;
 exports.getLanternStation = getLanternStation;
 exports.resetStations = resetStations;
+exports.deleteLanternStation = deleteLanternStation;

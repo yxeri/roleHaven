@@ -30,6 +30,48 @@ const router = new express.Router();
  */
 function handle(io) {
   /**
+   * @api {delete} /lanternTeams/:teamId Delete existing lantern station
+   * @apiVersion 6.0.0
+   * @apiName DeleteLanternStation
+   * @apiGroup LanternStations
+   *
+   * @apiHeader {String} Authorization Your JSON Web Token
+   *
+   * @apiDescription Delete existing lantern team
+   *
+   * @apiParam {number} teamId Team id
+   *
+   * @apiSuccess {Object} data
+   * @apiSuccessExample {json} Success-Response:
+   *   {
+   *    "data": {
+   *      "success": true
+   *    }
+   *  }
+   */
+  router.delete('/:stationId', (request, response) => {
+    if (!objectValidator.isValidData(request.params, { stationId: true })) {
+      restErrorChecker.checkAndSendError({ response, error: new errorCreator.InvalidData({ expected: '' }), sentData: request.body.data });
+
+      return;
+    }
+
+    lanternStationManager.deleteLanternStation({
+      token: request.headers.authorization,
+      stationId: request.params.stationId,
+      callback: ({ error, data }) => {
+        if (error) {
+          restErrorChecker.checkAndSendError({ response, error });
+
+          return;
+        }
+
+        response.json({ data });
+      },
+    });
+  });
+
+  /**
    * @api {get} /lanternStations Get lantern stations
    * @apiVersion 6.0.0
    * @apiName GetLanternStations
