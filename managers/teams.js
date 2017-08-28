@@ -149,7 +149,7 @@ function createTeam({ team, socket, io, callback, token }) {
 
         return;
       } else if (dbConfig.protectedNames.indexOf(team.teamName.toLowerCase()) > -1 || dbConfig.protectedNames.indexOf(team.shortName.toLowerCase()) > -1) {
-        callback({ error: new errorCreator.InvalidData({ expected: 'team name !== team' }) });
+        callback({ error: new errorCreator.AlreadyExists({ expected: 'team name !== team' }) });
 
         return;
       }
