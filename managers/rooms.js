@@ -107,8 +107,9 @@ function isRequiredRoom({ roomName, socketId, user }) {
   const isRequired = dbConfig.requiredRooms.indexOf(sentRoomName) > -1;
   const isSocketRoom = socketId && sentRoomName === socketId;
   const isWhisperRoom = sentRoomName === user.userName + appConfig.whisperAppend;
+  const isTeamRoom = user.team ? roomName === 'team' || roomName === user.team + appConfig.teamAppend : false;
 
-  return isAliasWhisperRoom || isRequired || isSocketRoom || isWhisperRoom;
+  return isAliasWhisperRoom || isRequired || isSocketRoom || isWhisperRoom || isTeamRoom;
 }
 
 /**
@@ -540,7 +541,7 @@ function unfollowRoom({ token, socket, io, isWhisperRoom, room, callback, user =
         callback({ error: new errorCreator.InvalidData({ expected: '{ room: { roomName } }' }) });
 
         return;
-      } else if (isRequiredRoom({ roomName: room.roomName, socketId: socket ? socket.id : '', user })) {
+      } else if (isRequiredRoom({ roomName: room.roomName, socketId: socket ? socket.id : '', user: data.user })) {
         callback({ error: new errorCreator.NotAllowed({ name: 'unfollow protected room' }) });
 
         return;
