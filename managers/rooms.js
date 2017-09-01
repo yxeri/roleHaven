@@ -430,7 +430,7 @@ function followRoom({ token, socket, io, room, callback, user: sentUser }) {
  */
 function leaveSocketRooms({ socket }) {
   Object.keys(socket.rooms).forEach((roomName) => {
-    if (roomName.indexOf(appConfig.deviceAppend) < 0 && roomName !== dbConfig.rooms.public.roomName) {
+    if (roomName.indexOf(appConfig.deviceAppend) === -1 && dbConfig.anonymousUser.rooms.indexOf(roomName) === -1) {
       socket.leave(roomName);
     }
   });

@@ -66,6 +66,10 @@ function handle(io) {
 
   io.on('connection', (socket) => {
     socket.join(databasePopulation.rooms.public.roomName);
+    socket.join(databasePopulation.rooms.bcast.roomName);
+    socket.join(databasePopulation.rooms.important.roomName);
+    socket.join(databasePopulation.rooms.news.roomName);
+    socket.join(databasePopulation.rooms.schedule.roomName);
 
     socket.emit('startup', {
       data: {

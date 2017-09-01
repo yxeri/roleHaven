@@ -595,11 +595,10 @@ function createGameUsers({ gameUsers = [] }) {
 
 /**
  * Get all game users
- * @param {number} params.stationId Station ID
  * @param {Function} params.callback Callback
  */
-function getGameUsers({ stationId, callback }) {
-  const query = { stationId };
+function getGameUsers({ callback }) {
+  const query = {};
   const filter = { _id: 0 };
 
   GameUser.find(query, filter).lean().exec((err, gameUsers = []) => {
