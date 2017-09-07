@@ -12,5 +12,10 @@ logs:
 	docker-compose logs
 clean:
 	docker-compose rm --all
+# Local exposed mongodb to run "npm test"
+# All mongo containers can be killed by the following command:
+# docker rm -f $(docker ps | grep mongo | awk '{print $1}')
+start-mongo:
+	docker run -d -p "27017:27017" mongo
 
-.PHONY: build node_modules rmi compose open logs
+.PHONY: build node_modules rmi compose open logs clean start-mongo
