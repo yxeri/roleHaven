@@ -1,7 +1,7 @@
 build: node_modules
 	docker build --pull -t rolehaven .
 node_modules:
-	docker run --rm -v "$(PWD):/usr/src/app" -w "/usr/src/app" node:7.1.0 npm install
+	docker run --rm -v "$(PWD):/usr/src/app" -w "/usr/src/app" node:7.10.1 npm install
 rmi:
 	docker rmi rolehaven
 compose:
