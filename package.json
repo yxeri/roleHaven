@@ -6,7 +6,7 @@
   "private": true,
   "scripts": {
     "start": "node bin/www",
-    "test": "MODE=test DEBUG=eslint:cli-engine ./node_modules/mocha/bin/mocha --recursive --timeout 5000 && eslint ./",
+    "test": "MODE=test ./node_modules/mocha/bin/mocha --recursive --timeout 5000 && DEBUG=eslint:cli-engine eslint ./",
     "nsp": "nsp check"
   },
   "repository": {
