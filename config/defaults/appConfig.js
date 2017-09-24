@@ -36,6 +36,7 @@ const verboseErrorEnv = textTools.convertToBoolean(process.env.VERBOSEERROR);
 const allowMessageImageEnv = textTools.convertToBoolean(process.env.ALLOWMESSAGEIMAGE);
 const bypassMailerEnv = textTools.convertToBoolean(process.env.BYPASSMAILER);
 const bypassExternalConnectionEnv = textTools.convertToBoolean(process.env.BYPASSEXTERNALCONNECTIONS);
+const userVerifyEnv = textTools.convertToBoolean(process.env.USERVERIFY);
 
 /**
  * Name of the system. Human-readable name that will be sent to clients, such as in the subject field of mail or page title
@@ -216,8 +217,15 @@ config.maxHistoryLines = process.env.MAXHISTORYLINES || config.maxHistoryLines |
 // Amount of messages sent at a time to client
 config.chunkLength = process.env.MAXCHUNK || config.chunkLength || 10;
 
-// Does the team have to be verified before being created?
+/**
+ * Does the team have to be verified before being used?
+ */
 config.teamVerify = typeof teamVerifyEnv !== 'undefined' ? teamVerifyEnv : config.teamVerify || false;
+
+/**
+ * Does the user have to be verified before being used?
+ */
+config.userVerify = typeof userVerifyEnv !== 'undefined' ? userVerifyEnv : config.userVerifyEnv || true;
 
 /**
  * Should the frontend force full screen on click?

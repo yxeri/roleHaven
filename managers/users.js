@@ -32,9 +32,9 @@ const deviceManager = require('../managers/devices');
 
 /**
  * Create a user and all other objects needed for it
- * @param {Object} params.user User to create
- * @param {string} params.origin Name of the caller origin. Allowed: "socket"
- * @param {Function} params.callback Callback
+ * @param {Object} params.user - User to create
+ * @param {string} params.origin - Name of the caller origin. Allowed: "socket"
+ * @param {Function} params.callback - Callback
  */
 function createUser({ token, user, callback, origin = '' }) {
   authenticator.isUserAllowed({
@@ -45,8 +45,8 @@ function createUser({ token, user, callback, origin = '' }) {
         callback({ error });
 
         return;
-      } else if (!objectValidator.isValidData({ user }, { user: { userName: true, registerDevice: true, password: true, mail: true } })) {
-        callback({ error: new errorCreator.InvalidData({ expected: '{ user: { userName, registerDevice, password, mail } }' }) });
+      } else if (!objectValidator.isValidData({ user }, { user: { userName: true, registerDevice: true, password: true } })) {
+        callback({ error: new errorCreator.InvalidData({ expected: '{ user: { userName, registerDevice, password } }' }) });
 
         return;
       } else if (!textTools.isAllowedFull(user.userName.toLowerCase())) {
@@ -65,25 +65,27 @@ function createUser({ token, user, callback, origin = '' }) {
         callback({ error: new errorCreator.InvalidCharacters({ name: `protected name ${user.userName}` }) });
 
         return;
-      } else if (!textTools.isValidMail(user.mail)) {
+      } else if (appConfig.userVerify && (!user.mail || !textTools.isValidMail(user.mail))) {
         callback({ error: new errorCreator.InvalidMail({}) });
 
         return;
       }
 
       const createUserFunc = () => {
-        const { userName, fullName, password, registerDevice, mail, banned, verified, accessLevel, visibility } = user;
+        const { userName, fullName, password, registerDevice, banned, accessLevel, visibility } = user;
         const lowerCaseUserName = userName.toLowerCase();
+        const mail = appConfig.userVerify ? user.mail.toLowerCase() : Date.now();
+        const verified = appConfig.userVerify ? user.verified : true;
 
         const newUser = {
-          userName: lowerCaseUserName,
           password,
           registerDevice,
-          mail: mail.toLowerCase(),
+          mail,
           banned,
           verified,
           accessLevel,
           visibility,
+          userName: lowerCaseUserName,
           registeredAt: new Date(),
           fullName: fullName || lowerCaseUserName,
           rooms: [
