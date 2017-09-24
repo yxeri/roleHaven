@@ -88,6 +88,7 @@ function handle(io) {
         yearModification: appConfig.yearModification,
         mode: appConfig.mode,
         welcomeMessage: appConfig.welcomeMessage,
+        requiresVerification: appConfig.userVerify,
       },
     });
 
