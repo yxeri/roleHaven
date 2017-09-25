@@ -37,6 +37,7 @@ const allowMessageImageEnv = textTools.convertToBoolean(process.env.ALLOWMESSAGE
 const bypassMailerEnv = textTools.convertToBoolean(process.env.BYPASSMAILER);
 const bypassExternalConnectionEnv = textTools.convertToBoolean(process.env.BYPASSEXTERNALCONNECTIONS);
 const userVerifyEnv = textTools.convertToBoolean(process.env.USERVERIFY);
+const showDevInfoEnv = textTools.convertToBoolean(process.env.SHOWDEVINFO);
 
 /**
  * Name of the system. Human-readable name that will be sent to clients, such as in the subject field of mail or page title
@@ -466,5 +467,7 @@ config.mailSender = `${process.env.MAILSENDER || config.mailSender || 'no_reply'
  * Participant-friendly event name
  */
 config.eventName = process.env.EVENTNAME || config.eventName || 'roleHaven larp';
+
+config.showDevInfo = typeof showDevInfoEnv !== 'undefined' ? showDevInfoEnv : config.showDevInfo || false;
 
 module.exports = config;
