@@ -35,6 +35,7 @@ const chatHandler = require('./socketHandlers/chat');
 const userHandler = require('./socketHandlers/user');
 const gameCodeHandler = require('./socketHandlers/gameCode');
 const docFileHandler = require('./socketHandlers/docFile');
+const forumHandler = require('./socketHandlers/forum');
 
 const router = new express.Router();
 
@@ -159,6 +160,7 @@ function handle(io) {
     // timedEventHandler.handle(socket, io);
     gameCodeHandler.handle(socket, io);
     docFileHandler.handle(socket, io);
+    forumHandler.handle(socket, io);
   });
 
   return router;

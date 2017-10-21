@@ -22,10 +22,11 @@ class NotAllowedError extends GeneralError.create {
    * @param {string} [params.name] Description of what the user tried to access
    * @param {Object} [params.errorObject] Error object
    */
-  constructor({ name, errorObject, extraData }) {
+  constructor({ name, errorObject, extraData, verbose }) {
     super({
       errorObject,
       extraData,
+      verbose,
       type: GeneralError.ErrorTypes.NOTALLOWED,
       text: [
         'Insufficient permissions',

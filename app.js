@@ -26,7 +26,6 @@ const appConfig = require('./config/defaults/config').app;
 const databasePopulation = require('./config/defaults/config').databasePopulation;
 const dbRoom = require('./db/connectors/room');
 const dbCommand = require('./db/connectors/command');
-const winston = require('winston');
 const lanternHacking = require('./managers/lanternHacking');
 
 const app = express();
@@ -67,8 +66,8 @@ lanternHacking.startResetInterval({ io: app.io });
  * Catches all exceptions and keeps the server running
  */
 process.on('uncaughtException', (err) => {
-  winston.error('Caught exception', err);
-  winston.error(err.stack);
+  console.error('Caught exception', err);
+  console.error(err.stack);
 });
 
 module.exports = app;

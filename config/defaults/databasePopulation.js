@@ -17,17 +17,15 @@
 'use strict';
 
 const path = require('path');
-const winston = require('winston');
 
 let config = {};
 
 try {
   config = require(path.normalize(`${__dirname}/../../../../config/databasePopulation`)).config; // eslint-disable-line import/no-unresolved, global-require, import/no-dynamic-require
 } catch (err) {
-  winston.info('Did not find modified dbConfig. Using defaults');
+  console.log('Did not find modified dbConfig. Using defaults');
 }
 
-// To avoid undefined if rooms and commands haven't been changed
 config.rooms = config.rooms || {};
 config.commands = config.commands || {};
 config.apiCommands = config.apiCommands || {};
@@ -524,6 +522,27 @@ config.apiCommands = {
   VerifyUser: config.apiCommands.VerifyUser || {
     name: 'VerifyUser',
     accessLevel: config.AccessLevels.LOWERADMIN,
+  },
+  CreateForum: config.apiCommands.CreateForum || {
+    name: 'CreateForum',
+    accessLevel: config.AccessLevels.ADMIN,
+  },
+  CreateForumPost: config.apiCommands.CreateForumPost || {
+    name: 'CreateForumPost',
+    accessLevel: config.AccessLevels.BASIC,
+  },
+  CreateForumThread: config.apiCommands.CreateForumThread || {
+    name: 'CreateForumThread',
+    accessLevel: config.AccessLevels.BASIC,
+  },
+  UpdateForumPost: config.apiCommands.UpdateForumPost || {
+    name: 'UpdateForumPost',
+    accessLevel: config.AccessLevels.ADMIN,
+    selfAccessLevel: config.AccessLevels.BASIC,
+  },
+  GetForum: config.apiCommands.GetForum || {
+    name: 'GetForum',
+    accessLevel: config.AccessLevels.ANONYMOUS,
   },
 };
 

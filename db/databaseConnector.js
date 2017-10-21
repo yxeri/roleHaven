@@ -20,18 +20,17 @@ const mongoose = require('mongoose');
 const appConfig = require('../config/defaults/config').app;
 const objectValidator = require('./../utils/objectValidator');
 const errorCreator = require('../objects/error/errorCreator');
-const winston = require('winston');
 
 const dbPath = `mongodb://${appConfig.dbHost}:${appConfig.dbPort}/${appConfig.dbName}`;
 
 mongoose.connect(dbPath, { useMongoClient: true }, (err) => {
   if (err) {
-    winston.emerg('Failed to connect to the database');
+    console.error('Failed to connect to the database');
 
     return;
   }
 
-  winston.info('Connection established to database');
+  console.log('Connection established to database');
 });
 
 /**

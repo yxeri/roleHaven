@@ -18,14 +18,13 @@
 
 const path = require('path');
 const textTools = require('../../utils/textTools');
-const winston = require('winston');
 
 let config = {};
 
 try {
   config = require(path.normalize(`${__dirname}/../../../../config/appConfig`)).config; // eslint-disable-line import/no-unresolved, global-require, import/no-dynamic-require
 } catch (err) {
-  winston.info('Did not find modified appConfig. Using defaults');
+  console.log('Did not find modified appConfig. Using defaults');
 }
 
 const forceFullscreenEnv = textTools.convertToBoolean(process.env.FORCEFULLSCREEN);
@@ -114,7 +113,7 @@ config.Modes = {
 /**
  * Server mode.
  */
-config.mode = process.env.MODE || config.mode || config.Modes.PROD;
+config.mode = process.env.MODE || config.mode || config.Modes.DEV;
 
 /**
  * Allowed log levels
@@ -188,6 +187,7 @@ config.routes = config.routes || [
   { sitePath: '/api/devices', filePath: `${__dirname}/../../routes/rest/devices` },
   { sitePath: '/api/simpleMsgs', filePath: `${__dirname}/../../routes/rest/simpleMsgs` },
   { sitePath: '/api/mailEvents', filePath: `${__dirname}/../../routes/rest/mailEvents` },
+  { sitePath: '/api/forums', filePath: `${__dirname}/../../routes/rest/forums` },
   { sitePath: '*', filePath: `${__dirname}/../../routes/error.js` },
 ];
 
@@ -226,7 +226,7 @@ config.teamVerify = typeof teamVerifyEnv !== 'undefined' ? teamVerifyEnv : confi
 /**
  * Does the user have to be verified before being used?
  */
-config.userVerify = typeof userVerifyEnv !== 'undefined' ? userVerifyEnv : config.userVerifyEnv || true;
+config.userVerify = typeof userVerifyEnv !== 'undefined' ? userVerifyEnv : config.userVerify || true;
 
 /**
  * Should the frontend force full screen on click?
@@ -330,7 +330,7 @@ config.signalBlockBufferArea = process.env.SIGNALBLOCKBUFFERAREA || config.signa
 /**
  * Maximum amount of characters in a document
  */
-config.docFileMaxLength = process.env.DOCFILEMAXLENGTH || config.docFileMaxLength || 6000;
+config.docFileMaxLength = process.env.DOCFILEMAXLENGTH || config.docFileMaxLength || 3500;
 
 /**
  * Maximum amount of characters in a document title
@@ -345,7 +345,7 @@ config.docFileIdMaxLength = process.env.DOCFILEIDMAXLENGTH || config.docFileIdMa
 /**
  * Maximum amount of characters in a message
  */
-config.messageMaxLength = process.env.MESSAGEMAXLENGTH || config.messageMaxLength || 6000;
+config.messageMaxLength = process.env.MESSAGEMAXLENGTH || config.messageMaxLength || 2500;
 
 /**
  * Maximum amount of characters in a broadcast
@@ -370,7 +370,7 @@ config.shortTeamMaxLength = process.env.SHORTEAMMAXLENGTH || config.shortTeamMax
 /**
  * Maximum amount of characters in a password
  */
-config.passwordMaxLength = process.env.PASSWORDMAXLENGTH || config.passwordMaxLength || 100;
+config.passwordMaxLength = process.env.PASSWORDMAXLENGTH || config.passwordMaxLength || 80;
 
 /**
  * Maximum amount of alphanumeric in a device id
@@ -469,5 +469,15 @@ config.mailSender = `${process.env.MAILSENDER || config.mailSender || 'no_reply'
 config.eventName = process.env.EVENTNAME || config.eventName || 'roleHaven larp';
 
 config.showDevInfo = typeof showDevInfoEnv !== 'undefined' ? showDevInfoEnv : config.showDevInfo || false;
+
+/**
+ * Maximum amount of characters in a forum title
+ */
+config.forumTitleMaxLength = process.env.FORUMTITLEMAXLENGTH || config.forumTitleMaxLength || 20;
+
+/**
+ * Maximum amount of characters in a forum post
+ */
+config.forumPostMaxLength = process.env.FORUMPOSTMAXLENGTH || config.forumPostMaxLength || 2500;
 
 module.exports = config;

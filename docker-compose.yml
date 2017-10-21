@@ -1,7 +1,6 @@
 db:
     image: mongo
-
-roleterminal:
+rolehaven:
     build: .
     environment:
         - DBHOST=db
