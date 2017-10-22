@@ -335,12 +335,12 @@ config.docFileMaxLength = process.env.DOCFILEMAXLENGTH || config.docFileMaxLengt
 /**
  * Maximum amount of characters in a document title
  */
-config.docFileTitleMaxLength = process.env.DOCFILETITLEMAXLENGTH || config.docFileTitleMaxLength || 100;
+config.docFileTitleMaxLength = process.env.DOCFILETITLEMAXLENGTH || config.docFileTitleMaxLength || 40;
 
 /**
  * Maximum amount of alphanumeric in a document id
  */
-config.docFileIdMaxLength = process.env.DOCFILEIDMAXLENGTH || config.docFileIdMaxLength || 20;
+config.docFileIdMaxLength = process.env.DOCFILEIDMAXLENGTH || config.docFileIdMaxLength || 10;
 
 /**
  * Maximum amount of characters in a message
@@ -355,12 +355,12 @@ config.broadcastMaxLength = process.env.BROADCASTMAXLENGTH || config.broadcastMa
 /**
  * Maximum amount of characters in a user name
  */
-config.userNameMaxLength = process.env.USERNAMEMAXLENGTH || config.userNameMaxLength || 20;
+config.userNameMaxLength = process.env.USERNAMEMAXLENGTH || config.userNameMaxLength || 10;
 
 /**
  * Maximum amount of characters in a team name
  */
-config.teamNameMaxLength = process.env.TEAMNAMEMAXLENGTH || config.teamNameMaxLength || 20;
+config.teamNameMaxLength = process.env.TEAMNAMEMAXLENGTH || config.teamNameMaxLength || 10;
 
 /**
  * Maximum amount of characters in a team acronym
@@ -385,7 +385,7 @@ config.deviceAliasMaxLength = process.env.DEVICEALIASMAXLENGTH || config.deviceA
 /**
  * Maximum amount of characters in a room name
  */
-config.roomNameMaxLength = process.env.ROOMNAMEMAXLENGTH || config.roomNameMaxLength || 20;
+config.roomNameMaxLength = process.env.ROOMNAMEMAXLENGTH || config.roomNameMaxLength || 10;
 
 /**
  * Maximum amount of characters in a whisper room name
