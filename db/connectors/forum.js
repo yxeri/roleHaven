@@ -74,11 +74,17 @@ function modifyForumParameters({ forumItem, type = '' }) {
   const modifiedForumItem = forumItem;
 
   if (type === 'post') {
-    modifiedForumItem.postId = modifiedForumItem._id; // eslint-disable-line no-underscore-dangle
+    modifiedForumItem.postId = forumItem._id; // eslint-disable-line no-underscore-dangle
   } else if (type === 'thread') {
-    modifiedForumItem.threadId = modifiedForumItem._id; // eslint-disable-line no-underscore-dangle
+    modifiedForumItem.threadId = forumItem._id; // eslint-disable-line no-underscore-dangle
   } else {
-    modifiedForumItem.forumId = modifiedForumItem._id; // eslint-disable-line no-underscore-dangle
+    modifiedForumItem.forumId = forumItem._id; // eslint-disable-line no-underscore-dangle
+  }
+
+  if (forumItem.ownerAliasId) {
+    modifiedForumItem.ownerId = forumItem.ownerAliasId;
+  } else {
+    modifiedForumItem.ownerAliasId = forumItem.ownerId;
   }
 
   return modifiedForumItem;
@@ -503,6 +509,8 @@ function updateForumThread({ thread, callback }) {
   if (thread.title) { $set.title = thread.title; }
 
   if (thread.text) { $set.text = thread.text; }
+
+  update.$set = $set;
 
   ForumThread.findOneAndUpdate(query, update, options).lean().exec((error, updatedThread) => {
     if (error) {
