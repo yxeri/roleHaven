@@ -473,7 +473,7 @@ config.showDevInfo = typeof showDevInfoEnv !== 'undefined' ? showDevInfoEnv : co
 /**
  * Maximum amount of characters in a forum title
  */
-config.forumTitleMaxLength = process.env.FORUMTITLEMAXLENGTH || config.forumTitleMaxLength || 20;
+config.forumTitleMaxLength = process.env.FORUMTITLEMAXLENGTH || config.forumTitleMaxLength || 50;
 
 /**
  * Maximum amount of characters in a forum post
