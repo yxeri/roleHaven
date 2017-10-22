@@ -18,17 +18,6 @@ const mongoose = require('mongoose');
 const errorCreator = require('../../objects/error/errorCreator');
 const dbConnector = require('../databaseConnector');
 
-/**
- * First: threadId, isThreadStarter
- * Level 1: threadId
- * Level 2: threadId. postId
- */
-
-/**
- * @typedef ForumPost
- * @property isThreadStarter - Is the post the start of the thread?
- */
-
 const forumSchema = new mongoose.Schema({
   timeCreated: Date,
   lastUpdated: Date,
@@ -101,7 +90,6 @@ function modifyForumParameters({ forumItem, type = '' }) {
  * @param {Object} params.post - Forum post to save
  * @param {string} params.post.threadId - ID of the thread to attach the post to
  * @param {string} [params.post.postId] - ID of the post
- * @param {boolean} [params.post.isThreadStarter] - Is this the first post in the thread?
  * @param {Function} params.callback - Callback
  */
 function createForumPost({ post, callback }) {
@@ -636,9 +624,10 @@ function removeForumPosts({ postIds, fullRemoval, callback }) {
         }
 
         if (fullRemoval) {
+          // TODO Should not filter on thread starter. Flag no longer exists
           removeForumThreads({
             fullRemoval: true,
-            threadIds: forumPostsData.data.posts.data.forumPosts.filter(forumPost => forumPost.isThreadStarter).map(forumPost => forumPost.threadId),
+            // threadIds: forumPostsData.data.posts.data.forumPosts.filter(forumPost => forumPost.isThreadStarter).map(forumPost => forumPost.threadId),
             callback,
           });
 
