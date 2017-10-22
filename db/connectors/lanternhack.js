@@ -19,7 +19,6 @@
 const mongoose = require('mongoose');
 const errorCreator = require('../../objects/error/errorCreator');
 const databaseConnector = require('../databaseConnector');
-const winston = require('winston');
 const appConfig = require('../../config/defaults/config').app;
 
 // Access levels: Lowest / Lower / Middle / Higher / Highest / God
@@ -781,22 +780,22 @@ function getLanternStats({ callback }) {
 
 createFirstRound(({ error, data }) => {
   if (error) {
-    winston.log('Failed to create first round');
+    console.log('Failed to create first round');
 
     return;
   }
 
-  winston.log('Created ', data);
+  console.log('Created ', data);
 });
 
 createFakePasswordsContainer(({ error, data }) => {
   if (error) {
-    winston.log('Failed to create fake password container');
+    console.log('Failed to create fake password container');
 
     return;
   }
 
-  winston.log('Created ', data);
+  console.log('Created ', data);
 });
 
 exports.createGameUsers = createGameUsers;

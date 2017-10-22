@@ -16,7 +16,6 @@
 
 'use strict';
 
-const winston = require('winston');
 const appConfig = require('../config/defaults/config').app;
 
 /**
@@ -35,7 +34,7 @@ function checkKeys(data, expected, options) {
 
     if ((!data[expectedKey] || data[expectedKey] === null) && typeof data[expectedKey] !== 'boolean') {
       if (options.verbose || appConfig.verboseError) {
-        winston.error('Validation error', `Key missing: ${expectedKey}`);
+        console.error('Validation error', `Key missing: ${expectedKey}`);
       }
 
       return false;
@@ -65,7 +64,7 @@ function isValidData(data, expected, options = {}) {
   validationOptions.verbose = typeof validationOptions.verbose === 'undefined' ? true : validationOptions.verbose;
 
   if ((!data || data === null) || (!expected || expected === null)) {
-    if (validationOptions.verbose || appConfig.verboseError) { winston.error('Validation error', 'Data and expected structure have to be set'); }
+    if (validationOptions.verbose || appConfig.verboseError) { console.error('Validation error', 'Data and expected structure have to be set'); }
 
     return false;
   }
@@ -73,7 +72,7 @@ function isValidData(data, expected, options = {}) {
   const isValid = checkKeys(data, expected, validationOptions);
 
   if (!isValid && (validationOptions.verbose || appConfig.verboseError)) {
-    winston.error('Validation error', `Expected: ${JSON.stringify(expected)}`);
+    console.error('Validation error', `Expected: ${JSON.stringify(expected)}`);
   }
 
   return isValid;

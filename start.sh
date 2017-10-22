@@ -13,13 +13,17 @@ cp -r ./private/fonts/* ./public/fonts/
 
 cp -r ./private/sounds/* ./public/sounds
 
+serverMode=${#MODE}
+
 # Transpiles code to es5
 for file in ./private/scripts/*
 do
   ./node_modules/browserify/bin/cmd.js "$file" -t [ babelify --presets [ es2015 ] --compact='false' ] -o ./public/scripts/$(basename "$file")
 
-  # Minifies transpiled code
-  ./node_modules/uglifyjs/bin/uglifyjs --compress --mangle --output ./public/scripts/$(basename "$file") -- ./public/scripts/$(basename "$file")
+    if (("$serverMode" != "dev")); then
+      # Minifies transpiled code
+      ./node_modules/uglify-js/bin/uglifyjs --compress --mangle --output ./public/scripts/$(basename "$file") -- ./public/scripts/$(basename "$file")
+    fi
 done
 
 # Compiles and compresses sass to css and moves them to public

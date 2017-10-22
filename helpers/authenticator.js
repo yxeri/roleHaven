@@ -70,7 +70,7 @@ function isUserAllowed({ commandName, token, matchNameTo = '', callback = () => 
 
   if (!token) {
     if (commandUsed.accessLevel > anonUser.accessLevel) {
-      callback({ error: new errorCreator.NotAllowed({ name: commandName }) });
+      callback({ error: new errorCreator.NotAllowed({ name: commandName, verbose: false }) });
 
       return;
     }

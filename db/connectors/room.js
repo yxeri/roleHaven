@@ -22,7 +22,6 @@ const chatHistoryConnector = require('./chatHistory');
 const dbUser = require('./user');
 const errorCreator = require('../../objects/error/errorCreator');
 const dbConfig = require('../../config/defaults/config').databasePopulation;
-const winston = require('winston');
 const appConfig = require('../../config/defaults/config').app;
 
 const roomSchema = new mongoose.Schema({
@@ -346,7 +345,7 @@ function matchPartialRoom({ partialName, user, callback }) {
  * @param {Function} params.callback Callback
  */
 function populateDbRooms({ rooms, callback = () => {} }) {
-  winston.info('Creating default rooms, if needed');
+  console.log('Creating default rooms, if needed');
 
   /**
    * Adds a room to database. Recursive
