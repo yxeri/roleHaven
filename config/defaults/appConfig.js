@@ -420,7 +420,7 @@ config.allowMessageImage = typeof allowMessageImageEnv !== 'undefined' ? allowMe
 /**
  * Default amount that is added when a wallet is created
  */
-config.defaultWalletAmount = process.env.DEFAULTWALLETAMOUNT || config.defaultWalletAmount || 3;
+config.defaultWalletAmount = process.env.DEFAULTWALLETAMOUNT || config.defaultWalletAmount || 10;
 
 config.calibrationRewardAmount = process.env.CALIBRATIONREWARDAMOUNT || config.calibrationRewardAmount || 5;
 
