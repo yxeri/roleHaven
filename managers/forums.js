@@ -33,7 +33,7 @@ const authenticator = require('../helpers/authenticator');
 function createThread({ thread, callback, token, io, socket }) {
   authenticator.isUserAllowed({
     token,
-    commandName: dbConfig.apiCommands.CreateForum.name,
+    commandName: dbConfig.apiCommands.CreateForumThread.name,
     callback: ({ error, data }) => {
       if (error) {
         callback({ error });
@@ -50,37 +50,35 @@ function createThread({ thread, callback, token, io, socket }) {
       const saveCallback = () => {
         dbForum.createThread({
           thread: forumThreadToCreate,
-          callback: (postData) => {
-            if (postData.error) {
-              callback({ error: postData.error });
+          callback: (threadData) => {
+            if (threadData.error) {
+              callback({ error: threadData.error });
 
               return;
             }
 
-            const payload = { data: { thread: postData.data.thread } };
+            const createdThread = threadData.data.thread;
 
-            callback(payload);
+            const payload = { data: { threads: [createdThread] } };
+
+            callback({ data: { thread: createdThread } });
 
             if (socket) {
-              socket.broadcast.emit('forumThread', payload);
+              socket.broadcast.emit('forumThreads', payload);
             } else {
-              io.emit('forumThread', payload);
+              io.emit('forumThreads', payload);
             }
           },
         });
       };
 
-      if (thread.ownerAliasId) {
-        if (authUser.aliases.includes(thread.ownerAliasId)) {
-          callback({ error: new errorCreator.NotAllowed({ name: `alias ${thread.ownerAliasId}` }) });
+      if (forumThreadToCreate.ownerAliasId && !authUser.aliases.includes(forumThreadToCreate.ownerAliasId)) {
+        callback({ error: new errorCreator.NotAllowed({ name: `alias ${thread.ownerAliasId}` }) });
 
-          return;
-        }
-
-        saveCallback();
-      } else {
-        saveCallback();
+        return;
       }
+
+      saveCallback();
     },
   });
 }
@@ -121,30 +119,39 @@ function createPost({ post, callback, token, io, socket }) {
               return;
             }
 
-            const payload = { data: { post: postData.data.post } };
+            const createdPost = postData.data.post;
 
-            callback(payload);
+            dbForum.updateForumThread({
+              thread: { threadId: createdPost.threadId },
+              callback: (forumData) => {
+                if (forumData.error) {
+                  callback({ error: forumData.error });
 
-            if (socket) {
-              socket.broadcast.emit('post', payload);
-            } else {
-              io.emit('post', payload);
-            }
+                  return;
+                }
+
+                callback({ data: { post: createdPost } });
+
+                const payload = { data: { posts: [createdPost] } };
+
+                if (socket) {
+                  socket.broadcast.emit('forumPosts', payload);
+                } else {
+                  io.emit('forumPosts', payload);
+                }
+              },
+            });
           },
         });
       };
 
-      if (post.ownerAliasId) {
-        if (authUser.aliases.includes(post.ownerAliasId)) {
-          callback({ error: new errorCreator.NotAllowed({ name: `alias ${post.ownerAliasId}` }) });
+      if (forumPostToCreate.ownerAliasId && !authUser.aliases.includes(forumPostToCreate.ownerAliasId)) {
+        callback({ error: new errorCreator.NotAllowed({ name: `alias ${forumPostToCreate.ownerAliasId}` }) });
 
-          return;
-        }
-
-        saveCallback();
-      } else {
-        saveCallback();
+        return;
       }
+
+      saveCallback();
     },
   });
 }
@@ -186,30 +193,28 @@ function createForum({ forum, callback, token, io, socket }) {
               return;
             }
 
-            const payload = { data: { forum: forumData.data.forum } };
+            const createdForum = forumData.data.post;
 
-            callback(payload);
+            callback({ data: { forum: createdForum } });
+
+            const payload = { data: { forums: [createdForum] } };
 
             if (socket) {
-              socket.broadcast.emit('forum', payload);
+              socket.broadcast.emit('forums', payload);
             } else {
-              io.emit('forum', payload);
+              io.emit('forums', payload);
             }
           },
         });
       };
 
-      if (forum.ownerAliasId) {
-        if (authUser.aliases.includes(forum.ownerAliasId)) {
-          callback({ error: new errorCreator.NotAllowed({ name: `alias ${forum.ownerAliasId}` }) });
+      if (forumToCreate.ownerAliasId && !authUser.aliases.includes(forumToCreate.ownerAliasId)) {
+        callback({ error: new errorCreator.NotAllowed({ name: `alias ${forumToCreate.ownerAliasId}` }) });
 
-          return;
-        }
-
-        saveCallback();
-      } else {
-        saveCallback();
+        return;
       }
+
+      saveCallback();
     },
   });
 }
@@ -265,14 +270,14 @@ function updatePost({ post, postId, callback, token, io, socket, userId }) {
                 return;
               }
 
-              const payload = { data: { post: updateData.data.post } };
+              callback({ data: { post: updateData.data.post } });
 
-              callback(payload);
+              const payload = { data: { posts: [updateData.data.post] } };
 
               if (socket) {
-                socket.broadcast.emit('forumPost', payload);
+                socket.broadcast.emit('forumPosts', payload);
               } else {
-                io.emit('forumPost', payload);
+                io.emit('forumPosts', payload);
               }
             },
           });
@@ -545,7 +550,8 @@ function getCompleteForums({ callback, token }) {
                 return;
               }
 
-              const filteredThreads = threadsData.data.threads.filter(thread => thread.isPublic || (thread.userIds.concat([thread.ownerId]).includes(authId)));
+              const filteredThreads = threadsData.data.threads
+                .filter(thread => thread.isPublic || (thread.userIds.concat([thread.ownerId]).includes(authId)));
 
               dbForum.getForumPostsByThreads({
                 threadIds: filteredThreads.map(thread => thread.threadId),
@@ -557,7 +563,6 @@ function getCompleteForums({ callback, token }) {
                   }
 
                   const filteredForumPosts = postsData.data.posts.filter(post => post.isPublic || post.userIds.concat([post.ownerId]).includes(authId));
-
                   const topPosts = [];
                   const subPosts = filteredForumPosts.filter((post) => {
                     if (!post.parentPostId) {
