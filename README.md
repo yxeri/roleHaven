@@ -27,6 +27,7 @@ roleTerminal is part of an initiative to create a platform to be used in-game du
 * Maria Rodén
 * Joachim
 * Joakim Sandström
+* Erik Jonsson
 * Karl Dahlgren
 
 * Ockulta Medborgarbyrån http://www.ockultamedborgarbyran.com
