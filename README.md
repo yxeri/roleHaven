@@ -4,7 +4,7 @@ roleTerminal is part of an initiative to create a platform to be used in-game du
 
 ## Project owner
 
-* Aleksandar Jankovic - [Github](https://github.com/yxeri) [Twitter](https://twitter.com/yxeri)
+* Aleksandar Jankovic - [Github](https://github.com/yxeri)
 
 ## Development contributors
 
@@ -13,7 +13,7 @@ roleTerminal is part of an initiative to create a platform to be used in-game du
 * Johnathan Browall
 * Thomas Erdelyi
 
-## Other contributors
+## Supporters
 
 * Varg Johan
 * Mathias Abrahamsson
@@ -24,14 +24,16 @@ roleTerminal is part of an initiative to create a platform to be used in-game du
 * H. Merkelbach
 * Tobias W.
 * William Von Hofsten
+* Kenny Svensson
 * Maria Rodén
 * Joachim
-* Joakim Sandström
 * Erik Jonsson
 * tz
 * Karl Dahlgren
 
-* Ockulta Medborgarbyrån http://www.ockultamedborgarbyran.com
-* Sommarland http://beratta.org/sommarland/
-* Vinterland http://beratta.org/vinterland/
-* Blodsband Reloaded https://www.bbreloaded.se
+## Special thanks to
+
+* [Ockulta Medborgarbyrån](http://www.ockultamedborgarbyran.com)
+* [Sommarland](http://beratta.org/sommarland/)
+* [Vinterland](http://beratta.org/vinterland/)
+* [Blodsband Reloaded](https://www.bbreloaded.se)
