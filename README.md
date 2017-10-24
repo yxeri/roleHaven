@@ -15,10 +15,11 @@ roleTerminal is part of an initiative to create a platform to be used in-game du
 
 ## Other contributors
 
-* Mathias Abrahamsson
 * Varg Johan
+* Mathias Abrahamsson
 * Joakim Sandström
 * Jenny L.
+* Stefan Scott
 * Tveskägg
 * H. Merkelbach
 * Tobias W.
