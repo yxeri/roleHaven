@@ -29,11 +29,11 @@ The documentation for the REST API can be found at https://thethirdgift.com/role
 * Aleksandar Jankovic - [Github](https://github.com/yxeri)
 * Stanislav B - [Github](https://github.com/stanislavb)
 * Sebastian Streiffert
+* Johnathan Browall
+* Thomas Erdelyi
 
 ## Contributors/Supporters
 
-* Thomas Erdelyi
-* Johnathan Browall
 * Varg Johan
 * Mathias Abrahamsson
 * Jenny L.
@@ -53,6 +53,6 @@ The documentation for the REST API can be found at https://thethirdgift.com/role
 * Karl Dahlgren
 
 * [Blodsband Reloaded](https://www.bbreloaded.se)
-* [Ockulta Medborgarbyrån](http://www.ockultamedborgarbyran.com)
 * [Sommarland](http://beratta.org/sommarland/)
 * [Vinterland](http://beratta.org/vinterland/)
+* [Ockulta Medborgarbyrån](http://www.ockultamedborgarbyran.com)
