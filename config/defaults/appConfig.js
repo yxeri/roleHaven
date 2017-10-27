@@ -355,17 +355,17 @@ config.broadcastMaxLength = process.env.BROADCASTMAXLENGTH || config.broadcastMa
 /**
  * Maximum amount of characters in a user name
  */
-config.userNameMaxLength = process.env.USERNAMEMAXLENGTH || config.userNameMaxLength || 10;
+config.userNameMaxLength = process.env.USERNAMEMAXLENGTH || config.userNameMaxLength || 20;
 
 /**
  * Maximum amount of characters in a team name
  */
-config.teamNameMaxLength = process.env.TEAMNAMEMAXLENGTH || config.teamNameMaxLength || 10;
+config.teamNameMaxLength = process.env.TEAMNAMEMAXLENGTH || config.teamNameMaxLength || 20;
 
 /**
  * Maximum amount of characters in a team acronym
  */
-config.shortTeamMaxLength = process.env.SHORTEAMMAXLENGTH || config.shortTeamMaxLength || 6;
+config.shortTeamMaxLength = process.env.SHORTEAMMAXLENGTH || config.shortTeamMaxLength || 10;
 
 /**
  * Maximum amount of characters in a password
@@ -385,7 +385,7 @@ config.deviceAliasMaxLength = process.env.DEVICEALIASMAXLENGTH || config.deviceA
 /**
  * Maximum amount of characters in a room name
  */
-config.roomNameMaxLength = process.env.ROOMNAMEMAXLENGTH || config.roomNameMaxLength || 10;
+config.roomNameMaxLength = process.env.ROOMNAMEMAXLENGTH || config.roomNameMaxLength || 20;
 
 /**
  * Maximum amount of characters in a whisper room name
