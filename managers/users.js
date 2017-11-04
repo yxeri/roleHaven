@@ -249,9 +249,9 @@ function listUsers({ includeInactive, token, callback, team = {} }) {
             return true;
           }).forEach((currentUser) => {
             if (includeInactive || (currentUser.verified && !currentUser.banned)) {
-              const aliases = currentUser.aliases ? currentUser.aliases.map((alias) => {
+              const aliases = currentUser.aliases.map((alias) => {
                 return { userName: alias };
-              }) : [];
+              });
               const filteredUser = {
                 userName: currentUser.userName,
                 online: currentUser.online,
