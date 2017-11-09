@@ -22,22 +22,22 @@ const appConfig = require('../../../config/defaults/config').app;
 const data = {};
 
 data.newUserReceivingAlias = {
-  userName: tools.createRandString({ length: appConfig.userNameMaxLength }),
+  username: tools.createRandString({ length: appConfig.usernameMaxLength }),
   password: tools.createRandString({ length: appConfig.passwordMaxLength }),
   registerDevice: tools.createRandString({ length: appConfig.deviceIdLength }),
   mail: `${tools.createRandString({ length: 10 })}@${tools.createRandString({ length: 10 })}.com`,
   verified: true,
 };
 data.newUserReceivingAlias = {
-  userName: tools.createRandString({ length: appConfig.userNameMaxLength }),
+  username: tools.createRandString({ length: appConfig.usernameMaxLength }),
   password: tools.createRandString({ length: appConfig.passwordMaxLength }),
   registerDevice: tools.createRandString({ length: appConfig.deviceIdLength }),
   mail: `${tools.createRandString({ length: 10 })}@${tools.createRandString({ length: 10 })}.com`,
   verified: true,
 };
-data.tooLongAlias = tools.createRandString({ length: (appConfig.userNameMaxLength + 1) });
-data.aliasToCreate = tools.createRandString({ length: (appConfig.userNameMaxLength) });
-data.aliasThatExists = tools.createRandString({ length: (appConfig.userNameMaxLength) });
-data.otherAliasToCreate = tools.createRandString({ length: (appConfig.userNameMaxLength) });
+data.tooLongAlias = tools.createRandString({ length: (appConfig.usernameMaxLength + 1) });
+data.aliasToCreate = tools.createRandString({ length: (appConfig.usernameMaxLength) });
+data.aliasThatExists = tools.createRandString({ length: (appConfig.usernameMaxLength) });
+data.otherAliasToCreate = tools.createRandString({ length: (appConfig.usernameMaxLength) });
 
 module.exports = data;

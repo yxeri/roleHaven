@@ -26,7 +26,7 @@ data.fakeMail = 'fakemail@thethirdgift.com';
 data.validMail = '4526b00f@opayq.com';
 
 data.newUserToCreate = {
-  userName: tools.createRandString({ length: appConfig.userNameMaxLength }),
+  username: tools.createRandString({ length: appConfig.usernameMaxLength }),
   password: tools.createRandString({ length: appConfig.passwordMaxLength }),
   registerDevice: tools.createRandString({ length: appConfig.deviceIdLength }),
   mail: `${tools.createRandString({ length: 10 })}@${tools.createRandString({ length: 10 })}.com`,
@@ -34,7 +34,7 @@ data.newUserToCreate = {
   verified: true,
 };
 data.newUserToCreateMissionWith = {
-  userName: tools.createRandString({ length: appConfig.userNameMaxLength }),
+  username: tools.createRandString({ length: appConfig.usernameMaxLength }),
   password: tools.createRandString({ length: appConfig.passwordMaxLength }),
   registerDevice: tools.createRandString({ length: appConfig.deviceIdLength }),
   mail: `${tools.createRandString({ length: 10 })}@${tools.createRandString({ length: 10 })}.com`,
@@ -42,7 +42,7 @@ data.newUserToCreateMissionWith = {
   verified: true,
 };
 data.newAdminUserToCreate = {
-  userName: tools.createRandString({ length: appConfig.userNameMaxLength }),
+  username: tools.createRandString({ length: appConfig.usernameMaxLength }),
   password: tools.createRandString({ length: appConfig.passwordMaxLength }),
   registerDevice: tools.createRandString({ length: appConfig.deviceIdLength }),
   mail: `${tools.createRandString({ length: 10 })}@${tools.createRandString({ length: 10 })}.com`,
@@ -51,13 +51,13 @@ data.newAdminUserToCreate = {
   verified: true,
 };
 data.newUserToCreateWithValidMail = {
-  userName: tools.createRandString({ length: appConfig.userNameMaxLength }),
+  username: tools.createRandString({ length: appConfig.usernameMaxLength }),
   password: tools.createRandString({ length: appConfig.passwordMaxLength }),
   registerDevice: tools.createRandString({ length: appConfig.deviceIdLength }),
   mail: data.validMail,
 };
 data.nonExistingUser = {
-  userName: tools.createRandString({ length: appConfig.userNameMaxLength }),
+  username: tools.createRandString({ length: appConfig.usernameMaxLength }),
   password: tools.createRandString({ length: appConfig.passwordMaxLength }),
   registerDevice: tools.createRandString({ length: appConfig.deviceIdLength }),
   mail: data.validMail,
@@ -85,7 +85,7 @@ data.highAccessLevelRoomToCreate = {
 data.roomThatDoesNotExist = {
   roomName: tools.createRandString({ length: appConfig.roomNameMaxLength }),
 };
-data.alias = tools.createRandString({ length: appConfig.userNameMaxLength });
+data.alias = tools.createRandString({ length: appConfig.usernameMaxLength });
 
 data.incorrectPassword = tools.createRandString({ length: appConfig.passwordMaxLength });
 

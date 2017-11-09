@@ -17,335 +17,374 @@
 'use strict';
 
 const mongoose = require('mongoose');
-const databaseConnector = require('../databaseConnector');
-const chatHistoryConnector = require('./chatHistory');
-const dbUser = require('./user');
+const dbConnector = require('../databaseConnector');
 const errorCreator = require('../../objects/error/errorCreator');
-const dbConfig = require('../../config/defaults/config').databasePopulation;
-const appConfig = require('../../config/defaults/config').app;
 
-const roomSchema = new mongoose.Schema({
-  accessLevel: { type: Number, default: dbConfig.AccessLevels.BASIC },
-  visibility: { type: Number, default: dbConfig.AccessLevels.BASIC },
-  anonymous: { type: Boolean, default: false },
+const roomSchema = new mongoose.Schema(dbConnector.createSchema({
   roomName: { type: String, unique: true },
-  isWhisper: { type: Boolean, default: false },
   password: String,
-  admins: [String],
-  bannedUsers: [String],
-  owner: String,
-  team: String,
-  accessUsers: { type: [String], default: [] },
-}, { collection: 'rooms' });
+  participantIds: { type: [String], default: [] },
+  nameIsLocked: { type: Boolean, default: false },
+  isAnonymous: { type: Boolean, default: false },
+  isWhisper: { type: Boolean, default: false },
+}), { collection: 'rooms' });
 
 const Room = mongoose.model('Room', roomSchema);
 
 /**
  * Remove private parameters from room
+ * @private
+ * @param {Object} params - Parameters
  * @param {Object} params.room Room
- * @returns {Object} Clean room
+ * @returns {Object} Modified room
  */
-function cleanRoomParameters({ room }) {
-  const cleanRoom = room;
+function modifyRoomParameters({ room }) {
+  const modifiedRoom = room;
 
-  cleanRoom.password = typeof room.password === 'string';
+  modifiedRoom.password = typeof room.password === 'string';
 
-  return cleanRoom;
+  return modifiedRoom;
 }
 
 /**
- * Authorize the user to the room
- * Checks if the user is the owner, if the user has the same team and high enough access level or if user is in accessUsers
- * @param {Object} params.user User to authorize
- * @param {string} params.roomName Name of the room
- * @param {string} [params.password] Password of the room
- * @param {Function} params.callback Callback
+ * Update room
+ * @private
+ * @param {Object} params - Parameters
+ * @param {string} params.objectId - ID of the room to update
+ * @param {Object} params.update - Update
+ * @param {Function} params.callback - Callback
  */
-function authUserToRoom({ user, roomName, callback, password }) {
-  const query = { roomName };
-  const update = { $addToSet: { accessUsers: user.userName } };
-  const options = { new: true };
+function updateObject({ update, objectId, callback }) {
+  dbConnector.updateObject({
+    update,
+    query: { _id: objectId },
+    object: Room,
+    errorNameContent: 'updateRoom',
+    callback: ({ error, data }) => {
+      if (error) {
+        callback({ error });
 
-  if (roomName.indexOf(appConfig.teamAppend) > -1) {
-    query.team = user.team;
-  } else {
-    query.$or = [
-      { owner: user.userName },
-      { accessUsers: { $in: [user.userName] } },
-      { password, accessLevel: { $lte: user.accessLevel } },
-      { password: { $exists: false }, accessLevel: { $lte: user.accessLevel } },
-    ];
-  }
-
-  Room.findOneAndUpdate(query, update, options).lean().exec((err, foundRoom) => {
-    if (err) {
-      callback({ error: new errorCreator.Database({ errorObject: err, name: 'authUserToRoom' }) });
-
-      return;
-    } else if (!foundRoom) {
-      callback({ data: { room: { roomName }, isAllowed: false } });
-
-      return;
-    }
-
-    callback({ data: { room: foundRoom, isAllowed: true } });
-  });
-}
-
-/**
- * Create and save room
- * @param {Object} params.room New room
- * @param {boolean} params.silentOnExists Should error on exists be skipped?
- * @param {Function} params.callback Callback
- */
-function createRoom({ room, silentOnExists, callback }) {
-  const newRoom = new Room(room);
-  const query = { roomName: room.roomName };
-
-  Room.findOne(query).lean().exec((err, foundRoom) => {
-    if (err) {
-      callback({ error: new errorCreator.Database({ errorObject: err, name: 'createRoom' }) });
-
-      return;
-    } else if (foundRoom) {
-      if (!silentOnExists) {
-        callback({ error: new errorCreator.AlreadyExists({ name: `room ${room.roomName}` }) });
-      } else {
-        callback({ data: { alreadyExists: true } });
+        return;
       }
 
-      return;
-    }
-
-    chatHistoryConnector.createHistory({
-      roomName: room.roomName,
-      anonymous: room.anonymous,
-      isWhisper: room.isWhisper,
-      callback: ({ error }) => {
-        if (error) {
-          callback({ error });
-
-          return;
-        }
-
-        databaseConnector.saveObject({
-          object: newRoom,
-          objectType: 'room',
-          callback: (savedData) => {
-            if (savedData.error) {
-              callback({ error: savedData.error });
-
-              return;
-            }
-
-            callback({ data: { room: cleanRoomParameters({ room: savedData.data.savedObject }) } });
-          },
-        });
-      },
-    });
+      callback({ room: modifyRoomParameters({ room: data.object }) });
+    },
   });
 }
 
 /**
  * Get room
- * @param {string} params.roomName Name of the room
- * @param {Function} params.callback Callback
+ * @private
+ * @param {Object} params - Parameters
+ * @param {string} params.query - Query to get room
+ * @param {Function} params.callback - Callback
  */
-function getRoom({ roomName, callback }) {
-  const query = { roomName };
+function getRoom({ query, callback }) {
+  dbConnector.getObject({
+    query,
+    object: Room,
+    callback: ({ error, data }) => {
+      if (error) {
+        callback({ error });
 
-  Room.findOne(query).lean().exec((err, room) => {
-    if (err) {
-      callback({ error: new errorCreator.Database({ errorObject: err, name: 'getRoom' }) });
+        return;
+      } else if (!data.object) {
+        callback({ error: new errorCreator.DoesNotExist({ name: `room ${query.toString()}` }) });
 
-      return;
-    } else if (!room) {
-      callback({ error: new errorCreator.DoesNotExist({ name: `room ${roomName}` }) });
-
-      return;
-    }
-
-    callback({ data: { room: cleanRoomParameters({ room }) } });
-  });
-}
-
-/**
- * Get rooms owned by user
- * @param {Object} params.user Owner
- * @param {Function} params.callback Callback
- */
-function getOwnedRooms({ user, callback }) {
-  const query = { owner: user.userName };
-  const sort = { roomName: 1 };
-
-  Room.find(query).sort(sort).lean().exec((err, rooms = []) => {
-    if (err) {
-      callback({ error: new errorCreator.Database({ errorObject: err, name: 'getOwnedRooms' }) });
-
-      return;
-    }
-
-    callback({ data: { rooms: rooms.map(room => cleanRoomParameters({ room })) } });
-  });
-}
-
-/**
- * Get all rooms, based on user's access level
- * @param {Object} params.user User retrieving the rooms
- * @param {Function} params.callback Callback
- */
-function getAllRooms({ user, callback }) {
-  const query = { visibility: { $lte: user.accessLevel } };
-  const sort = { roomName: 1 };
-
-  Room.find(query).sort(sort).lean().exec((err, foundRooms = []) => {
-    if (err) {
-      callback({ error: new errorCreator.Database({ errorObject: err, name: 'getAllRooms' }) });
-
-      return;
-    }
-
-    const whisperRooms = [];
-    const rooms = foundRooms.filter((room) => {
-      const cleanRoom = cleanRoomParameters({ room });
-
-      if (cleanRoom.isWhisper) {
-        whisperRooms.push(cleanRoom);
-
-        return false;
+        return;
       }
 
-      return true;
-    });
-
-    callback({
-      data: {
-        rooms,
-        whisperRooms,
-      },
-    });
+      callback({ room: modifyRoomParameters({ room: data.object }) });
+    },
   });
 }
 
 /**
- * Ban user from room
- * @param {string} params.userName Name of the user
- * @param {string} params.roomName Name of the room
- * @param {Function} params.callback Callback
+ * Get rooms
+ * @private
+ * @param {Object} params - Parameters
+ * @param {Object} params.query - Query to get rooms
+ * @param {Function} params.callback - Callback
  */
-function banUserFromRoom({ userName, roomName, callback }) {
-  const query = { roomName };
-  const update = { $addToSet: { bannedUsers: userName } };
+function getRooms({ query, callback }) {
+  dbConnector.getObjects({
+    query,
+    object: Room,
+    callback: ({ error, data }) => {
+      if (error) {
+        callback({ error });
 
-  Room.findOneAndUpdate(query, update).lean().exec((err, room) => {
-    if (err) {
-      callback({ error: new errorCreator.Database({ errorObject: err, name: 'banUserFromRoom' }) });
+        return;
+      }
 
-      return;
-    } else if (!room) {
-      callback({ error: new errorCreator.DoesNotExist({ name: `room ${roomName}` }) });
-
-      return;
-    }
-
-    callback({ data: { room: cleanRoomParameters({ room }) } });
+      callback({ rooms: data.objects.map(object => modifyRoomParameters({ room: object })) });
+    },
   });
 }
 
 /**
- * Unban user from room
- * @param {string} params.userName Name of the user
- * @param {string} params.roomName Name of the room
- * @param {Function} params.callback Callback
+ * Does the room exist?
+ * @param {Object} params - Parameters
+ * @param {string} params.roomName - Name of the room
+ * @param {Function} params.callback - Callback
  */
-function unbanUserFromRoom({ userName, roomName, callback }) {
-  const query = { roomName };
-  const update = { $pull: { bannedUsers: userName } };
+function doesRoomExist({ roomName, callback }) {
+  const query = {
+    $or: [
+      { roomName },
+      { _id: roomName },
+    ],
+  };
 
-  Room.findOneAndUpdate(query, update).lean().exec((err, room) => {
-    if (err) {
-      callback({ error: new errorCreator.Database({ errorObject: err, name: 'unbanuserFromRoom' }) });
-
-      return;
-    } else if (!room) {
-      callback({ error: new errorCreator.DoesNotExist({ name: `room ${roomName}` }) });
+  Room.findOne(query).lean().exec((error, room) => {
+    if (error) {
+      callback({ error: new errorCreator.Database({ errorObject: error }) });
 
       return;
     }
 
-    callback({ data: { room: cleanRoomParameters({ room }) } });
+    callback({ data: { exists: typeof room !== 'undefined' } });
+  });
+}
+
+/**
+ * Create and save room
+ * @param {Object} params - Parameters
+ * @param {Object} params.room - New room
+ * @param {Object} [params.options] - Options
+ * @param {boolean} [params.silentExistsError] - Should error be skipped if the room already exists?
+ * @param {Function} params.callback - Callback
+ */
+function createRoom({
+  room,
+  silentExistsError,
+  callback,
+  options = {},
+}) {
+  const { shouldSetIdToName } = options;
+
+  doesRoomExist({
+    roomName: room.roomName,
+    callback: (existsData) => {
+      if (existsData.error) {
+        callback({ error: existsData.error });
+
+        return;
+      } else if (existsData.data.exists) {
+        if (silentExistsError) {
+          callback({ data: { exists: true } });
+        } else {
+          callback({ error: new errorCreator.AlreadyExists({ name: `room name ${room.roomName}` }) });
+        }
+
+        return;
+      }
+
+      const roomToSave = room;
+
+      if (shouldSetIdToName) { roomToSave._id = roomToSave.roomName; } // eslint-disable-line no-underscore-dangle
+
+      dbConnector.saveObject({
+        object: new Room(roomToSave),
+        objectType: 'room',
+        callback: ({ error, data }) => {
+          if (error) {
+            callback({ error });
+
+            return;
+          }
+
+          callback({ data: { room: modifyRoomParameters({ room: data.savedObject }) } });
+        },
+      });
+    },
   });
 }
 
 /**
  * Remove room
- * @param {string} params.roomName Name of the room
- * @param {Function} params.callback Callback
+ * @param {Object} params - Parameters
+ * @param {string} params.objectId - ID of the room
+ * @param {Function} params.callback - Callback
  */
-function removeRoom({ roomName, callback }) {
-  const query = { roomName };
-
-  Room.findOneAndRemove(query).lean().exec((err) => {
-    if (err) {
-      callback({ error: new errorCreator.Database({ errorObject: err, name: 'removeRoom' }) });
-
-      return;
-    }
-
-    chatHistoryConnector.removeHistory({
-      roomName,
-      callback: ({ error }) => {
-        if (error) {
-          callback({ error });
-
-          return;
-        }
-
-        dbUser.removeRoomFromAllUsers({
-          roomName,
-          callback: ({ error: userError }) => {
-            if (userError) {
-              callback({ error: userError });
-
-              return;
-            }
-
-            callback({ data: { success: true } });
-          },
-        });
-      },
-    });
+function removeRoom({ objectId, callback }) {
+  dbConnector.removeObject({
+    callback,
+    object: Room,
+    query: { _id: objectId },
   });
 }
 
 /**
- * Match partial room name
- * @param {string} params.partialName Partial room name
- * @param {Object} params.user User
- * @param {Function} params.callback Callback
+ * Get all rooms
+ * @param {Object} params - Parameters
+ * @param {Function} params.callback - Callback
  */
-function matchPartialRoom({ partialName, user, callback }) {
-  const filter = { _id: 0, roomName: 1 };
-  const sort = { roomName: 1 };
+function getAllRooms({ callback }) {
+  getRooms({ callback });
+}
 
-  databaseConnector.matchPartial({
-    filter,
-    sort,
-    partialName,
-    user,
+/**
+ * Add access to the room for users and/or teams
+ * @param {Object} params - Parameters
+ * @param {string} params.objectId - ID of the room
+ * @param {string[]} [params.userIds] - ID of the users
+ * @param {string[]} [params.teamIds] - ID of the teams
+ * @param {string[]} [params.blockedIds] - ID of the blocked users
+ * @param {boolean} [params.isAdmin] - Should teams and users get admin access?
+ * @param {Function} params.callback - Callback
+ */
+function addAccess({
+  userIds,
+  teamIds,
+  blockedIds,
+  isAdmin,
+  objectId,
+  callback,
+}) {
+  if (!userIds && !teamIds && !blockedIds) {
+    callback({ error: new errorCreator.InvalidData({ expected: 'teamIds || userIds || blockedIds' }) });
+
+    return;
+  }
+
+  dbConnector.addObjectAccess({
+    objectId,
+    userIds,
+    teamIds,
+    blockedIds,
+    isAdmin,
     callback,
-    queryType: Room,
-    type: 'roomName',
+    object: Room,
+  });
+}
+
+/**
+ * Remove access to the room for users and/or teams
+ * @param {Object} params - Parameters
+ * @param {string} params.objectId - ID of the room
+ * @param {string[]} [params.userIds] - ID of the users
+ * @param {string[]} [params.teamIds] - ID of the teams
+ * @param {string[]} [params.blockedIds] - ID of the blocked users
+ * @param {boolean} [params.isAdmin] - Should the teams and/or users be removed from admins?
+ * @param {Function} params.callback - Callback
+ */
+function removeAccess({
+  userIds,
+  teamIds,
+  blockedIds,
+  objectId,
+  isAdmin,
+  callback,
+}) {
+  if (!userIds && !teamIds && !blockedIds) {
+    callback({ error: new errorCreator.InvalidData({ expected: 'teamIds || userIds || blockedIds' }) });
+
+    return;
+  }
+
+  dbConnector.removeObjectAccess({
+    isAdmin,
+    userIds,
+    teamIds,
+    blockedIds,
+    objectId,
+    callback,
+  });
+}
+
+/**
+ * Update room
+ * @param {Object} params - Parameters
+ * @param {string} params.objectId - ID of the room to update
+ * @param {Object} params.room - Fields to update
+ * @param {Object} [params.options] - Options
+ * @param {Object} params.options.resetOwnerAliasId - Should ownerAliasId be removed?
+ * @param {Function} params.callback - Callback
+ */
+function updateRoom({
+  room,
+  objectId,
+  callback,
+  options = {},
+}) {
+  const { resetOwnerAliasId } = options;
+  const {
+    roomName,
+    ownerAliasId,
+    accessLevel,
+    visibility,
+    nameIsLocked,
+    isAnonymous,
+  } = room;
+  const update = { $set: {} };
+
+  if (resetOwnerAliasId) {
+    update.$unset = { ownerAliasId: '' };
+  } else if (ownerAliasId) {
+    update.$set.ownerAliasId = ownerAliasId;
+  }
+
+  if (typeof nameIsLocked === 'boolean') { update.$set.nameIsLocked = nameIsLocked; }
+  if (typeof isAnonymous === 'boolean') { update.$set.isAnonymous = isAnonymous; }
+  if (accessLevel) { update.$set.accessLevel = accessLevel; }
+  if (visibility) { update.$set.visibility = visibility; }
+
+  if (roomName) {
+    update.$set.roomName = roomName;
+
+    doesRoomExist({
+      roomName,
+      callback: ({ error, data }) => {
+        if (error) {
+          callback({ error });
+
+          return;
+        } else if (data.exists) {
+          callback({ error: new errorCreator.AlreadyExists({ name: `roomName ${roomName}` }) });
+
+          return;
+        }
+
+        updateObject({
+          update,
+          objectId,
+          callback,
+        });
+      },
+    });
+
+    return;
+  }
+
+  updateObject({
+    update,
+    objectId,
+    callback,
+  });
+}
+
+/**
+ * Get room by ID
+ * @param {Object} params - Parameters
+ * @param {string} params.objectId - ID of the room
+ * @param {Function} params.callback - Callback
+ */
+function getRoomById({ objectId, callback }) {
+  getRoom({
+    callback,
+    query: { _id: objectId },
   });
 }
 
 /**
  * Add rooms to db
+ * @param {Object} params - Parameters
  * @param {Object} params.rooms Rooms to be added
  * @param {Function} params.callback Callback
  */
 function populateDbRooms({ rooms, callback = () => {} }) {
-  console.log('Creating default rooms, if needed');
+  console.info('Creating default rooms, if needed');
 
   /**
    * Adds a room to database. Recursive
@@ -357,7 +396,8 @@ function populateDbRooms({ rooms, callback = () => {} }) {
     if (roomName) {
       createRoom({
         room: rooms[roomName],
-        silentOnExists: true,
+        silentExistsError: true,
+        options: { shouldSetIdToName: true },
         callback: ({ error }) => {
           if (error) {
             callback({ error });
@@ -368,67 +408,22 @@ function populateDbRooms({ rooms, callback = () => {} }) {
           addRoom(roomNames);
         },
       });
-    } else {
-      callback({ data: { success: true } });
+
+      return;
     }
+
+    callback({ data: { success: true } });
   }
 
   addRoom(Object.keys(rooms));
 }
 
-/**
- * Set new room visibiity
- * @param {string} params.roomName Name of the room
- * @param {number} params.visibility New visibility
- * @param {Function} params.callback Callback
- */
-function updateRoomVisibility({ roomName, visibility, callback }) {
-  const query = { roomName };
-  const update = { $set: { visibility } };
-  const options = { new: true };
-
-  Room.findOneAndUpdate(query, update, options).lean().exec((err, room) => {
-    if (err) {
-      callback({ error: new errorCreator.Database({ errorObject: err, name: 'updateRoomVisibility' }) });
-
-      return;
-    }
-
-    callback({ data: { room: cleanRoomParameters({ room }) } });
-  });
-}
-
-/**
- * Set new room access level
- * @param {string} params.roomName Name of the room
- * @param {number} params.accessLevel New access level
- * @param {Function} params.callback Callback
- */
-function updateRoomAccessLevel({ roomName, accessLevel, callback }) {
-  const query = { roomName };
-  const update = { $set: { accessLevel } };
-  const options = { new: true };
-
-  Room.findOneAndUpdate(query, update, options).lean().exec((err, room) => {
-    if (err) {
-      callback({ error: new errorCreator.Database({ errorObject: err, name: 'updateRoomAccessLevel' }) });
-
-      return;
-    }
-
-    callback({ data: { room: cleanRoomParameters({ room }) } });
-  });
-}
-
-exports.authUserToRoom = authUserToRoom;
-exports.createRoom = createRoom;
 exports.getAllRooms = getAllRooms;
-exports.getRoom = getRoom;
-exports.banUserFromRoom = banUserFromRoom;
-exports.unbanUserFromRoom = unbanUserFromRoom;
-exports.getOwnedRooms = getOwnedRooms;
+exports.createRoom = createRoom;
 exports.removeRoom = removeRoom;
-exports.matchPartialRoom = matchPartialRoom;
 exports.populateDbRooms = populateDbRooms;
-exports.updateRoomVisibility = updateRoomVisibility;
-exports.updateRoomAccessLevel = updateRoomAccessLevel;
+exports.addAccess = addAccess;
+exports.removeAccess = removeAccess;
+exports.updateRoom = updateRoom;
+exports.getRoomById = getRoomById;
+exports.doesNameExist = doesRoomExist;

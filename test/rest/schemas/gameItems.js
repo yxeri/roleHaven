@@ -30,12 +30,12 @@ schemas.gameUsers = {
           items: {
             type: 'object',
             required: [
-              'userName',
+              'username',
               'passwords',
               'stationId',
             ],
             properties: {
-              userName: { type: 'string' },
+              username: { type: 'string' },
               passwords: {
                 type: 'array',
                 items: { type: 'string' },

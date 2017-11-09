@@ -54,7 +54,7 @@ function sendSimpleMsg({ text, socket, io, token, callback }) {
       const simpleMsg = {
         text,
         time: new Date(),
-        userName: data.user.userName,
+        username: data.user.username,
       };
 
       dbSimpleMsg.createSimpleMsg({

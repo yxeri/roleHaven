@@ -17,214 +17,317 @@
 'use strict';
 
 const mongoose = require('mongoose');
-const databaseConnector = require('../databaseConnector');
+const dbConnector = require('../databaseConnector');
 const errorCreator = require('../../objects/error/errorCreator');
 
-const walletSchema = new mongoose.Schema({
-  owner: { type: String, unique: true },
+const walletSchema = new mongoose.Schema(dbConnector.createSchema({
   amount: { type: Number, default: 0 },
-  accessLevel: { type: Number, default: 1 },
   isProtected: { type: Boolean, default: false },
-  team: String,
-}, { collection: 'wallets' });
+}), { collection: 'wallets' });
 
 const Wallet = mongoose.model('Wallet', walletSchema);
 
 /**
- * Get wallets under user's access level or owner equal to user name
- * @param {Object} params.user User retrieving wallets
- * @param {Function} params.callback Callback
+ * Get wallets
+ * @private
+ * @param {Object} params - Parameters
+ * @param {string} params.query - Database query
+ * @param {Function} params.callback - Callback
  */
-function getWallets({ user, callback }) {
-  const query = {
-    $or: [
-      {
-        $or: [
-          { owner: user.userName },
-          { isProtected: false },
-          { team: user.team },
-        ],
-      },
-      { accessLevel: { $lt: user.accessLevel } },
-    ],
-  };
+function getWallets({ query, callback }) {
+  dbConnector.getObjects({
+    query,
+    object: Wallet,
+    errorNameContent: 'getWallets',
+    callback: ({ error, data }) => {
+      if (error) {
+        callback({ error });
 
-  Wallet.find(query).lean().exec((err, wallets = []) => {
-    if (err) {
-      callback({ error: new errorCreator.Database({ errorObject: err, name: 'getWallets' }) });
+        return;
+      }
 
-      return;
-    }
-
-    callback({ data: { wallets } });
+      callback({ wallets: data.objects });
+    },
   });
 }
 
 /**
- * Get wallets owned by user or their team
- * @param {Object} params.user User retrieving wallets
- * @param {Function} params.callback Callback
+ * Update wallet
+ * @private
+ * @param {Object} params - Parameters
+ * @param {string} params.objectId - ID of the wallet to update
+ * @param {Function} params.callback - Callback
  */
-function getUserWallets({ user, callback }) {
-  const query = {
-    $or: [
-      { owner: user.userName },
-      { $and: [
-        { team: { $exists: true } },
-        { team: user.team },
-      ] },
-    ],
-  };
+function updateObject({ update, objectId, callback }) {
+  dbConnector.updateObject({
+    update,
+    query: { _id: objectId },
+    object: Wallet,
+    errorNameContent: 'updateWallet',
+    callback: ({ error, data }) => {
+      if (error) {
+        callback({ error });
 
-  Wallet.find(query).lean().exec((err, wallets = []) => {
-    if (err) {
-      callback({ error: new errorCreator.Database({ errorObject: err, name: 'getWallets' }) });
+        return;
+      }
 
-      return;
-    }
-
-    callback({ data: { wallets } });
+      callback({ wallet: data.object });
+    },
   });
 }
 
 /**
- * Get wallet
- * @param {string} params.owner Owner of wallet
- * @param {Function} params.callback Callback
+ * Get all wallets
+ * @param {Object} params - Parameters
+ * @param {Function} params.callback - Callback
  */
-function getWallet({ owner, callback }) {
-  const query = { owner };
+function getAllWallets({ callback }) {
+  getWallets({
+    callback,
+    errorNameContent: 'getAllWallets',
+  });
+}
 
-  Wallet.findOne(query).lean().exec((err, wallet) => {
-    if (err) {
-      callback({ error: new errorCreator.Database({ errorObject: err, name: 'getWallet' }) });
+/**
+ * Get wallets by teams
+ * @param {Object} params - Parameters
+ * @param {string} params.teamIds - ID of the teams
+ * @param {Function} params.callback - Callback
+ */
+function getWalletsByTeams({ teamIds, callback }) {
+  const query = {
+    $or: [
+      { ownerId: { $in: teamIds } },
+      { teamIds: { $in: teamIds } },
+    ],
+  };
 
-      return;
-    } else if (!wallet) {
-      callback({ error: new errorCreator.DoesNotExist({ name: `wallet ${owner}` }) });
+  getWallets({
+    callback,
+    query,
+  });
+}
 
-      return;
-    }
+/**
+ * Get wallets by user's access
+ * @param {Object} params - Parameters
+ * @param {string} params.userId - ID of the user
+ * @param {Function} params.callback - Callback
+ */
+function getWalletsByUser({ userId, callback }) {
+  const query = {
+    $or: [
+      { ownerId: userId },
+      { userIds: { $in: [userId] } },
+    ],
+  };
 
-    callback({ data: { wallet } });
+  getWallets({
+    query,
+    callback,
   });
 }
 
 /**
  * Create and save wallet
- * @param {Object} params.wallet New wallet
- * @param {Function} params.callback Callback
+ * @param {Object} params - Parameters
+ * @param {Object} params.wallet - New wallet
+ * @param {Function} params.callback - Callback
  */
 function createWallet({ wallet, callback }) {
-  const newWallet = new Wallet(wallet);
-  const query = { owner: wallet.owner };
+  const walletToSave = wallet;
 
-  Wallet.findOne(query).lean().exec((err, foundWallet) => {
-    if (err) {
-      callback({ error: new errorCreator.Database({ errorObject: err, name: 'createWallet' }) });
+  if (walletToSave.objectId) {
+    walletToSave._id = walletToSave.objectId; // eslint-disable-line no-underscore-dangle
+  }
 
-      return;
-    } else if (foundWallet) {
-      callback({ error: new errorCreator.AlreadyExists({ name: `Wallet ${wallet.owner}` }) });
+  dbConnector.saveObject({
+    object: new Wallet(walletToSave),
+    objectType: 'wallet',
+    callback: ({ error, data }) => {
+      if (error) {
+        callback({ error });
 
-      return;
-    }
+        return;
+      }
 
-    databaseConnector.saveObject({
-      object: newWallet,
-      objectType: 'wallet',
-      callback: ({ error, data }) => {
-        if (error) {
-          callback({ error });
-        }
-
-        callback({ data: { wallet: data.savedObject } });
-      },
-    });
+      callback({ data: { wallet: data.savedObject } });
+    },
   });
 }
 
 /**
- * Increase amount in wallet
- * @param {string} params.owner Owner name
- * @param {number} params.amount Amount to increase with
- * @param {Function} params.callback Callback
+ * Update wallet
+ * @param {Object} params - Parameters
+ * @param {string} params.objectId - Wallet ID
+ * @param {Object} params.wallet - Update wallet
+ * @param {number} params.wallet.amount - Amount to increase or decrease with
+ * @param {Object} params.options - Options
+ * @param {boolean} params.options.shouldDecreaseAmount - Should the amount in the wallet be decreased?
+ * @param {boolean} params.options.resetAmount - Should the wallet amount be reset?
+ * @param {boolean} params.options.resetOwnerAliasId - Should owner alias ID be removed?
+ * @param {Function} params.callback - Callback
  */
-function increaseAmount({ owner, amount, callback }) {
-  const query = { owner };
-  const update = { $inc: { amount: Math.abs(amount) } };
-  const options = { new: true };
+function updateWallet({
+  objectId,
+  wallet,
+  callback,
+  options = {},
+}) {
+  const {
+    amount,
+    ownerAliasId,
+    visibility,
+    accessLevel,
+    isProtected,
+  } = wallet;
+  const {
+    shouldDecreaseAmount,
+    resetAmount,
+    resetOwnerAliasId,
+  } = options;
+  const update = { $set: {} };
 
-  Wallet.findOneAndUpdate(query, update, options).lean().exec((err, wallet) => {
-    if (err) {
-      callback({ error: new errorCreator.Database({ errorObject: err, name: 'increaseAmount' }) });
+  if (typeof resetAmount === 'boolean' && resetAmount) {
+    update.$set.amount = 0;
+  } else if (amount) {
+    update.$inc = {};
 
-      return;
-    } else if (!wallet) {
-      callback({ error: new errorCreator.DoesNotExist({ name: `wallet ${owner}` }) });
-
-      return;
+    if (shouldDecreaseAmount) {
+      update.$inc.amount = Math.abs(amount);
+    } else {
+      update.$inc.amount = -Math.abs(amount);
     }
+  }
 
-    callback({ data: { wallet } });
+  if (resetOwnerAliasId) {
+    update.$unset = { ownerAliasId: '' };
+  } else if (ownerAliasId) {
+    update.$set.ownerAliasId = ownerAliasId;
+  }
+
+  if (typeof isProtected === 'boolean') { update.$set.isProtected = isProtected; }
+  if (visibility) { update.$set.visibility = visibility; }
+  if (accessLevel) { update.$set.accessLevel = accessLevel; }
+
+  updateObject({
+    update,
+    objectId,
+    callback,
   });
 }
 
 /**
- * Decrease amount in wallet
- * @param {string} params.owner Owner name
- * @param {number} params.amount Amount to decrease with
- * @param {Function} params.callback Callback
+ * Add access to the wallet for users or teams
+ * @param {Object} params - Parameters
+ * @param {string} params.objectId - ID of the wallet
+ * @param {string[]} [params.userIds] - ID of the users
+ * @param {string[]} [params.teamIds] - ID of the teams
+ * @param {string[]} [params.blockedIds] - ID of the blocked Ids to add
+ * @param {boolean} [params.isAdmin] - Should the teams and/or users be added to admins?
+ * @param {Function} params.callback - Callback
  */
-function decreaseAmount({ owner, amount, callback }) {
-  const query = { owner };
-  const update = { $inc: { amount: -Math.abs(amount) } };
-  const options = { new: true };
+function addAccess({
+  userIds,
+  teamIds,
+  blockedIds,
+  objectId,
+  isAdmin,
+  callback,
+}) {
+  if (!userIds && !teamIds && !blockedIds) {
+    callback({ error: new errorCreator.InvalidData({ expected: 'teamIds || aliasIds || blockedIds' }) });
 
-  Wallet.findOneAndUpdate(query, update, options).lean().exec((err, wallet) => {
-    if (err) {
-      callback({ error: new errorCreator.Database({ errorObject: err, name: 'decreaseAmount' }) });
+    return;
+  }
 
-      return;
-    } else if (!wallet) {
-      callback({ error: new errorCreator.DoesNotExist({ name: `wallet ${owner}` }) });
+  dbConnector.addObjectAccess({
+    objectId,
+    userIds,
+    teamIds,
+    blockedIds,
+    isAdmin,
+    object: Wallet,
+    callback: ({ error, data }) => {
+      if (error) {
+        callback({ error });
 
-      return;
-    }
+        return;
+      }
 
-    callback({ data: { wallet } });
+      callback({ wallet: data.object });
+    },
   });
 }
 
 /**
- * Reset wallet amount to 0
- * @param {string} params.owner Owner name
- * @param {Function} params.callback Callback
+ * Remove access to the wallet for users and/or teams
+ * @param {Object} params - Parameters
+ * @param {string} params.objectId - ID of the wallet
+ * @param {string[]} [params.userIds] - ID of the users
+ * @param {string[]} [params.teamIds] - ID of the teams
+ * @param {string[]} [params.blockedIds] - ID of the blocked Ids to add
+ * @param {boolean} [params.isAdmin] - Should the teams and/or users be removed from admins?
+ * @param {Function} params.callback - Callback
  */
-function resetWalletAmount({ owner, callback }) {
-  const query = { owner };
-  const update = { $set: { amount: 0 } };
-  const options = { new: true };
+function removeAccess({
+  userIds,
+  teamIds,
+  blockedIds,
+  isAdmin,
+  objectId,
+  callback,
+}) {
+  if (!userIds && !teamIds && !blockedIds) {
+    callback({ error: new errorCreator.InvalidData({ expected: 'teamIds || userIds || blockedIds' }) });
 
-  Wallet.findOneAndUpdate(query, update, options).lean().exec((err, wallet) => {
-    if (err) {
-      callback({ error: new errorCreator.Database({ errorObject: err, name: 'resetWalletAmount' }) });
+    return;
+  }
 
-      return;
-    } else if (!wallet) {
-      callback({ error: new errorCreator.DoesNotExist({ name: `wallet ${owner}` }) });
-
-      return;
-    }
-
-    callback({ data: { wallet } });
+  dbConnector.removeObjectAccess({
+    userIds,
+    teamIds,
+    blockedIds,
+    isAdmin,
+    objectId,
+    callback,
+    object: Wallet,
   });
 }
 
-exports.increaseAmount = increaseAmount;
-exports.decreaseAmount = decreaseAmount;
-exports.getWallet = getWallet;
+/**
+ * Remove wallet
+ * @param {Object} params - Parameters
+ * @param {string} params.objectId - ID of the wallet to remove
+ * @param {Function} params.callback - Callback
+ */
+function removeWallet({ objectId, callback }) {
+  dbConnector.removeObject({
+    callback,
+    query: { _id: objectId },
+    object: Wallet,
+  });
+}
+
+/**
+ * Get wallets by Ids
+ * @param {Object} params - Parameters
+ * @param {string[]} params.walletIds - Wallet Ids
+ * @param {Function} params.callback - Callback
+ */
+function getWalletsByIds({ walletIds, callback }) {
+  getWallets({
+    callback,
+    query: { _id: { $in: walletIds } },
+  });
+}
+
 exports.createWallet = createWallet;
-exports.getWallets = getWallets;
-exports.resetWalletAmount = resetWalletAmount;
-exports.getUserWallets = getUserWallets;
+exports.getAllWallets = getAllWallets;
+exports.getWalletsByUser = getWalletsByUser;
+exports.removeAccess = removeAccess;
+exports.addAccess = addAccess;
+exports.removeWallet = removeWallet;
+exports.updateWallet = updateWallet;
+exports.getWalletsByTeams = getWalletsByTeams;
+exports.getWalletsByIds = getWalletsByIds;

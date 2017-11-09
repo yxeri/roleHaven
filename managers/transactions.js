@@ -32,7 +32,7 @@ const authenticator = require('../helpers/authenticator');
 function getTransactions({ owner, token, callback }) {
   authenticator.isUserAllowed({
     token,
-    matchNameTo: owner,
+    matchToId: owner,
     commandName: dbConfig.apiCommands.GetTransaction.name,
     callback: ({ error, data }) => {
       if (error) {
@@ -41,7 +41,7 @@ function getTransactions({ owner, token, callback }) {
         return;
       }
 
-      const walletOwner = owner || data.user.userName;
+      const walletOwner = owner || data.user.username;
 
       const getOwnerTransactions = ({ ownerName, callback: transCallback }) => {
         dbTransaction.getAllTransactions({
@@ -114,20 +114,14 @@ function getTransactions({ owner, token, callback }) {
 
 /**
  * Create transaction
- * @param {Object} [params.user] User of the sender
- * @param {Object} params.transaction Transaction to create
- * @param {Object} [params.socket] Socket io
- * @param {Object} params.io Socket io. Used if socket is not set
- * @param {boolean} [params.fromTeam] Is the transaction made from a team?
- * @param {boolean} [params.toTeam] Is the transaction made to a team?
+ * @param {Object} [params.user] - User of the sender
+ * @param {Object} params.transaction - Transaction to create
+ * @param {Object} [params.socket] - Socket io
+ * @param {Object} params.io - Socket io. Used if socket is not set
  * @param {Function} callback Callback
  */
-function createTransaction({ user, transaction, io, fromTeam, socket, callback }) {
-  if (fromTeam && !user.team) {
-    callback({ error: new errorCreator.DoesNotExist({ name: 'not part of team' }) });
-
-    return;
-  } else if (user.userName === transaction.to) {
+function createTransaction({ userId, transaction, io, socket, callback }) {
+  if (transaction.fromWalletId === transaction.toWalletId) {
     callback({ error: new errorCreator.InvalidData({ name: 'transfer to self' }) });
 
     return;
@@ -135,24 +129,17 @@ function createTransaction({ user, transaction, io, fromTeam, socket, callback }
     callback({ error: new errorCreator.Insufficient({ name: 'amount is 0 or less' }) });
 
     return;
-  }
-
-  const toTeam = transaction.to.indexOf(appConfig.teamAppend) > -1;
-  const fromRoom = fromTeam ? user.team + appConfig.teamAppend : user.userName + appConfig.whisperAppend;
-  const toRoom = toTeam ? transaction.to : transaction.to + appConfig.whisperAppend;
-  const newTransaction = transaction;
-  newTransaction.amount = Math.abs(newTransaction.amount);
-  newTransaction.time = new Date();
-  newTransaction.from = fromTeam ? user.team + appConfig.teamAppend : user.userName;
-
-  if (newTransaction.from === newTransaction.to) {
+  } else if (transaction.fromWalletId === transaction.toWalletId) {
     callback({ error: new errorCreator.InvalidData({ name: 'send to same' }) });
 
     return;
   }
 
+  const newTransaction = transaction;
+  newTransaction.amount = Math.abs(newTransaction.amount);
+
   dbWallet.getWallet({
-    owner: newTransaction.from,
+    walletId: newTransaction.fromWalletId,
     callback: (walletData) => {
       if (walletData.error) {
         callback({ error: walletData.error });
@@ -176,7 +163,7 @@ function createTransaction({ user, transaction, io, fromTeam, socket, callback }
           const createdTransaction = transactionData.data.transaction;
 
           dbWallet.decreaseAmount({
-            owner: createdTransaction.from,
+            walletId: createdTransaction.fromWalletId,
             amount: createdTransaction.amount,
             callback: (decreasedWalletData) => {
               if (decreasedWalletData.error) {
@@ -186,7 +173,7 @@ function createTransaction({ user, transaction, io, fromTeam, socket, callback }
               }
 
               dbWallet.increaseAmount({
-                owner: createdTransaction.to,
+                walletId: createdTransaction.toWalletId,
                 amount: createdTransaction.amount,
                 callback: (increasedWalletData) => {
                   if (increasedWalletData.error) {
@@ -199,31 +186,31 @@ function createTransaction({ user, transaction, io, fromTeam, socket, callback }
                   const { wallet: decreasedWallet } = decreasedWalletData.data;
 
                   if (socket) {
-                    socket.broadcast.to(fromRoom).emit('transaction', {
+                    socket.broadcast.to(createdTransaction.fromWalletId).emit('transaction', {
                       data: {
                         transaction: createdTransaction,
                         wallet: decreasedWallet,
                       },
                     });
 
-                    socket.broadcast.to(toRoom).emit('transaction', {
+                    socket.broadcast.to(createdTransaction.toWalletId).emit('transaction', {
                       data: {
                         transaction: createdTransaction,
                         wallet: increasedWallet,
                       },
                     });
                   } else {
-                    io.to(toRoom).emit('transaction', {
-                      data: {
-                        transaction: createdTransaction,
-                        wallet: increasedWallet,
-                      },
-                    });
-
-                    io.to(fromRoom).emit('transaction', {
+                    io.to(createdTransaction.fromWalletId).emit('transaction', {
                       data: {
                         transaction: createdTransaction,
                         wallet: decreasedWallet,
+                      },
+                    });
+
+                    io.to(createdTransaction.toWalletId).emit('transaction', {
+                      data: {
+                        transaction: createdTransaction,
+                        wallet: increasedWallet,
                       },
                     });
                   }
@@ -233,6 +220,7 @@ function createTransaction({ user, transaction, io, fromTeam, socket, callback }
                     wallet: decreasedWallet,
                   };
 
+                  // FIXME Check if user is in teamId
                   if (user.team && createdTransaction.to === user.team + appConfig.teamAppend) {
                     dataToSend.toWallet = increasedWallet;
                   }
@@ -250,13 +238,13 @@ function createTransaction({ user, transaction, io, fromTeam, socket, callback }
 
 /**
  * Create transaction based on jwt token
- * @param {Object} params.transaction New transaction
- * @param {Object} params.io Socket.io. Will be used if socket is not set
- * @param {boolean} params.fromTeam Is the transaction made by a team?
- * @param {Object} [params.socket] Socket.io
- * @param {Function} params.callback Callback
+ * @param {Object} params.token - jwt
+ * @param {Object} params.transaction - New transaction
+ * @param {Object} params.io - Socket.io. Will be used if socket is not set
+ * @param {Object} [params.socket] - Socket.io
+ * @param {Function} params.callback - Callback
  */
-function createTransactionBasedOnToken({ transaction, io, socket, fromTeam, token, callback }) {
+function createTransactionBasedOnToken({ transaction, io, socket, token, callback }) {
   authenticator.isUserAllowed({
     token,
     commandName: dbConfig.apiCommands.CreateTransaction.name,
@@ -272,7 +260,6 @@ function createTransactionBasedOnToken({ transaction, io, socket, fromTeam, toke
         io,
         socket,
         callback,
-        fromTeam,
         user: data.user,
       });
     },

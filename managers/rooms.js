@@ -17,7 +17,6 @@
 'use strict';
 
 const dbUser = require('../db/connectors/user');
-const dbChatHistory = require('../db/connectors/chatHistory');
 const appConfig = require('../config/defaults/config').app;
 const dbConfig = require('../config/defaults/config').databasePopulation;
 const errorCreator = require('../objects/error/errorCreator');
@@ -26,19 +25,6 @@ const objectValidator = require('../utils/objectValidator');
 const authenticator = require('../helpers/authenticator');
 const messenger = require('../helpers/messenger');
 const dbRoom = require('../db/connectors/room');
-
-/*
- * Sort messages based on timestamp
- */
-const messageSort = (a, b) => {
-  if (a.time < b.time) {
-    return -1;
-  } else if (a.time > b.time) {
-    return 1;
-  }
-
-  return 0;
-};
 
 /**
  * Authenticate user to room
@@ -61,7 +47,7 @@ function authUserToRoom({ token, room, callback }) {
         return;
       }
 
-      const lowerRoomName = room.roomName.toLowerCase();
+      const roomId = room.roomId.toLowerCase();
 
       if (lowerRoomName === dbConfig.rooms.public.roomName) {
         callback({ data: { isAllowed: true, isFollowing: true, room: { roomName: dbConfig.rooms.public.roomName } } });
@@ -74,8 +60,8 @@ function authUserToRoom({ token, room, callback }) {
       }
 
       dbRoom.authUserToRoom({
+        roomId,
         user: data.user,
-        roomName: lowerRoomName,
         password: room.password,
         callback: ({ error: roomError, data: roomData }) => {
           if (roomError) {
@@ -106,136 +92,19 @@ function isRequiredRoom({ roomName, socketId, user }) {
   const isAliasWhisperRoom = user.aliases ? user.aliases.map(alias => alias + appConfig.whisperAppend).indexOf(sentRoomName) > -1 : false;
   const isRequired = dbConfig.requiredRooms.indexOf(sentRoomName) > -1;
   const isSocketRoom = socketId && sentRoomName === socketId;
-  const isWhisperRoom = sentRoomName === user.userName + appConfig.whisperAppend;
+  const isWhisperRoom = sentRoomName === user.username + appConfig.whisperAppend;
   const isTeamRoom = user.team ? roomName === 'team' || roomName === user.team + appConfig.teamAppend : false;
 
   return isAliasWhisperRoom || isRequired || isSocketRoom || isWhisperRoom || isTeamRoom;
 }
 
 /**
- * Gets getHistory (messages) from one or more rooms
- * @param {string[]} params.rooms The rooms to retrieve the getHistory from
- * @param {Object} [params.socket] Socket io
- * @param {boolean} [params.whisperTo] Is it whispers to a user?
- * @param {Function} params.callback Callback
- */
-function getHistory({ token, callback, socket, roomName, whisperTo }) {
-  authenticator.isUserAllowed({
-    token,
-    commandName: dbConfig.apiCommands.GetHistory.name,
-    callback: ({ error, data }) => {
-      if (error) {
-        callback({ error });
-
-        return;
-      } else if (!objectValidator.isValidData({ roomName }, { roomName: true })) {
-        callback({ error: new errorCreator.InvalidData({ expected: '{ roomName }' }) });
-
-        return;
-      }
-
-      const user = data.user;
-      const allUserRooms = user.rooms;
-      const socketRoom = socket ? socket.id : user.socketId || '';
-      let roomToGet = roomName;
-
-      allUserRooms.push(socketRoom);
-
-      if (whisperTo) {
-        roomToGet = `${roomName}${appConfig.whisperAppend}`;
-      } else if (roomName === 'team') {
-        roomToGet = user.team + appConfig.teamAppend;
-      }
-
-      if (allUserRooms.indexOf(roomToGet) === -1) {
-        callback({ error: new errorCreator.NotAllowed({ name: 'not following room' }) });
-
-        return;
-      }
-
-      dbChatHistory.getHistory({
-        roomName: roomToGet,
-        callback: ({ error: historyError, data: historyData }) => {
-          if (historyError) {
-            callback({ error: historyError });
-
-            return;
-          }
-
-          const history = historyData.history;
-
-          const messages = history.messages.map((message) => {
-            if (history.anonymous) {
-              const anonMessage = message;
-
-              anonMessage.time = new Date();
-              anonMessage.time.setHours(0);
-              anonMessage.time.setMinutes(0);
-              anonMessage.time.setSeconds(0);
-              anonMessage.userName = dbConfig.anonymousUserName;
-
-              return anonMessage;
-            }
-
-            return message;
-          }).sort(messageSort);
-
-          const historyToSend = history;
-          historyToSend.timeZoneOffset = new Date().getTimezoneOffset();
-
-          if (whisperTo) {
-            historyToSend.messages = messages.filter(message => message.roomName === `${whisperTo}${appConfig.whisperAppend}` || message.userName === whisperTo);
-          } else {
-            historyToSend.messages = messages;
-          }
-
-          callback({ data: { history: historyToSend } });
-        },
-      });
-    },
-  });
-}
-
-/**
- * Create team, whisper or other types of rooms that do not follow the normal room rules
- * @param {Object} params.user User creating the room
- * @param {Object} params.room Room to create
- * @param {Function} params.callback Callback
- */
-function createSpecialRoom({ user, room, callback }) {
-  dbRoom.createRoom({
-    room,
-    callback: ({ error: roomError, data: roomData }) => {
-      if (roomError) {
-        callback({ error: roomError });
-
-        return;
-      }
-
-      dbUser.addRoomToUser({
-        userName: user.userName,
-        roomName: roomData.room.roomName,
-        callback: ({ error: addError }) => {
-          if (addError) {
-            callback({ error: addError });
-
-            return;
-          }
-
-          callback({ data: roomData });
-        },
-      });
-    },
-  });
-}
-
-/**
  * Creates a new chat room and adds the user who created it to it
- * @param {Object} params.room New room
- * @param {Object} params.user User who is creating the new room
- * @param {Object} [params.socket] Socket io
- * @param {Object} params.io Socket.io. Used if socket isn't set
- * @param {Function} params.callback callback
+ * @param {Object} params.room - New room
+ * @param {Object} params.user - User who is creating the new room
+ * @param {Object} [params.socket] - Socket io
+ * @param {Object} params.io - Socket.io. Used if socket isn't set
+ * @param {Function} params.callback - callback
  */
 function createRoom({ room, token, socket, io, callback }) {
   authenticator.isUserAllowed({
@@ -254,11 +123,7 @@ function createRoom({ room, token, socket, io, callback }) {
         callback({ error: new errorCreator.InvalidCharacters({ expected: 'a-z 0-9 length: 10' }) });
 
         return;
-      } else if (dbConfig.protectedNames.indexOf(room.roomName.toLowerCase()) > -1
-        || room.roomName.toLowerCase().indexOf(appConfig.whisperAppend) > -1
-        || room.roomName.toLowerCase().indexOf(appConfig.teamAppend) > -1
-        || room.roomName.toLowerCase().indexOf(appConfig.scheduleAppend) > -1
-        || room.roomName.toLowerCase().indexOf(appConfig.teamAppend) > -1) {
+      } else if (dbConfig.protectedNames.indexOf(room.roomName.toLowerCase()) > -1) {
         callback({ error: new errorCreator.InvalidCharacters({ expected: 'not protected words' }) });
 
         return;
@@ -266,9 +131,19 @@ function createRoom({ room, token, socket, io, callback }) {
 
       const user = data.user;
       const newRoom = room;
+
       newRoom.roomName = room.roomName.toLowerCase();
-      newRoom.owner = user.userName;
+      newRoom.ownerId = user.userId;
       newRoom.password = newRoom.password && newRoom.password !== '' ? newRoom.password : undefined;
+
+      redisAlias.hasAccessToAlias({
+        userId: user.userId,
+        teamId: user.teamId,
+        aliasId: user.aliasId,
+        callback: () => {
+
+        }
+      });
 
       dbRoom.createRoom({
         room: newRoom,
@@ -281,8 +156,8 @@ function createRoom({ room, token, socket, io, callback }) {
 
           const createdRoom = roomData.room;
 
-          dbUser.addRoomToUser({
-            userName: user.userName,
+          dbRoom.createRoom({
+            username: user.username,
             roomName: newRoom.roomName,
             callback: ({ error: addError }) => {
               if (addError) {
@@ -340,7 +215,7 @@ function joinRooms({ rooms, socket, deviceId }) {
 function followRoom({ token, socket, io, room, callback, user: sentUser }) {
   authenticator.isUserAllowed({
     token,
-    matchNameTo: sentUser.userName,
+    matchToId: sentUser.username,
     commandName: dbConfig.apiCommands.FollowRoom.name,
     callback: ({ error, data }) => {
       if (error) {
@@ -381,7 +256,7 @@ function followRoom({ token, socket, io, room, callback, user: sentUser }) {
             }
 
             dbUser.addRoomToUser({
-              userName: userFollowing.userName,
+              username: userFollowing.username,
               roomName: roomToFollow.roomName,
               callback: (addedData) => {
                 if (addedData.error) {
@@ -393,7 +268,7 @@ function followRoom({ token, socket, io, room, callback, user: sentUser }) {
                 const roomName = authData.room.roomName;
                 const dataToSend = {
                   roomName,
-                  userName: userFollowing.userName,
+                  username: userFollowing.username,
                   isFollowing: true,
                 };
 
@@ -401,7 +276,7 @@ function followRoom({ token, socket, io, room, callback, user: sentUser }) {
                   socket.broadcast.to(roomName).emit('roomFollower', { data: dataToSend });
                   socket.join(roomName);
                 } else {
-                  io.to(user.userName + appConfig.whisperAppend).emit('follow', { data: { room: authData.room } });
+                  io.to(user.username + appConfig.whisperAppend).emit('follow', { data: { room: authData.room } });
                   io.to(roomName).emit('roomFollower', { data: dataToSend });
                 }
 
@@ -412,9 +287,9 @@ function followRoom({ token, socket, io, room, callback, user: sentUser }) {
         });
       };
 
-      if (user && user.userName !== data.user.userName) {
+      if (user && user.username !== data.user.username) {
         dbUser.getUser({
-          userName: user.userName,
+          username: user.username,
           callback: roomCallback,
         });
       } else {
@@ -449,21 +324,21 @@ function leaveSocketRooms({ socket }) {
 function followWhisperRoom({ token, whisperTo, sender, room, socket, io, callback }) {
   authenticator.isUserAllowed({
     token,
-    matchNameTo: sender.userName,
+    matchToId: sender.username,
     commandName: dbConfig.apiCommands.FollowWhisperRoom.name,
     callback: ({ error, data }) => {
       if (error) {
         callback({ error });
 
         return;
-      } else if (!objectValidator.isValidData({ room, whisperTo, sender }, { room: { roomName: true }, whisperTo: true, sender: { userName: true } })) {
-        callback({ error: new errorCreator.InvalidData({ expected: '{ user: { userName: true }, room: { roomName: true }, whisperTo: true, sender: { userName: true } }' }) });
+      } else if (!objectValidator.isValidData({ room, whisperTo, sender }, { room: { roomName: true }, whisperTo: true, sender: { username: true } })) {
+        callback({ error: new errorCreator.InvalidData({ expected: '{ user: { username: true }, room: { roomName: true }, whisperTo: true, sender: { username: true } }' }) });
 
         return;
       }
 
       dbUser.addWhisperRoomToUser({
-        userName: data.user.userName,
+        username: data.user.username,
         roomName: room.roomName,
         callback: ({ error: whisperError }) => {
           if (whisperError) {
@@ -481,10 +356,10 @@ function followWhisperRoom({ token, whisperTo, sender, room, socket, io, callbac
                 return;
               }
 
-              const whisperToRoomName = `${whisperTo}-whisper-${sender.userName}`;
+              const whisperToRoomName = `${whisperTo}-whisper-${sender.username}`;
 
               dbUser.addWhisperRoomToUser({
-                userName: aliasData.user.userName,
+                username: aliasData.user.username,
                 roomName: whisperToRoomName,
                 callback: (whisperData) => {
                   if (whisperData.error) {
@@ -495,7 +370,7 @@ function followWhisperRoom({ token, whisperTo, sender, room, socket, io, callbac
 
                   const emitTo = `${whisperTo}${appConfig.whisperAppend}`;
                   const dataToEmit = {
-                    whisperTo: sender.userName,
+                    whisperTo: sender.username,
                     data: whisperToRoomName,
                     room: { roomName: whisperToRoomName },
                     whisper: true,
@@ -530,7 +405,7 @@ function followWhisperRoom({ token, whisperTo, sender, room, socket, io, callbac
 function unfollowRoom({ token, socket, io, isWhisperRoom, room, callback, user = {} }) {
   authenticator.isUserAllowed({
     token,
-    matchNameTo: user.userName,
+    matchToId: user.username,
     commandName: dbConfig.apiCommands.UnfollowRoom.name,
     callback: ({ error, data }) => {
       if (error) {
@@ -554,7 +429,7 @@ function unfollowRoom({ token, socket, io, isWhisperRoom, room, callback, user =
 
       dbUser.removeRoomFromUser({
         isWhisperRoom,
-        userName: userUnfollowing.userName,
+        username: userUnfollowing.username,
         roomName: roomToUnfollow.roomName,
         callback: ({ error: removeError }) => {
           if (removeError) {
@@ -565,7 +440,7 @@ function unfollowRoom({ token, socket, io, isWhisperRoom, room, callback, user =
 
           const dataToEmit = {
             room: roomToUnfollow,
-            userName: userUnfollowing.userName,
+            username: userUnfollowing.username,
             isFollowing: false,
           };
 
@@ -587,7 +462,7 @@ function unfollowRoom({ token, socket, io, isWhisperRoom, room, callback, user =
             }
           }
 
-          io.to(userUnfollowing.userName + appConfig.whisperAppend).emit('unfollow', { data: dataToEmit });
+          io.to(userUnfollowing.username + appConfig.whisperAppend).emit('unfollow', { data: dataToEmit });
 
           callback({ data: dataToEmit });
         },
@@ -626,22 +501,53 @@ function getRooms({ token, socket, callback }) {
           const filteredRooms = roomsData.rooms.map((room) => {
             return {
               roomName: room.roomName,
-              password: room.password && room.password !== '',
+              hasPassword: room.password && room.password !== '',
+              owned: room.owner === user.username,
             };
           });
 
-          const socketId = socket ? socket.id : user.socketId || '';
-          const userRooms = socket ? Object.keys(socket.rooms) : user.rooms;
-          const rooms = filteredRooms.filter(room => userRooms.indexOf(room.roomName) < 0);
-          const followedRooms = messenger.filterHiddenRooms({ roomNames: userRooms, socketId }).map((roomName) => { return { roomName, password: false }; });
-          const protectedRooms = filteredRooms.filter(room => room.password);
-          const whisperRooms = user.whisperRooms.map((roomName) => { return { roomName, password: false }; });
+          const socketId = socket
+            ? socket.id
+            : (user.socketId || '');
 
-          if (user.userName === '') {
+          const userRooms = socket
+            ? Object.keys(socket.rooms)
+            : user.rooms;
+
+          const rooms = filteredRooms
+            .filter(room => userRooms.indexOf(room.roomName) < 0);
+
+          const followedRooms = messenger
+            .filterHiddenRooms({
+              socketId,
+              roomNames: userRooms,
+            })
+            .map((roomName) => {
+              return {
+                roomName,
+                isFollowing: true,
+                hasPassword: false,
+              };
+            });
+
+          const protectedRooms = filteredRooms
+            .filter(room => room.password);
+
+          const whisperRooms = user.whisperRooms
+            .map((roomName) => {
+              return {
+                roomName,
+                isWhisper: true,
+                hasPassword: false,
+              };
+            });
+
+          if (user.username === '') {
             callback({
               data: {
                 rooms,
                 followedRooms,
+                defaultRoom: dbConfig.defaultRoom,
                 protectedRooms: [],
                 ownedRooms: [],
                 whisperRooms: [],
@@ -660,13 +566,22 @@ function getRooms({ token, socket, callback }) {
                 return;
               }
 
+              const ownedRooms = ownedData.rooms.map((room) => {
+                return {
+                  owned: true,
+                  roomName: room.roomName,
+                  password: room.password,
+                };
+              });
+
               callback({
                 data: {
                   rooms,
                   followedRooms,
                   protectedRooms,
                   whisperRooms,
-                  ownedRooms: ownedData.rooms.map((room) => { return { roomName: room.roomName, password: room.password }; }),
+                  ownedRooms,
+                  defaultRoom: dbConfig.defaultRoom,
                 },
               });
             },
@@ -688,7 +603,7 @@ function getRooms({ token, socket, callback }) {
 function removeRoom({ token, room, socket, io, callback }) {
   authenticator.isUserAllowed({
     token,
-    matchNameTo: room.owner,
+    matchToId: room.owner,
     commandName: dbConfig.apiCommands.RemoveRoom.name,
     callback: ({ error, data }) => {
       if (error) {
@@ -712,7 +627,7 @@ function removeRoom({ token, room, socket, io, callback }) {
             callback({ error: roomError });
 
             return;
-          } else if (roomData.room.owner !== user.userName && dbConfig.apiCommands.RemoveRoom.accessLevel > user.accessLevel) {
+          } else if (roomData.room.owner !== user.username && dbConfig.apiCommands.RemoveRoom.accessLevel > user.accessLevel) {
             callback({ error: new errorCreator.NotAllowed({ name: 'not owner of room' }) });
 
             return;
@@ -729,7 +644,7 @@ function removeRoom({ token, room, socket, io, callback }) {
                 return;
               }
 
-              dbUser.removeRoomFromAllUsers({
+              dbUser.removeRoomFollowers({
                 roomName: retrievedRoom.roomName,
                 callback: ({ error: allError }) => {
                   if (allError) {
@@ -869,7 +784,6 @@ function getRoom({ token, roomName, callback }) {
 
 exports.createRoom = createRoom;
 exports.joinRooms = joinRooms;
-exports.getHistory = getHistory;
 exports.followRoom = followRoom;
 exports.leaveSocketRooms = leaveSocketRooms;
 exports.isRequiredRoom = isRequiredRoom;
@@ -881,4 +795,3 @@ exports.removeRoom = removeRoom;
 exports.matchMyPartialRoomName = matchMyPartialRoomName;
 exports.matchPartialRoomName = matchPartialRoomName;
 exports.getRoom = getRoom;
-exports.createSpecialRoom = createSpecialRoom;

@@ -143,10 +143,10 @@ describe('Rooms', () => {
         });
     });
 
-    after(`Unfollow room ${roomData.passwordProtectedRoomToCreate.roomName} /api/users/:userName/rooms/:roomName/unfollow POST`, (done) => {
+    after(`Unfollow room ${roomData.passwordProtectedRoomToCreate.roomName} /api/users/:username/rooms/:roomName/unfollow POST`, (done) => {
       chai
         .request(app)
-        .post(`/api/users/${starterData.adminUserToAuth.userName}/rooms/${roomData.passwordProtectedRoomToCreate.roomName}/unfollow`)
+        .post(`/api/users/${starterData.adminUserToAuth.username}/rooms/${roomData.passwordProtectedRoomToCreate.roomName}/unfollow`)
         .set('Authorization', tokens.adminUser)
         .send({ data: { room: { roomName: roomData.passwordProtectedRoomToCreate.roomName } } })
         .end((error, response) => {

@@ -24,9 +24,9 @@ const transactionManager = require('../../managers/transactions');
  * @param {object} io - Socket.io io
  */
 function handle(socket, io) {
-  socket.on('getWallets', ({ userName, token }, callback = () => {}) => {
+  socket.on('getWallets', ({ username, token }, callback = () => {}) => {
     walletManager.getWallets({
-      userName,
+      username,
       token,
       callback,
     });

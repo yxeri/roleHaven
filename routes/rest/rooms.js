@@ -304,7 +304,7 @@ function handle(io) {
    *        {
    *          "time": "2016-10-14T11:13:03.555Z",
    *          "roomName": "bb1",
-   *          "userName": "rez",
+   *          "username": "rez",
    *          "text": [
    *            "..."
    *          ]
@@ -351,13 +351,13 @@ function handle(io) {
    * @apiParam {Object} data
    * @apiParam {Object} data.message Message
    * @apiParam {String[]} data.message.text Content of the message
-   * @apiParam {String} [data.message.userName] Name of the sender. Default is your user name. You can instead set it to one of your user's aliases
+   * @apiParam {String} [data.message.username] Name of the sender. Default is your user name. You can instead set it to one of your user's aliases
    * @apiParam {Boolean} [data.message.isWhisper] Is it a whisper (private) message?
    * @apiParamExample {json} Request-Example:
    *   {
    *    "data": {
    *      "message": {
-   *        "userName": "rez",
+   *        "username": "rez",
    *        "text": [
    *          "Hello world!"
    *        ]
@@ -375,7 +375,7 @@ function handle(io) {
    *        "text": [
    *          "Hello world!"
    *        ],
-   *        "userName": "rez",
+   *        "username": "rez",
    *        "time": "2016-10-28T22:42:06.262Z"
    *      }]
    *    }

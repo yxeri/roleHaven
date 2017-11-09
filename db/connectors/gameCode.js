@@ -17,151 +17,214 @@
 'use strict';
 
 const mongoose = require('mongoose');
+const dbConnector = require('../databaseConnector');
 const errorCreator = require('../../objects/error/errorCreator');
-const textTools = require('../../utils/textTools');
-const dbConfig = require('../../config/defaults/config').databasePopulation;
 
-const gameCodeSchema = new mongoose.Schema({
-  owner: String,
-  code: String,
+const gameCodeSchema = new mongoose.Schema(dbConnector.createSchema({
+  code: { type: String, unique: true },
   codeType: String,
-  renewable: { type: Boolean, default: false },
-}, { collection: 'gameCodes' });
+  isRenewable: { type: Boolean, default: false },
+  used: { type: Boolean, default: false },
+}), { collection: 'gameCodes' });
 
 const GameCode = mongoose.model('GameCode', gameCodeSchema);
 
 /**
- * Creates game code
- * @returns {string} numerical game code
+ * Update game code fields
+ * @private
+ * @param {Object} params - Parameters
+ * @param {string} params.objectId - ID of the game code to update
+ * @param {Object} params.update - Update
+ * @param {Function} params.callback - Callback
  */
-function generateGameCode() {
-  return textTools.shuffleArray(['0', '1', '2', '3', '4', '5', '6', '7', '8', '9']).slice(0, 6).join('');
+function updateGameCodeFields({ objectId, update, callback }) {
+  dbConnector.updateObject({
+    update,
+    query: { _id: objectId },
+    object: GameCode,
+    errorNameContent: 'updateGameCodeFields',
+    callback: ({ error, data }) => {
+      if (error) {
+        callback({ error });
+
+        return;
+      }
+
+      callback({ alias: data.object });
+    },
+  });
 }
 
 /**
- * Update (or create) game code
- * @param {string} params.owner Owner of the game code
- * @param {string} params.code Game code
- * @param {string} params.codeType Type of game code
- * @param {boolean} params.renewable Should a new game code be created after usage?
- * @param {Function} params.callback Callback
+ * Get game code
+ * @private
+ * @param {Object} params - Parameters
+ * @param {string} params.query - Query to get game code
+ * @param {Function} params.callback - Callback
  */
-function updateGameCode({ owner, code, codeType, renewable, callback }) {
-  const newCode = code || generateGameCode();
-  const query = { owner, codeType, code: newCode };
-  const update = { $set: { owner, code: newCode, codeType, renewable } };
-  const options = { new: true, upsert: true };
+function getGameCode({ query, callback }) {
+  dbConnector.getObject({
+    query,
+    object: GameCode,
+    callback: ({ error, data }) => {
+      if (error) {
+        callback({ error });
 
-  GameCode.findOneAndUpdate(query, update, options).lean().exec((err, gameCode) => {
-    if (err) {
-      callback({ error: new errorCreator.Database({ errorObject: err, name: 'updateGameCode' }) });
+        return;
+      } else if (!data.object) {
+        callback({ error: new errorCreator.DoesNotExist({ name: `gameCode ${query.toString()}` }) });
 
-      return;
-    }
+        return;
+      }
 
-    callback({ data: { gameCode } });
+      callback({ gameCode: data.object });
+    },
   });
 }
 
 /**
  * Get game codes
- * @param {string} params.owner Owner of the game code
- * @param {Function} params.callback Callback
+ * @private
+ * @param {Object} params - Parameters
+ * @param {Object} params.query - Query to get game codes
+ * @param {Function} params.callback - Callback
  */
-function getGameCodesByUserName({ owner, callback }) {
-  const query = { owner };
+function getGameCodes({ query, callback }) {
+  dbConnector.getObjects({
+    query,
+    object: GameCode,
+    callback: ({ error, data }) => {
+      if (error) {
+        callback({ error });
 
-  GameCode.find(query).lean().exec((err, gameCodes) => {
-    if (err) {
-      callback({ error: new errorCreator.Database({ errorObject: err, name: 'getGameCodesByUserName' }) });
+        return;
+      }
 
-      return;
-    } else if (!gameCodes) {
-      callback({ error: new errorCreator.DoesNotExist({ name: `game codes for ${owner}` }) });
+      callback({ gameCodes: data.objects });
+    },
+  });
+}
 
-      return;
-    }
+/**
+ * Create game code
+ * @param {Object} params - Parameters
+ * @param {Object} params.gameCode - Game code
+ * @param {Function} params.callback - Callback
+ */
+function createGameCode({ gameCode, callback }) {
+  getGameCode({
+    query: { code: gameCode.code },
+    callback: ({ error, data }) => {
+      if (error) {
+        callback({ error });
 
-    callback({ data: { gameCodes } });
+        return;
+      } else if (data.gameCode) {
+        callback({ error: new error.AlreadyExists({ name: `Game code ${gameCode.code}` }) });
+
+        return;
+      }
+
+      dbConnector.saveObject({
+        object: new GameCode(gameCode),
+        objectType: 'gameCode',
+        callback: (savedData) => {
+          if (savedData.error) {
+            callback({ error: savedData.error });
+
+            return;
+          }
+
+          callback({ data: { gameCode: savedData.data.savedObject } });
+        },
+      });
+    },
+  });
+}
+
+/**
+ * Update (or create) game code
+ * @param {Object} params - Parameters
+ * @param {string} params.objectId - ID of the game code
+ * @param {Object} params.gameCode - Game code
+ * @param {string} params.gameCode.ownerId - User ID of the owner of the game code
+ * @param {string} params.gameCode.code - Game code
+ * @param {string} params.gameCode.codeType - Type of game code
+ * @param {boolean} params.gameCode.isRenewable - Should a new game code be created after usage?
+ * @param {Function} params.callback - Callback
+ */
+function updateGameCode({ objectId, gameCode, callback }) {
+  const {
+    codeType,
+    isRenewable,
+    code,
+    used,
+  } = gameCode;
+
+  const update = { $set: {} };
+
+  if (codeType) { update.$set.codeType = codeType; }
+
+  if (code) { update.$set.code = code; }
+
+  if (typeof isRenewable === 'boolean') { update.$set.isRenewable = isRenewable; }
+
+  if (typeof used === 'boolean') { update.$set.used = used; }
+
+  updateGameCodeFields({
+    update,
+    callback,
+    objectId,
+  });
+}
+
+/**
+ * Get game codes
+ * @param {Object} params - Parameters
+ * @param {string} params.ownerId - User or team ID of the owner of the game code
+ * @param {Function} params.callback - Callback
+ */
+function getGameCodesByOwner({ ownerId, callback }) {
+  getGameCodes({
+    callback,
+    query: {
+      ownerId,
+      used: false,
+    },
   });
 }
 
 /**
  * Get game code by code
- * @param {string} params.code Game code
- * @param {Function} params.callback Callback
+ * @param {Object} params - Parameters
+ * @param {string} params.code - Code of the game code
+ * @param {Function} params.callback - Callback
  */
 function getGameCodeByCode({ code, callback }) {
   const query = { code };
 
-  GameCode.findOne(query).lean().exec((err, gameCode) => {
-    if (err) {
-      callback({ error: new errorCreator.Database({ errorObject: err, name: 'getGameCodeByCode' }) });
-
-      return;
-    } else if (!gameCode) {
-      callback({ error: new errorCreator.DoesNotExist({ name: `game code ${code}` }) });
-
-      return;
-    }
-
-    callback({ data: { gameCode } });
+  getGameCode({
+    query,
+    callback,
   });
 }
 
 /**
  * Remove game code
- * @param {string} params.code Game code
- * @param {Function} params.callback Callback
+ * @param {Object} params - Parameters
+ * @param {string} params.objectId - Code of the game code
+ * @param {Function} params.callback - Callback
  */
-function removeGameCode({ code, callback }) {
-  const query = { code };
-
-  GameCode.findOneAndRemove(query).lean().exec((err) => {
-    if (err) {
-      callback({ error: new errorCreator.Database({ errorObject: err, name: 'removeGameCode' }) });
-
-      return;
-    }
-
-    callback({ data: { success: true } });
-  });
-}
-
-/**
- * Get profile game code for owner
- * @param {string} params.sowner Owner of game code
- * @param {Function} params.callback Callback
- */
-function getProfileGameCode({ owner, callback }) {
-  const query = {
-    owner,
-    codeType: dbConfig.GameCodeTypes.PROFILE,
-  };
-
-  GameCode.findOne(query).lean().exec((err, gameCode) => {
-    if (err) {
-      callback({ error: new errorCreator.Database({ errorObject: err, name: 'getProfileGameCode' }) });
-
-      return;
-    } else if (!gameCode) {
-      updateGameCode({
-        owner,
-        code: generateGameCode(),
-        codeType: dbConfig.GameCodeTypes.PROFILE,
-        renewable: true,
-        callback,
-      });
-
-      return;
-    }
-
-    callback({ data: { gameCode } });
+function removeGameCode({ objectId, callback }) {
+  dbConnector.removeObject({
+    callback,
+    object: GameCode,
+    query: { _id: objectId },
   });
 }
 
 exports.getGameCodeByCode = getGameCodeByCode;
 exports.updateGameCode = updateGameCode;
 exports.removeGameCode = removeGameCode;
-exports.getGameCodesByUserName = getGameCodesByUserName;
-exports.getProfileGameCode = getProfileGameCode;
+exports.getGameCodesByOwner = getGameCodesByOwner;
+exports.createGameCode = createGameCode;

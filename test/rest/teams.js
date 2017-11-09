@@ -43,7 +43,7 @@ describe('Teams', () => {
   };
 
   describe('Create team', () => {
-    before(`Create user ${teamData.userToCreateTeamWith.userName} on /api/users POST`, (done) => {
+    before(`Create user ${teamData.userToCreateTeamWith.username} on /api/users POST`, (done) => {
       chai
         .request(app)
         .post('/api/users')
@@ -57,7 +57,7 @@ describe('Teams', () => {
         });
     });
 
-    before(`Authenticate ${teamData.userToCreateTeamWith.userName} on /api/authenticate`, (done) => {
+    before(`Authenticate ${teamData.userToCreateTeamWith.username} on /api/authenticate`, (done) => {
       chai
         .request(app)
         .post('/api/authenticate')
@@ -98,7 +98,7 @@ describe('Teams', () => {
           response.should.have.status(200);
           response.should.be.json;
           response.body.should.be.jsonSchema(teamSchemas.team);
-          response.body.data.team.owner.should.equal(teamData.userToCreateTeamWith.userName);
+          response.body.data.team.owner.should.equal(teamData.userToCreateTeamWith.username);
 
           done();
         });
@@ -107,7 +107,7 @@ describe('Teams', () => {
     describe('Create existing team', () => {
       let token = '';
 
-      before(`Create user ${teamData.anotherUserToCreateTeam.userName} on /api/users POST`, (done) => {
+      before(`Create user ${teamData.anotherUserToCreateTeam.username} on /api/users POST`, (done) => {
         chai
           .request(app)
           .post('/api/users')
@@ -121,7 +121,7 @@ describe('Teams', () => {
           });
       });
 
-      before(`Authenticate ${teamData.anotherUserToCreateTeam.userName} on /api/authenticate`, (done) => {
+      before(`Authenticate ${teamData.anotherUserToCreateTeam.username} on /api/authenticate`, (done) => {
         chai
           .request(app)
           .post('/api/authenticate')
@@ -147,7 +147,7 @@ describe('Teams', () => {
             response.should.have.status(200);
             response.should.be.json;
             response.body.should.be.jsonSchema(teamSchemas.team);
-            response.body.data.team.owner.should.equal(teamData.anotherUserToCreateTeam.userName);
+            response.body.data.team.owner.should.equal(teamData.anotherUserToCreateTeam.username);
 
             done();
           });
@@ -288,7 +288,7 @@ describe('Teams', () => {
         });
     });
 
-    before(`Authenticate ${teamData.userToCreateTeamAndSendInvitation.userName} on /api/authenticate`, (done) => {
+    before(`Authenticate ${teamData.userToCreateTeamAndSendInvitation.username} on /api/authenticate`, (done) => {
       chai
         .request(app)
         .post('/api/authenticate')
@@ -304,7 +304,7 @@ describe('Teams', () => {
         });
     });
 
-    before(`Authenticate ${teamData.userToInvite.userName} on /api/authenticate`, (done) => {
+    before(`Authenticate ${teamData.userToInvite.username} on /api/authenticate`, (done) => {
       chai
         .request(app)
         .post('/api/authenticate')
@@ -330,17 +330,17 @@ describe('Teams', () => {
           response.should.have.status(200);
           response.should.be.json;
           response.body.should.be.jsonSchema(teamSchemas.team);
-          response.body.data.team.owner.should.equal(teamData.userToCreateTeamAndSendInvitation.userName);
+          response.body.data.team.owner.should.equal(teamData.userToCreateTeamAndSendInvitation.username);
 
           done();
         });
     });
 
     describe('Invite user to team', () => {
-      it('Should NOT send team invite with incorrect authorization on /api/users/:userName/teamInvite POST', (done) => {
+      it('Should NOT send team invite with incorrect authorization on /api/users/:username/teamInvite POST', (done) => {
         chai
           .request(app)
-          .post(`/api/users/${teamData.userToInvite.userName}/teamInvite`)
+          .post(`/api/users/${teamData.userToInvite.username}/teamInvite`)
           .set('Authorization', tokens.incorrectJwt)
           .end((error, response) => {
             response.should.have.status(401);
@@ -351,10 +351,10 @@ describe('Teams', () => {
           });
       });
 
-      it('Should NOT send team invite if not in team on /api/users/:userName/teamInvite POST', (done) => {
+      it('Should NOT send team invite if not in team on /api/users/:username/teamInvite POST', (done) => {
         chai
           .request(app)
-          .post(`/api/users/${teamData.userToInvite.userName}/teamInvite`)
+          .post(`/api/users/${teamData.userToInvite.username}/teamInvite`)
           .set('Authorization', tokens.adminUser)
           .end((error, response) => {
             response.should.have.status(404);
@@ -365,10 +365,10 @@ describe('Teams', () => {
           });
       });
 
-      it('Should send team invite on /api/users/:userName/teamInvite POST', (done) => {
+      it('Should send team invite on /api/users/:username/teamInvite POST', (done) => {
         chai
           .request(app)
-          .post(`/api/users/${teamData.userToInvite.userName}/teamInvite`)
+          .post(`/api/users/${teamData.userToInvite.username}/teamInvite`)
           .set('Authorization', teamTokens.teamInviter)
           .end((error, response) => {
             response.should.have.status(200);
@@ -381,10 +381,10 @@ describe('Teams', () => {
     });
 
     describe('Invite already invited user', () => {
-      before('Send team invite on /api/users/:userName/teamInvite POST', (done) => {
+      before('Send team invite on /api/users/:username/teamInvite POST', (done) => {
         chai
           .request(app)
-          .post(`/api/users/${starterData.adminUserToAuth.userName}/teamInvite`)
+          .post(`/api/users/${starterData.adminUserToAuth.username}/teamInvite`)
           .set('Authorization', teamTokens.teamInviter)
           .end((error, response) => {
             response.should.have.status(200);
@@ -395,10 +395,10 @@ describe('Teams', () => {
           });
       });
 
-      it('Should NOT send team invite to already invited user on /api/users/:userName/teamInvite POST', (done) => {
+      it('Should NOT send team invite to already invited user on /api/users/:username/teamInvite POST', (done) => {
         chai
           .request(app)
-          .post(`/api/users/${starterData.adminUserToAuth.userName}/teamInvite`)
+          .post(`/api/users/${starterData.adminUserToAuth.username}/teamInvite`)
           .set('Authorization', teamTokens.teamInviter)
           .end((error, response) => {
             response.should.have.status(403);

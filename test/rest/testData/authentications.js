@@ -23,7 +23,7 @@ const tools = require('../helper/tools');
 const data = {};
 
 data.adminUserToAuth = {
-  userName: tools.createRandString({ length: appConfig.userNameMaxLength }),
+  username: tools.createRandString({ length: appConfig.usernameMaxLength }),
   password: tools.createRandString({ length: appConfig.passwordMaxLength }),
   registerDevice: tools.createRandString({ length: appConfig.deviceIdLength }),
   mail: `${tools.createRandString({ length: 10 })}@${tools.createRandString({ length: 10 })}.com`,
@@ -32,7 +32,7 @@ data.adminUserToAuth = {
   verified: true,
 };
 data.basicUserToAuth = {
-  userName: tools.createRandString({ length: appConfig.userNameMaxLength }),
+  username: tools.createRandString({ length: appConfig.usernameMaxLength }),
   password: tools.createRandString({ length: appConfig.passwordMaxLength }),
   registerDevice: tools.createRandString({ length: appConfig.deviceIdLength }),
   mail: `${tools.createRandString({ length: 10 })}@${tools.createRandString({ length: 10 })}.com`,
@@ -40,14 +40,14 @@ data.basicUserToAuth = {
   accessLevel: dbConfig.AccessLevels.BASIC,
 };
 data.unverifiedUserToAuth = {
-  userName: tools.createRandString({ length: appConfig.userNameMaxLength }),
+  username: tools.createRandString({ length: appConfig.usernameMaxLength }),
   password: tools.createRandString({ length: appConfig.passwordMaxLength }),
   registerDevice: tools.createRandString({ length: appConfig.deviceIdLength }),
   mail: `${tools.createRandString({ length: 10 })}@${tools.createRandString({ length: 10 })}.com`,
   verified: false,
 };
 data.bannedUserToAuth = {
-  userName: tools.createRandString({ length: appConfig.userNameMaxLength }),
+  username: tools.createRandString({ length: appConfig.usernameMaxLength }),
   password: tools.createRandString({ length: appConfig.passwordMaxLength }),
   registerDevice: tools.createRandString({ length: appConfig.deviceIdLength }),
   mail: `${tools.createRandString({ length: 10 })}@${tools.createRandString({ length: 10 })}.com`,
@@ -55,7 +55,7 @@ data.bannedUserToAuth = {
   banned: true,
 };
 data.userThatDoesNotExist = {
-  userName: tools.createRandString({ length: appConfig.userNameMaxLength }),
+  username: tools.createRandString({ length: appConfig.usernameMaxLength }),
   password: tools.createRandString({ length: appConfig.passwordMaxLength }),
   registerDevice: tools.createRandString({ length: appConfig.deviceIdLength }),
   mail: `${tools.createRandString({ length: 10 })}@${tools.createRandString({ length: 10 })}.com`,

@@ -30,6 +30,23 @@ const router = new express.Router();
 function handle() {
   /**
    * @api {get} /devices Get devices
+   * @apiVersion 7.0.0
+   * @apiName GetDevices
+   * @apiGroup Devices
+   *
+   * @apiHeader {String} Authorization Your JSON Web Token
+   *
+   * @apiDescription Get devices
+   *
+   * @apiSuccess {Object} data
+   * @apiSuccess {Object[]} data.devices Devices found
+   * @apiSuccess {Object} data.devices.deviceId Unique device ID
+   * @apiSuccess {Date} data.devices.lastAlive Date when the device was last updated
+   * @apiSuccess {string} data.devices.deviceAlias More recognizable identificator than device ID. Defaults to deviceId
+   * @apiSuccess {string} [data.devices.lastUser] Name of the last user logged in on device
+   */
+  /**
+   * @api {get} /devices Get devices
    * @apiVersion 6.0.0
    * @apiName GetDevices
    * @apiGroup Devices
@@ -64,7 +81,7 @@ function handle() {
    *  }
    */
   router.get('/', (request, response) => {
-    deviceManager.getDevices({
+    deviceManager.getAllDevices({
       token: request.headers.authorization,
       callback: ({ error, data }) => {
         if (error) {
@@ -78,6 +95,25 @@ function handle() {
     });
   });
 
+  /**
+   * @api {post} /devices/:deviceId Update device. Will be created if it doesn't exist
+   * @apiVersion 7.0.0
+   * @apiName UpdateDevices
+   * @apiGroup Devices
+   *
+   * @apiHeader {String} Authorization Your JSON Web Token
+   *
+   * @apiDescription Update device. It will update lastAlive with current time and lastUser from token, if set. It is accessible by anonymous users
+   *
+   * @apiParam {String} id Device id
+   *
+   * @apiSuccess {Object} data
+   * @apiSuccess {Object} data.device Updated device
+   * @apiSuccess {Object} data.device.deviceId Device id
+   * @apiSuccess {Object} [data.device.deviceAlias] Device alias
+   * @apiSuccess {Object} data.device.lastAlive Date when the device was last updated (now)
+   * @apiSuccess {string} [data.devices.lastUser] Name of the last user logged in on device
+   */
   /**
    * @api {post} /devices/:deviceId Update device. Will be created if it doesn't exist
    * @apiVersion 6.0.0
@@ -132,8 +168,64 @@ function handle() {
 
   /**
    * @api {post} /devices/:deviceId/alias Update device alias
+   * @apiVersion 7.0.0
+   * @apiName UpdateDeviceName
+   * @apiGroup Devices
+   *
+   * @apiHeader {String} Authorization Your JSON Web Token
+   *
+   * @apiDescription Update device. It will update lastAlive with current time and lastUser from token, if set
+   *
+   * @apiParam {String} deviceId Device deviceId
+   *
+   * @apiParam {Object} data
+   * @apiParam {string} data.device Device
+   * @apiParam {string} data.device.deviceAlias New device alias
+   *
+   * @apiSuccess {Object} data
+   * @apiSuccess {Object} data.device Updated device
+   * @apiSuccess {Object} data.device.deviceId Device id
+   * @apiSuccess {Object} data.device.deviceAlias Device alias
+   * @apiSuccess {Object} data.device.lastAlive Date when the device was last updated (now)
+   * @apiSuccess {string} [data.devices.lastUser] Name of the last user logged in on device
+   */
+  /**
+   * @api {post} /devices/:deviceId/alias Update device alias
    * @apiVersion 6.0.0
-   * @apiName UpdateDeviceAlias
+   * @apiName UpdateDeviceName
+   * @apiGroup Devices
+   *
+   * @apiHeader {String} Authorization Your JSON Web Token
+   *
+   * @apiDescription Update device. It will update lastAlive with current time and lastUser from token, if set
+   *
+   * @apiParam {String} deviceId Device deviceId
+   *
+   * @apiParam {Object} data
+   * @apiParam {string} data.device Device
+   * @apiParam {string} data.device.deviceAlias New device alias
+   *
+   * @apiSuccess {Object} data
+   * @apiSuccess {Object} data.device Updated device
+   * @apiSuccess {Object} data.device.deviceId Device id
+   * @apiSuccess {Object} data.device.deviceAlias Device alias
+   * @apiSuccess {Object} data.device.lastAlive Date when the device was last updated (now)
+   * @apiSuccess {string} [data.devices.lastUser] Name of the last user logged in on device
+   * @apiSuccessExample {json} Success-Response:
+   *   {
+   *    "data": {
+   *      "device": {
+   *        "deviceId": "594lKhgmYwRcZkLp",
+   *        "lastAlive": "2016-10-14T11:13:03.555Z",
+   *        "deviceAlias": "bananaman"
+   *      }
+   *    }
+   *  }
+   */
+  /**
+   * @api {post} /devices/:deviceId/alias Update device alias
+   * @apiVersion 6.0.0
+   * @apiName UpdateDeviceName
    * @apiGroup Devices
    *
    * @apiHeader {String} Authorization Your JSON Web Token
@@ -182,7 +274,7 @@ function handle() {
       return;
     }
 
-    deviceManager.updateDeviceAlias({
+    deviceManager.updateDeviceName({
       token: request.headers.authorization,
       device: {
         deviceId: request.params.deviceId,

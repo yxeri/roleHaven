@@ -23,10 +23,36 @@ const dbDevice = require('../db/connectors/device');
 const authenticator = require('../helpers/authenticator');
 
 /**
- * Get devices
- * @param {Function} params.callback Callback
+ * Does user have access to devices?
+ * @private
+ * @param {Object} params - Parameter
+ * @param {Object} params.user - User to auth
+ * @param {Object} params.device - Device to check against
+ * @param {Function} params.callback - Callback
  */
-function getDevices({ token, callback }) {
+function hasAccessToDevice({ user, device, callback }) {
+  authenticator.hasAccessTo({
+    objectToAccess: device,
+    toAuth: { userId: user.userId, teamIds: user.partOfTeams },
+    callback: (accessData) => {
+      if (accessData.error) {
+        callback({ error: accessData.error });
+
+        return;
+      }
+
+      callback({ data: { device } });
+    },
+  });
+}
+
+/**
+ * Get devices
+ * @param {Object} params - Parameters
+ * @param {string} params.jwt - jwt
+ * @param {Function} params.callback - Callback
+ */
+function getAllDevices({ token, callback }) {
   authenticator.isUserAllowed({
     token,
     commandName: dbConfig.apiCommands.GetDevices.name,
@@ -53,12 +79,65 @@ function getDevices({ token, callback }) {
 }
 
 /**
- * Update device's lastAlive, lastUser and socketId, retrieved from the user account
- * @param {Object} params.device Device
- * @param {string} params.device.deviceId Device id of the device to update
- * @param {Function} params.callback Callback
+ * Get devices that the user, including the teams that the user is part of, has access to
+ * @param {Object} params - Parameters
+ * @param {string} params.token - jwt
+ * @param {Function} params.callback - Callback
+ * @param {Object} [params.userId] - ID of other user to retrieve devices with
  */
-function updateDevice({ token, device, callback }) {
+function getUsersDevices({ token, callback, userId }) {
+  authenticator.isUserAllowed({
+    token,
+    commandName: dbConfig.apiCommands.GetDevices.name,
+    matchToId: userId,
+    callback: ({ error, data }) => {
+      if (error) {
+        callback({ error });
+
+        return;
+      }
+
+      const authUser = data.user;
+
+      dbDevice.getDevicesByUser({
+        user: authUser,
+        callback: (devicesData) => {
+          if (devicesData.error) {
+            callback({ error: devicesData.error });
+
+            return;
+          }
+
+          dbDevice.getDevicesByTeams({
+            teamIds: authUser.partOfTeams,
+            callback: (teamData) => {
+              if (teamData.error) {
+                callback({ error: teamData.error });
+
+                return;
+              }
+
+              callback({
+                data: {
+                  devices: devicesData.data.devices.concat(teamData.data.devices),
+                },
+              });
+            },
+          });
+        },
+      });
+    },
+  });
+}
+
+/**
+ * Update device
+ * @param {Object} params - Parameters
+ * @param {Object} params.device - Device
+ * @parm {Object} params.options - Options
+ * @param {Function} params.callback - Callback
+ */
+function updateDevice({ token, device, options, callback }) {
   authenticator.isUserAllowed({
     token,
     commandName: dbConfig.apiCommands.UpdateDevice.name,
@@ -73,71 +152,45 @@ function updateDevice({ token, device, callback }) {
         return;
       }
 
-      const deviceToUpdate = {};
-      deviceToUpdate.lastAlive = new Date();
-      deviceToUpdate.deviceId = device.deviceId;
+      const authUser = data.user;
+      const deviceToUpdate = {
+        deviceId: device.deviceId,
+        socketId: authUser.socketId,
+        lastUserId: authUser.userId,
+      };
 
-      if (!data.user.isAnonymous) {
-        deviceToUpdate.socketId = data.user.socketId;
-        deviceToUpdate.lastUser = data.user.userName;
-      }
+      dbDevice.getDeviceById({
+        deviceId: device.deviceId,
+        callback: (deviceData) => {
+          if (deviceData.error) {
+            callback({ error: deviceData.error });
 
-      dbDevice.updateDevice({
-        device: deviceToUpdate,
-        callback: ({ error: updateError, data: deviceData }) => {
-          if (updateError) {
-            callback({ error: updateError });
+            return;
           }
 
-          // TODO Shold create device room, if upsert
+          hasAccessToDevice({
+            device: deviceData.data.device,
+            user: authUser,
+            callback: (accessData) => {
+              if (accessData.error) {
+                callback({ error: accessData.error });
 
-          callback({ data: deviceData });
+                return;
+              }
+
+              dbDevice.updateDevice({
+                callback,
+                options,
+                device: deviceToUpdate,
+              });
+            },
+          });
         },
       });
     },
   });
 }
 
-/**
- * Update device alias
- * @param {Object} params.device Device
- * @param {string} params.device.deviceId Id of the device to update
- * @param {string} params.device.deviceAlias New alias for the device
- * @param {Function} param.scallback Callback
- */
-function updateDeviceAlias({ token, device, callback }) {
-  authenticator.isUserAllowed({
-    token,
-    commandName: dbConfig.apiCommands.UpdateDeviceAlias.name,
-    callback: ({ error }) => {
-      if (error) {
-        callback({ error });
-
-        return;
-      } else if (!objectValidator.isValidData({ device }, { device: { deviceId: true, deviceAlias: true } })) {
-        callback({ error: new errorCreator.InvalidData({ expected: '{ device: { deviceId, deviceAlias } }' }) });
-
-        return;
-      }
-
-      const deviceToUpdate = {};
-      deviceToUpdate.deviceId = device.deviceId;
-      deviceToUpdate.deviceAlias = device.deviceAlias;
-
-      dbDevice.updateDeviceAlias({
-        device: deviceToUpdate,
-        callback: ({ error: updateError, data: deviceData }) => {
-          if (updateError) {
-            callback({ error: updateError });
-          }
-
-          callback({ data: deviceData });
-        },
-      });
-    },
-  });
-}
-
-exports.getDevices = getDevices;
+exports.getAllDevices = getAllDevices;
 exports.updateDevice = updateDevice;
-exports.updateDeviceAlias = updateDeviceAlias;
+exports.getUsersDevices = getUsersDevices;

@@ -17,76 +17,138 @@
 'use strict';
 
 const mongoose = require('mongoose');
-const databaseConnector = require('../databaseConnector');
+const dbConnector = require('../databaseConnector');
+const dbWallet = require('./wallet');
 const errorCreator = require('../../objects/error/errorCreator');
 
-const transactionSchema = new mongoose.Schema({
-  time: { type: Date, default: new Date() },
+const transactionSchema = new mongoose.Schema(dbConnector.createSchema({
   amount: Number,
-  to: String,
-  from: String,
-  coordinates: {
+  toWalletId: String,
+  fromWalletId: String,
+  note: String,
+  coordinates: dbConnector.createSchema({
     longitude: Number,
     latitude: Number,
+    speed: Number,
     accuracy: Number,
-  },
-  note: String,
-}, { collection: 'transactions' });
+    heading: Number,
+  }),
+}), { collection: 'transactions' });
 
 const Transaction = mongoose.model('transaction', transactionSchema);
 
 /**
  * Get transactions
- * @param {string} params.to Receiver
- * @param {string} params.from Sender
- * @param {Function} params.callback Callback
+ * @private
+ * @param {Object} params - Parameters
+ * @param {Object} params.query - Query to get transactions
+ * @param {Function} params.callback - Callback
  */
-function getTransactions({ to, from, callback }) {
-  const query = { $and: [{ to }, { from }] };
+function getTransactions({ query, callback }) {
+  dbConnector.getObjects({
+    query,
+    object: Transaction,
+    callback: ({ error, data }) => {
+      if (error) {
+        callback({ error });
 
-  Transaction.find(query).lean().exec((err, transaction) => {
-    if (err) {
-      callback({ error: new errorCreator.Database({ errorObject: err, name: 'getTransactions' }) });
+        return;
+      }
 
-      return;
-    } else if (!transaction) {
-      callback({ error: new errorCreator.DoesNotExist({ name: `transaction ${to} ${from}` }) });
-
-      return;
-    }
-
-    callback({ data: { transaction } });
+      callback({ data: { transactions: data.objects } });
+    },
   });
 }
 
 /**
- * Get all transactions made by a user/team
- * @param {string} params.owner Name of the user/team
- * @param {Function} params.callback Callback
+ * Get transaction
+ * @private
+ * @param {Object} params - Parameters
+ * @param {Object} params.query - Query to get transaction
+ * @param {Function} params.callback - Callback
  */
-function getAllTransactions({ owner, callback }) {
-  const query = { $or: [{ to: owner }, { from: owner }] };
+function getTransaction({ query, callback }) {
+  dbConnector.getObject({
+    query,
+    object: Transaction,
+    callback: ({ error, data }) => {
+      if (error) {
+        callback({ error });
 
-  Transaction.find(query).lean().exec((err, transactions = []) => {
-    if (err) {
-      callback({ error: new errorCreator.Database({ errorObject: err, name: 'getTransactions' }) });
+        return;
+      } else if (!data.object) {
+        callback({ error: new errorCreator.DoesNotExist({ name: `transaction ${query.toString()}` }) });
 
-      return;
-    }
+        return;
+      }
 
-    callback({ data: { transactions } });
+      callback({ data: { transaction: data.object } });
+    },
+  });
+}
+
+/**
+ * Get transactions
+ * @param {Object} params - Parameters
+ * @param {string} params.walletId - Wallet ID
+ * @param {Function} params.callback - Callback
+ */
+function getTransactionsByWallet({ walletId, callback }) {
+  const query = {
+    $or: [
+      { toWalletId: walletId },
+      { fromWalletId: walletId },
+    ],
+  };
+
+  getTransactions({
+    query,
+    callback,
+  });
+}
+
+/**
+ * Get transactions by user
+ * @param {Object} params - Parameters
+ * @param {string} params.userId - Id of the user
+ * @param {Function} params.callback - Callback
+ */
+function getTransactionsByUser({ userId, callback }) {
+  dbWallet.getWalletsByUser({
+    userId,
+    callback: ({ error, data }) => {
+      if (error) {
+        callback({ error });
+
+        return;
+      }
+
+      const walletIds = data.wallets.map(wallet => wallet.walletId);
+      const query = {
+        $or: [
+          { fromWalletId: { $in: walletIds } },
+          { toWalletId: { $in: walletIds } },
+        ],
+      };
+
+      getTransactions({
+        callback,
+        query,
+      });
+    },
   });
 }
 
 /**
  * Create and save transaction
- * @param {Object} params.transaction New transaction
- * @param {Function} params.callback Callback
+ * @param {Object} params - Parameters
+ * @param {Object} params.transaction - New transaction
+ * @param {Function} params.callback - Callback
  */
 function createTransaction({ transaction, callback }) {
   const newTransaction = new Transaction(transaction);
 
-  databaseConnector.saveObject({
+  dbConnector.saveObject({
     object: newTransaction,
     objectType: 'transaction',
     callback: ({ error, data }) => {
@@ -101,7 +163,46 @@ function createTransaction({ transaction, callback }) {
   });
 }
 
+/**
+ * Remove transaction
+ * @param {Object} params - Parameters
+ * @param {string} params.objectId - ID of the transaction
+ * @param {Function} params.callback - Callback
+ */
+function removeTransaction({ objectId, callback }) {
+  dbConnector.removeObject({
+    callback,
+    object: Transaction,
+    query: { _id: objectId },
+  });
+}
+
+/**
+ * Get all transactions
+ * @param {Object} params - Parameters
+ * @param {Function} params.callback - Callback
+ */
+function getAllTransactions({ callback }) {
+  getTransactions({ callback });
+}
+
+/**
+ * Get transaction by ID
+ * @param {Object} params - Parameters
+ * @param {string} params.objectId - ID of the transaction
+ * @param {Function} params.callback - Callback
+ */
+function getTransactionById({ objectId, callback }) {
+  getTransaction({
+    callback,
+    query: { _id: objectId },
+  });
+}
+
 exports.createTransaction = createTransaction;
-exports.getTransactions = getTransactions;
+exports.getTransactionsByWallet = getTransactionsByWallet;
+exports.getTransactionsByUser = getTransactionsByUser;
+exports.removeTransaction = removeTransaction;
 exports.getAllTransactions = getAllTransactions;
+exports.getTransactionById = getTransactionById;
 

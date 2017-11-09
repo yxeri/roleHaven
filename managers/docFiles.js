@@ -23,37 +23,89 @@ const textTools = require('../utils/textTools');
 const dbDocFile = require('../db/connectors/docFile');
 const authenticator = require('../helpers/authenticator');
 const objectValidator = require('../utils/objectValidator');
+const aliasManager = require('./aliases');
+
+/**
+ * Does user have access to docFile?
+ * @private
+ * @param {Object} params - Parameter
+ * @param {Object} params.user - User to auth
+ * @param {Object} params.docFile - DocFile to check against
+ * @param {Function} params.callback - Callback
+ */
+function hasAccessToDocFile({ user, docFile, callback }) {
+  authenticator.hasAccessTo({
+    objectToAccess: docFile,
+    toAuth: { userId: user.userId, teamIds: user.partOfTeams, accessLevel: user.accessLevel },
+    callback: (accessData) => {
+      if (accessData.error) {
+        callback({ error: accessData.error });
+
+        return;
+      }
+
+      callback({ data: { docFile } });
+    },
+  });
+}
+
+/**
+ * Saves doc file to database and transmits it to sockets
+ * @private
+ * @param {Object} params - Parameters
+ * @param {Object} params.docFile - Doc file to save
+ * @param {Function} params.callback - Callback
+ * @param {Object} params.socket - Socket.io
+ * @param {Object} params.io - Socket.io. Used if socket is not set
+ */
+function saveAndTransmitDocFile({ docFile, callback, socket, io }) {
+  dbDocFile.createDocFile({
+    docFile,
+    callback: (createData) => {
+      if (createData.error) {
+        callback({ error: createData.error });
+
+        return;
+      }
+
+      const docFileToSend = createData.data.docFile;
+
+      callback({ data: { docFile: createData.data.docFile } });
+
+      if (socket) {
+        socket.broadcast.emit('docFile', { data: { docFile: docFileToSend } });
+      } else {
+        io.emit('docFile', { data: { docFile: docFileToSend } });
+      }
+    },
+  });
+}
 
 /**
  * Create a docFile
- * @param {Object} params.user User creating doc file
- * @param {Object} params.docFile DocFile to create
- * @param {string} [params.customCreator] Custom creator name that will be shown instead of default creator
- * @param {string} params.userName Creator user name
- * @param {Object} [params.socket] Socket io
- * @param {Object} params.io Socket io. Will be used if socket is not set
- * @param {Function} params.callback Callback
+ * @param {Object} params - Parameters
+ * @param {Object} params.docFile - DocFile to create
+ * @param {string} params.userId - ID of the creator. Will default to socket user
+ * @param {Object} [params.socket] - Socket io
+ * @param {Object} params.io - Socket io. Will be used if socket is not set
+ * @param {Function} params.callback - Callback
  */
-function createDocFile({ token, userName, socket, io, docFile, callback }) {
+function createDocFile({ token, socket, io, docFile, callback, userId }) {
   authenticator.isUserAllowed({
     token,
-    matchNameTo: userName,
+    matchToId: userId,
     commandName: dbConfig.apiCommands.CreateDocFile.name,
     callback: ({ error, data }) => {
       if (error) {
         callback({ error });
 
         return;
-      } else if (docFile.customCreator && docFile.customCreator !== data.user.userName && data.user.creatorAliases.indexOf(docFile.customCreator) === -1 && data.user.aliases.indexOf(docFile.customCreator) === -1) {
-        callback({ error: new errorCreator.NotAllowed({ name: 'custom creator' }) });
+      } else if (!objectValidator.isValidData({ docFile }, { docFile: { code: true, text: true, title: true } })) {
+        callback({ error: new errorCreator.InvalidData({ expected: '{ docFile: { code, text, title } }' }) });
 
         return;
-      } else if (!objectValidator.isValidData({ docFile }, { docFile: { docFileId: true, text: true, title: true } })) {
-        callback({ error: new errorCreator.InvalidData({ expected: '{ docFile: { docFileId, text, title } }' }) });
-
-        return;
-      } else if (!textTools.isAlphaNumeric(docFile.docFileId)) {
-        callback({ error: new errorCreator.InvalidCharacters({ expected: `alphanumeric ${docFile.docFileId}` }) });
+      } else if (!textTools.isAlphaNumeric(docFile.code) || docFile.code.length > appConfig.docFileCodeMaxLength || docFile.code === '') {
+        callback({ error: new errorCreator.InvalidCharacters({ expected: `Alphanumeric ${docFile.code}. ID length: ${appConfig.docFileCodeMaxLength}` }) });
 
         return;
       } else if (docFile.text.join('').length > appConfig.docFileMaxLength || docFile.text.join('') === '') {
@@ -64,63 +116,61 @@ function createDocFile({ token, userName, socket, io, docFile, callback }) {
         callback({ error: new errorCreator.InvalidCharacters({ expected: `Title length: ${appConfig.docFileTitleMaxLength}` }) });
 
         return;
-      } else if (docFile.docFileId.length > appConfig.docFileIdMaxLength || docFile.docFileId === '') {
-        callback({ error: new errorCreator.InvalidCharacters({ expected: `Id length: ${appConfig.docFileIdMaxLength}` }) });
-
-        return;
       }
+
+      const authUser = data.user;
 
       const newDocFile = docFile;
-      newDocFile.creator = data.user.userName;
-      newDocFile.docFileId = newDocFile.docFileId.toLowerCase();
-      newDocFile.team = newDocFile.team ? data.user.team : undefined;
 
-      if (docFile.customCreator) {
-        newDocFile.customCreator = docFile.customCreator;
-        newDocFile.accessUsers = [newDocFile.creator];
+      newDocFile.ownerId = authUser.userId;
+
+      if (newDocFile.teamId) { newDocFile.teamIds = [data.user.teamId]; }
+
+      if (docFile.ownerAliasId) {
+        aliasManager.getAlias({
+          token,
+          userId: authUser.userId,
+          aliasId: docFile.ownerAliasId,
+          callback: (aliasData) => {
+            if (aliasData.error) {
+              callback({ error: aliasData.error });
+
+              return;
+            }
+
+            saveAndTransmitDocFile({
+              socket,
+              io,
+              callback,
+              docFile: newDocFile,
+            });
+          },
+        });
+      } else {
+        saveAndTransmitDocFile({
+          socket,
+          io,
+          callback,
+          docFile: newDocFile,
+        });
       }
-
-      dbDocFile.createDocFile({
-        docFile: newDocFile,
-        callback: (createData) => {
-          if (createData.error) {
-            callback({ error: createData.error });
-
-            return;
-          }
-
-          callback({ data: { docFile: createData.data.docFile } });
-
-          const docFileToSend = createData.data.docFile;
-
-          if (!docFileToSend.isPublic) {
-            docFileToSend.docFileId = null;
-          }
-
-          if (socket) {
-            socket.broadcast.emit('docFile', { data: { docFile: docFileToSend } });
-          } else {
-            io.emit('docFile', { data: { docFile: docFileToSend } });
-          }
-        },
-      });
     },
   });
 }
 
 /**
  * Update existing docFile
- * @param {Object} params.docFile Doc file changes
- * @param {Object} [params.socket] Socket io
- * @param {string} params.userName Creator user name
- * @param {Object} params.io Socket io. Will be used if socket is undefined
- * @param {Object} params.user User that is updating docFile
- * @param {Function} params.callback Callback
+ * @param {Object} params - Parameters
+ * @param {Object} params.docFile - Doc file changes
+ * @param {Object} [params.socket] - Socket io
+ * @param {string} params.userId - ID of the creator
+ * @param {Object} params.io - Socket io. Will be used if socket is undefined
+ * @param {Function} params.callback - Callback
  */
-function updateDocFile({ docFile, socket, io, token, userName, callback }) {
+function updateDocFile({ docFile, socket, io, token, userId, callback }) {
   authenticator.isUserAllowed({
     token,
-    matchNameTo: userName,
+    matchToId: userId,
     commandName: dbConfig.apiCommands.CreateDocFile.name,
     callback: ({ error, data }) => {
       if (error) {
@@ -137,56 +187,57 @@ function updateDocFile({ docFile, socket, io, token, userName, callback }) {
         return;
       }
 
-      const user = data.user;
-      const { docFileId = docFile.docFileId.toLowerCase(), title, text, visibility, isPublic } = docFile;
+      const authUser = data.user;
 
-      dbDocFile.getDocFile({
-        docFileId,
-        user,
-        accessLevel: user.accessLevel,
-        callback: ({ error: getError, data: foundData }) => {
-          if (getError) {
-            callback({ error: getError });
-
-            return;
-          } else if (foundData.docFile.creator !== user.userName) {
-            callback({ error: new errorCreator.NotAllowed({ name: `${user.userName} updating doc owned by other user` }) });
+      dbDocFile.getDocFileById({
+        lite: true,
+        docFileId: docFile.docFileId,
+        callback: (docFileData) => {
+          if (docFileData.error) {
+            callback({ error: docFileData.error });
 
             return;
           }
 
-          dbDocFile.updateDocFile({
-            docFileId,
-            title,
-            text,
-            visibility,
-            isPublic,
-            team: docFile.team ? data.user.team : undefined,
-            callback: ({ error: updateError, data: updateData }) => {
-              if (updateError) {
-                callback({ error: updateError });
+          hasAccessToDocFile({
+            docFile: docFileData.data.docFile,
+            user: authUser,
+            callback: (accessData) => {
+              if (accessData.error) {
+                callback({ error: accessData.error });
 
                 return;
               }
 
-              const previousDocFile = foundData.docFile;
-              const updatedDocFile = updateData.docFile;
-              updatedDocFile.docFileId = updatedDocFile.isPublic ? updatedDocFile.docFileId : null;
+              dbDocFile.updateDocFile({
+                docFile,
+                callback: ({ error: updateError, data: updateData }) => {
+                  if (updateError) {
+                    callback({ error: updateError });
 
-              const dataToSend = {
-                docFile: updatedDocFile,
-                updating: true,
-                oldTeam: previousDocFile.team,
-                oldTitle: foundData.docFile.title,
-              };
+                    return;
+                  }
 
-              if (socket) {
-                socket.broadcast.emit('docFile', { data: dataToSend });
-              } else {
-                io.emit('docFile', { data: dataToSend });
-              }
+                  const { code, title, ownerId, isPublic } = updateData.docFile;
 
-              callback({ data: updateData });
+                  const dataToSend = {
+                    docFile: {
+                      title,
+                      ownerId,
+                      isPublic,
+                      code: isPublic ? code : undefined,
+                    },
+                  };
+
+                  if (socket) {
+                    socket.broadcast.emit('docFile', { data: dataToSend });
+                  } else {
+                    io.emit('docFile', { data: dataToSend });
+                  }
+
+                  callback({ data: updateData });
+                },
+              });
             },
           });
         },
@@ -197,26 +248,24 @@ function updateDocFile({ docFile, socket, io, token, userName, callback }) {
 
 /**
  * Get all doc files
- * @param {string} params.token jwt
- * @param {Function} params.callback Callback
+ * @param {Object} params - Parameters
+ * @param {string} params.token - jwt
+ * @param {boolean} [params.lite] - Should parameters storing a lot of data be filtered?
+ * @param {Function} params.callback - Callback
  */
-function getAllDocFiles({ token, callback }) {
+function getAllDocFiles({ token, lite, callback }) {
   authenticator.isUserAllowed({
     token,
     commandName: dbConfig.apiCommands.GetDocFile.name,
-    callback: ({ error, data }) => {
+    callback: ({ error }) => {
       if (error) {
         callback({ error });
 
         return;
       }
 
-      const user = data.user;
-
-      dbDocFile.getDocFiles({
-        accessLevel: user.accessLevel,
-        userName: user.userName,
-        creatorAliases: user.creatorAliases,
+      dbDocFile.getAllDocFiles({
+        lite,
         callback: ({ error: getError, data: docData }) => {
           if (getError) {
             callback({ error: getError });
@@ -224,45 +273,7 @@ function getAllDocFiles({ token, callback }) {
             return;
           }
 
-          const docFiles = docData.docFiles;
-
-          const filteredDocFiles = docFiles.map((docFile) => {
-            const filteredDocFile = docFile;
-
-            if ((docFile.team && user.team && docFile.team !== user.team) || (!docFile.isPublic && docFile.creator !== user.userName && user.creatorAliases.indexOf(docFile.customCreator) === -1)) {
-              if (docFile.accessUsers.indexOf(user.userName) === -1) {
-                filteredDocFile.docFileId = null;
-                filteredDocFile.isLocked = true;
-              }
-            }
-
-            return filteredDocFile;
-          });
-
-          const myDocFiles = [];
-          const myTeamDocFiles = [];
-          const teamDocFiles = [];
-          const userDocFiles = filteredDocFiles.filter((docFile) => {
-            if (!docFile.team && docFile.creator !== user.userName) {
-              return true;
-            }
-
-            if (docFile.creator === user.userName || user.creatorAliases.indexOf(docFile.customCreator) > -1) {
-              myDocFiles.push(docFile);
-            }
-
-            if (docFile.team) {
-              if (user.team && user.team === docFile.team) {
-                myTeamDocFiles.push(docFile);
-              } else {
-                teamDocFiles.push(docFile);
-              }
-            }
-
-            return false;
-          });
-
-          callback({ data: { myDocFiles, myTeamDocFiles, userDocFiles, teamDocFiles } });
+          callback({ data: { docFiles: docData.docFiles } });
         },
       });
     },
@@ -270,11 +281,12 @@ function getAllDocFiles({ token, callback }) {
 }
 
 /**
- * Get DocFiles
+ * Get DocFiles that the user, including teams that the user is part of, has access to
+ * @param {Object} params - Parameters
  * @param {string} params.token jwt
  * @param {Function} params.callback Callback
  */
-function getDocFiles({ token, callback }) {
+function getDocFilesByUser({ token, callback }) {
   authenticator.isUserAllowed({
     token,
     commandName: dbConfig.apiCommands.GetDocFile.name,
@@ -287,9 +299,9 @@ function getDocFiles({ token, callback }) {
 
       const user = data.user;
 
-      dbDocFile.getDocFiles({
+      dbDocFile({
         accessLevel: user.accessLevel,
-        userName: user.userName,
+        username: user.username,
         callback: ({ error: docError, data: docData }) => {
           if (docError) {
             callback({ error: docError });
@@ -305,13 +317,13 @@ function getDocFiles({ token, callback }) {
 }
 
 /**
- * Get doc file by team
- * @param {string} [params.title] Title of the doc file. Will be used together with team name
- * @param {string} [params.docFileId] ID of Docfile to retrieve
- * @param {string} params.token jwt
- * @param {Function} params.callback Callback
+ * Get doc file by code
+ * @param {Object} params - Parameters
+ * @param {string} params.code - Doc file Code
+ * @param {string} params.token - jwt
+ * @param {Function} params.callback - Callback
  */
-function getDocFile({ title, docFileId, token, callback }) {
+function unlockDocFileByCode({ code, token, callback }) {
   authenticator.isUserAllowed({
     token,
     commandName: dbConfig.apiCommands.GetDocFile.name,
@@ -322,9 +334,66 @@ function getDocFile({ title, docFileId, token, callback }) {
         return;
       }
 
-      dbDocFile.getDocFile({
+      const authUser = data.user;
+
+      dbDocFile.getDocFileByCode({
+        code,
+        callback: (docFileData) => {
+          if (docFileData.error) {
+            callback({ error: docFileData.error });
+
+            return;
+          }
+
+          const docFile = docFileData.data.docFile;
+
+          if (docFile.accessLevel > authUser.accessLevel) {
+            callback({ error: new errorCreator.NotAllowed({ name: `docFile ${code}` }) });
+
+            return;
+          }
+
+          dbDocFile.addAccess({
+            docFileId: docFile.docFileId,
+            userIds: [authUser.userId],
+            callback: (accessData) => {
+              if (accessData.error) {
+                callback({ error: accessData.error });
+
+                return;
+              }
+
+              callback({ data: { docFile } });
+            },
+          });
+        },
+      });
+    },
+  });
+}
+
+/**
+ * Get doc file by id or code
+ * @param {Object} params - Parameters
+ * @param {string} [params.docFileId] - ID of Docfile to retrieve
+ * @param {string} params.token - jwt
+ * @param {Function} params.callback - Callback
+ */
+function getDocFileById({ docFileId, token, callback }) {
+  authenticator.isUserAllowed({
+    token,
+    commandName: dbConfig.apiCommands.GetDocFile.name,
+    callback: ({ error, data }) => {
+      if (error) {
+        callback({ error });
+
+        return;
+      }
+
+      const authUser = data.user;
+
+      dbDocFile.getDocFileById({
         docFileId,
-        title,
         user: data.user,
         callback: ({ error: docError, data: docData }) => {
           if (docError) {
@@ -333,25 +402,11 @@ function getDocFile({ title, docFileId, token, callback }) {
             return;
           }
 
-          if (!data.user.isAnonymous && docData.docFile.accessUsers.indexOf(data.user.userName) === -1) {
-            dbDocFile.addAccessUser({
-              docFileId: docData.docFile.docFileId,
-              userName: data.user.userName,
-              callback: ({ error: accessError }) => {
-                if (accessError) {
-                  callback({ error: accessError });
-
-                  return;
-                }
-
-                callback({ data: docData });
-              },
-            });
-
-            return;
-          }
-
-          callback({ data: docData });
+          hasAccessToDocFile({
+            callback,
+            user: authUser,
+            docFile: docData.data.docFile,
+          });
         },
       });
     },
@@ -360,6 +415,7 @@ function getDocFile({ title, docFileId, token, callback }) {
 
 exports.createDocFile = createDocFile;
 exports.updateDocFile = updateDocFile;
-exports.getDocFiles = getDocFiles;
-exports.getDocFile = getDocFile;
 exports.getAllDocFiles = getAllDocFiles;
+exports.getDocFilesByUser = getDocFilesByUser;
+exports.getDocFileByCode = unlockDocFileByCode;
+exports.getDocFileById = getDocFileById;

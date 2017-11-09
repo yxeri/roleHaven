@@ -18,10 +18,26 @@
 
 const mongoose = require('mongoose');
 const appConfig = require('../config/defaults/config').app;
-const objectValidator = require('./../utils/objectValidator');
+const dbConfig = require('../config/defaults/config').databasePopulation;
 const errorCreator = require('../objects/error/errorCreator');
 
 const dbPath = `mongodb://${appConfig.dbHost}:${appConfig.dbPort}/${appConfig.dbName}`;
+
+const baseSchema = {
+  ownerId: String,
+  ownerAliasId: String,
+  lastUpdated: Date,
+  timeCreated: Date,
+  customLastUpdate: Date,
+  customTimeCreated: Date,
+  visibility: { type: Number, default: dbConfig.AccessLevels.ANONYMOUS },
+  accessLevel: { type: Number, default: dbConfig.AccessLevels.ANONYMOUS },
+  adminIds: { type: [String], default: [] },
+  userIds: { type: [String], default: [] },
+  teamIds: { type: [String], default: [] },
+  blockedIds: { type: [String], default: [] },
+  isPublic: { type: Boolean, default: true },
+};
 
 mongoose.connect(dbPath, { useMongoClient: true }, (err) => {
   if (err) {
@@ -30,16 +46,56 @@ mongoose.connect(dbPath, { useMongoClient: true }, (err) => {
     return;
   }
 
-  console.log('Connection established to database');
+  console.info('Connection established to database');
 });
 
 /**
- * Saves object to database
- * @param {Object} params.object Object to save
- * @param {string} params.objectName Object type name
- * @param {Function} params.callback Callback
+ * Create and return db schema
+ * @param {Object} schemaParameters - Parameters to add to the schema
+ * @return {Object} - Schema
  */
-function saveObject({ object, objectType, callback }) {
+function createSchema(schemaParameters) {
+  const schema = baseSchema;
+
+  Object.keys(schemaParameters).forEach((parameterKey) => {
+    schema[parameterKey] = schemaParameters[parameterKey];
+  });
+
+  return schema;
+}
+
+/**
+ * Add object identifier
+ * @private
+ * @param {Object} params - Parameters
+ * @param {Object} params.object - Object to add an ID to
+ * @returns {Object} Updated object
+ */
+function addObjectId({ object }) {
+  const modifiedObject = object;
+
+  modifiedObject.objectId = object._id; // eslint-disable-line no-underscore-dangle
+
+  return modifiedObject;
+}
+
+/**
+ * Saves object to database
+ * @param {Object} params - Parameters
+ * @param {Object} params.object - Object to save
+ * @param {Function} params.callback - Callback
+ */
+function saveObject({
+  object,
+  objectType,
+  callback,
+}) {
+  const now = new Date();
+  const objectToSave = object;
+
+  objectToSave.lastUpdated = objectToSave.lastUpdated || now;
+  objectToSave.timeCreated = objectToSave.timeCreated || now;
+
   object.save((saveErr, savedObject) => {
     if (saveErr) {
       callback({ error: new errorCreator.Database({ errorObject: saveErr, name: `saveObject ${objectType} ${object}` }) });
@@ -47,18 +103,28 @@ function saveObject({ object, objectType, callback }) {
       return;
     }
 
-    callback({ data: { savedObject, objectType } });
+    callback({ data: { savedObject: addObjectId({ object: savedObject }), objectType } });
   });
 }
 
 /**
  * Verifies object
- * @param {Object} params.query Search query
- * @param {Object} params.object Type of object that will be modified
- * @param {Function} params.callback Callback
+ * @param {Object} params - Parameters
+ * @param {Object} params.query - Search query
+ * @param {Object} params.object - Type of object that will be modified
+ * @param {Function} params.callback - Callback
  */
-function verifyObject({ query, object, callback }) {
-  const update = { $set: { verified: true } };
+function verifyObject({
+  query,
+  object,
+  callback,
+}) {
+  const update = {
+    $set: {
+      isVerified: true,
+      lastUpdated: new Date(),
+    },
+  };
   const options = { new: true };
 
   object.findOneAndUpdate(query, update, options).lean().exec((err, verified) => {
@@ -72,18 +138,28 @@ function verifyObject({ query, object, callback }) {
       return;
     }
 
-    callback({ data: { verified } });
+    callback({ data: { verified: addObjectId({ object: verified }) } });
   });
 }
 
 /**
  * Verifies all object
- * @param {Object} params.query Search query
- * @param {Object} params.object Type of object that will be modified
- * @param {Function} params.callback Callback
+ * @param {Object} params - Parameters
+ * @param {Object} params.query - Search query
+ * @param {Object} params.object - Type of object that will be modified
+ * @param {Function} params.callback - Callback
  */
-function verifyAllObjects({ query, object, callback }) {
-  const update = { $set: { verified: true } };
+function verifyAllObjects({
+  query,
+  object,
+  callback,
+}) {
+  const update = {
+    $set: {
+      isVerified: true,
+      lastUpdated: new Date(),
+    },
+  };
   const options = { multi: true, new: true };
 
   object.update(query, update, options).lean().exec((err, verified = []) => {
@@ -93,82 +169,348 @@ function verifyAllObjects({ query, object, callback }) {
       return;
     }
 
-    callback({ data: { verified } });
-  });
-}
-
-/**
- * Match partial name
- * @param {Function} params.callback Callback
- * @param {string} params.partialName Partial name
- * @param {Object} params.queryType Database query
- * @param {Object} params.filter Result filter
- * @param {Object} params.sort Result sorting
- * @param {Object} params.user User
- * @param {string} params.type Type of object to match against
- * @param {Function} params.callback - Callback
- */
-function matchPartial({ callback, partialName, queryType, filter, sort, user, type }) {
-  if (!objectValidator.isValidData({ callback, partialName, queryType, filter, sort, user, type }, { filter: true, sort: true, user: true, queryType: true, callback: true, type: true })) {
-    callback({ error: new errorCreator.InvalidData({ expected: '{ callback, partialName, queryType, filter, sort, user, type }' }) });
-
-    return;
-  }
-
-  const query = {};
-  const regex = { $regex: `^${partialName}.*` };
-
-  if (partialName) {
-    if (type === 'userName') {
-      query.$and = [
-        { banned: false },
-        { verified: true },
-        { userName: regex },
-      ];
-    } else if (type === 'roomName') {
-      query.$and = [{ roomName: regex }];
-    }
-  } else {
-    query.$and = [];
-  }
-
-  query.$and.push({ visibility: { $lte: user.accessLevel } });
-
-  queryType.find(query, filter).sort(sort).lean().exec((err, matched = []) => {
-    if (err) {
-      callback({ error: new errorCreator.Database({ errorObject: err, name: 'matchPartialName' }) });
-
-      return;
-    }
-
-    callback({ data: { matched } });
+    callback({ data: { verified: verified.map(verifiedObject => addObjectId({ object: verifiedObject })) } });
   });
 }
 
 /**
  * Drops database. Used during testing
- * @param {Function} params.callback Callback
+ * @param {Object} params - Parameters
+ * @param {Function} params.callback - Callback
  */
 function dropDatabase({ callback }) {
-  if (appConfig.mode === appConfig.Modes.TEST || appConfig.mode === appConfig.Modes.DEV) {
-    mongoose.connection.dropDatabase((error) => {
-      if (error) {
-        callback({ error: 'Failed to drop test db', errorObject: error });
-
-        return;
-      }
-
-      callback({ data: { success: true } });
-    });
+  if (appConfig.mode !== appConfig.Modes.TEST && appConfig.mode !== appConfig.Modes.DEV) {
+    callback({ error: new errorCreator.Internal({ name: 'not in dev/test mode' }) });
 
     return;
   }
 
-  callback({ error: 'Not in testing mode' });
+  mongoose.connection.dropDatabase((error) => {
+    if (error) {
+      callback({ error: 'Failed to drop test db', errorObject: error });
+
+      return;
+    }
+
+    callback({ data: { success: true } });
+  });
 }
 
-exports.matchPartial = matchPartial;
+/**
+ * Create update object for removal of access to the object for users and/or teams
+ * @param {Object} params - Parameters
+ * @param {string[]} [params.userIds] - ID of the users
+ * @param {string[]} [params.teamIds] - ID of the teams
+ * @param {string[]} [params.bannedIds] - ID of the banned users/teams
+ * @param {boolean} [params.isAdmin] - Should the teams/users get admin status?
+ * @returns {Object}} Update object
+ */
+function createAccessUpdateString({
+  userIds,
+  teamIds,
+  bannedIds,
+  isAdmin = false,
+}) {
+  const update = { $addToSet: {} };
+
+  if (teamIds) { update.$addToSet.teamIds = teamIds; }
+  if (userIds) { update.$addToSet.userIds = userIds; }
+  if (bannedIds) { update.$addToSet.bannedIds = bannedIds; }
+
+  if (isAdmin) {
+    if (teamIds) { update.$addToSet.adminIds = teamIds; }
+    if (userIds) { update.$addToSet.adminIds = userIds; }
+  }
+
+  return update;
+}
+
+/**
+ * Create update object for removal of access to the object for users and/or teams
+ * @param {Object} params - Parameters
+ * @param {string} [params.userIds] - ID of the users
+ * @param {string} [params.teamIds] - ID of the teams
+ * @returns {{string}} Update object
+ */
+function createRemoveAccessUpdateString({
+  userIds,
+  teamIds,
+}) {
+  const update = { $pull: {} };
+
+  if (teamIds) {
+    update.$pull.teamIds = { $in: teamIds };
+    update.$pull.adminIds = { $in: teamIds };
+  }
+
+  if (userIds) {
+    update.$pull.userIds = { $in: userIds };
+    update.$pull.adminIds = { $in: userIds };
+  }
+
+  return update;
+}
+
+/**
+ * Retrieves and returns object
+ * @param {Object} params - Parameters
+ * @param {Function} params.callback - Callback
+ * @param {Object} params.object - Object to call and get
+ * @param {string} [params.query] - Database query
+ * @param {string} [params.errorNameContent] - Content that will be sent with error
+ * @param {Object} [params.filter] - Parameter filter
+ */
+function getObject({
+  object,
+  callback,
+  errorNameContent = 'getObject',
+  query = {},
+  filter = {},
+}) {
+  object.findOne(query, filter).lean().exec((error, foundObject) => {
+    if (error) {
+      callback({ error: new errorCreator.Database({ errorObject: error, name: errorNameContent }) });
+
+      return;
+    }
+
+    callback({ data: { object: addObjectId({ object: foundObject }) } });
+  });
+}
+
+/**
+ * Does the object exist?
+ * @param {Object} params - Parameters
+ * @param {Function} params.callback - Callback
+ * @param {Object} params.object - Object to call and get
+ * @param {string} params.query - Database query
+ */
+function doesObjectExist({
+  object,
+  callback,
+  query,
+}) {
+  object.findOne(query, { _id: 1 }).lean().exec((error, foundObject) => {
+    if (error) {
+      callback({ error: new errorCreator.Database({ errorObject: error, name: 'doesObjectExist' }) });
+
+      return;
+    }
+
+    callback({ data: { exists: typeof foundObject !== 'undefined' } });
+  });
+}
+
+/**
+ * Retrieves and returns objects
+ * @param {Object} params - Parameters
+ * @param {Function} params.callback - Callback
+ * @param {Object} params.object - Object to call and get
+ * @param {Object} [params.query] - Database query
+ * @param {Object} [params.sort] - Sorting instructions
+ * @param {string} [params.errorNameContent] - Content that will be sent with error
+ * @param {Object} [params.filter] - Parameter filter
+ */
+function getObjects({
+  object,
+  callback,
+  errorNameContent = 'getObjects',
+  sort,
+  query = {},
+  filter = {},
+}) {
+  const findCallback = (error, objects = []) => {
+    if (error) {
+      callback({ error: new errorCreator.Database({ errorObject: error, name: errorNameContent }) });
+
+      return;
+    }
+
+    callback({ data: { objects: objects.map(foundObject => addObjectId({ object: foundObject })) } });
+  };
+
+  if (sort) {
+    object.find(query, filter).sort(sort).lean().exec(findCallback);
+  } else {
+    object.find(query, filter).lean().exec(findCallback);
+  }
+}
+
+/**
+ * Update object
+ * @param {Object} params - Parameters
+ * @param {Function} params.callback - Callback
+ * @param {Object} params.object - Object to call and get
+ * @param {string} params.query - Database query
+ * @param {string} [params.errorNameContent] - Content that will be sent with error
+ */
+function updateObject({
+  object,
+  update,
+  callback,
+  query,
+  errorNameContent = 'updateObject',
+}) {
+  const options = { new: true };
+
+  const toUpdate = update;
+  toUpdate.$set.lastUpdated = new Date();
+
+  object.findOneAndUpdate(query, toUpdate, options).lean().exec((err, foundObject) => {
+    if (err) {
+      callback({ error: new errorCreator.Database({ errorObject: err, name: errorNameContent }) });
+
+      return;
+    } else if (!foundObject) {
+      callback({ error: new errorCreator.DoesNotExist({ name: `${object.toString()} update` }) });
+
+      return;
+    }
+
+    callback({ data: { object: addObjectId({ object: foundObject }) } });
+  });
+}
+
+/**
+ * Remove object
+ * @param {Object} params - Parameters
+ * @param {Object} params.object - Type of object to remove
+ * @param {string} params.query - Database query
+ * @param {Function} params.callback - Callback
+ */
+function removeObject({
+  object,
+  query,
+  callback,
+}) {
+  const options = { justOne: true };
+
+  object.findOneAndDelete(query, options).lean().exec((err) => {
+    if (err) {
+      callback({ error: new errorCreator.Database({ errorObject: err, name: 'removeObject' }) });
+
+      return;
+    }
+
+    callback({ data: { success: true } });
+  });
+}
+
+/**
+ * Remove objects
+ * @param {Object} params - Parameters
+ * @param {Object} params.object - Type of objects to remove
+ * @param {string} params.query - Database query
+ * @param {Function} params.callback - Callback
+ */
+function removeObjects({
+  object,
+  query,
+  callback,
+}) {
+  object.findOneAndDelete(query).lean().exec((err) => {
+    if (err) {
+      callback({ error: new errorCreator.Database({ errorObject: err, name: 'removeObjects' }) });
+
+      return;
+    }
+
+    callback({ data: { success: true } });
+  });
+}
+
+/**
+ * Remove object access for users or teams
+ * @param {Object} params - Parameters
+ * @param {string} params.objectId - ID of the device to update
+ * @param {string[]} [params.userIds] - ID of the users to remove
+ * @param {string[]} [params.teamIds] - ID of the teams to remove
+ * @param {string[]} [params.blockedIds] - ID of the blocked Ids to remove
+ * @param {Function} params.callback - Callback
+ */
+function addObjectAccess({
+  objectId,
+  object,
+  userIds,
+  teamIds,
+  blockedIds,
+  isAdmin,
+  callback,
+}) {
+  const update = createAccessUpdateString({
+    userIds,
+    teamIds,
+    blockedIds,
+    isAdmin,
+  });
+
+  updateObject({
+    update,
+    callback,
+    object,
+    query: { _id: objectId },
+  });
+}
+
+/**
+ * Remove object access for users or teams
+ * @param {Object} params - Parameters
+ * @param {string} params.objectId - ID of the device to update
+ * @param {string[]} [params.userIds] - ID of the users to remove
+ * @param {string[]} [params.teamIds] - ID of the teams to remove
+ * @param {string[]} [params.blockedIds] - ID of the blocked Ids to remove
+ * @param {boolean} [params.isAdmin] - Should the teams and/or users be removed from admins?
+ * @param {Function} params.callback - Callback
+ */
+function removeObjectAccess({
+  objectId,
+  object,
+  userIds,
+  teamIds,
+  blockedIds,
+  isAdmin,
+  callback,
+}) {
+  const update = { $pull: {} };
+
+  if (userIds) {
+    if (isAdmin) {
+      update.$pull.adminIds = { $in: userIds };
+    } else {
+      update.$pull.userIds = { $in: userIds };
+    }
+  }
+  if (teamIds) {
+    if (isAdmin) {
+      update.$pull.adminIds = { $in: teamIds };
+    } else {
+      update.$pull.teamIds = { $in: teamIds };
+    }
+  }
+  if (blockedIds) {
+    update.$pull.blockedIds = { $in: blockedIds };
+  }
+
+  updateObject({
+    update,
+    callback,
+    object,
+    query: { _id: objectId },
+  });
+}
+
 exports.saveObject = saveObject;
 exports.verifyObject = verifyObject;
 exports.verifyAllObjects = verifyAllObjects;
 exports.dropDatabase = dropDatabase;
+exports.createAccessUpdateString = createAccessUpdateString;
+exports.createRemoveAccessUpdateString = createRemoveAccessUpdateString;
+exports.getObjects = getObjects;
+exports.getObject = getObject;
+exports.updateObject = updateObject;
+exports.removeObject = removeObject;
+exports.removeObjects = removeObjects;
+exports.createSchema = createSchema;
+exports.removeObjectAccess = removeObjectAccess;
+exports.addObjectAccess = addObjectAccess;
+exports.doesObjectExist = doesObjectExist;

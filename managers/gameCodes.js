@@ -6,64 +6,97 @@ const errorCreator = require('../objects/error/errorCreator');
 const dbConfig = require('../config/defaults/config').databasePopulation;
 const appConfig = require('../config/defaults/config').app;
 const transactionManager = require('../managers/transactions');
+const aliasManager = require('./aliases');
+const textTools = require('../utils/textTools');
+
+/**
+ * Creates game code
+ * @private
+ * @returns {string} - Alphanumerical game code
+ */
+function generateGameCode() {
+  return textTools.shuffleArray(['0', '1', '2', '3', '4', '5', '6', '7', '8', '9', 'A', 'B', 'D', 'E', 'F']).slice(0, 8).join('');
+}
 
 /**
  * Create game code
- * @param {string} [params.owner] User name to create game code for
- * @param {string} params.codeType Code type
- * @param {string} params.token jwt
- * @param {Function} params.callback Callback
+ * @param {Object} params - Parameters
+ * @param {string} params.gameCode - Game code to save
+ * @param {string} params.token - jwt
+ * @param {Function} params.callback - Callback
  */
-function createGameCode({ owner, codeType, token, callback }) {
+function createGameCode({
+  userId,
+  gameCode,
+  token,
+  callback,
+}) {
   authenticator.isUserAllowed({
     token,
-    matchNameTo: owner,
+    matchToId: userId,
     commandName: dbConfig.apiCommands.CreateGameCode.name,
     callback: ({ error, data }) => {
       if (error) {
         callback({ error });
 
         return;
-      } else if (!objectValidator.isValidData({ codeType }, { codeType: true })) {
-        callback({ error: new errorCreator.InvalidData({ expected: `{ codeType: ${dbConfig.GameCodeTypes.toString()} }` }) });
-
-        return;
-      } else if (codeType === dbConfig.GameCodeTypes.PROFILE) {
-        callback({ error: new errorCreator.InvalidData({ expected: 'codeType !== profile' }) });
-
-        return;
       }
 
-      dbGameCode.updateGameCode({
-        codeType,
-        owner: data.user.userName,
-        renewable: false,
-        callback: ({ error: updateError, data: codeData }) => {
-          if (updateError) {
-            callback({ error: updateError });
+      const createCallback = ({ gameCodeToSave }) => {
+        dbGameCode.createGameCode({
+          owner: data.user.username,
+          gameCode: gameCodeToSave,
+          callback: ({ error: updateError, data: codeData }) => {
+            if (updateError) {
+              callback({ error: updateError });
 
-            return;
-          }
+              return;
+            }
 
-          callback({ data: codeData });
-        },
-      });
+            callback({ data: codeData });
+          },
+        });
+      };
+
+      const authUser = data.user;
+
+      const gameCodeToSave = gameCode;
+      gameCodeToSave.ownerId = authUser.userId;
+      gameCodeToSave.code = generateGameCode();
+
+      if (gameCodeToSave.ownerAliasId) {
+        aliasManager.getAlias({
+          token,
+          aliasId: gameCodeToSave.ownerAliasId,
+          userId: authUser.userId,
+          callback: (aliasData) => {
+            if (aliasData.error) {
+              callback({ error: aliasData.error });
+
+              return;
+            }
+
+            createCallback({ gameCodeToSave });
+          },
+        });
+      } else {
+        createCallback({ gameCodeToSave });
+      }
     },
   });
 }
 
 /**
- * Get game codes
- * @param {string} params.codeType Code type
- * @param {string} params.token jwt
- * @param {string} [params.userName] Name of the user to retrieve codes for
- * @param {string} [params.codeType] Type of codes to retrieve
- * @param {Function} params.callback Callback
+ * Get game codes by owner
+ * @param {Object} params - Parameters
+ * @param {string} params.token - jwt
+ * @param {string} [params.userId] - ID of the user to auth and retrieve codes with
+ * @param {Function} params.callback - Callback
  */
-function getGameCodes({ token, userName, codeType, callback }) {
+function getGameCodesByOwner({ token, userId, callback }) {
   authenticator.isUserAllowed({
     token,
-    matchNameTo: userName,
+    matchToId: userId,
     commandName: dbConfig.apiCommands.GetGameCode.name,
     callback: ({ error, data }) => {
       if (error) {
@@ -72,8 +105,10 @@ function getGameCodes({ token, userName, codeType, callback }) {
         return;
       }
 
-      dbGameCode.getGameCodesByUserName({
-        owner: data.user.userName,
+      const authUser = data.user;
+
+      dbGameCode.getGameCodesByOwner({
+        ownerId: authUser.userId,
         callback: ({ error: getError, data: gameCodeData }) => {
           if (getError) {
             callback({ error: getError });
@@ -81,84 +116,7 @@ function getGameCodes({ token, userName, codeType, callback }) {
             return;
           }
 
-          const dataToEmit = {
-            gameCodes: codeType ? gameCodeData.gameCodes.filter(gameCode => gameCode.codeType === codeType) : gameCodeData.gameCodes,
-          };
-
-          callback({ data: dataToEmit });
-        },
-      });
-    },
-  });
-}
-
-/**
- * Get game code by its bode
- * @param {string} params.code Code of the game code
- * @param {string} params.token jwt
- * @param {Function} params.callback Callback
- */
-function getGameCodeByCode({ code, token, callback }) {
-  authenticator.isUserAllowed({
-    token,
-    commandName: dbConfig.apiCommands.GetGameCode.name,
-    callback: ({ error, data }) => {
-      if (error) {
-        callback({ error });
-
-        return;
-      } else if (!objectValidator.isValidData({ code }, { code: true })) {
-        callback({ error: new errorCreator.InvalidData({ expected: '{ code }' }) });
-
-        return;
-      }
-
-      dbGameCode.getGameCodeByCode({
-        code,
-        owner: data.user.userName,
-        callback: ({ error: getError, data: codeData }) => {
-          if (getError) {
-            callback({ error: getError });
-
-            return;
-          }
-
-          callback({ data: codeData });
-        },
-      });
-    },
-  });
-}
-
-/**
- * Get profile game code. Creates if none exists
- * @param {string} [params.owner] Owner of the code
- * @param {string} params.codeType Code type
- * @param {string} params.token jwt
- * @param {Function} params.callback Callback
- */
-function getProfileGameCode({ owner, token, callback }) {
-  authenticator.isUserAllowed({
-    token,
-    matchNameTo: owner,
-    commandName: dbConfig.apiCommands.GetGameCode.name,
-    callback: ({ error, data }) => {
-      if (error) {
-        callback({ error });
-
-        return;
-      }
-
-      dbGameCode.getProfileGameCode({
-        owner: owner || data.user.userName,
-        callback: ({ error: getError, data: codeData }) => {
-          if (getError) {
-            callback({ error: getError });
-
-            return;
-          }
-
-          callback({ data: codeData });
+          callback({ data: gameCodeData });
         },
       });
     },
@@ -167,11 +125,12 @@ function getProfileGameCode({ owner, token, callback }) {
 
 /**
  * Use game code
- * @param {Object} [params.socket] Socket io
- * @param {Object} params.io Socket io. Will be used if socket is not set
- * @param {string} params.code Code for a game code
- * @param {string} params.token jwt
- * @param {Function} params.callback Callback
+ * @param {Object} params - Parameters
+ * @param {Object} [params.socket] - Socket io
+ * @param {Object} params.io - Socket io. Will be used if socket is not set
+ * @param {string} params.code - Code for a game code
+ * @param {string} params.token - jwt
+ * @param {Function} params.callback - Callback
  */
 function useGameCode({ socket, io, code, token, callback }) {
   authenticator.isUserAllowed({
@@ -195,7 +154,7 @@ function useGameCode({ socket, io, code, token, callback }) {
             callback({ error: codeError });
 
             return;
-          } else if (codeData.gameCode.owner === data.user.userName) {
+          } else if (codeData.gameCode.ownerId === data.user.userId) {
             callback({ error: new errorCreator.NotAllowed({ name: 'useGameCode on yourself' }) });
 
             return;
@@ -203,29 +162,27 @@ function useGameCode({ socket, io, code, token, callback }) {
 
           const gameCode = codeData.gameCode;
 
-          dbGameCode.removeGameCode({
-            code: gameCode.code,
-            callback: ({ error: removeError }) => {
+          dbGameCode.updateGameCode({
+            gameCode: {
+              gameCodeId: gameCode.gameCodeId,
+              used: true,
+            },
+            callback: ({ error: removeError, data: updatedData }) => {
               if (removeError) {
                 callback({ error: removeError });
 
                 return;
               }
 
-              const victim = {
-                userName: gameCode.owner,
-                accessLevel: dbConfig.AccessLevels.ADMIN,
-              };
-
               transactionManager.createTransaction({
                 io,
                 transaction: {
-                  to: data.user.userName,
-                  from: gameCode.owner,
+                  toWalletId: data.user.userId,
+                  fromWalletId: gameCode.ownerId,
                   amount: appConfig.gameCodeAmount,
                 },
                 emitToSender: true,
-                user: victim,
+                ownerId: gameCode.ownerId,
                 callback: ({ error: transError }) => {
                   if (transError) {
                     callback({ error: transError });
@@ -233,47 +190,44 @@ function useGameCode({ socket, io, code, token, callback }) {
                     return;
                   }
 
-                  const rewardData = {
-                    reward: {
-                      amount: appConfig.gameCodeAmount,
-                    },
+                  const payload = {
+                    usedGameCode: updatedData.gameCode,
                   };
 
-                  if (!gameCode.renewable) {
-                    const usedGameCode = gameCode;
-                    usedGameCode.used = true;
-
-                    callback({ data: rewardData });
-
-                    if (socket) {
-                      socket.to(gameCode.owner + appConfig.whisperAppend).emit('gameCode', { data: { gameCode: usedGameCode } });
-                    } else {
-                      io.to(gameCode.owner + appConfig.whisperAppend).emit('gameCode', { data: { gameCode: usedGameCode } });
-                    }
-
-                    return;
-                  }
-
-                  dbGameCode.updateGameCode({
-                    owner: gameCode.owner,
-                    codeType: gameCode.codeType,
-                    renewable: true,
-                    callback: ({ error: updateError, data: newCodeData }) => {
-                      if (updateError) {
-                        callback({ error: updateError });
-
-                        return;
-                      }
-
-                      callback({ data: rewardData });
-
-                      if (socket) {
-                        socket.to(gameCode.owner + appConfig.whisperAppend).emit('gameCode', { data: { gameCode: newCodeData.gameCode } });
-                      } else {
-                        io.to(gameCode.owner + appConfig.whisperAppend).emit('gameCode', { data: { gameCode: newCodeData.gameCode } });
-                      }
+                  callback({
+                    data: {
+                      ownerId: gameCode.ownerAliasId || gameCode.ownerId,
+                      amount: appConfig.gameCodeAmount,
                     },
                   });
+
+                  if (gameCode.isRenewable) {
+                    dbGameCode.createGameCode({
+                      ownerId: gameCode.ownerId,
+                      codeType: gameCode.codeType,
+                      isRenewable: true,
+                      code: generateGameCode(),
+                      callback: ({ error: updateError, data: newCodeData }) => {
+                        if (updateError) {
+                          callback({ error: updateError });
+
+                          return;
+                        }
+
+                        payload.gameCode = newCodeData.gameCode;
+
+                        if (socket) {
+                          socket.to(gameCode.ownerId).emit('gameCode', { data: payload });
+                        } else {
+                          io.to(gameCode.ownerId).emit('gameCode', { data: payload });
+                        }
+                      },
+                    });
+                  } else if (socket) {
+                    socket.to(gameCode.ownerId).emit('gameCode', { data: payload });
+                  } else {
+                    io.to(gameCode.ownerId).emit('gameCode', { data: payload });
+                  }
                 },
               });
             },
@@ -285,7 +239,5 @@ function useGameCode({ socket, io, code, token, callback }) {
 }
 
 exports.createGameCode = createGameCode;
-exports.getGameCodes = getGameCodes;
-exports.getProfileGameCode = getProfileGameCode;
+exports.getGameCodes = getGameCodesByOwner;
 exports.useGameCode = useGameCode;
-exports.getGameCodeByCode = getGameCodeByCode;

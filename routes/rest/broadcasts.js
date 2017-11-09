@@ -17,7 +17,6 @@
 'use strict';
 
 const express = require('express');
-const messenger = require('../../helpers/messenger');
 const objectValidator = require('../../utils/objectValidator');
 const restErrorChecker = require('../../helpers/restErrorChecker');
 const broadcastManager = require('../../managers/broadcasts');
@@ -33,6 +32,32 @@ const router = new express.Router();
 function handle(io) {
   /**
    * @api {post} /broadcasts Send a broadcast
+   * @apiVersion 7.0.0
+   * @apiName SendBroadcast
+   * @apiGroup Broadcasts
+   *
+   * @apiHeader {String} Authorization Your JSON Web Token
+   *
+   * @apiDescription Send a broadcast message
+   *
+   * @apiParam {Object} data
+   * @apiParam {Object} data.message - Message
+   * @apiParam {string[]} data.message.text - Text content. Each index is intepreted as a new line
+   * @apiParam {string[]} [data.message.intro] - Intro text. Will be printed before message.text
+   * @apiParam {string[]} [data.message.extro] - Extro text. Will be printed after message.text
+   * @apiParam {string} [data.message.aliasId] - ID of the alias that will be shown as sender
+   * @apiParam {Object} [data.coordinates] - GPS coordinates to the location where the broadcast was sent from
+   * @apiParam {Object} data.coordinates.longitude - Longitude
+   * @apiParam {Object} data.coordinates.latitude - Latitude
+   * @apiParam {Object} data.coordinates.speed - Speed
+   * @apiParam {Object} data.coordinates.accuracy - Accuracy in meters
+   * @apiParam {Object} data.coordinates.heading - Heading (0 - 359)
+   *
+   * @apiSuccess {Object} data
+   * @apiSuccess {Object[]} data.message - Message sent
+   */
+  /**
+   * @api {post} /broadcasts Send a broadcast
    * @apiVersion 6.0.0
    * @apiName SendBroadcast
    * @apiGroup Broadcasts
@@ -44,7 +69,8 @@ function handle(io) {
    * @apiParam {Object} data
    * @apiParam {Object} data.message Message
    * @apiParam {String[]} data.message.text Content of the message
-   * @apiParam {String} [data.message.userName] Name of the sender. Default will be set to a generic term, such as "SYSTEM"
+   * @apiParam {String[]} data.message.text Content of the message
+   * @apiParam {String} [data.message.username] Name of the sender. Default will be set to a generic term, such as "SYSTEM"
    * @apiParamExample {json} Request-Example:
    *   {
      *    "data": {
@@ -65,7 +91,7 @@ function handle(io) {
      *        "text": [
      *          "Hello world!"
      *        ],
-     *        "userName": "rez",
+     *        "username": "rez",
      *        "time": "2016-10-28T22:42:06.262Z"
      *      }
      *    }
@@ -78,7 +104,7 @@ function handle(io) {
       return;
     }
 
-    messenger.sendBroadcastMsg({
+    broadcastManager.sendBroadcastMsg({
       io,
       token: request.headers.authorization,
       message: request.body.data.message,
@@ -94,6 +120,19 @@ function handle(io) {
     });
   });
 
+  /**
+   * @api {post} /broadcasts Get broadcasts
+   * @apiVersion 7.0.0
+   * @apiName GetBroadcasts
+   * @apiGroup Broadcasts
+   *
+   * @apiHeader {String} Authorization Your JSON Web Token
+   *
+   * @apiDescription Get broadcasts
+   *
+   * @apiSuccess {Object} data
+   * @apiSuccess {Object[]} data.message - Message sent
+   */
   /**
    * @api {post} /broadcasts Get broadcasts
    * @apiVersion 6.0.0
@@ -113,7 +152,7 @@ function handle(io) {
    *        "text": [
    *          "Hello world!"
    *        ],
-   *        "userName": "rez",
+   *        "username": "rez",
    *        "time": "2016-10-28T22:42:06.262Z"
    *      }
    *    }

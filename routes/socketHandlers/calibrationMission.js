@@ -22,18 +22,18 @@ const calibrationMissionManager = require('../../managers/calibrationMissions');
  * @param {object} socket - Socket.IO socket
  */
 function handle(socket) {
-  socket.on('getCalibrationMission', ({ userName, token, stationId }, callback = () => {}) => {
+  socket.on('getCalibrationMission', ({ username, token, stationId }, callback = () => {}) => {
     calibrationMissionManager.getActiveCalibrationMission({
       token,
-      userName,
+      username,
       stationId,
       callback,
     });
   });
 
-  socket.on('getValidCalibrationStations', ({ userName, token }, callback = () => {}) => {
+  socket.on('getValidCalibrationStations', ({ username, token }, callback = () => {}) => {
     calibrationMissionManager.getValidStations({
-      userName,
+      username,
       token,
       callback,
     });

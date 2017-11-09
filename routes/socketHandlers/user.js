@@ -24,10 +24,8 @@ const errorCreator = require('../../objects/error/errorCreator');
 const authenticator = require('../../helpers/authenticator');
 const roomManager = require('../../managers/rooms');
 const aliasManager = require('../../managers/aliases');
-const dbLanternHack = require('../../db/connectors/lanternhack');
+const dbLanternHack = require('../../db/connectors/lanternHack');
 const textTools = require('../../utils/textTools');
-
-dbUser.removeAllUserBlockedBy({ callback: () => {} });
 
 /**
  * @param {object} socket Socket.IO socket
@@ -118,7 +116,7 @@ function handle(socket, io) {
         }
 
         dbUser.updateUserSocketId({
-          userName: data.user.userName,
+          username: data.user.username,
           socketId: socket.id,
           callback: (userData) => {
             if (userData.error) {
@@ -145,13 +143,12 @@ function handle(socket, io) {
                 const dataToSend = {
                   lanternStats,
                   user: {
-                    userName: updatedUser.userName,
+                    username: updatedUser.username,
                     accessLevel: updatedUser.accessLevel,
                     aliases: updatedUser.aliases,
                     creatorAliases: updatedUser.creatorAliases,
                     team: updatedUser.team,
                     shortTeam: updatedUser.shortTeam,
-                    blockedBy: updatedUser.blockedBy,
                   },
                 };
 
@@ -216,23 +213,6 @@ function handle(socket, io) {
     });
   });
 
-  socket.on('matchPartialUser', ({ token, partialName }, callback = () => {}) => {
-    userManager.matchPartialUserName({
-      partialName,
-      token,
-      callback,
-    });
-  });
-
-  // TODO Unused
-  socket.on('matchPartialAlias', ({ partialName, token }, callback = () => {}) => {
-    aliasManager.matchPartialAlias({
-      partialName,
-      token,
-      callback,
-    });
-  });
-
   socket.on('createAlias', ({ user, alias, token }, callback = () => {}) => {
     aliasManager.createAlias({
       socket,
@@ -240,23 +220,6 @@ function handle(socket, io) {
       token,
       user,
       alias,
-      callback,
-    });
-  });
-
-  socket.on('addCreatorAlias', ({ userName, alias, token }, callback = () => {}) => {
-    aliasManager.addCreatorAlias({
-      token,
-      userName,
-      alias,
-      callback,
-    });
-  });
-
-  socket.on('listAliases', ({ includeInactive, token }, callback = () => {}) => {
-    aliasManager.getAllAliases({
-      includeInactive,
-      token,
       callback,
     });
   });

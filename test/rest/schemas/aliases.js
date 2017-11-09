@@ -26,16 +26,16 @@ schemas.aliases = {
   properties: {
     data: {
       type: 'object',
-      required: ['aliases', 'userName'],
+      required: ['aliases', 'username'],
       properties: {
         aliases: {
           type: 'array',
           items: {
             type: 'string',
-            maxLength: appConfig.userNameMaxLength,
+            maxLength: appConfig.usernameMaxLength,
           },
         },
-        userName: { type: 'string' },
+        username: { type: 'string' },
       },
     },
   },

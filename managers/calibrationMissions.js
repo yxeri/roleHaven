@@ -23,20 +23,20 @@ const dbTransaction = require('../db/connectors/transaction');
 const dbCalibrationMission = require('../db/connectors/calibrationMission');
 const authenticator = require('../helpers/authenticator');
 const appConfig = require('../config/defaults/config').app;
-const dbLanternHack = require('../db/connectors/lanternhack');
+const dbLanternHack = require('../db/connectors/lanternHack');
 const errorCreator = require('../objects/error/errorCreator');
 const poster = require('../helpers/poster');
 
 /**
  * Get active calibration mission for user. Creates a new one if there is none for the user
- * @param {string} [params.userName] Owner of the mission. Will default to current user
+ * @param {string} [params.username] Owner of the mission. Will default to current user
  * @param {number} [params.stationId] Station ID for the mission
  * @param {Function} params.callback Callback
  */
-function getActiveCalibrationMission({ token, stationId, callback, userName }) {
+function getActiveCalibrationMission({ token, stationId, callback, username }) {
   authenticator.isUserAllowed({
     token,
-    matchNameTo: userName,
+    matchNameTo: username,
     commandName: dbConfig.apiCommands.GetCalibrationMission.name,
     callback: ({ error, data }) => {
       if (error) {
@@ -45,7 +45,7 @@ function getActiveCalibrationMission({ token, stationId, callback, userName }) {
         return;
       }
 
-      const owner = userName || data.user.userName;
+      const owner = username || data.user.username;
 
       dbUser.getUserByAlias({
         alias: owner,
@@ -342,7 +342,7 @@ function cancelActiveCalibrationMission({ token, io, callback, owner }) {
 
               const { user } = aliasData;
 
-              io.to(user.userName + appConfig.whisperAppend).emit('terminal', { data: { mission: { missionType: 'calibrationMission', cancelled: true } } });
+              io.to(user.username + appConfig.whisperAppend).emit('terminal', { data: { mission: { missionType: 'calibrationMission', cancelled: true } } });
 
               callback({ data: { mission: updatedMission, cancelled: true } });
             },
@@ -383,10 +383,10 @@ function getCalibrationMissions({ token, getInactive, callback }) {
  * @param {string} params.token jwt token
  * @param {Function} params.callback Callback
  */
-function getValidStations({ token, userName, callback }) {
+function getValidStations({ token, username, callback }) {
   authenticator.isUserAllowed({
     token,
-    matchNameTo: userName,
+    matchNameTo: username,
     commandName: dbConfig.apiCommands.GetCalibrationMissions.name,
     callback: ({ error, data }) => {
       if (error) {
@@ -396,7 +396,7 @@ function getValidStations({ token, userName, callback }) {
       }
 
       dbCalibrationMission.getActiveMission({
-        owner: data.user.userName,
+        owner: data.user.username,
         silentOnDoesNotExist: true,
         callback: ({ error: activeError, data: activeData }) => {
           if (activeError) {
@@ -410,7 +410,7 @@ function getValidStations({ token, userName, callback }) {
           }
 
           dbCalibrationMission.getInactiveMissions({
-            owner: data.user.userName,
+            owner: data.user.username,
             callback: ({ error: inactiveErr, data: inactiveData }) => {
               if (inactiveErr) {
                 callback({ error: inactiveErr });

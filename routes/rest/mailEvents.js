@@ -130,7 +130,7 @@ function handle() {
    *
    * @apiDescription Request user password reset. A mail will be sent to the user's registered mail address
    *
-   * @apiParam {String} userName User name of the user that will receive a password recovery mail
+   * @apiParam {String} username User name of the user that will receive a password recovery mail
    *
    * @apiSuccess {Object} data
    * @apiSuccess {Object[]} data.success Was the reset mail properly sent?

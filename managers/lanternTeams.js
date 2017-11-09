@@ -18,7 +18,7 @@
 
 const dbConfig = require('../config/defaults/config').databasePopulation;
 const authenticator = require('../helpers/authenticator');
-const dbLanternHack = require('../db/connectors/lanternhack');
+const dbLanternHack = require('../db/connectors/lanternHack');
 const objectValidator = require('../utils/objectValidator');
 const errorCreator = require('../objects/error/errorCreator');
 

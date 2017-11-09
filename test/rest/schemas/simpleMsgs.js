@@ -21,9 +21,9 @@ const schemas = {};
 
 const simpleMsgBase = {
   type: 'object',
-  required: ['text', 'time', 'userName'],
+  required: ['text', 'time', 'username'],
   properties: {
-    userName: { type: 'string' },
+    username: { type: 'string' },
     text: { type: 'string' },
     time: { type: 'string' },
   },

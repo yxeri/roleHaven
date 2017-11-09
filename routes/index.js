@@ -30,7 +30,6 @@ const walletHandler = require('./socketHandlers/wallet');
 const calibrationJobHandler = require('./socketHandlers/calibrationMission');
 const simpleMessageHandler = require('./socketHandlers/simpleMsg');
 const hackingHandler = require('./socketHandlers/hacking');
-// const timedEventHandler = require('./socketHandlers/team');
 const chatHandler = require('./socketHandlers/chat');
 const userHandler = require('./socketHandlers/user');
 const gameCodeHandler = require('./socketHandlers/gameCode');
@@ -112,7 +111,7 @@ function handle(io) {
           });
         },
       });
-      dbUser.getUserById({
+      dbUser.getUserBySocketId({
         socketId: socket.id,
         callback: ({ error, data }) => {
           if (error) {
@@ -124,22 +123,12 @@ function handle(io) {
           const { user } = data;
 
           dbUser.updateUserSocketId({
-            userName: user.userName,
-            callback: () => {},
-          });
-          dbUser.setUserLastOnline({
-            userName: user.userName,
-            date: new Date(),
+            username: user.username,
             callback: () => {},
           });
           dbUser.updateUserOnline({
-            userName: user.userName,
+            username: user.username,
             online: false,
-            callback: () => {},
-          });
-          dbUser.updateUserIsTracked({
-            userName: user.userName,
-            isTracked: false,
             callback: () => {},
           });
         },
@@ -157,7 +146,6 @@ function handle(io) {
     calibrationJobHandler.handle(socket, io);
     simpleMessageHandler.handle(socket, io);
     hackingHandler.handle(socket, io);
-    // timedEventHandler.handle(socket, io);
     gameCodeHandler.handle(socket, io);
     docFileHandler.handle(socket, io);
     forumHandler.handle(socket, io);

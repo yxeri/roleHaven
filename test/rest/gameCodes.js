@@ -37,10 +37,10 @@ chai.use(chaiJson);
 
 describe('GameCodes', () => {
   describe('Create game code', () => {
-    it('Should NOT create new game code on other user with incorrect auth on /api/users/:userName/gameCodes/:codeType POST', (done) => {
+    it('Should NOT create new game code on other user with incorrect auth on /api/users/:username/gameCodes/:codeType POST', (done) => {
       chai
         .request(app)
-        .post(`/api/users/${starterData.basicUserToAuth.userName}/gameCodes/${gameCodeData.GameCodeTypes.LOOT}`)
+        .post(`/api/users/${starterData.basicUserToAuth.username}/gameCodes/${gameCodeData.GameCodeTypes.LOOT}`)
         .set('Authorization', tokens.incorrectJwt)
         .end((error, response) => {
           response.should.have.status(401);
@@ -51,10 +51,10 @@ describe('GameCodes', () => {
         });
     });
 
-    it('Should create new game code on other user with enough access on /api/users/:userName/gameCodes/:codeType POST', (done) => {
+    it('Should create new game code on other user with enough access on /api/users/:username/gameCodes/:codeType POST', (done) => {
       chai
         .request(app)
-        .post(`/api/users/${starterData.basicUserToAuth.userName}/gameCodes/${gameCodeData.GameCodeTypes.LOOT}`)
+        .post(`/api/users/${starterData.basicUserToAuth.username}/gameCodes/${gameCodeData.GameCodeTypes.LOOT}`)
         .set('Authorization', tokens.adminUser)
         .end((error, response) => {
           response.should.have.status(200);
@@ -65,10 +65,10 @@ describe('GameCodes', () => {
         });
     });
 
-    it('Should NOT create new game code on other user without enough access on /api/users/:userName/gameCodes/:codeType POST', (done) => {
+    it('Should NOT create new game code on other user without enough access on /api/users/:username/gameCodes/:codeType POST', (done) => {
       chai
         .request(app)
-        .post(`/api/users/${starterData.adminUserToAuth.userName}/gameCodes/${gameCodeData.GameCodeTypes.LOOT}`)
+        .post(`/api/users/${starterData.adminUserToAuth.username}/gameCodes/${gameCodeData.GameCodeTypes.LOOT}`)
         .set('Authorization', tokens.basicUser)
         .end((error, response) => {
           response.should.have.status(401);
@@ -79,10 +79,10 @@ describe('GameCodes', () => {
         });
     });
 
-    it('Should create new game code on self on /api/users/:userName/gameCodes/:codeType POST', (done) => {
+    it('Should create new game code on self on /api/users/:username/gameCodes/:codeType POST', (done) => {
       chai
         .request(app)
-        .post(`/api/users/${starterData.adminUserToAuth.userName}/gameCodes/${gameCodeData.GameCodeTypes.LOOT}`)
+        .post(`/api/users/${starterData.adminUserToAuth.username}/gameCodes/${gameCodeData.GameCodeTypes.LOOT}`)
         .set('Authorization', tokens.adminUser)
         .send({ data: { docFile: docFileData.privateDocFileToCreate } })
         .end((error, response) => {
@@ -96,10 +96,10 @@ describe('GameCodes', () => {
   });
 
   describe('Create profile game code', () => {
-    it('Should NOT create new or get existing profile game code with incorrect auth on /api/users/:userName/gameCodes/profile GET', (done) => {
+    it('Should NOT create new or get existing profile game code with incorrect auth on /api/users/:username/gameCodes/profile GET', (done) => {
       chai
         .request(app)
-        .post(`/api/users/${starterData.basicUserToAuth.userName}/gameCodes/profile`)
+        .post(`/api/users/${starterData.basicUserToAuth.username}/gameCodes/profile`)
         .set('Authorization', tokens.incorrectJwt)
         .end((error, response) => {
           response.should.have.status(401);
@@ -110,10 +110,10 @@ describe('GameCodes', () => {
         });
     });
 
-    it('Should NOT create new or get existing profile game code on other user with too low access on /api/users/:userName/gameCodes/profile GET', (done) => {
+    it('Should NOT create new or get existing profile game code on other user with too low access on /api/users/:username/gameCodes/profile GET', (done) => {
       chai
         .request(app)
-        .get(`/api/users/${starterData.adminUserToAuth.userName}/gameCodes/profile`)
+        .get(`/api/users/${starterData.adminUserToAuth.username}/gameCodes/profile`)
         .set('Authorization', tokens.basicUser)
         .end((error, response) => {
           response.should.have.status(401);
@@ -124,10 +124,10 @@ describe('GameCodes', () => {
         });
     });
 
-    it('Should create new or get existing profile game code on self on /api/users/:userName/gameCodes/profile GET', (done) => {
+    it('Should create new or get existing profile game code on self on /api/users/:username/gameCodes/profile GET', (done) => {
       chai
         .request(app)
-        .get(`/api/users/${starterData.basicUserToAuth.userName}/gameCodes/profile`)
+        .get(`/api/users/${starterData.basicUserToAuth.username}/gameCodes/profile`)
         .set('Authorization', tokens.basicUser)
         .end((error, response) => {
           response.should.have.status(200);
@@ -138,10 +138,10 @@ describe('GameCodes', () => {
         });
     });
 
-    it('Should create new or get existing profile game code on other user with enough access on /api/users/:userName/gameCodes/profile GET', (done) => {
+    it('Should create new or get existing profile game code on other user with enough access on /api/users/:username/gameCodes/profile GET', (done) => {
       chai
         .request(app)
-        .get(`/api/users/${starterData.basicUserToAuth.userName}/gameCodes/profile`)
+        .get(`/api/users/${starterData.basicUserToAuth.username}/gameCodes/profile`)
         .set('Authorization', tokens.adminUser)
         .end((error, response) => {
           response.should.have.status(200);
@@ -156,10 +156,10 @@ describe('GameCodes', () => {
   describe('Get profile game code', () => {
     let gameCode = {};
 
-    before('Create new profile game code on self on /api/users/:userName/gameCodes/profile GET', (done) => {
+    before('Create new profile game code on self on /api/users/:username/gameCodes/profile GET', (done) => {
       chai
         .request(app)
-        .get(`/api/users/${starterData.basicUserToAuth.userName}/gameCodes/profile`)
+        .get(`/api/users/${starterData.basicUserToAuth.username}/gameCodes/profile`)
         .set('Authorization', tokens.basicUser)
         .end((error, response) => {
           response.should.have.status(200);
@@ -172,10 +172,10 @@ describe('GameCodes', () => {
         });
     });
 
-    it('Should get existing profile game code on self on /api/users/:userName/gameCodes/profile GET', (done) => {
+    it('Should get existing profile game code on self on /api/users/:username/gameCodes/profile GET', (done) => {
       chai
         .request(app)
-        .get(`/api/users/${starterData.basicUserToAuth.userName}/gameCodes/profile`)
+        .get(`/api/users/${starterData.basicUserToAuth.username}/gameCodes/profile`)
         .set('Authorization', tokens.basicUser)
         .end((error, response) => {
           response.should.have.status(200);
@@ -195,7 +195,7 @@ describe('GameCodes', () => {
     };
     let gameCode = {};
 
-    before(`Create user ${gameCodeData.userWithWallet.userName} on /api/users POST`, (done) => {
+    before(`Create user ${gameCodeData.userWithWallet.username} on /api/users POST`, (done) => {
       chai
         .request(app)
         .post('/api/users')
@@ -209,7 +209,7 @@ describe('GameCodes', () => {
         });
     });
 
-    before(`Create user ${gameCodeData.otherUserWithWallet.userName} on /api/users POST`, (done) => {
+    before(`Create user ${gameCodeData.otherUserWithWallet.username} on /api/users POST`, (done) => {
       chai
         .request(app)
         .post('/api/users')
@@ -255,10 +255,10 @@ describe('GameCodes', () => {
         });
     });
 
-    before('Create new profile game code on self on /api/users/:userName/gameCodes/profile GET', (done) => {
+    before('Create new profile game code on self on /api/users/:username/gameCodes/profile GET', (done) => {
       chai
         .request(app)
-        .get(`/api/users/${gameCodeData.userWithWallet.userName}/gameCodes/profile`)
+        .get(`/api/users/${gameCodeData.userWithWallet.username}/gameCodes/profile`)
         .set('Authorization', walletTokens.first)
         .end((error, response) => {
           response.should.have.status(200);

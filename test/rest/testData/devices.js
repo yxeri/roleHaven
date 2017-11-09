@@ -38,7 +38,7 @@ data.deviceWithUser = {
   deviceId: tools.createRandString({ length: appConfig.deviceIdLength }),
 };
 data.adminUserToChangeDeviceAliasWith = {
-  userName: tools.createRandString({ length: appConfig.userNameMaxLength }),
+  username: tools.createRandString({ length: appConfig.usernameMaxLength }),
   password: tools.createRandString({ length: appConfig.passwordMaxLength }),
   registerDevice: tools.createRandString({ length: appConfig.deviceIdLength }),
   mail: `${tools.createRandString({ length: 10 })}@${tools.createRandString({ length: 10 })}.com`,
@@ -47,7 +47,7 @@ data.adminUserToChangeDeviceAliasWith = {
   verified: true,
 };
 data.basicUserToUpdateDeviceWith = {
-  userName: tools.createRandString({ length: appConfig.userNameMaxLength }),
+  username: tools.createRandString({ length: appConfig.usernameMaxLength }),
   password: tools.createRandString({ length: appConfig.passwordMaxLength }),
   registerDevice: tools.createRandString({ length: appConfig.deviceIdLength }),
   mail: `${tools.createRandString({ length: 10 })}@${tools.createRandString({ length: 10 })}.com`,

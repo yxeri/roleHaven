@@ -20,7 +20,7 @@ const objectValidator = require('../utils/objectValidator');
 const appConfig = require('../config/defaults/config').app;
 const dbConfig = require('../config/defaults/config').databasePopulation;
 const errorCreator = require('../objects/error/errorCreator');
-const dbLanternHack = require('../db/connectors/lanternhack');
+const dbLanternHack = require('../db/connectors/lanternHack');
 const textTools = require('../utils/textTools');
 const authenticator = require('../helpers/authenticator');
 const lanternRoundManager = require('../managers/lanternRounds');
@@ -219,7 +219,7 @@ function createHackData({ lanternHack, callback }) {
         data: {
           passwords: textTools.shuffleArray(passwords).slice(0, 13).concat(lanternHack.gameUsers.map(gameUser => gameUser.password)),
           triesLeft: lanternHack.triesLeft,
-          userName: correctUser.userName,
+          username: correctUser.username,
           passwordType: correctUser.passwordType,
           passwordHint: correctUser.passwordHint,
           stationId: lanternHack.stationId,
@@ -257,7 +257,7 @@ function createLanternHack({ stationId, owner, triesLeft, callback }) {
 
         return {
           password,
-          userName: gameUser.userName,
+          username: gameUser.username,
           passwordHint: { index: randomIndex, character: password.charAt(randomIndex) },
         };
       });
@@ -311,7 +311,7 @@ function manipulateStation({ password, boostingSignal, token, callback }) {
       const user = data.user;
 
       dbLanternHack.getLanternHack({
-        owner: user.userName,
+        owner: user.username,
         callback: ({ error: getError, data: hackLanternData }) => {
           if (getError) {
             callback({ error: getError });
@@ -334,7 +334,7 @@ function manipulateStation({ password, boostingSignal, token, callback }) {
                 }
 
                 dbLanternHack.removeLanternHack({
-                  owner: user.userName,
+                  owner: user.username,
                   callback: ({ error: removeError }) => {
                     if (removeError) {
                       callback({ error: removeError });
@@ -352,7 +352,7 @@ function manipulateStation({ password, boostingSignal, token, callback }) {
           }
 
           dbLanternHack.lowerHackTries({
-            owner: user.userName,
+            owner: user.username,
             callback: ({ error: lowerError, data: lowerData }) => {
               if (lowerError) {
                 callback({ error: lowerError });
@@ -364,7 +364,7 @@ function manipulateStation({ password, boostingSignal, token, callback }) {
 
               if (loweredHack.triesLeft <= 0) {
                 dbLanternHack.removeLanternHack({
-                  owner: user.userName,
+                  owner: user.username,
                   callback: ({ error: removeError }) => {
                     if (removeError) {
                       callback({ error: removeError });
@@ -426,7 +426,7 @@ function getLanternHack({ stationId, token, callback }) {
       const user = data.user;
 
       dbLanternHack.getLanternHack({
-        owner: user.userName,
+        owner: user.username,
         callback: ({ error: getError, data: lanternHackData }) => {
           if (getError && getError.type !== errorCreator.ErrorTypes.DOESNOTEXIST) {
             callback({ error: getError });
@@ -441,7 +441,7 @@ function getLanternHack({ stationId, token, callback }) {
           if (!lanternHackData || lanternHackData.lanternHack.stationId !== stationId) {
             createLanternHack({
               stationId,
-              owner: user.userName,
+              owner: user.username,
               triesLeft: appConfig.hackingTriesAmount,
               callback: ({ error: createError, data: createdData }) => {
                 if (createError) {

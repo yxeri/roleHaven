@@ -20,23 +20,23 @@ const data = {};
 
 data.gameUsersToCreate = [
   {
-    userName: 'createdgameuser',
+    username: 'createdgameuser',
     passwords: ['banan', 'apple', 'honey'],
     stationId: 1,
   }, {
-    userName: 'othergameuser',
+    username: 'othergameuser',
     passwords: ['pizza', 'hamburger', 'meatball'],
     stationId: 1,
   }, {
-    userName: 'thisgameuser',
+    username: 'thisgameuser',
     passwords: ['alpha', 'bravo', 'charlie'],
     stationId: 2,
   }, {
-    userName: 'thatgameuser',
+    username: 'thatgameuser',
     passwords: ['crew', 'bar', 'home'],
     stationId: 3,
   }, {
-    userName: 'whatgameuser',
+    username: 'whatgameuser',
     passwords: ['movie', 'music', 'book'],
     stationId: 4,
   },

@@ -42,7 +42,7 @@ function createThread({ thread, callback, token, io, socket }) {
       }
 
       const authUser = data.user;
-      const authId = authUser.userName;
+      const authId = authUser.username;
 
       const forumThreadToCreate = thread;
       forumThreadToCreate.ownerId = authId;
@@ -104,13 +104,13 @@ function createPost({ post, callback, token, io, socket }) {
       }
 
       const authUser = data.user;
-      const authId = authUser.userName;
+      const authId = authUser.username;
 
       const forumPostToCreate = post;
       forumPostToCreate.ownerId = authId;
 
       const saveCallback = () => {
-        dbForum.createForumPost({
+        dbForum.createPost({
           post: forumPostToCreate,
           callback: (postData) => {
             if (postData.error) {
@@ -121,7 +121,7 @@ function createPost({ post, callback, token, io, socket }) {
 
             const createdPost = postData.data.post;
 
-            dbForum.updateForumThread({
+            dbForum.updateThread({
               thread: { threadId: createdPost.threadId },
               callback: (forumData) => {
                 if (forumData.error) {
@@ -178,7 +178,7 @@ function createForum({ forum, callback, token, io, socket }) {
       }
 
       const authUser = data.user;
-      const authId = authUser.userName;
+      const authId = authUser.username;
 
       const forumToCreate = forum;
       forumToCreate.ownerId = authId;
@@ -241,7 +241,7 @@ function updatePost({ post, postId, callback, token, io, socket, userId }) {
       }
 
       const authUser = data.user;
-      const authId = authUser.userName;
+      const authId = authUser.username;
 
       dbForum.getForumPost({
         postId,
@@ -260,7 +260,7 @@ function updatePost({ post, postId, callback, token, io, socket, userId }) {
             return;
           }
 
-          dbForum.updateForumPost({
+          dbForum.updatePost({
             post,
             postId,
             callback: (updateData) => {
@@ -305,7 +305,7 @@ function getAllForums({ callback, token }) {
       }
 
       const authUser = data.user;
-      const authId = authUser.userName;
+      const authId = authUser.username;
 
       dbForum.getAllForums({
         callback: (forumsData) => {
@@ -343,7 +343,7 @@ function getForumBase({ forumId, callback, token }) {
       }
 
       const authUser = data.user;
-      const authId = authUser.userName;
+      const authId = authUser.username;
 
       dbForum.getForumById({
         forumId,
@@ -401,7 +401,7 @@ function getForumPostsByForum({ forumId, callback, token }) {
       }
 
       const authUser = data.user;
-      const authId = authUser.userName;
+      const authId = authUser.username;
 
       dbForum.getForumById({
         forumId,
@@ -431,7 +431,7 @@ function getForumPostsByForum({ forumId, callback, token }) {
 
               const threadIds = threadsData.data.threads.filter(thread => thread.isPublic || (thread.userIds.concat([thread.ownerId]).includes(authId))).map(thread => thread.threadId);
 
-              dbForum.getForumPostsByThreads({
+              dbForum.getPostsByThreads({
                 threadIds,
                 callback: (postsData) => {
                   if (postsData.error) {
@@ -470,7 +470,7 @@ function getForumThreadsByForum({ forumId, callback, token }) {
       }
 
       const authUser = data.user;
-      const authId = authUser.userName;
+      const authId = authUser.username;
 
       dbForum.getForumById({
         forumId,
@@ -527,7 +527,7 @@ function getCompleteForums({ callback, token }) {
       }
 
       const authUser = data.user;
-      const authId = authUser.userName;
+      const authId = authUser.username;
 
       const dataToSend = { forums: {} };
 
@@ -553,7 +553,7 @@ function getCompleteForums({ callback, token }) {
               const filteredThreads = threadsData.data.threads
                 .filter(thread => thread.isPublic || (thread.userIds.concat([thread.ownerId]).includes(authId)));
 
-              dbForum.getForumPostsByThreads({
+              dbForum.getPostsByThreads({
                 threadIds: filteredThreads.map(thread => thread.threadId),
                 callback: (postsData) => {
                   if (postsData.error) {

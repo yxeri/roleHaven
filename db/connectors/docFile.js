@@ -18,224 +18,404 @@
 
 const mongoose = require('mongoose');
 const errorCreator = require('../../objects/error/errorCreator');
-const databaseConnector = require('../databaseConnector');
-const dbConfig = require('../../config/defaults/config').databasePopulation;
+const dbConnector = require('../databaseConnector');
 
-const docFileSchema = new mongoose.Schema({
-  visibility: { type: Number, default: dbConfig.AccessLevels.ANONYMOUS },
-  accessLevel: { type: Number, default: dbConfig.AccessLevels.ANONYMOUS },
-  isPublic: { type: Boolean, default: true },
-  creator: { type: String, default: 'SYSTEM' },
-  accessUsers: { type: [String], default: [] },
-  accessGroups: { type: [String], default: [] },
-  docFileId: { type: String, unique: true },
+const docFileSchema = new mongoose.Schema(dbConnector.createSchema({
+  code: { type: String, unique: true },
   title: { type: String, unique: true },
   text: [String],
-  team: String,
-  customCreator: String,
-}, { collection: 'docFiles' });
+}), { collection: 'docFiles' });
 
 const DocFile = mongoose.model('DocFile', docFileSchema);
 
 /**
- * Create and save docFile
- * @param {Object} params.docFile New docFile
+ * Update doc file
+ * @private
+ * @param {Object} params - Parameters
+ * @param {string} params.objectId - ID of the doc file to update
+ * @param {Object} params.update - Update
  * @param {Function} params.callback Callback
  */
+function updateObject({ objectId, update, callback }) {
+  dbConnector.updateObject({
+    update,
+    query: { _id: objectId },
+    object: DocFile,
+    errorNameContent: 'updateDocFile',
+    callback: ({ error, data }) => {
+      if (error) {
+        callback({ error });
+
+        return;
+      }
+
+      callback({ data: { docFile: data.object } });
+    },
+  });
+}
+
+/**
+ * Get doc files
+ * @private
+ * @param {Object} params - Parameters
+ * @param {Object} params.query - Query to get doc files
+ * @param {Function} params.callback - Callback
+ */
+function getDocFiles({ query, callback, lite }) {
+  const filter = {};
+
+  if (lite) {
+    filter.text = 0;
+  }
+
+  dbConnector.getObjects({
+    query,
+    filter,
+    object: DocFile,
+    callback: ({ error, data }) => {
+      if (error) {
+        callback({ error });
+
+        return;
+      }
+
+      callback({ data: { docFiles: data.objects } });
+    },
+  });
+}
+
+/**
+ * Get doc file
+ * @private
+ * @param {Object} params - Parameters
+ * @param {string} params.query - Query to get doc file
+ * @param {Function} params.callback - Callback
+ */
+function getDocFile({ lite, query, callback }) {
+  const filter = {};
+
+  if (lite) {
+    filter.text = 0;
+  }
+
+  dbConnector.getObject({
+    query,
+    filter,
+    object: DocFile,
+    callback: ({ error, data }) => {
+      if (error) {
+        callback({ error });
+
+        return;
+      } else if (!data.object) {
+        callback({ error: new errorCreator.DoesNotExist({ name: `docFile ${query.toString()}` }) });
+
+        return;
+      }
+
+      callback({ data: { docFile: data.object } });
+    },
+  });
+}
+
+/**
+ * Does the doc file exist?
+ * @param {Object} params - Parameters
+ * @param {string} params.title - Title of the doc file
+ * @param {string} params.code - Code of the doc file
+ * @param {Function} params.callback - Callback
+ */
+function doesDocFileExist({ title, code, callback }) {
+  const query = { $or: [] };
+
+  if (title) { query.$or.push({ title }); }
+  if (code) { query.$or.push({ code }); }
+
+  dbConnector.doesObjectExist({
+    query,
+    callback,
+    object: DocFile,
+  });
+}
+
+/**
+ * Create and save docFile
+ * @param {Object} params - Parameters
+ * @param {Object} params.docFile - New docFile
+ * @param {Function} params.callback - Callback
+ */
 function createDocFile({ docFile, callback }) {
-  const newDocFile = new DocFile(docFile);
-  const query = {
-    $or: [
-      { docFileId: docFile.docFileId },
-      { title: docFile.title },
-    ],
-  };
+  doesDocFileExist({
+    code: docFile.code,
+    title: docFile.title,
+    callback: ({ error, data }) => {
+      if (error) {
+        callback({ error });
 
-  DocFile.findOne(query).lean().exec((err, foundDocFile) => {
-    if (err) {
-      callback({ error: new errorCreator.Database({ errorObject: err, name: 'createDocFile' }) });
+        return;
+      } else if (data.exists) {
+        callback({ error: new errorCreator.AlreadyExists({ name: `Docfile ${docFile.code} ${docFile.title}` }) });
 
-      return;
-    } else if (foundDocFile) {
-      callback({
-        error: new errorCreator.AlreadyExists({
-          name: 'Docfile',
-          extraData: {
-            title: foundDocFile.title === docFile.title,
-            docFileId: foundDocFile.docFileId === docFile.docFileId,
-          },
-        }),
+        return;
+      }
+
+      dbConnector.saveObject({
+        object: new DocFile(docFile),
+        objectType: 'docFile',
+        callback: (savedData) => {
+          if (savedData.error) {
+            callback({ error: savedData.error });
+
+            return;
+          }
+
+          callback({ data: { docFile: savedData.data.savedObject } });
+        },
       });
-
-      return;
-    }
-
-    databaseConnector.saveObject({
-      object: newDocFile,
-      objectType: 'docFile',
-      callback: (savedData) => {
-        if (savedData.error) {
-          callback({ error: savedData.error });
-
-          return;
-        }
-
-        callback({ data: { docFile: savedData.data.savedObject } });
-      },
-    });
+    },
   });
 }
 
 /**
  * Update docFile
- * @param {string} params.docFileId ID of docFile
- * @param {string[]} [params.text] Array with text
- * @param {string} [params.title] Title
- * @param {number} [params.visibility] Minimum access level required to see document
- * @param {boolean} [params.isPublic] Is the document visible to the public?
- * @param {string} [params.team] Team name
- * @param {Function} params.callback Callback
+ * @param {Object} params - Parameters
+ * @param {string} params.docFile - Doc file info to update
+ * @param {string} params.objectId - ID of the doc file to update
+ * @param {string} [params.docFile.code] - DocFile code
+ * @param {string[]} [params.docFile.text] - Array with text
+ * @param {string} [params.docFile.title] - Title
+ * @param {number} [params.docFile.visibility] - Minimum access level required to see document
+ * @param {boolean} [params.docFile.isPublic] - Is the document visible to the public?
+ * @param {Object} [params.options] - Options
+ * @param {boolean} [params.options.resetOwnerAliasId] - Should owner alias be reset?
+ * @param {Function} params.callback - Callback
  */
-function updateDocFile({ docFileId, text, title, visibility, isPublic, team, callback }) {
-  const query = { docFileId };
-  const update = {};
-  const set = {};
-  const unset = {};
-  const options = { new: true };
+function updateDocFile({
+  objectId,
+  docFile,
+  callback,
+  options = {},
+}) {
+  const { resetOwnerAliasId } = options;
+  const {
+    code,
+    text,
+    title,
+    visibility,
+    isPublic,
+    ownerAliasId,
+  } = docFile;
 
-  if (text) { set.text = text; }
-  if (title) { set.title = title; }
-  if (visibility) { set.visibility = visibility; }
-  if (typeof isPublic === 'boolean') { set.isPublic = isPublic; }
-  if (team) {
-    set.team = team;
-  } else {
-    unset.team = '';
+  const update = { $set: {} };
+
+  if (code) { update.$set.code = code; }
+
+  if (text) { update.$set.text = text; }
+
+  if (title) { update.$set.title = title; }
+
+  if (visibility) { update.$set.visibility = visibility; }
+
+  if (typeof isPublic === 'boolean') { update.$set.isPublic = isPublic; }
+
+  if (resetOwnerAliasId) {
+    update.$unset = { ownerAliasId: '' };
+  } else if (ownerAliasId) {
+    update.set.ownerAliasId = ownerAliasId;
   }
 
-  if (Object.keys(set).length > 0) { update.$set = set; }
-  if (Object.keys(unset).length > 0) { update.$unset = unset; }
-
-  DocFile.findOneAndUpdate(query, update, options).lean().exec((err, docFile) => {
-    if (err) {
-      callback({ error: new errorCreator.Database({ errorObject: err, name: 'updateDocFile' }) });
-
-      return;
-    }
-
-    callback({ data: { docFile } });
+  updateObject({
+    objectId,
+    update,
+    callback,
   });
 }
 
 /**
- * Add a user that is allowed access to a document
- * @param {string} params.docFileId ID of the document to update
- * @param {string} params.userName User name of the user with access to the document
- * @param {Function} params.callback Callback
+ * Add users and/teams that are allowed access to a document
+ * @param {Object} params - Parameters
+ * @param {string} params.objectId - ID of the document to update
+ * @param {string[]} [params.userIds] - ID of the users
+ * @param {string[]} [params.teamIds] - ID of the teams
+ * @param {string[]} [params.blockedIds] - ID of the blocked Ids to add
+ * @param {boolean} [params.isAdmin] - Should the team and/or user be added to admins?
+ * @param {Function} params.callback - Callback
  */
-function addAccessUser({ docFileId, userName, callback }) {
-  const query = { docFileId };
-  const update = { $push: { accessUsers: userName } };
-  const options = { new: true };
+function addAccess({
+  objectId,
+  userIds,
+  teamIds,
+  blockedIds,
+  isAdmin,
+  callback,
+}) {
+  if (!userIds && !teamIds && !blockedIds) {
+    callback({ error: new errorCreator.InvalidData({ expected: 'teamIds || userIds || blockedIds' }) });
 
-  DocFile.findOneAndUpdate(query, update, options).lean().exec((err, docFile) => {
-    if (err) {
-      callback({ error: new errorCreator.Database({ errorObject: err, name: 'addAccessUser' }) });
+    return;
+  }
 
-      return;
-    }
+  dbConnector.addObjectAccess({
+    objectId,
+    userIds,
+    teamIds,
+    blockedIds,
+    isAdmin,
+    object: DocFile,
+    callback: ({ error, data }) => {
+      if (error) {
+        callback({ error });
 
-    callback({ data: { docFile } });
+        return;
+      }
+
+      callback({ docFile: data.object });
+    },
   });
 }
 
 /**
- * Get docFile
- * @param {string} params.docFileId ID of docFile
- * @param {string} params.title Title of doc file
- * @param {Object} params.user User retrieving docfile
- * @param {Function} params.callback Callback
+ * Remove access to the doc file for users and/or teams
+ * @param {Object} params - Parameters
+ * @param {string} params.objectId - ID of the doc file
+ * @param {string[]} [params.userIds] - ID of the users
+ * @param {string[]} [params.teamIds] - ID of the teams
+ * @param {string[]} [params.blockedIds] - Blocked IDs
+ * @param {boolean} [params.isAdmin] - Should the teams and/or users be removed from admins?
+ * @param {Function} params.callback - Callback
  */
-function getDocFile({ docFileId, title, user, callback }) {
+function removeAccess({
+  userIds,
+  teamIds,
+  blockedIds,
+  isAdmin,
+  objectId,
+  callback,
+}) {
+  if (!userIds && !teamIds && !blockedIds) {
+    callback({ error: new errorCreator.InvalidData({ expected: 'teamIds || userIds || blockedIds' }) });
+
+    return;
+  }
+
+  dbConnector.removeObjectAccess({
+    userIds,
+    teamIds,
+    blockedIds,
+    objectId,
+    callback,
+    isAdmin,
+    object: DocFile,
+  });
+}
+
+/**
+ * Remove doc file
+ * @param {Object} params - Parameters
+ * @param {string} params.objectId - ID of the doc file
+ * @param {Function} params.callback - Callback
+ */
+function removeDocFile({ objectId, callback }) {
+  const query = { _id: objectId };
+
+  dbConnector.removeObject({
+    query,
+    callback,
+    object: DocFile,
+  });
+}
+
+/**
+ * Get all doc files
+ * @param {Object} params - Parameters
+ * @param {boolean} [params.lite] - Should parameters with a large amount of data be filtered out?
+ * @param {Function} params.callback - Callback
+ */
+function getAllDocFiles({ callback, lite = true }) {
+  getDocFiles({
+    lite,
+    callback,
+    errorNameContent: 'getAllDocFiles',
+  });
+}
+
+/**
+ * Get doc files that the user has access to
+ * @param {Object} params - Parameters
+ * @param {string} params.userId - ID of the user
+ * @param {boolean} [params.lite] - Should parameters with a large amount of data be filtered out?
+ * @param {Function} params.callback - Callback
+ */
+function getDocFilesByUser({ userId, lite, callback }) {
   const query = {
-    $and: [
-      {
-        $or: [
-          { docFileId },
-          { $and: [
-            { title },
-            { $or: [
-              { customCreator: { $in: user.creatorAliases } },
-              { $and: [
-                { team: { $exists: true } },
-                { team: user.team },
-              ] },
-            ] },
-          ] },
-        ],
-      }, {
-        $or: [
-          { customCreator: { $in: user.creatorAliases } },
-          { creator: user.userName },
-          { accessUsers: { $in: [user.userName] } },
-          { team: user.team },
-          { accessLevel: { $lte: user.accessLevel } },
-        ],
-      },
+    $or: [
+      { ownerId: userId },
+      { userIds: { $in: [userId] } },
     ],
   };
-  DocFile.findOne(query).lean().exec((err, docFile) => {
-    if (err) {
-      callback({ error: new errorCreator.Database({ errorObject: err, name: 'getDocFile' }) });
 
-      return;
-    } else if (!docFile) {
-      callback({ error: new errorCreator.DoesNotExist({ name: `docfile ${title}` }) });
-
-      return;
-    }
-
-    callback({ data: { docFile } });
+  getDocFiles({
+    lite,
+    query,
+    callback,
+    errorNameContent: 'getDocFilesByUser',
   });
 }
 
 /**
- * Get list of docFiles
- * @param {number} params.accessLevel Access level
- * @param {string} params.userName User name
- * @param {string[]} params.creatorAliases User's aliases for file creation
- * @param {Function} params.callback Callback
+ * Get doc files that the teams have access to
+ * @param {Object} params - Parameters
+ * @param {string[]} params.teamIds - ID of the teams
+ * @param {boolean} [params.lite] - Should parameters with a large amount of data be filtered out?
+ * @param {Function} params.callback - Callback
  */
-function getDocFiles({ accessLevel, userName, creatorAliases, callback }) {
-  const query = {
-    $and: [
-      { $or: [
-        { isPublic: true },
-        { accessLevel: { $lte: accessLevel } },
-      ] },
-      { $or: [
-        { isPublic: true },
-        { visibility: { $lte: accessLevel } },
-        { creator: userName },
-        { customCreator: { $exists: true, $in: creatorAliases } },
-      ] },
-    ],
-  };
-  const filter = { _id: 0, text: 0, visibility: 0, accessLevel: 0 };
+function getDocFilesByTeams({ lite, teamIds, callback }) {
+  getDocFiles({
+    lite,
+    callback,
+    query: { teamIds: { $in: teamIds } },
+    errorNameContent: 'getDocFilesByTeams',
+  });
+}
 
-  DocFile.find(query, filter).lean().exec((err, docFiles = []) => {
-    if (err) {
-      callback({ error: new errorCreator.Database({ errorObject: err, name: 'getDocFiles' }) });
+/**
+ * Get doc file by id
+ * @param {Object} params - Parameters
+ * @param {string} params.objectId - ID of the doc file
+ * @param {boolean} [params.lite] - Should parameters with a large amount of data be filtered out?
+ * @param {Function} params.callback - Callback
+ */
+function getDocFileById({ lite, objectId, callback }) {
+  getDocFile({
+    callback,
+    lite,
+    query: { _id: objectId },
+  });
+}
 
-      return;
-    }
-
-    callback({ data: { docFiles } });
+/**
+ * Get doc file by code
+ * @param {Object} params - Parameters
+ * @param {string} params.code - Docfile code
+ * @param {Function} params.callback - Callback
+ */
+function getDocFileByCode({
+  code,
+  callback,
+}) {
+  getDocFile({
+    callback,
+    query: { code },
   });
 }
 
 exports.createDocFile = createDocFile;
-exports.getDocFiles = getDocFiles;
 exports.updateDocFile = updateDocFile;
-exports.addAccessUser = addAccessUser;
-exports.getDocFile = getDocFile;
+exports.addAccess = addAccess;
+exports.removeAccess = removeAccess;
+exports.getDocFileById = getDocFileById;
+exports.removeDocFile = removeDocFile;
+exports.getAllDocFiles = getAllDocFiles;
+exports.getDocFilesByUser = getDocFilesByUser;
+exports.getDocFilesByTeams = getDocFilesByTeams;
+exports.getDocFileByCode = getDocFileByCode;

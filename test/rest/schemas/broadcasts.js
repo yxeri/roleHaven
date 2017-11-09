@@ -21,9 +21,9 @@ const schemas = {};
 
 const broadcastBase = {
   type: 'object',
-  required: ['text', 'time', 'userName'],
+  required: ['text', 'time', 'username'],
   properties: {
-    userName: { type: 'string' },
+    username: { type: 'string' },
     text: {
       type: 'array',
       items: { type: 'string' },

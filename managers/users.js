@@ -21,7 +21,7 @@ const dbWallet = require('../db/connectors/wallet');
 const appConfig = require('../config/defaults/config').app;
 const dbConfig = require('../config/defaults/config').databasePopulation;
 const errorCreator = require('../objects/error/errorCreator');
-const dbInvitation = require('../db/connectors/invitationList');
+const dbInvitation = require('../db/connectors/invitation');
 const mailer = require('../helpers/mailer');
 const textTools = require('../utils/textTools');
 const objectValidator = require('../utils/objectValidator');
@@ -45,24 +45,24 @@ function createUser({ token, user, callback, origin = '' }) {
         callback({ error });
 
         return;
-      } else if (!objectValidator.isValidData({ user }, { user: { userName: true, registerDevice: true, password: true } })) {
-        callback({ error: new errorCreator.InvalidData({ expected: '{ user: { userName, registerDevice, password } }' }) });
+      } else if (!objectValidator.isValidData({ user }, { user: { username: true, registerDevice: true, password: true } })) {
+        callback({ error: new errorCreator.InvalidData({ expected: '{ user: { username, registerDevice, password } }' }) });
 
         return;
-      } else if (!textTools.isAllowedFull(user.userName.toLowerCase())) {
-        callback({ error: new errorCreator.InvalidCharacters({ name: `User name: ${user.userName}` }) });
+      } else if (!textTools.isAllowedFull(user.username.toLowerCase())) {
+        callback({ error: new errorCreator.InvalidCharacters({ name: `User name: ${user.username}` }) });
 
         return;
-      } else if (user.userName.length > appConfig.userNameMaxLength || user.password.length > appConfig.passwordMaxLength || user.registerDevice.length > appConfig.deviceIdLength) {
-        callback({ error: new errorCreator.InvalidCharacters({ name: `User name length: ${appConfig.userNameMaxLength} Password length: ${appConfig.userNameMaxLength} Device length: ${appConfig.deviceIdLength}` }) });
+      } else if (user.username.length > appConfig.usernameMaxLength || user.password.length > appConfig.passwordMaxLength || user.registerDevice.length > appConfig.deviceIdLength) {
+        callback({ error: new errorCreator.InvalidCharacters({ name: `User name length: ${appConfig.usernameMaxLength} Password length: ${appConfig.usernameMaxLength} Device length: ${appConfig.deviceIdLength}` }) });
 
         return;
       } else if ((user.visibility || user.accessLevel || user.verified) && dbConfig.apiCommands.ChangeUserLevels.accessLevel > data.user.accessLevel) {
         callback({ error: new errorCreator.NotAllowed({ name: 'set access or visibility level' }) });
 
         return;
-      } else if (dbConfig.protectedNames.indexOf(user.userName.toLowerCase()) > -1) {
-        callback({ error: new errorCreator.InvalidCharacters({ name: `protected name ${user.userName}` }) });
+      } else if (dbConfig.protectedNames.indexOf(user.username.toLowerCase()) > -1) {
+        callback({ error: new errorCreator.InvalidCharacters({ name: `protected name ${user.username}` }) });
 
         return;
       } else if (appConfig.userVerify && (!user.mail || !textTools.isValidMail(user.mail))) {
@@ -72,8 +72,8 @@ function createUser({ token, user, callback, origin = '' }) {
       }
 
       const createUserFunc = () => {
-        const { userName, fullName, password, registerDevice, banned, accessLevel, visibility } = user;
-        const lowerCaseUserName = userName.toLowerCase();
+        const { username, fullName, password, registerDevice, banned, accessLevel, visibility } = user;
+        const lowerCaseUsername = username.toLowerCase();
         const mail = appConfig.userVerify ? user.mail.toLowerCase() : Date.now();
         const verified = appConfig.userVerify ? user.verified : true;
 
@@ -85,9 +85,9 @@ function createUser({ token, user, callback, origin = '' }) {
           verified,
           accessLevel,
           visibility,
-          userName: lowerCaseUserName,
+          username: lowerCaseUsername,
           registeredAt: new Date(),
-          fullName: fullName || lowerCaseUserName,
+          fullName: fullName || lowerCaseUsername,
           rooms: [
             dbConfig.rooms.public.roomName,
             dbConfig.rooms.bcast.roomName,
@@ -111,8 +111,8 @@ function createUser({ token, user, callback, origin = '' }) {
 
             roomManager.createSpecialRoom({
               room: {
-                owner: createdUser.userName,
-                roomName: createdUser.userName + appConfig.whisperAppend,
+                owner: createdUser.username,
+                roomName: createdUser.username + appConfig.whisperAppend,
                 visibility: dbConfig.AccessLevels.SUPERUSER,
                 accessLevel: dbConfig.AccessLevels.SUPERUSER,
                 isWhisper: true,
@@ -126,8 +126,9 @@ function createUser({ token, user, callback, origin = '' }) {
                 }
 
                 const wallet = {
+                  walletId: createdUser.userId,
                   accessLevel: createdUser.accessLevel,
-                  owner: createdUser.userName,
+                  owner: createdUser.username,
                   amount: appConfig.defaultWalletAmount,
                 };
 
@@ -141,7 +142,7 @@ function createUser({ token, user, callback, origin = '' }) {
                     }
 
                     dbInvitation.createInvitationList({
-                      userName: createdUser.userName,
+                      username: createdUser.username,
                       callback: ({ error: listError }) => {
                         if (listError) {
                           callback({ error: listError });
@@ -151,7 +152,7 @@ function createUser({ token, user, callback, origin = '' }) {
 
                         mailer.sendVerification({
                           address: createdUser.mail,
-                          userName: createdUser.userName,
+                          username: createdUser.username,
                           callback: ({ error: mailError }) => {
                             if (mailError) {
                               callback({ error: mailError });
@@ -250,10 +251,10 @@ function listUsers({ includeInactive, token, callback, team = {} }) {
           }).forEach((currentUser) => {
             if (includeInactive || (currentUser.verified && !currentUser.banned)) {
               const aliases = currentUser.aliases.map((alias) => {
-                return { userName: alias };
+                return { username: alias };
               });
               const filteredUser = {
-                userName: currentUser.userName,
+                username: currentUser.username,
                 online: currentUser.online,
                 team: currentUser.team,
               };
@@ -310,7 +311,7 @@ function changePassword({ key, password, callback }) {
 
       dbUser.updateUserPassword({
         password,
-        userName: data.event.owner,
+        username: data.event.owner,
         callback: ({ error: updateError }) => {
           if (updateError) {
             callback({ error: updateError });
@@ -348,7 +349,7 @@ function sendPasswordReset({ mail, callback }) {
 
       mailer.sendPasswordReset({
         address: userData.user.mail,
-        userName: userData.user.userName,
+        username: userData.user.username,
         callback: ({ error: resetError }) => {
           if (resetError) {
             callback({ error: resetError });
@@ -365,14 +366,14 @@ function sendPasswordReset({ mail, callback }) {
 
 /**
  * Get user by name
- * @param {string} params.userName User to retrieve
+ * @param {string} params.username User to retrieve
  * @param {Object} params.user User retrieving the user
  * @param {Function} params.callback Callback
  */
-function getUser({ token, userName, callback }) {
+function getUser({ token, username, callback }) {
   authenticator.isUserAllowed({
     token,
-    matchNameTo: userName,
+    matchToId: username,
     commandName: dbConfig.apiCommands.GetUser.name,
     callback: ({ error, data }) => {
       if (error) {
@@ -381,14 +382,14 @@ function getUser({ token, userName, callback }) {
         return;
       }
 
-      if (userName === data.user.userName) {
+      if (username === data.user.username) {
         callback({ data });
 
         return;
       }
 
       dbUser.getUser({
-        userName: userName.toLowerCase(),
+        username: username.toLowerCase(),
         callback: ({ error: userError, data: userData }) => {
           if (userError) {
             callback({ error: userError });
@@ -416,16 +417,16 @@ function getUser({ token, userName, callback }) {
  * @param {Function} params.callback Callback
  */
 function login({ user, device, socket, io, callback }) {
-  if (!objectValidator.isValidData({ user, device }, { user: { userName: true, password: true }, device: { deviceId: true } })) {
-    callback({ error: new errorCreator.InvalidData({ expected: '{ user: { userName, password } }' }) });
+  if (!objectValidator.isValidData({ user, device }, { user: { username: true, password: true }, device: { deviceId: true } })) {
+    callback({ error: new errorCreator.InvalidData({ expected: '{ user: { username, password } }' }) });
 
     return;
   }
 
-  const userName = user.userName.toLowerCase();
+  const username = user.username.toLowerCase();
 
   dbUser.getUser({
-    userName,
+    username,
     includeInactive: true,
     callback: ({ error: userError, data: userData }) => {
       if (userError) {
@@ -445,7 +446,7 @@ function login({ user, device, socket, io, callback }) {
       const authUser = userData.user;
 
       authenticator.createToken({
-        userName: authUser.userName,
+        username: authUser.username,
         password: user.password,
         callback: ({ error, data: tokenData }) => {
           if (error) {
@@ -455,7 +456,7 @@ function login({ user, device, socket, io, callback }) {
           }
 
           dbUser.updateUserSocketId({
-            userName: authUser.userName,
+            username: authUser.username,
             socketId: socket.id,
             callback: (socketData) => {
               if (socketData.error) {
@@ -465,7 +466,7 @@ function login({ user, device, socket, io, callback }) {
               }
 
               const newDevice = device;
-              newDevice.lastUser = authUser.userName;
+              newDevice.lastUser = authUser.username;
               newDevice.socketId = socket.id;
 
               deviceManager.updateDevice({
@@ -487,7 +488,7 @@ function login({ user, device, socket, io, callback }) {
                   roomManager.joinRooms({ rooms: authUser.rooms, socket });
 
                   dbUser.setUserLastOnline({
-                    userName: authUser.userName,
+                    username: authUser.username,
                     date: new Date(),
                     callback: ({ error: onlineError }) => {
                       if (onlineError) {
@@ -539,7 +540,7 @@ function logout({ device, token, socket, callback }) {
       const user = data.user;
 
       dbUser.updateUserSocketId({
-        userName: user.userName,
+        username: user.username,
         callback: ({ error: socketError }) => {
           if (socketError) {
             callback({ error: socketError });
@@ -548,7 +549,7 @@ function logout({ device, token, socket, callback }) {
           }
 
           const deviceToUpdate = device;
-          deviceToUpdate.lastUser = user.userName;
+          deviceToUpdate.lastUser = user.username;
           deviceToUpdate.socketId = '';
 
           deviceManager.updateDevice({
@@ -561,7 +562,7 @@ function logout({ device, token, socket, callback }) {
               }
 
               dbUser.updateUserOnline({
-                userName: user.userName,
+                username: user.username,
                 online: false,
                 callback: (onlineData) => {
                   if (onlineData.error) {
@@ -609,7 +610,7 @@ function getBannedUsers({ token, callback }) {
           const { users } = usersData.data;
 
           callback({
-            data: { users: users.map(user => user.userName) },
+            data: { users: users.map(user => user.username) },
           });
         },
       });
@@ -623,7 +624,7 @@ function getBannedUsers({ token, callback }) {
  * @param {string} params.token jwt
  * @param {Function} params.callback Callback
  */
-function matchPartialUserName({ partialName, token, callback }) {
+function matchPartialUsername({ partialName, token, callback }) {
   authenticator.isUserAllowed({
     token,
     commandName: dbConfig.apiCommands.GetUser.name,
@@ -646,7 +647,7 @@ function matchPartialUserName({ partialName, token, callback }) {
 
           const { users } = usersData.data;
 
-          callback({ matches: Object.keys(users).map(userKey => users[userKey].userName) });
+          callback({ matches: Object.keys(users).map(userKey => users[userKey].username) });
         },
       });
     },
@@ -668,14 +669,14 @@ function unbanUser({ token, user, callback }) {
         callback({ error });
 
         return;
-      } else if (!objectValidator.isValidData({ user }, { user: { userName: true } })) {
-        callback({ error: new errorCreator.InvalidData({ expected: '{ user: { userName } }' }) });
+      } else if (!objectValidator.isValidData({ user }, { user: { username: true } })) {
+        callback({ error: new errorCreator.InvalidData({ expected: '{ user: { username } }' }) });
 
         return;
       }
 
       dbUser.unbanUser({
-        userName: user.userName.toLowerCase(),
+        username: user.username.toLowerCase(),
         callback: ({ error: unbanError }) => {
           if (unbanError) {
             callback({ error: unbanError });
@@ -706,16 +707,16 @@ function banUser({ user, io, token, callback }) {
         callback({ error });
 
         return;
-      } else if (!objectValidator.isValidData({ user }, { user: { userName: true } })) {
-        callback({ error: new errorCreator.InvalidData({ expected: '{ user: { userName } }' }) });
+      } else if (!objectValidator.isValidData({ user }, { user: { username: true } })) {
+        callback({ error: new errorCreator.InvalidData({ expected: '{ user: { username } }' }) });
 
         return;
       }
 
-      const userName = user.userName.toLowerCase();
+      const username = user.username.toLowerCase();
 
       dbUser.updateUserSocketId({
-        userName,
+        username,
         callback: ({ error: updateError }) => {
           if (updateError) {
             callback({ error: updateError });
@@ -724,7 +725,7 @@ function banUser({ user, io, token, callback }) {
           }
 
           dbUser.banUser({
-            userName,
+            username,
             noClean: true,
             callback: ({ error: banError, data: banData }) => {
               if (banError) {
@@ -739,7 +740,7 @@ function banUser({ user, io, token, callback }) {
                 roomManager.leaveSocketRooms({ socket: bannedSocket });
               }
 
-              io.to(userName + appConfig.whisperAppend).emit('ban');
+              io.to(username + appConfig.whisperAppend).emit('ban');
 
               callback({ data: { success: true } });
             },
@@ -754,13 +755,13 @@ function banUser({ user, io, token, callback }) {
  * Verify user
  * @param {Object} params.callback Callback
  * @param {Object} params.socket Socket.io
- * @param {string} params.userName Name of user to verify
+ * @param {string} params.username Name of user to verify
  * @param {Object} params.io Socket io. Will be used if socket is not set
  * @param {string} params.token jwt token
  */
-function verifyUserWithoutMail({ userName, callback, io, token }) {
-  if (!objectValidator.isValidData({ userName }, { userName: true })) {
-    callback({ error: new errorCreator.InvalidData({ expected: '{ userName }' }) });
+function verifyUserWithoutMail({ username, callback, io, token }) {
+  if (!objectValidator.isValidData({ username }, { username: true })) {
+    callback({ error: new errorCreator.InvalidData({ expected: '{ username }' }) });
 
     return;
   }
@@ -776,7 +777,7 @@ function verifyUserWithoutMail({ userName, callback, io, token }) {
       }
 
       dbMailEvent.getMailEvent({
-        owner: userName,
+        owner: username,
         eventType: 'userVerify',
         callback: ({ error: eventError, data: eventData }) => {
           if (eventError) {
@@ -788,7 +789,7 @@ function verifyUserWithoutMail({ userName, callback, io, token }) {
           const event = eventData.event;
 
           dbUser.verifyUser({
-            userName,
+            username,
             callback: (verifyData) => {
               if (verifyData.error) {
                 callback({ error: verifyData.error });
@@ -800,8 +801,8 @@ function verifyUserWithoutMail({ userName, callback, io, token }) {
 
               dbMailEvent.removeMailEventByKey({ key: event.key, callback: () => {} });
 
-              callback({ data: { userName: user.userName } });
-              io.emit('user', { data: { user: { userName: user.userName } } });
+              callback({ data: { username: user.username } });
+              io.emit('user', { data: { user: { username: user.username } } });
             },
           });
         },
@@ -834,7 +835,7 @@ function verifyUser({ key, callback, socket, io }) {
       }
 
       dbUser.verifyUser({
-        userName: data.event.owner,
+        username: data.event.owner,
         callback: (verifyData) => {
           if (verifyData.error) {
             callback({ error: verifyData.error });
@@ -845,12 +846,12 @@ function verifyUser({ key, callback, socket, io }) {
           const user = verifyData.data.user;
 
           dbMailEvent.removeMailEventByKey({ key, callback: () => {} });
-          callback({ data: { userName: user.userName } });
+          callback({ data: { username: user.username } });
 
           if (socket) {
-            socket.broadcast.emit('user', { data: { user: { userName: user.userName } } });
+            socket.broadcast.emit('user', { data: { user: { username: user.username } } });
           } else {
-            io.emit('user', { data: { user: { userName: user.userName } } });
+            io.emit('user', { data: { user: { username: user.username } } });
           }
         },
       });
@@ -887,7 +888,7 @@ function sendVerification({ mail, callback }) {
 
       mailer.sendVerification({
         address: mail,
-        userName: user.userName,
+        username: user.username,
         callback: (verificationData) => {
           if (verificationData.error) {
             callback({ error: verificationData.error });
@@ -932,7 +933,7 @@ function sendAllVerificationMails({ mail, callback }) {
         if (textTools.isValidMail(user.mail)) {
           mailer.sendVerification({
             address: user.mail,
-            userName: user.userName,
+            username: user.username,
             callback: (verificationData) => {
               if (verificationData.error) {
                 callback({ error: verificationData.error });
@@ -998,7 +999,7 @@ exports.changePassword = changePassword;
 exports.login = login;
 exports.logout = logout;
 exports.getBannedUsers = getBannedUsers;
-exports.matchPartialUserName = matchPartialUserName;
+exports.matchPartialUsername = matchPartialUsername;
 exports.listUsers = listUsers;
 exports.banUser = banUser;
 exports.verifyUser = verifyUser;

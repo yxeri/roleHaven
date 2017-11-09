@@ -312,6 +312,8 @@ config.hackingTriesAmount = process.env.HACKINGTRIESAMOUNT || config.hackingTrie
  */
 config.gameCodeAmount = process.env.GAMECODEAMOUNT || config.gameCodeAmount || 2;
 
+config.gameCodeLength = process.env.GAMECODELENGTH || config.gameCodeLength || 8;
+
 /**
  * Amount of credits transferred when a game code is used
  */
@@ -355,7 +357,7 @@ config.broadcastMaxLength = process.env.BROADCASTMAXLENGTH || config.broadcastMa
 /**
  * Maximum amount of characters in a user name
  */
-config.userNameMaxLength = process.env.USERNAMEMAXLENGTH || config.userNameMaxLength || 20;
+config.usernameMaxLength = process.env.USERNAMEMAXLENGTH || config.usernameMaxLength || 20;
 
 /**
  * Maximum amount of characters in a team name

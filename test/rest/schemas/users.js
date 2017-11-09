@@ -31,9 +31,9 @@ schemas.users = {
           type: 'array',
           items: {
             type: 'object',
-            required: ['userName'],
+            required: ['username'],
             properties: {
-              userName: { type: 'string' },
+              username: { type: 'string' },
               online: { type: 'boolean' },
             },
           },
@@ -43,7 +43,7 @@ schemas.users = {
   },
 };
 
-schemas.userNames = {
+schemas.usernames = {
   type: 'object',
   required: ['data'],
   properties: {
@@ -87,7 +87,7 @@ schemas.user = {
       properties: {
         user: {
           required: [
-            'userName',
+            'username',
             'verified',
             'banned',
             'online',
@@ -103,7 +103,7 @@ schemas.user = {
             'aliases',
           ],
           properties: {
-            userName: { type: 'string' },
+            username: { type: 'string' },
             verified: { type: 'boolean' },
             banned: { type: 'boolean' },
             online: { type: 'boolean' },

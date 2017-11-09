@@ -45,10 +45,10 @@ data.otherUserPositionToUpdateWith = {
   },
 };
 data.userThatDoesNotExist = {
-  userName: tools.createRandString({ length: appConfig.userNameMaxLength }),
+  username: tools.createRandString({ length: appConfig.usernameMaxLength }),
 };
 data.adminUserToCreateAndGetPositionFrom = {
-  userName: tools.createRandString({ length: appConfig.userNameMaxLength }),
+  username: tools.createRandString({ length: appConfig.usernameMaxLength }),
   password: tools.createRandString({ length: appConfig.passwordMaxLength }),
   registerDevice: tools.createRandString({ length: appConfig.deviceIdLength }),
   mail: `${tools.createRandString({ length: 10 })}@${tools.createRandString({ length: 10 })}.com`,
@@ -57,7 +57,7 @@ data.adminUserToCreateAndGetPositionFrom = {
   verified: true,
 };
 data.basicUserToCreateAndGetPositionFrom = {
-  userName: tools.createRandString({ length: appConfig.userNameMaxLength }),
+  username: tools.createRandString({ length: appConfig.usernameMaxLength }),
   password: tools.createRandString({ length: appConfig.passwordMaxLength }),
   registerDevice: tools.createRandString({ length: appConfig.deviceIdLength }),
   mail: `${tools.createRandString({ length: 10 })}@${tools.createRandString({ length: 10 })}.com`,

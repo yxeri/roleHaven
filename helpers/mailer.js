@@ -13,10 +13,10 @@ const { URL } = require('url');
 /**
  * Send user verification mail
  * @param {string} params.address Mail address
- * @param {string} params.userName User name that will receive mail
+ * @param {string} params.username User name that will receive mail
  * @param {Function} params.callback Callback
  */
-function sendVerification({ address, userName, callback }) {
+function sendVerification({ address, username, callback }) {
   if (!mailgun && !appConfig.bypassMailer) {
     callback({ error: new errorCreator.Internal({ name: 'Mailgun mailKey, mailDomain, publicMailKey not set' }) });
 
@@ -26,8 +26,8 @@ function sendVerification({ address, userName, callback }) {
   crypto.randomBytes(20, (err, key) => {
     const url = new URL(`https://${appConfig.host}/?key=${key.toString('hex')}&mailEvent=userVerify`);
     const text = [
-      `Hi, ${userName}!`,
-      `Your account ${userName} on ${appConfig.host} has been created.`,
+      `Hi, ${username}!`,
+      `Your account ${username} on ${appConfig.host} has been created.`,
       'You need to verify your account before you can login with it.',
       '<br />By verifying and creating your account you accept all sections in the User Agreement document, which you can find <a href="https://thethirdgift.com/agreement.html">here</a>.',
       `<br />Clicking <a href=${url.href}>here</a> redirect you to the app and allow you to verify and activate your account.`,
@@ -44,7 +44,7 @@ function sendVerification({ address, userName, callback }) {
 
     dbMailEvent.createMailEvent({
       mailEvent: {
-        owner: userName,
+        owner: username,
         key: key.toString('hex'),
         eventType: 'userVerify',
 
@@ -90,10 +90,10 @@ function sendVerification({ address, userName, callback }) {
 /**
  * Send user password reset mail
  * @param {string} params.address Mail address
- * @param {string} params.userName User name that will receive mail
+ * @param {string} params.username User name that will receive mail
  * @param {Function} params.callback Callback
  */
-function sendPasswordReset({ address, userName, callback }) {
+function sendPasswordReset({ address, username, callback }) {
   if (!mailgun && !appConfig.bypassMailer) {
     callback({ error: new errorCreator.Internal({ name: 'Mailgun mailKey, mailDomain, publicMailKey not set' }) });
 
@@ -103,7 +103,7 @@ function sendPasswordReset({ address, userName, callback }) {
   crypto.randomBytes(20, (err, key) => {
     const url = new URL(`https://${appConfig.host}/?key=${key.toString('hex')}&mailEvent=passwordReset`);
     const text = [
-      `Hi, ${userName}!`,
+      `Hi, ${username}!`,
       `A password reset request has been made for your user at ${appConfig.host}.`,
       'You can ignore this mail if you did not request a new password.',
       `<br />Clicking <a href=${url}>here</a> will redirect you to the app, where you can reset and choose a new password.`,
@@ -123,7 +123,7 @@ function sendPasswordReset({ address, userName, callback }) {
     dbMailEvent.createMailEvent({
       mailEvent: {
         expiresAt,
-        owner: userName,
+        owner: username,
         key: key.toString('hex'),
         eventType: 'password',
       },

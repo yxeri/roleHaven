@@ -30,7 +30,7 @@ const starterData = require('./testData/starter');
 const app = require('../../app');
 const authenticateSchemas = require('./schemas/authentications');
 const dbUser = require('../../db/connectors/user');
-const dbLanternHack = require('../../db/connectors/lanternhack');
+const dbLanternHack = require('../../db/connectors/lanternHack');
 
 chai.should();
 

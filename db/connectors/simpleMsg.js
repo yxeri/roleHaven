@@ -17,31 +17,50 @@
 'use strict';
 
 const mongoose = require('mongoose');
-const errorCreator = require('../../objects/error/errorCreator');
 const dbConnector = require('../databaseConnector');
+const errorCreator = require('../../objects/error/errorCreator');
 
-const simpleMsgSchema = new mongoose.Schema({
+const simpleMsgSchema = new mongoose.Schema(dbConnector.createSchema({
   text: String,
-  time: Date,
-  userName: String,
-}, { collection: 'simpleMsgs' });
+}), { collection: 'simpleMsgs' });
 
-const SimpleMsgs = mongoose.model('SimpleMsg', simpleMsgSchema);
+const SimpleMsg = mongoose.model('SimpleMsg', simpleMsgSchema);
+
+/**
+ * Update simple msg
+ * @private
+ * @param {Object} params - Parameters
+ * @param {string} params.simpleMsgId - ID of the simple msg to update
+ * @param {Function} params.callback - Callback
+ */
+function updateObject({ update, simpleMsgId, callback }) {
+  dbConnector.updateObject({
+    update,
+    query: { _id: simpleMsgId },
+    object: SimpleMsg,
+    errorNameContent: 'updateSimpleMsg',
+    callback: ({ error, data }) => {
+      if (error) {
+        callback({ error });
+
+        return;
+      }
+
+      callback({ simpleMsg: data.object });
+    },
+  });
+}
 
 /**
  * Create and save a simple message
- * @param {Object} params.simpleMsg Simple message
- * @param {string} params.simpleMsg.userName Name of the sender
- * @param {Date} params.simpleMsg.time Date when the message was sent
- * @param {string[]} params.simpleMsg.text Text in the simple message
- * @param {Function} params.callback Callback
+ * @param {Object} params - Parameters
+ * @param {Object} params.simpleMsg - Simple message
+ * @param {Function} params.callback - Callback
  */
 function createSimpleMsg({ simpleMsg, callback }) {
-  const newSimpleMsg = new SimpleMsgs(simpleMsg);
-
   dbConnector.saveObject({
-    object: newSimpleMsg,
-    objectType: 'Simple smsg',
+    object: new SimpleMsg(simpleMsg),
+    objectType: 'Simple msg',
     callback: ({ error, data }) => {
       if (error) {
         callback({ error });
@@ -54,43 +73,103 @@ function createSimpleMsg({ simpleMsg, callback }) {
   });
 }
 
+
 /**
- * Remove simple messages based on user name
- * @param {string} params.userName Owner of the messages that will be deleted
- * @param {Function} params.callback Callback
+ * Get simple msgs
+ * @private
+ * @param {Object} params - Parameters
+ * @param {Object} params.query - Query to get simple msgs
+ * @param {Function} params.callback - Callback
  */
-function removeSimpleMsgs({ userName, callback }) {
-  const query = { userName };
+function getSimpleMsgs({ query, callback }) {
+  dbConnector.getObjects({
+    query,
+    object: SimpleMsg,
+    callback: ({ error, data }) => {
+      if (error) {
+        callback({ error });
 
-  SimpleMsgs.remove(query).lean().exec((err, simpleMsgs = []) => {
-    if (err) {
-      callback({ error: new errorCreator.Database({ errorObject: err }) });
+        return;
+      }
 
-      return;
-    }
+      callback({ simpleMsgs: data.objects });
+    },
+  });
+}
 
-    callback({ data: { simpleMsgs } });
+/**
+ * Get simple msg
+ * @private
+ * @param {Object} params - Parameters
+ * @param {string} params.query - Query to get simple msg
+ * @param {Function} params.callback - Callback
+ */
+function getSimpleMsg({ query, callback }) {
+  dbConnector.getObject({
+    query,
+    object: SimpleMsg,
+    callback: ({ error, data }) => {
+      if (error) {
+        callback({ error });
+
+        return;
+      } else if (!data.object) {
+        callback({ error: new errorCreator.DoesNotExist({ name: `simpleMsg ${query.toString()}` }) });
+
+        return;
+      }
+
+      callback({ simpleMsg: data.object });
+    },
+  });
+}
+
+/**
+ * Remove simple messages based on user ID
+ * @param {Object} params - Parameters
+ * @param {string} params.userId - Owner ID of the messages that will be deleted
+ * @param {Function} params.callback - Callback
+ */
+function removeSimpleMsgs({ userId, callback }) {
+  dbConnector.removeObjects({
+    callback,
+    object: SimpleMsg,
+    query: { userId },
   });
 }
 
 /**
  * Get all simple messages
- * @param {Function} params.callback Callback
+ * @param {Object} params - Parameters
+ * @param {Function} params.callback - Callback
  */
 function getAllSimpleMsgs({ callback }) {
-  const filter = { _id: 0 };
+  getSimpleMsgs({ callback });
+}
 
-  SimpleMsgs.find({}, filter).lean().exec((err, simpleMsgs = []) => {
-    if (err) {
-      callback({ error: new errorCreator.Database({ errorObject: err }) });
+/**
+ * Update simple msg
+ * @param {Object} params - Parameters
+ * @param {Object} params.simpleMsg - Simple msg
+ * @param {string} params.simpleMsg.simpleMsgId - ID of the message to update
+ * @param {string[]} [params.simpleMsg.text] - Message text
+ * @param {Function} params.callback - Callback
+ */
+function updateSimpleMsg({ simpleMsg, callback }) {
+  const { simpleMsgId, text } = simpleMsg;
+  const update = { $set: {} };
 
-      return;
-    }
+  if (text) { update.$set.text = text; }
 
-    callback({ data: { simpleMsgs } });
+  updateObject({
+    update,
+    simpleMsgId,
+    callback,
   });
 }
 
 exports.createSimpleMsg = createSimpleMsg;
 exports.removeSimpleMsgs = removeSimpleMsgs;
 exports.getAllSimpleMsgs = getAllSimpleMsgs;
+exports.updateSimpleMsg = updateSimpleMsg;
+exports.getSimpleMsg = getSimpleMsg;

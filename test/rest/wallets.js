@@ -44,7 +44,7 @@ describe('Wallets', () => {
     teamUser: '',
   };
 
-  before(`Create user ${walletData.userWithoutTeam.userName} on /api/users POST`, (done) => {
+  before(`Create user ${walletData.userWithoutTeam.username} on /api/users POST`, (done) => {
     chai
       .request(app)
       .post('/api/users')
@@ -58,7 +58,7 @@ describe('Wallets', () => {
       });
   });
 
-  before(`Create user ${walletData.userWithTeam.userName} on /api/users POST`, (done) => {
+  before(`Create user ${walletData.userWithTeam.username} on /api/users POST`, (done) => {
     chai
       .request(app)
       .post('/api/users')
@@ -72,7 +72,7 @@ describe('Wallets', () => {
       });
   });
 
-  before(`Authenticate ${walletData.userWithoutTeam.userName} on /api/authenticate`, (done) => {
+  before(`Authenticate ${walletData.userWithoutTeam.username} on /api/authenticate`, (done) => {
     chai
       .request(app)
       .post('/api/authenticate')
@@ -88,7 +88,7 @@ describe('Wallets', () => {
       });
   });
 
-  before(`Authenticate ${walletData.userWithTeam.userName} on /api/authenticate`, (done) => {
+  before(`Authenticate ${walletData.userWithTeam.username} on /api/authenticate`, (done) => {
     chai
       .request(app)
       .post('/api/authenticate')
@@ -104,9 +104,9 @@ describe('Wallets', () => {
       });
   });
 
-  before(`Give ${walletData.userWithoutTeam.userName} user credits`, (done) => {
+  before(`Give ${walletData.userWithoutTeam.username} user credits`, (done) => {
     dbWallet.increaseAmount({
-      owner: walletData.userWithoutTeam.userName,
+      owner: walletData.userWithoutTeam.username,
       amount: 100,
       callback: ({ data }) => {
         data.should.have.property('wallet');
@@ -116,9 +116,9 @@ describe('Wallets', () => {
     });
   });
 
-  before(`Give ${walletData.userWithTeam.userName} user credits`, (done) => {
+  before(`Give ${walletData.userWithTeam.username} user credits`, (done) => {
     dbWallet.increaseAmount({
-      owner: walletData.userWithTeam.userName,
+      owner: walletData.userWithTeam.username,
       amount: 100,
       callback: ({ data }) => {
         data.should.have.property('wallet');
@@ -132,7 +132,7 @@ describe('Wallets', () => {
     it('Should NOT get user wallet with incorrect authorization on /api/wallets/:owner GET', (done) => {
       chai
         .request(app)
-        .get(`/api/wallets/${walletData.userWithoutTeam.userName}`)
+        .get(`/api/wallets/${walletData.userWithoutTeam.username}`)
         .set('Authorization', tokens.incorrectJwt)
         .end((error, response) => {
           response.should.have.status(401);
@@ -145,7 +145,7 @@ describe('Wallets', () => {
     it('Should get user wallet with lower access level than user\'s on /api/wallets/:owner GET', (done) => {
       chai
         .request(app)
-        .get(`/api/wallets/${walletData.userWithoutTeam.userName}`)
+        .get(`/api/wallets/${walletData.userWithoutTeam.username}`)
         .set('Authorization', tokens.adminUser)
         .end((error, response) => {
           response.should.have.status(200);
@@ -158,7 +158,7 @@ describe('Wallets', () => {
     it('Should NOT get user wallet with equal or higher access level than user\'s on /api/wallets/:owner GET', (done) => {
       chai
         .request(app)
-        .get(`/api/wallets/${walletData.userWithTeam.userName}`)
+        .get(`/api/wallets/${walletData.userWithTeam.username}`)
         .set('Authorization', tokens.basicUser)
         .end((error, response) => {
           response.should.have.status(401);
@@ -172,9 +172,9 @@ describe('Wallets', () => {
   describe('Increase wallet amount', () => {
     let amount = 0;
 
-    before(`Give ${walletData.userWithTeam.userName} user credits`, (done) => {
+    before(`Give ${walletData.userWithTeam.username} user credits`, (done) => {
       dbWallet.increaseAmount({
-        owner: walletData.userWithTeam.userName,
+        owner: walletData.userWithTeam.username,
         amount: 2,
         callback: ({ data }) => {
           data.should.have.property('wallet');
@@ -189,7 +189,7 @@ describe('Wallets', () => {
     it('Should NOT increase wallet with incorrect authorization on /api/wallets/:owner/increase POST', (done) => {
       chai
         .request(app)
-        .post(`/api/wallets/${walletData.userWithoutTeam.userName}/increase`)
+        .post(`/api/wallets/${walletData.userWithoutTeam.username}/increase`)
         .set('Authorization', tokens.incorrectJwt)
         .send({ data: { amount: 15 } })
         .end((error, response) => {
@@ -203,7 +203,7 @@ describe('Wallets', () => {
     it('Should NOT increase wallet amount with too low access level on /api/wallets/:owner/increase POST', (done) => {
       chai
         .request(app)
-        .post(`/api/wallets/${walletData.userWithTeam.userName}/increase`)
+        .post(`/api/wallets/${walletData.userWithTeam.username}/increase`)
         .set('Authorization', walletTokens.user)
         .send({ data: { amount: 5 } })
         .end((error, response) => {
@@ -217,7 +217,7 @@ describe('Wallets', () => {
     it('Should increase wallet amount with high enough access level on /api/wallets/:owner/increase POST', (done) => {
       chai
         .request(app)
-        .post(`/api/wallets/${walletData.userWithTeam.userName}/increase`)
+        .post(`/api/wallets/${walletData.userWithTeam.username}/increase`)
         .set('Authorization', tokens.adminUser)
         .send({ data: { amount: 7 } })
         .end((error, response) => {
@@ -232,7 +232,7 @@ describe('Wallets', () => {
     it('Should NOT increase wallet amount with negative value on /api/wallets/:owner/increase POST', (done) => {
       chai
         .request(app)
-        .post(`/api/wallets/${walletData.userWithoutTeam.userName}/increase`)
+        .post(`/api/wallets/${walletData.userWithoutTeam.username}/increase`)
         .set('Authorization', tokens.adminUser)
         .send({ data: { amount: -9 } })
         .end((error, response) => {
@@ -250,7 +250,7 @@ describe('Wallets', () => {
     before('Get user wallet amount on /api/wallets/:owner GET', (done) => {
       chai
         .request(app)
-        .get(`/api/wallets/${walletData.userWithTeam.userName}`)
+        .get(`/api/wallets/${walletData.userWithTeam.username}`)
         .set('Authorization', tokens.adminUser)
         .end((error, response) => {
           response.should.have.status(200);
@@ -266,7 +266,7 @@ describe('Wallets', () => {
     it('Should NOT decrease wallet with incorrect authorization on /api/wallets/:owner/decrease POST', (done) => {
       chai
         .request(app)
-        .post(`/api/wallets/${walletData.userWithoutTeam.userName}/decrease`)
+        .post(`/api/wallets/${walletData.userWithoutTeam.username}/decrease`)
         .set('Authorization', tokens.incorrectJwt)
         .send({ data: { amount: 2 } })
         .end((error, response) => {
@@ -280,7 +280,7 @@ describe('Wallets', () => {
     it('Should NOT decrease wallet amount with too low access level on /api/wallets/:owner/decrease POST', (done) => {
       chai
         .request(app)
-        .post(`/api/wallets/${walletData.userWithTeam.userName}/decrease`)
+        .post(`/api/wallets/${walletData.userWithTeam.username}/decrease`)
         .set('Authorization', walletTokens.user)
         .send({ data: { amount: 2 } })
         .end((error, response) => {
@@ -294,7 +294,7 @@ describe('Wallets', () => {
     it('Should decrease wallet amount with high enough access level on /api/wallets/:owner/decrease POST', (done) => {
       chai
         .request(app)
-        .post(`/api/wallets/${walletData.userWithTeam.userName}/decrease`)
+        .post(`/api/wallets/${walletData.userWithTeam.username}/decrease`)
         .set('Authorization', tokens.adminUser)
         .send({ data: { amount: 2 } })
         .end((error, response) => {
@@ -309,7 +309,7 @@ describe('Wallets', () => {
     it('Should NOT decrease wallet amount with negative value on /api/wallets/:owner/decrease POST', (done) => {
       chai
         .request(app)
-        .post(`/api/wallets/${walletData.userWithTeam.userName}/decrease`)
+        .post(`/api/wallets/${walletData.userWithTeam.username}/decrease`)
         .set('Authorization', tokens.adminUser)
         .send({ data: { amount: -2 } })
         .end((error, response) => {
@@ -323,7 +323,7 @@ describe('Wallets', () => {
     it('Should NOT decrease wallet below 0 on /api/wallets/:owner/decrease POST', (done) => {
       chai
         .request(app)
-        .post(`/api/wallets/${walletData.userWithoutTeam.userName}/decrease`)
+        .post(`/api/wallets/${walletData.userWithoutTeam.username}/decrease`)
         .set('Authorization', tokens.adminUser)
         .send({ data: { amount: 300 } })
         .end((error, response) => {
@@ -339,7 +339,7 @@ describe('Wallets', () => {
     it('Should NOT empty wallet with incorrect authorization on /api/wallets/:owner/empty POST', (done) => {
       chai
         .request(app)
-        .post(`/api/wallets/${walletData.userWithoutTeam.userName}/empty`)
+        .post(`/api/wallets/${walletData.userWithoutTeam.username}/empty`)
         .set('Authorization', tokens.incorrectJwt)
         .end((error, response) => {
           response.should.have.status(401);
@@ -352,7 +352,7 @@ describe('Wallets', () => {
     it('Should NOT empty wallet with too low access level on /api/wallets/:owner/empty POST', (done) => {
       chai
         .request(app)
-        .post(`/api/wallets/${walletData.userWithTeam.userName}/empty`)
+        .post(`/api/wallets/${walletData.userWithTeam.username}/empty`)
         .set('Authorization', walletTokens.user)
         .end((error, response) => {
           response.should.have.status(401);
@@ -365,7 +365,7 @@ describe('Wallets', () => {
     it('Should empty wallet with high enough access level on /api/wallets/:owner/empty POST', (done) => {
       chai
         .request(app)
-        .post(`/api/wallets/${walletData.userWithTeam.userName}/empty`)
+        .post(`/api/wallets/${walletData.userWithTeam.username}/empty`)
         .set('Authorization', tokens.adminUser)
         .end((error, response) => {
           response.should.have.status(200);
@@ -383,7 +383,7 @@ describe('Wallets', () => {
       rich: '',
     };
 
-    before(`Create user ${transactionData.newUserToSendCredits.userName} on /api/users POST`, (done) => {
+    before(`Create user ${transactionData.newUserToSendCredits.username} on /api/users POST`, (done) => {
       chai
         .request(app)
         .post('/api/users')
@@ -397,7 +397,7 @@ describe('Wallets', () => {
         });
     });
 
-    before(`Create user ${transactionData.newUserToReceiveCredits.userName} on /api/users POST`, (done) => {
+    before(`Create user ${transactionData.newUserToReceiveCredits.username} on /api/users POST`, (done) => {
       chai
         .request(app)
         .post('/api/users')
@@ -411,7 +411,7 @@ describe('Wallets', () => {
         });
     });
 
-    before(`Authenticate ${transactionData.newUserToSendCredits.userName} on /api/authenticate`, (done) => {
+    before(`Authenticate ${transactionData.newUserToSendCredits.username} on /api/authenticate`, (done) => {
       chai
         .request(app)
         .post('/api/authenticate')
@@ -427,7 +427,7 @@ describe('Wallets', () => {
         });
     });
 
-    before(`Authenticate ${transactionData.newUserToReceiveCredits.userName} on /api/authenticate`, (done) => {
+    before(`Authenticate ${transactionData.newUserToReceiveCredits.username} on /api/authenticate`, (done) => {
       chai
         .request(app)
         .post('/api/authenticate')
@@ -443,9 +443,9 @@ describe('Wallets', () => {
         });
     });
 
-    before(`Give ${transactionData.newUserToSendCredits.userName} user credits`, (done) => {
+    before(`Give ${transactionData.newUserToSendCredits.username} user credits`, (done) => {
       dbWallet.increaseAmount({
-        owner: transactionData.newUserToSendCredits.userName,
+        owner: transactionData.newUserToSendCredits.username,
         amount: 100,
         callback: ({ data }) => {
           data.should.have.property('wallet');
@@ -458,7 +458,7 @@ describe('Wallets', () => {
       it('Should NOT get transactions for user with incorrect authorization on /api/wallets/:owner/transactions GET', (done) => {
         chai
           .request(app)
-          .get(`/api/wallets/${starterData.adminUserToAuth.userName}/transactions`)
+          .get(`/api/wallets/${starterData.adminUserToAuth.username}/transactions`)
           .set('Authorization', tokens.incorrectJwt)
           .end((error, response) => {
             response.should.have.status(401);
@@ -472,7 +472,7 @@ describe('Wallets', () => {
       it('Should get transactions for user on /api/wallets/:owner/transactions GET', (done) => {
         chai
           .request(app)
-          .get(`/api/wallets/${starterData.adminUserToAuth.userName}/transactions`)
+          .get(`/api/wallets/${starterData.adminUserToAuth.username}/transactions`)
           .set('Authorization', tokens.adminUser)
           .end((error, response) => {
             response.should.have.status(200);
@@ -488,9 +488,9 @@ describe('Wallets', () => {
       it('Should NOT create transaction with incorrect authorization on /api/transactions POST', (done) => {
         chai
           .request(app)
-          .post(`/api/wallets/${starterData.adminUserToAuth.userName}/transactions`)
+          .post(`/api/wallets/${starterData.adminUserToAuth.username}/transactions`)
           .set('Authorization', tokens.incorrectJwt)
-          .send({ data: { transaction: { to: transactionData.newUserToReceiveCredits.userName, amount: 10 } } })
+          .send({ data: { transaction: { to: transactionData.newUserToReceiveCredits.username, amount: 10 } } })
           .end((error, response) => {
             response.should.have.status(401);
             response.body.should.be.jsonSchema(errorSchemas.error);
@@ -502,9 +502,9 @@ describe('Wallets', () => {
       it('Should NOT create transaction, due to not having enough currency on /api/transactions POST', (done) => {
         chai
           .request(app)
-          .post(`/api/wallets/${transactionData.newUserToReceiveCredits.userName}/transactions`)
+          .post(`/api/wallets/${transactionData.newUserToReceiveCredits.username}/transactions`)
           .set('Authorization', transactionTokens.poor)
-          .send({ data: { transaction: { to: transactionData.newUserToSendCredits.userName, amount: 25 } } })
+          .send({ data: { transaction: { to: transactionData.newUserToSendCredits.username, amount: 25 } } })
           .end((error, response) => {
             response.should.have.status(400);
             response.should.be.json;
@@ -517,9 +517,9 @@ describe('Wallets', () => {
       it('Should create transaction from user with enough credits in wallet on /api/transactions POST', (done) => {
         chai
           .request(app)
-          .post(`/api/wallets/${transactionData.newUserToSendCredits.userName}/transactions`)
+          .post(`/api/wallets/${transactionData.newUserToSendCredits.username}/transactions`)
           .set('Authorization', transactionTokens.rich)
-          .send({ data: { transaction: { to: transactionData.newUserToReceiveCredits.userName, amount: 10 } } })
+          .send({ data: { transaction: { to: transactionData.newUserToReceiveCredits.username, amount: 10 } } })
           .end((error, response) => {
             response.should.have.status(200);
             response.should.be.json;
@@ -532,7 +532,7 @@ describe('Wallets', () => {
       it('Should get sender transactions with new transaction on /api/transactions GET', (done) => {
         chai
           .request(app)
-          .get(`/api/wallets/${transactionData.newUserToSendCredits.userName}/transactions`)
+          .get(`/api/wallets/${transactionData.newUserToSendCredits.username}/transactions`)
           .set('Authorization', transactionTokens.rich)
           .end((error, response) => {
             response.should.have.status(200);
@@ -548,7 +548,7 @@ describe('Wallets', () => {
       it('Should get receiver transactions with new transaction on /api/transactions GET', (done) => {
         chai
           .request(app)
-          .get(`/api/wallets/${transactionData.newUserToReceiveCredits.userName}/transactions`)
+          .get(`/api/wallets/${transactionData.newUserToReceiveCredits.username}/transactions`)
           .set('Authorization', transactionTokens.poor)
           .end((error, response) => {
             response.should.have.status(200);
@@ -570,9 +570,9 @@ describe('Wallets', () => {
       it('Should NOT create transaction with self as receiver on /api/transactions POST', (done) => {
         chai
           .request(app)
-          .post(`/api/wallets/${transactionData.newUserToSendCredits.userName}/transactions`)
+          .post(`/api/wallets/${transactionData.newUserToSendCredits.username}/transactions`)
           .set('Authorization', transactionTokens.rich)
-          .send({ data: { transaction: { to: transactionData.newUserToSendCredits.userName, amount: 10 } } })
+          .send({ data: { transaction: { to: transactionData.newUserToSendCredits.username, amount: 10 } } })
           .end((error, response) => {
             response.should.have.status(400);
             response.should.be.json;
@@ -585,9 +585,9 @@ describe('Wallets', () => {
       it('Should NOT create transaction with amount that equals 0 on /api/transactions POST', (done) => {
         chai
           .request(app)
-          .post(`/api/wallets/${transactionData.newUserToSendCredits.userName}/transactions`)
+          .post(`/api/wallets/${transactionData.newUserToSendCredits.username}/transactions`)
           .set('Authorization', transactionTokens.rich)
-          .send({ data: { transaction: { to: transactionData.newUserToReceiveCredits.userName, amount: 0 } } })
+          .send({ data: { transaction: { to: transactionData.newUserToReceiveCredits.username, amount: 0 } } })
           .end((error, response) => {
             response.should.have.status(400);
             response.should.be.json;
@@ -600,9 +600,9 @@ describe('Wallets', () => {
       it('Should NOT create transaction with amount that is less than 0 on /api/transactions POST', (done) => {
         chai
           .request(app)
-          .post(`/api/wallets/${transactionData.newUserToSendCredits.userName}/transactions`)
+          .post(`/api/wallets/${transactionData.newUserToSendCredits.username}/transactions`)
           .set('Authorization', transactionTokens.rich)
-          .send({ data: { transaction: { to: transactionData.newUserToReceiveCredits.userName, amount: -10 } } })
+          .send({ data: { transaction: { to: transactionData.newUserToReceiveCredits.username, amount: -10 } } })
           .end((error, response) => {
             response.should.have.status(400);
             response.should.be.json;

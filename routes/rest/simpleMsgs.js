@@ -63,7 +63,7 @@ function handle(io) {
      *        "text": [
      *          "Hello world!"
      *        ],
-     *        "userName": "rez",
+     *        "username": "rez",
      *        "time": "2016-10-28T22:42:06.262Z"
      *      }
      *    }
@@ -111,13 +111,13 @@ function handle(io) {
    *        "text": [
    *          "Hello world!"
    *        ],
-   *        "userName": "rez",
+   *        "username": "rez",
    *        "time": "2016-10-28T22:42:06.262Z"
    *      }, {
    *        "text": [
    *          "Hello back!"
    *        ],
-   *        "userName": "bez",
+   *        "username": "bez",
    *        "time": "2016-11-28T22:42:06.262Z"
    *      }]
    *    }

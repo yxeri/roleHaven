@@ -21,7 +21,7 @@ const path = require('path');
 let config = {};
 
 try {
-  config = require(path.normalize(`${__dirname}/../../../../config/databasePopulation`)).config; // eslint-disable-line import/no-unresolved, global-require, import/no-dynamic-require
+  config = require(path.normalize(`${__dirname}/../../../../config/databasePopulation`)).config; // eslint-disable-line import/no-unresolved, global-require, import/no-dynamic-require, prefer-destructuring
 } catch (err) {
   console.log('Did not find modified dbConfig. Using defaults');
 }
@@ -42,8 +42,8 @@ config.AccessLevels = config.AccessLevels || {
   ANONYMOUS: 0,
 };
 
-config.systemUserName = 'SYSTEM';
-config.anonymousUserName = 'ANONYMOUS';
+config.systemUsername = 'system';
+config.anonymousUsername = 'anonymous';
 
 /**
  * Rooms to be created on first run
@@ -51,10 +51,11 @@ config.anonymousUserName = 'ANONYMOUS';
 config.rooms = {
   // GeneralError chat room, available for every user
   public: config.rooms.public || {
-    roomName: 'public',
+    roomName: 'public-room',
     visibility: config.AccessLevels.ANONYMOUS,
     accessLevel: config.AccessLevels.ANONYMOUS,
-    owner: config.systemUserName,
+    ownerId: config.systemUsername,
+    lockedName: true,
   },
 
   /**
@@ -62,10 +63,11 @@ config.rooms = {
    * Not used as an ordinary chat room
    */
   bcast: config.rooms.bcast || {
-    roomName: 'broadcast',
+    roomName: 'broadcast-room',
     visibility: config.AccessLevels.SUPERUSER,
     accessLevel: config.AccessLevels.SUPERUSER,
-    owner: config.systemUserName,
+    ownerId: config.systemUsername,
+    lockedName: true,
   },
 
   /**
@@ -73,120 +75,76 @@ config.rooms = {
    * E.g. when a user needs verification
    */
   admin: config.rooms.admin || {
-    roomName: 'hqroom',
+    roomName: 'hqroom-room',
     visibility: config.AccessLevels.ADMIN,
     accessLevel: config.AccessLevels.ADMIN,
-    owner: config.systemUserName,
-  },
-
-  /**
-   * Blocking name for users
-   * Not used as an ordinary chat room
-   */
-  team: config.rooms.team || {
-    roomName: 'team',
-    visibility: config.AccessLevels.SUPERUSER,
-    accessLevel: config.AccessLevels.SUPERUSER,
-    owner: config.systemUserName,
-  },
-
-  /**
-   * Blocking name for users
-   * Not used as an ordinary chat room
-   */
-  whisper: config.rooms.whisper || {
-    roomName: 'whisper',
-    visibility: config.AccessLevels.SUPERUSER,
-    accessLevel: config.AccessLevels.SUPERUSER,
-    owner: config.systemUserName,
+    ownerId: config.systemUsername,
+    lockedName: true,
   },
 
   anonymous: config.rooms.anonymous || {
-    roomName: 'anonymous',
+    roomName: 'anonymous-room',
     visibility: config.AccessLevels.ANONYMOUS,
     accessLevel: config.AccessLevels.ANONYMOUS,
-    anonymous: true,
-    owner: config.systemUserName,
+    isAnonymous: true,
+    ownerId: config.systemUsername,
+    lockedName: true,
   },
 
   important: config.rooms.important || {
-    roomName: 'important',
+    roomName: 'important-room',
     visibility: config.AccessLevels.SUPERUSER,
     accessLevel: config.AccessLevels.SUPERUSER,
-    owner: config.systemUserName,
+    ownerId: config.systemUsername,
+    lockedName: true,
   },
 
   news: config.rooms.news || {
-    roomName: 'news',
+    roomName: 'news-room',
     visibility: config.AccessLevels.SUPERUSER,
     accessLevel: config.AccessLevels.SUPERUSER,
-    owner: config.systemUserName,
+    ownerId: config.systemUsername,
+    lockedName: true,
   },
 
   schedule: config.rooms.schedule || {
-    roomName: 'schedule',
+    roomName: 'schedule-room',
     visibility: config.AccessLevels.SUPERUSER,
     accessLevel: config.AccessLevels.SUPERUSER,
-    owner: config.systemUserName,
-  },
-
-  user: config.rooms.user || {
-    roomName: 'user',
-    visibility: config.AccessLevels.SUPERUSER,
-    accessLevel: config.AccessLevels.SUPERUSER,
-    owner: config.systemUserName,
+    ownerId: config.systemUsername,
+    lockedName: true,
   },
 };
 
+config.defaultRoom = config.rooms.public;
+
 config.anonymousUser = {
-  userName: '',
+  username: '',
   accessLevel: config.AccessLevels.ANONYMOUS,
   visibility: config.AccessLevels.ANONYMOUS,
-  creatorAliases: [],
-  aliases: [],
-  rooms: [
-    config.rooms.public.roomName,
-    config.rooms.anonymous.roomName,
-    config.rooms.schedule.roomName,
-    config.rooms.news.roomName,
-    config.rooms.bcast.roomName,
+  roomIds: [
+    config.rooms.anonymous.roomId,
+    config.rooms.bcast.roomId,
+    config.rooms.public.roomId,
+    config.rooms.important.roomId,
+    config.rooms.news.roomId,
+    config.rooms.schedule.roomId,
   ],
-  whisperRooms: [],
-  isTracked: false,
-  team: null,
-  shortTeam: null,
   isAnonymous: true,
 };
 
 config.requiredRooms = [
-  config.rooms.anonymous,
-  config.rooms.team.roomName,
+  config.rooms.anonymous.roomName,
   config.rooms.bcast.roomName,
   config.rooms.public.roomName,
   config.rooms.important.roomName,
   config.rooms.news.roomName,
   config.rooms.schedule.roomName,
-  config.rooms.user.roomName,
 ];
 
 config.protectedNames = [
-  config.anonymousUserName.toLowerCase(),
-  config.systemUserName.toLowerCase(),
-  'superuser',
-  'root',
-  'admin',
-  'position',
-  'positions',
-  'active',
-  'messages',
-  'end',
-  'unverified',
-  'verify',
-  'verified',
-  'ban',
-  'banned',
-  'alias',
-  'aliases',
+  config.anonymousUsername,
+  config.systemUsername,
 ];
 
 config.roomsToBeHidden = [
@@ -194,12 +152,32 @@ config.roomsToBeHidden = [
   config.rooms.important.roomName,
   config.rooms.news.roomName,
   config.rooms.schedule.roomName,
-  config.rooms.user.roomName,
 ];
+
+config.DeviceTypes = {
+  USERDEVICE: 'userDevice',
+  GPS: 'gps',
+  CUSTOM: 'custom',
+};
 
 config.GameCodeTypes = {
   LOOT: 'loot',
   PROFILE: 'profile',
+};
+
+config.InvitationTypes = {
+  TEAM: 'team',
+};
+
+config.MessageTypes = {
+  CHAT: 'chat',
+  WHISPER: 'whisper',
+  BROADCAST: 'broadcast',
+};
+
+config.PositionTypes = {
+  USER: 'user',
+  WORLD: 'world',
 };
 
 config.apiCommands = {
@@ -271,12 +249,8 @@ config.apiCommands = {
   },
   GetAliases: config.apiCommands.GetAliases || {
     name: 'GetAliases',
-    accessLevel: config.AccessLevels.ADVANCED,
+    accessLevel: config.AccessLevels.LOWERADMIN,
     selfAccessLevel: config.AccessLevels.BASIC,
-  },
-  GetAllAliases: config.apiCommands.GetAllAliases || {
-    name: 'GetAllAliases',
-    accessLevel: config.AccessLevels.BASIC,
   },
   GetInactiveUsers: config.apiCommands.GetInactiveUsers || {
     name: 'GetInactiveUsers',
@@ -436,8 +410,8 @@ config.apiCommands = {
     name: 'UpdateDevice',
     accessLevel: config.AccessLevels.ANONYMOUS,
   },
-  UpdateDeviceAlias: config.apiCommands.UpdateDeviceAlias || {
-    name: 'UpdateDeviceAlias',
+  UpdateDeviceName: config.apiCommands.UpdateDeviceName || {
+    name: 'UpdateDeviceName',
     accessLevel: config.AccessLevels.LOWERADMIN,
   },
   CreateSignalBlock: config.apiCommands.CreateSignalBlock || {

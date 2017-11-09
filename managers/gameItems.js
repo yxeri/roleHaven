@@ -16,7 +16,7 @@
 
 'use strict';
 
-const dbLanternHack = require('../db/connectors/lanternhack');
+const dbLanternHack = require('../db/connectors/lanternHack');
 const authenticator = require('../helpers/authenticator');
 const dbConfig = require('../config/defaults/config').databasePopulation;
 

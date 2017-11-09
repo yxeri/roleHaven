@@ -51,9 +51,9 @@ describe('Users', () => {
 
   // /users POST Create user
   // /users GET Get users
-  // /users/:userName GET Get specific user
+  // /users/:username GET Get specific user
 
-  // /users/:userName/resetPassword POST Send password recovery mail
+  // /users/:username/resetPassword POST Send password recovery mail
 
   describe('Create user', () => {
     it('Should NOT create user with incorrect authorization on /api/users POST', (done) => {
@@ -98,7 +98,7 @@ describe('Users', () => {
         });
     });
 
-    after(`Authenticate ${userData.newUserToCreate.userName} on /api/authenticate`, (done) => {
+    after(`Authenticate ${userData.newUserToCreate.username} on /api/authenticate`, (done) => {
       chai
         .request(app)
         .post('/api/authenticate')
@@ -114,7 +114,7 @@ describe('Users', () => {
         });
     });
 
-    after(`Authenticate ${userData.newAdminUserToCreate.userName} on /api/authenticate`, (done) => {
+    after(`Authenticate ${userData.newAdminUserToCreate.username} on /api/authenticate`, (done) => {
       chai
         .request(app)
         .post('/api/authenticate')
@@ -145,7 +145,7 @@ describe('Users', () => {
           response.body.should.be.jsonSchema(successSchemas.success);
 
           dbMailEvent.getMailEvent({
-            owner: userData.newAdminUserToCreate.userName,
+            owner: userData.newAdminUserToCreate.username,
             eventType: 'password',
             callback: ({ data }) => {
               passwordKey = data.event.key;
@@ -156,10 +156,10 @@ describe('Users', () => {
         });
     });
 
-    it('Should NOT change password with incorrect key on /api/users/:userName/password POST', (done) => {
+    it('Should NOT change password with incorrect key on /api/users/:username/password POST', (done) => {
       chai
         .request(app)
-        .post(`/api/users/${userData.newAdminUserToCreate.userName}/password`)
+        .post(`/api/users/${userData.newAdminUserToCreate.username}/password`)
         .send({ data: { key: `${passwordKey}a`, password: '1234' } })
         .end((error, response) => {
           response.should.have.status(404);
@@ -170,10 +170,10 @@ describe('Users', () => {
         });
     });
 
-    it('Should change password with correct key on /api/users/:userName/password POST', (done) => {
+    it('Should change password with correct key on /api/users/:username/password POST', (done) => {
       chai
         .request(app)
-        .post(`/api/users/${userData.newAdminUserToCreate.userName}/password`)
+        .post(`/api/users/${userData.newAdminUserToCreate.username}/password`)
         .send({ data: { key: passwordKey, password: '1234' } })
         .end((error, response) => {
           response.should.have.status(200);
@@ -240,7 +240,7 @@ describe('Users', () => {
         .end((error, response) => {
           response.should.have.status(200);
           response.should.be.json;
-          response.body.should.be.jsonSchema(userSchemas.userNames);
+          response.body.should.be.jsonSchema(userSchemas.usernames);
 
           // TODO Check that users retrieved have lower access level/visibility
 
@@ -250,10 +250,10 @@ describe('Users', () => {
   });
 
   describe('Get specific user', () => {
-    it('Should NOT retrieve specific user with incorrect authorization set on /api/users/:userName GET', (done) => {
+    it('Should NOT retrieve specific user with incorrect authorization set on /api/users/:username GET', (done) => {
       chai
         .request(app)
-        .get(`/api/users/${userData.newUserToCreate.userName}`)
+        .get(`/api/users/${userData.newUserToCreate.username}`)
         .set('Authorization', tokens.incorrectJwt)
         .end((error, response) => {
           response.should.have.status(401);
@@ -263,10 +263,10 @@ describe('Users', () => {
         });
     });
 
-    it('Should retrieve own user on /api/users/:userName GET', (done) => {
+    it('Should retrieve own user on /api/users/:username GET', (done) => {
       chai
         .request(app)
-        .get(`/api/users/${userData.newUserToCreate.userName}`)
+        .get(`/api/users/${userData.newUserToCreate.username}`)
         .set('Authorization', userTokens.newUser)
         .end((error, response) => {
           response.should.have.status(200);
@@ -276,10 +276,10 @@ describe('Users', () => {
         });
     });
 
-    it('Should NOT get user with higher access level than user on /api/users/:userName GET', (done) => {
+    it('Should NOT get user with higher access level than user on /api/users/:username GET', (done) => {
       chai
         .request(app)
-        .get(`/api/users/${userData.newAdminUserToCreate.userName}`)
+        .get(`/api/users/${userData.newAdminUserToCreate.username}`)
         .set('Authorization', userTokens.newUser)
         .end((error, response) => {
           response.should.have.status(401);
@@ -289,10 +289,10 @@ describe('Users', () => {
         });
     });
 
-    it('Should NOT get non-existing user on /api/users/:userName GET', (done) => {
+    it('Should NOT get non-existing user on /api/users/:username GET', (done) => {
       chai
         .request(app)
-        .get(`/api/users/${userData.nonExistingUser.userName}`)
+        .get(`/api/users/${userData.nonExistingUser.username}`)
         .set('Authorization', userTokens.newUser)
         .end((error, response) => {
           response.should.have.status(401);
@@ -305,10 +305,10 @@ describe('Users', () => {
 
   describe('Aliases', () => {
     describe('Create alias on self', () => {
-      it('Should NOT create an alias on self that is too long /api/users/:userName/aliases POST', (done) => {
+      it('Should NOT create an alias on self that is too long /api/users/:username/aliases POST', (done) => {
         chai
           .request(app)
-          .post(`/api/users/${userData.newUserToCreate.userName}/aliases`)
+          .post(`/api/users/${userData.newUserToCreate.username}/aliases`)
           .send({ data: { alias: aliasData.tooLongAlias } })
           .set('Authorization', userTokens.newUser)
           .end((error, response) => {
@@ -320,10 +320,10 @@ describe('Users', () => {
           });
       });
 
-      it('Should NOT create an alias on self with incorrect authorization on /api/users/:userName/aliases POST', (done) => {
+      it('Should NOT create an alias on self with incorrect authorization on /api/users/:username/aliases POST', (done) => {
         chai
           .request(app)
-          .post(`/api/users/${userData.newUserToCreate.userName}/aliases`)
+          .post(`/api/users/${userData.newUserToCreate.username}/aliases`)
           .send({ data: { alias: aliasData.aliasToCreate } })
           .set('Authorization', tokens.incorrectJwt)
           .end((error, response) => {
@@ -335,10 +335,10 @@ describe('Users', () => {
           });
       });
 
-      it('Should create an alias on self on /api/users/:userName/aliases POST', (done) => {
+      it('Should create an alias on self on /api/users/:username/aliases POST', (done) => {
         chai
           .request(app)
-          .post(`/api/users/${userData.newUserToCreate.userName}/aliases`)
+          .post(`/api/users/${userData.newUserToCreate.username}/aliases`)
           .send({ data: { alias: aliasData.aliasToCreate } })
           .set('Authorization', userTokens.newUser)
           .end((error, response) => {
@@ -351,10 +351,10 @@ describe('Users', () => {
       });
 
       describe('Create existing alias', () => {
-        before('Create an alias on self on /api/users/:userName/aliases POST', (done) => {
+        before('Create an alias on self on /api/users/:username/aliases POST', (done) => {
           chai
             .request(app)
-            .post(`/api/users/${userData.newUserToCreate.userName}/aliases`)
+            .post(`/api/users/${userData.newUserToCreate.username}/aliases`)
             .send({ data: { alias: aliasData.aliasThatExists } })
             .set('Authorization', tokens.adminUser)
             .end((error, response) => {
@@ -366,10 +366,10 @@ describe('Users', () => {
             });
         });
 
-        it('Should NOT create an existing alias on self on /api/users/:userName/aliases POST', (done) => {
+        it('Should NOT create an existing alias on self on /api/users/:username/aliases POST', (done) => {
           chai
             .request(app)
-            .post(`/api/users/${userData.newUserToCreate.userName}/aliases`)
+            .post(`/api/users/${userData.newUserToCreate.username}/aliases`)
             .send({ data: { alias: aliasData.aliasThatExists } })
             .set('Authorization', userTokens.adminUser)
             .end((error, response) => {
@@ -384,10 +384,10 @@ describe('Users', () => {
     });
 
     describe('Create alias on user', () => {
-      it('Should create an alias on user on /api/users/:userName/aliases POST', (done) => {
+      it('Should create an alias on user on /api/users/:username/aliases POST', (done) => {
         chai
           .request(app)
-          .post(`/api/users/${userData.newUserToCreate.userName}/aliases`)
+          .post(`/api/users/${userData.newUserToCreate.username}/aliases`)
           .send({ data: { alias: aliasData.otherAliasToCreate } })
           .set('Authorization', tokens.adminUser)
           .end((error, response) => {
@@ -401,10 +401,10 @@ describe('Users', () => {
     });
 
     describe('Get aliases from user', () => {
-      it('Should NOT retrieve aliases with incorrect authorization on /api/users/:userName/aliases GET', (done) => {
+      it('Should NOT retrieve aliases with incorrect authorization on /api/users/:username/aliases GET', (done) => {
         chai
           .request(app)
-          .get(`/api/users/${userData.newUserToCreate.userName}/aliases`)
+          .get(`/api/users/${userData.newUserToCreate.username}/aliases`)
           .set('Authorization', tokens.incorrectJwt)
           .end((error, response) => {
             response.should.have.status(401);
@@ -415,10 +415,10 @@ describe('Users', () => {
           });
       });
 
-      it('Should retrieve aliases from user on /api/users/:userName/aliases GET', (done) => {
+      it('Should retrieve aliases from user on /api/users/:username/aliases GET', (done) => {
         chai
           .request(app)
-          .get(`/api/users/${userData.newUserToCreate.userName}/aliases`)
+          .get(`/api/users/${userData.newUserToCreate.username}/aliases`)
           .set('Authorization', tokens.adminUser)
           .end((error, response) => {
             response.should.have.status(200);
@@ -431,10 +431,10 @@ describe('Users', () => {
     });
 
     describe('Match partial alias from user', () => {
-      it('Should NOT match partial alias with incorrect authorization on /api/users/:userName/aliases/:partialName/match GET', (done) => {
+      it('Should NOT match partial alias with incorrect authorization on /api/users/:username/aliases/:partialName/match GET', (done) => {
         chai
           .request(app)
-          .get(`/api/users/${userData.newUserToCreate.userName}/aliases/${userData.alias}/match`)
+          .get(`/api/users/${userData.newUserToCreate.username}/aliases/${userData.alias}/match`)
           .set('Authorization', tokens.incorrectJwt)
           .end((error, response) => {
             response.should.have.status(401);
@@ -445,10 +445,10 @@ describe('Users', () => {
           });
       });
 
-      it('Should match partial alias for user on /api/users/:userName/aliases GET', (done) => {
+      it('Should match partial alias for user on /api/users/:username/aliases GET', (done) => {
         chai
           .request(app)
-          .get(`/api/users/${starterData.adminUserToAuth.userName}/aliases/${userData.alias}/match`)
+          .get(`/api/users/${starterData.adminUserToAuth.username}/aliases/${userData.alias}/match`)
           .set('Authorization', tokens.adminUser)
           .end((error, response) => {
             response.should.have.status(200);
@@ -508,10 +508,10 @@ describe('Users', () => {
           });
       });
 
-      it('Should NOT follow room with incorrect authorization on /api/users/:userName/rooms/:roomName/follow GET', (done) => {
+      it('Should NOT follow room with incorrect authorization on /api/users/:username/rooms/:roomName/follow GET', (done) => {
         chai
           .request(app)
-          .post(`/api/users/${starterData.basicUserToAuth.userName}/rooms/${userData.publicRoomToCreate.roomName}/follow`)
+          .post(`/api/users/${starterData.basicUserToAuth.username}/rooms/${userData.publicRoomToCreate.roomName}/follow`)
           .set('Authorization', tokens.incorrectJwt)
           .end((error, response) => {
             response.should.have.status(401);
@@ -522,10 +522,10 @@ describe('Users', () => {
           });
       });
 
-      it('Should follow room with lower or equal access level to user\'s access level on /api/users/:userName/rooms/:roomName/follow POST', (done) => {
+      it('Should follow room with lower or equal access level to user\'s access level on /api/users/:username/rooms/:roomName/follow POST', (done) => {
         chai
           .request(app)
-          .post(`/api/users/${starterData.basicUserToAuth.userName}/rooms/${userData.publicRoomToCreate.roomName}/follow`)
+          .post(`/api/users/${starterData.basicUserToAuth.username}/rooms/${userData.publicRoomToCreate.roomName}/follow`)
           .set('Authorization', tokens.basicUser)
           .end((error, response) => {
             response.should.have.status(200);
@@ -536,10 +536,10 @@ describe('Users', () => {
           });
       });
 
-      it('Should NOT follow room with higher access level than user\'s access level on /api/users/:userName/rooms/:roomName/follow POST', (done) => {
+      it('Should NOT follow room with higher access level than user\'s access level on /api/users/:username/rooms/:roomName/follow POST', (done) => {
         chai
           .request(app)
-          .post(`/api/users/${starterData.basicUserToAuth.userName}/rooms/${userData.highAccessLevelRoomToCreate.roomName}/follow`)
+          .post(`/api/users/${starterData.basicUserToAuth.username}/rooms/${userData.highAccessLevelRoomToCreate.roomName}/follow`)
           .set('Authorization', tokens.basicUser)
           .end((error, response) => {
             response.should.have.status(401);
@@ -550,10 +550,10 @@ describe('Users', () => {
           });
       });
 
-      it('Should follow room with higher visibility than user\'s access level on /api/users/:userName/rooms/:roomName/follow POST', (done) => {
+      it('Should follow room with higher visibility than user\'s access level on /api/users/:username/rooms/:roomName/follow POST', (done) => {
         chai
           .request(app)
-          .post(`/api/users/${starterData.basicUserToAuth.userName}/rooms/${userData.invisibleRoomToCreate.roomName}/follow`)
+          .post(`/api/users/${starterData.basicUserToAuth.username}/rooms/${userData.invisibleRoomToCreate.roomName}/follow`)
           .set('Authorization', tokens.basicUser)
           .end((error, response) => {
             response.should.have.status(200);
@@ -579,10 +579,10 @@ describe('Users', () => {
           });
       });
 
-      it('Should NOT follow password-protected with incorrect authorization on /api/users/:userName/rooms/:roomName/follow POST', (done) => {
+      it('Should NOT follow password-protected with incorrect authorization on /api/users/:username/rooms/:roomName/follow POST', (done) => {
         chai
           .request(app)
-          .post(`/api/users/${starterData.basicUserToAuth.userName}/rooms/${userData.passwordProtectedRoomToCreate.roomName}/follow`)
+          .post(`/api/users/${starterData.basicUserToAuth.username}/rooms/${userData.passwordProtectedRoomToCreate.roomName}/follow`)
           .set('Authorization', tokens.incorrectJwt)
           .send({ data: { room: { password: userData.passwordProtectedRoomToCreate.password } } })
           .end((error, response) => {
@@ -594,10 +594,10 @@ describe('Users', () => {
           });
       });
 
-      it('Should NOT follow password-protected room with incorrect password on /api/users/:userName/rooms/:roomName/follow POST', (done) => {
+      it('Should NOT follow password-protected room with incorrect password on /api/users/:username/rooms/:roomName/follow POST', (done) => {
         chai
           .request(app)
-          .post(`/api/users/${starterData.basicUserToAuth.userName}/rooms/${userData.passwordProtectedRoomToCreate.roomName}/follow`)
+          .post(`/api/users/${starterData.basicUserToAuth.username}/rooms/${userData.passwordProtectedRoomToCreate.roomName}/follow`)
           .set('Authorization', tokens.basicUser)
           .send({ data: { room: { password: userData.incorrectPassword } } })
           .end((error, response) => {
@@ -609,10 +609,10 @@ describe('Users', () => {
           });
       });
 
-      it('Should follow password-protected room with correct password on /api/users/:userName/rooms/:roomName/follow POST', (done) => {
+      it('Should follow password-protected room with correct password on /api/users/:username/rooms/:roomName/follow POST', (done) => {
         chai
           .request(app)
-          .post(`/api/users/${starterData.basicUserToAuth.userName}/rooms/${userData.passwordProtectedRoomToCreate.roomName}/follow`)
+          .post(`/api/users/${starterData.basicUserToAuth.username}/rooms/${userData.passwordProtectedRoomToCreate.roomName}/follow`)
           .set('Authorization', tokens.basicUser)
           .send({ data: { room: { password: userData.passwordProtectedRoomToCreate.password } } })
           .end((error, response) => {
@@ -623,10 +623,10 @@ describe('Users', () => {
           });
       });
 
-      it('Should follow password-protected room without password if owner on /api/users/:userName/rooms/:roomName/follow POST', (done) => {
+      it('Should follow password-protected room without password if owner on /api/users/:username/rooms/:roomName/follow POST', (done) => {
         chai
           .request(app)
-          .post(`/api/users/${starterData.adminUserToAuth.userName}/rooms/${userData.passwordProtectedRoomToCreate.roomName}/follow`)
+          .post(`/api/users/${starterData.adminUserToAuth.username}/rooms/${userData.passwordProtectedRoomToCreate.roomName}/follow`)
           .set('Authorization', tokens.adminUser)
           .end((error, response) => {
             response.should.have.status(200);
@@ -653,10 +653,10 @@ describe('Users', () => {
           });
       });
 
-      it('Follow room on /api/users/:userName/rooms/:roomName/follow POST', (done) => {
+      it('Follow room on /api/users/:username/rooms/:roomName/follow POST', (done) => {
         chai
           .request(app)
-          .post(`/api/users/${starterData.basicUserToAuth.userName}/rooms/${userData.roomToCreate.roomName}/follow`)
+          .post(`/api/users/${starterData.basicUserToAuth.username}/rooms/${userData.roomToCreate.roomName}/follow`)
           .set('Authorization', tokens.basicUser)
           .end((error, response) => {
             response.should.have.status(200);
@@ -666,10 +666,10 @@ describe('Users', () => {
           });
       });
 
-      it('Should NOT unfollow with incorrect authorization on /api/users/:userName/rooms/:roomName/unfollow GET', (done) => {
+      it('Should NOT unfollow with incorrect authorization on /api/users/:username/rooms/:roomName/unfollow GET', (done) => {
         chai
           .request(app)
-          .post(`/api/users/${starterData.basicUserToAuth.userName}/rooms/${userData.roomToCreate.roomName}/unfollow`)
+          .post(`/api/users/${starterData.basicUserToAuth.username}/rooms/${userData.roomToCreate.roomName}/unfollow`)
           .set('Authorization', tokens.incorrectJwt)
           .end((error, response) => {
             response.should.have.status(401);
@@ -680,10 +680,10 @@ describe('Users', () => {
           });
       });
 
-      it('Should unfollow room that is followed /api/users/:userName/rooms/:roomName/unfollow POST', (done) => {
+      it('Should unfollow room that is followed /api/users/:username/rooms/:roomName/unfollow POST', (done) => {
         chai
           .request(app)
-          .post(`/api/users/${starterData.basicUserToAuth.userName}/rooms/${userData.roomToCreate.roomName}/unfollow`)
+          .post(`/api/users/${starterData.basicUserToAuth.username}/rooms/${userData.roomToCreate.roomName}/unfollow`)
           .set('Authorization', tokens.basicUser)
           .end((error, response) => {
             response.should.have.status(200);
@@ -697,7 +697,7 @@ describe('Users', () => {
       it('Should NOT unfollow room that is not followed /api/users/rooms/:roomName/unfollow POST', (done) => {
         chai
           .request(app)
-          .post(`/api/users/${starterData.basicUserToAuth.userName}/rooms/${userData.roomThatDoesNotExist.roomName}/unfollow`)
+          .post(`/api/users/${starterData.basicUserToAuth.username}/rooms/${userData.roomThatDoesNotExist.roomName}/unfollow`)
           .set('Authorization', tokens.adminUser)
           .end((error, response) => {
             response.should.have.status(404);
@@ -757,10 +757,10 @@ describe('Users', () => {
   //   });
   //
   //   describe('Get calibration mission', () => {
-  //     it('Should NOT retrieve active calibration mission for user with incorrect authorization on /api/users/:userName/calibrationMission GET', (done) => {
+  //     it('Should NOT retrieve active calibration mission for user with incorrect authorization on /api/users/:username/calibrationMission GET', (done) => {
   //       chai
   //         .request(app)
-  //         .get(`/api/users/${userData.newUserToCreate.userName}/calibrationMission`)
+  //         .get(`/api/users/${userData.newUserToCreate.username}/calibrationMission`)
   //         .set('Authorization', tokens.incorrectJwt)
   //         .end((error, response) => {
   //           response.should.have.status(401);
@@ -771,31 +771,31 @@ describe('Users', () => {
   //         });
   //     });
   //
-  //     it('Should get active calibration mission for other user with enough permission on /api/users/:userName/calibrationMission GET', (done) => {
+  //     it('Should get active calibration mission for other user with enough permission on /api/users/:username/calibrationMission GET', (done) => {
   //       chai
   //         .request(app)
-  //         .get(`/api/users/${userData.newUserToCreate.userName}/calibrationMission`)
+  //         .get(`/api/users/${userData.newUserToCreate.username}/calibrationMission`)
   //         .set('Authorization', tokens.adminUser)
   //         .end((error, response) => {
   //           response.should.have.status(200);
   //           response.should.be.json;
   //           response.body.should.be.jsonSchema(calibrationMissionSchemas.calibrationMission);
-  //           response.body.data.mission.owner.should.equal(userData.newUserToCreate.userName);
+  //           response.body.data.mission.owner.should.equal(userData.newUserToCreate.username);
   //
   //           done();
   //         });
   //     });
   //
-  //     it('Should get active calibration mission for self on /api/users/:userName/calibrationMission GET', (done) => {
+  //     it('Should get active calibration mission for self on /api/users/:username/calibrationMission GET', (done) => {
   //       chai
   //         .request(app)
-  //         .get(`/api/users/${userData.newUserToCreate.userName}/calibrationMission`)
+  //         .get(`/api/users/${userData.newUserToCreate.username}/calibrationMission`)
   //         .set('Authorization', userTokens.newUser)
   //         .end((error, response) => {
   //           response.should.have.status(200);
   //           response.should.be.json;
   //           response.body.should.be.jsonSchema(calibrationMissionSchemas.calibrationMission);
-  //           response.body.data.mission.owner.should.equal(userData.newUserToCreate.userName);
+  //           response.body.data.mission.owner.should.equal(userData.newUserToCreate.username);
   //
   //           done();
   //         });
@@ -803,10 +803,10 @@ describe('Users', () => {
   //   });
   //
   //   describe('Complete calibration mission', () => {
-  //     before('Get calibration mission for user on /api/users/:userName/calibrationMission GET', (done) => {
+  //     before('Get calibration mission for user on /api/users/:username/calibrationMission GET', (done) => {
   //       chai
   //         .request(app)
-  //         .get(`/api/users/${userData.newUserToCreate.userName}/calibrationMission`)
+  //         .get(`/api/users/${userData.newUserToCreate.username}/calibrationMission`)
   //         .set('Authorization', tokens.adminUser)
   //         .end((error, response) => {
   //           response.should.have.status(200);
@@ -817,10 +817,10 @@ describe('Users', () => {
   //         });
   //     });
   //
-  //     it('Should NOT complete calibration mission with incorrect authorization /api/users/:userName/calibrationMission/complete POST', (done) => {
+  //     it('Should NOT complete calibration mission with incorrect authorization /api/users/:username/calibrationMission/complete POST', (done) => {
   //       chai
   //         .request(app)
-  //         .post(`/api/users/${userData.newUserToCreate.userName}/calibrationMission/complete`)
+  //         .post(`/api/users/${userData.newUserToCreate.username}/calibrationMission/complete`)
   //         .set('Authorization', tokens.incorrectJwt)
   //         .end((error, response) => {
   //           response.should.have.status(401);
@@ -831,10 +831,10 @@ describe('Users', () => {
   //         });
   //     });
   //
-  //     it('Should complete calibration mission for user on /api/users/:userName/calibrationMission/complete POST', (done) => {
+  //     it('Should complete calibration mission for user on /api/users/:username/calibrationMission/complete POST', (done) => {
   //       chai
   //         .request(app)
-  //         .post(`/api/users/${userData.newUserToCreate.userName}/calibrationMission/complete`)
+  //         .post(`/api/users/${userData.newUserToCreate.username}/calibrationMission/complete`)
   //         .set('Authorization', tokens.adminUser)
   //         .end((error, response) => {
   //           response.should.have.status(200);
@@ -850,10 +850,10 @@ describe('Users', () => {
   //     describe('Correct completed mission data', () => {
   //       let completedMission = {};
   //
-  //       before('Get active calibration mission for user on /api/users/:userName/calibrationMission GET', (done) => {
+  //       before('Get active calibration mission for user on /api/users/:username/calibrationMission GET', (done) => {
   //         chai
   //           .request(app)
-  //           .get(`/api/users/${userData.newUserToCreate.userName}/calibrationMission`)
+  //           .get(`/api/users/${userData.newUserToCreate.username}/calibrationMission`)
   //           .set('Authorization', tokens.adminUser)
   //           .end((error, response) => {
   //             response.should.have.status(200);
@@ -866,10 +866,10 @@ describe('Users', () => {
   //           });
   //       });
   //
-  //       before('Complete calibration mission for user on /api/users/:userName/calibrationMission/complete POST', (done) => {
+  //       before('Complete calibration mission for user on /api/users/:username/calibrationMission/complete POST', (done) => {
   //         chai
   //           .request(app)
-  //           .post(`/api/users/${userData.newUserToCreate.userName}/calibrationMission/complete`)
+  //           .post(`/api/users/${userData.newUserToCreate.username}/calibrationMission/complete`)
   //           .set('Authorization', tokens.adminUser)
   //           .end((error, response) => {
   //             response.should.have.status(200);
@@ -882,10 +882,10 @@ describe('Users', () => {
   //           });
   //       });
   //
-  //       it('Should get new active calibration mission for user and it should NOT have the same station ID nor code as the completed mission on /api/users/:userName/calibrationMissions GET', (done) => {
+  //       it('Should get new active calibration mission for user and it should NOT have the same station ID nor code as the completed mission on /api/users/:username/calibrationMissions GET', (done) => {
   //         chai
   //           .request(app)
-  //           .get(`/api/users/${userData.newUserToCreate.userName}/calibrationMission`)
+  //           .get(`/api/users/${userData.newUserToCreate.username}/calibrationMission`)
   //           .set('Authorization', tokens.adminUser)
   //           .end((error, response) => {
   //             response.should.have.status(200);
@@ -893,7 +893,7 @@ describe('Users', () => {
   //             response.body.should.be.jsonSchema(calibrationMissionSchemas.calibrationMission);
   //             response.body.data.mission.stationId.should.not.equal(completedMission.stationId);
   //             response.body.data.mission.code.should.not.equal(completedMission.code);
-  //             response.body.data.mission.owner.should.equal(userData.newUserToCreate.userName);
+  //             response.body.data.mission.owner.should.equal(userData.newUserToCreate.username);
   //
   //             done();
   //           });
@@ -902,10 +902,10 @@ describe('Users', () => {
   //   });
   //
   //   describe('Cancel calibration mission', () => {
-  //     before('Get active calibration mission for user on /api/users/:userName/calibrationMission GET', (done) => {
+  //     before('Get active calibration mission for user on /api/users/:username/calibrationMission GET', (done) => {
   //       chai
   //         .request(app)
-  //         .get(`/api/users/${userData.newUserToCreate.userName}/calibrationMission`)
+  //         .get(`/api/users/${userData.newUserToCreate.username}/calibrationMission`)
   //         .set('Authorization', tokens.adminUser)
   //         .end((error, response) => {
   //           response.should.have.status(200);
@@ -916,10 +916,10 @@ describe('Users', () => {
   //         });
   //     });
   //
-  //     it('Should NOT cancel calibration mission with incorrect authorization on /api/users/:userName/calibrationMission/cancel POST', (done) => {
+  //     it('Should NOT cancel calibration mission with incorrect authorization on /api/users/:username/calibrationMission/cancel POST', (done) => {
   //       chai
   //         .request(app)
-  //         .post(`/api/users/${userData.newUserToCreate.userName}/calibrationMission/cancel`)
+  //         .post(`/api/users/${userData.newUserToCreate.username}/calibrationMission/cancel`)
   //         .set('Authorization', tokens.incorrectJwt)
   //         .end((error, response) => {
   //           response.should.have.status(401);
@@ -930,10 +930,10 @@ describe('Users', () => {
   //         });
   //     });
   //
-  //     it('Should cancel active calibration mission on /api/users/:userName/calibrationMission/cancel POST', (done) => {
+  //     it('Should cancel active calibration mission on /api/users/:username/calibrationMission/cancel POST', (done) => {
   //       chai
   //         .request(app)
-  //         .post(`/api/users/${userData.newUserToCreate.userName}/calibrationMission/cancel`)
+  //         .post(`/api/users/${userData.newUserToCreate.username}/calibrationMission/cancel`)
   //         .set('Authorization', tokens.adminUser)
   //         .end((error, response) => {
   //           response.should.have.status(200);
@@ -944,10 +944,10 @@ describe('Users', () => {
   //         });
   //     });
   //
-  //     it('Should NOT cancel non-existing calibrationMission on /api/users/:userName/calibrationMission/cancel POST', (done) => {
+  //     it('Should NOT cancel non-existing calibrationMission on /api/users/:username/calibrationMission/cancel POST', (done) => {
   //       chai
   //         .request(app)
-  //         .post(`/api/users/${starterData.adminUserToAuth.userName}/calibrationMission/cancel`)
+  //         .post(`/api/users/${starterData.adminUserToAuth.username}/calibrationMission/cancel`)
   //         .set('Authorization', tokens.adminUser)
   //         .end((error, response) => {
   //           response.should.have.status(404);
@@ -961,10 +961,10 @@ describe('Users', () => {
   //     describe('Correct cancelled mission data', () => {
   //       let cancelledMission = {};
   //
-  //       before('Get active calibration mission for user on /api/users/:userName/calibrationMissions GET', (done) => {
+  //       before('Get active calibration mission for user on /api/users/:username/calibrationMissions GET', (done) => {
   //         chai
   //           .request(app)
-  //           .get(`/api/users/${userData.newUserToCreate.userName}/calibrationMission`)
+  //           .get(`/api/users/${userData.newUserToCreate.username}/calibrationMission`)
   //           .set('Authorization', tokens.adminUser)
   //           .end((error, response) => {
   //             response.should.have.status(200);
@@ -977,10 +977,10 @@ describe('Users', () => {
   //           });
   //       });
   //
-  //       before('Cancel active calibration mission for user on /api/users/:userName/calibrationMissions/cancel POST', (done) => {
+  //       before('Cancel active calibration mission for user on /api/users/:username/calibrationMissions/cancel POST', (done) => {
   //         chai
   //           .request(app)
-  //           .post(`/api/users/${userData.newUserToCreate.userName}/calibrationMission/cancel`)
+  //           .post(`/api/users/${userData.newUserToCreate.username}/calibrationMission/cancel`)
   //           .set('Authorization', tokens.adminUser)
   //           .end((error, response) => {
   //             response.should.have.status(200);
@@ -993,10 +993,10 @@ describe('Users', () => {
   //           });
   //       });
   //
-  //       it('Should get new active calibration mission for current user and it should NOT be the same as the cancelled mission on /api/users/:userName/calibrationMission GET', (done) => {
+  //       it('Should get new active calibration mission for current user and it should NOT be the same as the cancelled mission on /api/users/:username/calibrationMission GET', (done) => {
   //         chai
   //           .request(app)
-  //           .get(`/api/users/${userData.newUserToCreate.userName}/calibrationMission`)
+  //           .get(`/api/users/${userData.newUserToCreate.username}/calibrationMission`)
   //           .set('Authorization', userTokens.newUser)
   //           .end((error, response) => {
   //             response.should.have.status(200);
@@ -1081,10 +1081,10 @@ describe('Users', () => {
     });
 
     describe('Update user position', () => {
-      it('Should NOT update user position with incorrect authorization on /api/users/:userName/position POST', (done) => {
+      it('Should NOT update user position with incorrect authorization on /api/users/:username/position POST', (done) => {
         chai
           .request(app)
-          .post(`/api/users/${positionData.basicUserToCreateAndGetPositionFrom.userName}/position`)
+          .post(`/api/users/${positionData.basicUserToCreateAndGetPositionFrom.username}/position`)
           .set('Authorization', tokens.incorrectJwt)
           .send({ data: { position: positionData.userPositionToUpdateWith } })
           .end((error, response) => {
@@ -1096,10 +1096,10 @@ describe('Users', () => {
           });
       });
 
-      it('Should update basic user position on /api/users/:userName/position POST', (done) => {
+      it('Should update basic user position on /api/users/:username/position POST', (done) => {
         chai
           .request(app)
-          .post(`/api/users/${positionData.basicUserToCreateAndGetPositionFrom.userName}/position`)
+          .post(`/api/users/${positionData.basicUserToCreateAndGetPositionFrom.username}/position`)
           .set('Authorization', positionTokens.basic)
           .send({ data: { position: positionData.userPositionToUpdateWith } })
           .end((error, response) => {
@@ -1111,10 +1111,10 @@ describe('Users', () => {
           });
       });
 
-      it('Should update admin user position on /api/users/:userName/position POST', (done) => {
+      it('Should update admin user position on /api/users/:username/position POST', (done) => {
         chai
           .request(app)
-          .post(`/api/users/${positionData.adminUserToCreateAndGetPositionFrom.userName}/position`)
+          .post(`/api/users/${positionData.adminUserToCreateAndGetPositionFrom.username}/position`)
           .set('Authorization', positionTokens.admin)
           .send({ data: { position: positionData.userPositionToUpdateWith } })
           .end((error, response) => {
@@ -1128,10 +1128,10 @@ describe('Users', () => {
     });
 
     describe('Get user position', () => {
-      it('Should NOT get position for non-existent user on /api/users/:userName/position GET', (done) => {
+      it('Should NOT get position for non-existent user on /api/users/:username/position GET', (done) => {
         chai
           .request(app)
-          .get(`/api/users/${positionData.userThatDoesNotExist.userName}/position`)
+          .get(`/api/users/${positionData.userThatDoesNotExist.username}/position`)
           .set('Authorization', tokens.adminUser)
           .end((error, response) => {
             response.should.have.status(404);
@@ -1142,10 +1142,10 @@ describe('Users', () => {
           });
       });
 
-      it('Should get user position on /api/users/:userName/position', (done) => {
+      it('Should get user position on /api/users/:username/position', (done) => {
         chai
           .request(app)
-          .get(`/api/users/${positionData.basicUserToCreateAndGetPositionFrom.userName}/position`)
+          .get(`/api/users/${positionData.basicUserToCreateAndGetPositionFrom.username}/position`)
           .set('Authorization', positionTokens.admin)
           .end((error, response) => {
             response.should.have.status(200);
@@ -1156,10 +1156,10 @@ describe('Users', () => {
           });
       });
 
-      it('Should NOT get user position from user with higher visibility than user\'s access level on /api/users/:userName/position', (done) => {
+      it('Should NOT get user position from user with higher visibility than user\'s access level on /api/users/:username/position', (done) => {
         chai
           .request(app)
-          .get(`/api/users/${positionData.adminUserToCreateAndGetPositionFrom.userName}/position`)
+          .get(`/api/users/${positionData.adminUserToCreateAndGetPositionFrom.username}/position`)
           .set('Authorization', positionTokens.basic)
           .end((error, response) => {
             response.should.have.status(404);
@@ -1202,5 +1202,5 @@ describe('Users', () => {
     });
   });
 
-  // /users/:userName/team/leave POST Leave team
+  // /users/:username/team/leave POST Leave team
 });

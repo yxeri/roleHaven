@@ -83,7 +83,7 @@ function handle(io) {
   });
 
   /**
-   * @api {get} /users/:userName/gameCodes/profile Get user's one-time profile game code
+   * @api {get} /users/:username/gameCodes/profile Get user's one-time profile game code
    * @apiVersion 6.0.0
    * @apiName GetProfileGameCode
    * @apiGroup Users
@@ -106,15 +106,15 @@ function handle(io) {
    *    }
    *  }
    */
-  router.get('/:userName/gameCodes/profile', (request, response) => {
-    if (!objectValidator.isValidData(request.params, { userName: true })) {
-      restErrorChecker.checkAndSendError({ response, error: new errorCreator.InvalidData({ expected: 'params: { userName}' }) });
+  router.get('/:username/gameCodes/profile', (request, response) => {
+    if (!objectValidator.isValidData(request.params, { username: true })) {
+      restErrorChecker.checkAndSendError({ response, error: new errorCreator.InvalidData({ expected: 'params: { username}' }) });
 
       return;
     }
 
     gameCodeManager.getProfileGameCode({
-      owner: request.params.userName,
+      owner: request.params.username,
       token: request.headers.authorization,
       callback: ({ error, data }) => {
         if (error) {
@@ -129,7 +129,7 @@ function handle(io) {
   });
 
   /**
-   * @api {get} /users/:userName/gameCodes/ Get user's game codes
+   * @api {get} /users/:username/gameCodes/ Get user's game codes
    * @apiVersion 6.0.0
    * @apiName GetGameCodes
    * @apiGroup Users
@@ -157,7 +157,7 @@ function handle(io) {
    *    }
    *  }
    */
-  router.get('/:userName/gameCodes', (request, response) => {
+  router.get('/:username/gameCodes', (request, response) => {
     gameCodeManager.getGameCodes({
       token: request.headers.authorization,
       callback: ({ error, data }) => {
@@ -173,7 +173,7 @@ function handle(io) {
   });
 
   /**
-   * @api {post} /users/:userName/gameCodes/:codeType Create new game code
+   * @api {post} /users/:username/gameCodes/:codeType Create new game code
    * @apiVersion 6.0.0
    * @apiName CreateGameCode
    * @apiGroup Users
@@ -182,7 +182,7 @@ function handle(io) {
    *
    * @apiDescription Create game code
    *
-   * @apiParam {string} userName Name of the user
+   * @apiParam {string} username Name of the user
    *
    * @apiSuccess {Object} data
    * @apiSuccess {Object[]} data.gameCode New game code
@@ -203,9 +203,9 @@ function handle(io) {
    *    }
    *  }
    */
-  router.post('/:userName/gameCodes/:codeType', (request, response) => {
+  router.post('/:username/gameCodes/:codeType', (request, response) => {
     gameCodeManager.createGameCode({
-      owner: request.params.userName,
+      owner: request.params.username,
       codeType: request.params.codeType,
       token: request.headers.authorization,
       callback: ({ error, data }) => {
@@ -223,7 +223,7 @@ function handle(io) {
   /**
    * @api {get} /users/:partialName/match Match partial user name
    * @apiVersion 6.0.0
-   * @apiName MatchUserName
+   * @apiName MatchUsername
    * @apiGroup Users
    *
    * @apiHeader {String} Authorization Your JSON Web Token
@@ -246,7 +246,7 @@ function handle(io) {
       return;
     }
 
-    userManager.matchPartialUserName({
+    userManager.matchPartialUsername({
       partialName: request.params.partialName,
       token: request.headers.authorization,
       callback: ({ error, data }) => {
@@ -262,7 +262,7 @@ function handle(io) {
   });
 
   /**
-   * @api {get} /users/:userName/position Retrieve specific user position
+   * @api {get} /users/:username/position Retrieve specific user position
    * @apiVersion 6.0.0
    * @apiName GetUserPosition
    * @apiGroup Users
@@ -295,15 +295,15 @@ function handle(io) {
    *    }
    *  }
    */
-  router.get('/:userName/position', (request, response) => {
-    if (!objectValidator.isValidData(request.params, { userName: true })) {
-      restErrorChecker.checkAndSendError({ response, error: new errorCreator.InvalidData({ expected: '{ userName }' }), sentData: request.body.data });
+  router.get('/:username/position', (request, response) => {
+    if (!objectValidator.isValidData(request.params, { username: true })) {
+      restErrorChecker.checkAndSendError({ response, error: new errorCreator.InvalidData({ expected: '{ username }' }), sentData: request.body.data });
 
       return;
     }
 
     positionManager.getUserPosition({
-      userName: request.params.userName,
+      username: request.params.username,
       token: request.headers.authorization,
       callback: ({ error, data }) => {
         if (error) {
@@ -318,7 +318,7 @@ function handle(io) {
   });
 
   /**
-   * @api {post} /users/:userName/position Set position for user
+   * @api {post} /users/:username/position Set position for user
    * @apiVersion 6.0.0
    * @apiName SetUserPosition
    * @apiGroup Positions
@@ -369,9 +369,9 @@ function handle(io) {
    *    }
    *  }
    */
-  router.post('/:userName/position', (request, response) => {
-    if (!objectValidator.isValidData(request.params, { userName: true }) || !objectValidator.isValidData(request.body, { data: true })) {
-      restErrorChecker.checkAndSendError({ response, error: new errorCreator.InvalidData({ expected: 'params: { userName }, body: { data }' }), sentData: request.body.data });
+  router.post('/:username/position', (request, response) => {
+    if (!objectValidator.isValidData(request.params, { username: true }) || !objectValidator.isValidData(request.body, { data: true })) {
+      restErrorChecker.checkAndSendError({ response, error: new errorCreator.InvalidData({ expected: 'params: { username }, body: { data }' }), sentData: request.body.data });
 
       return;
     }
@@ -409,12 +409,12 @@ function handle(io) {
    *    "data": {
    *      "users": [
    *        {
-   *          "userName": "rez",
+   *          "username": "rez",
    *          "team": "n4",
    *          "online": true
    *        },
    *        {
-   *          "userName": "raz",
+   *          "username": "raz",
    *          "online": false
    *        }
    *      ]
@@ -453,12 +453,12 @@ function handle(io) {
    *    "data": {
    *      "users": [
    *        {
-   *          "userName": "rez",
+   *          "username": "rez",
    *          "team": "n4",
    *          "online": true
    *        },
    *        {
-   *          "userName": "raz",
+   *          "username": "raz",
    *          "online": false
    *        }
    *      ]
@@ -482,7 +482,7 @@ function handle(io) {
   });
 
   /**
-   * @api {post} /users/:userName/password Update user password
+   * @api {post} /users/:username/password Update user password
    * @apiVersion 6.0.0
    * @apiName ChangePassword
    * @apiGroup Users
@@ -491,7 +491,7 @@ function handle(io) {
    *
    * @apiDescription Update user password
    *
-   * @apiParam {string} userName User name of the user that will receive a new password
+   * @apiParam {string} username User name of the user that will receive a new password
    *
    * @apiParam {Object} data
    * @apiParam {string} data.key Event key
@@ -513,9 +513,9 @@ function handle(io) {
    *    }
    *  }
    */
-  router.post('/:userName/password', (request, response) => {
-    if (!objectValidator.isValidData(request.body, { data: true }) || !objectValidator.isValidData(request.params, { userName: true })) {
-      restErrorChecker.checkAndSendError({ response, error: new errorCreator.InvalidData({ expected: 'params: { userName }, body: { data }' }), sentData: request.body.data });
+  router.post('/:username/password', (request, response) => {
+    if (!objectValidator.isValidData(request.body, { data: true }) || !objectValidator.isValidData(request.params, { username: true })) {
+      restErrorChecker.checkAndSendError({ response, error: new errorCreator.InvalidData({ expected: 'params: { username }, body: { data }' }), sentData: request.body.data });
 
       return;
     }
@@ -549,16 +549,16 @@ function handle(io) {
    *
    * @apiParam {Object} data
    * @apiParam {Object} data.user User
-   * @apiParam {string} data.user.userName User name
+   * @apiParam {string} data.user.username User name
    * @apiParam {string} data.user.password Password of the user
    * @apiParam {string} data.user.mail Mail address to the user
-   * @apiParam {string} [data.user.fullName] Full name of the user. Defaults to userName
+   * @apiParam {string} [data.user.fullName] Full name of the user. Defaults to username
    * @apiParam {boolean} [data.user.lootable] Is the user's device lootable? Default is false
    * @apiParamExample {json} Request-Example:
    *   {
    *    "data": {
    *      "user": {
-   *        "userName": "rez",
+   *        "username": "rez",
    *        "password": "password"
    *        "fullName": "Mr. X"
    *      }
@@ -571,7 +571,7 @@ function handle(io) {
    *   {
    *    "data": {
    *      "user": {
-   *        "userName": "rez",
+   *        "username": "rez",
    *        "fullName": "Mr. X"
    *      }
    *    }
@@ -603,7 +603,7 @@ function handle(io) {
   });
 
   /**
-   * @api {get} /users/:userName Get a specific user
+   * @api {get} /users/:username Get a specific user
    * @apiVersion 6.0.0
    * @apiName GetUser
    * @apiGroup Users
@@ -612,7 +612,7 @@ function handle(io) {
    *
    * @apiDescription Retrieve a specific user
    *
-   * @apiParam {String} userName User name
+   * @apiParam {String} username User name
    *
    * @apiSuccess {Object} data
    * @apiSuccess {Object} data.user Found user. Empty if no user was found
@@ -624,16 +624,16 @@ function handle(io) {
    *    }
    *  }
    */
-  router.get('/:userName', (request, response) => {
-    if (!objectValidator.isValidData(request.params, { userName: true })) {
-      restErrorChecker.checkAndSendError({ response, error: new errorCreator.InvalidData({ expected: 'params: { userName }' }), sentData: request.body.data });
+  router.get('/:username', (request, response) => {
+    if (!objectValidator.isValidData(request.params, { username: true })) {
+      restErrorChecker.checkAndSendError({ response, error: new errorCreator.InvalidData({ expected: 'params: { username }' }), sentData: request.body.data });
 
       return;
     }
 
     userManager.getUser({
       token: request.headers.authorization,
-      userName: request.params.userName,
+      username: request.params.username,
       callback: ({ error, data }) => {
         if (error) {
           restErrorChecker.checkAndSendError({ response, error, sentData: request.body.data });
@@ -647,7 +647,7 @@ function handle(io) {
   });
 
   /**
-   * @api {post} /users/:userName/rooms/:roomName/follow Follow a room
+   * @api {post} /users/:username/rooms/:roomName/follow Follow a room
    * @apiVersion 6.0.0
    * @apiName FollowRoom
    * @apiGroup Users
@@ -679,9 +679,9 @@ function handle(io) {
    *    }
    *  }
    */
-  router.post('/:userName/rooms/:roomName/follow', (request, response) => {
-    if (!objectValidator.isValidData(request.params, { userName: true, roomName: true })) {
-      restErrorChecker.checkAndSendError({ response, error: new errorCreator.InvalidData({ expected: 'params: { userName, roomName }' }), sentData: request.body.data });
+  router.post('/:username/rooms/:roomName/follow', (request, response) => {
+    if (!objectValidator.isValidData(request.params, { username: true, roomName: true })) {
+      restErrorChecker.checkAndSendError({ response, error: new errorCreator.InvalidData({ expected: 'params: { username, roomName }' }), sentData: request.body.data });
 
       return;
     }
@@ -691,7 +691,7 @@ function handle(io) {
     roomManager.followRoom({
       io,
       token: request.headers.authorization,
-      user: { userName: request.params.userName },
+      user: { username: request.params.username },
       room: { roomName: request.params.roomName, password },
       callback: ({ error, data }) => {
         if (error) {
@@ -706,7 +706,7 @@ function handle(io) {
   });
 
   /**
-   * @api {post} /users/:userName/rooms/:roomName/unfollow Unfollow a room
+   * @api {post} /users/:username/rooms/:roomName/unfollow Unfollow a room
    * @apiVersion 6.0.0
    * @apiName UnfollowRoom
    * @apiGroup Users
@@ -715,7 +715,7 @@ function handle(io) {
    *
    * @apiDescription Unfollow a room
    *
-   * @apiParam {Object} userName User name of the user that will unfollow the room
+   * @apiParam {Object} username User name of the user that will unfollow the room
    * @apiParam {Object} roomName name of the room to unfollow
    *
    * @apiSuccess {Object} data
@@ -730,9 +730,9 @@ function handle(io) {
    *    }
    *  }
    */
-  router.post('/:userName/rooms/:roomName/unfollow', (request, response) => {
-    if (!objectValidator.isValidData(request.params, { userName: true, roomName: true })) {
-      restErrorChecker.checkAndSendError({ response, error: new errorCreator.InvalidData({ expected: 'params: { userName, roomName }' }), sentData: request.body.data });
+  router.post('/:username/rooms/:roomName/unfollow', (request, response) => {
+    if (!objectValidator.isValidData(request.params, { username: true, roomName: true })) {
+      restErrorChecker.checkAndSendError({ response, error: new errorCreator.InvalidData({ expected: 'params: { username, roomName }' }), sentData: request.body.data });
 
       return;
     }
@@ -740,7 +740,7 @@ function handle(io) {
     roomManager.unfollowRoom({
       io,
       token: request.headers.authorization,
-      user: { userName: request.params.userName },
+      user: { username: request.params.username },
       room: { roomName: request.params.roomName },
       callback: ({ error, data }) => {
         if (error) {
@@ -755,7 +755,7 @@ function handle(io) {
   });
 
   /**
-   * @api {get} /users/:userName/aliases/:partialName/match Match partial alias name
+   * @api {get} /users/:username/aliases/:partialName/match Match partial alias name
    * @apiVersion 6.0.0
    * @apiName MatchAlias
    * @apiGroup Users
@@ -773,9 +773,9 @@ function handle(io) {
    *    }
    *  }
    */
-  router.get('/:userName/aliases/:partialName/match', (request, response) => {
-    if (!objectValidator.isValidData(request.params, { userName: true, partialName: true })) {
-      restErrorChecker.checkAndSendError({ response, error: new errorCreator.InvalidData({ expected: 'params: { userName, partialName }' }), sentData: request.body.data });
+  router.get('/:username/aliases/:partialName/match', (request, response) => {
+    if (!objectValidator.isValidData(request.params, { username: true, partialName: true })) {
+      restErrorChecker.checkAndSendError({ response, error: new errorCreator.InvalidData({ expected: 'params: { username, partialName }' }), sentData: request.body.data });
 
       return;
     }
@@ -796,7 +796,7 @@ function handle(io) {
   });
 
   /**
-   * @api {get} /users/:userName/aliases Get aliases from user
+   * @api {get} /users/:username/aliases Get aliases from user
    * @apiVersion 6.0.0
    * @apiName GetUserAliases
    * @apiGroup Users
@@ -807,18 +807,18 @@ function handle(io) {
    *
    * @apiSuccess {Object} data
    * @apiSuccess {Object} data.aliases Aliases found
-   * @apiSuccess {Object} data.userName User name
+   * @apiSuccess {Object} data.username User name
    * @apiSuccessExample {json} Success-Response:
    *   {
    *    "data": {
    *      "aliases": ["baz", "h1"],
-   *      "userName": "raz"
+   *      "username": "raz"
    *    }
    *  }
    */
-  router.get('/:userName/aliases', (request, response) => {
+  router.get('/:username/aliases', (request, response) => {
     aliasManager.getAliases({
-      user: { userName: request.params.userName },
+      user: { username: request.params.username },
       token: request.headers.authorization,
       callback: ({ error, data }) => {
         if (error) {
@@ -833,7 +833,7 @@ function handle(io) {
   });
 
   /**
-   * @api {post} /:userName/aliases/ Create an alias for the user
+   * @api {post} /:username/aliases/ Create an alias for the user
    * @apiVersion 6.0.0
    * @apiName CreateAlias
    * @apiGroup Users
@@ -842,14 +842,14 @@ function handle(io) {
    *
    * @apiDescription Create an alias for the user
    *
-   * @apiParam {string} userName Name of the user to receive new alias
+   * @apiParam {string} username Name of the user to receive new alias
    *
    * @apiParam {Object} data
    * @apiParam {string} data.alias Alias
    * @apiParamExample {json} Request-Example:
    *   {
    *    "data": {
-   *      "userName": "bananaman",
+   *      "username": "bananaman",
    *      "alias": "raz"
    *    }
    *  }
@@ -863,7 +863,7 @@ function handle(io) {
    *    }
    *  }
    */
-  router.post('/:userName/aliases', (request, response) => {
+  router.post('/:username/aliases', (request, response) => {
     if (!objectValidator.isValidData(request.body, { data: { alias: true } })) {
       restErrorChecker.checkAndSendError({ response, error: new errorCreator.InvalidData({ expected: '' }), sentData: request.body.data });
 
@@ -874,7 +874,7 @@ function handle(io) {
       io,
       token: request.headers.authorization,
       alias: request.body.data.alias,
-      user: { userName: request.params.userName },
+      user: { username: request.params.username },
       callback: ({ error, data }) => {
         if (error) {
           restErrorChecker.checkAndSendError({ response, error, sentData: request.body.data });
@@ -888,7 +888,7 @@ function handle(io) {
   });
 
   /**
-   * @api {get} /users/:userName/calibrationMission Get user's calibration mission
+   * @api {get} /users/:username/calibrationMission Get user's calibration mission
    * @apiVersion 6.0.0
    * @apiName GetCalibrationMission
    * @apiGroup Users
@@ -911,10 +911,10 @@ function handle(io) {
    *    }
    *  }
    */
-  router.get('/:userName/calibrationMission', (request, response) => {
+  router.get('/:username/calibrationMission', (request, response) => {
     calibrationMissionManager.getActiveCalibrationMission({
       token: request.headers.authorization,
-      userName: request.params.userName,
+      username: request.params.username,
       callback: ({ error: calibrationError, data: calibrationData }) => {
         if (calibrationError) {
           restErrorChecker.checkAndSendError({ response, error: calibrationError, sentData: request.body.data });
@@ -928,16 +928,16 @@ function handle(io) {
   });
 
   /**
-   * @api {post} /users/:userName/teamInvite Invite user to team
+   * @api {post} /users/:username/teamInvite Invite user to team
    * @apiVersion 6.0.0
    * @apiName InviteToTeam
    * @apiGroup Users
    *
    * @apiHeader {String} Authorization Your JSON Web Token
    *
-   * @apiDescription userName Invite user to team
+   * @apiDescription username Invite user to team
    *
-   * @apiParam {String} userName Name of the user to invite
+   * @apiParam {String} username Name of the user to invite
    *
    * @apiSuccess {Object} data
    * @apiSuccess {Object} data.room Invitation created
@@ -954,8 +954,8 @@ function handle(io) {
    *    }
    *  }
    */
-  router.post('/:userName/teamInvite', (request, response) => {
-    if (!objectValidator.isValidData(request.params, { userName: true })) {
+  router.post('/:username/teamInvite', (request, response) => {
+    if (!objectValidator.isValidData(request.params, { username: true })) {
       restErrorChecker.checkAndSendError({ response, error: new errorCreator.InvalidData({ expected: '' }), sentData: request.body.data });
 
       return;
@@ -965,7 +965,7 @@ function handle(io) {
     teamManager.inviteToTeam({
       io,
       token: request.headers.authorization,
-      to: request.params.userName,
+      to: request.params.username,
       callback: ({ error, data }) => {
         if (error) {
           restErrorChecker.checkAndSendError({ response, error, sentData: request.body.data });
@@ -979,7 +979,7 @@ function handle(io) {
   });
 
   /**
-   * @api {post} /users/:userName/calibrationMission/complete Complete user's calibration mission
+   * @api {post} /users/:username/calibrationMission/complete Complete user's calibration mission
    * @apiVersion 6.0.0
    * @apiName CompleteCalibrationMission
    * @apiGroup Users
@@ -988,7 +988,7 @@ function handle(io) {
    *
    * @apiDescription Complete the mission. A transaction will be created
    *
-   * @apiParam {String} userName Owner of the mission
+   * @apiParam {String} username Owner of the mission
    *
    * @apiSuccess {Object} data
    * @apiSuccess {Object[]} data.mission Mission completed
@@ -1011,11 +1011,11 @@ function handle(io) {
    *    }
    *  }
    */
-  router.post('/:userName/calibrationMission/complete', (request, response) => {
+  router.post('/:username/calibrationMission/complete', (request, response) => {
     calibrationMissionManager.completeActiveCalibrationMission({
       io,
       token: request.headers.authorization,
-      owner: request.params.userName,
+      owner: request.params.username,
       callback: ({ error, data }) => {
         if (error) {
           restErrorChecker.checkAndSendError({ response, error, sentData: request.body.data });
@@ -1029,7 +1029,7 @@ function handle(io) {
   });
 
   /**
-   * @api {post} /users/:userName/verify Verify user
+   * @api {post} /users/:username/verify Verify user
    * @apiVersion 6.0.0
    * @apiName VerifyUser
    * @apiGroup Users
@@ -1038,20 +1038,20 @@ function handle(io) {
    *
    * @apiDescription Verify user
    *
-   * @apiParam {String} userName Name of the user to verify
+   * @apiParam {String} username Name of the user to verify
    *
    * @apiSuccess {Object} data
-   * @apiSuccess {Object[]} data.userName Name of user that was verified
+   * @apiSuccess {Object[]} data.username Name of user that was verified
    * @apiSuccessExample {json} Success-Response:
    *   {
    *    "data": {
-   *      "userName": "greger"
+   *      "username": "greger"
    *    }
    *  }
    */
-  router.post('/:userName/verify', (request, response) => {
+  router.post('/:username/verify', (request, response) => {
     userManager.verifyUserWithoutMail({
-      userName: request.params.userName,
+      username: request.params.username,
       token: request.headers.authorization,
       io,
       callback: ({ error, data }) => {
@@ -1067,7 +1067,7 @@ function handle(io) {
   });
 
   /**
-   * @api {post} /users/:userName/calibrationMission/cancel Cancel user's mission
+   * @api {post} /users/:username/calibrationMission/cancel Cancel user's mission
    * @apiVersion 6.0.0
    * @apiName CancelCalibrationMission
    * @apiGroup Users
@@ -1076,7 +1076,7 @@ function handle(io) {
    *
    * @apiDescription Cancel a calibration mission. Mission will still be set to completed, but no transaction will be created
    *
-   * @apiParam {String} userName Owner of the mission
+   * @apiParam {String} username Owner of the mission
    *
    * @apiSuccess {Object} data
    * @apiSuccess {Object[]} data.mission Mission completed
@@ -1094,11 +1094,11 @@ function handle(io) {
    *    }
    *  }
    */
-  router.post('/:userName/calibrationMission/cancel', (request, response) => {
+  router.post('/:username/calibrationMission/cancel', (request, response) => {
     calibrationMissionManager.cancelActiveCalibrationMission({
       io,
       token: request.headers.authorization,
-      owner: request.params.userName,
+      owner: request.params.username,
       callback: ({ error, data }) => {
         if (error) {
           restErrorChecker.checkAndSendError({ response, error, sentData: request.body.data });

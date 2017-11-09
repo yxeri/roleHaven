@@ -16,14 +16,20 @@
 
 'use strict';
 
-const dbChatHistory = require('../db/connectors/chatHistory');
 const dbConfig = require('../config/defaults/config').databasePopulation;
 const authenticator = require('../helpers/authenticator');
+const dbMessage = require('../db/connectors/message');
+const errorCreator = require('../objects/error/errorCreator');
+const appConfig = require('../config/defaults/config').app;
+const objectValidator = require('../utils/objectValidator');
+const aliasManager = require('./aliases');
+const messenger = require('../helpers/messenger');
 
 /**
- * Get broadcasts
- * @param {string} params.token jwt
- * @param {Function} params.callback Callback
+ * Get broadcast messages
+ * @param {Object} params - Parameters
+ * @param {string} params.token - jwt
+ * @param {Function} params.callback - Callback
  */
 function getBroadcasts({ token, callback }) {
   authenticator.isUserAllowed({
@@ -36,21 +42,84 @@ function getBroadcasts({ token, callback }) {
         return;
       }
 
-      dbChatHistory.getHistory({
-        roomName: dbConfig.rooms.bcast.roomName,
-        callback: ({ error: historyError, data: historyData }) => {
-          if (historyError) {
-            callback({ error: historyError });
+      dbMessage.getMessagesByRoom({
+        roomId: dbConfig.rooms.bcast.roomId,
+        callback: (messageData) => {
+          if (messageData.error) {
+            callback({ error: messageData.error });
 
             return;
           }
 
-          callback({ data: historyData });
+          callback({ data: { messages: messageData.data.messages } });
         },
       });
     },
   });
 }
 
-exports.getBroadcasts = getBroadcasts;
+/**
+ * Send broadcast message
+ * @param {Object} params - Parameters
+ * @param {Object} params.message - Message to be sent
+ * @param {Object} [params.socket] - Socket.io socket
+ * @param {Object} params.io - Socket.io. Used by API, when no socket is available
+ * @param {Function} params.callback - Client callback
+ */
+function sendBroadcastMsg({ token, message, socket, callback, io }) {
+  authenticator.isUserAllowed({
+    token,
+    commandName: dbConfig.apiCommands.SendBroadcast.name,
+    callback: ({ error, data }) => {
+      if (error) {
+        callback({ error });
 
+        return;
+      } else if (!objectValidator.isValidData({ message, io }, { message: { text: true }, io: true })) {
+        callback({ error: new errorCreator.InvalidData({ expected: '{ message: { text }, io }' }) });
+
+        return;
+      } else if (message.text.join('').length > appConfig.broadcastMaxLength) {
+        callback({ error: new errorCreator.InvalidCharacters({ expected: `text length ${appConfig.broadcastMaxLength}` }) });
+
+        return;
+      }
+
+      const user = data.user;
+      const newMessage = message;
+      newMessage.messageType = dbMessage.MessageTypes.BROADCAST;
+
+      if (newMessage.ownerAliasId) {
+        aliasManager.getAlias({
+          token,
+          aliasId: newMessage.ownerAliasId,
+          userId: user.userId,
+          callback: (aliasData) => {
+            if (aliasData.error) {
+              callback({ error: aliasData.error });
+
+              return;
+            }
+
+            messenger.sendMessage({
+              newMessage,
+              socket,
+              io,
+              callback,
+            });
+          },
+        });
+      } else {
+        messenger.sendMessage({
+          newMessage,
+          socket,
+          io,
+          callback,
+        });
+      }
+    },
+  });
+}
+
+exports.getBroadcasts = getBroadcasts;
+exports.sendBroadcastMsg = sendBroadcastMsg;

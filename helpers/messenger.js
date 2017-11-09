@@ -16,7 +16,7 @@
 
 'use strict';
 
-const dbChatHistory = require('./../db/connectors/chatHistory');
+const dbMessage = require('./../db/connectors/message');
 const dbUser = require('./../db/connectors/user');
 const dbConfig = require('./../config/defaults/config').databasePopulation;
 const appConfig = require('./../config/defaults/config').app;
@@ -27,69 +27,46 @@ const fs = require('fs');
 const authenticator = require('./authenticator');
 
 /**
- * Check if the room name should be hidden and not returned to client
- * @param {string} params.roomName Name of the room
- * @param {string} socketId Socket.io id
- * @returns {boolean} Should room name be hidden?
+ * Store and send message
+ * @param {Object} params - Parameters
+ * @param {Object} params.newMessage - New message to store and send
+ * @param {string} params.eventType - Event type to trigger on socket
+ * @param {string} params.to - Room to send to
+ * @param {Object} [params.socket] - Socket.io
+ * @param {Object} params.io - Socket.io. Will be used if socket is not set
+ * @param {Function} params.callback - Callback
  */
-function filterHiddenRooms({ roomNames, socketId }) {
-  const roomsToHide = dbConfig.roomsToBeHidden;
-  roomsToHide.push(socketId);
+function sendMessage({ newMessage, eventType, to, socket, io, callback }) {
+  dbMessage.createMessage({
+    message: newMessage,
+    callback: (createData) => {
+      if (createData.error) {
+        callback({ error: createData.error });
 
-  return roomNames.filter((roomName) => {
-    return roomsToHide.indexOf(roomName) === -1 && roomName.indexOf(appConfig.whisperAppend) === -1 && roomName.indexOf(appConfig.deviceAppend) === -1;
-  });
-}
-
-/**
- * Add a sent message to a room's getHistory in the database
- * @param {string} params.roomName Name of the room
- * @param {Object} params.message Message to be added
- * @param {Function} params.callback callback
- */
-function addMsgToHistory({ roomName, message, callback }) {
-  dbChatHistory.addMsgToHistory({
-    roomName,
-    message,
-    callback: ({ error, data }) => {
-      if (error) {
-        callback({ error });
+        return;
       }
 
-      const newMessage = message;
-      newMessage.anonymous = data.history.anonymous;
+      const dataToSend = { message: createData.data.message };
 
-      callback({ data: { message: newMessage } });
+      if (socket) {
+        if (to) {
+          socket.broadcast.to(to).emit(eventType, { data: dataToSend });
+        } else {
+          socket.broadcast.emit(eventType, { data: dataToSend });
+        }
+      } else {
+        io.to(to).emit(eventType, { data: dataToSend });
+      }
+
+      callback({ data: dataToSend });
     },
   });
 }
 
 /**
- * Sends multiple message to the user's socket
- * @param {{text: string[]}[]} params.messages - Messages to send
- * @param {Object} params.socket Socket.io socket
- */
-function sendSelfMsg({ messages, socket }) {
-  if (!objectValidator.isValidData({ messages, socket }, { socket: true, messages: true })) {
-    return;
-  }
-
-  socket.emit('messages', { data: { messages } });
-}
-
-/**
- * Checks if the user is following a room
- * @param {Object} params.user User to check
- * @param {string} params.roomName Name of the room
- * @returns {boolean} Is the socket following the room?
- */
-function isUserFollowingRoom({ user, roomName }) {
-  return user.rooms.indexOf(roomName) > -1;
-}
-
-/**
  * Sends a message to a room. The message will not be stored in history
  * Emits message
+ * @param {Object} params - Parameters
  * @param {Object} params.message Message to send
  * @param {string[]} params.message.roomName Room to send the message to
  * @param {Object} params.io Socket.io
@@ -102,7 +79,7 @@ function sendMsg({ socket, message, io }) {
 
   const messageToSend = message;
   messageToSend.time = new Date();
-  messageToSend.userName = dbConfig.systemUserName;
+  messageToSend.username = dbConfig.systemUsername;
 
   if (socket) {
     socket.broadcast.to(messageToSend.roomName).emit('message', {
@@ -117,6 +94,7 @@ function sendMsg({ socket, message, io }) {
 
 /**
  * Store message in history and send to connected clients
+ * @param {Object} params - Parameters
  * @param {Object} params.user User sending the message
  * @param {Function} params.callback Callback
  * @param {Object} params.message Message to send
@@ -125,7 +103,7 @@ function sendMsg({ socket, message, io }) {
  */
 function sendAndStoreChatMsg({ user, callback, message, io, socket }) {
   dbUser.getUser({
-    userName: user.userName,
+    username: user.username,
     callback: (userData) => {
       if (userData.error) {
         callback({ error: userData.error });
@@ -157,7 +135,7 @@ function sendAndStoreChatMsg({ user, callback, message, io, socket }) {
           };
 
           if (newMessage.anonymous) {
-            newMessage.userName = dbConfig.anonymousUserName;
+            newMessage.username = dbConfig.anonymousUsername;
             newMessage.time.setHours(0);
             newMessage.time.setMinutes(0);
             newMessage.time.setSeconds(0);
@@ -178,6 +156,7 @@ function sendAndStoreChatMsg({ user, callback, message, io, socket }) {
 
 /**
  * Create and return image object
+ * @param {Object} params - Parameters
  * @param {Object} params.image Image to create
  * @param {Object} params.user User attaching image
  * @param {Object} params.callback Callback
@@ -193,7 +172,7 @@ function createImage({ image, user, callback }) {
     return;
   }
 
-  const fileName = `${new Buffer(user.userName).toString('base64')}-${appConfig.mode}-${image.imageName.replace(/[^\w.]/g, '-')}`;
+  const fileName = `${new Buffer(user.username).toString('base64')}-${appConfig.mode}-${image.imageName.replace(/[^\w.]/g, '-')}`;
 
   fs.writeFile(`${appConfig.publicBase}/images/${fileName}`, image.source.replace(/data:image\/((png)|(jpeg));base64,/, ''), { encoding: 'base64' }, (err) => {
     if (err) {
@@ -218,11 +197,14 @@ function createImage({ image, user, callback }) {
 /**
  * Sends a message to a room and stores it in history
  * Emits message
- * @param {Object} params.message Message to be sent
- * @param {Object} params.io Socket.io. Used by API, when no socket is available
- * @param {Object} params.socket Socket.io socket
- * @param {Object} [params.image] Image to attach to the message
- * @param {Function} [params.callback] Client callback
+ * @param {Object} params - Parameters
+ * @param {Object} params.message - Message to be sent
+ * @param {Object} params.message.roomId - Message to be sent
+ * @param {Object} params.message.userId - Message to be sent
+ * @param {Object} params.io - Socket.io. Used by API, when no socket is available
+ * @param {Object} params.socket - Socket.io socket
+ * @param {Object} [params.image] - Image to attach to the message
+ * @param {Function} [params.callback] - Client callback
  */
 function sendChatMsg({ token, image, message, io, socket, callback = () => {} }) {
   authenticator.isUserAllowed({
@@ -233,8 +215,8 @@ function sendChatMsg({ token, image, message, io, socket, callback = () => {} })
         callback({ error });
 
         return;
-      } else if (!objectValidator.isValidData({ message, io }, { message: { text: true, roomName: true }, io: true })) {
-        callback({ error: new errorCreator.InvalidData({ expected: '{ user: { userName }, message: { text, roomName }, io }' }) });
+      } else if (!objectValidator.isValidData({ message, io }, { message: { text: true, roomId: true }, io: true })) {
+        callback({ error: new errorCreator.InvalidData({ expected: '{ user: { userId }, message: { text, roomId }, io }' }) });
 
         return;
       } else if (message.text.join('').length > appConfig.messageMaxLength) {
@@ -245,17 +227,23 @@ function sendChatMsg({ token, image, message, io, socket, callback = () => {} })
 
       const user = data.user;
 
-      const sendMessage = ({ newMessage }) => {
-        if (newMessage.userName) {
-          dbUser.getUserByAlias({
-            alias: newMessage.userName,
+      /**
+       * Send message
+       * @param {Object} params.newMessage - Message to send
+       */
+      function sendMessage({ newMessage }) {
+        if (newMessage.aliasId) {
+          redisAlias.hasAccessToAlias({
+            userId: user.userId,
+            teamId: user.teamId,
+            aliasId: newMessage.aliasId,
             callback: (aliasData) => {
               if (aliasData.error) {
                 callback({ error: aliasData.error });
 
                 return;
-              } else if (aliasData.data.user.userName !== user.userName) {
-                callback({ error: new errorCreator.NotAllowed({ name: 'alias does not match with user name' }) });
+              } else if (!aliasData.data.hasAccess) {
+                callback({ error: new errorCreator.NotAllowed({ name: `alias ${newMessage.aliasId}` }) });
 
                 return;
               }
@@ -273,31 +261,19 @@ function sendChatMsg({ token, image, message, io, socket, callback = () => {} })
           return;
         }
 
-        const modifiedMessage = newMessage;
-        modifiedMessage.userName = user.userName;
-
         sendAndStoreChatMsg({
           io,
           user,
           callback,
           socket,
-          message: modifiedMessage,
+          message: newMessage,
         });
-      };
+      }
 
       const newMessage = message;
       newMessage.text = textTools.cleanText(newMessage.text);
 
-      if (newMessage.roomName === 'team') {
-        newMessage.roomName = user.team + appConfig.teamAppend;
-      }
-
-      // TODO ?
-      if (!newMessage.userName || newMessage.userName === user.userName) {
-        newMessage.shortTeam = user.shortTeam;
-        newMessage.team = user.team;
-      }
-
+      // TODO Check if it still works
       if (image) {
         createImage({
           image,
@@ -314,9 +290,11 @@ function sendChatMsg({ token, image, message, io, socket, callback = () => {} })
             sendMessage({ newMessage });
           },
         });
-      } else {
-        sendMessage({ newMessage });
+
+        return;
       }
+
+      sendMessage({ newMessage });
     },
   });
 }
@@ -324,6 +302,7 @@ function sendChatMsg({ token, image, message, io, socket, callback = () => {} })
 /**
  * Sends a message to a whisper room (*user name*-whisper), which is followed by a single user, and stores it in history
  * Emits message
+ * @param {Object} params - Parameters
  * @param {Object} params.message Message to be sent
  * @param {Object} params.io Socket.io. Used by API, when no socket is available
  * @param {Object} [params.socket] Socket.io socket
@@ -332,15 +311,15 @@ function sendChatMsg({ token, image, message, io, socket, callback = () => {} })
 function sendWhisperMsg({ io, token, message, socket, callback = () => {} }) {
   authenticator.isUserAllowed({
     token,
-    matchNameTo: message.userName,
+    matchToId: message.username,
     commandName: dbConfig.apiCommands.SendWhisper.name,
     callback: ({ error }) => {
       if (error) {
         callback({ error });
 
         return;
-      } else if (!objectValidator.isValidData({ message, io }, { message: { text: true, roomName: true, userName: true }, io: true })) {
-        callback({ error: new errorCreator.InvalidData({ expected: '{ message: { text, roomName, userName }, io }' }) });
+      } else if (!objectValidator.isValidData({ message, io }, { message: { text: true, roomName: true, username: true }, io: true })) {
+        callback({ error: new errorCreator.InvalidData({ expected: '{ message: { text, roomName, username }, io }' }) });
 
         return;
       }
@@ -348,7 +327,7 @@ function sendWhisperMsg({ io, token, message, socket, callback = () => {} }) {
       const to = message.roomName;
 
       const newMessage = message;
-      newMessage.userName = newMessage.userName.toLowerCase();
+      newMessage.username = newMessage.username.toLowerCase();
       newMessage.text = textTools.cleanText(newMessage.text);
       newMessage.roomName += appConfig.whisperAppend;
       newMessage.extraClass = 'whisperMsg';
@@ -372,8 +351,8 @@ function sendWhisperMsg({ io, token, message, socket, callback = () => {} }) {
               }
 
               dbUser.addWhisperRoomToUser({
-                userName: aliasData.user.userName,
-                roomName: `${to}-whisper-${message.userName}`,
+                username: aliasData.user.username,
+                roomName: `${to}-whisper-${message.username}`,
                 callback: (whisperData) => {
                   if (whisperData.error) {
                     callback({ error: whisperData.error });
@@ -383,7 +362,7 @@ function sendWhisperMsg({ io, token, message, socket, callback = () => {} }) {
 
                   addMsgToHistory({
                     message: newMessage,
-                    roomName: newMessage.userName + appConfig.whisperAppend,
+                    roomName: newMessage.username + appConfig.whisperAppend,
                     callback: ({ error: sendError }) => {
                       if (sendError) {
                         callback({ error: sendError });
@@ -417,68 +396,8 @@ function sendWhisperMsg({ io, token, message, socket, callback = () => {} }) {
   });
 }
 
-/**
- * Sends a message with broadcastMsg class to all connected sockets
- * It is stored in a separate broadcast history
- * Emits message
- * @param {Object} params.message Message to be sent
- * @param {Object} [params.socket] Socket.io socket
- * @param {Object} params.io Socket.io. Used by API, when no socket is available
- * @param {Function} params.callback Client callback
- */
-function sendBroadcastMsg({ token, message, socket, callback, io }) {
-  authenticator.isUserAllowed({
-    token,
-    commandName: dbConfig.apiCommands.SendBroadcast.name,
-    callback: ({ error }) => {
-      if (error) {
-        callback({ error });
-
-        return;
-      } else if (!objectValidator.isValidData({ message, io }, { message: { text: true }, io: true })) {
-        callback({ error: new errorCreator.InvalidData({ expected: '{ message: { text }, io }' }) });
-
-        return;
-      } else if (message.text.join('').length > appConfig.broadcastMaxLength) {
-        callback({ error: new errorCreator.InvalidCharacters({ expected: `text length ${appConfig.broadcastMaxLength}` }) });
-
-        return;
-      }
-
-      const newMessage = message;
-      newMessage.extraClass = 'broadcastMsg';
-      newMessage.roomName = dbConfig.rooms.bcast.roomName;
-      newMessage.time = new Date();
-      newMessage.userName = 'SYSTEM';
-
-      addMsgToHistory({
-        roomName: newMessage.roomName,
-        message: newMessage,
-        callback: (historyData) => {
-          if (historyData.error) {
-            callback({ error: historyData.error });
-
-            return;
-          }
-
-          const data = { message: newMessage };
-
-          if (socket) {
-            socket.broadcast.to(newMessage.roomName).emit('bcastMsg', { data });
-          } else {
-            io.to(newMessage.roomName).emit('bcastMsg', { data });
-          }
-
-          callback({ data });
-        },
-      });
-    },
-  });
-}
+exports.sendMessage = sendMessage;
 
 exports.sendChatMsg = sendChatMsg;
-exports.sendWhisperMsg = sendWhisperMsg;
-exports.sendBroadcastMsg = sendBroadcastMsg;
 exports.sendMsg = sendMsg;
-exports.sendSelfMsg = sendSelfMsg;
 exports.filterHiddenRooms = filterHiddenRooms;

@@ -92,7 +92,7 @@ describe('Devices', () => {
           response.should.have.status(200);
           response.should.be.json;
           response.body.should.be.jsonSchema(deviceSchemas.device);
-          response.body.data.device.lastUser.should.equal(deviceData.adminUserToChangeDeviceAliasWith.userName);
+          response.body.data.device.lastUser.should.equal(deviceData.adminUserToChangeDeviceAliasWith.username);
 
           done();
         });

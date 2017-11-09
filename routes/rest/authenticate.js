@@ -38,13 +38,13 @@ function handle() {
    *
    * @apiParam {Object} data
    * @apiParam {Object} data.user User
-   * @apiParam {String} data.user.userName User name
+   * @apiParam {String} data.user.username User name
    * @apiParam {String} data.user.password Password
    * @apiParamExample {json} Request-Example:
    *  {
    *    "data": {
    *      "user": {
-   *        "userName": "rez",
+   *        "username": "rez",
    *        "password": "1234"
    *      }
    *    }
@@ -60,16 +60,16 @@ function handle() {
    *  }
    */
   router.post('/', (request, response) => {
-    if (!objectValidator.isValidData(request.body, { data: { user: { userName: true, password: true } } })) {
+    if (!objectValidator.isValidData(request.body, { data: { user: { username: true, password: true } } })) {
       restErrorChecker.checkAndSendError({ response, error: new errorCreator.InvalidData({ expected: '' }), sentData: request.body.data });
 
       return;
     }
 
-    const { userName, password } = request.body.data.user;
+    const { username, password } = request.body.data.user;
 
     authenticator.createToken({
-      userName,
+      username,
       password,
       callback: ({ error, data }) => {
         if (error) {

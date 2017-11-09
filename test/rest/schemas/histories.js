@@ -25,13 +25,13 @@ const messageBase = {
     'text',
     'time',
     'roomName',
-    'userName',
+    'username',
   ],
   properties: {
     text: { type: 'array', items: { type: 'string' } },
     time: { type: 'string' },
     roomName: { type: 'string' },
-    userName: { type: 'string' },
+    username: { type: 'string' },
   },
 };
 

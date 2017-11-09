@@ -125,14 +125,14 @@ function increaseWalletAmount({ owner, amount, token, callback }) {
 
 /**
  * Get wallets
- * @param {string} prams.userName Name of the user retrieving wallets
+ * @param {string} prams.username Name of the user retrieving wallets
  * @param {string} params.token jwt
  * @param {Function} params.callback Callback
  */
-function getWallets({ userName, token, callback }) {
+function getWallets({ username, token, callback }) {
   authenticator.isUserAllowed({
     token,
-    matchNameTo: userName,
+    matchToId: username,
     commandName: dbConfig.apiCommands.GetWallet.name,
     callback: ({ error, data }) => {
       if (error) {
@@ -166,7 +166,7 @@ function getWallets({ userName, token, callback }) {
 function getWallet({ owner, token, callback }) {
   authenticator.isUserAllowed({
     token,
-    matchNameTo: owner,
+    matchToId: owner,
     commandName: dbConfig.apiCommands.GetWallet.name,
     callback: ({ error, data }) => {
       if (error) {
@@ -175,7 +175,7 @@ function getWallet({ owner, token, callback }) {
         return;
       }
 
-      const walletOwner = owner || data.user.userName;
+      const walletOwner = owner || data.user.username;
 
       dbWallet.getWallet({
         owner: walletOwner,

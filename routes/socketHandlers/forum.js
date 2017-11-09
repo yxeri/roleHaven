@@ -23,7 +23,7 @@ const forumManager = require('../../managers/forums');
  * @param {Object} io Socket.io
  */
 function handle(socket, io) {
-  socket.on('createForumPost', ({ post, token }, callback = () => {}) => {
+  socket.on('createPost', ({ post, token }, callback = () => {}) => {
     forumManager.createPost({
       post,
       callback,

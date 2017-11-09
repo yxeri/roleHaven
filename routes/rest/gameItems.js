@@ -41,18 +41,18 @@ function handle() {
    *
    * @apiParam {Object} data
    * @apiParam {Object[]} data.gameUsers Game users to add
-   * @apiParam {string} data.gameUsers[].userName Name of the user
+   * @apiParam {string} data.gameUsers[].username Name of the user
    * @apiParam {string[]} data.gameUsers[].passwords Passwords that will be randomised on retrieval
    * @apiParam {number} data.gameUsers[].stationId ID of station that the user is connected to
    * @apiParamExample {json} Request-Example:
    *   {
    *     "data": {
    *      "gameUsers": [{
-   *        userName: 'createdgameuser',
+   *        username: 'createdgameuser',
    *        passwords: ['banan', 'apple', 'honey'],
    *        stationId: 1,
    *      }, {
-   *        userName: 'othergameuser',
+   *        username: 'othergameuser',
    *        passwords: ['pizza', 'hamburger', 'meatball'],
    *        stationId: 1,
    *      }]
@@ -65,11 +65,11 @@ function handle() {
    *   {
    *     "data": {
    *      "gameUsers": [{
-   *        userName: 'createdgameuser',
+   *        username: 'createdgameuser',
    *        passwords: ['banan', 'apple', 'honey'],
    *        stationId: 1,
    *      }, {
-   *        userName: 'othergameuser',
+   *        username: 'othergameuser',
    *        passwords: ['pizza', 'hamburger', 'meatball'],
    *        stationId: 1,
    *      }]
@@ -176,11 +176,11 @@ function handle() {
    *   {
    *     "data": {
    *      "gameUsers": [{
-   *        userName: 'createdgameuser',
+   *        username: 'createdgameuser',
    *        passwords: ['banan', 'apple', 'honey'],
    *        stationId: 1,
    *      }, {
-   *        userName: 'othergameuser',
+   *        username: 'othergameuser',
    *        passwords: ['pizza', 'hamburger', 'meatball'],
    *        stationId: 1,
    *      }]
