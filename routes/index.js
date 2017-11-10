@@ -91,6 +91,7 @@ function handle(io) {
         welcomeMessage: appConfig.welcomeMessage,
         requiresVerification: appConfig.userVerify,
         showDevInfo: appConfig.showDevInfo,
+        dayModification: appConfig.dayModification,
       },
     });
 

@@ -269,6 +269,11 @@ config.scheduleAppend = process.env.SCHEDULEAPPEND || config.scheduleAppend || '
 config.yearModification = process.env.YEARMODIFICATION || config.yearModification || 0;
 
 /**
+ * The number of days that will be subtraced/added to the current day
+ */
+config.dayModification = process.env.DAYMODIFICATION || config.dayModification || 0;
+
+/**
  * Amount of milliseconds between each increment/decrement of signal value (BBR game feature)
  * @type {number}
  */
