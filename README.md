@@ -51,6 +51,8 @@ The documentation for the REST API can be found at https://thethirdgift.com/role
 * Erik Jonsson
 * tz
 * Karl Dahlgren
+* [Berättelsefrämjandet](https://beratta.org)
+* [Krokodilhammarkompaniet](https://www.bbreloaded.se)
 
 ## Has been used at:
 
