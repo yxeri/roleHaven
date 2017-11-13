@@ -52,7 +52,10 @@ The documentation for the REST API can be found at https://thethirdgift.com/role
 * tz
 * Karl Dahlgren
 
+## Has been used at:
+
 * [Blodsband Reloaded](https://www.bbreloaded.se)
 * [Sommarland](http://beratta.org/sommarland/)
 * [Vinterland](http://beratta.org/vinterland/)
+* [Tales from the Sprawl](http://www.talesfromthesprawl.se)
 * [Ockulta Medborgarbyrån](http://www.ockultamedborgarbyran.com)
