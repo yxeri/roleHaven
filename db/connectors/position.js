@@ -41,6 +41,18 @@ const mapPositionSchema = new mongoose.Schema(dbConnector.createSchema({
 const MapPosition = mongoose.model('MapPosition', mapPositionSchema);
 
 /**
+ * Add custom id to the object
+ * @param {Object} position - Position object
+ * @return {Object} - Position object with id
+ */
+function addCustomId(position) {
+  const updatedPosition = position;
+  updatedPosition.positionId = position.objectId;
+
+  return updatedPosition;
+}
+
+/**
  * Update position
  * @private
  * @param {Object} params - Parameters
@@ -61,7 +73,7 @@ function updateObject({ positionId, update, callback }) {
         return;
       }
 
-      callback({ data: { position: data.object } });
+      callback({ data: { position: addCustomId(data.object) } });
     },
   });
 }
@@ -84,7 +96,11 @@ function getPositions({ query, callback }) {
         return;
       }
 
-      callback({ data: { positions: data.objects } });
+      callback({
+        data: {
+          positions: data.objects.map(position => addCustomId(position)),
+        },
+      });
     },
   });
 }
@@ -111,7 +127,7 @@ function getPosition({ query, callback }) {
         return;
       }
 
-      callback({ data: { position: data.object } });
+      callback({ data: { position: addCustomId(data.object) } });
     },
   });
 }
@@ -202,7 +218,7 @@ function createPosition({ position, callback }) {
           return;
         }
 
-        callback({ data: { position: data.savedObject } });
+        callback({ data: { position: addCustomId(data.savedObject) } });
       },
     });
   };
@@ -215,16 +231,40 @@ function createPosition({ position, callback }) {
 }
 
 /**
+ * Update position coordinates
+ * @param {Object} params - Parameters
+ * @param {string} params.positionId - ID of the position
+ * @param {Function} params.callback - Callback
+ * @param {Object} params.coordinates - GPS coordinates
+ * @param {number} params.coordinates.longitude - Longitude
+ * @param {number} params.coordinates.latitude - Latitude
+ * @param {number} params.coordinates.speed - Speed
+ * @param {number} params.coordinates.accuracy - Accuracy in meters
+ * @param {number} params.coordinates.heading - Heading (0 - 359)
+ */
+function updatePositionCoordinates({ positionId, coordinates, callback }) {
+  const update = { $set: {} };
+
+  if (coordinates.longitude) { update.$set.longitude = coordinates.longitude; }
+  if (coordinates.latitude) { update.$set.latitude = coordinates.latitude; }
+  if (coordinates.speed) { update.$set.speed = coordinates.speed; }
+  if (coordinates.accuracy) { update.$set.accuracy = coordinates.accuracy; }
+  if (coordinates.heading) { update.$set.heading = coordinates.heading; }
+
+  updateObject({
+    positionId,
+    update,
+    callback,
+  });
+}
+
+
+// TODO Position should be automatically created when a user is created. connectedToUser should not be used to identify a user's position
+/**
  * Update position
  * @param {Object} params - Parameters
  * @param {Object} params.position - Position object
  * @param {string} params.position.positionName - Name of the position
- * @param {Object} params.position.coordinates - GPS coordinates
- * @param {number} params.position.coordinates.longitude - Longitude
- * @param {number} params.position.coordinates.latitude - Latitude
- * @param {number} params.position.coordinates.speed - Speed
- * @param {number} params.position.coordinates.accuracy - Accuracy in meters
- * @param {number} params.position.coordinates.heading - Heading (0 - 359)
  * @param {string} [params.position.ownerAliasId] - ID of the user's alias
  * @param {string} params.position.positionType - Type of position
  * @param {string} [params.position.deviceId] - Device ID
@@ -237,7 +277,7 @@ function createPosition({ position, callback }) {
  * @param {Function} params.callback - Callback
  */
 function updatePosition({
-  objectId,
+  positionId,
   position,
   options,
   callback,
@@ -245,7 +285,6 @@ function updatePosition({
   const {
     deviceId,
     positionName,
-    coordinates,
     ownerAliasId,
     isStatic,
     positionType,
@@ -262,7 +301,7 @@ function updatePosition({
 
   const updateCallback = () => {
     updateObject({
-      objectId,
+      positionId,
       update,
       callback: ({ error, data }) => {
         if (error) {
@@ -271,7 +310,7 @@ function updatePosition({
           return;
         }
 
-        callback({ position: data.position });
+        callback({ position: addCustomId(data.position) });
       },
     });
   };
@@ -300,15 +339,6 @@ function updatePosition({
   if (positionType) { update.$set.positionType = positionType; }
   if (deviceId) { update.$set.deviceId = deviceId; }
   if (connectedToUser) { update.$set.connectedToUser = connectedToUser; }
-
-  if (coordinates) {
-    if (coordinates.longitude) { update.$set.longitude = coordinates.longitude; }
-    if (coordinates.latitude) { update.$set.latitude = coordinates.latitude; }
-    if (coordinates.speed) { update.$set.speed = coordinates.speed; }
-    if (coordinates.accuracy) { update.$set.accuracy = coordinates.accuracy; }
-    if (coordinates.heading) { update.$set.heading = coordinates.heading; }
-    if (coordinates.lastUpdated) { update.$set.lastUpdated = coordinates.lastUpdated; }
-  }
 
   if (typeof isPublic !== 'undefined') { update.$set.isPublic = isPublic; }
   if (typeof isStatic !== 'undefined') { update.$set.isStatic = isStatic; }
@@ -377,13 +407,13 @@ function getPositionsByUser({ userId, callback }) {
 /**
  * Remove position
  * @param {Object} params - Parameters
- * @param {string} params.objectId - ID of the position
+ * @param {string} params.positionId - ID of the position
  * @param {Function} params.callback - Callback
  */
-function removePosition({ objectId, callback }) {
+function removePosition({ positionId, callback }) {
   dbConnector.removeObject({
     callback,
-    query: { _id: objectId },
+    query: { _id: positionId },
     object: MapPosition,
   });
 }
@@ -418,13 +448,13 @@ function getPositionsByType({ positionType, callback }) {
 /**
  * Get position by Id
  * @param {Object} params - Parameters
- * @param {string} params.objectId - ID of the position
+ * @param {string} params.positionId - ID of the position
  * @param {Function} params.callback - Callback
  */
-function getPositionById({ objectId, callback }) {
+function getPositionById({ positionId, callback }) {
   getPosition({
     callback,
-    query: { _id: objectId },
+    query: { _id: positionId },
   });
 }
 
@@ -444,73 +474,78 @@ function getUserPosition({ userId, callback }) {
 /**
  * Add access to position
  * @param {Object} params - Parameters
- * @param {string} params.objectId - ID of the team
+ * @param {string} params.positionId - ID of the team
  * @param {string[]} [params.userIds] - ID of the users
  * @param {string[]} [params.teamIds] - ID of the teams
- * @param {string[]} [params.blockedIds] - Blocked ids
+ * @param {string[]} [params.bannedIds] - Blocked ids
  * @param {boolean} [params.isAdmin] - Should the users be added to admins?
  * @param {Function} params.callback - Callback
  */
 function addAccess({
-  objectId,
+  positionId,
   userIds,
   teamIds,
-  blockedIds,
+  bannedIds,
   isAdmin,
   callback,
 }) {
-  if (!userIds && !teamIds && !blockedIds) {
-    callback({ error: new errorCreator.InvalidData({ expected: 'teamIds || userIds || blockedIds' }) });
-
-    return;
-  }
-
   dbConnector.addObjectAccess({
-    objectId,
     userIds,
     teamIds,
-    blockedIds,
+    bannedIds,
     isAdmin,
-    callback,
+    objectId: positionId,
     object: MapPosition,
+    callback: ({ error, data }) => {
+      if (error) {
+        callback({ error });
+
+        return;
+      }
+
+      callback({ position: addCustomId(data.object) });
+    },
   });
 }
 
 /**
  * Remove access to position
  * @param {Object} params - Parameters
- * @param {string} params.objectId - ID of the team
+ * @param {string} params.positionId - ID of the team
  * @param {string[]} params.teamIds - ID of the teams
  * @param {string[]} [params.userIds] - ID of the user
- * @param {string[]} [params.blockedIds] - Blocked ids
+ * @param {string[]} [params.bannedIds] - Blocked ids
  * @param {boolean} [params.isAdmin] - Should the teams and/or users be removed from admins?
  * @param {Function} params.callback - Callback
  */
 function removeAccess({
-  objectId,
+  positionId,
   userIds,
   teamIds,
-  blockedIds,
+  bannedIds,
   isAdmin,
   callback,
 }) {
-  if (!userIds && !teamIds && !blockedIds) {
-    callback({ error: new errorCreator.InvalidData({ expected: 'teamIds || userIds || blockedIds' }) });
-
-    return;
-  }
-
   dbConnector.removeObjectAccess({
-    objectId,
     userIds,
     teamIds,
-    blockedIds,
-    callback,
+    bannedIds,
     isAdmin,
+    objectId: positionId,
     object: MapPosition,
+    callback: ({ error, data }) => {
+      if (error) {
+        callback({ error });
+
+        return;
+      }
+
+      callback({ position: addCustomId(data.object) });
+    },
   });
 }
 
+exports.updatePositionCoordinates = updatePositionCoordinates;
 exports.removePosition = removePosition;
 exports.removePositionsByType = removePositionsByType;
 exports.createPosition = createPosition;

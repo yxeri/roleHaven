@@ -29,6 +29,18 @@ const lanternRoundSchema = new mongoose.Schema(dbConnector.createSchema({
 const LanternRound = mongoose.model('LanternRound', lanternRoundSchema);
 
 /**
+ * Add custom id to the object
+ * @param {Object} round - Lantern round object
+ * @return {Object} - Lantern round object with id
+ */
+function addCustomId(round) {
+  const updatedRound = round;
+  updatedRound.roundId = round.objectId;
+
+  return updatedRound;
+}
+
+/**
  * Update round fields
  * @private
  * @param {Object} params - Parameters
@@ -48,7 +60,7 @@ function updateObject({ update, callback }) {
         return;
       }
 
-      callback({ round: data.object });
+      callback({ data: { round: addCustomId(data.object) } });
     },
   });
 }
@@ -74,7 +86,7 @@ function getRound({ callback }) {
         return;
       }
 
-      callback({ round: data.object });
+      callback({ data: { round: addCustomId(data.object) } });
     },
   });
 }
@@ -168,7 +180,7 @@ function createFirstRound(callback) {
               return;
             }
 
-            callback({ round: roundData.data.savedObject });
+            callback({ data: { round: addCustomId(roundData.data.savedObject) } });
           },
         });
 

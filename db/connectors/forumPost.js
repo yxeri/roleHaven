@@ -29,6 +29,18 @@ const forumPostSchema = new mongoose.Schema(dbConnector.createSchema({
 const ForumPost = mongoose.model('ForumPost', forumPostSchema);
 
 /**
+ * Add custom id to the object
+ * @param {Object} post - Forum post object
+ * @return {Object} - Forum post object with id
+ */
+function addCustomId(post) {
+  const updatedPost = post;
+  updatedPost.postId = post.objectId;
+
+  return updatedPost;
+}
+
+/**
  * Get forum posts
  * @private
  * @param {Object} params - Parameters
@@ -58,7 +70,11 @@ function getPosts({
         return;
       }
 
-      callback({ posts: data.objects });
+      callback({
+        data: {
+          posts: data.objects.map(post => addCustomId(post)),
+        },
+      });
     },
   });
 }
@@ -97,7 +113,7 @@ function getPost({
         return;
       }
 
-      callback({ data: { post: data.object } });
+      callback({ data: { post: addCustomId(data.object) } });
     },
   });
 }
@@ -106,19 +122,19 @@ function getPost({
  * Update forum post
  * @private
  * @param {Object} params - Parameters
- * @param {string} params.objectId - ID of forum post to update
+ * @param {string} params.postId - ID of forum post to update
  * @param {Object} params.update - Update
  * @param {Function} params.callback Callback
  */
 function updateObject({
-  objectId,
+  postId,
   update,
   callback,
 }) {
   dbConnector.updateObject({
     update,
     object: ForumPost,
-    query: { _id: objectId },
+    query: { _id: postId },
     errorNameContent: 'updateForumPost',
     callback: ({ error, data }) => {
       if (error) {
@@ -127,7 +143,7 @@ function updateObject({
         return;
       }
 
-      callback({ data: { post: data.object } });
+      callback({ data: { post: addCustomId(data.object) } });
     },
   });
 }
@@ -148,7 +164,7 @@ function createPost({ post, callback }) {
 
   const savePost = (saveForumPostCallback) => {
     dbForumThread.getThreadById({
-      objectId: forumPostToSave.threadId,
+      threadId: forumPostToSave.threadId,
       callback: (threadData) => {
         if (threadData.error) {
           callback({ error: threadData.error });
@@ -172,7 +188,7 @@ function createPost({ post, callback }) {
               return;
             }
 
-            saveForumPostCallback({ data: { post: saveData.savedObject } });
+            callback({ data: { post: addCustomId(saveData.data.savedObject) } });
           },
         });
       },
@@ -212,13 +228,13 @@ function createPost({ post, callback }) {
 /**
  * Get forum post
  * @param {Object} params - Parameters
- * @param {string} params.objectId - ID of the forum post
+ * @param {string} params.postId - ID of the forum post
  * @param {Function} params.callback - Callback
  */
-function getPostById({ objectId, callback }) {
+function getPostById({ postId, callback }) {
   getPost({
     callback,
-    query: { _id: objectId },
+    query: { _id: postId },
   });
 }
 
@@ -249,16 +265,29 @@ function getPostsByThreads({ threadIds, callback }) {
 }
 
 /**
+ * Get forum posts by thread id
+ * @param {Object} params - Parameters
+ * @param {string} params.threadId - ID of the thread
+ * @param {Function} params.callback - Callback
+ */
+function getPostsByThread({ threadId, callback }) {
+  getPosts({
+    callback,
+    query: { threadId },
+  });
+}
+
+/**
  * Update existing forum post
  * @param {Object} params - Parameters
- * @param {string} params.objectId - ID of the thread
+ * @param {string} params.postId - ID of the thread
  * @param {Object} params.post - Forum post updates
  * @param {Object} [params.options] - Options
  * @param {Object} params.options.resetOwnerAliasId - Should ownerAliasId be removed?
  * @param {Function} params.callback - Callback
  */
 function updatePost({
-  objectId,
+  postId,
   post,
   callback,
   options = {},
@@ -275,23 +304,36 @@ function updatePost({
 
   updateObject({
     update,
-    objectId,
+    postId,
     callback,
   });
 }
 
 /**
  * Remove forum posts.
- * Setting fullRemoval will also remove all threads that have the post as their thread starter.
  * @param {Object} params - Parameters
  * @param {string[]} params.postIds - IDs of forums posts to remove
  * @param {Function} params.callback - Callback
  */
-function removePostsById({ postIds, callback }) {
+function removePostsByIds({ postIds, callback }) {
   dbConnector.removeObjects({
     callback,
     object: ForumPost,
     query: { _id: { $in: postIds } },
+  });
+}
+
+/**
+ * Remove forum post.
+ * @param {Object} params - Parameters
+ * @param {string[]} params.postId - ID of forum post to remove
+ * @param {Function} params.callback - Callback
+ */
+function removePostById({ postId, callback }) {
+  dbConnector.removeObject({
+    callback,
+    object: ForumPost,
+    query: { _id: postId },
   });
 }
 
@@ -310,81 +352,114 @@ function removePostsByThreadIds({ threadIds, callback }) {
 }
 
 /**
+ * Remove forum posts by thread id.
+ * @param {Object} params - Parameters
+ * @param {string} params.threadId - ID of forum thread
+ * @param {Function} params.callback - Callback
+ */
+function removePostsByThreadId({ threadId, callback }) {
+  dbConnector.removeObjects({
+    callback,
+    object: ForumPost,
+    query: { threadId },
+  });
+}
+
+/**
  * Add access to post
  * @param {Object} params - Parameters
- * @param {string} params.objectId - ID of the team
+ * @param {string} params.postId - ID of the team
  * @param {string[]} [params.userIds] - ID of the users
  * @param {string[]} [params.teamIds] - ID of the teams
- * @param {string[]} [params.blockedIds] - Blocked ids
+ * @param {string[]} [params.bannedIds] - Blocked ids
  * @param {boolean} [params.isAdmin] - Should the users be added to admins?
  * @param {Function} params.callback - Callback
  */
 function addAccess({
-  objectId,
+  postId,
   userIds,
   teamIds,
-  blockedIds,
+  bannedIds,
   isAdmin,
   callback,
 }) {
-  if (!userIds && !teamIds && !blockedIds) {
-    callback({ error: new errorCreator.InvalidData({ expected: 'teamIds || userIds || blockedIds' }) });
+  if (!userIds && !teamIds && !bannedIds) {
+    callback({ error: new errorCreator.InvalidData({ expected: 'teamIds || userIds || bannedIds' }) });
 
     return;
   }
 
   dbConnector.addObjectAccess({
-    objectId,
     userIds,
     teamIds,
-    blockedIds,
+    bannedIds,
     isAdmin,
-    callback,
+    objectId: postId,
     object: ForumPost,
+    callback: ({ error, data }) => {
+      if (error) {
+        callback({ error });
+
+        return;
+      }
+
+      callback({ data: { post: addCustomId(data.object) } });
+    },
   });
 }
 
 /**
  * Remove access to post
  * @param {Object} params - Parameters
- * @param {string} params.objectId - ID of the team
+ * @param {string} params.postId - ID of the team
  * @param {string[]} params.teamIds - ID of the teams
  * @param {string[]} [params.userIds] - ID of the user
- * @param {string[]} [params.blockedIds] - Blocked ids
+ * @param {string[]} [params.bannedIds] - Blocked ids
  * @param {boolean} [params.isAdmin] - Should the teams and/or users be removed from admins?
  * @param {Function} params.callback - Callback
  */
 function removeAccess({
-  objectId,
+  postId,
   userIds,
   teamIds,
-  blockedIds,
+  bannedIds,
   isAdmin,
   callback,
 }) {
-  if (!userIds && !teamIds && !blockedIds) {
-    callback({ error: new errorCreator.InvalidData({ expected: 'teamIds || userIds || blockedIds' }) });
+  if (!userIds && !teamIds && !bannedIds) {
+    callback({ error: new errorCreator.InvalidData({ expected: 'teamIds || userIds || bannedIds' }) });
 
     return;
   }
 
   dbConnector.removeObjectAccess({
-    objectId,
     userIds,
     teamIds,
-    blockedIds,
-    callback,
+    bannedIds,
     isAdmin,
+    objectId: postId,
     object: ForumPost,
+    callback: ({ error, data }) => {
+      if (error) {
+        callback({ error });
+
+        return;
+      }
+
+      callback({ data: { post: addCustomId(data.object) } });
+    },
   });
 }
 
 exports.getPostsByThreads = getPostsByThreads;
 exports.createPost = createPost;
 exports.getPostById = getPostById;
-exports.removePostsById = removePostsById;
+exports.removePostsByIds = removePostsByIds;
 exports.getPostsById = getPostsById;
 exports.updatePost = updatePost;
 exports.removePostsByThreadIds = removePostsByThreadIds;
 exports.addAccess = addAccess;
 exports.removeAccess = removeAccess;
+exports.removePostById = removePostById;
+exports.getPostsByThread = getPostsByThread;
+exports.removePostsByThreadId = removePostsByThreadId;

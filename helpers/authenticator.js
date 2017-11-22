@@ -55,7 +55,12 @@ function createToken({ userId, password, callback }) {
  * @param {string} [params.matchToId] - Checks if sent user ID is the same as authenticated. Used for current user get, as they need less permission than get from other users
  * @param {Function} params.callback - callback
  */
-function isUserAllowed({ commandName, token, matchToId, callback }) {
+function isUserAllowed({
+  commandName,
+  token,
+  matchToId,
+  callback,
+}) {
   const commandUsed = dbConfig.apiCommands[commandName];
   const anonUser = dbConfig.anonymousUser;
 
@@ -95,7 +100,7 @@ function isUserAllowed({ commandName, token, matchToId, callback }) {
           return;
         }
 
-        const user = data.user;
+        const { user } = data;
         const commandAccessLevel = jwtData.userId === user.userId ? commandUsed.selfAccessLevel : commandUsed.accessLevel;
 
         if (commandAccessLevel > user.accessLevel) {
@@ -110,6 +115,73 @@ function isUserAllowed({ commandName, token, matchToId, callback }) {
   });
 }
 
+function addAccess({
+  callback,
+  objectId,
+  socket,
+  io,
+  dataToSend,
+  emitType,
+  userIds = [],
+  teamIds = [],
+  teamAdminIds = [],
+  userAdminIds = [],
+}) {
+  dbUser.getAllSocketIds({
+    callback: (socketData) => {
+      if (socketData.error) {
+        callback({ error: socketData.error });
+
+        return;
+      }
+
+      const foundSocketIds = socketData.data.userSocketIds;
+
+      userIds.forEach((id) => {
+        const userSocket = foundSocketIds[id];
+
+        if (userSocket) {
+          userSocket.join(id);
+        }
+
+        if (socket) {
+          socket.to(id).emit(emitType, dataToSend);
+        } else {
+          io.to(id).emit(emitType, dataToSend);
+        }
+      });
+
+      teamIds.forEach((id) => {
+        io.sockets.adapter.rooms(id).forEach((memberSocket) => {
+          memberSocket.join(id);
+        });
+      });
+
+      teamAdminIds.concat(userAdminIds).forEach((id) => {
+        const adminData = dataToSend;
+        adminData.isAdmin = true;
+
+        if (socket) {
+          socket.to(id).emit(emitType, adminData);
+        } else {
+          io.to(id).emit(emitType, adminData);
+        }
+      });
+    },
+  });
+}
+
+
+function removeAccess({
+  objectId,
+  userIds = [],
+  teamIds = [],
+  teamAdminIds = [],
+  userAdminIds = [],
+}) {
+
+}
+
 /**
  * Checks if user has access, is admin or can see the object
  * @param {Object} params - Parameter
@@ -120,23 +192,35 @@ function isUserAllowed({ commandName, token, matchToId, callback }) {
  * @param {Object} params.toAuth - Object to auth
  * @param {string[]} params.toAuth.teamIds - Teams to auth
  * @param {string} params.toAuth.userId - User to auth
+ * @param {boolean} params.toAuth.hasFullAccess - Does the user have access to all objects?
  * @param {boolean} [params.shouldBeAdmin] - Should it check if the user or team are admins?
  * @returns {boolean} - Does the user have access to the object?
  */
-function hasAccessTo({ objectToAccess, toAuth, shouldBeAdmin = false }) {
+function hasAccessTo({
+  objectToAccess,
+  toAuth,
+  shouldBeAdmin = false,
+}) {
   const {
     teamIds,
     userIds,
     ownerId,
-    adminIds,
+    userAdminIds,
+    teamAdminIds,
+    isPublic,
   } = objectToAccess;
   const {
+    hasFullAccess,
     teamIds: authTeamIds,
     userId: authUserId,
   } = toAuth;
 
+  if (hasFullAccess) {
+    return true;
+  }
+
   if (shouldBeAdmin) {
-    const admins = adminIds.concat([ownerId]);
+    const admins = [ownerId].concat(teamAdminIds, userAdminIds);
 
     return (admins.includes(authUserId) || admins.find(adminId => authTeamIds.includes(adminId)));
   }
@@ -144,7 +228,7 @@ function hasAccessTo({ objectToAccess, toAuth, shouldBeAdmin = false }) {
   const userHasAccess = userIds && userIds.concat([ownerId]).includes(authUserId);
   const teamHasAccess = teamIds && teamIds.find(teamId => authTeamIds.includes(teamId));
 
-  return userHasAccess || teamHasAccess;
+  return isPublic || userHasAccess || teamHasAccess;
 }
 
 exports.isUserAllowed = isUserAllowed;

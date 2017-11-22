@@ -16,15 +16,17 @@
 
 'use strict';
 
-const dbLanternHack = require('../db/connectors/lanternHack');
+const dbFakePassword = require('../db/connectors/fakePassword');
+const dbGameUser = require('../db/connectors/lanternGameUser');
 const authenticator = require('../helpers/authenticator');
 const dbConfig = require('../config/defaults/config').databasePopulation;
 
 /**
- * Create game users
- * @param {Object[]} params.gameUsers Game users to add
- * @param {string} params.token jwt
- * @param {Function} params.callback Callback
+ * Create game users.
+ * @param {Object} params - Parameters.
+ * @param {Object[]} params.gameUsers - Game users to add.
+ * @param {string} params.token - jwt.
+ * @param {Function} params.callback - Callback.
  */
 function createGameUsers({ gameUsers, token, callback }) {
   authenticator.isUserAllowed({
@@ -37,17 +39,20 @@ function createGameUsers({ gameUsers, token, callback }) {
         return;
       }
 
-      dbLanternHack.createGameUsers({ gameUsers });
-      callback({ data: { message: 'Action done' } });
+      dbGameUser.createGameUsers({
+        gameUsers,
+        callback,
+      });
     },
   });
 }
 
 /**
- * Create fake passwords
- * @param {string[]} params.passwords Passwords to create
- * @param {string} params.token Jwt
- * @param {Function} params.callback Callback
+ * Create fake passwords.
+ * @param {Object} params - Parameters.
+ * @param {string[]} params.passwords - Passwords to create.
+ * @param {string} params.token - Jwt.
+ * @param {Function} params.callback - Callback.
  */
 function createFakePasswords({ passwords, token, callback }) {
   authenticator.isUserAllowed({
@@ -60,32 +65,24 @@ function createFakePasswords({ passwords, token, callback }) {
         return;
       }
 
-      dbLanternHack.addFakePasswords({
+      dbFakePassword.addFakePasswords({
         passwords,
-        callback: ({ error: passwordError, data: passwordData }) => {
-          if (passwordError) {
-            callback({ error: passwordError });
-
-            return;
-          }
-
-          callback({ data: passwordData });
-        },
+        callback,
       });
     },
   });
 }
 
 /**
- * Get game users by station id
- * @param {number} params.stationId Station id
- * @param {string} params.token jwt
- * @param {Function} params.callback Callback
+ * Get game users by station id.
+ * @param {Object} params - Parameters.
+ * @param {string} params.token - jwt.
+ * @param {Function} params.callback - Callback.
  */
-function getGameUsers({ stationId, token, callback }) {
+function getGameUsers({ token, callback }) {
   authenticator.isUserAllowed({
     token,
-    commandName: dbConfig.apiCommands.GetGameItems.name,
+    commandName: dbConfig.apiCommands.GetAll.name,
     callback: ({ error }) => {
       if (error) {
         callback({ error });
@@ -93,31 +90,21 @@ function getGameUsers({ stationId, token, callback }) {
         return;
       }
 
-      dbLanternHack.getGameUsers({
-        stationId,
-        callback: ({ error: usersError, data: usersData }) => {
-          if (usersError) {
-            callback({ error: usersError });
-
-            return;
-          }
-
-          callback({ data: usersData });
-        },
-      });
+      dbGameUser.getGameUsers({ callback });
     },
   });
 }
 
 /**
- * Get fake passwords
- * @param {string} params.token jwt
- * @param {Function} params.callback Callback
+ * Get fake passwords.
+ * @param {Object} params - Parameters.
+ * @param {string} params.token - jwt.
+ * @param {Function} params.callback - Callback.
  */
 function getFakePasswords({ token, callback }) {
   authenticator.isUserAllowed({
     token,
-    commandName: dbConfig.apiCommands.GetGameItems.name,
+    commandName: dbConfig.apiCommands.GetAll.name,
     callback: ({ error }) => {
       if (error) {
         callback({ error });
@@ -125,16 +112,32 @@ function getFakePasswords({ token, callback }) {
         return;
       }
 
-      dbLanternHack.getAllFakePasswords({
-        callback: ({ error: passwordError, data: passwordData }) => {
-          if (passwordError) {
-            callback({ error: passwordError });
+      dbFakePassword.getAllFakePasswords({ callback });
+    },
+  });
+}
 
-            return;
-          }
+/**
+ * Remove fake password
+ * @param {Object} params - Parameters
+ * @param {string} params.password - Password value
+ * @param {Object} params.token - jwt
+ * @param {Function} params.callback - Callback
+ */
+function removeFakePassword({ password, token, callback }) {
+  authenticator.isUserAllowed({
+    token,
+    commandName: dbConfig.apiCommands.RemoveGameItem.name,
+    callback: ({ error }) => {
+      if (error) {
+        callback({ error });
 
-          callback({ data: passwordData });
-        },
+        return;
+      }
+
+      dbFakePassword.removeFakePassword({
+        password,
+        callback,
       });
     },
   });
@@ -142,5 +145,6 @@ function getFakePasswords({ token, callback }) {
 
 exports.createGameUsers = createGameUsers;
 exports.createFakePasswords = createFakePasswords;
+exports.removeFakePassword = removeFakePassword;
 exports.getGameUsers = getGameUsers;
 exports.getFakePasswords = getFakePasswords;

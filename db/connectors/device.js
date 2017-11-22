@@ -23,6 +23,7 @@ const dbConnector = require('../databaseConnector');
 
 const deviceSchema = new mongoose.Schema(dbConnector.createSchema({
   deviceName: { type: String, unique: true },
+
   socketId: String,
   lastUserId: String,
   deviceType: { type: String, default: dbConfig.DeviceTypes.USERDEVICE },
@@ -31,17 +32,29 @@ const deviceSchema = new mongoose.Schema(dbConnector.createSchema({
 const Device = mongoose.model('Device', deviceSchema);
 
 /**
+ * Add custom id to the object
+ * @param {Object} device - Alias object
+ * @return {Object} - Device object with id
+ */
+function addCustomId(device) {
+  const updatedDevice = device;
+  updatedDevice.deviceId = device.objectId;
+
+  return updatedDevice;
+}
+
+/**
  * Update device fields
  * @param {Object} params - Parameters
- * @param {string} params.objectId - ID of the device to update
+ * @param {string} params.deviceId - ID of the device to update
  * @param {Object} params.update - Update
  * @param {Function} params.callback - Callback
  */
-function updateObject({ objectId, update, callback }) {
+function updateObject({ deviceId, update, callback }) {
   dbConnector.updateObject({
     update,
     object: Device,
-    query: { _id: objectId },
+    query: { _id: deviceId },
     errorNameContent: 'updateDeviceObject',
     callback: ({ error, data }) => {
       if (error) {
@@ -50,7 +63,7 @@ function updateObject({ objectId, update, callback }) {
         return;
       }
 
-      callback({ data: { device: data.object } });
+      callback({ data: { device: addCustomId(data.object) } });
     },
   });
 }
@@ -73,7 +86,11 @@ function getDevices({ query, callback }) {
         return;
       }
 
-      callback({ data: { devices: data.objects } });
+      callback({
+        data: {
+          devices: data.objects.map(device => addCustomId(device)),
+        },
+      });
     },
   });
 }
@@ -100,7 +117,7 @@ function getDevice({ query, callback }) {
         return;
       }
 
-      callback({ data: { device: data.object } });
+      callback({ data: { device: addCustomId(data.object) } });
     },
   });
 }
@@ -149,7 +166,7 @@ function createDevice({ device, callback }) {
             return;
           }
 
-          callback({ data: { device: data.savedObject } });
+          callback({ data: { device: addCustomId(data.savedObject) } });
         },
       });
     },
@@ -157,17 +174,21 @@ function createDevice({ device, callback }) {
 }
 
 /**
- * Update device properties. Creates a new device if one doesn't exist with sent objectId
+ * Update device properties. Creates a new device if one doesn't exist with sent deviceId
  * @param {Object} params - Parameters
  * @param {Object} params.device - Properties to update in device
- * @param {string} params.device.objectId - Device ID
+ * @param {string} params.device.deviceId - Device ID
  * @param {string} [params.device.socketId] - Socket.IO socket ID
  * @param {Object} [params.options] - Options
  * @param {Function} params.callback - Callback
  */
-function updateDevice({ device, options, callback }) {
+function updateDevice({
+  deviceId,
+  device,
+  callback,
+  options = {},
+}) {
   const {
-    objectId,
     socketId,
     deviceName,
     deviceType,
@@ -213,7 +234,7 @@ function updateDevice({ device, options, callback }) {
         }
 
         updateObject({
-          objectId,
+          deviceId,
           update,
           callback,
         });
@@ -224,7 +245,7 @@ function updateDevice({ device, options, callback }) {
   }
 
   updateObject({
-    objectId,
+    deviceId,
     update,
     callback,
   });
@@ -235,67 +256,71 @@ function updateDevice({ device, options, callback }) {
  * @param {Object} params - Parameters
  * @param {string[]} [params.userIds] - ID of the users to add
  * @param {string[]} [params.teamIds] - ID of the teams to add
- * @param {string[]} [params.blockedIds] - ID of the blocked Ids to add
+ * @param {string[]} [params.bannedIds] - ID of the blocked Ids to add
  * @param {boolean} [params.isAdmin] - Should the teams and/or users be added as admins?
  * @param {Function} params.callback - Callback
  */
 function addAccess({
-  objectId,
+  deviceId,
   userIds,
   teamIds,
-  blockedIds,
+  bannedIds,
   isAdmin,
   callback,
 }) {
-  if (!userIds && !teamIds && !blockedIds) {
-    callback({ error: new errorCreator.InvalidData({ expected: 'teamIds || userIds || blockedIds' }) });
-
-    return;
-  }
-
   dbConnector.addObjectAccess({
-    objectId,
     userIds,
     teamIds,
-    blockedIds,
+    bannedIds,
     isAdmin,
-    callback,
+    objectId: deviceId,
     object: Device,
+    callback: ({ error, data }) => {
+      if (error) {
+        callback({ error });
+
+        return;
+      }
+
+      callback({ data: { device: addCustomId(data.object) } });
+    },
   });
 }
 
 /**
  * Remove access for teams andusers or unban Ids
  * @param {Object} params - Parameters
- * @param {string} params.objectId - ID of the device to update
+ * @param {string} params.deviceId - ID of the device to update
  * @param {string[]} [params.userIds] - ID of the users to remove
  * @param {string[]} [params.teamIds] - ID of the teams to remove
- * @param {string[]} [params.blockedIds] - ID of the blocked Ids to remove
+ * @param {string[]} [params.bannedIds] - ID of the blocked Ids to remove
  * @param {boolean} [params.isAdmin] - Should the teams and/or users be removed from admins?
  * @param {Function} params.callback - Callback
  */
 function removeAccess({
-  objectId,
+  deviceId,
   userIds,
   teamIds,
-  blockedIds,
+  bannedIds,
   isAdmin,
   callback,
 }) {
-  if (!userIds && !teamIds) {
-    callback({ error: new errorCreator.InvalidData({ expected: 'teamIds || userIds || blockedIds' }) });
-
-    return;
-  }
-
   dbConnector.removeObjectAccess({
     userIds,
     teamIds,
-    blockedIds,
-    objectId,
-    callback,
+    bannedIds,
     isAdmin,
+    objectId: deviceId,
     object: Device,
+    callback: ({ error, data }) => {
+      if (error) {
+        callback({ error });
+
+        return;
+      }
+
+      callback({ data: { device: addCustomId(data.object) } });
+    },
   });
 }
 
@@ -322,7 +347,7 @@ function getDevicesByTeams({ teamIds, callback }) {
 }
 
 /**
- * Get devices that the user has access to
+ * Get devices by user
  * @param {Object} params - Parameters
  * @param {Object} params.userId - ID of the user retrieving the devices
  * @param {Function} params.callback - Callback
@@ -357,13 +382,27 @@ function getDevicesByType({ deviceType, callback }) {
 /**
  * Get device by id
  * @param {Object} params - Parameters
- * @param {string} params.objectId - ID of the device
+ * @param {string} params.deviceId - ID of the device
  * @param {Function} params.callback - Callback
  */
-function getDeviceById({ objectId, callback }) {
+function getDeviceById({ deviceId, callback }) {
   getDevice({
     callback,
-    query: { _id: objectId },
+    query: { _id: deviceId },
+  });
+}
+
+/**
+ * Remove device
+ * @param {Object} params - Parameters
+ * @param {string} params.deviceId - ID of the device
+ * @param {Function} params.callback - Callback
+ */
+function removeDevice({ deviceId, callback }) {
+  dbConnector.removeObject({
+    callback,
+    object: Device,
+    query: { _id: deviceId },
   });
 }
 
@@ -376,3 +415,4 @@ exports.getDevicesByUser = getDevicesByUser;
 exports.getDevicesByType = getDevicesByType;
 exports.getDevicesByTeams = getDevicesByTeams;
 exports.getDeviceById = getDeviceById;
+exports.removeDevice = removeDevice;

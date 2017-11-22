@@ -30,16 +30,28 @@ const teamSchema = new mongoose.Schema(dbConnector.createSchema({
 const Team = mongoose.model('Team', teamSchema);
 
 /**
+ * Add custom id to the object
+ * @param {Object} team - Team object
+ * @return {Object} - Team object with id
+ */
+function addCustomId(team) {
+  const updatedTeam = team;
+  updatedTeam.teamId = team.objectId;
+
+  return updatedTeam;
+}
+
+/**
  * Update team
  * @private
  * @param {Object} params - Parameters
- * @param {Object} params.objectId - ID of the team
+ * @param {Object} params.teamId - ID of the team
  * @param {Function} params.callback Callback
  */
-function updateObject({ objectId, update, callback }) {
+function updateObject({ teamId, update, callback }) {
   dbConnector.updateObject({
     update,
-    query: { _id: objectId },
+    query: { _id: teamId },
     object: Team,
     errorNameContent: 'updateTeam',
     callback: ({ error, data }) => {
@@ -49,7 +61,7 @@ function updateObject({ objectId, update, callback }) {
         return;
       }
 
-      callback({ data: { team: data.object } });
+      callback({ data: { team: addCustomId(data.object) } });
     },
   });
 }
@@ -72,7 +84,11 @@ function getTeams({ query, callback }) {
         return;
       }
 
-      callback({ data: { teams: data.objects } });
+      callback({
+        data: {
+          teams: data.objects.map(team => addCustomId(team)),
+        },
+      });
     },
   });
 }
@@ -99,7 +115,7 @@ function getTeam({ query, callback }) {
         return;
       }
 
-      callback({ data: { team: data.object } });
+      callback({ data: { team: addCustomId(data.object) } });
     },
   });
 }
@@ -170,7 +186,7 @@ function createTeam({ team, callback }) {
             return;
           }
 
-          callback({ data: { team: data.savedObject } });
+          callback({ data: { team: addCustomId(data.savedObject) } });
         },
       });
     },
@@ -185,7 +201,7 @@ function createTeam({ team, callback }) {
  * @param {Function} params.callback - Callback
  */
 function updateTeam({
-  objectId,
+  teamId,
   team,
   callback,
   options = {},
@@ -203,7 +219,7 @@ function updateTeam({
   const updateCallback = () => {
     updateObject({
       update,
-      objectId,
+      teamId,
       callback: (updateData) => {
         if (updateData.error) {
           callback({ error: updateData.error });
@@ -211,7 +227,7 @@ function updateTeam({
           return;
         }
 
-        callback({ data: { team: updateData.data.team } });
+        callback({ data: { team: addCustomId(updateData.data.team) } });
       },
     });
   };
@@ -256,70 +272,74 @@ function updateTeam({
 /**
  * Add users to team
  * @param {Object} params - Parameters
- * @param {string} params.objectId - ID of the team
+ * @param {string} params.teamId - ID of the team
  * @param {string[]} [params.userIds] - ID of the users
  * @param {string[]} [params.teamIds] - ID of the teams
- * @param {string[]} [params.blockedIds] - Blocked ids
+ * @param {string[]} [params.bannedIds] - Blocked ids
  * @param {boolean} [params.isAdmin] - Should the users be added to admins?
  * @param {Function} params.callback - Callback
  */
 function addAccess({
-  objectId,
+  teamId,
   userIds,
   teamIds,
-  blockedIds,
+  bannedIds,
   isAdmin,
   callback,
 }) {
-  if (!userIds && !teamIds && !blockedIds) {
-    callback({ error: new errorCreator.InvalidData({ expected: 'teamIds || userIds || blockedIds' }) });
-
-    return;
-  }
-
   dbConnector.addObjectAccess({
-    objectId,
     userIds,
     teamIds,
-    blockedIds,
+    bannedIds,
     isAdmin,
-    callback,
+    objectId: teamId,
     object: Team,
+    callback: ({ error, data }) => {
+      if (error) {
+        callback({ error });
+
+        return;
+      }
+
+      callback({ team: addCustomId(data.object) });
+    },
   });
 }
 
 /**
  * Remove access to team
  * @param {Object} params - Parameters
- * @param {string} params.objectId - ID of the team
+ * @param {string} params.teamId - ID of the team
  * @param {string[]} params.teamIds - ID of the teams
  * @param {string[]} [params.userIds] - ID of the user
- * @param {string[]} [params.blockedIds] - Blocked ids
+ * @param {string[]} [params.bannedIds] - Blocked ids
  * @param {boolean} [params.isAdmin] - Should the teams and/or users be removed from admins?
  * @param {Function} params.callback - Callback
  */
 function removeAccess({
-  objectId,
+  teamId,
   userIds,
   teamIds,
-  blockedIds,
+  bannedIds,
   isAdmin,
   callback,
 }) {
-  if (!userIds && !teamIds && !blockedIds) {
-    callback({ error: new errorCreator.InvalidData({ expected: 'teamIds || userIds || blockedIds' }) });
-
-    return;
-  }
-
   dbConnector.removeObjectAccess({
-    objectId,
     userIds,
     teamIds,
-    blockedIds,
-    callback,
+    bannedIds,
     isAdmin,
+    objectId: teamId,
     object: Team,
+    callback: ({ error, data }) => {
+      if (error) {
+        callback({ error });
+
+        return;
+      }
+
+      callback({ team: addCustomId(data.object) });
+    },
   });
 }
 
@@ -346,26 +366,26 @@ function getTeamsByUser({ userId, callback }) {
 /**
  * Get team by ID
  * @param {Object} params - Parameters
- * @param {string} params.objectId - ID of the team
+ * @param {string} params.teamId - ID of the team
  * @param {Function} params.callback - Callback
  */
-function getTeamById({ objectId, callback }) {
+function getTeamById({ teamId, callback }) {
   getTeam({
     callback,
-    query: { _id: objectId },
+    query: { _id: teamId },
   });
 }
 
 /**
  * Remove team
  * @param {Object} params - Parameters
- * @param {string} params.objectId - ID of the team to remove
+ * @param {string} params.teamId - ID of the team to remove
  * @param {Function} params.callback Callback
  */
-function removeTeam({ objectId, callback }) {
+function removeTeam({ teamId, callback }) {
   dbConnector.removeObject({
     callback,
-    query: { _id: objectId },
+    query: { _id: teamId },
     object: Team,
   });
 }

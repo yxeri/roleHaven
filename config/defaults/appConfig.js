@@ -22,7 +22,7 @@ const textTools = require('../../utils/textTools');
 let config = {};
 
 try {
-  config = require(path.normalize(`${__dirname}/../../../../config/appConfig`)).config; // eslint-disable-line import/no-unresolved, global-require, import/no-dynamic-require
+  config = require(path.normalize(`${__dirname}/../../../../config/appConfig`)).config; // eslint-disable-line
 } catch (err) {
   console.log('Did not find modified appConfig. Using defaults');
 }
@@ -39,127 +39,35 @@ const userVerifyEnv = textTools.convertToBoolean(process.env.USERVERIFY);
 const showDevInfoEnv = textTools.convertToBoolean(process.env.SHOWDEVINFO);
 
 /**
- * Name of the system. Human-readable name that will be sent to clients, such as in the subject field of mail or page title
+ * **********
+ * * System *
+ * **********
  */
-config.title = process.env.TITLE || config.title || 'roleHaven';
 
+/**
+ * Host address
+ * @type {string}
+ */
 config.host = process.env.VIRTUAL_HOST || '127.0.0.1';
 
 /**
- * Default language for clients connecting.
- * Default language is English.
- * Don't set this var if you want English to be the default language.
- * Valid options: se
- * @type {string}
- */
-config.defaultLanguage = process.env.DEFAULTLANGUAGE || config.defaultLanguage || '';
-
-/**
- * Base directory for public files
+ * Base directory for public files.
  * @type {string}
  */
 config.publicBase = path.normalize(`${__dirname}/../../../../public`);
 
 /**
- * Base directory for private files
+ * Base directory for private files.
  * @type {string}
  */
 config.privateBase = path.normalize(`${__dirname}/../../../../private`);
 
-/**
- * Path to directory with views
- * Will be appended to the base directories
- * @type {string}
- */
-config.viewsPath = 'views';
-
-/**
- * Path to directory with stylesheets
- * Will be appended to the base directories
- * @type {string}
- */
-config.stylesPath = 'styles';
-
-/**
- * Path to directory with scripts. Will be minified
- * Will be appended to the base directories
- * @type {string}
- */
-config.scriptsPath = 'scripts';
-
-/**
- * Path to directory with scripts that should not be minified
- * Will be appended to the base directories
- * @type {string}
- */
-config.requiredPath = 'required';
-
-/**
- * Path to favicon
- * Will be appended to the base directories
- * @type {string}
- */
-config.faviconPath = 'images/favicon.ico';
-
-/**
- * Allowed server modes
- * @type {{string}}
- */
-config.Modes = {
-  TEST: 'test',
-  PROD: 'prod',
-  DEV: 'dev',
-};
-/**
- * Server mode.
- */
-config.mode = process.env.MODE || config.mode || config.Modes.DEV;
-
-/**
- * Allowed log levels
- */
-config.LogLevels = {
-  TINY: 'tiny',
-};
-
-/**
- * Morgan log level
- */
-config.logLevel = process.env.LOGLEVEL || config.logLevel || config.LogLevels.TINY;
-
-/**
- * Database host name
- */
-config.dbHost = process.env.DBHOST || config.dbHost || '127.0.0.1';
-
-/**
- * Database port
- */
-config.dbPort = process.env.DBPORT || config.dbPort || 27017;
-
-/**
- * Database database name
- */
-config.dbName = `${config.mode}-${process.env.DBNAME || config.dbName || 'roleHaven'}`;
-
-/**
- * Node server port number
- */
-config.port = process.env.PORT || config.port || 8888;
-
-/**
- * Retrieve socket.io from local server or cdn
- * Note! Android 2.2 fails when using cdn
- */
-config.socketPath = (process.env.SOCKETPATH === 'cdn' || config.socketPath === 'cdn') ?
-  'https://cdnjs.cloudflare.com/ajax/libs/socket.io/2.0.1/socket.io.slim.js' : (process.env.SOCKETPATH || config.socketPath || '/scripts/socket.io.js');
-
 // TODO Routes should be empty by defaults. Move all routes to app-specific instances
 /**
- * Array of route paths
- * Should contain objects of site and file paths
- * sitePath : REQUESTPATH
- * filePath : ROUTEFILE
+ * Array of route paths.
+ * Should contain objects of site and file paths.
+ * sitePath : REQUESTPATH.
+ * filePath : ROUTEFILE.
  *
  * Example:
  * {
@@ -191,295 +99,578 @@ config.routes = config.routes || [
   { sitePath: '*', filePath: `${__dirname}/../../routes/error.js` },
 ];
 
-config.gMapsKey = process.env.GMAPSKEY || config.gMapsKey;
-config.mapLayersPath = process.env.MAPLAYERSPATH || config.mapLayersPath;
+/**
+ * Path to directory with views.
+ * Will be appended to the base directories.
+ * @type {string}
+ */
+config.viewsPath = 'views';
+
+/**
+ * Path to directory with stylesheets.
+ * Will be appended to the base directories.
+ * @type {string}
+ */
+config.stylesPath = 'styles';
+
+/**
+ * Path to directory with scripts. Will be minified.
+ * Will be appended to the base directories.
+ * @type {string}
+ */
+config.scriptsPath = 'scripts';
+
+/**
+ * Path to directory with scripts that should not be minified.
+ * Will be appended to the base directories.
+ * @type {string}
+ */
+config.requiredPath = 'required';
+
+/**
+ * Path to favicon.
+ * Will be appended to the base directories.
+ * @type {string}
+ */
+config.faviconPath = 'images/favicon.ico';
+
+/**
+ * Allowed server modes.
+ * @type {{string}}
+ */
+config.Modes = {
+  TEST: 'test',
+  PROD: 'prod',
+  DEV: 'dev',
+};
+/**
+ * Server mode.
+ * @type {string}
+ */
+config.mode = process.env.MODE || config.mode || config.Modes.DEV;
+
+/**
+ * Database host name.
+ * @type {string}
+ */
+config.dbHost = process.env.DBHOST || config.dbHost || '127.0.0.1';
+
+/**
+ * Database port.
+ * @type {number}
+ */
+config.dbPort = process.env.DBPORT || config.dbPort || 27017;
+
+/**
+ * Database database name.
+ * @type {string}
+ */
+config.dbName = `${config.mode}-${process.env.DBNAME || config.dbName || 'roleHaven'}`;
+
+/**
+ * Node server port number.
+ * @type {number}
+ */
+config.port = process.env.PORT || config.port || 8888;
+
+/**
+ * Retrieve socket.io from local server or cdn.
+ * Note! Android 2.2 fails when using cdn.
+ * @type {string}
+ */
+config.socketPath = (process.env.SOCKETPATH === 'cdn' || config.socketPath === 'cdn') ?
+  'https://cdnjs.cloudflare.com/ajax/libs/socket.io/2.0.1/socket.io.slim.js' : (process.env.SOCKETPATH || config.socketPath || '/scripts/socket.io.js');
 
 config.country = process.env.COUNTRY || config.country || 'Sweden';
-config.centerLat = textTools.convertToFloat(process.env.CENTERLAT || config.centerLat || 59.7526684);
-config.centerLong = textTools.convertToFloat(process.env.CENTERLONG || config.centerLong || 15.1941731);
-config.cornerOneLat = textTools.convertToFloat(process.env.CORNERONELAT || config.cornerOneLat || 59.7580656);
-config.cornerOneLong = textTools.convertToFloat(process.env.CORNERONELONG || config.cornerOneLong || 15.1851052);
-config.cornerTwoLat = textTools.convertToFloat(process.env.CORNERTWOLAT || config.cornerTwoLat || 59.7467013);
-config.cornerTwoLong = textTools.convertToFloat(process.env.CORNERTWOLONG || config.cornerTwoLong || 15.2048731);
-config.defaultZoomLevel = textTools.convertToInt(process.env.DEFAULTZOOMLEVEL || config.defaultZoomLevel || 15);
 
 /**
- * Amount of messages retrieved with the history command
- * @type {number}
+ * Secret key used with JSON Web Token.
  */
-config.historyLines = process.env.MAXHISTORY || config.historyLines || 80;
+config.jsonKey = process.env.JSONKEY || (config.mode !== config.Modes.PROD ? 'TESTKEY' : undefined);
 
 /**
- * Max amount of history that will be retrieved
- * @type {number}
+ * Should errors be printed to log?
+ * @type {boolean}
  */
-config.maxHistoryLines = process.env.MAXHISTORYLINES || config.maxHistoryLines || 200;
-
-// Amount of messages sent at a time to client
-config.chunkLength = process.env.MAXCHUNK || config.chunkLength || 10;
+config.verboseError = typeof verboseErrorEnv !== 'undefined' ? verboseErrorEnv : config.verboseError || false;
 
 /**
- * Does the team have to be verified before being used?
+ * Should external calls to other systems be disabled?
+ * @type {boolean}
  */
-config.teamVerify = typeof teamVerifyEnv !== 'undefined' ? teamVerifyEnv : config.teamVerify || false;
+config.bypassExternalConnections = typeof bypassExternalConnectionEnv !== 'undefined' ? bypassExternalConnectionEnv : config.bypassExternalConnections || true;
 
 /**
- * Does the user have to be verified before being used?
+ * User-friendly name for the event using the system
+ * @type {string}
  */
-config.userVerify = typeof userVerifyEnv !== 'undefined' ? userVerifyEnv : config.userVerify || true;
+config.eventName = process.env.EVENTNAME || config.eventName || 'roleHaven larp';
+
+/**
+ * *******************
+ * * Client settings *
+ * *******************
+ */
+
+/**
+ * Default language for clients connecting.
+ * Default language is English.
+ * Don't set this var if you want English to be the default language.
+ * Valid options: se.
+ * @type {string}
+ */
+config.defaultLanguage = process.env.DEFAULTLANGUAGE || config.defaultLanguage || '';
+
+/**
+ * Name of the system. Human-readable name that will be sent to clients, such as in the subject field of mail or page title.
+ * @type {string}
+ */
+config.title = process.env.TITLE || config.title || 'roleHaven';
+
+/**
+ * Should developer items (off-game) be shown on the client?
+ * @type {boolean}
+ */
+config.showDevInfo = typeof showDevInfoEnv !== 'undefined' ? showDevInfoEnv : config.showDevInfo || false;
 
 /**
  * Should the frontend force full screen on click?
+ * @type {boolean}
  */
 config.forceFullscreen = typeof forceFullscreenEnv !== 'undefined' ? forceFullscreenEnv : config.forceFullscreen || true;
 
 /**
- * Should the frontend ask for user tracking?
- */
-config.gpsTracking = typeof gpsTrackingEnv !== 'undefined' ? gpsTrackingEnv : config.gpsTracking || true;
-
-/**
- * Should users be able to register? Does not block register through rest api
- */
-config.disallowSocketUserRegister = typeof disallowRegisterEnv !== 'undefined' ? disallowRegisterEnv : config.disallowSocketUserRegister || false;
-
-/**
- * Appended to the user name to create a room which is used to store private
- * messages sent to a user (e.g user1-whisper)
- */
-config.whisperAppend = process.env.WHISPERAPPEND || config.whisperAppend || '-whisper';
-
-/**
- * Appended to device ID to create a room which is used to store messages
- * sent to a device (e.g fe3Liw19Xz-device)
- */
-config.deviceAppend = process.env.DEVICEAPPEND || config.deviceAppend || '-device';
-
-/**
- * Appended to the team name to create a room which is used to chat
- * within the team (e.g skynet-team)
- */
-config.teamAppend = process.env.TEAMAPPEND || config.teamAppend || '-team';
-
-config.scheduleAppend = process.env.SCHEDULEAPPEND || config.scheduleAppend || '-schedule';
-
-/**
- * The number of years that will be subtracted/added to the current year
+ * The number of years that will be subtracted/added to the current year.
+ * It will only affect the visible date. The original date is stored on created objects.
+ * @type {number}
  */
 config.yearModification = process.env.YEARMODIFICATION || config.yearModification || 0;
 
 /**
- * Amount of milliseconds between each increment/decrement of signal value (BBR game feature)
+ * The number of days that will be subtraced/added to the current day
+ * It will only affect the visible date. The original date is stored on created objects.
  * @type {number}
  */
-config.signalResetTimeout = process.env.SIGNALRESETINTERVAL || config.signalResetTimeout || 0;
-
-config.signalDefaultValue = process.env.SIGNALDEFAULTVALUE || config.signalDefaultValue || 100;
-
-config.signalThreshold = process.env.SIGNALTRESHHOLD || config.signalThreshold || 50;
-
-config.signalChangePercentage = process.env.SIGNALCHANGEPERCENTAGE || config.signalChangePercentage || 0.2;
-
-config.signalMaxChange = process.env.SIGNALMAXCHANGE || config.signalMaxChange || 10;
+config.dayModification = process.env.DAYMODIFICATION || config.dayModification || 0;
 
 /**
- * Message that will be sent to client and can be printed
+ * Message that will be sent to clients.
+ * @type {string}
  */
 config.welcomeMessage = process.env.WELCOMEMESSAGE || config.welcomeMessage;
 
 /**
- * Secret key used with JSON Web Token
+ * Center latitude coordinate for game area.
+ * @type {number}
  */
-config.jsonKey = process.env.JSONKEY || (config.mode === config.Modes.TEST ? 'TESTKEY' : undefined);
+config.centerLat = textTools.convertToFloat(process.env.CENTERLAT || config.centerLat || 59.7526684);
 
 /**
- * Secret key used with BBR events
+ * Center longitude coordinate for the game area.
+ * @type {number}
  */
-config.hackingApiKey = process.env.HACKINGAPIKEY;
+config.centerLong = textTools.convertToFloat(process.env.CENTERLONG || config.centerLong || 15.1941731);
 
 /**
- * URL to API. Used for BBR events
+ * Upper left corner latitude for the game area.
+ * @type {number}
  */
-config.hackingApiHost = process.env.HACKINGAPIHOST;
+config.cornerOneLat = textTools.convertToFloat(process.env.CORNERONELAT || config.cornerOneLat || 59.7580656);
 
 /**
- * Amount of hacking tries before the hack fails
+ * Upper left corner longitude for the game area.
+ * @type {number}
  */
-config.hackingTriesAmount = process.env.HACKINGTRIESAMOUNT || config.hackingTriesAmount || 3;
+config.cornerOneLong = textTools.convertToFloat(process.env.CORNERONELONG || config.cornerOneLong || 15.1851052);
+
+/**
+ * Bottom right corner latitude for the game area.
+ * @type {number}
+ */
+config.cornerTwoLat = textTools.convertToFloat(process.env.CORNERTWOLAT || config.cornerTwoLat || 59.7467013);
+
+/**
+ * Bottom right corner longitude for the game area.
+ * @type {number}
+ */
+config.cornerTwoLong = textTools.convertToFloat(process.env.CORNERTWOLONG || config.cornerTwoLong || 15.2048731);
+
+/**
+ * Default map zoom level
+ * @type {number}
+ */
+config.defaultZoomLevel = textTools.convertToInt(process.env.DEFAULTZOOMLEVEL || config.defaultZoomLevel || 15);
+
+/**
+ * ********
+ * * Maps *
+ * ********
+ */
+
+/**
+ * Google Maps API key.
+ * @type {string}
+ */
+config.gMapsKey = process.env.GMAPSKEY || config.gMapsKey;
+
+/**
+ * URL to Google Maps layer that will be imported
+ * @type {string}
+ */
+config.mapLayersPath = process.env.MAPLAYERSPATH || config.mapLayersPath;
+
+/**
+ * Should the frontend ask for user tracking?
+ * @type {boolean}
+ */
+config.gpsTracking = typeof gpsTrackingEnv !== 'undefined' ? gpsTrackingEnv : config.gpsTracking || true;
+
+/**
+ * *************
+ * * Game code *
+ * *************
+ */
 
 /**
  * Amount of credits transferred when a game code is used
+ * @type {number}
  */
 config.gameCodeAmount = process.env.GAMECODEAMOUNT || config.gameCodeAmount || 2;
 
+/**
+ * Max length for game codes
+ * @type {number}
+ */
 config.gameCodeLength = process.env.GAMECODELENGTH || config.gameCodeLength || 8;
 
 /**
- * Amount of credits transferred when a game code is used
+ * ***********
+ * * Message *
+ * ***********
  */
-config.signalBlockRadius = process.env.SIGNALBLOCKRADIUS || config.signalBlockRadius || 60;
 
 /**
- * Amount of credits transferred when a game code is used
+ * Max amount of messages that will be retrieved
+ * @type {number}
  */
-config.signalBlockTime = process.env.SIGNALBLOCKTIME || config.signalBlockTime || 120000;
+config.maxHistoryAmount = process.env.MAXHISTORYAMOUNT || config.maxHistoryAmount || 60;
 
 /**
- * Max user accuracy that will be used to calculate if the user is within affected area
+ * Should messagesbe allowed to have an attached image?
+ * @type {boolean}
  */
-config.signalBlockBufferArea = process.env.SIGNALBLOCKBUFFERAREA || config.signalBlockBufferArea || 40;
-
-/**
- * Maximum amount of characters in a document
- */
-config.docFileMaxLength = process.env.DOCFILEMAXLENGTH || config.docFileMaxLength || 3500;
-
-/**
- * Maximum amount of characters in a document title
- */
-config.docFileTitleMaxLength = process.env.DOCFILETITLEMAXLENGTH || config.docFileTitleMaxLength || 40;
-
-/**
- * Maximum amount of alphanumeric in a document id
- */
-config.docFileIdMaxLength = process.env.DOCFILEIDMAXLENGTH || config.docFileIdMaxLength || 10;
+config.allowMessageImage = typeof allowMessageImageEnv !== 'undefined' ? allowMessageImageEnv : config.allowMessageImage || false;
 
 /**
  * Maximum amount of characters in a message
+ * @type {number}
  */
 config.messageMaxLength = process.env.MESSAGEMAXLENGTH || config.messageMaxLength || 2500;
 
 /**
  * Maximum amount of characters in a broadcast
+ * @type {number}
  */
 config.broadcastMaxLength = process.env.BROADCASTMAXLENGTH || config.broadcastMaxLength || 600;
 
 /**
+ * ********
+ * * User *
+ * ********
+ */
+
+/**
+ * Does the user have to be verified before being used?
+ * @type {boolean}
+ */
+config.userVerify = typeof userVerifyEnv !== 'undefined' ? userVerifyEnv : config.userVerify || true;
+
+/**
  * Maximum amount of characters in a user name
+ * @type {number}
  */
 config.usernameMaxLength = process.env.USERNAMEMAXLENGTH || config.usernameMaxLength || 20;
 
 /**
+ * Maximum amount warnings before a user account is banned
+ * @type {number}
+ */
+config.maxUserWarnings = process.env.MAXUSERWARNINGS || config.maxUserWarnings || 2;
+
+/**
+ * Maximum amount of characters in a password
+ * @type {number}
+ */
+config.passwordMaxLength = process.env.PASSWORDMAXLENGTH || config.passwordMaxLength || 80;
+
+/**
+ * Should users be able to register? Does not block register through rest api.
+ * @type {boolean}
+ */
+config.disallowSocketUserRegister = typeof disallowRegisterEnv !== 'undefined' ? disallowRegisterEnv : config.disallowSocketUserRegister || false;
+
+/**
+ * ********
+ * * Team *
+ * ********
+ */
+
+/**
+ * Does the team have to be verified before being used?
+ * @type {boolean}
+ */
+config.teamVerify = typeof teamVerifyEnv !== 'undefined' ? teamVerifyEnv : config.teamVerify || false;
+
+/**
  * Maximum amount of characters in a team name
+ * @type {number}
  */
 config.teamNameMaxLength = process.env.TEAMNAMEMAXLENGTH || config.teamNameMaxLength || 20;
 
 /**
  * Maximum amount of characters in a team acronym
+ * @type {number}
  */
 config.shortTeamMaxLength = process.env.SHORTEAMMAXLENGTH || config.shortTeamMaxLength || 10;
 
 /**
- * Maximum amount of characters in a password
+ * ************
+ * * Doc File *
+ * ************
  */
-config.passwordMaxLength = process.env.PASSWORDMAXLENGTH || config.passwordMaxLength || 80;
+
+/**
+ * Maximum amount of characters in a document
+ * @type {number}
+ */
+config.docFileMaxLength = process.env.DOCFILEMAXLENGTH || config.docFileMaxLength || 3500;
+
+/**
+ * Maximum amount of characters in a document title
+ * @type {number}
+ */
+config.docFileTitleMaxLength = process.env.DOCFILETITLEMAXLENGTH || config.docFileTitleMaxLength || 40;
+
+/**
+ * Maximum amount of alphanumeric in a document id
+ * @type {number}
+ */
+config.docFileCodeMaxLength = process.env.DOCFILECODEMAXLENGTH || config.docFileCodeMaxLength || 10;
+
+/**
+ * ********
+ * * Room *
+ * ********
+ */
+
+/**
+ * Maximum amount of characters in a room name
+ * @type {number}
+ */
+config.roomNameMaxLength = process.env.ROOMNAMEMAXLENGTH || config.roomNameMaxLength || 20;
+
+/**
+ * **********
+ * * Device *
+ * **********
+ */
 
 /**
  * Maximum amount of alphanumeric in a device id
+ * @type {number}
  */
 config.deviceIdLength = process.env.DEVICEIDLENGTH || config.deviceIdLength || 16;
 
 /**
  * Maximum amount of characters in a device alias
+ * @type {number}
  */
 config.deviceAliasMaxLength = process.env.DEVICEALIASMAXLENGTH || config.deviceAliasMaxLength || 20;
 
 /**
- * Maximum amount of characters in a room name
+ * **********
+ * * Wallet *
+ * **********
  */
-config.roomNameMaxLength = process.env.ROOMNAMEMAXLENGTH || config.roomNameMaxLength || 20;
 
 /**
- * Maximum amount of characters in a whisper room name
- */
-config.whisperRoomNameLength = config.roomNameMaxLength + config.whisperAppend.length;
-
-/**
- * Maximum amount warnings before a user account is banned
- */
-config.maxUserWarnings = process.env.MAXUSERWARNINGS || config.maxUserWarnings || 2;
-
-/**
- * Minimum position accuracy. Positions with worse accuracy will not be stored nor sent to clients
- */
-config.minimumPositionAccuracy = process.env.MINIMUMPOSITIONACCURACY || config.minimumPositionAccuracy || 70;
-
-/**
- * Maximum amount of time before a position is no longer valid. Used on clients
- */
-config.maxPositionAge = process.env.MAXPOSITIONAGE || config.maxPositionAge || 2;
-
-/**
- * Should errors be printe to log?
- */
-config.verboseError = typeof verboseErrorEnv !== 'undefined' ? verboseErrorEnv : config.verboseError || false;
-
-/**
- * Should messagesbe allowed to have an attached image?
- */
-config.allowMessageImage = typeof allowMessageImageEnv !== 'undefined' ? allowMessageImageEnv : config.allowMessageImage || false;
-
-/**
- * Default amount that is added when a wallet is created
+ * Default amount that is added when a wallet is created.
+ * @type {number}
  */
 config.defaultWalletAmount = process.env.DEFAULTWALLETAMOUNT || config.defaultWalletAmount || 10;
 
-config.calibrationRewardAmount = process.env.CALIBRATIONREWARDAMOUNT || config.calibrationRewardAmount || 5;
-
-config.calibrationRewardMinimum = process.env.CALIBRATIONREWARDMINIMUM || config.calibrationRewardMinimum || 0;
-
-config.calibrationRewardMax = process.env.CALIBRATIONREWARDMAX || config.calibrationRewardMax || 20;
-
 /**
- * Amount of time between calibration missions can be generated in minutes
+ * ********
+ * * Mail *
+ * ********
  */
-config.calibrationTimeout = process.env.CALIBRATIONTIMEOUT || config.calibrationTimeout || 20;
-
-/**
- * Should external calls be disabled?
- */
-config.bypassExternalConnections = typeof bypassExternalConnectionEnv !== 'undefined' ? bypassExternalConnectionEnv : config.bypassExternalConnections || true;
 
 /**
  * Should the mails for user verification on register or password request be disabled?
+ * @type {boolean}
  */
 config.bypassMailer = typeof bypassMailerEnv !== 'undefined' ? bypassMailerEnv : config.bypassMailer || true;
 
 /**
- * Secret key used for Mailgun
+ * Secret key used when sending mail
+ * @type {string}
  */
 config.mailKey = process.env.MAILKEY || undefined;
 
 /**
- * Public key used for Mailgun
+ * Public key used when sending mail
+ * @type {string}
  */
 config.publicMailKey = process.env.PUBLICMAILKEY || undefined;
 
 /**
- * Mail domain used by Mailgun
+ * Mail domain
+ * @type {string}
  */
 config.mailDomain = process.env.MAILDOMAIN || config.mailDomain || undefined;
 
 /**
- * Mail sender name. Will append mailDomain to name
+ * Mail sender address. Will append mailDomain to name
+ * @type {string}
  */
 config.mailSender = `${process.env.MAILSENDER || config.mailSender || 'no_reply'}@${config.mailDomain}`;
 
 /**
- * Participant-friendly event name
+ * ************
+ * * Position *
+ * ************
  */
-config.eventName = process.env.EVENTNAME || config.eventName || 'roleHaven larp';
 
-config.showDevInfo = typeof showDevInfoEnv !== 'undefined' ? showDevInfoEnv : config.showDevInfo || false;
+/**
+ * Maximum amount of characters in a position title
+ * @type {number}
+ */
+config.positionNameMaxLength = process.env.POSITIONNAMEMAXLENGTH || config.positionNameMaxLength || 30;
+
+/**
+ * Minimum position accuracy. Positions with worse accuracy will not be stored nor sent to clients
+ * @type {number}
+ */
+config.minimumPositionAccuracy = process.env.MINIMUMPOSITIONACCURACY || config.minimumPositionAccuracy || 70;
+
+/**
+ * Maximum amount of time before a position is no longer valid. Used on clients.
+ * @type {number}
+ */
+config.maxPositionAge = process.env.MAXPOSITIONAGE || config.maxPositionAge || 10;
+
+/**
+ * Maximum amount of old coordinates stored in a position.
+ * @type {number}
+ */
+config.maxPositionHistory = process.env.MAXPOSITIONHISTORY || config.maxPositionHistory || 5;
+
+/**
+ * *********
+ * * Forum *
+ * *********
+ */
 
 /**
  * Maximum amount of characters in a forum title
+ * @type {number}
  */
 config.forumTitleMaxLength = process.env.FORUMTITLEMAXLENGTH || config.forumTitleMaxLength || 50;
 
 /**
  * Maximum amount of characters in a forum post
+ * @type {number}
  */
 config.forumPostMaxLength = process.env.FORUMPOSTMAXLENGTH || config.forumPostMaxLength || 2500;
+
+/**
+ * ***********
+ * * Spotify *
+ * ***********
+ */
+
+config.spotifyClientId = process.env.SPOTIFYCLIENTID;
+
+config.spotifySecret = process.env.SPOTIFYSECRET;
+
+config.spotifyRedirectUri = process.env.SPOTIFYREDIRECTURI;
+
+/**
+ * **************************************
+ * * Blodsband Reloaded specific config *
+ * **************************************
+ */
+
+/**
+ * Amount of milliseconds between each increment/decrement of signal value.
+ * @type {number}
+ */
+config.signalResetTimeout = process.env.SIGNALRESETINTERVAL || config.signalResetTimeout || 0;
+
+/**
+ * Signal default value.
+ * @type {number}
+ */
+config.signalDefaultValue = process.env.SIGNALDEFAULTVALUE || config.signalDefaultValue || 100;
+
+/**
+ * Max signal value below and above the default value.
+ * @type {number}
+ */
+config.signalThreshold = process.env.SIGNALTRESHHOLD || config.signalThreshold || 50;
+
+/**
+ * Signal percentage change on completed hack.
+ * @type {number}
+ */
+config.signalChangePercentage = process.env.SIGNALCHANGEPERCENTAGE || config.signalChangePercentage || 0.2;
+
+/**
+ * Max amount that the signal value can be changed on a successful hack.
+ * @type {number}
+ */
+config.signalMaxChange = process.env.SIGNALMAXCHANGE || config.signalMaxChange || 10;
+
+/**
+ * Secret key used with BBR events.
+ * @type {string}
+ */
+config.hackingApiKey = process.env.HACKINGAPIKEY;
+
+/**
+ * URL to API. Used for BBR events.
+ * @type {string}
+ */
+config.hackingApiHost = process.env.HACKINGAPIHOST;
+
+/**
+ * Amount of currency to give on a completed calibration mission.
+ * @type {number}
+ */
+config.calibrationRewardAmount = process.env.CALIBRATIONREWARDAMOUNT || config.calibrationRewardAmount || 5;
+
+/**
+ * Minimum amount of currency that can be given on a completed calibration mission.
+ * @type {number}
+ */
+config.calibrationRewardMinimum = process.env.CALIBRATIONREWARDMINIMUM || config.calibrationRewardMinimum || 0;
+
+/**
+ * Max amount of currency that can be given on a completed calibration mission.
+ * @type {number}
+ */
+config.calibrationRewardMax = process.env.CALIBRATIONREWARDMAX || config.calibrationRewardMax || 20;
+
+/**
+ * Amount of time (minutes) between calibration missions can be generated.
+ * @type {number}
+ */
+config.calibrationTimeout = process.env.CALIBRATIONTIMEOUT || config.calibrationTimeout || 20;
+
+/**
+ * Amount of hacking tries before the hack fails.
+ * @type {number}
+ */
+config.hackingTriesAmount = process.env.HACKINGTRIESAMOUNT || config.hackingTriesAmount || 3;
 
 module.exports = config;

@@ -34,27 +34,38 @@ const userSchema = new mongoose.Schema(dbConnector.createSchema({
   socketId: String,
   lastOnline: Date,
   registerDevice: String,
+  hasFullAccess: { type: Boolean, default: false },
   isVerified: { type: Boolean, default: false },
   isBanned: { type: Boolean, default: false },
   isOnline: { type: Boolean, default: false },
   isLootable: { type: Boolean, default: false },
   defaultRoomId: { type: String, default: dbConfig.rooms.public.roomId },
   partOfTeams: { type: [String], default: [] },
-  hasAliases: { type: [String], default: [] },
-  followingRooms: { type: [String], default: [] },
+  following: { type: [String], default: [] },
 }), { collection: 'users' });
 
 const User = mongoose.model('User', userSchema);
 
 /**
+ * Add custom id to the object
+ * @param {Object} user - User object
+ * @return {Object} - User object with id
+ */
+function addCustomId(user) {
+  const updatedUser = user;
+  updatedUser.userId = user.objectId;
+
+  return updatedUser;
+}
+
+/**
  * Remove private parameters
  * @private
- * @param {Object} params - Parameters
- * @param {Object} params.user - User
- * @param {boolean} params.noClean - Should less parameters be removed before returning object?
+ * @param {Object} user - User
+ * @param {boolean} [noClean] - Should less parameters be removed before returning object?
  * @returns {Object} Clean user
  */
-function modifyUserParameters({ user, noClean }) {
+function modifyUserParameters(user, noClean) {
   const modifiedUser = user;
 
   modifiedUser.password = typeof modifiedUser.password === 'string';
@@ -69,14 +80,14 @@ function modifyUserParameters({ user, noClean }) {
 /**
  * Update user
  * @param {Object} params - Parameters
- * @param {string} params.objectId - User ID
+ * @param {string} params.userId - User ID
  * @param {Object} params.update - Update
  * @param {Function} params.callback Callback
  */
-function updateObject({ objectId, update, callback }) {
+function updateObject({ userId, update, callback }) {
   dbConnector.updateObject({
     update,
-    query: { _id: objectId },
+    query: { _id: userId },
     object: User,
     callback: ({ error, data }) => {
       if (error) {
@@ -85,7 +96,7 @@ function updateObject({ objectId, update, callback }) {
         return;
       }
 
-      callback({ data: { user: modifyUserParameters({ user: data.object }) } });
+      callback({ data: { user: addCustomId(modifyUserParameters(data.object)) } });
     },
   });
 }
@@ -108,7 +119,11 @@ function getUsers({ query, callback }) {
         return;
       }
 
-      callback({ data: { users: data.objects.map(object => modifyUserParameters({ user: object })) } });
+      callback({
+        data: {
+          users: data.objects.map(user => addCustomId(modifyUserParameters(user))),
+        },
+      });
     },
   });
 }
@@ -135,7 +150,7 @@ function getUser({ query, callback }) {
         return;
       }
 
-      callback({ data: { user: modifyUserParameters({ user: data.object }) } });
+      callback({ data: { user: addCustomId(modifyUserParameters(data.object)) } });
     },
   });
 }
@@ -156,29 +171,29 @@ function getUserByName({ username, callback }) {
 /**
  * Get user by ID
  * @param {Object} params - Parameters
- * @param {string} params.objectId - ID of the user
+ * @param {string} params.userId - ID of the user
  * @param {Function} params.callback - Callback
  */
-function getUserById({ objectId, callback }) {
+function getUserById({ userId, callback }) {
   getUser({
     callback,
-    query: { _id: objectId },
+    query: { _id: userId },
   });
 }
 
 /**
  * Authorize user
  * @param {Object} params - Parameters
- * @param {string} params.objectId - ID of the user
+ * @param {string} params.userId - ID of the user
  * @param {string} params.password - Password of the user
  * @param {Function} params.callback - Callback
  */
-function authUser({ objectId, password, callback }) {
+function authUser({ userId, password, callback }) {
   getUser({
     callback,
     query: {
       password,
-      _id: objectId,
+      _id: userId,
       isBanned: false,
       isVerified: true,
     },
@@ -249,7 +264,7 @@ function createUser({ user, callback }) {
             return;
           }
 
-          callback({ data: { user: modifyUserParameters({ user: data.savedObject }) } });
+          callback({ data: { user: addCustomId(modifyUserParameters(data.savedObject)) } });
         },
       });
     },
@@ -257,31 +272,12 @@ function createUser({ user, callback }) {
 }
 
 /**
- * username: { type: String, unique: true },
- mailAddress: { type: String, unique: true },
- timeCreated: Date,
- lastUpdated: Date,
- fullName: String,
- password: String,
- socketId: String,
- lastOnline: Date,
- registerDevice: String,
- isVerified: { type: Boolean, default: false },
- isBanned: { type: Boolean, default: false },
- isOnline: { type: Boolean, default: false },
- isLootable: { type: Boolean, default: false },
- accessLevel: { type: Number, default: dbConfig.AccessLevels.BASIC },
- visibility: { type: Number, default: dbConfig.AccessLevels.BASIC },
- defaultRoomId: { type: String, default: dbConfig.rooms.public.roomName },
- */
-
-/**
  * Update user
  * @param {Object} params - Parameters
  * @param {Object} params.user - User update
  * @param {Function} params.callback - Callback
  */
-function updateUser({ objectId, user, callback }) {
+function updateUser({ userId, user, callback }) {
   const {
     mailAddress,
     username,
@@ -292,6 +288,7 @@ function updateUser({ objectId, user, callback }) {
     isLootable,
     isOnline,
     socketId,
+    hasFullAccess,
   } = user;
   const now = new Date();
   const update = { $set: {} };
@@ -303,6 +300,7 @@ function updateUser({ objectId, user, callback }) {
   if (accessLevel) { update.$set.accessLevel = accessLevel; }
   if (defaultRoomId) { update.$set.defaultRoomId = defaultRoomId; }
   if (typeof isLootable === 'boolean') { update.$set.isLootable = isLootable; }
+  if (typeof hasFullAccess === 'boolean') { update.$set.hasFullAccess = hasFullAccess }
 
   if (typeof isOnline === 'boolean') {
     if (isOnline) {
@@ -339,28 +337,30 @@ function updateUser({ objectId, user, callback }) {
         updateObject({
           update,
           callback,
-          objectId,
+          userId,
         });
       },
     });
+
+    return;
   }
 
   updateObject({
     update,
     callback,
-    objectId,
+    userId,
   });
 }
 
 /**
  * Verify user
  * @param {Object} params - Parameters
- * @param {string} params.objectId - ID of the user
+ * @param {string} params.userId - ID of the user
  * @param {Function} params.callback - Callback
  */
-function verifyUser({ objectId, callback }) {
+function verifyUser({ userId, callback }) {
   updateObject({
-    objectId,
+    userId,
     callback,
     update: { isVerified: true },
   });
@@ -369,18 +369,18 @@ function verifyUser({ objectId, callback }) {
 /**
  * Ban or unban user
  * @param {Object} params - Parameters
- * @param {string} params.objectId - ID of the user
+ * @param {string} params.userId - ID of the user
  * @param {boolean} params.shouldBan - Should the user be banned?
  * @param {Function} params.callback - Callback
  */
-function updateBanUser({ shouldBan, objectId, callback }) {
+function updateBanUser({ shouldBan, userId, callback }) {
   const update = {
     $set: { isBanned: shouldBan },
     $unset: { socketId: '' },
   };
 
   updateObject({
-    objectId,
+    userId,
     update,
     callback: ({ error, data }) => {
       if (error) {
@@ -389,7 +389,7 @@ function updateBanUser({ shouldBan, objectId, callback }) {
         return;
       }
 
-      callback({ data: { user: data.user } });
+      callback({ data: { user: addCustomId(data.user) } });
     },
   });
 }
@@ -397,15 +397,15 @@ function updateBanUser({ shouldBan, objectId, callback }) {
 /**
  * Set new password for user
  * @param {Object} params - Parameters
- * @param {string} params.objectId - ID of the user
+ * @param {string} params.userId - ID of the user
  * @param {string} params.password - New password
  * @param {Function} params.callback - Callback
  */
-function updateUserPassword({ objectId, password, callback }) {
+function updateUserPassword({ userId, password, callback }) {
   const update = { $set: { password } };
 
   updateObject({
-    objectId,
+    userId,
     update,
     callback,
   });
@@ -426,14 +426,74 @@ function getAllUsers({ callback }) {
 /**
  * Remove user
  * @param {Object} params - Parameters
- * @param {string} params.objectId - ID of the user
+ * @param {string} params.userId - ID of the user
  * @param {Function} params.callback - Callback
  */
-function removeUser({ objectId, callback }) {
+function removeUser({
+  userId,
+  callback,
+}) {
   dbConnector.removeObject({
     callback,
     object: User,
-    query: { _id: objectId },
+    query: { _id: userId },
+  });
+}
+
+/**
+ * Add a team to the user
+ * @param {Object} params - Parameters
+ * @param {string} params.userId - ID of the user
+ * @param {string} params.teamId - ID of the team
+ * @param {Function} params.callback - Callback
+ */
+function addTeam({ userId, teamId, callback }) {
+  updateObject({
+    userId,
+    callback,
+    update: { partOfTeams: { $addToSet: teamId } },
+  });
+}
+
+/**
+ * Remove a team from the user
+ * @param {Object} params - Parameters
+ * @param {string} params.userId - ID of the user
+ * @param {string} params.teamId - ID of the team
+ * @param {Function} params.callback - Callback
+ */
+function removeTeam({ userId, teamId, callback }) {
+  updateObject({
+    userId,
+    callback,
+    update: { partOfTeams: { $pull: teamId } },
+  });
+}
+
+// TODO Redis would be a good choice to store user id and socket id connection
+/**
+ * Get all socket ids from users
+ * @param {Object} params - Parameters
+ * @param {Function} params.callback - Callback
+ */
+function getAllSocketIds({ callback }) {
+  getUsers({
+    query: { socketId: { $exists: true } },
+    callback: ({ error, data }) => {
+      if (error) {
+        callback({ error });
+
+        return;
+      }
+
+      const userSocketIds = {};
+
+      data.users.forEach((user) => {
+        userSocketIds[user.objectId] = user.socketId;
+      });
+
+      callback({ data: { userSocketIds } });
+    },
   });
 }
 
@@ -448,3 +508,6 @@ exports.updateUserPassword = updateUserPassword;
 exports.getUserById = getUserById;
 exports.removeUser = removeUser;
 exports.doesUserExist = doesUserExist;
+exports.getAllSocketIds = getAllSocketIds;
+exports.addTeam = addTeam;
+exports.removeTeam = removeTeam;

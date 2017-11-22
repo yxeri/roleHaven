@@ -27,6 +27,18 @@ const simpleMsgSchema = new mongoose.Schema(dbConnector.createSchema({
 const SimpleMsg = mongoose.model('SimpleMsg', simpleMsgSchema);
 
 /**
+ * Add custom id to the object
+ * @param {Object} simpleMsg - Simple message object
+ * @return {Object} - Simple message object with id
+ */
+function addCustomId(simpleMsg) {
+  const updatedSimpleMsg = simpleMsg;
+  updatedSimpleMsg.simpleMsgId = simpleMsg.objectId;
+
+  return updatedSimpleMsg;
+}
+
+/**
  * Update simple msg
  * @private
  * @param {Object} params - Parameters
@@ -46,7 +58,7 @@ function updateObject({ update, simpleMsgId, callback }) {
         return;
       }
 
-      callback({ simpleMsg: data.object });
+      callback({ simpleMsg: addCustomId(data.object) });
     },
   });
 }
@@ -68,7 +80,7 @@ function createSimpleMsg({ simpleMsg, callback }) {
         return;
       }
 
-      callback({ data: { simpleMsg: data.savedObject } });
+      callback({ data: { simpleMsg: addCustomId(data.savedObject) } });
     },
   });
 }
@@ -92,7 +104,11 @@ function getSimpleMsgs({ query, callback }) {
         return;
       }
 
-      callback({ simpleMsgs: data.objects });
+      callback({
+        data: {
+          simpleMsgs: data.objects.map(simpleMsg => addCustomId(simpleMsg)),
+        },
+      });
     },
   });
 }
@@ -119,7 +135,7 @@ function getSimpleMsg({ query, callback }) {
         return;
       }
 
-      callback({ simpleMsg: data.object });
+      callback({ data: { simpleMsg: addCustomId(data.object) } });
     },
   });
 }
@@ -155,8 +171,8 @@ function getAllSimpleMsgs({ callback }) {
  * @param {string[]} [params.simpleMsg.text] - Message text
  * @param {Function} params.callback - Callback
  */
-function updateSimpleMsg({ simpleMsg, callback }) {
-  const { simpleMsgId, text } = simpleMsg;
+function updateSimpleMsg({ simpleMsgId, simpleMsg, callback }) {
+  const { text } = simpleMsg;
   const update = { $set: {} };
 
   if (text) { update.$set.text = text; }

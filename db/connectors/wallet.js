@@ -28,6 +28,18 @@ const walletSchema = new mongoose.Schema(dbConnector.createSchema({
 const Wallet = mongoose.model('Wallet', walletSchema);
 
 /**
+ * Add custom id to the object
+ * @param {Object} wallet - Wallet object
+ * @return {Object} - Wallet object with id
+ */
+function addCustomId(wallet) {
+  const updatedWallet = wallet;
+  updatedWallet.walletId = wallet.objectId;
+
+  return updatedWallet;
+}
+
+/**
  * Get wallets
  * @private
  * @param {Object} params - Parameters
@@ -46,7 +58,11 @@ function getWallets({ query, callback }) {
         return;
       }
 
-      callback({ wallets: data.objects });
+      callback({
+        data: {
+          wallets: data.objects.map(wallet => addCustomId(wallet)),
+        },
+      });
     },
   });
 }
@@ -55,13 +71,13 @@ function getWallets({ query, callback }) {
  * Update wallet
  * @private
  * @param {Object} params - Parameters
- * @param {string} params.objectId - ID of the wallet to update
+ * @param {string} params.walletId - ID of the wallet to update
  * @param {Function} params.callback - Callback
  */
-function updateObject({ update, objectId, callback }) {
+function updateObject({ update, walletId, callback }) {
   dbConnector.updateObject({
     update,
-    query: { _id: objectId },
+    query: { _id: walletId },
     object: Wallet,
     errorNameContent: 'updateWallet',
     callback: ({ error, data }) => {
@@ -71,7 +87,7 @@ function updateObject({ update, objectId, callback }) {
         return;
       }
 
-      callback({ wallet: data.object });
+      callback({ data: { wallet: addCustomId(data.object) } });
     },
   });
 }
@@ -137,8 +153,8 @@ function getWalletsByUser({ userId, callback }) {
 function createWallet({ wallet, callback }) {
   const walletToSave = wallet;
 
-  if (walletToSave.objectId) {
-    walletToSave._id = walletToSave.objectId; // eslint-disable-line no-underscore-dangle
+  if (walletToSave.walletId) {
+    walletToSave._id = walletToSave.walletId; // eslint-disable-line no-underscore-dangle
   }
 
   dbConnector.saveObject({
@@ -151,7 +167,7 @@ function createWallet({ wallet, callback }) {
         return;
       }
 
-      callback({ data: { wallet: data.savedObject } });
+      callback({ data: { wallet: addCustomId(data.savedObject) } });
     },
   });
 }
@@ -159,7 +175,7 @@ function createWallet({ wallet, callback }) {
 /**
  * Update wallet
  * @param {Object} params - Parameters
- * @param {string} params.objectId - Wallet ID
+ * @param {string} params.walletId - Wallet ID
  * @param {Object} params.wallet - Update wallet
  * @param {number} params.wallet.amount - Amount to increase or decrease with
  * @param {Object} params.options - Options
@@ -169,7 +185,7 @@ function createWallet({ wallet, callback }) {
  * @param {Function} params.callback - Callback
  */
 function updateWallet({
-  objectId,
+  walletId,
   wallet,
   callback,
   options = {},
@@ -212,7 +228,7 @@ function updateWallet({
 
   updateObject({
     update,
-    objectId,
+    walletId,
     callback,
   });
 }
@@ -220,33 +236,27 @@ function updateWallet({
 /**
  * Add access to the wallet for users or teams
  * @param {Object} params - Parameters
- * @param {string} params.objectId - ID of the wallet
+ * @param {string} params.walletId - ID of the wallet
  * @param {string[]} [params.userIds] - ID of the users
  * @param {string[]} [params.teamIds] - ID of the teams
- * @param {string[]} [params.blockedIds] - ID of the blocked Ids to add
+ * @param {string[]} [params.bannedIds] - ID of the blocked Ids to add
  * @param {boolean} [params.isAdmin] - Should the teams and/or users be added to admins?
  * @param {Function} params.callback - Callback
  */
 function addAccess({
   userIds,
   teamIds,
-  blockedIds,
-  objectId,
+  bannedIds,
+  walletId,
   isAdmin,
   callback,
 }) {
-  if (!userIds && !teamIds && !blockedIds) {
-    callback({ error: new errorCreator.InvalidData({ expected: 'teamIds || aliasIds || blockedIds' }) });
-
-    return;
-  }
-
   dbConnector.addObjectAccess({
-    objectId,
     userIds,
     teamIds,
-    blockedIds,
+    bannedIds,
     isAdmin,
+    objectId: walletId,
     object: Wallet,
     callback: ({ error, data }) => {
       if (error) {
@@ -263,33 +273,27 @@ function addAccess({
 /**
  * Remove access to the wallet for users and/or teams
  * @param {Object} params - Parameters
- * @param {string} params.objectId - ID of the wallet
+ * @param {string} params.walletId - ID of the wallet
  * @param {string[]} [params.userIds] - ID of the users
  * @param {string[]} [params.teamIds] - ID of the teams
- * @param {string[]} [params.blockedIds] - ID of the blocked Ids to add
+ * @param {string[]} [params.bannedIds] - ID of the blocked Ids to add
  * @param {boolean} [params.isAdmin] - Should the teams and/or users be removed from admins?
  * @param {Function} params.callback - Callback
  */
 function removeAccess({
   userIds,
   teamIds,
-  blockedIds,
+  bannedIds,
   isAdmin,
-  objectId,
+  walletId,
   callback,
 }) {
-  if (!userIds && !teamIds && !blockedIds) {
-    callback({ error: new errorCreator.InvalidData({ expected: 'teamIds || userIds || blockedIds' }) });
-
-    return;
-  }
-
   dbConnector.removeObjectAccess({
     userIds,
     teamIds,
-    blockedIds,
+    bannedIds,
     isAdmin,
-    objectId,
+    objectId: walletId,
     callback,
     object: Wallet,
   });
@@ -298,13 +302,13 @@ function removeAccess({
 /**
  * Remove wallet
  * @param {Object} params - Parameters
- * @param {string} params.objectId - ID of the wallet to remove
+ * @param {string} params.walletId - ID of the wallet to remove
  * @param {Function} params.callback - Callback
  */
-function removeWallet({ objectId, callback }) {
+function removeWallet({ walletId, callback }) {
   dbConnector.removeObject({
     callback,
-    query: { _id: objectId },
+    query: { _id: walletId },
     object: Wallet,
   });
 }

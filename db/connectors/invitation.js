@@ -32,6 +32,18 @@ const invitationSchema = new mongoose.Schema(dbConnector.createSchema({
 const Invitation = mongoose.model('Invitation', invitationSchema);
 
 /**
+ * Add custom id to the object
+ * @param {Object} invitation - Invitation object
+ * @return {Object} - Invitation object with id
+ */
+function addCustomId(invitation) {
+  const updatedInvitation = invitation;
+  updatedInvitation.invitationId = invitation.objectId;
+
+  return updatedInvitation;
+}
+
+/**
  * Get invitations
  * @private
  * @param {Object} params - Parameters
@@ -49,7 +61,11 @@ function getInvitations({ query, callback }) {
         return;
       }
 
-      callback({ invitations: data.objects });
+      callback({
+        data: {
+          invitations: data.objects.map(invitation => addCustomId(invitation)),
+        },
+      });
     },
   });
 }
@@ -76,7 +92,7 @@ function getInvitation({ query, callback }) {
         return;
       }
 
-      callback({ invitation: data.object });
+      callback({ data: { invitation: addCustomId(data.object) } });
     },
   });
 }
@@ -116,7 +132,7 @@ function createInvitation({ invitation, callback }) {
             return;
           }
 
-          callback({ data: { invitation: invitationData.savedObject } });
+          callback({ data: { invitation: addCustomId(invitationData.savedObject) } });
         },
       });
     },
@@ -152,14 +168,14 @@ function getInvitationsBySender({ senderId, callback }) {
 /**
  * Remove invitation
  * @param {Object} params - Parameters
- * @param {string} params.objectId - ID of the invitation
+ * @param {string} params.invitationId - ID of the invitation
  * @param {Function} params.callback - Callback
  */
-function removeInvitation({ objectId, callback }) {
+function removeInvitation({ invitationId, callback }) {
   dbConnector.removeObject({
     callback,
     object: Invitation,
-    query: { _id: objectId },
+    query: { _id: invitationId },
   });
 }
 

@@ -49,7 +49,7 @@ function handle(io) {
       gMapsKey: appConfig.gMapsKey,
       socketPath: appConfig.socketPath,
       mainJs: 'scripts/control.js',
-      mainCss: !isNaN(req.query.style) ? `styles/${req.query.style}.css` : 'styles/control.css',
+      mainCss: !Number.isNaN(req.query.style) ? `styles/${req.query.style}.css` : 'styles/control.css',
     });
   });
 
@@ -59,7 +59,7 @@ function handle(io) {
       gMapsKey: appConfig.gMapsKey,
       socketPath: appConfig.socketPath,
       mainJs: 'scripts/main.js',
-      mainCss: !isNaN(req.query.style) ? `styles/${req.query.style}.css` : 'styles/main.css',
+      mainCss: !Number.isNaN(req.query.style) ? `styles/${req.query.style}.css` : 'styles/main.css',
       dyslexic: req.query.dyslexic,
     });
   });
@@ -90,6 +90,7 @@ function handle(io) {
         welcomeMessage: appConfig.welcomeMessage,
         requiresVerification: appConfig.userVerify,
         showDevInfo: appConfig.showDevInfo,
+        dayModification: appConfig.dayModification,
       },
     });
 

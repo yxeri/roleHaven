@@ -33,6 +33,18 @@ const MailEvent = mongoose.model('MailEvent', mailEventSchema);
 const BlockedMail = mongoose.model('BlockedMailAddress', blockedMailSchema);
 
 /**
+ * Add custom id to the object
+ * @param {Object} mailEvent - Mail event object
+ * @return {Object} - Mail event object with id
+ */
+function addCustomId(mailEvent) {
+  const updatedMailEvent = mailEvent;
+  updatedMailEvent.mailEventId = mailEvent.objectId;
+
+  return updatedMailEvent;
+}
+
+/**
  * Remove mail event
  * @param {Object} params - Parameters
  * @param {string} params.key - Key to event
@@ -68,7 +80,7 @@ function getMailEvent({ query, callback }) {
         return;
       }
 
-      const mailEvent = data.object;
+      const mailEvent = addCustomId(data.object);
 
       if (mailEvent && mailEvent.expiresAt && mailEvent.expiresAt < new Date()) {
         removeMailEventByKey({
@@ -188,9 +200,17 @@ function createMailEvent({ mailEvent, callback }) {
     }
 
     dbConnector.saveObject({
-      callback,
       object: new MailEvent(mailEvent),
       objectType: 'mailEvent',
+      callback: (saveData) => {
+        if (saveData.error) {
+          callback({ error: saveData.error });
+
+          return;
+        }
+
+        callback({ data: { mailEvent: saveData.data.savedObject } });
+      },
     });
   });
 }

@@ -33,7 +33,19 @@ const lanternStationSchema = new mongoose.Schema(dbConnector.createSchema({
 const LanternStation = mongoose.model('LanternStation', lanternStationSchema);
 
 /**
- * Update station fields
+ * Add custom id to the object
+ * @param {Object} station - Lantern station object
+ * @return {Object} - Lantern station object with id
+ */
+function addCustomId(station) {
+  const updatedStation = station;
+  updatedStation.stationId = station.objectId;
+
+  return updatedStation;
+}
+
+/**
+ * Update station
  * @private
  * @param {Object} params - Parameters
  * @param {string} params.stationId - ID of the station to update
@@ -45,7 +57,7 @@ function updateObject({ stationId, update, callback }) {
     update,
     query: { stationId },
     object: LanternStation,
-    errorNameContent: 'updateStationFields',
+    errorNameContent: `update station ${stationId}`,
     callback: ({ error, data }) => {
       if (error) {
         callback({ error });
@@ -53,7 +65,7 @@ function updateObject({ stationId, update, callback }) {
         return;
       }
 
-      callback({ station: data.object });
+      callback({ data: { station: addCustomId(data.object) } });
     },
   });
 }
@@ -76,7 +88,11 @@ function getStations({ query, callback }) {
         return;
       }
 
-      callback({ stations: data.objects });
+      callback({
+        data: {
+          stations: data.objects.map(station => addCustomId(station)),
+        },
+      });
     },
   });
 }
@@ -103,7 +119,7 @@ function getStation({ query, callback }) {
         return;
       }
 
-      callback({ station: data.object });
+      callback({ data: { station: addCustomId(data.object) } });
     },
   });
 }
@@ -178,7 +194,7 @@ function createStation({ station, callback }) {
             return;
           }
 
-          callback({ data: { station: saveData.data.savedObject } });
+          callback({ data: { station: addCustomId(saveData.data.savedObject) } });
         },
       });
     },
@@ -195,16 +211,21 @@ function resetStations({ signalValue, callback }) {
   const query = {};
   const update = { $set: { signalValue } };
   const options = { multi: true };
-
-  LanternStation.update(query, update, options).lean().exec((error, data) => {
+  const updateCallback = (error, stations = []) => {
     if (error) {
       callback({ error });
 
       return;
     }
 
-    callback({ data });
-  });
+    callback({
+      data: {
+        stations: stations.map(station => addCustomId(station)),
+      },
+    });
+  };
+
+  LanternStation.update(query, update, options).lean().exec(updateCallback);
 }
 
 /**
@@ -264,7 +285,7 @@ function updateStation({
       return;
     }
 
-    callback({ data: { station } });
+    callback({ data: { station: addCustomId(station) } });
   });
 }
 
@@ -277,16 +298,21 @@ function getActiveStations({ callback }) {
   const query = { isActive: true };
   const sort = { stationId: 1 };
   const filter = { _id: 0 };
-
-  LanternStation.find(query, filter).sort(sort).lean().exec((err, stations = []) => {
+  const updateCallback = (err, stations = []) => {
     if (err) {
       callback({ error: new errorCreator.Database({ errorObject: err }) });
 
       return;
     }
 
-    callback({ data: { stations } });
-  });
+    callback({
+      data: {
+        stations: stations.map(station => addCustomId(station)),
+      },
+    });
+  };
+
+  LanternStation.find(query, filter).sort(sort).lean().exec(updateCallback);
 }
 
 /**
@@ -315,6 +341,6 @@ exports.getAllStations = getAllStations;
 exports.createStation = createStation;
 exports.updateLanternStation = updateStation;
 exports.getActiveStations = getActiveStations;
-exports.resetLanternStations = resetStations;
+exports.resetStations = resetStations;
 exports.deleteStation = deleteStation;
 

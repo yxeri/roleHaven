@@ -27,18 +27,30 @@ const roomSchema = new mongoose.Schema(dbConnector.createSchema({
   nameIsLocked: { type: Boolean, default: false },
   isAnonymous: { type: Boolean, default: false },
   isWhisper: { type: Boolean, default: false },
+  followers: { type: [String], default: [] },
 }), { collection: 'rooms' });
 
 const Room = mongoose.model('Room', roomSchema);
 
 /**
- * Remove private parameters from room
- * @private
- * @param {Object} params - Parameters
- * @param {Object} params.room Room
- * @returns {Object} Modified room
+ * Add custom id to the object.
+ * @param {Object} room - Room object.
+ * @return {Object} - Room object with id.
  */
-function modifyRoomParameters({ room }) {
+function addCustomId(room) {
+  const updatedRoom = room;
+  updatedRoom.roomId = room.objectId;
+
+  return updatedRoom;
+}
+
+/**
+ * Remove private parameters from room.
+ * @private
+ * @param {Object} room - Room.
+ * @return {Object} - Room with cleaned parameters
+ */
+function cleanParameters(room) {
   const modifiedRoom = room;
 
   modifiedRoom.password = typeof room.password === 'string';
@@ -50,14 +62,14 @@ function modifyRoomParameters({ room }) {
  * Update room
  * @private
  * @param {Object} params - Parameters
- * @param {string} params.objectId - ID of the room to update
+ * @param {string} params.roomId - ID of the room to update
  * @param {Object} params.update - Update
  * @param {Function} params.callback - Callback
  */
-function updateObject({ update, objectId, callback }) {
+function updateObject({ update, roomId, callback }) {
   dbConnector.updateObject({
     update,
-    query: { _id: objectId },
+    query: { _id: roomId },
     object: Room,
     errorNameContent: 'updateRoom',
     callback: ({ error, data }) => {
@@ -67,7 +79,7 @@ function updateObject({ update, objectId, callback }) {
         return;
       }
 
-      callback({ room: modifyRoomParameters({ room: data.object }) });
+      callback({ data: { room: addCustomId(cleanParameters(data.object)) } });
     },
   });
 }
@@ -94,7 +106,7 @@ function getRoom({ query, callback }) {
         return;
       }
 
-      callback({ room: modifyRoomParameters({ room: data.object }) });
+      callback({ room: addCustomId(cleanParameters(data.object)) });
     },
   });
 }
@@ -117,7 +129,7 @@ function getRooms({ query, callback }) {
         return;
       }
 
-      callback({ rooms: data.objects.map(object => modifyRoomParameters({ room: object })) });
+      callback({ rooms: data.objects.map(room => addCustomId(cleanParameters(room))) });
     },
   });
 }
@@ -136,14 +148,10 @@ function doesRoomExist({ roomName, callback }) {
     ],
   };
 
-  Room.findOne(query).lean().exec((error, room) => {
-    if (error) {
-      callback({ error: new errorCreator.Database({ errorObject: error }) });
-
-      return;
-    }
-
-    callback({ data: { exists: typeof room !== 'undefined' } });
+  dbConnector.doesObjectExist({
+    query,
+    callback,
+    object: Room,
   });
 }
 
@@ -194,7 +202,7 @@ function createRoom({
             return;
           }
 
-          callback({ data: { room: modifyRoomParameters({ room: data.savedObject }) } });
+          callback({ data: { room: addCustomId(cleanParameters(data.savedObject)) } });
         },
       });
     },
@@ -204,14 +212,14 @@ function createRoom({
 /**
  * Remove room
  * @param {Object} params - Parameters
- * @param {string} params.objectId - ID of the room
+ * @param {string} params.roomId - ID of the room
  * @param {Function} params.callback - Callback
  */
-function removeRoom({ objectId, callback }) {
+function removeRoom({ roomId, callback }) {
   dbConnector.removeObject({
     callback,
     object: Room,
-    query: { _id: objectId },
+    query: { _id: roomId },
   });
 }
 
@@ -224,79 +232,142 @@ function getAllRooms({ callback }) {
   getRooms({ callback });
 }
 
+
+/**
+ * Add followers
+ * @param {Object} params - Parameters
+ * @param {string[]} params.userIds - ID of the users to add
+ * @param {string} params.roomId - ID of the room
+ * @param {Function} params.callback - Callback
+ */
+function addFollowers({ userIds, roomId, callback }) {
+  updateObject({
+    update: {
+      $addToSet: { followers: { $each: userIds } },
+    },
+    roomId,
+    callback,
+  });
+}
+
+/**
+ * Remove followers
+ * @param {Object} params - Parameters
+ * @param {string[]} params.userIds - ID of the users to remove
+ * @param {string} params.roomId - ID of the room
+ * @param {Function} params.callback - Callback
+ */
+function removeFollowers({ userIds, roomId, callback }) {
+  updateObject({
+    update: {
+      $pull: { followers: { $each: userIds } },
+    },
+    roomId,
+    callback,
+  });
+}
+
 /**
  * Add access to the room for users and/or teams
  * @param {Object} params - Parameters
- * @param {string} params.objectId - ID of the room
+ * @param {string} params.roomId - ID of the room
  * @param {string[]} [params.userIds] - ID of the users
  * @param {string[]} [params.teamIds] - ID of the teams
- * @param {string[]} [params.blockedIds] - ID of the blocked users
+ * @param {string[]} [params.bannedIds] - ID of the blocked users
  * @param {boolean} [params.isAdmin] - Should teams and users get admin access?
  * @param {Function} params.callback - Callback
  */
 function addAccess({
   userIds,
   teamIds,
-  blockedIds,
+  bannedIds,
   isAdmin,
-  objectId,
+  roomId,
   callback,
 }) {
-  if (!userIds && !teamIds && !blockedIds) {
-    callback({ error: new errorCreator.InvalidData({ expected: 'teamIds || userIds || blockedIds' }) });
-
-    return;
-  }
-
   dbConnector.addObjectAccess({
-    objectId,
     userIds,
     teamIds,
-    blockedIds,
+    bannedIds,
     isAdmin,
-    callback,
+    objectId: roomId,
     object: Room,
+    callback: ({ error }) => {
+      if (error) {
+        callback({ error });
+
+        return;
+      }
+
+      addFollowers({
+        roomId,
+        userIds,
+        callback: (roomData) => {
+          if (roomData.error) {
+            callback({ error: roomData.error });
+
+            return;
+          }
+
+          callback({ room: addCustomId(cleanParameters(roomData.data.object)) });
+        },
+      });
+    },
   });
 }
 
 /**
  * Remove access to the room for users and/or teams
  * @param {Object} params - Parameters
- * @param {string} params.objectId - ID of the room
+ * @param {string} params.roomId - ID of the room
  * @param {string[]} [params.userIds] - ID of the users
  * @param {string[]} [params.teamIds] - ID of the teams
- * @param {string[]} [params.blockedIds] - ID of the blocked users
+ * @param {string[]} [params.bannedIds] - ID of the blocked users
  * @param {boolean} [params.isAdmin] - Should the teams and/or users be removed from admins?
  * @param {Function} params.callback - Callback
  */
 function removeAccess({
   userIds,
   teamIds,
-  blockedIds,
-  objectId,
+  bannedIds,
+  roomId,
   isAdmin,
   callback,
 }) {
-  if (!userIds && !teamIds && !blockedIds) {
-    callback({ error: new errorCreator.InvalidData({ expected: 'teamIds || userIds || blockedIds' }) });
-
-    return;
-  }
-
   dbConnector.removeObjectAccess({
     isAdmin,
     userIds,
     teamIds,
-    blockedIds,
-    objectId,
-    callback,
+    bannedIds,
+    objectId: roomId,
+    callback: ({ error, data }) => {
+      if (error) {
+        callback({ error });
+
+        return;
+      }
+
+      removeFollowers({
+        roomId,
+        userIds,
+        callback: (roomData) => {
+          if (roomData.error) {
+            callback({ error: roomData.error });
+
+            return;
+          }
+
+          callback({ room: addCustomId(cleanParameters(roomData.data.object)) });
+        },
+      });
+    },
   });
 }
 
 /**
  * Update room
  * @param {Object} params - Parameters
- * @param {string} params.objectId - ID of the room to update
+ * @param {string} params.roomId - ID of the room to update
  * @param {Object} params.room - Fields to update
  * @param {Object} [params.options] - Options
  * @param {Object} params.options.resetOwnerAliasId - Should ownerAliasId be removed?
@@ -304,7 +375,7 @@ function removeAccess({
  */
 function updateRoom({
   room,
-  objectId,
+  roomId,
   callback,
   options = {},
 }) {
@@ -348,7 +419,7 @@ function updateRoom({
 
         updateObject({
           update,
-          objectId,
+          roomId,
           callback,
         });
       },
@@ -359,7 +430,7 @@ function updateRoom({
 
   updateObject({
     update,
-    objectId,
+    roomId,
     callback,
   });
 }
@@ -367,13 +438,40 @@ function updateRoom({
 /**
  * Get room by ID
  * @param {Object} params - Parameters
- * @param {string} params.objectId - ID of the room
+ * @param {string} params.roomId - ID of the room
  * @param {Function} params.callback - Callback
  */
-function getRoomById({ objectId, callback }) {
+function getRoomById({ roomId, callback }) {
   getRoom({
     callback,
-    query: { _id: objectId },
+    query: { _id: roomId },
+  });
+}
+
+/**
+ * Get whisper room
+ * @param {Object} params - Parameters
+ * @param {string} params.participantIds - ID of the users
+ * @param {Function} params.callback - Callback
+ */
+function getWhisperRoom({ participantIds, callback }) {
+  const query = {
+    isWhisper: true,
+    participantIds: { $all: participantIds },
+  };
+
+  dbConnector.getObject({
+    query,
+    object: Room,
+    callback: ({ error, data }) => {
+      if (error) {
+        callback({ error });
+
+        return;
+      }
+
+      callback({ data: { room: addCustomId(cleanParameters(data.object)) } });
+    },
   });
 }
 
@@ -426,4 +524,7 @@ exports.addAccess = addAccess;
 exports.removeAccess = removeAccess;
 exports.updateRoom = updateRoom;
 exports.getRoomById = getRoomById;
-exports.doesNameExist = doesRoomExist;
+exports.doesRoomExist = doesRoomExist;
+exports.getWhisperRoom = getWhisperRoom;
+exports.addFollowers = addFollowers;
+exports.removeFollowers = removeFollowers;

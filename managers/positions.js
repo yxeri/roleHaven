@@ -15,29 +15,50 @@
  */
 
 'use strict';
+import { auth } from "../../../Library/Preferences/WebStorm2017.2/javascript/extLibs/http_github.com_DefinitelyTyped_DefinitelyTyped_raw_master_types_redis_index";
 
 const dbConfig = require('../config/defaults/config').databasePopulation;
 const authenticator = require('../helpers/authenticator');
-const objectValidator = require('../utils/objectValidator');
 const errorCreator = require('../objects/error/errorCreator');
 const appConfig = require('../config/defaults/config').app;
 const dbPosition = require('../db/connectors/position');
+const aliasManager = require('./aliases');
 
 /**
- * Does user have access to the position?
- * @private
- * @param {Object} params - Parameter
- * @param {Object} params.user - User to auth
- * @param {Object} params.position - Position to check against
- * @param {boolean} [params.shouldBeAdmin] - Should the user have admin access?
- * @param {Function} params.callback - Callback
- * @returns {boolean} - Does the user have access to the position?
+ * Get position by ID and check if the user has access to it.
+ * @param {Object} params - Parameters.
+ * @param {Object} params.user - User retrieving the position.
+ * @param {string} params.positionId - ID of the alias to retrieve.
+ * @param {Function} params.callback - Callback.
+ * @param {string} [params.errorContentText] - Text to be printed on error.
+ * @param {boolean} [params.shouldBeAdmin] - Does the user have to be an admin?
  */
-function hasAccessToPosition({ user, position, shouldBeAdmin }) {
-  return authenticator.hasAccessTo({
-    shouldBeAdmin,
-    objectToAccess: position,
-    toAuth: { userId: user.userId, teamIds: user.partOfTeams },
+function getAccessiblePosition({
+  user,
+  positionId,
+  callback,
+  shouldBeAdmin,
+  errorContentText = `positionId ${positionId}`,
+}) {
+  dbPosition.getPositionById({
+    positionId,
+    callback: (positionData) => {
+      if (positionData.error) {
+        callback({ error: positionData.error });
+
+        return;
+      } else if (!authenticator.hasAccessTo({
+        shouldBeAdmin,
+        toAuth: user,
+        objectToAccess: positionData.data.position,
+      })) {
+        callback({ error: new errorCreator.NotAllowed({ name: errorContentText }) });
+
+        return;
+      }
+
+      callback(positionData);
+    },
   });
 }
 
@@ -50,37 +71,24 @@ function hasAccessToPosition({ user, position, shouldBeAdmin }) {
 function getAllUserPositions({ token, callback }) {
   authenticator.isUserAllowed({
     token,
-    commandName: dbConfig.apiCommands.GetUserPosition.name,
-    callback: ({ error, data }) => {
+    commandName: dbConfig.apiCommands.GetAll.name,
+    callback: ({ error }) => {
       if (error) {
         callback({ error });
 
         return;
       }
 
-      const authUser = data.user;
-
       dbPosition.getPositionsByType({
-        userId: data.user.userId,
-        callback: ({ error: positionError, data: positionsData }) => {
-          if (positionError) {
-            callback({ error: positionError });
+        positionType: dbConfig.PositionTypes.USER,
+        callback: (positionsData) => {
+          if (positionsData.error) {
+            callback({ error: positionsData.error });
 
             return;
           }
 
-          callback({
-            data: {
-              positions: positionsData.positions.filter((position) => {
-                const hasAccess = hasAccessToPosition({
-                  position,
-                  user: authUser,
-                });
-
-                return hasAccess || authUser.accessLevel >= position.visibility;
-              }),
-            },
-          });
+          callback(positionsData);
         },
       });
     },
@@ -128,48 +136,41 @@ function getUserPosition({ userId, token, callback }) {
 }
 
 /**
- * Update user position. Will create a new one if it doesn't exist
- * @param {Object} params - Parameters
- * @param {Object} params.position - User position to update or create
- * @param {string} params.token - jwt
- * @param {Object} params.io - Socket io. Will be used if socket is not set
- * @param {Object} [params.socket] - Socket io
- * @param {Function} params.callback - Callback
+ * Update user position. Will create a new one if it doesn't exist.
+ * @param {Object} params - Parameters.
+ * @param {string} params.positionId - ID of the position to update.
+ * @param {Object} params.position - User position to update or create.
+ * @param {string} params.token - jwt.
+ * @param {Object} params.io - Socket io. Will be used if socket is not set.
+ * @param {Function} params.callback - Callback.
+ * @param {Object} [params.options] - Update options.
+ * @param {Object} [params.socket] - Socket io.
  */
-function updateUserPosition({ position, token, socket, io, callback }) {
+function updatePosition({
+  positionId,
+  position,
+  token,
+  socket,
+  io,
+  callback,
+  options,
+}) {
   authenticator.isUserAllowed({
     token,
-    commandName: dbConfig.apiCommands.UpdateUserPosition.name,
+    commandName: dbConfig.apiCommands.UpdatePosition.name,
     callback: ({ error, data }) => {
       if (error) {
         callback({ error });
 
         return;
-      } else if (!objectValidator.isValidData({ position }, { position: { coordinates: { longitude: true, latitude: true } } })) {
-        callback({ error: new errorCreator.InvalidData({ expected: '{ position: { coordinates: { longitude, latitude } } }' }) });
-
-        return;
-      } else if (position.coordinates.accuracy && position.coordinates.accuracy > appConfig.minimumPositionAccuracy) {
-        callback({ error: new errorCreator.Insufficient({ name: 'accuracy' }) });
-
-        return;
       }
 
-      const user = data.user;
-      const newPosition = position;
+      const authUser = data.user;
 
-      newPosition.positionName = user.username;
-      newPosition.markerType = 'user';
-      newPosition.ownerId = user.userId;
-      newPosition.teamId = user.teamId;
-      newPosition.aliasId = user.aliasId;
-      newPosition.coordinates.accuracy = newPosition.coordinates.accuracy || appConfig.minimumPositionAccuracy / 2;
-
-      hasAccessToPosition({
-        user,
-        position: newPosition,
+      getAccessiblePosition({
+        positionId,
+        user: authUser,
         shouldBeAdmin: true,
-        isTracked: true,
         callback: ({ error: trackError }) => {
           if (trackError) {
             callback({ error: trackError });
@@ -178,7 +179,8 @@ function updateUserPosition({ position, token, socket, io, callback }) {
           }
 
           dbPosition.updatePosition({
-            position: newPosition,
+            position,
+            options,
             callback: ({ error: updateError, data: positionData }) => {
               if (updateError) {
                 callback({ error: updateError });
@@ -187,17 +189,20 @@ function updateUserPosition({ position, token, socket, io, callback }) {
               }
 
               const dataToSend = {
-                positions: [positionData.position],
-                currentTime: (new Date()),
+                data: {
+                  position: positionData.position,
+                  changeType: dbConfig.ChangeTypes.UPDATE,
+                  currentTime: (new Date()),
+                },
               };
 
               if (socket) {
-                socket.broadcast.emit('mapPositions', { data: dataToSend });
+                socket.broadcast.emit(dbConfig.EmitTypes.POSITION, dataToSend);
               } else {
-                io.emit('mapPositions', { data: dataToSend });
+                io.emit(dbConfig.EmitTypes.POSITION, dataToSend);
               }
 
-              callback({ data: { position: positionData.position } });
+              callback(dataToSend);
             },
           });
         },
@@ -215,22 +220,25 @@ function updateUserPosition({ position, token, socket, io, callback }) {
  * @param {Object} [params.socket] - Socket io
  * @param {Function} params.callback - Callback
  */
-function createPosition({ userId, position, token, socket, io, callback }) {
+function createPosition({
+  userId,
+  position,
+  token,
+  socket,
+  io,
+  callback,
+}) {
   authenticator.isUserAllowed({
     token,
     matchToId: userId,
-    commandName: dbConfig.apiCommands.UpdatePosition.name,
+    commandName: dbConfig.apiCommands.CreatePosition.name,
     callback: ({ error, data }) => {
       if (error) {
         callback({ error });
 
         return;
-      } else if (!objectValidator.isValidData({ position }, { position: { coordinates: { longitude: true, latitude: true }, positionName: true, positionType: true } })) {
-        callback({ error: new errorCreator.InvalidData({ expected: '{ position: { coordinates: { longitude, latitude }, positionName, positionType } }' }) });
-
-        return;
-      } else if (position.positionName && (position.positionName.length > appConfig.docFileTitleMaxLength || (position.description && position.description.join('').length > appConfig.docFileMaxLength))) {
-        callback({ error: new errorCreator.InvalidCharacters({ expected: `text length: ${appConfig.docFileMaxLength}, title length: ${appConfig.docFileTitleMaxLength}` }) });
+      } else if ((position.positionName && position.positionName.length > appConfig.positionNameMaxLength) || (position.description && position.description.join('').length > appConfig.docFileMaxLength)) {
+        callback({ error: new errorCreator.InvalidCharacters({ expected: `text length: ${appConfig.docFileMaxLength}, title length: ${appConfig.positionNameMaxLength}` }) });
 
         return;
       } else if (position.coordinates.accuracy > appConfig.minimumPositionAccuracy) {
@@ -239,101 +247,83 @@ function createPosition({ userId, position, token, socket, io, callback }) {
         return;
       }
 
-      const user = data.user;
+      const authUser = data.user;
       const newPosition = position;
+      newPosition.ownerId = authUser.userId;
 
-      newPosition.ownerId = user.userId;
+      if (!newPosition.coordinates) {
+        newPosition.coordinates = {
+          latitude: 0,
+          longitude: 0,
+          speed: 0,
+          heading: 0,
+        };
+      }
+
       newPosition.coordinates.accuracy = newPosition.coordinates.accuracy || appConfig.minimumPositionAccuracy;
 
-      dbPosition.createPosition({
-        position: newPosition,
-        callback: ({ error: updateError, data: positionData }) => {
-          if (updateError) {
-            callback({ error: updateError });
+      const savePosition = () => {
+        dbPosition.createPosition({
+          position: newPosition,
+          callback: ({ error: updateError, data: positionData }) => {
+            if (updateError) {
+              callback({ error: updateError });
 
-            return;
-          }
+              return;
+            }
 
-          const updatedPosition = positionData.position;
-          const dataToSend = {
-            positions: [updatedPosition],
-            currentTime: new Date(),
-          };
+            const updatedPosition = positionData.position;
+            const dataToReturn = {
+              data: {
+                position: updatedPosition,
+                currentTime: new Date(),
+                changeType: dbConfig.ChangeTypes.CREATE,
+              },
+            };
+            const dataToSend = {
+              data: {
+                position: updatedPosition,
+                currentTime: new Date(),
+                changeType: dbConfig.ChangeTypes.CREATE,
+              },
+            };
+            const { ownerAliasId } = updatedPosition;
 
-          if (socket) {
-            socket.broadcast.emit('mapPositions', { data: dataToSend });
-          } else {
-            io.emit('mapPositions', { data: dataToSend });
-          }
+            if (ownerAliasId) {
+              dataToSend.data.position.ownerId = ownerAliasId;
+              dataToSend.data.position.ownerAliasId = undefined;
+            }
 
-          callback({ data: dataToSend });
-        },
-      });
-    },
-  });
-}
+            if (socket) {
+              socket.broadcast.emit('position', dataToSend);
+            } else {
+              io.emit('position', dataToSend);
+            }
 
-/**
- * Update position
- * @param {Object} params - Parameters
- * @param {Object} params.position - Position to update
- * @param {string} params.token - jwt
- * @param {Object} params.io - Socket io. Will be used if socket is not set
- * @param {Object} [params.socket] - Socket io
- * @param {string} params.userId - ID of the user that is creating the position
- * @param {Function} params.callback - Callback
- */
-function updatePosition({ userId, position, token, socket, io, callback }) {
-  authenticator.isUserAllowed({
-    token,
-    matchToId: userId,
-    commandName: dbConfig.apiCommands.UpdatePosition.name,
-    callback: ({ error, data }) => {
-      if (error) {
-        callback({ error });
+            callback(dataToReturn);
+          },
+        });
+      };
 
-        return;
-      } else if (position.positionName && (position.positionName.length > appConfig.docFileTitleMaxLength || (position.description && position.description.join('').length > appConfig.docFileMaxLength))) {
-        callback({ error: new errorCreator.InvalidCharacters({ expected: `text length: ${appConfig.docFileMaxLength}, title length: ${appConfig.docFileTitleMaxLength}` }) });
+      if (newPosition.ownerAliasId) {
+        aliasManager.getAccessibleAlias({
+          user: authUser,
+          aliasId: newPosition.ownerAliasId,
+          callback: ({ error: aliasError }) => {
+            if (aliasError) {
+              callback({ error: aliasError });
 
-        return;
-      } else if (position.coordinates && position.coordinates.accuracy && position.coordinates.accuracy > appConfig.minimumPositionAccuracy) {
-        callback({ error: new errorCreator.InvalidData({ name: 'accuracy' }) });
+              return;
+            }
+
+            savePosition();
+          },
+        });
 
         return;
       }
 
-      const user = data.user;
-      const newPosition = position;
-
-      newPosition.teamId = user.teamId;
-      newPosition.lastUpdated = new Date();
-      newPosition.coordinates.accuracy = newPosition.coordinates.accuracy || appConfig.minimumPositionAccuracy;
-
-      dbPosition.updatePosition({
-        position: newPosition,
-        callback: ({ error: updateError, data: positionData }) => {
-          if (updateError) {
-            callback({ error: updateError });
-
-            return;
-          }
-
-          const updatedPosition = positionData.position;
-          const dataToSend = {
-            positions: [updatedPosition],
-            currentTime: new Date(),
-          };
-
-          if (socket) {
-            socket.broadcast.emit('mapPositions', { data: dataToSend });
-          } else {
-            io.emit('mapPositions', { data: dataToSend });
-          }
-
-          callback({ data: dataToSend });
-        },
-      });
+      savePosition();
     },
   });
 }
@@ -347,7 +337,41 @@ function updatePosition({ userId, position, token, socket, io, callback }) {
 function getAllPositions({ token, callback }) {
   authenticator.isUserAllowed({
     token,
-    commandName: dbConfig.apiCommands.GetPositions.name,
+    commandName: dbConfig.apiCommands.GetAll.name,
+    callback: ({ error }) => {
+      if (error) {
+        callback({ error });
+
+        return;
+      }
+
+      dbPosition.getAllPositions({ callback });
+    },
+  });
+}
+
+/**
+ * Remove position.
+ * @param {Object} params - Parameters.
+ * @param {string} params.docFileId - ID of the file to remove.
+ * @param {string} params.token - jwt.
+ * @param {string} params.userId - ID of the user removing the file
+ * @param {Function} params.callback - Callback
+ * @param {Object} params.io - Socket io. Will be used if socket is not set.
+ * @param {Object} [params.socket] - Socket io.
+ */
+function removeDocFile({
+  docFileId,
+  token,
+  userId,
+  callback,
+  socket,
+  io,
+}) {
+  authenticator.isUserAllowed({
+    token,
+    commandName: dbConfig.apiCommands.RemoveDocFile.commandName,
+    matchToId: userId,
     callback: ({ error, data }) => {
       if (error) {
         callback({ error });
@@ -355,26 +379,38 @@ function getAllPositions({ token, callback }) {
         return;
       }
 
-      const authUser = data.user;
-
-      dbPosition.getAllPositions({
-        callback: (positionsData) => {
-          if (positionsData.error) {
-            callback({ error: positionsData.error });
+      getAccessibleDocFile({
+        docFileId,
+        user: data.user,
+        callback: (aliasData) => {
+          if (aliasData.error) {
+            callback({ error: aliasData.error });
 
             return;
           }
+          dbDocFile.removeDocFile({
+            docFileId,
+            callback: (removeData) => {
+              if (removeData.remove) {
+                callback({ error: removeData.error });
 
-          callback({
-            data: {
-              positions: positionsData.data.positions.filter((position) => {
-                const hasAccess = hasAccessToPosition({
-                  position,
-                  user: authUser,
-                });
+                return;
+              }
 
-                return hasAccess || authUser.accessLevel >= position.visibility;
-              }),
+              const dataToSend = {
+                data: {
+                  docFile: { docFileId },
+                  changeType: dbConfig.ChangeTypes.REMOVE,
+                },
+              };
+
+              if (socket) {
+                socket.broadcast.emit(dbConfig.EmitTypes.DOCFILE, dataToSend);
+              } else {
+                io.emit(dbConfig.EmitTypes.DOCFILE, dataToSend);
+              }
+
+              callback(dataToSend);
             },
           });
         },
@@ -383,9 +419,9 @@ function getAllPositions({ token, callback }) {
   });
 }
 
+exports.getAccessiblePosition = getAccessiblePosition;
 exports.getAllUserPositions = getAllUserPositions;
 exports.getUserPosition = getUserPosition;
-exports.updateUserPosition = updateUserPosition;
 exports.updatePosition = updatePosition;
 exports.getAllPositions = getAllPositions;
 exports.createPosition = createPosition;

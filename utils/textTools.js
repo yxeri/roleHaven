@@ -16,16 +16,16 @@
 
 'use strict';
 
-const alphaNumericRegex = /^[\w\d]+$/;
-const fullTextRegex = /^[\w\d\såäöÅÄÖ-]+$/;
+const allowedRegex = /^[\w\d-_]+$/;
+const fullTextRegex = /^[\w\d\såäöÅÄÖ_-]+$/;
 
 /**
  * Does the string contain only alphanumeric values?
  * @param {string} text - String to check
  * @returns {boolean} Does the string contain only alphanumeric values?
  */
-function isAlphaNumeric(text) {
-  return alphaNumericRegex.test(text);
+function hasAllowedText(text) {
+  return allowedRegex.test(text);
 }
 
 /**
@@ -147,7 +147,7 @@ function calculateMinutesDifference({ firstDate, secondDate }) {
   return Math.floor((difference / 1000) / 60);
 }
 
-exports.isAlphaNumeric = isAlphaNumeric;
+exports.hasAllowedText = hasAllowedText;
 exports.isAllowedFull = isAllowedFull;
 exports.cleanText = cleanText;
 exports.convertToBoolean = convertToBoolean;

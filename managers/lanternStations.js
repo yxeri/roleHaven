@@ -189,7 +189,7 @@ function updateLanternStation({ io, station, stationId, token, callback }) {
  * @param {Function} params.callback Callback
  */
 function resetStations({ callback }) {
-  dbLanternHack.resetLanternStations({
+  dbLanternHack.resetStations({
     signalValue: appConfig.signalDefaultValue,
     callback,
   });

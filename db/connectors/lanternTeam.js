@@ -31,6 +31,18 @@ const lanternTeamSchema = new mongoose.Schema(dbConnector.createSchema({
 const LanternTeam = mongoose.model('LanternTeam', lanternTeamSchema);
 
 /**
+ * Add custom id to the object
+ * @param {Object} team - Lantern team object
+ * @return {Object} - Lantern team object with id
+ */
+function addCustomId(team) {
+  const updatedTeam = team;
+  updatedTeam.teamid = team.objectId;
+
+  return updatedTeam;
+}
+
+/**
  * Update lantern team fields
  * @private
  * @param {Object} params - Parameters
@@ -43,7 +55,7 @@ function updateObject({ teamId, update, callback }) {
     update,
     query: { teamId },
     object: LanternTeam,
-    errorNameContent: 'updateTeamFields',
+    errorNameContent: 'update team',
     callback: ({ error, data }) => {
       if (error) {
         callback({ error });
@@ -51,7 +63,7 @@ function updateObject({ teamId, update, callback }) {
         return;
       }
 
-      callback({ station: data.object });
+      callback({ data: { station: addCustomId(data.object) } });
     },
   });
 }
@@ -74,7 +86,11 @@ function getTeams({ query, callback }) {
         return;
       }
 
-      callback({ teams: data.objects });
+      callback({
+        data: {
+          teams: data.objects.map(team => addCustomId(team)),
+        },
+      });
     },
   });
 }
@@ -101,7 +117,7 @@ function getTeam({ query, callback }) {
         return;
       }
 
-      callback({ team: data.object });
+      callback({ data: { team: addCustomId(data.object) } });
     },
   });
 }
@@ -137,7 +153,8 @@ function doesTeamExist({ teamName, shortName, callback }) {
  */
 function createTeam({ team, callback }) {
   doesTeamExist({
-    query,
+    teamName: team.teamName,
+    shortName: team.shortName,
     callback: ({ error, data }) => {
       if (error) {
         callback({ error: new errorCreator.Database({ errorObject: error, name: 'createLanternTeam' }) });
@@ -159,7 +176,7 @@ function createTeam({ team, callback }) {
             return;
           }
 
-          callback({ data: { team: saveData.data.savedObject } });
+          callback({ data: { team: addCustomId(saveData.data.savedObject) } });
         },
       });
     },
@@ -222,9 +239,9 @@ function getAllTeams({ callback }) {
  */
 function deleteTeam({ teamId, callback }) {
   dbConnector.removeObject({
+    callback,
     object: LanternTeam,
     query: { teamId },
-    callback,
   });
 }
 

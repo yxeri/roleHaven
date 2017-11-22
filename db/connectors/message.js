@@ -21,6 +21,7 @@ const dbConnector = require('../databaseConnector');
 const dbConfig = require('../../config/defaults/config').databasePopulation;
 const errorCreator = require('../../objects/error/errorCreator');
 const dbRoom = require('./room');
+const appConfig = require('../../config/defaults/config').app;
 
 const messageSchema = new mongoose.Schema(dbConnector.createSchema({
   messageType: { type: String, default: dbConfig.MessageTypes.CHAT },
@@ -46,17 +47,29 @@ const messageSchema = new mongoose.Schema(dbConnector.createSchema({
 const Message = mongoose.model('Message', messageSchema);
 
 /**
- * Update message
- * @private
- * @param {Object} params - Parameters
- * @param {string} params.objectId - ID of the message
- * @param {Object} params.update - Update
- * @param {Function} params.callback Callback
+ * Add custom id to the object
+ * @param {Object} message - Message object
+ * @return {Object} - Message object with id
  */
-function updateObject({ objectId, update, callback }) {
+function addCustomId(message) {
+  const updatedMessage = message;
+  updatedMessage.messageId = message.objectId;
+
+  return updatedMessage;
+}
+
+/**
+ * Update message.
+ * @private
+ * @param {Object} params - Parameters.
+ * @param {string} params.messageId - ID of the message.
+ * @param {Object} params.update - Update.
+ * @param {Function} params.callback Callback.
+ */
+function updateObject({ messageId, update, callback }) {
   dbConnector.updateObject({
     update,
-    query: { _id: objectId },
+    query: { _id: messageId },
     object: Message,
     errorNameContent: 'updateMessage',
     callback: ({ error, data }) => {
@@ -66,27 +79,54 @@ function updateObject({ objectId, update, callback }) {
         return;
       }
 
-      callback({ data: { message: data.savedObject } });
+      callback({ data: { message: addCustomId(data.savedObject) } });
     },
   });
 }
 
 /**
- * Get messages
+ * Get messages.
  * @private
- * @param {Object} params - Parameters
- * @param {Object} params.query - Query to get messages
- * @param {string} params.errorNameContent - Error text to be printed
- * @param {Function} params.callback - Callback
+ * @param {Object} params - Parameters.
+ * @param {Object} params.query - Query to get messages.
+ * @param {Function} params.callback - Callback.
+ * @param {string} [params.errorNameContent] - Error text to be printed.
+ * @param {Date} [params.startDate] - Date for when to start the span of messages.
+ * @param {boolean} [params.shouldGetFuture] - Should messages from the future of the start date be retrieved?
  */
 function getMessages({
   query,
   callback,
   errorNameContent,
+  startDate = new Date(),
+  shouldGetFuture = false,
+  limit = appConfig.maxHistoryAmount,
 }) {
+  const fullQuery = query;
+  const customTimeQuery = {
+    customTimeCreated: {
+      $exists: true,
+    },
+  };
+  const timeQuery = {};
+
+  if (!shouldGetFuture) {
+    customTimeQuery.customTimeCreated.$lte = startDate;
+    timeQuery.timeCreated.$lte = startDate;
+  } else {
+    customTimeQuery.customTimeCreated.$gte = startDate;
+    timeQuery.timeCreated.$gte = startDate;
+  }
+
+  fullQuery.$or = [
+    customTimeQuery,
+    timeQuery,
+  ];
+
   dbConnector.getObjects({
-    query,
     errorNameContent,
+    limit,
+    query: fullQuery,
     object: Message,
     callback: ({ error, data }) => {
       if (error) {
@@ -95,18 +135,22 @@ function getMessages({
         return;
       }
 
-      callback({ data: { messages: data.objects } });
+      callback({
+        data: {
+          messages: data.objects.map(message => addCustomId(message)),
+        },
+      });
     },
   });
 }
 
 /**
- * Get message
+ * Get message.
  * @private
- * @param {Object} params - Parameters
- * @param {string} params.query - Query to get alias
- * @param {string} params.errorNameContent - Error text to be printed
- * @param {Function} params.callback - Callback
+ * @param {Object} params - Parameters.
+ * @param {string} params.query - Query to get alias.
+ * @param {string} params.errorNameContent - Error text to be printed.
+ * @param {Function} params.callback - Callback.
  */
 function getMessage({
   query,
@@ -128,16 +172,17 @@ function getMessage({
         return;
       }
 
-      callback({ data: { message: data.object } });
+      callback({ data: { message: addCustomId(data.object) } });
     },
   });
 }
 
 /**
- * Get all messages
- * @param {Object} params - Parameters
+ * Get all messages.
+ * It is recommended to not use this for normal usage.
+ * @param {Object} params - Parameters.
  * @param {boolean} [params.lite] - Should parameters with a large amount of data be filtered out?
- * @param {Function} params.callback - Callback
+ * @param {Function} params.callback - Callback.
  */
 function getAllMessages({ callback, lite = true }) {
   getMessages({
@@ -148,7 +193,7 @@ function getAllMessages({ callback, lite = true }) {
 }
 
 /**
- * Create message
+ * Create message.
  * @param {Object} params - Parameters
  * @param {Object} params.message - Message to create
  * @param {Function} params.callback - Callback
@@ -164,29 +209,29 @@ function createMessage({ message, callback }) {
         return;
       }
 
-      callback({ data: { message: saveData.data.savedObject } });
+      callback({ data: { message: addCustomId(saveData.data.savedObject) } });
     },
   });
 }
 
 /**
- * Update a message
- * @param {Object} params - Parameters
- * @param {string} params.objectId - ID of the message to update
- * @param {Object} params.message - Message
- * @param {string[]} [params.message.roomId] - ID of the room
- * @param {string[]} [params.message.text] - Text in message
- * @param {string} [params.message.aliasId] - ID of the alias that will be shown as sender
- * @param {string[]} [params.message.intro] - Text that will be printed before message.text
- * @param {string[]} [params.message.extro] - Text that will be printed after message.text
- * @param {string[]} [params.message.customTimeCreated] - A custom date of when the message was created
- * @param {string[]} [params.message.customlastUpdated] - A custom date of when the message was last updated
+ * Update a message.
+ * @param {Object} params - Parameters.
+ * @param {string} params.messageId - ID of the message to update.
+ * @param {Object} params.message - Message.
+ * @param {string[]} [params.message.roomId] - ID of the room.
+ * @param {string[]} [params.message.text] - Text in message.
+ * @param {string} [params.message.aliasId] - ID of the alias that will be shown as sender.
+ * @param {string[]} [params.message.intro] - Text that will be printed before message.text.
+ * @param {string[]} [params.message.extro] - Text that will be printed after message.text.
+ * @param {string[]} [params.message.customTimeCreated] - A custom date of when the message was created.
+ * @param {string[]} [params.message.customlastUpdated] - A custom date of when the message was last updated.
  * @param {Object} [params.options] - Options
  * @param {boolean} [params.options.resetOwnerAliasId] - Should ownerAliasId be reset?
- * @param {Function} params.callback - Callback
+ * @param {Function} params.callback - Callback.
  */
 function updateMessage({
-  objectId,
+  messageId,
   message,
   options,
   callback,
@@ -225,7 +270,7 @@ function updateMessage({
     update.$set.roomId = roomId;
 
     dbRoom.getRoomById({
-      objectId: roomId,
+      roomId,
       callback: ({ error }) => {
         if (error) {
           callback({ error });
@@ -234,7 +279,7 @@ function updateMessage({
         }
 
         updateObject({
-          objectId,
+          messageId,
           update,
           options,
           callback,
@@ -246,7 +291,7 @@ function updateMessage({
   }
 
   updateObject({
-    objectId,
+    messageId,
     update,
     options,
     callback,
@@ -254,90 +299,36 @@ function updateMessage({
 }
 
 /**
- * Gets messages by room ID
- * @param {Object} params - Parameters
- * @param {string} params.roomId - ID of the room
- * @param {Function} params.callback - Callback
+ * Gets messages by room ID.
+ * @param {Object} params - Parameters.
+ * @param {string} params.roomId - ID of the room.
+ * @param {Function} params.callback - Callback.
  * @param {boolean} [params.lite] - Should parameters with a large amount of data be filtered out?
+ * @param {Date} [params.startDate] - Date for when to start the span of messages.
+ * @param {boolean} [params.shouldGetFuture] - Should messages from the future of the start date be retrieved?
  */
-function getMessagesByRoom({ roomId, lite, callback }) {
+function getMessagesByRoom({
+  roomId,
+  lite,
+  callback,
+  startDate,
+  shouldGetFuture,
+}) {
   getMessages({
     callback,
     lite,
+    startDate,
+    shouldGetFuture,
     query: { roomId },
     errorNameContent: 'getMessagesByRoom',
   });
 }
 
 /**
- * Get messages by message type
- * @param {Object} params - Parameters
- * @param {string} params.messageType - Message type
- * @param {Function} params.callback - Callback
- * @param {boolean} [params.lite] - Should parameters with a large amount of data be filtered out?
- */
-function getMessagesByType({ messageType, lite, callback }) {
-  getMessages({
-    callback,
-    lite,
-    query: { messageType },
-    errorNameContent: 'getMessagesByType',
-  });
-}
-
-/**
- * Get messages by user ID
- * @param {Object} params - Parameters
- * @param {string} params.ownerId - ID of the user
- * @param {Function} params.callback - Callback
- * @param {boolean} [params.lite] - Should parameters with a large amount of data be filtered out?
- */
-function getMessagesByUser({ ownerId, callback, lite }) {
-  getMessages({
-    callback,
-    lite,
-    query: { ownerId },
-    errorNameContent: 'getMessagesByUser',
-  });
-}
-
-/**
- * Get messages by alias ID
- * @param {Object} params - Parameters
- * @param {string} params.ownerAliasId - Alias ID
- * @param {Function} params.callback - Callback
- * @param {boolean} [params.lite] - Should parameters with a large amount of data be filtered out?
- */
-function getMessagesByAlias({ ownerAliasId, callback, lite }) {
-  getMessages({
-    callback,
-    lite,
-    query: { ownerAliasId },
-    errorNameContent: 'getMessagesByUserAlias',
-  });
-}
-
-/**
- * Get messages by Team IDs
- * @param {Object} params - Parameters
- * @param {string} params.teamIds - ID of the teams
- * @param {Function} params.callback - Callback
- * @param {boolean} [params.lite] - Should parameters with a large amount of data be filtered out?
- */
-function getMessagesByTeams({ teamIds, callback, lite }) {
-  getMessages({
-    callback,
-    lite,
-    query: { teamIds: { $in: teamIds } },
-    errorNameContent: 'getMessagesByTeam',
-  });
-}
-
-/**
- * Remove messages by room ID
- * @param {Object} params - Parameters
- * @param {string} params.roomId - ID of the room
- * @param {Function} params.callback - Callback
+ * Remove messages by room ID.
+ * @param {Object} params - Parameters.
+ * @param {string} params.roomId - ID of the room.
+ * @param {Function} params.callback - Callback.
  */
 function removeMessagesByRoom({ roomId, callback }) {
   dbConnector.removeObjects({
@@ -348,10 +339,10 @@ function removeMessagesByRoom({ roomId, callback }) {
 }
 
 /**
- * Remove messages by user ID
- * @param {Object} params - Parameters
- * @param {string} params.ownerId - ID of the user
- * @param {Function} params.callback - Callback
+ * Remove messages by user ID.
+ * @param {Object} params - Parameters.
+ * @param {string} params.ownerId - ID of the user.
+ * @param {Function} params.callback - Callback.
  */
 function removeMessagesByUser({ ownerId, callback }) {
   dbConnector.removeObjects({
@@ -362,10 +353,12 @@ function removeMessagesByUser({ ownerId, callback }) {
 }
 
 /**
- * Remove messages by alias ID
- * @param {Object} params - Parameters
- * @param {string} params.ownerAliasId - Alias ID
- * @param {Function} params.callback - Callback
+ * Remove messages by alias ID.
+ * @param {Object} params - Parameters.
+ * @param {string} params.ownerAliasId - Alias ID.
+ * @param {Function} params.callback - Callback.
+ * @param {Date} [params.startDate] - Date for when to start the span of messages.
+ * @param {boolean} [params.shouldGetFuture] - Should messages from the future of the start date be retrieved?
  */
 function removeMessagesByAlias({ ownerAliasId, callback }) {
   dbConnector.removeObjects({
@@ -376,28 +369,28 @@ function removeMessagesByAlias({ ownerAliasId, callback }) {
 }
 
 /**
- * Get message by id
- * @param {Object} params - Parameters
- * @param {string} params.objectId - ID of the message
- * @param {Function} params.callback - Callback
+ * Get message by id.
+ * @param {Object} params - Parameters.
+ * @param {string} params.messageId - ID of the message.
+ * @param {Function} params.callback - Callback.
  */
-function getMessageById({ objectId, callback }) {
+function getMessageById({ messageId, callback }) {
   getMessage({
     callback,
-    query: { _id: objectId },
+    query: { _id: messageId },
   });
 }
 
 /**
- * Remove message
- * @param {Object} params - Parameters
- * @param {string} params.objectId - ID of the message
- * @param {Function} params.callback - Callback
+ * Remove message.
+ * @param {Object} params - Parameters.
+ * @param {string} params.messageId - ID of the message.
+ * @param {Function} params.callback - Callback.
  */
-function removeMessage({ objectId, callback }) {
+function removeMessage({ messageId, callback }) {
   dbConnector.removeObject({
     callback,
-    query: { _id: objectId },
+    query: { _id: messageId },
     object: Message,
   });
 }
@@ -405,13 +398,9 @@ function removeMessage({ objectId, callback }) {
 exports.createMessage = createMessage;
 exports.updateMessage = updateMessage;
 exports.getMessagesByRoom = getMessagesByRoom;
-exports.getMessagesByType = getMessagesByType;
-exports.getMessagesByUser = getMessagesByUser;
 exports.removeMessagesByRoom = removeMessagesByRoom;
 exports.removeMessagesByUser = removeMessagesByUser;
 exports.removeMessage = removeMessage;
 exports.getAllMessages = getAllMessages;
-exports.getMessagesByTeams = getMessagesByTeams;
 exports.getMessageById = getMessageById;
-exports.getMessagesByAlias = getMessagesByAlias;
 exports.removeMessagesByAlias = removeMessagesByAlias;

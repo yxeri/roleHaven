@@ -34,22 +34,34 @@ const forumSchema = new mongoose.Schema(dbConnector.createSchema({
 const Forum = mongoose.model('Forum', forumSchema);
 
 /**
+ * Add custom id to the object
+ * @param {Object} forum - Forum object
+ * @return {Object} - Forum object with id
+ */
+function addCustomId(forum) {
+  const updatedForum = forum;
+  updatedForum.forumId = forum.objectId;
+
+  return updatedForum;
+}
+
+/**
  * Update forum object fields
  * @private
  * @param {Object} params - Parameters
- * @param {string} params.objectId - ID of forum to update
+ * @param {string} params.forumId - ID of forum to update
  * @param {Object} params.update - Update
  * @param {Function} params.callback Callback
  */
 function updateObject({
-  objectId,
+  forumId,
   update,
   callback,
 }) {
   dbConnector.updateObject({
     update,
     object: Forum,
-    query: { _id: objectId },
+    query: { _id: forumId },
     errorNameContent: 'updateForum',
     callback: ({ error, data }) => {
       if (error) {
@@ -58,7 +70,7 @@ function updateObject({
         return;
       }
 
-      callback({ data: { forum: data.object } });
+      callback({ data: { forum: addCustomId(data.object) } });
     },
   });
 }
@@ -81,7 +93,11 @@ function getForums({ query, callback }) {
         return;
       }
 
-      callback({ forums: data.objects });
+      callback({
+        data: {
+          forums: data.objects.map(forum => addCustomId(forum)),
+        },
+      });
     },
   });
 }
@@ -108,7 +124,7 @@ function getForum({ query, callback }) {
         return;
       }
 
-      callback({ data: { forum: data.object } });
+      callback({ data: { forum: addCustomId(data.object) } });
     },
   });
 }
@@ -157,7 +173,7 @@ function createForum({ forum, callback }) {
             return;
           }
 
-          callback({ data: { forum: forumData.data.savedObject } });
+          callback({ data: { forum: addCustomId(forumData.data.savedObject) } });
         },
       });
     },
@@ -167,13 +183,13 @@ function createForum({ forum, callback }) {
 /**
  * Get forum by Id
  * @param {Object} params - Parameters
- * @param {string} params.objectId - ID of the forum
+ * @param {string} params.forumId - ID of the forum
  * @param {Function} params.callback - Callback
  */
-function getForumById({ objectId, callback }) {
+function getForumById({ forumId, callback }) {
   getForum({
     callback,
-    query: { _id: objectId },
+    query: { _id: forumId },
   });
 }
 
@@ -202,11 +218,11 @@ function getAllForums({ callback }) {
 /**
  * Update existing forum
  * @param {Object} params - Parameters
- * @param {string} params.objectId - ID of the forum
+ * @param {string} params.forumId - ID of the forum
  * @param {Object} params.forum - Forum updates
  * @param {Function} params.callback - Callback
  */
-function updateForum({ objectId, forum, callback }) {
+function updateForum({ forumId, forum, callback }) {
   const update = { $set: {} };
 
   if (forum.title) {
@@ -227,7 +243,7 @@ function updateForum({ objectId, forum, callback }) {
 
         updateObject({
           update,
-          objectId,
+          forumId,
           callback,
         });
       },
@@ -238,7 +254,7 @@ function updateForum({ objectId, forum, callback }) {
 
   updateObject({
     update,
-    objectId,
+    forumId,
     callback,
   });
 }
@@ -247,14 +263,14 @@ function updateForum({ objectId, forum, callback }) {
  * Remove forum.
  * Setting fullRemoval will also remove all connected forum threads and posts.
  * @param {Object} params - Parameters
- * @param {string[]} params.objectId - ID of forum to remove
+ * @param {string[]} params.forumId - ID of forum to remove
  * @param {boolean} params.fullRemoval - Should connected forum threads and posts be removed?
  * @param {Function} params.callback - Callback
  */
-function removeForum({ objectId, fullRemoval, callback }) {
+function removeForum({ forumId, fullRemoval, callback }) {
   dbConnector.removeObjects({
     object: Forum,
-    query: { _id: objectId },
+    query: { _id: forumId },
     callback: ({ error }) => {
       if (error) {
         callback({ error: new errorCreator.Database({ errorObject: error, name: 'removeForum' }) });
@@ -264,7 +280,7 @@ function removeForum({ objectId, fullRemoval, callback }) {
 
       if (fullRemoval) {
         dbForumThread.getThreadsByForum({
-          objectId,
+          forumId,
           callback: (threadsData) => {
             if (threadsData.error) {
               callback({ error: threadsData.error });
@@ -291,70 +307,86 @@ function removeForum({ objectId, fullRemoval, callback }) {
 /**
  * Add access to forum
  * @param {Object} params - Parameters
- * @param {string} params.objectId - ID of the team
+ * @param {string} params.forumId - ID of the team
  * @param {string[]} [params.userIds] - ID of the users
  * @param {string[]} [params.teamIds] - ID of the teams
- * @param {string[]} [params.blockedIds] - Blocked ids
+ * @param {string[]} [params.bannedIds] - Blocked ids
  * @param {boolean} [params.isAdmin] - Should the users be added to admins?
  * @param {Function} params.callback - Callback
  */
 function addAccess({
-  objectId,
+  forumId,
   userIds,
   teamIds,
-  blockedIds,
+  bannedIds,
   isAdmin,
   callback,
 }) {
-  if (!userIds && !teamIds && !blockedIds) {
-    callback({ error: new errorCreator.InvalidData({ expected: 'teamIds || userIds || blockedIds' }) });
+  if (!userIds && !teamIds && !bannedIds) {
+    callback({ error: new errorCreator.InvalidData({ expected: 'teamIds || userIds || bannedIds' }) });
 
     return;
   }
 
   dbConnector.addObjectAccess({
-    objectId,
     userIds,
     teamIds,
-    blockedIds,
+    bannedIds,
     isAdmin,
-    callback,
+    objectId: forumId,
     object: Forum,
+    callback: ({ error, data }) => {
+      if (error) {
+        callback({ error });
+
+        return;
+      }
+
+      callback({ data: { forum: addCustomId(data.object) } });
+    },
   });
 }
 
 /**
  * Remove access to forum
  * @param {Object} params - Parameters
- * @param {string} params.objectId - ID of the team
+ * @param {string} params.forumId - ID of the team
  * @param {string[]} params.teamIds - ID of the teams
  * @param {string[]} [params.userIds] - ID of the user
- * @param {string[]} [params.blockedIds] - Blocked ids
+ * @param {string[]} [params.bannedIds] - Blocked ids
  * @param {boolean} [params.isAdmin] - Should the teams and/or users be removed from admins?
  * @param {Function} params.callback - Callback
  */
 function removeAccess({
-  objectId,
+  forumId,
   userIds,
   teamIds,
-  blockedIds,
+  bannedIds,
   isAdmin,
   callback,
 }) {
-  if (!userIds && !teamIds && !blockedIds) {
-    callback({ error: new errorCreator.InvalidData({ expected: 'teamIds || userIds || blockedIds' }) });
+  if (!userIds && !teamIds && !bannedIds) {
+    callback({ error: new errorCreator.InvalidData({ expected: 'teamIds || userIds || bannedIds' }) });
 
     return;
   }
 
   dbConnector.removeObjectAccess({
-    objectId,
     userIds,
     teamIds,
-    blockedIds,
-    callback,
+    bannedIds,
     isAdmin,
+    objectId: forumId,
     object: Forum,
+    callback: ({ error, data }) => {
+      if (error) {
+        callback({ error });
+
+        return;
+      }
+
+      callback({ data: { forum: addCustomId(data.object) } });
+    },
   });
 }
 

@@ -46,17 +46,29 @@ const lanternHackSchema = new mongoose.Schema(dbConnector.createSchema({
 const LanternHack = mongoose.model('LanternHack', lanternHackSchema);
 
 /**
+ * Add custom id to the object
+ * @param {Object} lanternHack - Lantern hack object
+ * @return {Object} - Lantern hack object with id
+ */
+function addCustomId(lanternHack) {
+  const updatedHack = lanternHack;
+  updatedHack.lanternHackId = lanternHack.objectId;
+
+  return updatedHack;
+}
+
+/**
  * Update lantern hack fields
  * @private
  * @param {Object} params - Parameters
- * @param {string} params.objectId - ID of the lantern hack to update
+ * @param {string} params.lanternHackId - ID of the lantern hack to update
  * @param {Object} params.update - Update
  * @param {Function} params.callback - Callback
  */
-function updateObject({ objectId, update, callback }) {
+function updateObject({ lanternHackId, update, callback }) {
   dbConnector.updateObject({
     update,
-    query: { _id: objectId },
+    query: { _id: lanternHackId },
     object: LanternHack,
     errorNameContent: 'updateLanternHackFields',
     callback: ({ error, data }) => {
@@ -66,7 +78,7 @@ function updateObject({ objectId, update, callback }) {
         return;
       }
 
-      callback({ lanternHack: data.object });
+      callback({ data: { lanternHack: addCustomId(data.object) } });
     },
   });
 }
@@ -93,7 +105,7 @@ function getLanternHack({ query, callback }) {
         return;
       }
 
-      callback({ lanternHack: data.object });
+      callback({ data: { lanternHack: addCustomId(data.object) } });
     },
   });
 }
@@ -128,7 +140,7 @@ function createLanternHack({ lanternHack, callback }) {
             return;
           }
 
-          callback({ data: { lanternHack: saveData.data.savedObject } });
+          callback({ data: { lanternHack: addCustomId(saveData.data.savedObject) } });
         },
       });
     },
@@ -139,10 +151,10 @@ function createLanternHack({ lanternHack, callback }) {
  * Update lantern hack
  * @param {Object} params - Parameters
  * @param {Object} params.lanternHack - Parameters to update
- * @param {string} params.objectId - ID of the lantern hack
+ * @param {string} params.lanternHackId - ID of the lantern hack
  * @param {Function} params.callback - Callback
  */
-function updateLanternHack({ objectId, lanternHack, callback }) {
+function updateLanternHack({ lanternHackId, lanternHack, callback }) {
   const { triesLeft, stationId } = lanternHack;
   const update = {};
 
@@ -150,7 +162,7 @@ function updateLanternHack({ objectId, lanternHack, callback }) {
   if (stationId) { update.stationId = stationId; }
 
   updateObject({
-    objectId,
+    lanternHackId,
     update,
     callback,
   });
@@ -159,13 +171,13 @@ function updateLanternHack({ objectId, lanternHack, callback }) {
 /**
  * Remove lantern hack
  * @param {Object} params - Parameters
- * @param {string} params.objectId - ID of the hack
+ * @param {string} params.lanternHackId - ID of the hack
  * @param {Function} params.callback - Callback
  */
-function removeLanternHack({ objectId, callback }) {
+function removeLanternHack({ lanternHackId, callback }) {
   dbConnector.removeObject({
     callback,
-    query: { _id: objectId },
+    query: { _id: lanternHackId },
     object: LanternHack,
   });
 }
@@ -173,12 +185,12 @@ function removeLanternHack({ objectId, callback }) {
 /**
  * Lower amount of hack tries by 1
  * @param {Object} params - Parameters
- * @param {string} params.objectId - ID of the hack
+ * @param {string} params.lanternHackId - ID of the hack
  * @param {Function} params.callback - Callback
  */
-function lowerHackTries({ objectId, callback }) {
+function lowerHackTries({ lanternHackId, callback }) {
   updateLanternHack({
-    objectId,
+    lanternHackId,
     callback,
     update: { $inc: { triesLeft: -1 } },
   });

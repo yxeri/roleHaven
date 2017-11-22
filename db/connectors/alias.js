@@ -21,20 +21,6 @@ const errorCreator = require('../../objects/error/errorCreator');
 const dbConnector = require('../databaseConnector');
 const dbUser = require('./user');
 
-/**
- * @typedef Alias
- * @property aliasName - Name of the alias
- * @property {string} ownerId - ID of the owner
- * @property {string} ownerAliasId - Alias ID of the owner. Will be shown instead of ownerId, if set
- * @property {Date} timeCreated - Date of when the alias was created
- * @property {Date} lastUpdated - Date of when the alias was last updated
- * @property {string[]} userIds - Users with access to the alias
- * @property {string[]} teamids - Teams with access to the alias
- * @property {string[]} adminIds - Admins with access to the alias. They can update the alias.
- * @property {boolean} isPublic - Should the alias be visible to all users?
- * @property {boolean} isIdentity - Is the alias a secret identity for the user?
- */
-
 const aliasSchema = new mongoose.Schema(dbConnector.createSchema({
   aliasName: { type: String, unique: true },
   isIdentity: { type: Boolean, default: false },
@@ -43,17 +29,29 @@ const aliasSchema = new mongoose.Schema(dbConnector.createSchema({
 const Alias = mongoose.model('Alias', aliasSchema);
 
 /**
+ * Add custom id to the object
+ * @param {Object} alias - Alias object
+ * @return {Object} - Alias object with id
+ */
+function addCustomId(alias) {
+  const updatedAlias = alias;
+  updatedAlias.aliasId = alias.objectId;
+
+  return updatedAlias;
+}
+
+/**
  * Update alias
  * @private
  * @param {Object} params - Parameters
- * @param {string} params.objectId - ID of the alias to update
+ * @param {string} params.aliasId - ID of the alias to update
  * @param {Object} params.update - Update
  * @param {Function} params.callback Callback
  */
-function updateObject({ objectId, update, callback }) {
+function updateObject({ aliasId, update, callback }) {
   dbConnector.updateObject({
     update,
-    query: { _id: objectId },
+    query: { _id: aliasId },
     object: Alias,
     errorNameContent: 'updateAlias',
     callback: ({ error, data }) => {
@@ -63,7 +61,7 @@ function updateObject({ objectId, update, callback }) {
         return;
       }
 
-      callback({ data: { alias: data.object } });
+      callback({ data: { alias: addCustomId(data.object) } });
     },
   });
 }
@@ -86,7 +84,11 @@ function getAliases({ query, callback }) {
         return;
       }
 
-      callback({ data: { aliases: data.objects } });
+      callback({
+        data: {
+          aliases: data.objects.map(alias => addCustomId(alias)),
+        },
+      });
     },
   });
 }
@@ -113,7 +115,7 @@ function getAlias({ query, callback }) {
         return;
       }
 
-      callback({ data: { alias: data.object } });
+      callback({ data: { alias: addCustomId(data.object) } });
     },
   });
 }
@@ -121,33 +123,30 @@ function getAlias({ query, callback }) {
 /**
  * Add access to the alias for users or teams
  * @param {Object} params - Parameters
- * @param {string} params.objectId - ID of the alias
+ * @param {string} params.aliasId - ID of the alias
  * @param {string[]} [params.userIds] - ID of the users
  * @param {string[]} [params.teamIds] - ID of the teams
- * @param {string[]} [params.blockedIds] - ID of the blocked Ids to add
- * @param {boolean} [params.isAdmin] - Should the teams and/or users be added to admins?
+ * @param {string[]} [params.bannedIds] - ID of the blocked Ids to add
+ * @param {string[]} [params.teamAdminIds] - ID of the team admins to add
+ * @param {string[]} [params.userAdminIds] - ID of the user admins to add
  * @param {Function} params.callback - Callback
  */
 function addAccess({
   userIds,
   teamIds,
-  blockedIds,
-  objectId,
-  isAdmin,
+  bannedIds,
+  aliasId,
+  teamAdminIds,
+  userAdminIds,
   callback,
 }) {
-  if (!userIds && !teamIds && !blockedIds) {
-    callback({ error: new errorCreator.InvalidData({ expected: 'teamIds || aliasIds || blockedIds' }) });
-
-    return;
-  }
-
   dbConnector.addObjectAccess({
-    objectId,
     userIds,
     teamIds,
-    blockedIds,
-    isAdmin,
+    bannedIds,
+    userAdminIds,
+    teamAdminIds,
+    objectId: aliasId,
     object: Alias,
     callback: ({ error, data }) => {
       if (error) {
@@ -156,7 +155,7 @@ function addAccess({
         return;
       }
 
-      callback({ alias: data.object });
+      callback({ alias: addCustomId(data.object) });
     },
   });
 }
@@ -164,35 +163,40 @@ function addAccess({
 /**
  * Remove access to the alias for user or team
  * @param {Object} params - Parameters
- * @param {string} params.objectId - ID of the alias
- * @param {string[]} [params.userIds] - ID of the user
- * @param {string[]} [params.teamIds] - ID of the team
- * @param {string[]} [params.blockedIds] - Blocked IDs
- * @param {boolean} [params.isAdmin] - Should the teams and/or users be removed from admins?
+ * @param {string} params.aliasId - ID of the alias
+ * @param {string[]} [params.userIds] - ID of the users to remove
+ * @param {string[]} [params.teamIds] - ID of the teams to remove
+ * @param {string[]} [params.bannedIds] - Blocked IDs to remove
+ * @param {string[]} [params.teamAdminIds] - ID of the team admins to remove
+ * @param {string[]} [params.userAdminIds] - ID of the user admins to remove
  * @param {Function} params.callback - Callback
  */
 function removeAccess({
   userIds,
   teamIds,
-  blockedIds,
-  objectId,
-  isAdmin,
+  bannedIds,
+  aliasId,
+  teamAdminIds,
+  userAdminIds,
   callback,
 }) {
-  if (!userIds && !teamIds && !blockedIds) {
-    callback({ error: new errorCreator.InvalidData({ expected: 'teamIds || userIds || blockedIds' }) });
-
-    return;
-  }
-
   dbConnector.removeObjectAccess({
     userIds,
     teamIds,
-    blockedIds,
-    objectId,
-    callback,
-    isAdmin,
+    bannedIds,
+    teamAdminIds,
+    userAdminIds,
+    objectId: aliasId,
     object: Alias,
+    callback: ({ error, data }) => {
+      if (error) {
+        callback({ error });
+
+        return;
+      }
+
+      callback({ alias: addCustomId(data.object) });
+    },
   });
 }
 
@@ -212,13 +216,13 @@ function getAliasByName({ aliasName, callback }) {
 /**
  * Get alias by id
  * @param {Object} params - Parameters
- * @param {string} params.objectId - ID of the alias
+ * @param {string} params.aliasId - ID of the alias
  * @param {Function} params.callback - Callback
  */
-function getAliasById({ objectId, callback }) {
+function getAliasById({ aliasId, callback }) {
   getAlias({
     callback,
-    query: { _id: objectId },
+    query: { _id: aliasId },
   });
 }
 
@@ -266,7 +270,11 @@ function createAlias({ alias, callback }) {
             return;
           }
 
-          callback({ data: { alias: saveData.data.savedObject } });
+          callback({
+            data: {
+              alias: addCustomId(saveData.data.savedObject),
+            },
+          });
         },
       });
     },
@@ -277,13 +285,13 @@ function createAlias({ alias, callback }) {
  * Update alias
  * @param {Object} params - Parameters
  * @param {Object} params.alias - Fields to update
- * @param {string} params.objectId - ID of the alias to update
+ * @param {string} params.aliasId - ID of the alias to update
  * @param {Object} [params.options] - Options
  * @param {Object} [params.options.resetOwnerAliasId] - Should ownerAliasId be removed?
  * @param {Function} params.callback - Callback
  */
 function updateAlias({
-  objectId,
+  aliasId,
   alias,
   callback,
   options = {},
@@ -335,7 +343,7 @@ function updateAlias({
 
             updateObject({
               update,
-              objectId,
+              aliasId,
               callback,
             });
           },
@@ -348,7 +356,7 @@ function updateAlias({
 
   updateObject({
     update,
-    objectId,
+    aliasId,
     callback,
   });
 }
@@ -400,19 +408,19 @@ function getAllAliases({ callback }) {
 /**
  * Remove alias
  * @param {Object} params - Parameters
- * @param {string} params.objectId - ID of the alias to remove
+ * @param {string} params.aliasId - ID of the alias to remove
  * @param {Function} params.callback - Callback
  */
-function removeAlias({ objectId, callback }) {
+function removeAlias({ aliasId, callback }) {
   dbConnector.removeObject({
     callback,
-    query: { _id: objectId },
+    query: { _id: aliasId },
     object: Alias,
   });
 }
 
 exports.createAlias = createAlias;
-exports.removeAccessToAlias = removeAccess;
+exports.removeAccess = removeAccess;
 exports.addAccess = addAccess;
 exports.getAllAliases = getAllAliases;
 exports.getAliasesByUser = getAliasesByUser;

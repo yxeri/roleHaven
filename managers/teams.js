@@ -531,6 +531,7 @@ function leaveTeam({ token, io, socket, callback }) {
                   return;
                 }
 
+                // FIXME Newer socket io has changed. .sockets is not needed
                 const connectedIds = Object.keys(io.sockets.adapter.rooms[roomName].sockets);
                 const allSockets = io.sockets.connected;
 

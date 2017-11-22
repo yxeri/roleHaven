@@ -38,6 +38,18 @@ const transactionSchema = new mongoose.Schema(dbConnector.createSchema({
 const Transaction = mongoose.model('transaction', transactionSchema);
 
 /**
+ * Add custom id to the object
+ * @param {Object} transaction - Transaction object
+ * @return {Object} - Transaction object with id
+ */
+function addCustomId(transaction) {
+  const updatedTransaction = transaction;
+  updatedTransaction.transactionId = transaction.objectId;
+
+  return updatedTransaction;
+}
+
+/**
  * Get transactions
  * @private
  * @param {Object} params - Parameters
@@ -55,7 +67,11 @@ function getTransactions({ query, callback }) {
         return;
       }
 
-      callback({ data: { transactions: data.objects } });
+      callback({
+        data: {
+          transactions: data.objects.map(transaction => addCustomId(transaction)),
+        },
+      });
     },
   });
 }
@@ -82,7 +98,7 @@ function getTransaction({ query, callback }) {
         return;
       }
 
-      callback({ data: { transaction: data.object } });
+      callback({ data: { transaction: addCustomId(data.object) } });
     },
   });
 }
@@ -158,7 +174,7 @@ function createTransaction({ transaction, callback }) {
         return;
       }
 
-      callback({ data: { transaction: data.savedObject } });
+      callback({ data: { transaction: addCustomId(data.savedObject) } });
     },
   });
 }
@@ -166,14 +182,14 @@ function createTransaction({ transaction, callback }) {
 /**
  * Remove transaction
  * @param {Object} params - Parameters
- * @param {string} params.objectId - ID of the transaction
+ * @param {string} params.transactionId - ID of the transaction
  * @param {Function} params.callback - Callback
  */
-function removeTransaction({ objectId, callback }) {
+function removeTransaction({ transactionId, callback }) {
   dbConnector.removeObject({
     callback,
     object: Transaction,
-    query: { _id: objectId },
+    query: { _id: transactionId },
   });
 }
 
@@ -189,13 +205,13 @@ function getAllTransactions({ callback }) {
 /**
  * Get transaction by ID
  * @param {Object} params - Parameters
- * @param {string} params.objectId - ID of the transaction
+ * @param {string} params.transactionId - ID of the transaction
  * @param {Function} params.callback - Callback
  */
-function getTransactionById({ objectId, callback }) {
+function getTransactionById({ transactionId, callback }) {
   getTransaction({
     callback,
-    query: { _id: objectId },
+    query: { _id: transactionId },
   });
 }
 

@@ -35,7 +35,7 @@ const baseSchema = {
   adminIds: { type: [String], default: [] },
   userIds: { type: [String], default: [] },
   teamIds: { type: [String], default: [] },
-  blockedIds: { type: [String], default: [] },
+  bannedIds: { type: [String], default: [] },
   isPublic: { type: Boolean, default: true },
 };
 
@@ -197,61 +197,6 @@ function dropDatabase({ callback }) {
 }
 
 /**
- * Create update object for removal of access to the object for users and/or teams
- * @param {Object} params - Parameters
- * @param {string[]} [params.userIds] - ID of the users
- * @param {string[]} [params.teamIds] - ID of the teams
- * @param {string[]} [params.bannedIds] - ID of the banned users/teams
- * @param {boolean} [params.isAdmin] - Should the teams/users get admin status?
- * @returns {Object}} Update object
- */
-function createAccessUpdateString({
-  userIds,
-  teamIds,
-  bannedIds,
-  isAdmin = false,
-}) {
-  const update = { $addToSet: {} };
-
-  if (teamIds) { update.$addToSet.teamIds = teamIds; }
-  if (userIds) { update.$addToSet.userIds = userIds; }
-  if (bannedIds) { update.$addToSet.bannedIds = bannedIds; }
-
-  if (isAdmin) {
-    if (teamIds) { update.$addToSet.adminIds = teamIds; }
-    if (userIds) { update.$addToSet.adminIds = userIds; }
-  }
-
-  return update;
-}
-
-/**
- * Create update object for removal of access to the object for users and/or teams
- * @param {Object} params - Parameters
- * @param {string} [params.userIds] - ID of the users
- * @param {string} [params.teamIds] - ID of the teams
- * @returns {{string}} Update object
- */
-function createRemoveAccessUpdateString({
-  userIds,
-  teamIds,
-}) {
-  const update = { $pull: {} };
-
-  if (teamIds) {
-    update.$pull.teamIds = { $in: teamIds };
-    update.$pull.adminIds = { $in: teamIds };
-  }
-
-  if (userIds) {
-    update.$pull.userIds = { $in: userIds };
-    update.$pull.adminIds = { $in: userIds };
-  }
-
-  return update;
-}
-
-/**
  * Retrieves and returns object
  * @param {Object} params - Parameters
  * @param {Function} params.callback - Callback
@@ -352,7 +297,6 @@ function updateObject({
   errorNameContent = 'updateObject',
 }) {
   const options = { new: true };
-
   const toUpdate = update;
   toUpdate.$set.lastUpdated = new Date();
 
@@ -408,7 +352,7 @@ function removeObjects({
   query,
   callback,
 }) {
-  object.findOneAndDelete(query).lean().exec((err) => {
+  object.deleteMany(query).lean().exec((err) => {
     if (err) {
       callback({ error: new errorCreator.Database({ errorObject: err, name: 'removeObjects' }) });
 
@@ -420,29 +364,39 @@ function removeObjects({
 }
 
 /**
- * Remove object access for users or teams
+ * Add object access for users or teams
  * @param {Object} params - Parameters
  * @param {string} params.objectId - ID of the device to update
- * @param {string[]} [params.userIds] - ID of the users to remove
- * @param {string[]} [params.teamIds] - ID of the teams to remove
- * @param {string[]} [params.blockedIds] - ID of the blocked Ids to remove
  * @param {Function} params.callback - Callback
+ * @param {string[]} [params.userIds] - ID of the users to add
+ * @param {string[]} [params.teamIds] - ID of the teams to add
+ * @param {string[]} [params.bannedIds] - ID of the banned user/teams to add
+ * @param {string[]} [params.teamAdminIds] - ID of the team admins to remove
+ * @param {string[]} [params.userAdminIds] - ID of the user admins to remove
  */
 function addObjectAccess({
   objectId,
   object,
   userIds,
   teamIds,
-  blockedIds,
-  isAdmin,
+  bannedIds,
+  teamAdminIds,
+  userAdminIds,
   callback,
 }) {
-  const update = createAccessUpdateString({
-    userIds,
-    teamIds,
-    blockedIds,
-    isAdmin,
-  });
+  if (!userIds && !teamIds && !bannedIds && !teamAdminIds && !userAdminIds) {
+    callback({ error: new errorCreator.InvalidData({ expected: 'teamIds || userIds || bannedIds || userAdminIds || teamAdminIds' }) });
+
+    return;
+  }
+
+  const update = { $addToSet: {} };
+
+  if (teamIds) { update.$addToSet.teamIds = teamIds; }
+  if (userIds) { update.$addToSet.userIds = userIds; }
+  if (bannedIds) { update.$addToSet.bannedIds = bannedIds; }
+  if (teamAdminIds) { update.$addToSet.teamAdminIds = teamAdminIds; }
+  if (userAdminIds) { update.$addToSet.userAdminIds = userAdminIds; }
 
   updateObject({
     update,
@@ -456,40 +410,36 @@ function addObjectAccess({
  * Remove object access for users or teams
  * @param {Object} params - Parameters
  * @param {string} params.objectId - ID of the device to update
+ * @param {Function} params.callback - Callback
  * @param {string[]} [params.userIds] - ID of the users to remove
  * @param {string[]} [params.teamIds] - ID of the teams to remove
- * @param {string[]} [params.blockedIds] - ID of the blocked Ids to remove
- * @param {boolean} [params.isAdmin] - Should the teams and/or users be removed from admins?
- * @param {Function} params.callback - Callback
+ * @param {string[]} [params.bannedIds] - ID of the banned users/teams to remove
+ * @param {string[]} [params.teamAdminIds] - ID of the team admins to remove
+ * @param {string[]} [params.userAdminIds] - ID of the user admins to remove
  */
 function removeObjectAccess({
   objectId,
   object,
   userIds,
   teamIds,
-  blockedIds,
-  isAdmin,
+  bannedIds,
+  teamAdminIds,
+  userAdminIds,
   callback,
 }) {
+  if (!userIds && !teamIds && !bannedIds && !teamAdminIds && !userAdminIds) {
+    callback({ error: new errorCreator.InvalidData({ expected: 'teamIds || userIds || bannedIds || userAdminIds || teamAdminIds' }) });
+
+    return;
+  }
+
   const update = { $pull: {} };
 
-  if (userIds) {
-    if (isAdmin) {
-      update.$pull.adminIds = { $in: userIds };
-    } else {
-      update.$pull.userIds = { $in: userIds };
-    }
-  }
-  if (teamIds) {
-    if (isAdmin) {
-      update.$pull.adminIds = { $in: teamIds };
-    } else {
-      update.$pull.teamIds = { $in: teamIds };
-    }
-  }
-  if (blockedIds) {
-    update.$pull.blockedIds = { $in: blockedIds };
-  }
+  if (userIds) { update.$pull.userIds = { $in: userIds }; }
+  if (teamAdminIds) { update.$pull.teamAdminIds = { $in: teamAdminIds }; }
+  if (userAdminIds) { update.$pull.userAdminIds = { $in: userAdminIds }; }
+  if (teamIds) { update.$pull.teamIds = { $in: teamIds }; }
+  if (bannedIds) { update.$pull.bannedIds = { $in: bannedIds }; }
 
   updateObject({
     update,
@@ -503,8 +453,6 @@ exports.saveObject = saveObject;
 exports.verifyObject = verifyObject;
 exports.verifyAllObjects = verifyAllObjects;
 exports.dropDatabase = dropDatabase;
-exports.createAccessUpdateString = createAccessUpdateString;
-exports.createRemoveAccessUpdateString = createRemoveAccessUpdateString;
 exports.getObjects = getObjects;
 exports.getObject = getObject;
 exports.updateObject = updateObject;
