@@ -23,7 +23,7 @@ const bodyParser = require('body-parser');
 const morgan = require('morgan');
 const compression = require('compression');
 const appConfig = require('./config/defaults/config').app;
-const databasePopulation = require('./config/defaults/config').databasePopulation;
+const dbConfig = require('./config/defaults/config').databasePopulation;
 const dbRoom = require('./db/connectors/room');
 const dbCommand = require('./db/connectors/command');
 const lanternHacking = require('./managers/lanternHacking');
@@ -56,8 +56,8 @@ appConfig.routes.forEach((route) => {
 });
 
 if (appConfig.mode !== appConfig.Modes.TEST) {
-  dbRoom.populateDbRooms({ rooms: databasePopulation.rooms });
-  dbCommand.populateDbCommands({ commands: databasePopulation.commands });
+  dbRoom.populateDbRooms({ rooms: dbConfig.rooms });
+  dbCommand.populateDbCommands({ commands: dbConfig.commands });
 }
 
 lanternHacking.startResetInterval({ io: app.io });

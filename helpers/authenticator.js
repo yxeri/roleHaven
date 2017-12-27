@@ -5,13 +5,19 @@ const errorCreator = require('../objects/error/errorCreator');
 const dbConfig = require('../config/defaults/config').databasePopulation;
 
 /**
- * Create json web token
- * @param {Object} params - Parameters
- * @param {string} params.userId - ID of user to auth
- * @param {string} params.password - Password of user to auth
- * @param {Function} params.callback Callback
+ * Create json web token. The user can be found by either the username or userId.
+ * @param {Object} params - Parameters.
+ * @param {string} params.password - Password of user to auth.
+ * @param {Function} params.callback - Callback.
+ * @param {string} [params.userId] - Id of user to auth.
+ * @param {string} params.username] - Name of user to auth.
  */
-function createToken({ userId, password, callback }) {
+function createToken({
+  username,
+  userId,
+  password,
+  callback,
+}) {
   if (!appConfig.jsonKey) {
     callback({ error: new errorCreator.Internal({ name: 'json key not set' }) });
 
@@ -20,6 +26,7 @@ function createToken({ userId, password, callback }) {
 
   dbUser.authUser({
     userId,
+    username,
     password,
     callback: ({ error, data }) => {
       if (error) {
@@ -30,9 +37,7 @@ function createToken({ userId, password, callback }) {
 
       const { user } = data;
 
-      const jwtUser = {
-        userId: user.userId,
-      };
+      const jwtUser = { userId: user.userId };
 
       jwt.sign({ data: jwtUser }, appConfig.jsonKey, (err, token) => {
         if (err) {
@@ -48,12 +53,12 @@ function createToken({ userId, password, callback }) {
 }
 
 /**
- * Checks if the user is allowed to use the command
- * @param {Object} params - Parameters
- * @param {string} params.token - Json web token
- * @param {string} params.commandName - Name of the command
- * @param {string} [params.matchToId] - Checks if sent user ID is the same as authenticated. Used for current user get, as they need less permission than get from other users
- * @param {Function} params.callback - callback
+ * Checks if the user is allowed to use the command.
+ * @param {Object} params - Parameters.
+ * @param {string} params.token - Json web token.
+ * @param {string} params.commandName - Name of the command.
+ * @param {string} [params.matchToId] - Checks if sent user Id is the same as authenticated. Used for current user get, as they need less permission than get from other users.
+ * @param {Function} params.callback - callback.
  */
 function isUserAllowed({
   commandName,
@@ -101,7 +106,7 @@ function isUserAllowed({
         }
 
         const { user } = data;
-        const commandAccessLevel = jwtData.userId === user.userId ? commandUsed.selfAccessLevel : commandUsed.accessLevel;
+        const commandAccessLevel = jwtData.userId === user.userId ? (commandUsed.selfAccessLevel || commandUsed.accessLevel) : commandUsed.accessLevel;
 
         if (commandAccessLevel > user.accessLevel) {
           callback({ error: new errorCreator.NotAllowed({ name: commandName }) });
@@ -115,84 +120,22 @@ function isUserAllowed({
   });
 }
 
-function addAccess({
-  callback,
-  objectId,
-  socket,
-  io,
-  dataToSend,
-  emitType,
-  userIds = [],
-  teamIds = [],
-  teamAdminIds = [],
-  userAdminIds = [],
-}) {
-  dbUser.getAllSocketIds({
-    callback: (socketData) => {
-      if (socketData.error) {
-        callback({ error: socketData.error });
-
-        return;
-      }
-
-      const foundSocketIds = socketData.data.userSocketIds;
-
-      userIds.forEach((id) => {
-        const userSocket = foundSocketIds[id];
-
-        if (userSocket) {
-          userSocket.join(id);
-        }
-
-        if (socket) {
-          socket.to(id).emit(emitType, dataToSend);
-        } else {
-          io.to(id).emit(emitType, dataToSend);
-        }
-      });
-
-      teamIds.forEach((id) => {
-        io.sockets.adapter.rooms(id).forEach((memberSocket) => {
-          memberSocket.join(id);
-        });
-      });
-
-      teamAdminIds.concat(userAdminIds).forEach((id) => {
-        const adminData = dataToSend;
-        adminData.isAdmin = true;
-
-        if (socket) {
-          socket.to(id).emit(emitType, adminData);
-        } else {
-          io.to(id).emit(emitType, adminData);
-        }
-      });
-    },
-  });
-}
-
-
-function removeAccess({
-  objectId,
-  userIds = [],
-  teamIds = [],
-  teamAdminIds = [],
-  userAdminIds = [],
-}) {
-
+/**
+ * Does the user have equal or higher access level to the set visibility/access level in the object that will be created?
+ * @param {Object} params - Parameters.
+ * @param {Object} params.objectToCreate - Object that is going to be created.
+ * @param {Object} params.toAuth - User trying to create an object.
+ * @return {boolean} - Does the user have a high enough access level?
+ */
+function isAllowedAccessLevel({ objectToCreate, toAuth }) {
+  return (!objectToCreate.accessLevel || toAuth.accessLevel >= objectToCreate.accessLevel) || (!objectToCreate.visibility || toAuth.accessLevel >= objectToCreate.visibility);
 }
 
 /**
  * Checks if user has access, is admin or can see the object
  * @param {Object} params - Parameter
  * @param {Object} params.objectToAccess - Object to access
- * @param {string[]} params.objectToAccess.teamIds - Teams with access to the object
- * @param {string[]} params.objectToAccess.userIds - Users with access to the object
- * @param {string} params.objectToAccess.ownerId - Owner of the object
  * @param {Object} params.toAuth - Object to auth
- * @param {string[]} params.toAuth.teamIds - Teams to auth
- * @param {string} params.toAuth.userId - User to auth
- * @param {boolean} params.toAuth.hasFullAccess - Does the user have access to all objects?
  * @param {boolean} [params.shouldBeAdmin] - Should it check if the user or team are admins?
  * @returns {boolean} - Does the user have access to the object?
  */
@@ -204,9 +147,9 @@ function hasAccessTo({
   const {
     teamIds,
     userIds,
-    ownerId,
     userAdminIds,
     teamAdminIds,
+    ownerId,
     isPublic,
   } = objectToAccess;
   const {
@@ -220,13 +163,11 @@ function hasAccessTo({
   }
 
   if (shouldBeAdmin) {
-    const admins = [ownerId].concat(teamAdminIds, userAdminIds);
-
-    return (admins.includes(authUserId) || admins.find(adminId => authTeamIds.includes(adminId)));
+    return ((userAdminIds.includes(authUserId)) || (teamAdminIds.find(adminId => authTeamIds.includes(adminId))));
   }
 
-  const userHasAccess = userIds && userIds.concat([ownerId]).includes(authUserId);
-  const teamHasAccess = teamIds && teamIds.find(teamId => authTeamIds.includes(teamId));
+  const userHasAccess = userIds.concat([ownerId]).includes(authUserId);
+  const teamHasAccess = teamIds.find(teamId => authTeamIds.includes(teamId));
 
   return isPublic || userHasAccess || teamHasAccess;
 }
@@ -234,3 +175,4 @@ function hasAccessTo({
 exports.isUserAllowed = isUserAllowed;
 exports.createToken = createToken;
 exports.hasAccessTo = hasAccessTo;
+exports.isAllowedAccessLevel = isAllowedAccessLevel;

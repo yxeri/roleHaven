@@ -28,7 +28,7 @@ data.adminUserToAuth = {
   registerDevice: tools.createRandString({ length: appConfig.deviceIdLength }),
   mail: `${tools.createRandString({ length: 10 })}@${tools.createRandString({ length: 10 })}.com`,
   accessLevel: dbConfig.AccessLevels.ADMIN,
-  visibility: dbConfig.AccessLevels.PRO,
+  visibility: dbConfig.AccessLevels.PRIVILEGED,
   verified: true,
   registeredAt: new Date(),
   fullName: tools.createRandString({ length: appConfig.usernameMaxLength }),
@@ -39,7 +39,7 @@ data.basicUserToAuth = {
   registerDevice: tools.createRandString({ length: appConfig.deviceIdLength }),
   mail: `${tools.createRandString({ length: 10 })}@${tools.createRandString({ length: 10 })}.com`,
   verified: true,
-  accessLevel: dbConfig.AccessLevels.BASIC,
+  accessLevel: dbConfig.AccessLevels.STANDARD,
   registeredAt: new Date(),
   fullName: tools.createRandString({ length: appConfig.usernameMaxLength }),
 };

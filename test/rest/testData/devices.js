@@ -43,7 +43,7 @@ data.adminUserToChangeDeviceAliasWith = {
   registerDevice: tools.createRandString({ length: appConfig.deviceIdLength }),
   mail: `${tools.createRandString({ length: 10 })}@${tools.createRandString({ length: 10 })}.com`,
   accessLevel: dbConfig.AccessLevels.ADMIN,
-  visibility: dbConfig.AccessLevels.PRO,
+  visibility: dbConfig.AccessLevels.PRIVILEGED,
   verified: true,
 };
 data.basicUserToUpdateDeviceWith = {
@@ -52,7 +52,7 @@ data.basicUserToUpdateDeviceWith = {
   registerDevice: tools.createRandString({ length: appConfig.deviceIdLength }),
   mail: `${tools.createRandString({ length: 10 })}@${tools.createRandString({ length: 10 })}.com`,
   verified: true,
-  accessLevel: dbConfig.AccessLevels.BASIC,
+  accessLevel: dbConfig.AccessLevels.STANDARD,
 };
 
 module.exports = data;

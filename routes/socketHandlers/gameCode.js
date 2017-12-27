@@ -19,35 +19,42 @@
 const gameCodeManager = require('../../managers/gameCodes');
 
 /**
- * @param {Object} socket Socket.IO socket
- * @param {Object} io Socket.io
+ * @param {Object} socket - Socket.Io socket.
+ * @param {Object} io - Socket.io.
  */
 function handle(socket, io) {
-  socket.on('createGameCode', ({ codeType, owner, token }, callback = () => {}) => {
+  socket.on('createGameCode', ({
+    gameCode,
+    userId,
+    token,
+  }, callback = () => {}) => {
     gameCodeManager.createGameCode({
-      owner,
-      codeType,
+      userId,
+      gameCode,
       token,
       callback,
     });
   });
 
-  socket.on('getGameCodes', ({ codeType, token, username }, callback = () => {}) => {
-    gameCodeManager.getGameCodes({
-      codeType,
+  socket.on('getGameCodesByOwner', ({
+    token,
+    userId,
+  }, callback = () => {}) => {
+    gameCodeManager.getGameCodesByOwner({
       token,
-      username,
+      userId,
       callback,
     });
   });
 
-  socket.on('getProfileGameCode', ({ owner, token }, callback = () => {}) => {
-    if (!owner) {
-      return;
-    }
-
+  socket.on('getProfileGameCode', ({
+    ownerId,
+    token,
+    userId,
+  }, callback = () => {}) => {
     gameCodeManager.getProfileGameCode({
-      owner,
+      userId,
+      ownerId,
       token,
       callback,
     });

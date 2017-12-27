@@ -16,26 +16,28 @@
 
 'use strict';
 
-const dbUser = require('../db/connectors/user');
 const appConfig = require('../config/defaults/config').app;
 const dbConfig = require('../config/defaults/config').databasePopulation;
 const errorCreator = require('../objects/error/errorCreator');
 const textTools = require('../utils/textTools');
 const objectValidator = require('../utils/objectValidator');
 const authenticator = require('../helpers/authenticator');
-const messenger = require('../helpers/messenger');
 const dbRoom = require('../db/connectors/room');
+const aliasManager = require('./aliases');
+const socketUtils = require('../utils/socketIo');
 
 /**
- * Create a whisper room and give access to the participants
+ * Create a whisper room and give access to the participants.
  * @param {Object} params - Parameters.
  * @param {string[]} params.participantIds - User IDs of the users send private messages to each other.
+ * @param {string} params.user - The user creating the room.
  * @param {Function} params.callback - Callback.
  * @param {Object} params.socket - Socket.io.
  * @param {Object} params.io - Socket.io. Used if socket is not set.
  */
 function createAndFollowWhisperRoom({
   participantIds,
+  user,
   callback,
   socket,
   io,
@@ -56,6 +58,7 @@ function createAndFollowWhisperRoom({
 
         return;
       }
+
       dbRoom.addAccess({
         roomId: roomData.data.room.roomId,
         userIds: participantIds,
@@ -68,6 +71,8 @@ function createAndFollowWhisperRoom({
 
           const newRoom = accessdata.data.room;
           const newRoomId = newRoom.roomId;
+          const senderId = newRoom.participantIds[0];
+          const receiverId = newRoom.participantIds[1];
           const dataToSend = {
             data: {
               room: {
@@ -80,9 +85,16 @@ function createAndFollowWhisperRoom({
           };
 
           if (socket) {
-            socket.broadcast.to(newRoomId).emit(dbConfig.EmitTypes.FOLLOW, dataToSend, callback);
+            socket.join(newRoomId);
+            socket.broadcast.to(senderId).emit(dbConfig.EmitTypes.ROOM, dataToSend, callback);
+            socket.broadcast.to(receiverId).emit(dbConfig.EmitTypes.ROOM, dataToSend, callback);
           } else {
-            io.to(newRoomId).emit(dbConfig.EmitTypes.FOLLOW, dataToSend, callback);
+            const userSocket = socketUtils.getUserSocket({ io, socketId: user.socketId });
+
+            if (userSocket) { userSocket.join(newRoomId); }
+
+            io.to(senderId).emit(dbConfig.EmitTypes.ROOM, dataToSend, callback);
+            io.to(receiverId).emit(dbConfig.EmitTypes.ROOM, dataToSend, callback);
           }
         },
       });
@@ -98,10 +110,12 @@ function createAndFollowWhisperRoom({
  * @param {Function} params.callback - Callback.
  * @param {string} [params.errorContentText] - Text to be printed on error.
  * @param {boolean} [params.shouldBeAdmin] - Does the user have to be an admin?
+ * @param {string} [params.password] - Password to unlock the room.
  */
 function getAccessibleRoom({
   user,
   roomId,
+  password,
   callback,
   shouldBeAdmin,
   errorContentText = `roomId ${roomId}`,
@@ -113,11 +127,15 @@ function getAccessibleRoom({
         callback({ error: roomData.error });
 
         return;
-      } else if (!authenticator.hasAccessTo({
-        toAuth: user,
+      }
+
+      const { room } = roomData.data;
+
+      if (!room.isSystemRoom && !authenticator.hasAccessTo({
         shouldBeAdmin,
-        objectToAccess: roomData.data.room,
-      })) {
+        toAuth: user,
+        objectToAccess: room,
+      }) && (!room.password || !password || room.password !== password)) {
         callback({ error: new errorCreator.NotAllowed({ name: errorContentText }) });
 
         return;
@@ -129,10 +147,10 @@ function getAccessibleRoom({
 }
 
 /**
- * Checks if a room exists with the sent participants
- * @param {Object} params - Parameters
- * @param {string[]} params.participantIds - IDs of the users
- * @param {Function} params.callback - Callback
+ * Checks if a room exists with the sent participants.
+ * @param {Object} params - Parameters.
+ * @param {string[]} params.participantIds - IDs of the users.
+ * @param {Function} params.callback - Callback.
  */
 function getWhisperRoom({ participantIds, callback }) {
   dbRoom.getWhisperRoom({
@@ -148,8 +166,8 @@ function getWhisperRoom({ participantIds, callback }) {
  * @param {string[]} [params.userIds] - ID of the users.
  * @param {string[]} [params.teamIds] - ID of the teams.
  * @param {string[]} [params.bannedIds] - ID of the blocked Ids to add.
- * @param {string[]} [params.teamAdminIds] - ID of the team admins to add.
- * @param {string[]} [params.userAdminIds] - ID of the user admins to add.
+ * @param {string[]} [params.teamAdminIds] - Id of the teams to give admin access to. They will also be added to teamIds.
+ * @param {string[]} [params.userAdminIds] - Id of the users to give admin access to. They will also be added to userIds.
  * @param {Function} params.callback - Callback.
  */
 function addAccess({
@@ -210,8 +228,8 @@ function addAccess({
  * @param {string[]} [params.userIds] - ID of the users to remove.
  * @param {string[]} [params.teamIds] - ID of the teams to remove.
  * @param {string[]} [params.bannedIds] - Blocked IDs to remove.
- * @param {string[]} [params.teamAdminIds] - ID of the team admins to remove.
- * @param {string[]} [params.userAdminIds] - ID of the user admins to remove.
+ * @param {string[]} [params.teamAdminIds] - Id of the teams to remove admin access from. They will not be removed from teamIds.
+ * @param {string[]} [params.userAdminIds] - Id of the users to remove admin access from. They will not be removed from userIds.
  * @param {Function} params.callback - Callback.
  */
 function removeAccess({
@@ -228,7 +246,7 @@ function removeAccess({
   authenticator.isUserAllowed({
     token,
     matchToId: userId,
-    commandName: dbConfig.apiCommands.UpdateAlias,
+    commandName: dbConfig.apiCommands.UpdateRoom,
     callback: ({ error, data }) => {
       if (error) {
         callback({ error });
@@ -266,89 +284,28 @@ function removeAccess({
 }
 
 /**
- * Authenticate user to room
- * @param {Object} params.token jwt
- * @param {Object} params.room Room to auth agaisnt
- * @param {Object} params.callback Callback
+ * Creates a new chat room and adds the user who created it to it.
+ * @param {Object} params - Parameters.
+ * @param {Object} params.room - New room.
+ * @param {Object} params.userId - ID of the user who is creating the new room.
+ * @param {Object} params.io - Socket.io. Used if socket isn't set.
+ * @param {Object} params.options - Update options.
+ * @param {Function} params.callback - callback.
+ * @param {Object} [params.socket] - Socket io.
  */
-function authUserToRoom({ token, room, callback }) {
-  authenticator.isUserAllowed({
-    token,
-    commandName: dbConfig.apiCommands.GetRoom.name,
-    callback: ({ error, data }) => {
-      if (error) {
-        callback({ error });
-
-        return;
-      } else if (!objectValidator.isValidData({ room }, { room: { roomName: true } })) {
-        callback({ error: new errorCreator.InvalidData({ expected: '{ room: { roomName } }' }) });
-
-        return;
-      }
-
-      const roomId = room.roomId.toLowerCase();
-
-      if (lowerRoomName === dbConfig.rooms.public.roomName) {
-        callback({ data: { isAllowed: true, isFollowing: true, room: { roomName: dbConfig.rooms.public.roomName } } });
-
-        return;
-      } else if (data.user.rooms.indexOf(lowerRoomName) > -1) {
-        callback({ data: { isAllowed: true, isFollowing: true, room: { roomName: lowerRoomName } } });
-
-        return;
-      }
-
-      dbRoom.authUserToRoom({
-        roomId,
-        user: data.user,
-        password: room.password,
-        callback: ({ error: roomError, data: roomData }) => {
-          if (roomError) {
-            callback({ error: roomError });
-
-            return;
-          }
-
-          const dataToSend = roomData;
-          dataToSend.isFollowing = roomData.isAllowed && data.user.rooms.indexOf(roomData.room.roomName) > -1;
-
-          callback({ data: dataToSend });
-        },
-      });
-    },
-  });
-}
-
-/**
- * Check if room is protected
- * @param {string} roomName Room name to check
- * @param {string} socketId Socket id
- * @param {Object} user User
- * @returns {boolean} Is the room protected?
- */
-function isRequiredRoom({ roomName, socketId, user }) {
-  const sentRoomName = roomName.toLowerCase();
-  const isAliasWhisperRoom = user.aliases ? user.aliases.map(alias => alias + appConfig.whisperAppend).indexOf(sentRoomName) > -1 : false;
-  const isRequired = dbConfig.requiredRooms.indexOf(sentRoomName) > -1;
-  const isSocketRoom = socketId && sentRoomName === socketId;
-  const isWhisperRoom = sentRoomName === user.username + appConfig.whisperAppend;
-  const isTeamRoom = user.team ? roomName === 'team' || roomName === user.team + appConfig.teamAppend : false;
-
-  return isAliasWhisperRoom || isRequired || isSocketRoom || isWhisperRoom || isTeamRoom;
-}
-
-/**
- * Creates a new chat room and adds the user who created it to it
- * @param {Object} params.room - New room
- * @param {Object} params.user - User who is creating the new room
- * @param {Object} [params.socket] - Socket io
- * @param {Object} params.io - Socket.io. Used if socket isn't set
- * @param {Function} params.callback - callback
- */
-function createRoom({ room, options, token, socket, io, callback }) {
+function createRoom({
+  room,
+  userId,
+  options,
+  token,
+  socket,
+  io,
+  callback,
+}) {
   authenticator.isUserAllowed({
     token,
     commandName: dbConfig.apiCommands.CreateRoom.name,
+    matchToId: userId,
     callback: ({ error, data }) => {
       if (error) {
         callback({ error });
@@ -362,64 +319,51 @@ function createRoom({ room, options, token, socket, io, callback }) {
         callback({ error: new errorCreator.InvalidCharacters({ expected: 'a-z 0-9 length: 10' }) });
 
         return;
-      } else if (dbConfig.protectedNames.indexOf(room.roomName.toLowerCase()) > -1) {
+      } else if (dbConfig.protectedRoomNames.indexOf(room.roomName.toLowerCase()) > -1) {
         callback({ error: new errorCreator.InvalidCharacters({ expected: 'not protected words' }) });
+
+        return;
+      } else if (!authenticator.isAllowedAccessLevel({ objectToCreate: room, toAuth: data.user })) {
+        callback({ error: new errorCreator.NotAllowed({ name: 'too high access level or visibility' }) });
 
         return;
       }
 
-      const authUser = data.user;
       const newRoom = room;
-
-      newRoom.roomName = room.roomName.toLowerCase();
+      const authUser = data.user;
       newRoom.ownerId = authUser.userId;
-      newRoom.password = newRoom.password && newRoom.password !== '' ? newRoom.password : undefined;
-
-      redisAlias.hasAccessToAlias({
-        userId: authUser.userId,
-        teamId: authUser.teamId,
-        aliasId: authUser.aliasId,
-        callback: () => {
-
-        }
-      });
 
       dbRoom.createRoom({
+        room,
         options,
-        room: newRoom,
-        callback: ({ error: roomError, data: roomData }) => {
-          if (roomError) {
-            callback({ error: roomError });
+        callback: (roomData) => {
+          if (roomData.error) {
+            callback({ error: roomData.error });
 
             return;
           }
 
-          const createdRoom = roomData.room;
-
-          dbRoom.createRoom({
-            username: authUser.username,
-            roomName: newRoom.roomName,
-            callback: ({ error: addError }) => {
-              if (addError) {
-                callback({ error: addError });
-
-                return;
-              }
-
-              const dataToEmit = {
-                room: { roomName: newRoom.roomName },
-                isProtected: typeof newRoom.password !== 'undefined' && newRoom.password !== '',
-              };
-
-              if (socket) {
-                socket.broadcast.emit('room', { data: dataToEmit });
-              } else if (io) {
-                io.emit('room', { data: dataToEmit });
-              }
-
-              callback({ data: { room: createdRoom } });
+          const createdRoom = roomData.data.room;
+          const { visibility } = createdRoom;
+          const dataToSend = {
+            data: {
+              room: roomData.data.room,
+              changeType: dbConfig.ChangeTypes.CREATE,
             },
-          });
+          };
+
+          if (socket) {
+            socket.join(createdRoom.roomId);
+            socket.broadcast.to(visibility.toString()).emit(dbConfig.EmitTypes.ROOM, dataToSend);
+          } else {
+            const userSocket = socketUtils.getUserSocket({ io, socketId: authUser.socketId });
+
+            if (userSocket) { userSocket.join(createdRoom.roomId); }
+
+            io.to(visibility.toString()).emit(dbConfig.EmitTypes.ROOM, dataToSend);
+          }
+
+          callback(dataToSend);
         },
       });
     },
@@ -427,298 +371,312 @@ function createRoom({ room, options, token, socket, io, callback }) {
 }
 
 /**
- * Joins the user's socket to all sent rooms and added standard rooms
- * @param {string[]} params.rooms Rooms for the user to join
- * @param {Object} params.socket socket.io socket
- * @param {string} [params.device] DeviceID of the user
+ * Is the room protected? Protected rooms should not be unfollowed.
+ * @param {Object} params - Parameters.
+ * @param {string} params.roomId - ID of the room.
+ * @param {Object} [params.socket] - Socket.io.
+ * @return {boolean} - Is the room protected?
  */
-function joinRooms({ rooms, socket, deviceId }) {
-  const allRooms = rooms;
+function isProtectedRoom({ roomId, socket }) {
+  const deviceRegExp = new RegExp(`^${dbConfig.deviceRoomPrepend}`);
 
-  if (deviceId) {
-    allRooms.push(deviceId + appConfig.deviceAppend);
-  }
-
-  allRooms.forEach(room => socket.join(room));
+  return !dbConfig.requiredRooms.includes(roomId) && (socket && roomId !== socket.id) && roomId.match(deviceRegExp);
 }
 
 /**
- * Follow a new room on the user
- * @param {Object} params.room Room to follow
- * @param {Object} params.room.roomName Name of the room
- * @param {Object} [params.room.password] Password to the room
- * @param {Object} [params.user] User trying to follow a room. Will default to current user
- * @param {Function} params.callback Callback
- * @param {Object} [params.socket] Socket.io socket
- * @param {Object} params.io Socket.io. Used if sockket is not set
+ * Leave all rooms, except the required ones, on the socket
+ * @param {Object} socket - Socket.io socket
  */
-function followRoom({ token, socket, io, room, callback, user: sentUser }) {
+function leaveSocketRooms(socket) {
+  Object.keys(socket.rooms).forEach((roomId) => {
+    if (!isProtectedRoom(socket)) {
+      socket.leave(roomId);
+    }
+  });
+}
+
+/**
+ * Follow room and update user's access to it.
+ * @param {Object} params - Parameters.
+ * @param {string} params.userId - ID that will start following the room.
+ * @param {string} params.roomId - ID of the room to follow.
+ * @param {Function} params.callback - Callback.
+ * @param {Object} params.io - Socket.io. Used if socket is not set.
+ * @param {Object} params.user - User trying to follow a room.
+ * @param {Object} [params.socket] - Socket.io socket.
+ */
+function follow({
+  userId,
+  user,
+  roomId,
+  socket,
+  io,
+  callback,
+}) {
+  dbRoom.addAccess({
+    roomId,
+    userIds: [userId],
+    callback: ({ error, data }) => {
+      if (error) {
+        callback({ error });
+
+        return;
+      }
+
+      const toReturn = {
+        data: {
+          user: { userId },
+          room: data.room,
+          changeType: dbConfig.ChangeTypes.CREATE,
+        },
+      };
+      const toSend = {
+        data: {
+          user: { userId },
+          room: { roomId },
+          changeType: dbConfig.ChangeTypes.CREATE,
+        },
+      };
+
+      if (socket) {
+        socket.join(roomId);
+        socket.broadcast.to(roomId).emit(dbConfig.EmitTypes.FOLLOWER, toSend);
+      } else {
+        const userSocket = socketUtils.getUserSocket({ io, socketId: user.socketId });
+
+        if (userSocket) { userSocket.join(roomId); }
+
+        io.to(userId).emit(dbConfig.EmitTypes.FOLLOW, toReturn);
+        io.to(roomId).emit(dbConfig.EmitTypes.FOLLOWER, toSend);
+      }
+
+      callback(toReturn);
+    },
+  });
+}
+
+/**
+ * Unfollow room and update user's access to it.
+ * @param {Object} params - Parameters.
+ * @param {string} params.userId - ID that will unfollow the room.
+ * @param {string} params.roomId - ID of the room to unfollow.
+ * @param {Function} params.callback - Callback.
+ * @param {Object} params.io - Socket.io. Used if socket is not set.
+ * @param {Object} params.user - User trying to unfollow a room.
+ * @param {Object} [params.socket] - Socket.io socket.
+ */
+function unfollow({
+  userId,
+  user,
+  roomId,
+  socket,
+  io,
+  callback,
+}) {
+  const toSend = {
+    data: {
+      user: { userId },
+      room: { roomId },
+      changeType: dbConfig.ChangeTypes.REMOVE,
+    },
+  };
+
+  if (socket) {
+    socket.join(roomId);
+    socket.broadcast.to(roomId).emit(dbConfig.EmitTypes.FOLLOWER, toSend);
+  } else {
+    if (user.socketId) {
+      const userSocket = socketUtils.getUserSocket({ io, socketId: user.socketId });
+
+      if (userSocket) { userSocket.join(roomId); }
+    }
+
+    io.to(userId).emit(dbConfig.EmitTypes.FOLLOW, toSend);
+    io.to(roomId).emit(dbConfig.EmitTypes.FOLLOWER, toSend);
+  }
+
+  callback(toSend);
+}
+
+/**
+ * Follow a new room on the user.
+ * @param {Object} params - Parameters.
+ * @param {string} params.roomId - ID of the room to follow.
+ * @param {Function} params.callback - Callback.
+ * @param {Object} params.io - Socket.io. Used if socket is not set.
+ * @param {string} [params.aliasId] - ID of the alias that the user is using to follow the room.
+ * @param {Object} [params.socket] - Socket.io socket.
+ * @param {string} [params.password] - Password to the room.
+ */
+function followRoom({
+  token,
+  socket,
+  io,
+  roomId,
+  password,
+  callback,
+  userId,
+  aliasId,
+}) {
   authenticator.isUserAllowed({
     token,
-    matchToId: sentUser.username,
+    matchToId: userId,
     commandName: dbConfig.apiCommands.FollowRoom.name,
     callback: ({ error, data }) => {
       if (error) {
         callback({ error });
 
         return;
-      } else if (!objectValidator.isValidData({ room }, { room: { roomName: true } })) {
-        callback({ error: new errorCreator.InvalidData({ expected: '{ room: { roomName } }' }) });
-
-        return;
       }
 
-      const user = sentUser || data.user;
+      const authUser = data.user;
 
-      const roomCallback = ({ error: userError, data: userData }) => {
-        if (userError) {
-          callback({ error: userError });
-
-          return;
-        }
-
-        const userFollowing = userData.user;
-        const roomToFollow = room;
-        roomToFollow.roomName = roomToFollow.roomName.toLowerCase();
-
-        authUserToRoom({
-          token,
-          room: roomToFollow,
-          callback: ({ error: authError, data: authData }) => {
-            if (authError) {
-              callback({ error: authError });
-
-              return;
-            } else if (!authData.isAllowed) {
-              callback({ error: new errorCreator.NotAllowed({ name: `follow ${room.roomName}` }) });
+      const roomCallback = () => {
+        getAccessibleRoom({
+          roomId,
+          password,
+          user: authUser,
+          callback: (accessData) => {
+            if (accessData.error) {
+              callback({ error: accessData.error });
 
               return;
             }
 
-            dbUser.addRoomToUser({
-              username: userFollowing.username,
-              roomName: roomToFollow.roomName,
-              callback: (addedData) => {
-                if (addedData.error) {
-                  callback({ error: addedData.error });
-
-                  return;
-                }
-
-                const roomName = authData.room.roomName;
-                const dataToSend = {
-                  roomName,
-                  username: userFollowing.username,
-                  isFollowing: true,
-                };
-
-                if (socket) {
-                  socket.broadcast.to(roomName).emit('roomFollower', { data: dataToSend });
-                  socket.join(roomName);
-                } else {
-                  io.to(user.username + appConfig.whisperAppend).emit('follow', { data: { room: authData.room } });
-                  io.to(roomName).emit('roomFollower', { data: dataToSend });
-                }
-
-                callback({ data: { room: authData.room } });
-              },
+            follow({
+              roomId,
+              socket,
+              io,
+              callback,
+              userId: aliasId || authUser.userId,
+              user: authUser,
             });
           },
         });
       };
 
-      if (user && user.username !== data.user.username) {
-        dbUser.getUser({
-          username: user.username,
-          callback: roomCallback,
+      if (aliasId) {
+        aliasManager.getAccessibleAlias({
+          aliasId,
+          user: authUser,
+          callback: ({ error: aliasError }) => {
+            if (aliasError) {
+              callback({ error: aliasError });
+
+              return;
+            }
+
+            roomCallback();
+          },
         });
-      } else {
-        roomCallback({ data: { user: data.user } });
+
+        return;
       }
+
+      roomCallback();
     },
   });
 }
 
 /**
- * Leave all rooms (except -device and public) on the socket
- * @param {Object} socket Socket.io socket
+ * Unfollow room.
+ * @param {Object} params - Parameters.
+ * @param {Object} params.userId - ID of the user that is unfollowing a room.
+ * @param {Object} params.roomId - ID of the room to unfollow.
+ * @param {Function} params.callback - Callback.
+ * @param {Object} params.io - Socket io. Will be used if socket is not set.
+ * @param {Object} [params.socket] - Socket.io.
+ * @param {string} [params.aliasId] - ID of the alias that the user is using to unfollow the room.
  */
-function leaveSocketRooms({ socket }) {
-  Object.keys(socket.rooms).forEach((roomName) => {
-    if (roomName.indexOf(appConfig.deviceAppend) === -1 && dbConfig.anonymousUser.rooms.indexOf(roomName) === -1) {
-      socket.leave(roomName);
-    }
-  });
-}
-
-/**
- * Make user follow whisper room
- * @param {Object} params.user User following whisper room
- * @param {string} params.whisperTo Message receiver name
- * @param {Object} params.sender User data sent from client
- * @param {Object} params.room Whisper room
- * @param {Object} [params.socket] Socket.io socket
- * @param {Object} params.io Socket.io. Used if socket is not set
- * @param {Function} params.callback Callback
- */
-function followWhisperRoom({ token, whisperTo, sender, room, socket, io, callback }) {
+function unfollowRoom({
+  token,
+  socket,
+  io,
+  roomId,
+  callback,
+  userId,
+  aliasId,
+}) {
   authenticator.isUserAllowed({
     token,
-    matchToId: sender.username,
-    commandName: dbConfig.apiCommands.FollowWhisperRoom.name,
-    callback: ({ error, data }) => {
-      if (error) {
-        callback({ error });
-
-        return;
-      } else if (!objectValidator.isValidData({ room, whisperTo, sender }, { room: { roomName: true }, whisperTo: true, sender: { username: true } })) {
-        callback({ error: new errorCreator.InvalidData({ expected: '{ user: { username: true }, room: { roomName: true }, whisperTo: true, sender: { username: true } }' }) });
-
-        return;
-      }
-
-      dbUser.addWhisperRoomToUser({
-        username: data.user.username,
-        roomName: room.roomName,
-        callback: ({ error: whisperError }) => {
-          if (whisperError) {
-            callback({ error: whisperError });
-
-            return;
-          }
-
-          dbUser.getUserByAlias({
-            alias: whisperTo,
-            callback: ({ error: aliasError, data: aliasData }) => {
-              if (aliasError) {
-                callback({ error: aliasError });
-
-                return;
-              }
-
-              const whisperToRoomName = `${whisperTo}-whisper-${sender.username}`;
-
-              dbUser.addWhisperRoomToUser({
-                username: aliasData.user.username,
-                roomName: whisperToRoomName,
-                callback: (whisperData) => {
-                  if (whisperData.error) {
-                    callback({ error: whisperData.error });
-
-                    return;
-                  }
-
-                  const emitTo = `${whisperTo}${appConfig.whisperAppend}`;
-                  const dataToEmit = {
-                    whisperTo: sender.username,
-                    data: whisperToRoomName,
-                    room: { roomName: whisperToRoomName },
-                    whisper: true,
-                  };
-
-                  if (socket) {
-                    socket.to(emitTo).emit('follow', { data: dataToEmit });
-                  } else {
-                    io.to(emitTo).emit('follow', { data: dataToEmit });
-                  }
-
-                  callback({ data: { room } });
-                },
-              });
-            },
-          });
-        },
-      });
-    },
-  });
-}
-
-/**
- * Unfollow room
- * @param {Object} [params.user] User that is unfollowing a room. Defaults to current user
- * @param {boolean} params.isWhisperRoom Is it a whisper room?
- * @param {Object} params.room Room to unfollow
- * @param {Function} params.callback Callback
- * @param {Object} [params.socket] Socket io socket
- * @param {Object} params.io Socket io. Will be used if socket is not set
- */
-function unfollowRoom({ token, socket, io, isWhisperRoom, room, callback, user = {} }) {
-  authenticator.isUserAllowed({
-    token,
-    matchToId: user.username,
+    matchToId: userId,
     commandName: dbConfig.apiCommands.UnfollowRoom.name,
     callback: ({ error, data }) => {
       if (error) {
         callback({ error });
 
         return;
-      } else if (!objectValidator.isValidData({ room }, { room: { roomName: true } })) {
-        callback({ error: new errorCreator.InvalidData({ expected: '{ room: { roomName } }' }) });
-
-        return;
-      } else if (isRequiredRoom({ roomName: room.roomName, socketId: socket ? socket.id : '', user: data.user })) {
+      } else if (isProtectedRoom({ roomId, socket })) {
         callback({ error: new errorCreator.NotAllowed({ name: 'unfollow protected room' }) });
 
         return;
       }
 
-      const userUnfollowing = user || data.user;
+      const authUser = data.user;
 
-      const roomToUnfollow = room;
-      roomToUnfollow.roomName = roomToUnfollow.roomName.toLowerCase();
+      const roomCallback = () => {
+        dbRoom.removeAccess({
+          roomId,
+          userIds: [userId],
+          callback: () => {
+            if (error) {
+              callback({ error });
 
-      dbUser.removeRoomFromUser({
-        isWhisperRoom,
-        username: userUnfollowing.username,
-        roomName: roomToUnfollow.roomName,
-        callback: ({ error: removeError }) => {
-          if (removeError) {
-            callback({ error: removeError });
-
-            return;
-          }
-
-          const dataToEmit = {
-            room: roomToUnfollow,
-            username: userUnfollowing.username,
-            isFollowing: false,
-          };
-
-          if (!isWhisperRoom) {
-            if (socket) {
-              socket.broadcast.to(roomToUnfollow.roomName).emit('roomFollower', { data: dataToEmit });
-            } else {
-              io.to(roomToUnfollow.roomName).emit('roomFollower', { data: dataToEmit });
+              return;
             }
-          }
 
-          if (socket) {
-            socket.leave(roomToUnfollow.roomName);
-          } else {
-            const allSocketIds = Object.keys(io.sockets.sockets);
+            unfollow({
+              roomId,
+              socket,
+              io,
+              callback,
+              userId: aliasId || userId,
+              user: authUser,
+            });
+          },
+        });
+      };
 
-            if (allSocketIds.indexOf(user.socketId) > -1) {
-              io.sockets.sockets[user.socketId].leave(roomToUnfollow.roomName);
+      if (aliasId) {
+        aliasManager.getAccessibleAlias({
+          aliasId,
+          user: authUser,
+          callback: ({ error: aliasError }) => {
+            if (aliasError) {
+              callback({ error: aliasError });
+
+              return;
             }
-          }
 
-          io.to(userUnfollowing.username + appConfig.whisperAppend).emit('unfollow', { data: dataToEmit });
+            roomCallback();
+          },
+        });
 
-          callback({ data: dataToEmit });
-        },
-      });
+        return;
+      }
+
+      roomCallback();
     },
   });
 }
 
 /**
- * Get rooms
- * @param {Object} [params.socket] Socket io
- * @param {Function} params.callback Callback
+ * Get room.
+ * @param {Object} params - Parameters.
+ * @param {string} params.token - jwt.
+ * @param {string} params.roomId - ID of the room to retrieve.
+ * @param {string} params.userId - ID of the user retrieving the room.
+ * @param {Function} params.callback - Callback.
  */
-function getRooms({ token, socket, callback }) {
+function getRoom({
+  token,
+  roomId,
+  userId,
+  callback,
+}) {
   authenticator.isUserAllowed({
     token,
+    matchToId: userId,
     commandName: dbConfig.apiCommands.GetRoom.name,
     callback: ({ error, data }) => {
       if (error) {
@@ -727,296 +685,235 @@ function getRooms({ token, socket, callback }) {
         return;
       }
 
-      const user = data.user;
-
-      dbRoom.getAllRooms({
-        user,
-        callback: ({ error: getError, data: roomsData }) => {
-          if (getError) {
-            callback({ error: getError });
-
-            return;
-          }
-
-          const filteredRooms = roomsData.rooms.map((room) => {
-            return {
-              roomName: room.roomName,
-              hasPassword: room.password && room.password !== '',
-              owned: room.owner === user.username,
-            };
-          });
-
-          const socketId = socket
-            ? socket.id
-            : (user.socketId || '');
-
-          const userRooms = socket
-            ? Object.keys(socket.rooms)
-            : user.rooms;
-
-          const rooms = filteredRooms
-            .filter(room => userRooms.indexOf(room.roomName) < 0);
-
-          const followedRooms = messenger
-            .filterHiddenRooms({
-              socketId,
-              roomNames: userRooms,
-            })
-            .map((roomName) => {
-              return {
-                roomName,
-                isFollowing: true,
-                hasPassword: false,
-              };
-            });
-
-          const protectedRooms = filteredRooms
-            .filter(room => room.password);
-
-          const whisperRooms = user.whisperRooms
-            .map((roomName) => {
-              return {
-                roomName,
-                isWhisper: true,
-                hasPassword: false,
-              };
-            });
-
-          if (user.username === '') {
-            callback({
-              data: {
-                rooms,
-                followedRooms,
-                defaultRoom: dbConfig.defaultRoom,
-                protectedRooms: [],
-                ownedRooms: [],
-                whisperRooms: [],
-              },
-            });
-
-            return;
-          }
-
-          dbRoom.getOwnedRooms({
-            user,
-            callback: ({ error: ownedError, data: ownedData }) => {
-              if (ownedError) {
-                callback({ error: ownedError });
-
-                return;
-              }
-
-              const ownedRooms = ownedData.rooms.map((room) => {
-                return {
-                  owned: true,
-                  roomName: room.roomName,
-                  password: room.password,
-                };
-              });
-
-              callback({
-                data: {
-                  rooms,
-                  followedRooms,
-                  protectedRooms,
-                  whisperRooms,
-                  ownedRooms,
-                  defaultRoom: dbConfig.defaultRoom,
-                },
-              });
-            },
-          });
-        },
+      getAccessibleRoom({
+        roomId,
+        callback,
+        user: data.user,
       });
     },
   });
 }
 
 /**
- * Remove room
- * @param {Object} params.user Owner of the room
- * @param {Object} params.room Room to remove
- * @param {Object} [params.socket] Socket io
- * @param {Object} params.io socket io. Will be used if socket is not set
- * @param {Function} params.callback Callback
+ * Get all the rooms that the user has access to, either directly or through the teams that the user is part of.
+ * @param {Object} params - Parameters.
+ * @param {string} params.token - jwt.
+ * @param {string} params.userId - ID of the user that is retrieving the rooms.
+ * @param {Function} params.callback - Callback.
  */
-function removeRoom({ token, room, socket, io, callback }) {
+function getRoomsByUser({ token, userId, callback }) {
   authenticator.isUserAllowed({
     token,
-    matchToId: room.owner,
+    matchToId: userId,
+    commandName: dbConfig.apiCommands.GetRoom.name,
+    callback: ({ error, data }) => {
+      if (error) {
+        callback({ error });
+
+        return;
+      }
+
+      dbRoom.getRoomsByUser({
+        callback,
+        user: data.user,
+      });
+    },
+  });
+}
+
+/**
+ * Get all the rooms followed by the users.
+ * @param {Object} params - Parameters.
+ * @param {string} params.token - jwt.
+ * @param {string} params.userId - ID of the user that is retrieving the rooms.
+ * @param {Function} params.callback - Callback.
+ */
+function getFollowedRooms({ token, userId, callback }) {
+  authenticator.isUserAllowed({
+    token,
+    matchToId: userId,
+    commandName: dbConfig.apiCommands.GetRoom.name,
+    callback: ({ error, data }) => {
+      if (error) {
+        callback({ error });
+
+        return;
+      }
+
+      dbRoom.getRoomsByIds({
+        callback,
+        roomIds: data.user.followingRooms,
+      });
+    },
+  });
+}
+
+/**
+ * Get all rooms.
+ * @param {Object} params - Parameters.
+ * @param {string} params.token - jwt.
+ * @param {Function} params.callback Callback.
+ */
+function getAllRooms({ token, callback }) {
+  authenticator.isUserAllowed({
+    token,
+    commandName: dbConfig.apiCommands.GetAll.name,
+    callback: ({ error }) => {
+      if (error) {
+        callback({ error });
+
+        return;
+      }
+
+      dbRoom.getAllRooms({ callback });
+    },
+  });
+}
+
+/**
+ * Remove room.
+ * @param {Object} params - Parameters.
+ * @param {string} params.token - jwt.
+ * @param {string} params.roomId - ID of the room to remove.
+ * @param {string} params.userId - ID of the user trying to remove the room.
+ * @param {Object} params.io - Socket.io. Will be used if socket is not set.
+ * @param {Function} params.callback - Callback
+ * @param {Object} [params.socket] - Socket.io.
+ */
+function removeRoom({
+  token,
+  roomId,
+  userId,
+  socket,
+  io,
+  callback,
+}) {
+  authenticator.isUserAllowed({
+    token,
+    matchToId: userId,
     commandName: dbConfig.apiCommands.RemoveRoom.name,
     callback: ({ error, data }) => {
       if (error) {
         callback({ error });
 
         return;
-      } else if (isRequiredRoom({ roomName: room.roomName, socketId: socket ? socket.id : '', user: data.user })) {
-        callback({ error: new errorCreator.NotAllowed({ name: 'remove protected room' }) });
+      } else if (isProtectedRoom({ roomId, socket })) {
+        callback({ error: new errorCreator.NotAllowed({ name: `remove protected room ${roomId}` }) });
 
         return;
       }
 
-      const user = data.user;
-      const roomToRemove = room;
-      roomToRemove.roomName = roomToRemove.roomName.toLowerCase();
-
-      dbRoom.getRoom({
-        roomName: roomToRemove.roomName,
-        callback: ({ error: roomError, data: roomData }) => {
-          if (roomError) {
-            callback({ error: roomError });
-
-            return;
-          } else if (roomData.room.owner !== user.username && dbConfig.apiCommands.RemoveRoom.accessLevel > user.accessLevel) {
-            callback({ error: new errorCreator.NotAllowed({ name: 'not owner of room' }) });
+      getAccessibleRoom({
+        roomId,
+        shouldBeAdmin: true,
+        user: data.user,
+        callback: ({ error: accessError }) => {
+          if (accessError) {
+            callback({ error: accessError });
 
             return;
           }
 
-          const retrievedRoom = roomData.room;
-
           dbRoom.removeRoom({
-            roomName: retrievedRoom.roomName,
-            callback: ({ error: removeError }) => {
-              if (removeError) {
-                callback({ error: removeError });
+            roomId,
+            fullRemoval: true,
+            callback: () => {
+              const dataToSend = {
+                data: {
+                  room: { roomId },
+                  changeType: dbConfig.ChangeTypes.RemoveRoom,
+                },
+              };
+
+              socketUtils.getSocketsByRoom({ io, roomId }).forEach((roomSocket) => {
+                roomSocket.leave(roomId);
+              });
+
+              if (socket) {
+                socket.broadcast.emit(dbConfig.EmitTypes.ROOM, dataToSend);
+              } else {
+                io.emit(dbConfig.EmitTypes.ROOM, dataToSend);
+              }
+
+              callback(dataToSend);
+            },
+          });
+        },
+      });
+    },
+  });
+}
+
+/**
+ * Update room.
+ * @param {Object} params - Parameters.
+ * @param {Object} params.room - Room.
+ * @param {string} params.roomId - ID of the room to update.
+ * @param {Object} params.options - Update options.
+ * @param {Function} params.callback - Callback.
+ * @param {Object} params.io - Socket io. Will be used if socket is not set.
+ * @param {Object} [params.socket] - Socket io.
+ */
+function updateRoom({
+  token,
+  room,
+  roomId,
+  options,
+  callback,
+  socket,
+  io,
+}) {
+  authenticator.isUserAllowed({
+    token,
+    commandName: dbConfig.apiCommands.UpdateRoom.name,
+    callback: ({ error, data }) => {
+      if (error) {
+        callback({ error });
+
+        return;
+      }
+
+      getAccessibleRoom({
+        roomId,
+        shouldBeAdmin: true,
+        user: data.user,
+        errorContentText: `update room id ${roomId}`,
+        callback: (roomData) => {
+          if (roomData.error) {
+            callback({ error: roomData.error });
+
+            return;
+          }
+
+          dbRoom.updateRoom({
+            options,
+            room,
+            roomId,
+            callback: (updateData) => {
+              if (updateData.error) {
+                callback({ error: updateData.error });
 
                 return;
               }
 
-              dbUser.removeRoomFollowers({
-                roomName: retrievedRoom.roomName,
-                callback: ({ error: allError }) => {
-                  if (allError) {
-                    callback({ error: allError });
-
-                    return;
-                  }
-
-                  // FIXME Newer socket io has changed this .sockets is not needed
-                  const connectedIds = Object.keys(io.sockets.adapter.rooms[retrievedRoom.roomName].sockets);
-                  const allSockets = io.sockets.connected;
-
-                  connectedIds.forEach(connectedId => allSockets[connectedId].leave(retrievedRoom.roomName));
-
-                  if (socket) {
-                    socket.broadcast.to(retrievedRoom.roomName).emit('unfollow', { data: { room: retrievedRoom } });
-                  } else {
-                    io.to(retrievedRoom.roomName).emit('unfollow', { data: { room: retrievedRoom } });
-                  }
-
-                  callback({ data: { room: retrievedRoom } });
+              const updatedRoom = updateData.data.room;
+              const { visibility } = updatedRoom;
+              const dataToSend = {
+                data: {
+                  room: updatedRoom,
+                  changeType: dbConfig.ChangeTypes.UPDATE,
                 },
-              });
+              };
+
+              if (socket) {
+                socket.broadcast.to(visibility.toString()).to(updatedRoom.roomId).emit(dbConfig.EmitTypes.ROOM, dataToSend);
+              } else {
+                io.to(visibility.toString()).to(updatedRoom.roomId).emit(dbConfig.EmitTypes.ROOM, dataToSend);
+              }
+
+              callback(dataToSend);
             },
           });
-        },
-      });
-    },
-  });
-}
-
-/**
- * Match sent partial room name to one or more rooms followed. Match will start from index 0
- * @param {string} params.partialName Partial room name
- * @param {Function} params.callback Callback
- */
-function matchMyPartialRoomName({ token, partialName, callback }) {
-  authenticator.isUserAllowed({
-    token,
-    commandName: dbConfig.apiCommands.GetRoom.name,
-    callback: ({ error, data }) => {
-      if (error) {
-        callback({ error });
-
-        return;
-      }
-
-      const user = data.user;
-
-      const regex = new RegExp(`^${partialName}.*`);
-      const rooms = messenger.filterHiddenRooms({ roomNames: user.rooms.filter(roomName => roomName.match(regex)), socketId: user.socketId });
-
-      if (user.team) {
-        rooms.push('team');
-      }
-
-      callback({
-        data: { matched: rooms },
-      });
-    },
-  });
-}
-
-/**
- * Match sent partial room name to one or more rooms. Match will start from index 0
- * @param {string} params.partialName Partial room name
- * @param {Function} params.callback Callback
- */
-function matchPartialRoomName({ token, partialName, callback }) {
-  authenticator.isUserAllowed({
-    token,
-    commandName: dbConfig.apiCommands.GetRoom.name,
-    callback: ({ error, data }) => {
-      if (error) {
-        callback({ error });
-
-        return;
-      }
-
-      dbRoom.matchPartialRoom({
-        partialName,
-        user: data.user,
-        callback: ({ error: partialError, data: partialData }) => {
-          if (partialError) {
-            callback({ error: partialError });
-
-            return;
-          }
-
-          callback({
-            data: {
-              matched: partialData.matched.map(room => room.roomName),
-            },
-          });
-        },
-      });
-    },
-  });
-}
-
-/**
- * Get room
- * @param {string} params.roomName Name of the room to retrieve
- * @param {Function} params.callback Callback
- */
-function getRoom({ token, roomName, callback }) {
-  authenticator.isUserAllowed({
-    token,
-    commandName: dbConfig.apiCommands.GetRoom.name,
-    callback: ({ error, data }) => {
-      if (error) {
-        callback({ error });
-
-        return;
-      }
-
-      const sentRoomName = roomName.toLowerCase();
-
-      dbRoom.getRoom({
-        roomName: sentRoomName,
-        callback: ({ error: roomError, data: roomData }) => {
-          if (roomError) {
-            callback({ error: roomError });
-
-            return;
-          } else if (data.user.accessLevel < roomData.room.visibility) {
-            callback({ error: new errorCreator.NotAllowed({ name: `room ${sentRoomName}` }) });
-
-            return;
-          }
-
-          callback({ data: roomData });
         },
       });
     },
@@ -1024,19 +921,17 @@ function getRoom({ token, roomName, callback }) {
 }
 
 exports.createRoom = createRoom;
-exports.joinRooms = joinRooms;
-exports.followRoom = followRoom;
-exports.leaveSocketRooms = leaveSocketRooms;
-exports.isRequiredRoom = isRequiredRoom;
-exports.authUserToRoom = authUserToRoom;
-exports.followWhisperRoom = followWhisperRoom;
-exports.unfollowRoom = unfollowRoom;
-exports.getRooms = getRooms;
+exports.updateRoom = updateRoom;
 exports.removeRoom = removeRoom;
-exports.getRoom = getRoom;
-
-exports.getWhisperRoom = getWhisperRoom;
 exports.addAccess = addAccess;
 exports.removeAccess = removeAccess;
+exports.getRoom = getRoom;
+exports.unfollowRoom = unfollowRoom;
+exports.leaveSocketRooms = leaveSocketRooms;
+exports.followRoom = followRoom;
+exports.getWhisperRoom = getWhisperRoom;
 exports.getAccessibleRoom = getAccessibleRoom;
 exports.createAndFollowWhisperRoom = createAndFollowWhisperRoom;
+exports.getAllRooms = getAllRooms;
+exports.getRoomsByUser = getRoomsByUser;
+exports.getFollowedRooms = getFollowedRooms;

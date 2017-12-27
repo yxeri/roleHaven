@@ -19,6 +19,7 @@
 const mongoose = require('mongoose');
 const dbConnector = require('../databaseConnector');
 const errorCreator = require('../../objects/error/errorCreator');
+const dbConfig = require('../../config/defaults/config').databasePopulation;
 
 const gameCodeSchema = new mongoose.Schema(dbConnector.createSchema({
   code: { type: String, unique: true },
@@ -223,10 +224,10 @@ function getGameCodeByCode({ code, callback }) {
 }
 
 /**
- * Remove game code
- * @param {Object} params - Parameters
- * @param {string} params.code - Code of the game code
- * @param {Function} params.callback - Callback
+ * Remove game code.
+ * @param {Object} params - Parameters.
+ * @param {string} params.code - Code of the game code.
+ * @param {Function} params.callback - Callback.
  */
 function removeGameCode({ code, callback }) {
   dbConnector.removeObject({
@@ -236,8 +237,25 @@ function removeGameCode({ code, callback }) {
   });
 }
 
+/**
+ * Get user's profile code.
+ * @param {Object} params - Parameters.
+ * @param {string} params.ownerId - Id of the user.
+ * @param {Function} params.callback - Callback
+ */
+function getProfileGameCode({ ownerId, callback }) {
+  getGameCode({
+    callback,
+    query: {
+      ownerId,
+      codeType: dbConfig.GameCodeTypes.PROFILE,
+    },
+  });
+}
+
 exports.createGameCode = createGameCode;
 exports.updateGameCode = updateGameCode;
 exports.removeGameCode = removeGameCode;
 exports.getGameCodeByCode = getGameCodeByCode;
 exports.getGameCodesByOwner = getGameCodesByOwner;
+exports.getProfileGameCode = getProfileGameCode;

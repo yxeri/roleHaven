@@ -144,13 +144,14 @@ function getAccessibleThreadsPosts({
 }
 
 /**
- * Create new forum post
- * @param {Object} params - Parameters
- * @param {Object} params.post - Forum post to create
- * @param {Object} params.callback - Callback
- * @param {Object} params.token - jwt
- * @param {Object} params.io - Socket.io. Will be used if socket is not set
- * @param {Object} [params.socket] - Socket.io
+ * Create new forum post.
+ * @param {Object} params - Parameters.
+ * @param {Object} params.post - Forum post to create.
+ * @param {Object} params.callback - Callback.
+ * @param {Object} params.token - jwt.
+ * @param {Object} params.io - Socket.io. Will be used if socket is not set.
+ * @param {string} params.threadId - Id of the thread that will get a new post.
+ * @param {Object} [params.socket] - Socket.io.
  */
 function createPost({
   post,
@@ -158,6 +159,7 @@ function createPost({
   token,
   io,
   socket,
+  threadId,
 }) {
   authenticator.isUserAllowed({
     token,
@@ -173,6 +175,7 @@ function createPost({
 
       const postToCreate = post;
       postToCreate.ownerId = authUser.userId;
+      postToCreate.threadId = threadId;
 
       const saveCallback = () => {
         threadManager.getAccessibleThread({
@@ -521,8 +524,45 @@ function getPostsByThread({
   });
 }
 
+/**
+ * Get a forum post.
+ * @param {Object} params - Parameters.
+ * @param {string} params.postId - Id of the post.
+ * @param {Function} params.callback - Callback.
+ * @param {string} params.token - jwt.
+ * @param {string} [params.userId] - Id of the user retrieving a forum post.
+ */
+function getPostById({
+  userId,
+  postId,
+  callback,
+  token,
+}) {
+  authenticator.isUserAllowed({
+    token,
+    matchToId: userId,
+    commandName: dbConfig.apiCommands.GetForumPost,
+    callback: ({ error, data }) => {
+      if (error) {
+        callback({ error });
+
+        return;
+      }
+
+      const { user } = data;
+
+      getAccessiblePost({
+        user,
+        postId,
+        callback,
+      });
+    },
+  });
+}
+
 exports.createPost = createPost;
 exports.updatePost = updatePost;
 exports.removePost = removePost;
 exports.getPostsByForum = getPostsByForum;
 exports.getPostsByThread = getPostsByThread;
+exports.getPostById = getPostById;

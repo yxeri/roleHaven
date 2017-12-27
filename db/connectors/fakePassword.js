@@ -110,6 +110,12 @@ function createFakePasswordsContainer(callback) {
   });
 }
 
+/**
+ * Remove a fake password.
+ * @param {Object} params - Parameters.
+ * @param {string} params.password - Password.
+ * @param {Function} params.callback - Callback.
+ */
 function removeFakePassword({ password, callback }) {
   dbConnector.updateObject({
     callback,

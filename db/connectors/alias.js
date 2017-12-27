@@ -167,8 +167,8 @@ function addAccess({
  * @param {string[]} [params.userIds] - ID of the users to remove
  * @param {string[]} [params.teamIds] - ID of the teams to remove
  * @param {string[]} [params.bannedIds] - Blocked IDs to remove
- * @param {string[]} [params.teamAdminIds] - ID of the team admins to remove
- * @param {string[]} [params.userAdminIds] - ID of the user admins to remove
+ * @param {string[]} [params.teamAdminIds] - Id of the teams to remove admin access from. They will not be removed from teamIds.
+ * @param {string[]} [params.userAdminIds] - Id of the users to remove admin access from. They will not be removed from userIds.
  * @param {Function} params.callback - Callback
  */
 function removeAccess({
@@ -375,16 +375,19 @@ function getAliasesByTeams({ teamIds, callback }) {
 }
 
 /**
- * Get aliases that the user has access to
- * @param {Object} params - Parameters
- * @param {string} params.userId - ID of the user
- * @param {Function} params.callback - Callback
+ * Get aliases that the user has access to.
+ * @param {Object} params - Parameters.
+ * @param {string} params.userId - ID of the user.
+ * @param {Function} params.callback - Callback.
  */
-function getAliasesByUser({ userId, callback }) {
+function getAliasesByUser({ user, callback }) {
   const query = {
     $or: [
-      { ownerId: userId },
-      { userIds: { $in: [userId] } },
+      { isPublic: true },
+      { ownerId: user.userId },
+      { userIds: { $in: user.userId } },
+      { visibility: { $lte: user.accessLevel } },
+      { teamIds: { $in: user.partOfTeams } },
     ],
   };
 
@@ -406,16 +409,57 @@ function getAllAliases({ callback }) {
 }
 
 /**
- * Remove alias
- * @param {Object} params - Parameters
- * @param {string} params.aliasId - ID of the alias to remove
- * @param {Function} params.callback - Callback
+ * Remove alias.
+ * @param {Object} params - Parameters.
+ * @param {string} params.aliasId - ID of the alias to remove.
+ * @param {Function} params.callback - Callback.
  */
 function removeAlias({ aliasId, callback }) {
   dbConnector.removeObject({
     callback,
     query: { _id: aliasId },
     object: Alias,
+  });
+}
+
+/**
+ * Gets all alias Ids and corresponding names.
+ * @param {Object} params - Parameters.
+ * @param {Object} params.user - The user retrieving the list.
+ * @param {Function} params.callback - Callback
+ */
+function getAliasesListByUser({ user, callback }) {
+  const query = {
+    $or: [
+      { isPublic: true },
+      { ownerId: user.userId },
+      { userIds: { $in: user.userId } },
+      { visibility: { $lte: user.accessLevel } },
+      { teamIds: { $in: user.partOfTeams } },
+    ],
+  };
+
+  getAliases({
+    query,
+    filter: { aliasName: 1 },
+    callback: ({ error, data }) => {
+      if (error) {
+        callback({ error });
+
+        return;
+      }
+
+      callback({
+        data: {
+          aliases: data.aliases.map((alias) => {
+            return {
+              aliasId: alias.aliasId,
+              aliasName: alias.aliasName,
+            };
+          }),
+        },
+      });
+    },
   });
 }
 
@@ -430,3 +474,4 @@ exports.getAliasByName = getAliasByName;
 exports.doesAliasExist = doesAliasExist;
 exports.getAliasesByTeams = getAliasesByTeams;
 exports.getAliasById = getAliasById;
+exports.getAliasesListByUser = getAliasesListByUser;

@@ -311,7 +311,8 @@ function removeForum({ forumId, fullRemoval, callback }) {
  * @param {string[]} [params.userIds] - ID of the users
  * @param {string[]} [params.teamIds] - ID of the teams
  * @param {string[]} [params.bannedIds] - Blocked ids
- * @param {boolean} [params.isAdmin] - Should the users be added to admins?
+ * @param {string[]} [params.teamAdminIds] - Id of the teams to give admin access to. They will also be added to teamIds.
+ * @param {string[]} [params.userAdminIds] - Id of the users to give admin access to. They will also be added to userIds.
  * @param {Function} params.callback - Callback
  */
 function addAccess({
@@ -319,20 +320,16 @@ function addAccess({
   userIds,
   teamIds,
   bannedIds,
-  isAdmin,
+  teamAdminIds,
+  userAdminIds,
   callback,
 }) {
-  if (!userIds && !teamIds && !bannedIds) {
-    callback({ error: new errorCreator.InvalidData({ expected: 'teamIds || userIds || bannedIds' }) });
-
-    return;
-  }
-
   dbConnector.addObjectAccess({
     userIds,
     teamIds,
     bannedIds,
-    isAdmin,
+    teamAdminIds,
+    userAdminIds,
     objectId: forumId,
     object: Forum,
     callback: ({ error, data }) => {
@@ -354,7 +351,8 @@ function addAccess({
  * @param {string[]} params.teamIds - ID of the teams
  * @param {string[]} [params.userIds] - ID of the user
  * @param {string[]} [params.bannedIds] - Blocked ids
- * @param {boolean} [params.isAdmin] - Should the teams and/or users be removed from admins?
+ * @param {string[]} [params.teamAdminIds] - Id of the teams to remove admin access from. They will not be removed from teamIds.
+ * @param {string[]} [params.userAdminIds] - Id of the users to remove admin access from. They will not be removed from userIds.
  * @param {Function} params.callback - Callback
  */
 function removeAccess({
@@ -362,20 +360,16 @@ function removeAccess({
   userIds,
   teamIds,
   bannedIds,
-  isAdmin,
+  teamAdminIds,
+  userAdminIds,
   callback,
 }) {
-  if (!userIds && !teamIds && !bannedIds) {
-    callback({ error: new errorCreator.InvalidData({ expected: 'teamIds || userIds || bannedIds' }) });
-
-    return;
-  }
-
   dbConnector.removeObjectAccess({
     userIds,
     teamIds,
     bannedIds,
-    isAdmin,
+    teamAdminIds,
+    userAdminIds,
     objectId: forumId,
     object: Forum,
     callback: ({ error, data }) => {

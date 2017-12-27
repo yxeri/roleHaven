@@ -146,11 +146,25 @@ function getSimpleMsg({ query, callback }) {
  * @param {string} params.userId - Owner ID of the messages that will be deleted
  * @param {Function} params.callback - Callback
  */
-function removeSimpleMsgs({ userId, callback }) {
+function removeSimpleMsgsByUser({ userId, callback }) {
   dbConnector.removeObjects({
     callback,
     object: SimpleMsg,
     query: { userId },
+  });
+}
+
+/**
+ * Remove a simple msg
+ * @param {Object} params - Parameters
+ * @param {string} params.simpleMsgId - ID of the message
+ * @param {Function} params.callback - Callback
+ */
+function removeSimpleMsg({ simpleMsgId, callback }) {
+  dbConnector.removeObject({
+    callback,
+    object: SimpleMsg,
+    query: { _id: simpleMsgId },
   });
 }
 
@@ -166,8 +180,8 @@ function getAllSimpleMsgs({ callback }) {
 /**
  * Update simple msg
  * @param {Object} params - Parameters
+ * @param {string} params.simpleMsgId - ID of the message to update
  * @param {Object} params.simpleMsg - Simple msg
- * @param {string} params.simpleMsg.simpleMsgId - ID of the message to update
  * @param {string[]} [params.simpleMsg.text] - Message text
  * @param {Function} params.callback - Callback
  */
@@ -184,8 +198,22 @@ function updateSimpleMsg({ simpleMsgId, simpleMsg, callback }) {
   });
 }
 
+/**
+ * Get a simple msg by its ID
+ * @param {Object} params - Parameters
+ * @param {string} params.simpleMsgId - ID of the message
+ * @param {Function} params.callback - Callback
+ */
+function getSimpleMsgById({ simpleMsgId, callback }) {
+  getSimpleMsg({
+    callback,
+    query: { _id: simpleMsgId },
+  });
+}
+
 exports.createSimpleMsg = createSimpleMsg;
-exports.removeSimpleMsgs = removeSimpleMsgs;
+exports.removeSimpleMsgsByUser = removeSimpleMsgsByUser;
 exports.getAllSimpleMsgs = getAllSimpleMsgs;
 exports.updateSimpleMsg = updateSimpleMsg;
-exports.getSimpleMsg = getSimpleMsg;
+exports.getSimpleMsgById = getSimpleMsgById;
+exports.removeSimpleMsg = removeSimpleMsg;

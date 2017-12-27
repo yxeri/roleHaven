@@ -19,9 +19,10 @@
 const deviceManager = require('../../managers/devices');
 
 /**
- * @param {Object} socket Socket.IO socket
+ * @param {Object} socket - Socket.Io socket.
+ * @param {Object} io - Socket.Io.
  */
-function handle(socket) {
+function handle(socket, io) {
   socket.on('getAllDevices', ({ token }, callback = () => {}) => {
     deviceManager.getAllDevices({
       token,
@@ -31,17 +32,26 @@ function handle(socket) {
 
   socket.on('updateDevice', ({ device, token }, callback = () => {}) => {
     deviceManager.updateDevice({
+      socket,
       token,
       device,
       callback,
+      io,
     });
   });
 
-  socket.on('setDeviceName', ({ device, token }, callback = () => {}) => {
-    deviceManager.updateDeviceName({
+  socket.on('setDeviceName', ({
+    deviceId,
+    device,
+    token,
+  }, callback = () => {}) => {
+    deviceManager.updateDevice({
+      socket,
+      deviceId,
       device,
       token,
       callback,
+      io,
     });
   });
 }

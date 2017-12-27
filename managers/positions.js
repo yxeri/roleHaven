@@ -15,7 +15,6 @@
  */
 
 'use strict';
-import { auth } from "../../../Library/Preferences/WebStorm2017.2/javascript/extLibs/http_github.com_DefinitelyTyped_DefinitelyTyped_raw_master_types_redis_index";
 
 const dbConfig = require('../config/defaults/config').databasePopulation;
 const authenticator = require('../helpers/authenticator');
@@ -353,15 +352,15 @@ function getAllPositions({ token, callback }) {
 /**
  * Remove position.
  * @param {Object} params - Parameters.
- * @param {string} params.docFileId - ID of the file to remove.
+ * @param {string} params.positionId - ID of the position to remove.
  * @param {string} params.token - jwt.
  * @param {string} params.userId - ID of the user removing the file
  * @param {Function} params.callback - Callback
  * @param {Object} params.io - Socket io. Will be used if socket is not set.
  * @param {Object} [params.socket] - Socket io.
  */
-function removeDocFile({
-  docFileId,
+function removePosition({
+  positionId,
   token,
   userId,
   callback,
@@ -370,7 +369,7 @@ function removeDocFile({
 }) {
   authenticator.isUserAllowed({
     token,
-    commandName: dbConfig.apiCommands.RemoveDocFile.commandName,
+    commandName: dbConfig.apiCommands.RemovePosition.commandName,
     matchToId: userId,
     callback: ({ error, data }) => {
       if (error) {
@@ -379,8 +378,8 @@ function removeDocFile({
         return;
       }
 
-      getAccessibleDocFile({
-        docFileId,
+      getAccessiblePosition({
+        positionId,
         user: data.user,
         callback: (aliasData) => {
           if (aliasData.error) {
@@ -388,8 +387,8 @@ function removeDocFile({
 
             return;
           }
-          dbDocFile.removeDocFile({
-            docFileId,
+          dbPosition.removePosition({
+            positionId,
             callback: (removeData) => {
               if (removeData.remove) {
                 callback({ error: removeData.error });
@@ -399,15 +398,15 @@ function removeDocFile({
 
               const dataToSend = {
                 data: {
-                  docFile: { docFileId },
+                  position: { positionId },
                   changeType: dbConfig.ChangeTypes.REMOVE,
                 },
               };
 
               if (socket) {
-                socket.broadcast.emit(dbConfig.EmitTypes.DOCFILE, dataToSend);
+                socket.broadcast.emit(dbConfig.EmitTypes.POSITION, dataToSend);
               } else {
-                io.emit(dbConfig.EmitTypes.DOCFILE, dataToSend);
+                io.emit(dbConfig.EmitTypes.POSITION, dataToSend);
               }
 
               callback(dataToSend);
@@ -425,3 +424,4 @@ exports.getUserPosition = getUserPosition;
 exports.updatePosition = updatePosition;
 exports.getAllPositions = getAllPositions;
 exports.createPosition = createPosition;
+exports.removePosition = removePosition;

@@ -249,4 +249,5 @@ exports.updateTeam = updateTeam;
 exports.createTeam = createTeam;
 exports.getAllTeams = getAllTeams;
 exports.deleteTeam = deleteTeam;
+exports.getTeam = getTeam;
 

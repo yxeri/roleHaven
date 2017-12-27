@@ -24,13 +24,7 @@ const dbConfig = require('../../config/defaults/config').databasePopulation;
 const mapPositionSchema = new mongoose.Schema(dbConnector.createSchema({
   deviceId: { type: String, unique: true },
   connectedToUser: { type: String, unique: true },
-  coordinates: [dbConnector.createSchema({
-    longitude: Number,
-    latitude: Number,
-    speed: Number,
-    accuracy: Number,
-    heading: Number,
-  })],
+  coordinatesHistory: [dbConnector.coordinatesSchema],
   positionName: String,
   positionType: { type: String, default: dbConfig.PositionTypes.WORLD },
   description: { type: [String], default: [] },
@@ -238,18 +232,12 @@ function createPosition({ position, callback }) {
  * @param {Object} params.coordinates - GPS coordinates
  * @param {number} params.coordinates.longitude - Longitude
  * @param {number} params.coordinates.latitude - Latitude
- * @param {number} params.coordinates.speed - Speed
  * @param {number} params.coordinates.accuracy - Accuracy in meters
- * @param {number} params.coordinates.heading - Heading (0 - 359)
+ * @param {number} [params.coordinates.heading] - Heading (0 - 359)
+ * @param {number} [params.coordinates.speed] - Speed
  */
 function updatePositionCoordinates({ positionId, coordinates, callback }) {
-  const update = { $set: {} };
-
-  if (coordinates.longitude) { update.$set.longitude = coordinates.longitude; }
-  if (coordinates.latitude) { update.$set.latitude = coordinates.latitude; }
-  if (coordinates.speed) { update.$set.speed = coordinates.speed; }
-  if (coordinates.accuracy) { update.$set.accuracy = coordinates.accuracy; }
-  if (coordinates.heading) { update.$set.heading = coordinates.heading; }
+  const update = { $push: { coordinatesHistory: coordinates } };
 
   updateObject({
     positionId,
@@ -478,7 +466,8 @@ function getUserPosition({ userId, callback }) {
  * @param {string[]} [params.userIds] - ID of the users
  * @param {string[]} [params.teamIds] - ID of the teams
  * @param {string[]} [params.bannedIds] - Blocked ids
- * @param {boolean} [params.isAdmin] - Should the users be added to admins?
+ * @param {string[]} [params.teamAdminIds] - Id of the teams to give admin access to. They will also be added to teamIds.
+ * @param {string[]} [params.userAdminIds] - Id of the users to give admin access to. They will also be added to userIds.
  * @param {Function} params.callback - Callback
  */
 function addAccess({
@@ -486,14 +475,16 @@ function addAccess({
   userIds,
   teamIds,
   bannedIds,
-  isAdmin,
+  teamAdminIds,
+  userAdminIds,
   callback,
 }) {
   dbConnector.addObjectAccess({
     userIds,
     teamIds,
     bannedIds,
-    isAdmin,
+    teamAdminIds,
+    userAdminIds,
     objectId: positionId,
     object: MapPosition,
     callback: ({ error, data }) => {
@@ -515,7 +506,8 @@ function addAccess({
  * @param {string[]} params.teamIds - ID of the teams
  * @param {string[]} [params.userIds] - ID of the user
  * @param {string[]} [params.bannedIds] - Blocked ids
- * @param {boolean} [params.isAdmin] - Should the teams and/or users be removed from admins?
+ * @param {string[]} [params.teamAdminIds] - Id of the teams to remove admin access from. They will not be removed from teamIds.
+ * @param {string[]} [params.userAdminIds] - Id of the users to remove admin access from. They will not be removed from userIds.
  * @param {Function} params.callback - Callback
  */
 function removeAccess({
@@ -523,14 +515,16 @@ function removeAccess({
   userIds,
   teamIds,
   bannedIds,
-  isAdmin,
+  teamAdminIds,
+  userAdminIds,
   callback,
 }) {
   dbConnector.removeObjectAccess({
     userIds,
     teamIds,
     bannedIds,
-    isAdmin,
+    teamAdminIds,
+    userAdminIds,
     objectId: positionId,
     object: MapPosition,
     callback: ({ error, data }) => {

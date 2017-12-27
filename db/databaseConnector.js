@@ -32,11 +32,20 @@ const baseSchema = {
   customTimeCreated: Date,
   visibility: { type: Number, default: dbConfig.AccessLevels.ANONYMOUS },
   accessLevel: { type: Number, default: dbConfig.AccessLevels.ANONYMOUS },
-  adminIds: { type: [String], default: [] },
+  teamAdminIds: { type: [String], default: [] },
+  userAdminIds: { type: [String], default: [] },
   userIds: { type: [String], default: [] },
   teamIds: { type: [String], default: [] },
   bannedIds: { type: [String], default: [] },
   isPublic: { type: Boolean, default: true },
+};
+
+const coordinatesSchema = {
+  longitude: Number,
+  latitude: Number,
+  speed: Number,
+  accuracy: Number,
+  heading: Number,
 };
 
 mongoose.connect(dbPath, { useMongoClient: true }, (err) => {
@@ -217,6 +226,10 @@ function getObject({
       callback({ error: new errorCreator.Database({ errorObject: error, name: errorNameContent }) });
 
       return;
+    } else if (!foundObject) {
+      callback({ data: { exists: false } });
+
+      return;
     }
 
     callback({ data: { object: addObjectId({ object: foundObject }) } });
@@ -316,6 +329,43 @@ function updateObject({
 }
 
 /**
+ * Update objects
+ * @param {Object} params - Parameters
+ * @param {Function} params.callback - Callback
+ * @param {Object} params.object - Object to call and get
+ * @param {string} [params.query] - Database query
+ * @param {string} [params.errorNameContent] - Content that will be sent with error
+ */
+function updateObjects({
+  object,
+  update,
+  callback,
+  query = {},
+  errorNameContent = 'updateObjects',
+}) {
+  const options = {
+    new: true,
+    multi: true,
+  };
+  const toUpdate = update;
+  toUpdate.$set.lastUpdated = new Date();
+
+  object.update(query, toUpdate, options).lean().exec((err, foundObjects = []) => {
+    if (err) {
+      callback({ error: new errorCreator.Database({ errorObject: err, name: errorNameContent }) });
+
+      return;
+    }
+
+    callback({
+      data: {
+        objects: foundObjects.map(foundObject => addObjectId({ object: foundObject })),
+      },
+    });
+  });
+}
+
+/**
  * Remove object
  * @param {Object} params - Parameters
  * @param {Object} params.object - Type of object to remove
@@ -364,15 +414,15 @@ function removeObjects({
 }
 
 /**
- * Add object access for users or teams
- * @param {Object} params - Parameters
- * @param {string} params.objectId - ID of the device to update
- * @param {Function} params.callback - Callback
- * @param {string[]} [params.userIds] - ID of the users to add
- * @param {string[]} [params.teamIds] - ID of the teams to add
- * @param {string[]} [params.bannedIds] - ID of the banned user/teams to add
- * @param {string[]} [params.teamAdminIds] - ID of the team admins to remove
- * @param {string[]} [params.userAdminIds] - ID of the user admins to remove
+ * Add object access for users or teams.
+ * @param {Object} params - Parameters.
+ * @param {string} params.objectId - ID of the device to update.
+ * @param {Function} params.callback - Callback.
+ * @param {string[]} [params.userIds] - ID of the users to add.
+ * @param {string[]} [params.teamIds] - ID of the teams to add.
+ * @param {string[]} [params.bannedIds] - ID of the banned user/teams to add.
+ * @param {string[]} [params.teamAdminIds] - ID of the team admins to remove.
+ * @param {string[]} [params.userAdminIds] - ID of the user admins to remove.
  */
 function addObjectAccess({
   objectId,
@@ -390,13 +440,32 @@ function addObjectAccess({
     return;
   }
 
-  const update = { $addToSet: {} };
+  const update = {
+    $addToSet: {
+      teamIds: [],
+      userIds: [],
+    },
+    $pull: {},
+  };
 
-  if (teamIds) { update.$addToSet.teamIds = teamIds; }
-  if (userIds) { update.$addToSet.userIds = userIds; }
-  if (bannedIds) { update.$addToSet.bannedIds = bannedIds; }
-  if (teamAdminIds) { update.$addToSet.teamAdminIds = teamAdminIds; }
-  if (userAdminIds) { update.$addToSet.userAdminIds = userAdminIds; }
+  if (teamIds) { update.$addToSet.teamIds = update.$addToSet.teamIds.concat(teamIds); }
+  if (userIds) { update.$addToSet.userIds = update.$addToSet.userIds.concat(userIds); }
+  if (bannedIds) {
+    update.$addToSet.bannedIds = bannedIds;
+    update.$pull.teamAdminIds = { $each: bannedIds };
+    update.$pull.userAdminIds = { $each: bannedIds };
+    update.$pull.userIds = { $each: bannedIds };
+    update.$pull.teamIds = { $each: bannedIds };
+  }
+
+  if (teamAdminIds) {
+    update.$addToSet.teamAdminIds = teamAdminIds;
+
+  }
+
+  if (userAdminIds) {
+    update.$addToSet.userAdminIds = userAdminIds;
+  }
 
   updateObject({
     update,
@@ -449,6 +518,8 @@ function removeObjectAccess({
   });
 }
 
+exports.coordinatesSchema = coordinatesSchema;
+
 exports.saveObject = saveObject;
 exports.verifyObject = verifyObject;
 exports.verifyAllObjects = verifyAllObjects;
@@ -462,3 +533,4 @@ exports.createSchema = createSchema;
 exports.removeObjectAccess = removeObjectAccess;
 exports.addObjectAccess = addObjectAccess;
 exports.doesObjectExist = doesObjectExist;
+exports.updateObjects = updateObjects;

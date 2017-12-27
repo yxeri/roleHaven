@@ -140,6 +140,19 @@ function createInvitation({ invitation, callback }) {
 }
 
 /**
+ * Get invitation by Id.
+ * @param {Object} params - Parameters.
+ * @param {string} params.invitationId - Id of the invitation to remove.
+ * @param {Function} params.callback - Callback.
+ */
+function getInvitationById({ invitationId, callback }) {
+  getInvitations({
+    callback,
+    query: { _id: invitationId },
+  });
+}
+
+/**
  * Get invitations by receiver
  * @param {Object} params - Parameters
  * @param {string} params.receiverId - ID of the receiver of the invitation
@@ -180,16 +193,16 @@ function removeInvitation({ invitationId, callback }) {
 }
 
 /**
- * Remove invitations by type on receiver
- * @param {Object} params - Parameters
- * @param {string} params.receiverId - ID of the receiver
- * @param {string} params.invitationType - Type of invitation to remove
+ * Remove all invitations with the same itemId for a user.
+ * @param {Object} params - Parameters.
+ * @param {string} params.receiverId - ID of the invitation receiver.
+ * @param {string} params.itemId - Item ID.
  * @param {Function} params.callback - Callback
  */
-function removeInvitations({ receiverId, invitationType, callback }) {
+function removeInvitationsByItemId({ receiverId, itemId, callback }) {
   const query = {
-    invitationType,
     receiverId,
+    itemId,
   };
 
   dbConnector.removeObjects({
@@ -199,8 +212,47 @@ function removeInvitations({ receiverId, invitationType, callback }) {
   });
 }
 
+/**
+ * Get and remove an invitation. Return the removed invitation in the callback.
+ * @param {Object} params - Parameters.
+ * @param {string} params.invitationId - ID of the invitation.
+ * @param {Function} params.callback - Callback
+ */
+function useInvitation({ invitationId, callback }) {
+  getInvitation({
+    query: { _id: invitationId },
+    callback: ({ error, data }) => {
+      if (error) {
+        callback({ error });
+
+        return;
+      }
+
+      const {
+        receiverId,
+        itemId,
+      } = data.invitation;
+
+      removeInvitationsByItemId({
+        receiverId,
+        itemId,
+        callback: ({ error: removeError }) => {
+          if (removeError) {
+            callback({ error: removeError });
+
+            return;
+          }
+
+          callback({ data });
+        },
+      });
+    },
+  });
+}
+
 exports.createInvitation = createInvitation;
 exports.getInvitationsBySender = getInvitationsBySender;
 exports.getInvitationsByReceiver = getInvitationsByReceiver;
 exports.removeInvitation = removeInvitation;
-exports.removeInvitations = removeInvitations;
+exports.useInvitation = useInvitation;
+exports.getInvitationById = getInvitationById;

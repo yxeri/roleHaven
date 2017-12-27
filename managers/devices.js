@@ -23,7 +23,7 @@ const dbDevice = require('../db/connectors/device');
 const authenticator = require('../helpers/authenticator');
 
 /**
- * Get device by ID and check if the user has access to it
+ * Get device by Id and check if the user has access to it
  * @param {Object} params - Parameters
  * @param {Object} params.user - User retrieving the device
  * @param {string} params.deviceId - ID of the device to retrieve
@@ -117,9 +117,10 @@ function createDevice({
             return;
           }
 
+          const createdDevice = deviceData.data.device;
           const dataToSend = {
             data: {
-              device: deviceData.data.device,
+              device: createdDevice,
               changeType: dbConfig.ChangeTypes.CREATE,
             },
           };
@@ -215,11 +216,11 @@ function updateDevice({
 }
 
 /**
- * Get devices that are accessible to the user
- * @param {Object} params - Parameters
- * @param {string} params.token - jwt
- * @param {string} params.userId - ID of the user
- * @param {Function} params.callback - Callback
+ * Get devices that are accessible to the user.
+ * @param {Object} params - Parameters.
+ * @param {string} params.token - jwt.
+ * @param {string} params.userId - ID of the user.
+ * @param {Function} params.callback - Callback.
  */
 function getDevicesByUser({
   token,
@@ -229,7 +230,7 @@ function getDevicesByUser({
   authenticator.isUserAllowed({
     token,
     matchToId: userId,
-    commandName: dbConfig,
+    commandName: dbConfig.apiCommands.GetDevices,
     callback: ({ error, data }) => {
       if (error) {
         callback({ error });
@@ -319,8 +320,42 @@ function removeDevice({
   });
 }
 
-exports.getAllDevices = getAllDevices;
-exports.updateDevice = updateDevice;
-exports.getDevicesByUser = getDevicesByUser;
+/**
+ * Get a device.
+ * @param {Object} params - Parameters.
+ * @param {string} params.token - jwt.
+ * @param {string} params.userId - Id of the user retrieving the device.
+ * @param {Function} params.callback - Callback
+ */
+function getDevice({
+  token,
+  userId,
+  callback,
+  deviceId,
+}) {
+  authenticator.isUserAllowed({
+    token,
+    matchToId: userId,
+    commandName: dbConfig,
+    callback: ({ error, data }) => {
+      if (error) {
+        callback({ error });
+
+        return;
+      }
+
+      getAccessibleDevice({
+        deviceId,
+        callback,
+        user: data.user,
+      });
+    },
+  });
+}
+
 exports.createDevice = createDevice;
 exports.removeDevice = removeDevice;
+exports.updateDevice = updateDevice;
+exports.getDevice = getDevice;
+exports.getAllDevices = getAllDevices;
+exports.getDevicesByUser = getDevicesByUser;

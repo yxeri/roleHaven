@@ -2,14 +2,21 @@ const errorCreator = require('../objects/error/errorCreator');
 const appConfig = require('../config/defaults/config').app;
 
 /**
- * Checks the type of error and sends it in response
- * @param {Object} params.response Router response
- * @param {Object} params.error Error object
- * @param {string} [params.title] Error title
- * @param {string} [params.detail] Error detail
- * @param {Object} [params.sentData] Data sent
+ * Checks the type of error and sends it in response.
+ * @param {Object} params - Parameters.
+ * @param {Object} params.response - Router response.
+ * @param {Object} params.error - Error object.
+ * @param {string} [params.title] - Error title.
+ * @param {string} [params.detail] - Error detail.
+ * @param {Object} [params.sentData] - Data sent.
  */
-function checkAndSendError({ response, error, title, detail, sentData }) {
+function checkAndSendError({
+  response,
+  error,
+  title,
+  detail,
+  sentData,
+}) {
   const errorDetail = error.text.join('') || detail;
   const sendError = {
     status: 500,
@@ -17,7 +24,9 @@ function checkAndSendError({ response, error, title, detail, sentData }) {
     detail: errorDetail || 'Internal server error',
   };
 
-  if ((appConfig.mode === appConfig.Modes.TEST || appConfig.mode === appConfig.Modes.DEV) && sentData) { sendError.sentData = sentData; }
+  if ((appConfig.mode === appConfig.Modes.TEST || appConfig.mode === appConfig.Modes.DEV) && sentData) {
+    sendError.sentData = sentData;
+  }
 
   switch (error.type) {
     case errorCreator.ErrorTypes.DOESNOTEXIST: {

@@ -18,10 +18,11 @@
 
 const express = require('express');
 const roomManager = require('../../managers/rooms');
+const messageManager = require('../../managers/messages');
 const objectValidator = require('../../utils/objectValidator');
 const restErrorChecker = require('../../helpers/restErrorChecker');
-const messenger = require('../../helpers/messenger');
 const errorCreator = require('../../objects/error/errorCreator');
+const dbConfig = require('../../config/defaults/config').databasePopulation;
 
 const router = new express.Router();
 
@@ -31,299 +32,41 @@ const router = new express.Router();
  */
 function handle(io) {
   /**
-   * @api {get} /rooms Get rooms
-   * @apiVersion 6.0.0
-   * @apiName GetRooms
-   * @apiGroup Rooms
-   *
-   * @apiHeader {String} Authorization Your JSON Web Token
-   *
-   * @apiDescription Retrieve all rooms available to your user
-   *
-   * @apiSuccess {Object} data
-   * @apiSuccess {Object} data.rooms Found rooms
-   * @apiSuccessExample {json} Success-Response:
-   *   {
-   *    "data": {
-   *      "rooms": [
-   *        "public",
-   *        "bb1"
-   *      ]
-   *    }
-   *  }
-   */
-  router.get('/', (request, response) => {
-    roomManager.getRooms({
-      token: request.headers.authorization,
-      callback: ({ error, data }) => {
-        if (error) {
-          restErrorChecker.checkAndSendError({ response, error, sentData: request.body.data });
-
-          return;
-        }
-
-        response.json({ data });
-      },
-    });
-  });
-
-  /**
-   * @api {get} /rooms/:roomName Get specific room
-   * @apiVersion 6.0.0
-   * @apiName GetRoom
-   * @apiGroup Rooms
-   *
-   * @apiHeader {String} Authorization Your JSON Web Token
-   *
-   * @apiDescription Retrieve a specific room, based on sent room name
-   *
-   * @apiParam {String} id Name of the room to retrieve
-   *
-   * @apiSuccess {Object} data
-   * @apiSuccess {Object} data.room Found room. Empty if no room was found
-   * @apiSuccessExample {json} Success-Response:
-   *   {
-   *    "data": {
-   *      "room": {
-   *        "roomName": "bb1",
-   *        "owner": "rez",
-   *        "bannedUsers": [
-   *          "a1",
-   *        ],
-   *        "admins": [
-   *          "rez2"
-   *        ],
-   *        "commands": [],
-   *        "visibility": 1,
-   *        "accessLevel": 1
-   *      }
-   *    }
-   *  }
-   */
-  router.get('/:roomName', (request, response) => {
-    if (!objectValidator.isValidData(request.params, { roomName: true })) {
-      restErrorChecker.checkAndSendError({ response, error: new errorCreator.InvalidData({ expected: '' }), sentData: request.body.data });
-
-      return;
-    }
-
-    roomManager.getRoom({
-      token: request.headers.authorization,
-      roomName: request.params.roomName,
-      callback: ({ error, data }) => {
-        if (error) {
-          restErrorChecker.checkAndSendError({ response, error, sentData: request.body.data });
-
-          return;
-        }
-
-        response.json({ data });
-      },
-    });
-  });
-
-  /**
-   * @api {post} /rooms Create a room
-   * @apiVersion 6.0.0
-   * @apiName CreateRoom
-   * @apiGroup Rooms
-   *
-   * @apiHeader {String} Authorization Your JSON Web Token
-   *
-   * @apiDescription Create a room
-   *
-   * @apiParam {Object} data
-   * @apiParam {Object} data.room Room
-   * @apiParam {String} data.room.roomName Name of the room to create
-   * @apiParam {String} [data.room.password] Password for the room. Leave unset if you don't want to password-protect the room
-   * @apiParam {Number} [data.room.visibility] Minimum access level required to see the room. 0 = ANONYMOUS. 1 = registered user. Default is 1.
-   * @apiParam {Number} [data.room.accessLevel] Minimum access level required to follow the room. 0 = ANONYMOUS. 1 = registered user. Default is 1.
-   * @apiParamExample {json} Request-Example:
-   *   {
-   *    "data": {
-   *      "room": {
-   *        "roomName": "bb1",
-   *        "accessLevel": 0
-   *      }
-   *    }
-   *  }
-   *
-   * @apiSuccess {Object} data
-   * @apiSuccess {Object} data.room Room created
-   * @apiSuccessExample {json} Success-Response:
-   *   {
-   *    "data": {
-   *      "room": {
-   *        "roomName": "bb1",
-   *        "owner": "rez",
-   *        "bannedUsers": [],
-   *        "admins": [],
-   *        "commands": [],
-   *        "visibility": 1,
-   *        "accessLevel": 0,
-   *        password: false
-   *      }
-   *    }
-   *  }
-   */
-  router.post('/', (request, response) => {
-    if (!objectValidator.isValidData(request.body, { data: { room: { roomName: true } } })) {
-      restErrorChecker.checkAndSendError({ response, error: new errorCreator.InvalidData({ expected: '' }), sentData: request.body.data });
-
-      return;
-    }
-
-    roomManager.createRoom({
-      token: request.headers.authorization,
-      room: request.body.data.room,
-      callback: ({ error, data }) => {
-        if (error) {
-          restErrorChecker.checkAndSendError({ response, error, sentData: request.body.data });
-
-          return;
-        }
-
-        response.json({ data });
-      },
-    });
-  });
-
-  /**
-   * @api {get} /rooms/:partialName/match Match rooms with sent partial room name
-   * @apiVersion 6.0.0
-   * @apiName MatchRoomName
-   * @apiGroup Rooms
-   *
-   * @apiHeader {String} Authorization Your JSON Web Token
-   *
-   * @apiDescription Retrieve a collection of rooms, based on the sent partial name. The match is done from index 0
-   *
-   * @apiParam {String} roomName Partial room name
-   *
-   * @apiSuccess {Object} data
-   * @apiSuccess {Object} data.rooms Found rooms. Empty array if no rooms were found
-   * @apiSuccessExample {json} Success-Response:
-   *   {
-   *    "data": {
-   *      "rooms": [
-   *        "bb1",
-   *        "bb2",
-   *        "roomSec",
-   *      ]
-   *    }
-   *  }
-   */
-  router.get('/:partialName/match', (request, response) => {
-    if (!objectValidator.isValidData(request.params, { partialName: true })) {
-      restErrorChecker.checkAndSendError({ response, error: new errorCreator.InvalidData({ expected: '' }), sentData: request.body.data });
-
-      return;
-    }
-
-    roomManager.matchPartialRoomName({
-      token: request.headers.authorization,
-      partialName: request.params.partialName,
-      callback: ({ error, data }) => {
-        if (error) {
-          restErrorChecker.checkAndSendError({ response, error, sentData: request.body.data });
-
-          return;
-        }
-
-        response.json({ data });
-      },
-    });
-  });
-
-  /**
-   * @api {get} /rooms/:roomName/match/followed Match followed rooms with sent partial room name
-   * @apiVersion 6.0.0
-   * @apiName MatchFollowedRoomName
-   * @apiGroup Rooms
-   *
-   * @apiHeader {String} Authorization Your JSON Web Token
-   *
-   * @apiDescription Retrieve a collection of followed rooms, based on the sent partial name. The match is done from index 0
-   *
-   * @apiParam {String} roomName Partial room name
-   *
-   * @apiSuccess {Object} data
-   * @apiSuccess {Object} data.rooms Found rooms. Empty array if no rooms were found
-   * @apiSuccessExample {json} Success-Response:
-   *   {
-   *    "data": {
-   *      "rooms": [
-   *        "bb1",
-   *        "bb2",
-   *        "roomSec",
-   *      ]
-   *    }
-   *  }
-   */
-  router.get('/:roomName/match/followed', (request, response) => {
-    if (!objectValidator.isValidData(request.params, { roomName: true })) {
-      restErrorChecker.checkAndSendError({ response, error: new errorCreator.InvalidData({ expected: '' }), sentData: request.body.data });
-
-      return;
-    }
-
-    roomManager.matchMyPartialRoomName({
-      token: request.headers.authorization,
-      partialName: request.params.roomName,
-      callback: ({ error, data }) => {
-        if (error) {
-          restErrorChecker.checkAndSendError({ response, error, sentData: request.body.data });
-
-          return;
-        }
-
-        response.json({ data });
-      },
-    });
-  });
-
-  /**
-   * @api {get} /rooms/:roomName/messages Get messages from specific room
-   * @apiVersion 6.0.0
+   * @api {get} /rooms/:roomId/messages Get messages from a room.
+   * @apiVersion 8.0.0
    * @apiName GetMessages
    * @apiGroup Rooms
    *
-   * @apiHeader {String} Authorization Your JSON Web Token
+   * @apiHeader {String} Authorization Your JSON Web Token.
    *
-   * @apiDescription Retrieve messages from a specific room
+   * @apiDescription Retrieve messages from a room.
    *
-   * @apiParam {String} roomNameid Name of the room
+   * @apiParam {String} roomId - Id of the room.
+   *
+   * @apiParam {Object} data
+   * @apiParam {Date} [data.startDate] - The cut off date for retrieving past/future messages.
+   * @apiParam {Date} [data.shouldGetFuture] - Should messages from the future be retrieved? startDate is the date that is the start of the retrieval.
    *
    * @apiSuccess {Object} data
-   * @apiSuccess {Object[]} data.messages Found messages from specific room
-   * @apiSuccessExample {json} Success-Response:
-   *  {
-   *    "data": {
-   *      "timeZoneOffset": 0,
-   *      "messages": [
-   *        {
-   *          "time": "2016-10-14T11:13:03.555Z",
-   *          "roomName": "bb1",
-   *          "username": "rez",
-   *          "text": [
-   *            "..."
-   *          ]
-   *        }
-   *      ]
-   *    }
-   *  }
+   * @apiSuccess {Object[]} data.messages - Found messages.
    */
-  router.get('/:roomName/messages', (request, response) => {
-    if (!objectValidator.isValidData(request.params, { roomName: true })) {
-      restErrorChecker.checkAndSendError({ response, error: new errorCreator.InvalidData({ expected: '' }), sentData: request.body.data });
+  router.get('/:roomId/messages', (request, response) => {
+    if (!objectValidator.isValidData(request.params, { roomId: true })) {
+      restErrorChecker.checkAndSendError({ response, error: new errorCreator.InvalidData({ expected: '{ roomId }' }), sentData: request.params });
 
       return;
     }
 
-    roomManager.getHistory({
+    const { authorization: token } = request.headers;
+    const { roomId } = request.params;
+    const { startDate, shouldGetFuture } = request.body.data;
+
+    messageManager.getMessagesByRoom({
       io,
-      token: request.headers.authorization,
-      roomName: request.params.roomName,
+      roomId,
+      token,
+      startDate,
+      shouldGetFuture,
       callback: ({ error, data }) => {
         if (error) {
           restErrorChecker.checkAndSendError({ response, error, sentData: request.body.data });
@@ -337,85 +80,122 @@ function handle(io) {
   });
 
   /**
-   * @api {post} /rooms/:roomName/messages Send a message to a room or user
-   * @apiVersion 6.0.0
-   * @apiName SendMessage
+   * @api {get} /rooms Get rooms.
+   * @apiVersion 8.0.0
+   * @apiName GetRooms
    * @apiGroup Rooms
    *
-   * @apiHeader {String} Authorization Your JSON Web Token
+   * @apiHeader {String} Authorization - Your JSON Web Token.
    *
-   * @apiDescription Send a message to a room or user
-   *
-   * @apiParam {string} roomName Room name to send message to. Can also be user name if the message is a whisper
+   * @apiDescription Get rooms.
    *
    * @apiParam {Object} data
-   * @apiParam {Object} data.message Message
-   * @apiParam {String[]} data.message.text Content of the message
-   * @apiParam {String} [data.message.username] Name of the sender. Default is your user name. You can instead set it to one of your user's aliases
-   * @apiParam {Boolean} [data.message.isWhisper] Is it a whisper (private) message?
-   * @apiParamExample {json} Request-Example:
-   *   {
-   *    "data": {
-   *      "message": {
-   *        "username": "rez",
-   *        "text": [
-   *          "Hello world!"
-   *        ]
-   *      }
-   *    }
-   *  }
+   * @apiParam {string} [data.userId] - Id of the user retrieving the rooms.
    *
    * @apiSuccess {Object} data
-   * @apiSuccess {Object[]} data.messages Message sent
-   * @apiSuccessExample {json} Success-Response:
-   *   {
-   *    "data": {
-   *      "messages": [{
-   *        "roomName": "bb1",
-   *        "text": [
-   *          "Hello world!"
-   *        ],
-   *        "username": "rez",
-   *        "time": "2016-10-28T22:42:06.262Z"
-   *      }]
-   *    }
-   *  }
+   * @apiSuccess {Object} data.rooms - Found rooms.
    */
-  router.post('/:roomName/messages', (request, response) => {
-    if (!objectValidator.isValidData(request.body, { data: true })) {
-      restErrorChecker.checkAndSendError({ response, error: new errorCreator.InvalidData({ expected: '' }), sentData: request.body.data });
+  router.get('/', (request, response) => {
+    const { authorization: token } = request.headers;
+    const { userId } = request.body.data;
 
-      return;
-    }
-
-    const { message, isWhisper } = request.body.data;
-    const token = request.headers.authorization;
-    message.roomName = request.params.roomName;
-
-    if (isWhisper) {
-      messenger.sendWhisperMsg({
-        io,
-        message,
-        token,
-        callback: ({ data, error }) => {
-          if (error) {
-            restErrorChecker.checkAndSendError({ response, error, sentData: request.body.data });
-
-            return;
-          }
-
-          response.json({ data });
-        },
-      });
-
-      return;
-    }
-
-    messenger.sendChatMsg({
-      io,
-      message,
+    roomManager.getRoomsByUser({
+      userId,
       token,
-      callback: ({ data, error }) => {
+      callback: ({ error, data }) => {
+        if (error) {
+          restErrorChecker.checkAndSendError({ response, error, sentData: request.body.data });
+
+          return;
+        }
+
+        response.json({ data });
+      },
+    });
+  });
+
+  /**
+   * @api {get} /rooms/:roomId Get a room.
+   * @apiVersion 8.0.0
+   * @apiName GetRoom
+   * @apiGroup Rooms
+   *
+   * @apiHeader {string} Authorization - Your JSON Web Token.
+   *
+   * @apiDescription Retrieve a room.
+   *
+   * @apiParam {string} roomId - Id of the room to retrieve.
+   *
+   * @apiParam {Object} data - Id of the room to retrieve.
+   * @apiParam {string} [data.userId] - Id of the user retrieving the room.
+   *
+   * @apiSuccess {Object} data
+   * @apiSuccess {Object} data.room - Found room.
+   */
+  router.get('/:roomId', (request, response) => {
+    if (!objectValidator.isValidData(request.params, { roomId: true })) {
+      restErrorChecker.checkAndSendError({ response, error: new errorCreator.InvalidData({ expected: '{ roomId }' }), sentData: request.params });
+
+      return;
+    }
+
+    const { authorization: token } = request.headers;
+    const { roomId } = request.params;
+    const { userId } = request.body.data;
+
+    roomManager.getRoom({
+      token,
+      roomId,
+      userId,
+      callback: ({ error, data }) => {
+        if (error) {
+          restErrorChecker.checkAndSendError({ response, error, sentData: request.body.data });
+
+          return;
+        }
+
+        response.json({ data });
+      },
+    });
+  });
+
+  /**
+   * @api {post} /rooms Create a room.
+   * @apiVersion 8.0.0
+   * @apiName CreateRoom
+   * @apiGroup Rooms
+   *
+   * @apiHeader {String} Authorization - Your JSON Web Token.
+   *
+   * @apiDescription Create a room.
+   *
+   * @apiParam {Object} data
+   * @apiParam {Object} data.room - The room to create.
+   *
+   * @apiSuccess {Object} data
+   * @apiSuccess {Object} data.room - Room created.
+   */
+  router.post('/', (request, response) => {
+    if (!objectValidator.isValidData(request.body, { data: { room: { roomId: true } } })) {
+      restErrorChecker.checkAndSendError({ response, error: new errorCreator.InvalidData({ expected: '{ data: { room: { roomId } } }' }), sentData: request.body.data });
+
+      return;
+    } else if ((!request.body.data.options || !request.body.data.options.shouldSetIdToName) && !request.body.data.roomName) {
+      restErrorChecker.checkAndSendError({ response, error: new errorCreator.InvalidData({ expected: 'set roomId or shouldSetIdToName' }), sentData: request.body.data });
+
+      return;
+    }
+
+    const { room, userId, options } = request.body.data;
+    const { authorization: token } = request.headers;
+
+    roomManager.createRoom({
+      token,
+      room,
+      io,
+      userId,
+      options,
+      callback: ({ error, data }) => {
         if (error) {
           restErrorChecker.checkAndSendError({ response, error, sentData: request.body.data });
 

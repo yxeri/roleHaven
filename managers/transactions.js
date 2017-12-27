@@ -16,23 +16,28 @@
 
 'use strict';
 
-const dbWallet = require('../db/connectors/wallet');
-const appConfig = require('../config/defaults/config').app;
 const dbConfig = require('../config/defaults/config').databasePopulation;
 const errorCreator = require('../objects/error/errorCreator');
 const dbTransaction = require('../db/connectors/transaction');
 const authenticator = require('../helpers/authenticator');
+const walletManager = require('./wallets');
 
 /**
- * Get all user/team transactions
- * @param {string} params.owner Name of the user or team
- * @param {boolean} params.isTeam Is it a team wallet?
- * @param {Function} params.callback Callback
+ * Get transactions for a wallet.
+ * @param {Object} params - Parameters.
+ * @param {string} walletId - Id of the wallet.
+ * @param {Function} params.callback - Callback.
+ * @param {string} params.userId - Id of the user retrieving the transactions.
  */
-function getTransactions({ owner, token, callback }) {
+function getTransactions({
+  userId,
+  walletId,
+  token,
+  callback,
+}) {
   authenticator.isUserAllowed({
     token,
-    matchToId: owner,
+    matchToId: userId,
     commandName: dbConfig.apiCommands.GetTransaction.name,
     callback: ({ error, data }) => {
       if (error) {
@@ -41,69 +46,49 @@ function getTransactions({ owner, token, callback }) {
         return;
       }
 
-      const walletOwner = owner || data.user.username;
+      const { user } = data;
 
-      const getOwnerTransactions = ({ ownerName, callback: transCallback }) => {
-        dbTransaction.getAllTransactions({
-          owner: ownerName,
-          callback: (transactionsData) => {
-            if (transactionsData.error) {
-              transCallback({ err: transactionsData.error });
-
-              return;
-            }
-
-            const { transactions } = transactionsData.data;
-            const dataToSend = {};
-
-            if (transactions.length > 0) {
-              dataToSend.toTransactions = transactions.filter(transaction => transaction.to === ownerName);
-              dataToSend.fromTransactions = transactions.filter(transaction => transaction.from === ownerName);
-            } else {
-              dataToSend.toTransactions = [];
-              dataToSend.fromTransactions = [];
-            }
-
-            transCallback({ data: dataToSend });
-          },
-        });
-      };
-
-      getOwnerTransactions({
-        ownerName: walletOwner,
-        callback: ({ error: transError, data: transData }) => {
-          if (transError) {
-            callback({ error: transError });
+      walletManager.getAccessibleWallet({
+        walletId,
+        user,
+        callback: (walletData) => {
+          if (walletData.error) {
+            callback({ error: walletData.error });
 
             return;
           }
 
-          if (!owner || (data.user && !data.user.team)) {
-            callback({ data: transData });
-
-            return;
-          }
-
-          const { fromTransactions, toTransactions } = transData;
-
-          getOwnerTransactions({
-            ownerName: `${data.user.team}${appConfig.teamAppend}`,
-            callback: ({ error: teamError, data: teamData }) => {
-              if (teamError) {
-                callback({ error: teamError });
+          dbTransaction.getTransactionsByWallet({
+            walletId,
+            callback: (transactionsData) => {
+              if (transactionsData.error) {
+                callback({ err: transactionsData.error });
 
                 return;
               }
 
-              const teamFromTransactions = teamData.fromTransactions.filter(transaction => transaction.to !== walletOwner && transaction.from !== walletOwner);
-              const teamToTransactions = teamData.toTransactions.filter(transaction => transaction.to !== walletOwner && transaction.from !== walletOwner);
+              const { transactions } = transactionsData.data;
+              const fromTransactions = [];
+              const toTransactions = transactions.filter((transaction) => {
+                if (transaction.toWalletId === walletId) {
+                  fromTransactions.push(transaction);
 
-              callback({
-                data: {
-                  fromTransactions: fromTransactions.concat(teamFromTransactions),
-                  toTransactions: toTransactions.concat(teamToTransactions),
-                },
+                  return false;
+                }
+
+                return true;
               });
+
+              const dataToSend = {
+                data: {
+                  transactions: {
+                    sender: fromTransactions,
+                    receiver: toTransactions,
+                  },
+                },
+              };
+
+              callback(dataToSend);
             },
           });
         },
@@ -113,14 +98,17 @@ function getTransactions({ owner, token, callback }) {
 }
 
 /**
- * Create transaction
- * @param {Object} [params.user] - User of the sender
- * @param {Object} params.transaction - Transaction to create
- * @param {Object} [params.socket] - Socket io
- * @param {Object} params.io - Socket io. Used if socket is not set
- * @param {Function} callback Callback
+ * Create transaction.
+ * @param {Object} params - Parameters.
+ * @param {Object} params.transaction - Transaction parameters to create.
+ * @param {Object} params.io - Socket io. - Used if socket is not set.
+ * @param {Function} callback - Callback.
  */
-function createTransaction({ userId, transaction, io, socket, callback }) {
+function createTransaction({
+  transaction,
+  io,
+  callback,
+}) {
   if (transaction.fromWalletId === transaction.toWalletId) {
     callback({ error: new errorCreator.InvalidData({ name: 'transfer to self' }) });
 
@@ -129,24 +117,18 @@ function createTransaction({ userId, transaction, io, socket, callback }) {
     callback({ error: new errorCreator.Insufficient({ name: 'amount is 0 or less' }) });
 
     return;
-  } else if (transaction.fromWalletId === transaction.toWalletId) {
-    callback({ error: new errorCreator.InvalidData({ name: 'send to same' }) });
-
-    return;
   }
 
   const newTransaction = transaction;
   newTransaction.amount = Math.abs(newTransaction.amount);
 
-  dbWallet.getWallet({
-    walletId: newTransaction.fromWalletId,
-    callback: (walletData) => {
-      if (walletData.error) {
-        callback({ error: walletData.error });
-
-        return;
-      } else if (walletData.data.wallet.amount - newTransaction.amount < 0) {
-        callback({ error: new errorCreator.Insufficient({ name: 'transfer too much' }) });
+  walletManager.getWalletsAndCheckAmount({
+    fromWalletId: newTransaction.fromWalletId,
+    toWalletId: newTransaction.toWalletId,
+    amount: newTransaction.amount,
+    callback: (walletsData) => {
+      if (walletsData.error) {
+        callback({ error: walletsData.error });
 
         return;
       }
@@ -162,72 +144,27 @@ function createTransaction({ userId, transaction, io, socket, callback }) {
 
           const createdTransaction = transactionData.data.transaction;
 
-          dbWallet.decreaseAmount({
-            walletId: createdTransaction.fromWalletId,
-            amount: createdTransaction.amount,
-            callback: (decreasedWalletData) => {
-              if (decreasedWalletData.error) {
-                callback({ error: decreasedWalletData.error });
+          walletManager.runTransaction({
+            transaction: createdTransaction,
+            callback: (updatedWalletsData) => {
+              if (updatedWalletsData.error) {
+                callback({ error: updatedWalletsData.error });
 
                 return;
               }
 
-              dbWallet.increaseAmount({
-                walletId: createdTransaction.toWalletId,
-                amount: createdTransaction.amount,
-                callback: (increasedWalletData) => {
-                  if (increasedWalletData.error) {
-                    callback({ error: increasedWalletData.error });
-
-                    return;
-                  }
-
-                  const { wallet: increasedWallet } = increasedWalletData.data;
-                  const { wallet: decreasedWallet } = decreasedWalletData.data;
-
-                  if (socket) {
-                    socket.broadcast.to(createdTransaction.fromWalletId).emit('transaction', {
-                      data: {
-                        transaction: createdTransaction,
-                        wallet: decreasedWallet,
-                      },
-                    });
-
-                    socket.broadcast.to(createdTransaction.toWalletId).emit('transaction', {
-                      data: {
-                        transaction: createdTransaction,
-                        wallet: increasedWallet,
-                      },
-                    });
-                  } else {
-                    io.to(createdTransaction.fromWalletId).emit('transaction', {
-                      data: {
-                        transaction: createdTransaction,
-                        wallet: decreasedWallet,
-                      },
-                    });
-
-                    io.to(createdTransaction.toWalletId).emit('transaction', {
-                      data: {
-                        transaction: createdTransaction,
-                        wallet: increasedWallet,
-                      },
-                    });
-                  }
-
-                  const dataToSend = {
-                    transaction,
-                    wallet: decreasedWallet,
-                  };
-
-                  // FIXME Check if user is in teamId
-                  if (user.team && createdTransaction.to === user.team + appConfig.teamAppend) {
-                    dataToSend.toWallet = increasedWallet;
-                  }
-
-                  callback({ data: dataToSend });
+              const { fromWallet, toWallet } = updatedWalletsData.data;
+              const dataToSend = {
+                data: {
+                  transaction: createTransaction,
+                  changeType: dbConfig.EmitTypes.TRANSACTION,
                 },
-              });
+              };
+
+              io.to(fromWallet.walletId).emit(dbConfig.EmitTypes.TRANSACTION, dataToSend);
+              io.to(toWallet.walletId).emit(dbConfig.EmitTypes.TRANSACTION, dataToSend);
+
+              callback(dataToSend);
             },
           });
         },
@@ -237,18 +174,23 @@ function createTransaction({ userId, transaction, io, socket, callback }) {
 }
 
 /**
- * Create transaction based on jwt token
- * @param {Object} params.token - jwt
- * @param {Object} params.transaction - New transaction
- * @param {Object} params.io - Socket.io. Will be used if socket is not set
- * @param {Object} [params.socket] - Socket.io
- * @param {Function} params.callback - Callback
+ * Create transaction based on user access.
+ * @param {Object} params - Parameters.
+ * @param {Object} params.token - jwt.
+ * @param {Object} params.transaction - New transaction.
+ * @param {Object} params.io - Socket.io. Will be used if socket is not set.
+ * @param {Function} params.callback - Callback.
  */
-function createTransactionBasedOnToken({ transaction, io, socket, token, callback }) {
+function createTransactionBasedOnToken({
+  transaction,
+  io,
+  token,
+  callback,
+}) {
   authenticator.isUserAllowed({
     token,
     commandName: dbConfig.apiCommands.CreateTransaction.name,
-    callback: ({ error, data }) => {
+    callback: ({ error }) => {
       if (error) {
         callback({ error });
 
@@ -258,9 +200,7 @@ function createTransactionBasedOnToken({ transaction, io, socket, token, callbac
       createTransaction({
         transaction,
         io,
-        socket,
         callback,
-        user: data.user,
       });
     },
   });

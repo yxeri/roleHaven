@@ -77,13 +77,14 @@ function getAccessibleMessage({
 }
 
 /**
- * Store and send a message
- * @param {Object} params - Parameters
- * @param {Object} params.message - Message to store and send
- * @param {Function} params.callback - Callback
- * @param {Object} params.io - Socket.io. Will be used if socket is not set
- * @param {string} params.emitType - Type of emit event
- * @param {Object} [params.socket] - Socket.io
+ * Store and send a message.
+ * @param {Object} params - Parameters.
+ * @param {Object} params.message - Message to store and send.
+ * @param {Function} params.callback - Callback.
+ * @param {Object} params.io - Socket.io. Will be used if socket is not set.
+ * @param {string} params.emitType - Type of emit event.
+ * @param {Object} [params.socket] - Socket.io.
+ * @param {Object} [params.image] - Image attached to the message.
  */
 function sendMessage({
   message,
@@ -91,7 +92,12 @@ function sendMessage({
   socket,
   io,
   emitType,
+  image,
 }) {
+  if (image) {
+    // Contact file storage and create the file or retrieve and existing one.
+  }
+
   dbMessage.createMessage({
     message,
     callback: ({ error, data }) => {
@@ -120,12 +126,12 @@ function sendMessage({
 }
 
 /**
- * Get messages by room
- * @param {Object} params - Parameters
- * @param {string} params.token - jwt
- * @param {Function} params.callback - Callback
- * @param {string} params.roomId - ID of the room
- * @param {Date} [params.startDate] - Date for when to start the span of messages
+ * Get messages by room.
+ * @param {Object} params - Parameters.
+ * @param {string} params.token - jwt.
+ * @param {Function} params.callback - Callback.
+ * @param {string} params.roomId - Id of the room to retrieve messages from.
+ * @param {Date} [params.startDate] - Date for when to start the span of messages.
  * @param {boolean} [params.shouldGetFuture] - Should messages from the future of the start date be retrieved?
  */
 function getMessagesByRoom({
@@ -145,9 +151,11 @@ function getMessagesByRoom({
         return;
       }
 
+      const { user } = data;
+
       roomManager.getAccessibleRoom({
         roomId,
-        user: data.user,
+        user,
         callback: (roomData) => {
           if (roomData.error) {
             callback({ error: roomData.error });
@@ -176,12 +184,12 @@ function getMessagesByRoom({
 }
 
 /**
- * Sends a message that won't be stored in the history
- * @param {Object} params - Parameters
- * @param {Object} params.message - Message to send
- * @param {Object} params.io Socket.io
- * @param {Function} params.callback - Callback
- * @param {Object} [params.socket] Socket.io socket
+ * Sends a message that won't be stored in the history.
+ * @param {Object} params - Parameters.
+ * @param {Object} params.message - Message to send.
+ * @param {Object} params.io Socket.io.
+ * @param {Function} params.callback - Callback.
+ * @param {Object} [params.socket] - Socket.io socket.
  */
 function sendOneTimeMessage({
   socket,
@@ -206,12 +214,13 @@ function sendOneTimeMessage({
 }
 
 /**
- * Send broadcast message
- * @param {Object} params - Parameters
- * @param {Object} params.message - Message to be sent
- * @param {Object} [params.socket] - Socket.io socket
- * @param {Object} params.io - Socket.io. Used by API, when no socket is available
- * @param {Function} params.callback - Client callback
+ * Send broadcast message.
+ * @param {Object} params - Parameters.
+ * @param {Object} params.message - Message to be sent.
+ * @param {Object} params.io - Socket.io. Used by API, when no socket is available.
+ * @param {Function} params.callback - Client callback.
+ * @param {Object} [params.socket] - Socket.io socket.
+ * @param {Object} [params.image] - Image attached to the message.
  */
 function sendBroadcastMsg({
   token,
@@ -219,6 +228,7 @@ function sendBroadcastMsg({
   socket,
   callback,
   io,
+  image,
 }) {
   authenticator.isUserAllowed({
     token,
@@ -256,6 +266,8 @@ function sendBroadcastMsg({
               socket,
               io,
               callback,
+              image,
+              emitType: dbConfig.EmitTypes.BROADCAST,
               message: newMessage,
             });
           },
@@ -268,6 +280,8 @@ function sendBroadcastMsg({
         socket,
         io,
         callback,
+        image,
+        emitType: dbConfig.EmitTypes.BROADCAST,
         message: newMessage,
       });
     },
@@ -275,12 +289,13 @@ function sendBroadcastMsg({
 }
 
 /**
- * Send chat message
- * @param {Object} params - Parameters
- * @param {Object} params.message - Message to be sent
- * @param {Object} params.io - Socket.io. Used by API, when no socket is available
- * @param {Function} params.callback - Client callback
- * @param {Object} [params.socket] - Socket.io socket
+ * Send a chat message.
+ * @param {Object} params - Parameters.
+ * @param {Object} params.message - Message to be sent.
+ * @param {Object} params.io - Socket.io. Used by API, when no socket is available.
+ * @param {Function} params.callback - Client callback.
+ * @param {Object} [params.socket] - Socket.io socket.
+ * @param {Object} [params.image] - Image attached to the message.
  */
 function sendChatMsg({
   token,
@@ -288,11 +303,12 @@ function sendChatMsg({
   socket,
   callback,
   io,
+  image,
 }) {
   authenticator.isUserAllowed({
     token,
     commandName: dbConfig.apiCommands.SendMessage.name,
-    callback: ({ error }) => {
+    callback: ({ error, data }) => {
       if (error) {
         callback({ error });
 
@@ -307,49 +323,68 @@ function sendChatMsg({
         return;
       }
 
+      const { user } = data;
       const newMessage = message;
       newMessage.messageType = dbConfig.MessageTypes.CHAT;
+      newMessage.ownerId = user.userId;
 
-      if (newMessage.ownerAliasId) {
-        aliasManager.getAccessibleAlias({
-          aliasId: newMessage.ownerAliasId,
-          callback: (aliasData) => {
-            if (aliasData.error) {
-              callback({ error: aliasData.error });
+      roomManager.getAccessibleRoom({
+        user,
+        roomId: newMessage.roomId,
+        callback: ({ error: roomError }) => {
+          if (roomError) {
+            callback({ error: roomError });
 
-              return;
-            }
+            return;
+          }
 
-            sendMessage({
-              socket,
-              io,
-              callback,
-              message: newMessage,
+          if (newMessage.ownerAliasId) {
+            aliasManager.getAccessibleAlias({
+              aliasId: newMessage.ownerAliasId,
+              callback: (aliasData) => {
+                if (aliasData.error) {
+                  callback({ error: aliasData.error });
+
+                  return;
+                }
+
+                sendMessage({
+                  socket,
+                  io,
+                  callback,
+                  image,
+                  emitType: dbConfig.EmitTypes.CHATMSG,
+                  message: newMessage,
+                });
+              },
             });
-          },
-        });
 
-        return;
-      }
+            return;
+          }
 
-      sendMessage({
-        socket,
-        io,
-        callback,
-        message: newMessage,
+          sendMessage({
+            socket,
+            io,
+            callback,
+            image,
+            emitType: dbConfig.EmitTypes.CHATMSG,
+            message: newMessage,
+          });
+        },
       });
     },
   });
 }
 
 /**
- * Send whisper message
- * @param {Object} params - Parameters
- * @param {Object} params.message - Message to be sent
- * @param {Object} params.io - Socket.io. Used by API, when no socket is available
- * @param {Function} params.callback - Client callback
- * @param {string} params.participantIds - ID of the users
- * @param {Object} [params.socket] - Socket.io socket
+ * Send whisper message.
+ * @param {Object} params - Parameters.
+ * @param {Object} params.message - Message to be sent.
+ * @param {Object} params.io - Socket.io. Used by API, when no socket is available.
+ * @param {Function} params.callback - Client callback.
+ * @param {string} params.participantIds - Id of the users.
+ * @param {Object} [params.socket] - Socket.io socket.
+ * @param {Object} [params.image] - Image attached to the message.
  */
 function sendWhisperMsg({
   token,
@@ -358,6 +393,7 @@ function sendWhisperMsg({
   socket,
   callback,
   io,
+  image,
 }) {
   authenticator.isUserAllowed({
     token,
@@ -398,6 +434,7 @@ function sendWhisperMsg({
                 participantIds,
                 socket,
                 io,
+                user: authUser,
                 callback: (newWhisperData) => {
                   if (newWhisperData.error) {
                     callback({ error: newWhisperData.error });
@@ -412,6 +449,8 @@ function sendWhisperMsg({
                     socket,
                     io,
                     callback,
+                    image,
+                    emitType: dbConfig.EmitTypes.WHISPER,
                     message: newMessage,
                   });
                 },
@@ -426,6 +465,8 @@ function sendWhisperMsg({
               socket,
               io,
               callback,
+              image,
+              emitType: dbConfig.EmitTypes.WHISPER,
               message: newMessage,
             });
           },
@@ -456,9 +497,9 @@ function sendWhisperMsg({
 }
 
 /**
- * Remove message.
+ * Remove a message.
  * @param {Object} params - Parameters.
- * @param {string} params.messageId - ID of the message.
+ * @param {string} params.messageId - Id of the message.
  * @param {Function} params.callback - Callback.
  * @param {string} params.token - jwt.
  * @param {Object} params.socket - Socket.io.
@@ -492,7 +533,7 @@ function removeMsg({
             return;
           }
 
-          const foundMessage = roomData.data.message;
+          const { messageType, roomId } = roomData.data.message;
 
           dbMessage.removeMessage({
             messageId,
@@ -503,19 +544,21 @@ function removeMsg({
                 return;
               }
 
-              const emitType = generateEmitType(foundMessage.messageType);
+              const emitType = generateEmitType(messageType);
               const dataToSend = {
                 data: {
-                  room: { roomId: foundMessage.roomId },
-                  message: { messageId },
+                  message: {
+                    messageId,
+                    roomId,
+                  },
                   changeType: dbConfig.ChangeTypes.REMOVE,
                 },
               };
 
               if (socket) {
-                socket.broadcast.to(foundMessage.roomId).emit(emitType, dataToSend);
+                socket.broadcast.to(roomId).emit(emitType, dataToSend);
               } else {
-                io.to(foundMessage.roomId).emit(emitType, dataToSend);
+                io.to(roomId).emit(emitType, dataToSend);
               }
 
               callback(dataToSend);
@@ -531,7 +574,7 @@ function removeMsg({
  * Update a message.
  * @param {Object} params - Parameters.
  * @param {Object} params.message - Message to update with.
- * @param {string} params.messageId - ID of the message.
+ * @param {string} params.messageId - Id of the message.
  * @param {Function} params.callback - Callback.
  * @param {string} params.token - jwt.
  * @param {Object} params.socket - Socket.io.

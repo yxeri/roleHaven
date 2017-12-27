@@ -96,6 +96,7 @@ config.routes = config.routes || [
   { sitePath: '/api/simpleMsgs', filePath: `${__dirname}/../../routes/rest/simpleMsgs` },
   { sitePath: '/api/mailEvents', filePath: `${__dirname}/../../routes/rest/mailEvents` },
   { sitePath: '/api/forums', filePath: `${__dirname}/../../routes/rest/forums` },
+  { sitePath: '/api/forums', filePath: `${__dirname}/../../routes/rest/forums` },
   { sitePath: '*', filePath: `${__dirname}/../../routes/error.js` },
 ];
 

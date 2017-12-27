@@ -17,41 +17,60 @@
 'use strict';
 
 const roomManager = require('../../managers/rooms');
-const messenger = require('../../helpers/messenger');
+const messageManager = require('../../managers/messages');
 
 /**
- * @param {object} socket - Socket.IO socket
- * @param {object} io - Socket.IO
+ * @param {object} socket - Socket.Io socket.
+ * @param {object} io - Socket.Io.
  */
 function handle(socket, io) {
-  socket.on('chatMsg', ({ message, image, token }, callback = () => {}) => {
-    messenger.sendChatMsg({
+  socket.on('chatMsg', ({
+    message,
+    image,
+    token,
+  }, callback = () => {}) => {
+    messageManager.sendChatMsg({
       callback,
-      io,
-      socket,
       image,
+      io,
+      socket,
       message,
       token,
     });
   });
-  socket.on('whisperMsg', ({ message, token }, callback = () => {}) => {
-    messenger.sendWhisperMsg({
+
+  socket.on('whisperMsg', ({
+    participantIds,
+    message,
+    token,
+    image,
+  }, callback = () => {}) => {
+    messageManager.sendWhisperMsg({
       socket,
       callback,
       io,
       message,
       token,
+      image,
+      participantIds,
     });
   });
-  socket.on('broadcastMsg', ({ message, token }, callback = () => {}) => {
-    messenger.sendBroadcastMsg({
+
+  socket.on('broadcastMsg', ({
+    message,
+    image,
+    token,
+  }, callback = () => {}) => {
+    messageManager.sendBroadcastMsg({
       token,
+      image,
       socket,
       io,
       callback,
       message,
     });
   });
+
   socket.on('createRoom', ({ room, token }, callback = () => {}) => {
     roomManager.createRoom({
       room,
@@ -61,24 +80,7 @@ function handle(socket, io) {
       callback,
     });
   });
-  socket.on('authUserToRoom', ({ room, token }, callback = () => {}) => {
-    roomManager.authUserToRoom({
-      room,
-      token,
-      callback,
-    });
-  });
-  socket.on('followWhisperRoom', ({ token, sender, whisperTo, room }, callback = () => {}) => {
-    roomManager.followWhisperRoom({
-      token,
-      sender,
-      whisperTo,
-      room,
-      socket,
-      io,
-      callback,
-    });
-  });
+
   socket.on('follow', ({ user, room, token }, callback = () => {}) => {
     roomManager.followRoom({
       token,
@@ -89,61 +91,70 @@ function handle(socket, io) {
       callback,
     });
   });
-  socket.on('unfollow', ({ user, room, isWhisperRoom, token }, callback = () => {}) => {
+
+  socket.on('unfollow', ({
+    userId,
+    roomId,
+    token,
+  }, callback = () => {}) => {
     roomManager.unfollowRoom({
       token,
-      user,
-      room,
-      isWhisperRoom,
+      userId,
+      roomId,
       socket,
       io,
       callback,
     });
   });
-  socket.on('getRooms', ({ token }, callback = () => {}) => {
-    roomManager.getRooms({
+
+  socket.on('getRooms', ({ userId, token }, callback = () => {}) => {
+    roomManager.getRoomsByUser({
       token,
       socket,
+      userId,
       callback,
     });
   });
-  socket.on('getHistory', ({ roomName, whisperTo, token }, callback = () => {}) => {
-    roomManager.getHistory({
+
+  socket.on('getHistory', ({
+    roomId,
+    token,
+    startDate,
+    shouldGetFuture,
+  }, callback = () => {}) => {
+    messageManager.getMessagesByRoom({
       token,
-      socket,
-      io,
       callback,
-      roomName,
-      whisperTo,
+      roomId,
+      startDate,
+      shouldGetFuture,
     });
   });
-  socket.on('removeRoom', ({ room, token }, callback = () => {}) => {
+
+  socket.on('removeRoom', ({
+    roomId,
+    token,
+    userId,
+  }, callback = () => {}) => {
     roomManager.removeRoom({
-      room,
+      roomId,
+      userId,
       token,
       socket,
       io,
       callback,
     });
   });
-  socket.on('matchPartialMyRoom', ({ partialName, token }, callback = () => {}) => {
-    roomManager.matchMyPartialRoomName({
-      token,
-      callback,
-      partialName,
-    });
-  });
-  socket.on('matchPartialRoom', ({ partialName, token }, callback = () => {}) => {
-    roomManager.matchMyPartialRoomName({
-      token,
-      partialName,
-      callback,
-    });
-  });
-  socket.on('getRoom', ({ roomName, token }, callback = () => {}) => {
+
+  socket.on('getRoom', ({
+    userId,
+    roomId,
+    token,
+  }, callback = () => {}) => {
     roomManager.getRoom({
       token,
-      roomName,
+      roomId,
+      userId,
       callback,
     });
   });

@@ -19,35 +19,24 @@
 const positionManager = require('../../managers/positions');
 
 /**
- * @param {Object} socket Socket.IO socket
- * @param {Object} io Socket.IO socket
+ * @param {Object} socket - Socket.Io socket.
+ * @param {Object} io - Socket.Io.
  */
 function handle(socket, io) {
-  socket.on('updatePosition', ({ position, token }, callback = () => {}) => {
+  socket.on('updatePosition', ({
+    position,
+    token,
+    positionId,
+    options,
+  }, callback = () => {}) => {
     positionManager.updatePosition({
       position,
       token,
       socket,
       io,
       callback,
-    });
-  });
-
-  socket.on('updateUserPosition', ({ position, token }, callback = () => {}) => {
-    positionManager.updateUserPosition({
-      socket,
-      io,
-      position,
-      token,
-      callback,
-    });
-  });
-
-  socket.on('getMapPositions', ({ types, token }, callback = () => {}) => {
-    positionManager.getPositions({
-      types,
-      token,
-      callback,
+      positionId,
+      options,
     });
   });
 }

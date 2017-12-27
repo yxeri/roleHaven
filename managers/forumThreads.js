@@ -115,10 +115,11 @@ function updateThreadTime({ threadId, callback }) {
  * Create new forum thread
  * @param {Object} params - Parameters
  * @param {Object} params.thread - Forum thread to create
- * @param {Object} params.callback - Callback
- * @param {Object} params.token - jwt
+ * @param {Function} params.callback - Callback
+ * @param {string} params.token - jwt
  * @param {Object} params.io - Socket.io. Will be used if socket is not set
  * @param {Object} [params.socket] - Socket.io
+ * @param {string} [params.userId] - Id of the user creating the thread.
  */
 function createThread({
   thread,
@@ -126,9 +127,11 @@ function createThread({
   token,
   io,
   socket,
+  userId,
 }) {
   authenticator.isUserAllowed({
     token,
+    matchToId: userId,
     commandName: dbConfig.apiCommands.CreateForumThread.name,
     callback: ({ error, data }) => {
       if (error) {
@@ -216,11 +219,12 @@ function createThread({
 }
 
 /**
- * Get forum threads by forum
- * @param {Object} params - Parameters
- * @param {string[]} params.forumId - ID of the forum
- * @param {Function} params.callback - Callback
- * @param {string} params.token - jwt
+ * Get threads by forum.
+ * @param {Object} params - Parameters.
+ * @param {string[]} params.forumId - Id of the forum.
+ * @param {Function} params.callback - Callback.
+ * @param {string} params.token - jwt.
+ * @param {string} [params.userId] - Id of the user retrieving the threads.
  */
 function getForumThreadsByForum({ forumId, callback, token }) {
   authenticator.isUserAllowed({
@@ -268,11 +272,11 @@ function getForumThreadsByForum({ forumId, callback, token }) {
  * Update thread.
  * @param {Object} params - Parameters.
  * @param {Object} params.thread - Forum thread.
- * @param {string} params.threadId - ID of the thread to update
+ * @param {string} params.threadId - Id of the thread to update.
  * @param {Object} params.options - Options.
  * @param {Function} params.callback - Callback.
- * @param {Object} params.io - Socket io. Will be used if socket is not set.
- * @param {Object} [params.socket] - Socket io.
+ * @param {Object} params.io - Socket.io. Will be used if socket is not set.
+ * @param {Object} [params.socket] - Socket.io.
  */
 function updateThread({
   token,
@@ -412,9 +416,9 @@ function removeThread({
 }
 
 /**
- * Get forum thread by id
+ * Get forum thread by Id.
  * @param {Object} params - Parameters.
- * @param {string} [params.threadId] - ID of forum thread to retrieve.
+ * @param {string} [params.threadId] - Id of forum thread to retrieve.
  * @param {string} params.token - jwt.
  * @param {Function} params.callback - Callback.
  */
@@ -439,10 +443,10 @@ function getThreadById({ threadId, token, callback }) {
 }
 
 /**
- * Get all forums
- * @param {Object} params - Parameters
- * @param {Function} params.callback - Callback
- * @param {string} params.token - jwt
+ * Get all forums.
+ * @param {Object} params - Parameters.
+ * @param {Function} params.callback - Callback.
+ * @param {string} params.token - jwt.
  */
 function getAllThreads({ callback, token }) {
   authenticator.isUserAllowed({

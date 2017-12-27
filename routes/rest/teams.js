@@ -30,30 +30,28 @@ const router = new express.Router();
  */
 function handle(io) {
   /**
-   * @api {get} /teams Get teams
-   * @apiVersion 6.0.0
+   * @api {get} /teams/list Get teams.
+   * @apiVersion 8.0.0
    * @apiName GetTeams
    * @apiGroup Teams
    *
-   * @apiHeader {String} Authorization Your JSON Web Token
+   * @apiHeader {String} Authorization - Your JSON Web Token.
    *
-   * @apiDescription Get teams
+   * @apiDescription Get teams.
+   *
+   * @apiParam {String} data
+   * @apiParam {String} [data.userId] - Id of the user retrieving the teams.
    *
    * @apiSuccess {Object} data
-   * @apiSuccess {Object} data.teams Found teams
-   * @apiSuccessExample {json} Success-Response:
-   *   {
-   *    "data": {
-   *      "teams": [
-   *        { shortName: "pc", teamName: "private company" },
-   *        { shortName: "comp", teamName: "human computers" },
-   *      ]
-   *    }
-   *  }
+   * @apiSuccess {Object[]} data.teams - Found teams.
    */
   router.get('/', (request, response) => {
-    teamManager.getTeams({
-      token: request.headers.authorization,
+    const { userId } = request.body.data;
+    const { authorization: token } = request.headers;
+
+    teamManager.getTeamsList({
+      userId,
+      token,
       callback: ({ error, data }) => {
         if (error) {
           restErrorChecker.checkAndSendError({ response, error, sentData: request.body.data });
@@ -67,44 +65,33 @@ function handle(io) {
   });
 
   /**
-   * @api {get} /teams/:teamName Get specific team
-   * @apiVersion 6.0.0
+   * @api {get} /teams/:teamId Get a team.
+   * @apiVersion 8.0.0
    * @apiName GetTeam
    * @apiGroup Teams
    *
    * @apiHeader {String} Authorization Your JSON Web Token
    *
-   * @apiDescription Get a specific team by short or full name
+   * @apiDescription Get a team.
    *
-   * @apiParam {String} teamName Short or full name of the team to retrieve
+   * @apiParam {String} teamId - Id of the team to retrieve.
    *
    * @apiSuccess {Object} data
-   * @apiSuccess {Object} data.room Found team
-   * @apiSuccessExample {json} Success-Response:
-   *   {
-   *    "data": {
-   *      "team": {
-   *        "teamName": "bb1",
-   *        "shortName": "rez",
-   *        "admins": [
-   *          "a1",
-   *        ],
-   *        "owner": "jazz",
-   *        "isProtected": false
-   *      }
-   *    }
-   *  }
+   * @apiSuccess {Object} data.team - Found team.
    */
-  router.get('/:teamName', (request, response) => {
-    if (!objectValidator.isValidData(request.params, { teamName: true })) {
-      restErrorChecker.checkAndSendError({ response, error: new errorCreator.InvalidData({ expected: '' }), sentData: request.body.data });
+  router.get('/:teamId', (request, response) => {
+    if (!objectValidator.isValidData(request.params, { teamId: true })) {
+      restErrorChecker.checkAndSendError({ response, error: new errorCreator.InvalidData({ expected: '{ teamId }' }), sentData: request.params });
 
       return;
     }
 
+    const { teamId } = request.params;
+    const { authorization: token } = request.headers;
+
     teamManager.getTeam({
-      teamName: request.params.teamName,
-      token: request.headers.authorization,
+      teamId,
+      token,
       callback: ({ error, data }) => {
         if (error) {
           restErrorChecker.checkAndSendError({ response, error, sentData: request.body.data });
@@ -119,61 +106,187 @@ function handle(io) {
 
   /**
    * @api {post} /teams Create a team
-   * @apiVersion 6.0.0
+   * @apiVersion 8.0.0
    * @apiName CreateTeam
    * @apiGroup Teams
    *
-   * @apiHeader {String} Authorization Your JSON Web Token
+   * @apiHeader {String} Authorization - Your JSON Web Token.
    *
-   * @apiDescription Create a team
+   * @apiDescription Create a team.
    *
    * @apiParam {Object} data
-   * @apiParam {Object} data.team Team
-   * @apiParam {string} data.team.teamName Team name
-   * @apiParam {string} data.team.shortName Short/acronym team name
-   * @apiParamExample {json} Request-Example:
-   *   {
-   *    "data": {
-   *      "team": {
-   *        "teamName": "team bravo",
-   *        "shortName": "tb"
-   *      }
-   *    }
-   *  }
+   * @apiParam {Object} data.team - Team to create.
    *
    * @apiSuccess {Object} data
-   * @apiSuccess {Object} data.room Team created
-   * @apiSuccessExample {json} Success-Response:
-   *   {
-   *    "data": {
-   *      "team": {
-   *        "teamName": "team bravo",
-   *        "shortName": "tb",
-   *        "owner": "rez",
-   *        "admins": [],
-   *        "verified": false
-   *      },
-   *      "wallet": {
-   *        "amount": 0,
-   *        "owner": "team bravo-team",
-   *        "accessLevel": 1,
-   *        "isProtected": false,
-   *        "team": "team bravo"
-   *      }
-   *    }
-   *  }
+   * @apiSuccess {Object} data.team - Created team.
    */
   router.post('/', (request, response) => {
     if (!objectValidator.isValidData(request.body, { data: { team: { teamName: true, shortName: true } } })) {
-      restErrorChecker.checkAndSendError({ response, error: new errorCreator.InvalidData({ expected: '' }), sentData: request.body.data });
+      restErrorChecker.checkAndSendError({ response, error: new errorCreator.InvalidData({ expected: '{ data: { team: { teamName, shortName } } }' }), sentData: request.body.data });
 
       return;
     }
 
+    const { authorization: token } = request.headers;
+    const { team } = request.body.data;
+
     teamManager.createTeam({
       io,
-      team: request.body.data.team,
-      token: request.headers.authorization,
+      team,
+      token,
+      callback: ({ error, data }) => {
+        if (error) {
+          restErrorChecker.checkAndSendError({ response, error, sentData: request.body.data });
+
+          return;
+        }
+
+        response.json({ data });
+      },
+    });
+  });
+
+  /**
+   * @api {delete} /teams/:teamId Delete a team.
+   * @apiVersion 8.0.0
+   * @apiName DeleteTeam
+   * @apiGroup Teams
+   *
+   * @apiHeader {String} Authorization - Your JSON Web Token.
+   *
+   * @apiDescription Delete a team.
+   *
+   * @apiParam {Object} teamId - Id of the team to delete.
+   *
+   * @apiParam {Object} [data]
+   * @apiParam {Object} [data.userId] - Id of the user deleting the team.
+   *
+   * @apiSuccess {Object} data
+   * @apiSuccess {Object} data.success - Was it successfully deleted?
+   */
+  router.delete('/:teamId', (request, response) => {
+    if (!objectValidator.isValidData(request.params, { teamId: true })) {
+      restErrorChecker.checkAndSendError({ response, error: new errorCreator.InvalidData({ expected: '{ teamId }' }), sentData: request.params });
+
+      return;
+    }
+
+    const { userId } = request.body.data;
+    const { teamId } = request.params;
+    const { authorization: token } = request.headers;
+
+    teamManager.removeTeam({
+      userId,
+      io,
+      teamId,
+      token,
+      callback: ({ error, data }) => {
+        if (error) {
+          restErrorChecker.checkAndSendError({ response, error, sentData: request.body.data });
+
+          return;
+        }
+
+        response.json({ data });
+      },
+    });
+  });
+
+  /**
+   * @api {put} /teams/:teamId Update a team.
+   * @apiVersion 8.0.0
+   * @apiName UpdateTeam
+   * @apiGroup Teams
+   *
+   * @apiHeader {String} Authorization - Your JSON Web Token.
+   *
+   * @apiDescription Update a team.
+   *
+   * @apiParam {String} teamId - Id of the team to update.
+   *
+   * @apiParam {String} data
+   * @apiParam {String} data.team - team parameters to update.
+   * @apiParam {String} [data.options] - Update options.
+   *
+   * @apiSuccess {Object} data
+   * @apiSuccess {Object} data.team - Updated team.
+   */
+  router.put('/:teamId', (request, response) => {
+    if (!objectValidator.isValidData(request.params, { teamId: true })) {
+      restErrorChecker.checkAndSendError({ response, error: new errorCreator.InvalidData({ expected: '{ teamId }' }), sentData: request.params });
+
+      return;
+    } else if (!objectValidator.isValidData(request.body, { data: { team: true } })) {
+      restErrorChecker.checkAndSendError({ response, error: new errorCreator.InvalidData({ expected: '{ data: { team } }' }), sentData: request.body.data });
+
+      return;
+    }
+
+    const {
+      team,
+      options,
+    } = request.body.data;
+    const { teamId } = request.params;
+    const { authorization: token } = request.headers;
+
+    teamManager.updateTeam({
+      team,
+      options,
+      io,
+      teamId,
+      token,
+      callback: ({ error, data }) => {
+        if (error) {
+          restErrorChecker.checkAndSendError({ response, error, sentData: request.body.data });
+
+          return;
+        }
+
+        response.json({ data });
+      },
+    });
+  });
+
+  /**
+   * @api {post} /teams/:teamId/invitations Invite a user to the team.
+   * @apiVersion 8.0.0
+   * @apiName InviteUser
+   * @apiGroup Teams
+   *
+   * @apiHeader {String} Authorization - Your JSON Web Token.
+   *
+   * @apiDescription Invite a user to the team.
+   *
+   * @apiParam {String} teamId - Id of the team to invite to.
+   *
+   * @apiParam {String} data
+   * @apiParam {String} data.invitation - Invitation to create.
+   *
+   * @apiSuccess {Object} data
+   * @apiSuccess {Object} data.invitation - Created invitation.
+   */
+  router.post('/:teamId/invitations', (request, response) => {
+    if (!objectValidator.isValidData(request.params, { teamId: true })) {
+      restErrorChecker.checkAndSendError({ response, error: new errorCreator.InvalidData({ expected: '{ teamId }' }), sentData: request.params });
+
+      return;
+    } else if (!objectValidator.isValidData(request.body, { data: { invitation: true } })) {
+      restErrorChecker.checkAndSendError({ response, error: new errorCreator.InvalidData({ expected: '{ data: { invitation } }' }), sentData: request.body.data });
+
+      return;
+    }
+
+    const {
+      invitation,
+      options,
+    } = request.body.data;
+    const { authorization: token } = request.headers;
+
+    teamManager.inviteToTeam({
+      invitation,
+      options,
+      io,
+      token,
       callback: ({ error, data }) => {
         if (error) {
           restErrorChecker.checkAndSendError({ response, error, sentData: request.body.data });

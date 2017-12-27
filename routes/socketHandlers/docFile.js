@@ -19,14 +19,18 @@
 const docFileManager = require('../../managers/docFiles');
 
 /**
- * @param {Object} socket Socket.IO socket
- * @param {Object} io Socket.io
+ * @param {Object} socket - Socket.Io socket.
+ * @param {Object} io - Socket.io.
  */
 function handle(socket, io) {
-  socket.on('createDocFile', ({ docFile, token, username }, callback = () => {}) => {
+  socket.on('createDocFile', ({
+    docFile,
+    token,
+    userId,
+  }, callback = () => {}) => {
     docFileManager.createDocFile({
       docFile,
-      username,
+      userId,
       token,
       io,
       socket,
@@ -34,10 +38,18 @@ function handle(socket, io) {
     });
   });
 
-  socket.on('updateDocFile', ({ docFile, token, username }, callback = () => {}) => {
+  socket.on('updateDocFile', ({
+    docFile,
+    docFileId,
+    token,
+    userId,
+    options,
+  }, callback = () => {}) => {
     docFileManager.updateDocFile({
       docFile,
-      username,
+      docFileId,
+      userId,
+      options,
       token,
       io,
       socket,
@@ -45,19 +57,22 @@ function handle(socket, io) {
     });
   });
 
-  socket.on('getDocFile', ({ docFileId, title, token }, callback = () => {}) => {
-    docFileManager.getDocFile({
+  socket.on('getDocFile', ({
+    docFileId,
+    token,
+  }, callback = () => {}) => {
+    docFileManager.getDocFileById({
       docFileId,
-      title,
       token,
       callback,
     });
   });
 
-  socket.on('getDocFiles', ({ token }, callback = () => {}) => {
-    docFileManager.getAllDocFiles({
+  socket.on('getDocFilesList', ({ token }, callback = () => {}) => {
+    docFileManager.getDocFilesList({
       token,
       callback,
+      lite: true,
     });
   });
 }

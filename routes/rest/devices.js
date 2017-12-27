@@ -25,64 +25,77 @@ const errorCreator = require('../../objects/error/errorCreator');
 const router = new express.Router();
 
 /**
+ * @param {Object} io - Socket.io.
  * @returns {Object} Router
  */
-function handle() {
+function handle(io) {
   /**
-   * @api {get} /devices Get devices
-   * @apiVersion 7.0.0
-   * @apiName GetDevices
+   * @api {post} /devices Create a device.
+   * @apiVersion 8.0.0
+   * @apiName CreateDevice
    * @apiGroup Devices
    *
-   * @apiHeader {String} Authorization Your JSON Web Token
+   * @apiHeader {String} Authorization - Your JSON Web Token.
    *
-   * @apiDescription Get devices
+   * @apiDescription Create a device.
+   *
+   * @apiParam {Object} data
+   * @apiParam {Object} data.device - Device to create.
+   * @apiParam {Object} [data.userId] - Id of the user creating the file. It will default to the token owner.
    *
    * @apiSuccess {Object} data
-   * @apiSuccess {Object[]} data.devices Devices found
-   * @apiSuccess {Object} data.devices.deviceId Unique device ID
-   * @apiSuccess {Date} data.devices.lastAlive Date when the device was last updated
-   * @apiSuccess {string} data.devices.deviceAlias More recognizable identificator than device ID. Defaults to deviceId
-   * @apiSuccess {string} [data.devices.lastUser] Name of the last user logged in on device
+   * @apiSuccess {Object[]} data.device - The created device.
    */
+  router.post('/', (request, response) => {
+    if (!objectValidator.isValidData(request.body, { data: { device: { deviceName: true } } })) {
+      restErrorChecker.checkAndSendError({ response, error: new errorCreator.InvalidData({ expected: '' }), sentData: request.body.data });
+
+      return;
+    }
+
+    const { device, userId } = request.body.data;
+    const { authorization: token } = request.headers;
+
+    deviceManager.createDevice({
+      io,
+      userId,
+      token,
+      device,
+      callback: ({ error, data }) => {
+        if (error) {
+          restErrorChecker.checkAndSendError({ response, error, sentData: request.body.data });
+
+          return;
+        }
+
+        response.json({ data });
+      },
+    });
+  });
+
   /**
-   * @api {get} /devices Get devices
-   * @apiVersion 6.0.0
+   * @api {get} /devices Get devices.
+   * @apiVersion 8.0.0
    * @apiName GetDevices
    * @apiGroup Devices
    *
-   * @apiHeader {String} Authorization Your JSON Web Token
+   * @apiHeader {String} Authorization - Your JSON Web Token.
    *
-   * @apiDescription Get devices
+   * @apiDescription Get devices that the user has access to.
+   *
+   * @apiParam {Object} [data]
+   * @apiParam {Object} data.userId - Id of the user retrieving the devices.
    *
    * @apiSuccess {Object} data
-   * @apiSuccess {Object[]} data.devices Devices found
-   * @apiSuccess {Object} data.devices.deviceId Unique device ID
-   * @apiSuccess {Date} data.devices.lastAlive Date when the device was last updated
-   * @apiSuccess {string} data.devices.deviceAlias More recognizable identificator than device ID. Defaults to deviceId
-   * @apiSuccess {string} [data.devices.lastUser] Name of the last user logged in on device
-   * @apiSuccessExample {json} Success-Response:
-   *   {
-   *    "data": {
-   *      "devices": [
-   *        {
-   *          "deviceId": "LoPGj4i3l1Ac951Y",
-   *          "lastAlive": "2016-10-14T11:13:03.555Z",
-   *          "deviceAlias": minaDev,
-   *          "lastUser": "mina"
-   *        },
-   *        {
-   *          "deviceId": "594lKhgmYwRcZkLp",
-   *          "lastAlive": "2016-10-14T11:13:03.555Z",
-   *          "deviceAlias": 594lKhgmYwRcZkLp
-   *        },
-   *      ]
-   *    }
-   *  }
+   * @apiSuccess {Object[]} data.devices - Devices found.
    */
   router.get('/', (request, response) => {
-    deviceManager.getAllDevices({
-      token: request.headers.authorization,
+    const { userId } = request.body.data;
+    const { authorization: token } = request.headers;
+
+    deviceManager.getDevicesByUser({
+      userId,
+      token,
       callback: ({ error, data }) => {
         if (error) {
           restErrorChecker.checkAndSendError({ response, error, sentData: request.body.data });
@@ -96,64 +109,93 @@ function handle() {
   });
 
   /**
-   * @api {post} /devices/:deviceId Update device. Will be created if it doesn't exist
-   * @apiVersion 7.0.0
-   * @apiName UpdateDevices
+   * @api {get} /devices/:deviceId Get a device.
+   * @apiVersion 8.0.0
+   * @apiName GetDevice
    * @apiGroup Devices
    *
-   * @apiHeader {String} Authorization Your JSON Web Token
+   * @apiHeader {String} Authorization - Your JSON Web Token.
    *
-   * @apiDescription Update device. It will update lastAlive with current time and lastUser from token, if set. It is accessible by anonymous users
+   * @apiDescription Get a device that the user has access to.
    *
-   * @apiParam {String} id Device id
+   * @apiParam {Object} deviceId - Id of the device to retrieve.
    *
-   * @apiSuccess {Object} data
-   * @apiSuccess {Object} data.device Updated device
-   * @apiSuccess {Object} data.device.deviceId Device id
-   * @apiSuccess {Object} [data.device.deviceAlias] Device alias
-   * @apiSuccess {Object} data.device.lastAlive Date when the device was last updated (now)
-   * @apiSuccess {string} [data.devices.lastUser] Name of the last user logged in on device
-   */
-  /**
-   * @api {post} /devices/:deviceId Update device. Will be created if it doesn't exist
-   * @apiVersion 6.0.0
-   * @apiName UpdateDevices
-   * @apiGroup Devices
-   *
-   * @apiHeader {String} Authorization Your JSON Web Token
-   *
-   * @apiDescription Update device. It will update lastAlive with current time and lastUser from token, if set. It is accessible by anonymous users
-   *
-   * @apiParam {String} id Device id
+   * @apiParam {Object} [data]
+   * @apiParam {Object} [data.userId] - Id of the user retrieving the device.
    *
    * @apiSuccess {Object} data
-   * @apiSuccess {Object} data.device Updated device
-   * @apiSuccess {Object} data.device.deviceId Device id
-   * @apiSuccess {Object} [data.device.deviceAlias] Device alias
-   * @apiSuccess {Object} data.device.lastAlive Date when the device was last updated (now)
-   * @apiSuccess {string} [data.devices.lastUser] Name of the last user logged in on device
-   * @apiSuccessExample {json} Success-Response:
-   *   {
-   *    "data": {
-   *      "device": {
-   *        "deviceId": "594lKhgmYwRcZkLp",
-   *        "lastAlive": "2016-10-14T11:13:03.555Z",
-   *        "deviceAlias": 594lKhgmYwRcZkLp,
-   *        "lastUser": "mina
-   *      }
-   *    }
-   *  }
+   * @apiSuccess {Object} data.device - Device found.
    */
-  router.post('/:deviceId', (request, response) => {
+  router.get('/:deviceId', (request, response) => {
     if (!objectValidator.isValidData(request.params, { deviceId: true })) {
+      restErrorChecker.checkAndSendError({ response, error: new errorCreator.InvalidData({ expected: '' }), sentData: request.params });
+
+      return;
+    }
+
+    const { userId } = request.body.data;
+    const { deviceId } = request.params;
+    const { authorization: token } = request.headers;
+
+    deviceManager.getDevice({
+      userId,
+      deviceId,
+      token,
+      callback: ({ error, data }) => {
+        if (error) {
+          restErrorChecker.checkAndSendError({ response, error, sentData: request.body.data });
+
+          return;
+        }
+
+        response.json({ data });
+      },
+    });
+  });
+
+  /**
+   * @api {put} /devices/:deviceId Update a device.
+   * @apiVersion 8.0.0
+   * @apiName UpdateDevice
+   * @apiGroup Devices
+   *
+   * @apiHeader {String} Authorization - Your JSON Web Token.
+   *
+   * @apiDescription Update a device.
+   *
+   * @apiParam {String} deviceId - Id of the device to update.
+   *
+   * @apiParam {String} data
+   * @apiParam {String} data.device - Device parameters to update.
+   * @apiParam {String} [data.options] - Update options.
+   *
+   * @apiSuccess {Object} data
+   * @apiSuccess {Object} data.device - Updated device.
+   */
+  router.put('/:deviceId', (request, response) => {
+    if (!objectValidator.isValidData(request.params, { deviceId: true })) {
+      restErrorChecker.checkAndSendError({ response, error: new errorCreator.InvalidData({ expected: '' }), sentData: request.params });
+
+      return;
+    } else if (!objectValidator.isValidData(request.body, { data: { device: true } })) {
       restErrorChecker.checkAndSendError({ response, error: new errorCreator.InvalidData({ expected: '' }), sentData: request.body.data });
 
       return;
     }
+
+    const {
+      device,
+      options,
+    } = request.body.data;
+    const { deviceId } = request.params;
+    const { authorization: token } = request.headers;
 
     deviceManager.updateDevice({
-      token: request.headers.authorization,
-      device: { deviceId: request.params.deviceId },
+      device,
+      options,
+      io,
+      deviceId,
+      token,
       callback: ({ error, data }) => {
         if (error) {
           restErrorChecker.checkAndSendError({ response, error, sentData: request.body.data });
@@ -167,119 +209,39 @@ function handle() {
   });
 
   /**
-   * @api {post} /devices/:deviceId/alias Update device alias
-   * @apiVersion 7.0.0
-   * @apiName UpdateDeviceName
+   * @api {delete} /devices/:deviceId Delete a device.
+   * @apiVersion 8.0.0
+   * @apiName DeleteDevice
    * @apiGroup Devices
    *
-   * @apiHeader {String} Authorization Your JSON Web Token
+   * @apiHeader {String} Authorization - Your JSON Web Token.
    *
-   * @apiDescription Update device. It will update lastAlive with current time and lastUser from token, if set
+   * @apiDescription Delete a device.
    *
-   * @apiParam {String} deviceId Device deviceId
+   * @apiParam {Object} deviceId - Id of the device to delete.
    *
-   * @apiParam {Object} data
-   * @apiParam {string} data.device Device
-   * @apiParam {string} data.device.deviceAlias New device alias
-   *
-   * @apiSuccess {Object} data
-   * @apiSuccess {Object} data.device Updated device
-   * @apiSuccess {Object} data.device.deviceId Device id
-   * @apiSuccess {Object} data.device.deviceAlias Device alias
-   * @apiSuccess {Object} data.device.lastAlive Date when the device was last updated (now)
-   * @apiSuccess {string} [data.devices.lastUser] Name of the last user logged in on device
-   */
-  /**
-   * @api {post} /devices/:deviceId/alias Update device alias
-   * @apiVersion 6.0.0
-   * @apiName UpdateDeviceName
-   * @apiGroup Devices
-   *
-   * @apiHeader {String} Authorization Your JSON Web Token
-   *
-   * @apiDescription Update device. It will update lastAlive with current time and lastUser from token, if set
-   *
-   * @apiParam {String} deviceId Device deviceId
-   *
-   * @apiParam {Object} data
-   * @apiParam {string} data.device Device
-   * @apiParam {string} data.device.deviceAlias New device alias
+   * @apiParam {Object} [data]
+   * @apiParam {Object} [data.userId] - Id of the user deleting the device.
    *
    * @apiSuccess {Object} data
-   * @apiSuccess {Object} data.device Updated device
-   * @apiSuccess {Object} data.device.deviceId Device id
-   * @apiSuccess {Object} data.device.deviceAlias Device alias
-   * @apiSuccess {Object} data.device.lastAlive Date when the device was last updated (now)
-   * @apiSuccess {string} [data.devices.lastUser] Name of the last user logged in on device
-   * @apiSuccessExample {json} Success-Response:
-   *   {
-   *    "data": {
-   *      "device": {
-   *        "deviceId": "594lKhgmYwRcZkLp",
-   *        "lastAlive": "2016-10-14T11:13:03.555Z",
-   *        "deviceAlias": "bananaman"
-   *      }
-   *    }
-   *  }
+   * @apiSuccess {Object} data.success - Was it successfully deleted?
    */
-  /**
-   * @api {post} /devices/:deviceId/alias Update device alias
-   * @apiVersion 6.0.0
-   * @apiName UpdateDeviceName
-   * @apiGroup Devices
-   *
-   * @apiHeader {String} Authorization Your JSON Web Token
-   *
-   * @apiDescription Update device. It will update lastAlive with current time and lastUser from token, if set
-   *
-   * @apiParam {String} deviceId Device deviceId
-   *
-   * @apiParam {Object} data
-   * @apiParam {string} data.device Device
-   * @apiParam {string} data.device.deviceAlias New device alias
-   * @apiParamExample {json} Request-Example:
-   *   {
-   *    "data": {
-   *      "device": {
-   *        "deviceAlias": "bananaman",
-   *      }
-   *    }
-   *  }
-   *
-   * @apiSuccess {Object} data
-   * @apiSuccess {Object} data.device Updated device
-   * @apiSuccess {Object} data.device.deviceId Device id
-   * @apiSuccess {Object} data.device.deviceAlias Device alias
-   * @apiSuccess {Object} data.device.lastAlive Date when the device was last updated (now)
-   * @apiSuccess {string} [data.devices.lastUser] Name of the last user logged in on device
-   * @apiSuccessExample {json} Success-Response:
-   *   {
-   *    "data": {
-   *      "device": {
-   *        "deviceId": "594lKhgmYwRcZkLp",
-   *        "lastAlive": "2016-10-14T11:13:03.555Z",
-   *        "deviceAlias": "bananaman"
-   *      }
-   *    }
-   *  }
-   */
-  router.post('/:deviceId/alias', (request, response) => {
-    if (!objectValidator.isValidData(request.body, { data: { device: { deviceAlias: true } } })) {
-      restErrorChecker.checkAndSendError({ response, error: new errorCreator.InvalidData({ expected: '' }), sentData: request.body.data });
-
-      return;
-    } else if (!objectValidator.isValidData(request.params, { deviceId: true })) {
-      restErrorChecker.checkAndSendError({ response, error: new errorCreator.InvalidData({ expected: '' }), sentData: request.body.data });
+  router.delete('/:deviceId', (request, response) => {
+    if (!objectValidator.isValidData(request.params, { deviceId: true })) {
+      restErrorChecker.checkAndSendError({ response, error: new errorCreator.InvalidData({ expected: '' }), sentData: request.params });
 
       return;
     }
 
-    deviceManager.updateDeviceName({
-      token: request.headers.authorization,
-      device: {
-        deviceId: request.params.deviceId,
-        deviceAlias: request.body.data.device.deviceAlias,
-      },
+    const { userId } = request.body.data;
+    const { deviceId } = request.params;
+    const { authorization: token } = request.headers;
+
+    deviceManager.removeDevice({
+      userId,
+      io,
+      deviceId,
+      token,
       callback: ({ error, data }) => {
         if (error) {
           restErrorChecker.checkAndSendError({ response, error, sentData: request.body.data });

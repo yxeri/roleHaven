@@ -158,7 +158,7 @@ function handle(io) {
    *  }
    */
   router.get('/:username/gameCodes', (request, response) => {
-    gameCodeManager.getGameCodes({
+    gameCodeManager.getGameCodesByOwner({
       token: request.headers.authorization,
       callback: ({ error, data }) => {
         if (error) {

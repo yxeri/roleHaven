@@ -24,16 +24,25 @@ const authenticator = require('../helpers/authenticator');
 const dbSimpleMsg = require('../db/connectors/simpleMsg');
 
 /**
- * Send simplage message
- * @param {string} params.text Text to add to message
- * @param {Object} [params.socket] Socket io
- * @param {Object} params.io Socket io. Used if socket is not set
- * @param {string} params.token jwt
- * @param {Function} params.callback Callback
+ * Send simple message.
+ * @param {Object} params - Parameters.
+ * @param {string} params.text - Text to add to message.
+ * @param {Object} params.io - Socket io. Used if socket is not set.
+ * @param {string} params.token - jwt.
+ * @param {Function} params.callback - Callback.
+ * @param {string} params.userId - ID of the user sending the message.
  */
-function sendSimpleMsg({ text, socket, io, token, callback }) {
+function sendSimpleMsg({
+  text,
+  socket,
+  io,
+  token,
+  callback,
+  userId,
+}) {
   authenticator.isUserAllowed({
     token,
+    matchToId: userId,
     commandName: dbConfig.apiCommands.SendSimpleMsg.name,
     callback: ({ data, error }) => {
       if (error) {
@@ -50,11 +59,9 @@ function sendSimpleMsg({ text, socket, io, token, callback }) {
         return;
       }
 
-
       const simpleMsg = {
         text,
-        time: new Date(),
-        username: data.user.username,
+        ownerId: data.user.userId,
       };
 
       dbSimpleMsg.createSimpleMsg({
@@ -67,9 +74,9 @@ function sendSimpleMsg({ text, socket, io, token, callback }) {
           }
 
           if (socket) {
-            socket.broadcast.emit('simpleMsg', { data: newData });
+            socket.broadcast.to(dbConfig.AccessLevels.ANONYMOUS.toString()).emit('simpleMsg', { data: newData });
           } else {
-            io.emit('simpleMsg', { data: newData });
+            io.to(dbConfig.AccessLevels.ANONYMOUS.toString()).emit('simpleMsg', { data: newData });
           }
 
           callback({ data: newData });
@@ -80,11 +87,117 @@ function sendSimpleMsg({ text, socket, io, token, callback }) {
 }
 
 /**
- * Get simple messages
- * @param {string} params.token jwt
- * @param {Function} params.callback Callback
+ * Get a simple msg
+ * @param {Object} params - Parameters
+ * @param {string} params.userId - ID of the user retrieving the message
+ * @param {string} params.token - jwt
+ * @param {Function} params.callback - Callback
+ * @param {string} params.simpleMsgId - ID of the message
  */
-function getSimpleMsgs({ token, callback }) {
+function getSimpleMsg({
+  userId,
+  token,
+  callback,
+  simpleMsgId,
+}) {
+  authenticator.isUserAllowed({
+    token,
+    matchToId: userId,
+    commandName: dbConfig.apiCommands.GetSimpleMsgs.name,
+    callback: ({ error }) => {
+      if (error) {
+        callback({ error });
+
+        return;
+      }
+
+      dbSimpleMsg.getSimpleMsgById({
+        callback,
+        simpleMsgId,
+      });
+    },
+  });
+}
+
+/**
+ * Update a simple msg
+ * @param {Object} params - Parameters
+ * @param {string} params.userId - ID of the user updating the message
+ * @param {string} params.token - jwt
+ * @param {Function} params.callback - Callback
+ * @param {string} params.simpleMsgId - ID of the message to update
+ * @param {Object} params.simpleMsg - Parameters to update
+ */
+function updateSimpleMsg({
+  userId,
+  token,
+  callback,
+  simpleMsgId,
+  simpleMsg,
+}) {
+  authenticator.isUserAllowed({
+    token,
+    matchToId: userId,
+    commandName: dbConfig.apiCommands.UpdateSimpleMsg.name,
+    callback: ({ error }) => {
+      if (error) {
+        callback({ error });
+
+        return;
+      }
+
+      dbSimpleMsg.updateSimpleMsg({
+        callback,
+        simpleMsg,
+        simpleMsgId,
+      });
+    },
+  });
+}
+
+/**
+ * Remove a simple msg
+ * @param {Object} params - Parameters
+ * @param {string} params.userId - ID of the user removing the room
+ * @param {string} params.token - jwt
+ * @param {Function} params.callback - Callback
+ * @param {string} params.simpleMsgId - ID of the message
+ */
+function removeSimpleMsg({
+  userId,
+  token,
+  callback,
+  simpleMsgId,
+}) {
+  authenticator.isUserAllowed({
+    token,
+    matchToId: userId,
+    commandName: dbConfig.apiCommands.RemoveSimpleMsg.name,
+    callback: ({ error }) => {
+      if (error) {
+        callback({ error });
+
+        return;
+      }
+
+      dbSimpleMsg.removeSimpleMsg({
+        callback,
+        simpleMsgId,
+      });
+    },
+  });
+}
+
+/**
+ * Get simple messages.
+ * @param {Object} params - Parameters.
+ * @param {string} params.token - jwt.
+ * @param {Function} params.callback - Callback.
+ */
+function getSimpleMsgs({
+  token,
+  callback,
+}) {
   authenticator.isUserAllowed({
     token,
     commandName: dbConfig.apiCommands.GetSimpleMsgs.name,
@@ -112,3 +225,6 @@ function getSimpleMsgs({ token, callback }) {
 
 exports.sendSimpleMsg = sendSimpleMsg;
 exports.getSimpleMsgs = getSimpleMsgs;
+exports.updateSimpleMsg = updateSimpleMsg;
+exports.removeSimpleMsg = removeSimpleMsg;
+exports.getSimpleMsg = getSimpleMsg;

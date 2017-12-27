@@ -23,6 +23,8 @@ const errorCreator = require('../objects/error/errorCreator');
 const textTools = require('../utils/textTools');
 const authenticator = require('../helpers/authenticator');
 const dbRoom = require('../db/connectors/room');
+const socketUtils = require('../utils/socketIo');
+const dbWallet = require('../db/connectors/wallet');
 
 /**
  * Get alias by ID and check if the user has access to it.
@@ -48,8 +50,8 @@ function getAccessibleAlias({
 
         return;
       } else if (!authenticator.hasAccessTo({
-        toAuth: user,
         shouldBeAdmin,
+        toAuth: user,
         objectToAccess: aliasData.data.alias,
       })) {
         callback({ error: new errorCreator.NotAllowed({ name: errorContentText }) });
@@ -95,10 +97,10 @@ function createAlias({
         return;
       }
 
-      const authUser = data.user;
+      const { user } = data;
 
       const aliasToSave = alias;
-      aliasToSave.ownerId = authUser.userId;
+      aliasToSave.ownerId = user.userId;
 
       dbAlias.createAlias({
         alias: aliasToSave,
@@ -114,7 +116,7 @@ function createAlias({
           dbRoom.createRoom({
             options: { shouldSetIdToName: true },
             room: {
-              ownerId: authUser.userId,
+              ownerId: user.userId,
               roomName: createdAlias.aliasId,
               accessLevel: dbConfig.AccessLevels.SUPERUSER,
               visibility: dbConfig.AccessLevels.SUPERUSER,
@@ -128,25 +130,59 @@ function createAlias({
                 return;
               }
 
-              const newRoom = roomData.data.room;
-              const dataToSend = {
-                data: {
-                  user: {
-                    userId: createdAlias.aliasId,
-                    username: createdAlias.aliasName,
-                  },
-                  changeType: dbConfig.ChangeTypes.CREATE,
-                },
+              const wallet = {
+                walletId: createdAlias.aliasId,
+                accessLevel: createdAlias.accessLevel,
+                ownerId: user.userId,
+                ownerIdAlias: createdAlias.aliasId,
+                amount: appConfig.defaultWalletAmount,
               };
+              const walletOptions = { setId: true };
 
-              if (socket) {
-                socket.broadcast.emit(dbConfig.EmitTypes.USER, dataToSend);
-              } else {
-                io.to(newRoom.roomId).emit(dbConfig.EmitTypes.FOLLOW, { data: { room: newRoom } });
-                io.emit(dbConfig.EmitTypes.USER, dataToSend);
-              }
+              dbWallet.createWallet({
+                wallet,
+                options: walletOptions,
+                callback: ({ error: walletError, data: walletData }) => {
+                  if (walletError) {
+                    callback({ error: walletError });
 
-              callback({ data: { room: newRoom, alias: createdAlias } });
+                    return;
+                  }
+
+                  const createdWallet = walletData.wallet;
+                  const newRoom = roomData.data.room;
+                  const dataToSend = {
+                    data: {
+                      user: {
+                        userId: createdAlias.aliasId,
+                        username: createdAlias.aliasName,
+                      },
+                      changeType: dbConfig.ChangeTypes.CREATE,
+                    },
+                  };
+                  const creatorDataToSend = {
+                    data: {
+                      room: newRoom,
+                      alias: createdAlias,
+                      wallet: createdWallet,
+                    },
+                    changeType: dbConfig.ChangeTypes.CREATE,
+                  };
+
+                  if (socket) {
+                    socket.broadcast.emit(dbConfig.EmitTypes.USER, dataToSend);
+                  } else {
+                    const userSocket = socketUtils.getUserSocket({ io, socketId: user.socketId });
+
+                    if (userSocket) { userSocket.join(newRoom.roomId); }
+
+                    io.to(user.userId).emit(dbConfig.EmitTypes.ALIAS, creatorDataToSend);
+                    io.emit(dbConfig.EmitTypes.USER, dataToSend);
+                  }
+
+                  callback(creatorDataToSend);
+                },
+              });
             },
           });
         },
@@ -259,7 +295,7 @@ function getAliasesByUser({ token, callback, userId }) {
 
       dbAlias.getAliasesByUser({
         callback,
-        userId: data.user.userId,
+        user: data.user,
       });
     },
   });
@@ -322,23 +358,33 @@ function removeAlias({
                     return;
                   }
 
-                  const removedAliasId = aliasData.data.alias.aliasId;
+                  const removedAlias = aliasData.data.alias.aliasId;
+                  const removedAliasId = removedAlias.aliasId;
 
                   const dataToSend = {
                     data: {
-                      user: { userId: removedAliasId },
-                      room: { roomId: removedAliasId },
+                      user: { userId: removedAlias.alias },
+                      changeType: dbConfig.ChangeTypes.REMOVE,
+                    },
+                  };
+                  const creatorDataToSend = {
+                    data: {
+                      alias: removedAlias,
                       changeType: dbConfig.ChangeTypes.REMOVE,
                     },
                   };
 
+                  socketUtils.getSocketsByRoom({ io, roomId: removedAliasId }).forEach(roomSocket => roomSocket.leave(removedAliasId));
+
                   if (socket) {
+                    socket.to(removedAliasId).broadcast.emit(dbConfig.EmitTypes.ALIAS, creatorDataToSend);
                     socket.broadcast.emit(dbConfig.EmitTypes.USER, dataToSend);
                   } else {
+                    io.to(removedAliasId).emit(dbConfig.EmitTypes.ALIAS, creatorDataToSend);
                     io.emit(dbConfig.EmitTypes.USER, dataToSend);
                   }
 
-                  callback(dataToSend);
+                  callback(creatorDataToSend);
                 },
               });
             },
@@ -414,32 +460,25 @@ function updateAlias({
                   changeType: dbConfig.ChangeTypes.UPDATE,
                 },
               };
-
-              if ((alias.aliasName && alias.aliasName !== updatedAlias.aliasName) || (typeof alias.isPublic === 'boolean' && alias.isPublic)) {
-                const dataToSend = {
-                  data: {
-                    user: {
-                      userId: updatedAlias.aliasId,
-                      username: updatedAlias.aliasName,
-                    },
-                    changeType: dbConfig.ChangeTypes.UPDATE,
+              const dataToSend = {
+                data: {
+                  user: {
+                    userId: updatedAlias.aliasId,
+                    username: updatedAlias.aliasName,
                   },
-                };
-
-                if (socket) {
-                  socket.broadcast.emit(dbConfig.EmitTypes.USER, dataToSend);
-                } else {
-                  io.emit(dbConfig.EmitTypes.USER, dataToSend);
-                }
-              }
+                  changeType: dbConfig.ChangeTypes.UPDATE,
+                },
+              };
 
               if (socket) {
+                socket.broadcast.emit(dbConfig.EmitTypes.USER, dataToSend);
                 socket.broadcast.to(updatedAlias.aliasId).emit(dbConfig.EmitTypes.ALIAS, aliasDataToSend);
               } else {
+                io.emit(dbConfig.EmitTypes.USER, dataToSend);
                 io.to(updatedAlias.aliasId).emit(dbConfig.EmitTypes.ALIAS, aliasDataToSend);
               }
 
-              callback(updateData);
+              callback(aliasDataToSend);
             },
           });
         },
@@ -455,8 +494,8 @@ function updateAlias({
  * @param {string[]} [params.userIds] - ID of the users.
  * @param {string[]} [params.teamIds] - ID of the teams.
  * @param {string[]} [params.bannedIds] - ID of the blocked Ids to add.
- * @param {string[]} [params.teamAdminIds] - ID of the team admins to add.
- * @param {string[]} [params.userAdminIds] - ID of the user admins to add.
+ * @param {string[]} [params.teamAdminIds] - Id of the teams to give admin access to. They will also be added to teamIds.
+ * @param {string[]} [params.userAdminIds] - Id of the users to give admin access to. They will also be added to userIds.
  * @param {Function} params.callback - Callback.
  */
 function addAccess({
@@ -517,8 +556,8 @@ function addAccess({
  * @param {string[]} [params.userIds] - ID of the users to remove.
  * @param {string[]} [params.teamIds] - ID of the teams to remove.
  * @param {string[]} [params.bannedIds] - Blocked IDs to remove.
- * @param {string[]} [params.teamAdminIds] - ID of the team admins to remove.
- * @param {string[]} [params.userAdminIds] - ID of the user admins to remove.
+ * @param {string[]} [params.teamAdminIds] - Id of the teams to remove admin access from. They will not be removed from teamIds.
+ * @param {string[]} [params.userAdminIds] - Id of the users to remove admin access from. They will not be removed from userIds.
  * @param {Function} params.callback - Callback.
  */
 function removeAccess({

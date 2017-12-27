@@ -16,25 +16,34 @@
 
 'use strict';
 
-const forumManager = require('../../managers/forums');
+const forumPostManager = require('../../managers/forumPosts');
+const forumThreadManager = require('../../managers/forumThreads');
 
 /**
  * @param {Object} socket Socket.IO socket
  * @param {Object} io Socket.io
  */
 function handle(socket, io) {
-  socket.on('createPost', ({ post, token }, callback = () => {}) => {
-    forumManager.createPost({
+  socket.on('createPost', ({
+    post,
+    token,
+    threadId,
+  }, callback = () => {}) => {
+    forumPostManager.createPost({
       post,
       callback,
       token,
       io,
       socket,
+      threadId,
     });
   });
 
-  socket.on('createForumThread', ({ thread, token }, callback = () => {}) => {
-    forumManager.createThread({
+  socket.on('createForumThread', ({
+    thread,
+    token,
+  }, callback = () => {}) => {
+    forumThreadManager.createThread({
       thread,
       callback,
       token,
@@ -43,18 +52,14 @@ function handle(socket, io) {
     });
   });
 
-  socket.on('getForumThreads', ({ forumId, token }, callback = () => {}) => {
-    forumManager.getForumThreadsByForum({
+  socket.on('getForumThreads', ({
+    forumId,
+    token,
+  }, callback = () => {}) => {
+    forumThreadManager.getForumThreadsByForum({
       forumId,
       callback,
       token,
-    });
-  });
-
-  socket.on('getCompleteForums', ({ token }, callback = () => {}) => {
-    forumManager.getCompleteForums({
-      token,
-      callback,
     });
   });
 }

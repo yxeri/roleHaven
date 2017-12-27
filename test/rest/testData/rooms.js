@@ -28,7 +28,7 @@ data.roomToCreate = {
 data.publicRoomToCreate = {
   roomName: tools.createRandString({ length: appConfig.roomNameMaxLength }),
   visibility: dbConfig.AccessLevels.ANONYMOUS,
-  accessLevel: dbConfig.AccessLevels.BASIC,
+  accessLevel: dbConfig.AccessLevels.STANDARD,
 };
 data.passwordProtectedRoomToCreate = {
   roomName: tools.createRandString({ length: appConfig.roomNameMaxLength }),

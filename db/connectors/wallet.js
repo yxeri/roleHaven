@@ -68,6 +68,33 @@ function getWallets({ query, callback }) {
 }
 
 /**
+ * Get wallet.
+ * @private
+ * @param {Object} params - Parameters.
+ * @param {string} params.query - Query to get wallet.
+ * @param {Function} params.callback - Callback
+ */
+function getWallet({ query, callback }) {
+  dbConnector.getObject({
+    query,
+    object: Wallet,
+    callback: ({ error, data }) => {
+      if (error) {
+        callback({ error });
+
+        return;
+      } else if (!data.object) {
+        callback({ error: new errorCreator.DoesNotExist({ name: `wallet ${query.toString()}` }) });
+
+        return;
+      }
+
+      callback({ data: { wallet: addCustomId(data.object) } });
+    },
+  });
+}
+
+/**
  * Update wallet
  * @private
  * @param {Object} params - Parameters
@@ -145,15 +172,20 @@ function getWalletsByUser({ userId, callback }) {
 }
 
 /**
- * Create and save wallet
- * @param {Object} params - Parameters
- * @param {Object} params.wallet - New wallet
- * @param {Function} params.callback - Callback
+ * Create and save wallet.
+ * @param {Object} params - Parameters.
+ * @param {Object} params.wallet - New wallet.
+ * @param {Function} params.callback - Callback.
+ * @param {Object} [params.options] - Options.
  */
-function createWallet({ wallet, callback }) {
+function createWallet({
+  wallet,
+  callback,
+  options = {},
+}) {
   const walletToSave = wallet;
 
-  if (walletToSave.walletId) {
+  if (options.setId && walletToSave.walletId) {
     walletToSave._id = walletToSave.walletId; // eslint-disable-line no-underscore-dangle
   }
 
@@ -240,7 +272,8 @@ function updateWallet({
  * @param {string[]} [params.userIds] - ID of the users
  * @param {string[]} [params.teamIds] - ID of the teams
  * @param {string[]} [params.bannedIds] - ID of the blocked Ids to add
- * @param {boolean} [params.isAdmin] - Should the teams and/or users be added to admins?
+ * @param {string[]} [params.teamAdminIds] - Id of the teams to give admin access to. They will also be added to teamIds.
+ * @param {string[]} [params.userAdminIds] - Id of the users to give admin access to. They will also be added to userIds.
  * @param {Function} params.callback - Callback
  */
 function addAccess({
@@ -248,14 +281,16 @@ function addAccess({
   teamIds,
   bannedIds,
   walletId,
-  isAdmin,
+  teamAdminIds,
+  userAdminIds,
   callback,
 }) {
   dbConnector.addObjectAccess({
     userIds,
     teamIds,
     bannedIds,
-    isAdmin,
+    teamAdminIds,
+    userAdminIds,
     objectId: walletId,
     object: Wallet,
     callback: ({ error, data }) => {
@@ -277,14 +312,16 @@ function addAccess({
  * @param {string[]} [params.userIds] - ID of the users
  * @param {string[]} [params.teamIds] - ID of the teams
  * @param {string[]} [params.bannedIds] - ID of the blocked Ids to add
- * @param {boolean} [params.isAdmin] - Should the teams and/or users be removed from admins?
+ * @param {string[]} [params.teamAdminIds] - Id of the teams to remove admin access from. They will not be removed from teamIds.
+ * @param {string[]} [params.userAdminIds] - Id of the users to remove admin access from. They will not be removed from userIds.
  * @param {Function} params.callback - Callback
  */
 function removeAccess({
   userIds,
   teamIds,
   bannedIds,
-  isAdmin,
+  teamAdminIds,
+  userAdminIds,
   walletId,
   callback,
 }) {
@@ -292,9 +329,10 @@ function removeAccess({
     userIds,
     teamIds,
     bannedIds,
-    isAdmin,
-    objectId: walletId,
+    teamAdminIds,
+    userAdminIds,
     callback,
+    objectId: walletId,
     object: Wallet,
   });
 }
@@ -326,6 +364,19 @@ function getWalletsByIds({ walletIds, callback }) {
   });
 }
 
+/**
+ * Get wallet by Id.
+ * @param {Object} params - Parameters.
+ * @param {string[]} params.walletId - Wallet Id.
+ * @param {Function} params.callback - Callback.
+ */
+function getWalletById({ walletId, callback }) {
+  getWallet({
+    callback,
+    query: { _id: walletId },
+  });
+}
+
 exports.createWallet = createWallet;
 exports.getAllWallets = getAllWallets;
 exports.getWalletsByUser = getWalletsByUser;
@@ -335,3 +386,4 @@ exports.removeWallet = removeWallet;
 exports.updateWallet = updateWallet;
 exports.getWalletsByTeams = getWalletsByTeams;
 exports.getWalletsByIds = getWalletsByIds;
+exports.getWalletById = getWalletById;

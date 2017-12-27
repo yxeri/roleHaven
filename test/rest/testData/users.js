@@ -30,7 +30,7 @@ data.newUserToCreate = {
   password: tools.createRandString({ length: appConfig.passwordMaxLength }),
   registerDevice: tools.createRandString({ length: appConfig.deviceIdLength }),
   mail: `${tools.createRandString({ length: 10 })}@${tools.createRandString({ length: 10 })}.com`,
-  accessLevel: dbConfig.AccessLevels.PRO,
+  accessLevel: dbConfig.AccessLevels.PRIVILEGED,
   verified: true,
 };
 data.newUserToCreateMissionWith = {
@@ -38,7 +38,7 @@ data.newUserToCreateMissionWith = {
   password: tools.createRandString({ length: appConfig.passwordMaxLength }),
   registerDevice: tools.createRandString({ length: appConfig.deviceIdLength }),
   mail: `${tools.createRandString({ length: 10 })}@${tools.createRandString({ length: 10 })}.com`,
-  accessLevel: dbConfig.AccessLevels.PRO,
+  accessLevel: dbConfig.AccessLevels.PRIVILEGED,
   verified: true,
 };
 data.newAdminUserToCreate = {
@@ -47,7 +47,7 @@ data.newAdminUserToCreate = {
   registerDevice: tools.createRandString({ length: appConfig.deviceIdLength }),
   mail: `${tools.createRandString({ length: 10 })}@${tools.createRandString({ length: 10 })}.com`,
   accessLevel: dbConfig.AccessLevels.ADMIN,
-  visibility: dbConfig.AccessLevels.PRO,
+  visibility: dbConfig.AccessLevels.PRIVILEGED,
   verified: true,
 };
 data.newUserToCreateWithValidMail = {
@@ -68,7 +68,7 @@ data.roomToCreate = {
 data.publicRoomToCreate = {
   roomName: tools.createRandString({ length: appConfig.roomNameMaxLength }),
   visibility: dbConfig.AccessLevels.ANONYMOUS,
-  accessLevel: dbConfig.AccessLevels.BASIC,
+  accessLevel: dbConfig.AccessLevels.STANDARD,
 };
 data.passwordProtectedRoomToCreate = {
   roomName: tools.createRandString({ length: appConfig.roomNameMaxLength }),

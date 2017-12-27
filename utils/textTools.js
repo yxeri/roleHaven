@@ -30,7 +30,7 @@ function hasAllowedText(text) {
 
 /**
  * Does the string contain alphanumeric values, including space and åäö?
- * @param {string} text - String to check
+ * @param {string} text - String to check.
  * @returns {boolean} Does the string contain alphanumeric values, including space and åäö?
  */
 function isAllowedFull(text) {
@@ -38,9 +38,9 @@ function isAllowedFull(text) {
 }
 
 /**
- * Removes empty consecutive elements in the text array
- * @param {string} text - Array with text
- * @returns {string[]} Array with text without consecutive empty elements
+ * Removes empty consecutive elements in the text array.
+ * @param {string} text - Array with text.
+ * @returns {string[]} Array with text without consecutive empty elements.
  */
 function cleanText(text) {
   const modifiedText = [];
@@ -57,9 +57,9 @@ function cleanText(text) {
 }
 
 /**
- * Converts string to boolean
- * @param {string} envar - Value
- * @returns {boolean} Converted boolean
+ * Converts string to boolean.
+ * @param {string} envar - Value.
+ * @returns {boolean} Converted boolean.
  */
 function convertToBoolean(envar) {
   if (envar === 'true') {
@@ -72,30 +72,30 @@ function convertToBoolean(envar) {
 }
 
 /**
- * Convert string to float
- * @param {string} float - Value to be converted
- * @returns {number|null} Converted number
+ * Convert string to float.
+ * @param {string} float - Value to be converted.
+ * @returns {number|null} Converted number.
  */
 function convertToFloat(float) {
   const parsedFloat = parseFloat(float);
 
-  return isNaN(parsedFloat) ? 0 : parsedFloat;
+  return Number.isNaN(parsedFloat) ? 0 : parsedFloat;
 }
 
 /**
- * Convert string to int
- * @param {string} int - Value to be converted
- * @returns {number} Converted number
+ * Convert string to int.
+ * @param {string} int - Value to be converted.
+ * @returns {number} Converted number.
  */
 function convertToInt(int) {
   const parsedInt = parseInt(int, 10);
 
-  return isNaN(parsedInt) ? 0 : parsedInt;
+  return Number.isNaN(parsedInt) ? 0 : parsedInt;
 }
 
 /**
- * @param {string[]} array - Array to be shuffled
- * @returns {string[]} Shuffled array
+ * @param {string[]} array - Array to be shuffled.
+ * @returns {string[]} Shuffled array.
  */
 function shuffleArray(array) {
   const shuffledArray = array;
@@ -115,10 +115,11 @@ function shuffleArray(array) {
 }
 
 /**
- * Get minutes between dates
- * @param {Date} params.startDate Start date
- * @param {Date} params.laterDate Later date
- * @returns {Date} Difference date
+ * Get minutes between dates.
+ * @param {Object} params - Parameters.
+ * @param {Date} params.firstDate - Start date.
+ * @param {Date} params.laterDate - Later date.
+ * @returns {Date} Difference date.
  */
 function getDifference({ firstDate, laterDate }) {
   const difference = new Date(laterDate) - new Date(firstDate);
@@ -136,10 +137,11 @@ function isValidMail(address) {
 }
 
 /**
- * Get minutes between dates
- * @param {Date} params.startDate Start date
- * @param {Date} params.endDate Later date
- * @returns {number} Minutes
+ * Get minutes between dates.
+ * @param {Object} params - Parameters.
+ * @param {Date} params.startDate - Start date.
+ * @param {Date} params.endDate - Later date.
+ * @returns {number} Minutes.
  */
 function calculateMinutesDifference({ firstDate, secondDate }) {
   const difference = new Date(firstDate) - new Date(secondDate);

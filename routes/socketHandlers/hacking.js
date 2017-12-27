@@ -40,7 +40,7 @@ dbPosition.removePositionsByType({
 function createSignalBlock({ token, description, socket, callback }) {
   authenticator.isUserAllowed({
     token,
-    commandName: databasePopulation.commands.signalBlock.commandName,
+    commandName: databasePopulation.commands.signalBlock.name,
     callback: ({ error, data }) => {
       if (error) {
         callback({ error });

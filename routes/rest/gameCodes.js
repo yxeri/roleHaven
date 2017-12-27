@@ -30,40 +30,155 @@ const router = new express.Router();
  */
 function handle(io) {
   /**
-   * @api {post} /gameCodes/:code/use Use game code
+   * @api {get} /gameCodes Get game codes.
+   * @apiVersion 8.0.0
+   * @apiName GetGameCodes
+   * @apiGroup GameCodes
+   *
+   * @apiHeader {String} Authorization - Your JSON Web Token.
+   *
+   * @apiDescription Get game codes that the user has access to.
+   *
+   * @apiParam {Object} [data]
+   * @apiParam {Object} data.userId - Id of the user retrieving the game codes.
+   *
+   * @apiSuccess {Object} data
+   * @apiSuccess {Object[]} data.gameCodes - Game codes found.
+   */
+  router.get('/', (request, response) => {
+    const { userId } = request.body.data;
+    const { authorization: token } = request.headers;
+
+    gameCodeManager.getGameCodesByOwner({
+      userId,
+      token,
+      callback: ({ error, data }) => {
+        if (error) {
+          restErrorChecker.checkAndSendError({ response, error, sentData: request.body.data });
+
+          return;
+        }
+
+        response.json({ data });
+      },
+    });
+  });
+
+  /**
+   * @api {put} /gameCodes/:gameCodeId Update a game code.
+   * @apiVersion 8.0.0
+   * @apiName UpdateGameCode
+   * @apiGroup GameCodes
+   *
+   * @apiHeader {String} Authorization - Your JSON Web Token.
+   *
+   * @apiDescription Update a game code.
+   *
+   * @apiParam {String} code - Code of the game code to update.
+   *
+   * @apiParam {String} data
+   * @apiParam {String} data.gameCode - Game code parameters to update.
+   * @apiParam {String} [data.options] - Update options.
+   *
+   * @apiSuccess {Object} data
+   * @apiSuccess {Object} data.gameCode - Updated game code.
+   */
+  router.put('/:code', (request, response) => {
+    if (!objectValidator.isValidData(request.params, { code: true })) {
+      restErrorChecker.checkAndSendError({ response, error: new errorCreator.InvalidData({ expected: '{ code }' }), sentData: request.params });
+
+      return;
+    } else if (!objectValidator.isValidData(request.body, { data: { gameCode: true } })) {
+      restErrorChecker.checkAndSendError({ response, error: new errorCreator.InvalidData({ expected: '{ gameCode }' }), sentData: request.body.data });
+
+      return;
+    }
+
+    const {
+      gameCode,
+    } = request.body.data;
+    const { code } = request.params;
+    const { authorization: token } = request.headers;
+
+    gameCodeManager.updateGameCode({
+      gameCode,
+      io,
+      code,
+      token,
+      callback: ({ error, data }) => {
+        if (error) {
+          restErrorChecker.checkAndSendError({ response, error, sentData: request.body.data });
+
+          return;
+        }
+
+        response.json({ data });
+      },
+    });
+  });
+
+  /**
+   * @api {delete} /gameCodes/:code Delete a game code.
+   * @apiVersion 8.0.0
+   * @apiName DeleteGameCode
+   * @apiGroup GameCodes
+   *
+   * @apiHeader {String} Authorization - Your JSON Web Token.
+   *
+   * @apiDescription Delete the game code.
+   *
+   * @apiParam {Object} gameCodeId - Id of the game code to delete.
+   *
+   * @apiParam {Object} [data]
+   * @apiParam {Object} [data.userId] - Id of the user deleting the game code.
+   *
+   * @apiSuccess {Object} data
+   * @apiSuccess {boolean} data.success - Was the game code successfully deleted?
+   */
+  router.delete('/:code', (request, response) => {
+    if (!objectValidator.isValidData(request.params, { code: true })) {
+      restErrorChecker.checkAndSendError({ response, error: new errorCreator.InvalidData({ expected: '{ code }' }), sentData: request.params });
+
+      return;
+    }
+
+    const { userId } = request.body.data;
+    const { code } = request.params;
+    const { authorization: token } = request.headers;
+
+    gameCodeManager.removeGameCode({
+      userId,
+      io,
+      code,
+      token,
+      callback: ({ error, data }) => {
+        if (error) {
+          restErrorChecker.checkAndSendError({ response, error, sentData: request.body.data });
+
+          return;
+        }
+
+        response.json({ data });
+      },
+    });
+  });
+
+  /**
+   * @api {post} /gameCodes/:code/use Use a game code.
    * @apiVersion 6.0.0
    * @apiName UseGameCode
    * @apiGroup GameCodes
    *
-   * @apiHeader {String} Authorization Your JSON Web Token
+   * @apiHeader {String} Authorization - Your JSON Web Token.
    *
    * @apiDescription Use game code
    *
-   * @apiParam {string} code Code for game code
+   * @apiParam {string} code - Code for game code that will be used up.
    *
    * @apiParam {Object} data
-   * @apiParamExample {json} Request-Example:
-   *   {
-   *    "data": {
-   *      "position": {
-   *        "coordinates": {
-   *          "longitude": 55.401,
-   *          "latitude": 12.0041
-   *        }
-   *      }
-   *    }
-   *  }
    *
    * @apiSuccess {Object} data
-   * @apiSuccess {Object[]} data.gameCode New game code
-   * @apiSuccessExample {json} Success-Response:
-   *   {
-   *    "data": {
-   *      "reward": {
-   *        "amount": 2
-   *      }
-   *    }
-   *  }
+   * @apiSuccess {Object[]} data.gameCode - Used game code. It will include the content that was unlocked with the code.
    */
   router.post('/:code/use', (request, response) => {
     if (!objectValidator.isValidData(request.params, { code: true })) {

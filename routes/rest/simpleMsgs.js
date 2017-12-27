@@ -93,39 +93,67 @@ function handle(io) {
   });
 
   /**
-   * @api {post} /simpleMsgs Get simple messages
+   * @api {post} /simpleMsgs Get simple messages.
    * @apiVersion 6.0.0
    * @apiName GetSimpleMsgs
    * @apiGroup SimpleMsgs
    *
-   * @apiHeader {String} Authorization Your JSON Web Token
+   * @apiHeader {String} Authorization - Your JSON Web Token.
    *
-   * @apiDescription Get simple messages
+   * @apiDescription Get simple messages.
    *
    * @apiSuccess {Object} data
-   * @apiSuccess {Object[]} data.simpleMsgs Messages retrievec
-   * @apiSuccessExample {json} Success-Response:
-   *   {
-   *    "data": {
-   *      "simpleMsgs": [{
-   *        "text": [
-   *          "Hello world!"
-   *        ],
-   *        "username": "rez",
-   *        "time": "2016-10-28T22:42:06.262Z"
-   *      }, {
-   *        "text": [
-   *          "Hello back!"
-   *        ],
-   *        "username": "bez",
-   *        "time": "2016-11-28T22:42:06.262Z"
-   *      }]
-   *    }
-   *  }
+   * @apiSuccess {Object[]} data.simpleMsgs - Messages found.
    */
   router.get('/', (request, response) => {
     simpleMsgManager.getSimpleMsgs({
       token: request.headers.authorization,
+      callback: ({ error, data }) => {
+        if (error) {
+          restErrorChecker.checkAndSendError({ response, error, sentData: request.body.data });
+
+          return;
+        }
+
+        response.json({ data });
+      },
+    });
+  });
+
+  /**
+   * @api {delete} /simpleMsgs/:simpleMsgId Delete a simple message.
+   * @apiVersion 8.0.0
+   * @apiName DeleteSimpleMsg
+   * @apiGroup SimpleMsgs
+   *
+   * @apiHeader {String} Authorization - Your JSON Web Token.
+   *
+   * @apiDescription Delte a simple message.
+   *
+   * @apiParam {Object} simpleMsgId - Id of the simple message to delete.
+   *
+   * @apiParam {Object} [data]
+   * @apiParam {Object} [data.userId] - Id of the user deleting the message.
+   *
+   * @apiSuccess {Object} data
+   * @apiSuccess {Object} data.success - Was it successfully deleted?
+   */
+  router.delete('/:deviceId', (request, response) => {
+    if (!objectValidator.isValidData(request.params, { simpleMsgId: true })) {
+      restErrorChecker.checkAndSendError({ response, error: new errorCreator.InvalidData({ expected: '{ simpleMsgId }' }), sentData: request.params });
+
+      return;
+    }
+
+    const { userId } = request.body.data;
+    const { simpleMsgId } = request.params;
+    const { authorization: token } = request.headers;
+
+    simpleMsgManager.removeSimpleMsg({
+      userId,
+      io,
+      simpleMsgId,
+      token,
       callback: ({ error, data }) => {
         if (error) {
           restErrorChecker.checkAndSendError({ response, error, sentData: request.body.data });

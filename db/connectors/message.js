@@ -36,7 +36,7 @@ const messageSchema = new mongoose.Schema(dbConnector.createSchema({
   }),
   intro: { type: [String], default: [] },
   extro: { type: [String], default: [] },
-  image: dbConnector.createSchema({
+  images: dbConnector.createSchema({
     imageName: String,
     fileName: String,
     width: Number,

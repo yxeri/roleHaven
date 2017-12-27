@@ -59,8 +59,8 @@ function getAccessibleGameCode({
 
         return;
       } else if (!authenticator.hasAccessTo({
-        toAuth: user,
         shouldBeAdmin,
+        toAuth: user,
         objectToAccess: gameCodeData.data.gameCode,
       })) {
         callback({ error: new errorCreator.NotAllowed({ name: errorContentText }) });
@@ -79,17 +79,20 @@ function getAccessibleGameCode({
  * @param {Object} params.gameCode - Game code that has been used.
  * @param {string} params.token - jwt.
  * @param {Function} params.callback - Callback.
+ * @param {Object} params.io - Socket.io.
  */
 function triggerUnlockedContent({
   token,
   userId,
   gameCode,
   callback,
+  io,
 }) {
   const dataToSend = {
     data: {
       ownerId: gameCode.ownerAliasId || gameCode.ownerId,
       codeType: gameCode.codeType,
+      content: {},
     },
   };
 
@@ -112,7 +115,7 @@ function triggerUnlockedContent({
             return;
           }
 
-          dataToSend.data.transaction = data.transaction;
+          dataToSend.content.transaction = data.transaction;
 
           callback(dataToSend);
         },
@@ -155,11 +158,11 @@ function triggerUnlockedContent({
 }
 
 /**
- * Create game code
- * @param {Object} params - Parameters
- * @param {string} params.gameCode - Game code to save
- * @param {string} params.token - jwt
- * @param {Function} params.callback - Callback
+ * Create game code.
+ * @param {Object} params - Parameters.
+ * @param {string} params.gameCode - Game code to save.
+ * @param {string} params.token - jwt.
+ * @param {Function} params.callback - Callback.
  */
 function createGameCode({
   userId,
@@ -222,11 +225,11 @@ function createGameCode({
 }
 
 /**
- * Get game codes by owner
- * @param {Object} params - Parameters
- * @param {string} params.token - jwt
- * @param {string} [params.userId] - ID of the user to auth and retrieve codes with
- * @param {Function} params.callback - Callback
+ * Get game codes by owner.
+ * @param {Object} params - Parameters.
+ * @param {string} params.token - jwt.
+ * @param {string} [params.userId] - ID of the user to auth and retrieve codes with.
+ * @param {Function} params.callback - Callback.
  */
 function getGameCodesByOwner({ token, userId, callback }) {
   authenticator.isUserAllowed({
@@ -257,13 +260,13 @@ function getGameCodesByOwner({ token, userId, callback }) {
 }
 
 /**
- * Use game code
- * @param {Object} params - Parameters
- * @param {Object} params.io - Socket io. Will be used if socket is not set
- * @param {string} params.code - Code for a game code
- * @param {string} params.token - jwt
- * @param {Function} params.callback - Callback
- * @param {Object} [params.socket] - Socket io
+ * Use game code.
+ * @param {Object} params - Parameters.
+ * @param {Object} params.io - Socket io. Will be used if socket is not set.
+ * @param {string} params.code - Code for a game code.
+ * @param {string} params.token - jwt.
+ * @param {Function} params.callback - Callback.
+ * @param {Object} [params.socket] - Socket io.
  */
 function useGameCode({
   socket,
@@ -368,15 +371,21 @@ function useGameCode({
 }
 
 /**
- * Remove game code
- * @param {Object} params - Parameters
- * @param {string} params.code - Code of the game code
- * @param {Object} params.token - jwt
- * @param {Function} params.callback - Callback
+ * Remove game code.
+ * @param {Object} params - Parameters.
+ * @param {string} params.code - Code of the game code.
+ * @param {Object} params.token - jwt.
+ * @param {Function} params.callback - Callback.
  */
-function removeGameCode({ code, token, callback }) {
+function removeGameCode({
+  code,
+  token,
+  callback,
+  userId,
+}) {
   authenticator.isUserAllowed({
     token,
+    matchToId: userId,
     commandName: dbConfig.apiCommands.RemoveGameCode.name,
     callback: ({ error, data }) => {
       if (error) {
@@ -385,9 +394,11 @@ function removeGameCode({ code, token, callback }) {
         return;
       }
 
+      const { user } = data;
+
       getAccessibleGameCode({
         code,
-        user: data.user,
+        user,
         callback: (gameCodeData) => {
           if (gameCodeData.error) {
             callback({ error: gameCodeData.error });
@@ -405,7 +416,91 @@ function removeGameCode({ code, token, callback }) {
   });
 }
 
+/**
+ * Get user's profile code.
+ * @param {Object} params - Parameters.
+ * @param {string} params.userId - Id of the user retrieving the code.
+ * @param {string} params.ownerId - Id of the owner of the code.
+ * @param {Function} params.callback - Callback.
+ * @param {string} params.token - jwt.
+ */
+function getProfileGameCode({
+  userId,
+  ownerId,
+  callback,
+  token,
+}) {
+  authenticator.isUserAllowed({
+    token,
+    matchToId: userId,
+    commandName: dbConfig.apiCommands.GetGameCode.commandName,
+    callback: ({ error }) => {
+      if (error) {
+        callback({ error });
+
+        return;
+      }
+
+      dbGameCode.getProfileGameCode({
+        ownerId,
+        callback,
+      });
+    },
+  });
+}
+
+/**
+ * Update a game code.
+ * @param {Object} params - Parameters.
+ * @param {string} params.token - jwt.
+ * @param {Function} params.callback - Callback.
+ * @param {string} params.code - Code of the game code.
+ * @param {Object} params.gameCode - Game code parameters to update.
+ * @param {string} [params.userId] - Id of the user updating the game code.
+ */
+function updateGameCode({
+  token,
+  callback,
+  code,
+  userId,
+  gameCode,
+}) {
+  authenticator.isUserAllowed({
+    token,
+    matchToId: userId,
+    commandName: dbConfig.apiCommands.UpdateGameCode.commandName,
+    callback: ({ error, data }) => {
+      if (error) {
+        callback({ error });
+
+        return;
+      }
+
+      const { user } = data;
+
+      getAccessibleGameCode({
+        code,
+        user,
+        callback: ({ error: gameCodeError }) => {
+          if (gameCodeError) {
+            callback({ error: gameCodeError });
+
+            return;
+          }
+          dbGameCode.updateGameCode({
+            code,
+            gameCode,
+            callback,
+          });
+        },
+      });
+    },
+  });
+}
+
 exports.createGameCode = createGameCode;
 exports.useGameCode = useGameCode;
 exports.removeGameCode = removeGameCode;
-exports.getGameCodes = getGameCodesByOwner;
+exports.getGameCodesByOwner = getGameCodesByOwner;
+exports.getProfileGameCode = getProfileGameCode;
+exports.updateGameCode = updateGameCode;

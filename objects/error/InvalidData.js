@@ -18,11 +18,17 @@ const GeneralError = require('./GeneralError');
 
 class InvalidDataError extends GeneralError.create {
   /**
-   * Create invalid data error
-   * @param {string} [params.expected] Expected data structure
-   * @param {Object} [params.errorObject] Error object
+   * Create invalid data error.
+   * @param {Object} params - Parameters.
+   * @param {string} [params.expected] Expected data structure.
+   * @param {Object} [params.errorObject] Error object.
    */
-  constructor({ expected = '-', errorObject, verbose, extraData }) {
+  constructor({
+    expected = '-',
+    errorObject,
+    verbose,
+    extraData,
+  }) {
     super({
       verbose,
       errorObject,

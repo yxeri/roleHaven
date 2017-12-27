@@ -17,18 +17,16 @@
 'use strict';
 
 const dbForum = require('../db/connectors/forum');
-const dbThread = require('../db/connectors/forumThread');
-const dbPost = require('../db/connectors/forumPost');
 const dbConfig = require('../config/defaults/config').databasePopulation;
 const errorCreator = require('../objects/error/errorCreator');
 const authenticator = require('../helpers/authenticator');
 const aliasManager = require('./aliases');
 
 /**
- * Get forum by ID and check if the user has access to it.
+ * Get a forum by Id and check if the user has access to it.
  * @param {Object} params - Parameters.
  * @param {Object} params.user - User retrieving the forum.
- * @param {string} params.forumId - ID of the forum to retrieve.
+ * @param {string} params.forumId - Id of the forum to retrieve.
  * @param {Function} params.callback - Callback.
  * @param {string} [params.errorContentText] - Text to be printed on error.
  * @param {boolean} [params.shouldBeAdmin] - Does the user have to be an admin?
@@ -63,13 +61,14 @@ function getAccessibleForum({
 }
 
 /**
- * Create new forum.
+ * Create a new forum.
  * @param {Object} params - Parameters.
  * @param {Object} params.forum - Forum to create.
  * @param {Object} params.callback - Callback.
  * @param {Object} params.token - jwt.
  * @param {Object} params.io - Socket.io. Will be used if socket is not set.
  * @param {Object} [params.socket] - Socket.io.
+ * @param {string} [params.userId] - Id of the user creating the forum.
  */
 function createForum({
   forum,
@@ -77,9 +76,11 @@ function createForum({
   token,
   io,
   socket,
+  userId,
 }) {
   authenticator.isUserAllowed({
     token,
+    matchToId: userId,
     commandName: dbConfig.apiCommands.CreateForum.name,
     callback: ({ error, data }) => {
       if (error) {
@@ -146,10 +147,10 @@ function createForum({
 }
 
 /**
- * Get all forums
- * @param {Object} params - Parameters
- * @param {Function} params.callback - Callback
- * @param {string} params.token - jwt
+ * Get all forums.
+ * @param {Object} params - Parameters.
+ * @param {Function} params.callback - Callback.
+ * @param {string} params.token - jwt.
  */
 function getAllForums({ callback, token }) {
   authenticator.isUserAllowed({
@@ -174,7 +175,7 @@ function getAllForums({ callback, token }) {
  * @parm {Object} params.options - Options.
  * @param {Function} params.callback - Callback.
  * @param {Object} params.io - Socket io. Will be used if socket is not set.
- * @param {Object} [params.socket] - Socket io.
+ * @param {Object} [params.socket] - Socket.io.
  */
 function updateForum({
   token,
@@ -184,10 +185,12 @@ function updateForum({
   callback,
   socket,
   io,
+  userId,
 }) {
   authenticator.isUserAllowed({
     token,
-    commandName: dbConfig.apiCommands.UpdateDevice.name,
+    matchToId: userId,
+    commandName: dbConfig.apiCommands.UpdateForumThread.name,
     callback: ({ error, data }) => {
       if (error) {
         callback({ error });
@@ -242,13 +245,13 @@ function updateForum({
 
 /**
  * Remove forum.
- * @param {Object} params - Parameters,.
+ * @param {Object} params - Parameters.
  * @param {string} params.token - jwt.
- * @param {string} params.forumId - ID of the forum.
- * @param {string} params.userId - ID of the user who is removing the forum.
+ * @param {string} params.forumId - Id of the forum.
  * @param {Object} params.io - Socket io. Will be used if socket is not set.
  * @param {Function} params.callback - Callback.
- * @param {Object} [params.socket] - Socket io.
+ * @param {string} [params.userId] - Id of the user who is removing the forum.
+ * @param {Object} [params.socket] - Socket.io.
  */
 function removeForum({
   token,
@@ -314,15 +317,22 @@ function removeForum({
 }
 
 /**
- * Get forum by id
+ * Get forum by Id.
  * @param {Object} params - Parameters.
- * @param {string} [params.forumId] - ID of forum to retrieve.
  * @param {string} params.token - jwt.
  * @param {Function} params.callback - Callback.
+ * @param {string} [params.forumId] - Id of forum to retrieve.
+ * @param {string} [params.userId] - Id of the user retrieving the forum.
  */
-function getForumById({ forumId, token, callback }) {
+function getForumById({
+  forumId,
+  token,
+  callback,
+  userId,
+}) {
   authenticator.isUserAllowed({
     token,
+    matchToId: userId,
     commandName: dbConfig.apiCommands.GetForum.name,
     callback: ({ error, data }) => {
       if (error) {
@@ -341,10 +351,10 @@ function getForumById({ forumId, token, callback }) {
 }
 
 /**
- * Update last updated on the forum
- * @param {Object} params - Params
- * @param {string} params.forumId - ID of the forum
- * @param {Function} params.callback - Callback
+ * Update last updated on the forum.
+ * @param {Object} params - Params.
+ * @param {string} params.forumId - Id of the forum.
+ * @param {Function} params.callback - Callback.
  */
 function updateForumTime({ forumId, callback }) {
   dbForum.updateForum({

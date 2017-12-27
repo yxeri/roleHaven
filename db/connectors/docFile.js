@@ -24,7 +24,6 @@ const docFileSchema = new mongoose.Schema(dbConnector.createSchema({
   code: { type: String, unique: true },
   title: { type: String, unique: true },
   text: [String],
-  ownerTeamId: String,
 }), { collection: 'docFiles' });
 
 const DocFile = mongoose.model('DocFile', docFileSchema);
@@ -251,7 +250,8 @@ function updateDocFile({
  * @param {string[]} [params.userIds] - ID of the users.
  * @param {string[]} [params.teamIds] - ID of the teams.
  * @param {string[]} [params.bannedIds] - ID of the blocked Ids to add.
- * @param {boolean} [params.isAdmin] - Should the team and/or user be added to admins?
+ * @param {string[]} [params.teamAdminIds] - Id of the teams to give admin access to. They will also be added to teamIds.
+ * @param {string[]} [params.userAdminIds] - Id of the users to give admin access to. They will also be added to userIds.
  * @param {Function} params.callback - Callback.
  */
 function addAccess({
@@ -259,20 +259,16 @@ function addAccess({
   userIds,
   teamIds,
   bannedIds,
-  isAdmin,
+  teamAdminIds,
+  userAdminIds,
   callback,
 }) {
-  if (!userIds && !teamIds && !bannedIds) {
-    callback({ error: new errorCreator.InvalidData({ expected: 'teamIds || userIds || bannedIds' }) });
-
-    return;
-  }
-
   dbConnector.addObjectAccess({
     userIds,
     teamIds,
     bannedIds,
-    isAdmin,
+    teamAdminIds,
+    userAdminIds,
     objectId: docFileId,
     object: DocFile,
     callback: ({ error, data }) => {
@@ -294,28 +290,25 @@ function addAccess({
  * @param {string[]} [params.userIds] - ID of the users.
  * @param {string[]} [params.teamIds] - ID of the teams.
  * @param {string[]} [params.bannedIds] - Blocked IDs.
- * @param {boolean} [params.isAdmin] - Should the teams and/or users be removed from admins?
+ * @param {string[]} [params.teamAdminIds] - Id of the teams to remove admin access from. They will not be removed from teamIds.
+ * @param {string[]} [params.userAdminIds] - Id of the users to remove admin access from. They will not be removed from userIds.
  * @param {Function} params.callback - Callback.
  */
 function removeAccess({
   userIds,
   teamIds,
   bannedIds,
-  isAdmin,
+  teamAdminIds,
+  userAdminIds,
   docFileId,
   callback,
 }) {
-  if (!userIds && !teamIds && !bannedIds) {
-    callback({ error: new errorCreator.InvalidData({ expected: 'teamIds || userIds || bannedIds' }) });
-
-    return;
-  }
-
   dbConnector.removeObjectAccess({
     userIds,
     teamIds,
     bannedIds,
-    isAdmin,
+    userAdminIds,
+    teamAdminIds,
     objectId: docFileId,
     object: DocFile,
     callback: ({ error, data }) => {
@@ -392,23 +385,47 @@ function getDocFileByCode({
 }
 
 /**
- * Get list of doc files owned by sent ID.
+ * Get a list of doc files that the user can try to access.
  * @param {Object} params - Parameters.
- * @param {string} params.ownerId - ID of the user, alias or team that own the files
- * @param {Function} params.callback - Callback
+ * @param {Object} params.user - User.
+ * @param {Function} params.callback - Callback.
  */
-function getDocFilesListById({ ownerId, callback }) {
+function getDocFilesListByUser({ user, callback }) {
+  const userIdToCheck = [user.userId];
   const query = {
+    bannedIds: { $nin: userIdToCheck.concat(user.partOfTeams) },
     $or: [
-      { ownerId },
-      { ownerAliasId: ownerId },
+      { isPublic: true },
+      { userIds: { $in: userIdToCheck } },
+      { visibility: { $lte: user.accessLevel } },
+      { teamIds: { $in: user.partOfTeams } },
     ],
   };
 
   getDocFiles({
-    callback,
     query,
+    callback,
     lite: true,
+  });
+}
+
+/**
+ * Get files by user.
+ * @param {Object} params - Parameters.
+ * @param {Object} params.userId - ID of the user retrieving the files.
+ * @param {Function} params.callback - Callback.
+ */
+function getDocFilesByUser({ userId, callback }) {
+  const query = {
+    $or: [
+      { ownerId: userId },
+      { userIds: { $in: [userId] } },
+    ],
+  };
+
+  getDocFiles({
+    query,
+    callback,
   });
 }
 
@@ -420,4 +437,5 @@ exports.getDocFileById = getDocFileById;
 exports.removeDocFile = removeDocFile;
 exports.getAllDocFiles = getAllDocFiles;
 exports.getDocFileByCode = getDocFileByCode;
-exports.getDocFilesListById = getDocFilesListById;
+exports.getDocFilesListByUser = getDocFilesListByUser;
+exports.getDocFilesByUser = getDocFilesByUser;

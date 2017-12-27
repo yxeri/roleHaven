@@ -25,7 +25,7 @@
 // socket.on('getSources', ({ token }, callback = () => {}) => {
 //   manager.userIsAllowed({
 //     token,
-//     commandName: dbConfig.commands.getSources.commandName,
+//     commandName: dbConfig.commands.getSources.name,
 //     callback: ({ error }) => {
 //       if (error) {
 //         callback({ error });

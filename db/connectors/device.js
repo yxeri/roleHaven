@@ -23,7 +23,6 @@ const dbConnector = require('../databaseConnector');
 
 const deviceSchema = new mongoose.Schema(dbConnector.createSchema({
   deviceName: { type: String, unique: true },
-
   socketId: String,
   lastUserId: String,
   deviceType: { type: String, default: dbConfig.DeviceTypes.USERDEVICE },
@@ -33,7 +32,7 @@ const Device = mongoose.model('Device', deviceSchema);
 
 /**
  * Add custom id to the object
- * @param {Object} device - Alias object
+ * @param {Object} device - Device object
  * @return {Object} - Device object with id
  */
 function addCustomId(device) {
@@ -257,7 +256,8 @@ function updateDevice({
  * @param {string[]} [params.userIds] - ID of the users to add
  * @param {string[]} [params.teamIds] - ID of the teams to add
  * @param {string[]} [params.bannedIds] - ID of the blocked Ids to add
- * @param {boolean} [params.isAdmin] - Should the teams and/or users be added as admins?
+ * @param {string[]} [params.teamAdminIds] - Id of the teams to give admin access to. They will also be added to teamIds.
+ * @param {string[]} [params.userAdminIds] - Id of the users to give admin access to. They will also be added to userIds.
  * @param {Function} params.callback - Callback
  */
 function addAccess({
@@ -265,14 +265,16 @@ function addAccess({
   userIds,
   teamIds,
   bannedIds,
-  isAdmin,
+  teamAdminIds,
+  userAdminIds,
   callback,
 }) {
   dbConnector.addObjectAccess({
     userIds,
     teamIds,
     bannedIds,
-    isAdmin,
+    teamAdminIds,
+    userAdminIds,
     objectId: deviceId,
     object: Device,
     callback: ({ error, data }) => {
@@ -294,7 +296,8 @@ function addAccess({
  * @param {string[]} [params.userIds] - ID of the users to remove
  * @param {string[]} [params.teamIds] - ID of the teams to remove
  * @param {string[]} [params.bannedIds] - ID of the blocked Ids to remove
- * @param {boolean} [params.isAdmin] - Should the teams and/or users be removed from admins?
+ * @param {string[]} [params.teamAdminIds] - Id of the teams to remove admin access from. They will not be removed from teamIds.
+ * @param {string[]} [params.userAdminIds] - Id of the users to remove admin access from. They will not be removed from userIds.
  * @param {Function} params.callback - Callback
  */
 function removeAccess({
@@ -302,14 +305,16 @@ function removeAccess({
   userIds,
   teamIds,
   bannedIds,
-  isAdmin,
+  teamAdminIds,
+  userAdminIds,
   callback,
 }) {
   dbConnector.removeObjectAccess({
     userIds,
     teamIds,
     bannedIds,
-    isAdmin,
+    teamAdminIds,
+    userAdminIds,
     objectId: deviceId,
     object: Device,
     callback: ({ error, data }) => {
