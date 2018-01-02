@@ -149,6 +149,15 @@ function calculateMinutesDifference({ firstDate, secondDate }) {
   return Math.floor((difference / 1000) / 60);
 }
 
+/**
+ * Create text code.
+ * @param {number} amount - Amount of characters.
+ * @returns {string} - Alphanumerical text code.
+ */
+function generateTextCode(amount = 8) {
+  return shuffleArray(['0', '1', '2', '3', '4', '5', '6', '7', '8', '9', 'A', 'B', 'D', 'E', 'F', 'G', 'H', 'L', 'M', 'N', 'P', 'Q', 'R', 'S', 'T', 'U', 'V', 'W', 'X', 'Y', 'Z']).slice(0, amount).join('');
+}
+
 exports.hasAllowedText = hasAllowedText;
 exports.isAllowedFull = isAllowedFull;
 exports.cleanText = cleanText;
@@ -159,3 +168,4 @@ exports.shuffleArray = shuffleArray;
 exports.getDifference = getDifference;
 exports.isValidMail = isValidMail;
 exports.calculateMinutesDifference = calculateMinutesDifference;
+exports.generateTextCode = generateTextCode;

@@ -313,7 +313,7 @@ function sendChatMsg({
         callback({ error });
 
         return;
-      } else if (!objectValidator.isValidData({ message, io }, { message: { text: true }, io: true })) {
+      } else if (!objectValidator.isValidData({ message, io }, { message: { text: true, roomId: true }, io: true })) {
         callback({ error: new errorCreator.InvalidData({ expected: '{ message: { text }, io }' }) });
 
         return;
@@ -403,7 +403,7 @@ function sendWhisperMsg({
         callback({ error });
 
         return;
-      } else if (!objectValidator.isValidData({ message, io }, { message: { text: true }, io: true })) {
+      } else if (!objectValidator.isValidData({ message, io }, { message: { text: true, roomId: true }, io: true })) {
         callback({ error: new errorCreator.InvalidData({ expected: '{ message: { text }, io }' }) });
 
         return;

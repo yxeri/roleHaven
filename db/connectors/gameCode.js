@@ -23,7 +23,7 @@ const dbConfig = require('../../config/defaults/config').databasePopulation;
 
 const gameCodeSchema = new mongoose.Schema(dbConnector.createSchema({
   code: { type: String, unique: true },
-  codeType: String,
+  codeType: { type: String, default: dbConfig.GameCodeTypes.TRANSACTION },
   codeContent: { type: [String], default: [] },
   isRenewable: { type: Boolean, default: false },
   used: { type: Boolean, default: false },

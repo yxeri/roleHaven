@@ -501,10 +501,10 @@ function unfollow({
 /**
  * Follow a new room on the user.
  * @param {Object} params - Parameters.
- * @param {string} params.roomId - ID of the room to follow.
+ * @param {string} params.roomId - Id of the room to follow.
  * @param {Function} params.callback - Callback.
  * @param {Object} params.io - Socket.io. Used if socket is not set.
- * @param {string} [params.aliasId] - ID of the alias that the user is using to follow the room.
+ * @param {string} [params.aliasId] - Id of the alias that the user is using to follow the room.
  * @param {Object} [params.socket] - Socket.io socket.
  * @param {string} [params.password] - Password to the room.
  */
@@ -529,13 +529,13 @@ function followRoom({
         return;
       }
 
-      const authUser = data.user;
+      const { user } = data;
 
       const roomCallback = () => {
         getAccessibleRoom({
           roomId,
           password,
-          user: authUser,
+          user,
           callback: (accessData) => {
             if (accessData.error) {
               callback({ error: accessData.error });
@@ -548,8 +548,8 @@ function followRoom({
               socket,
               io,
               callback,
-              userId: aliasId || authUser.userId,
-              user: authUser,
+              user,
+              userId: aliasId || userId,
             });
           },
         });
@@ -558,7 +558,7 @@ function followRoom({
       if (aliasId) {
         aliasManager.getAccessibleAlias({
           aliasId,
-          user: authUser,
+          user,
           callback: ({ error: aliasError }) => {
             if (aliasError) {
               callback({ error: aliasError });

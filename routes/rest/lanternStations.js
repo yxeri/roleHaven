@@ -35,7 +35,7 @@ function handle(io) {
    * @apiName DeleteLanternStation
    * @apiGroup LanternStations
    *
-   * @apiHeader {String} Authorization Your JSON Web Token
+   * @apiHeader {string} Authorization Your JSON Web Token
    *
    * @apiDescription Delete existing lantern team
    *
@@ -77,7 +77,7 @@ function handle(io) {
    * @apiName GetLanternStations
    * @apiGroup LanternStations
    *
-   * @apiHeader {String} Authorization Your JSON Web Token
+   * @apiHeader {string} Authorization Your JSON Web Token
    *
    * @apiDescription Get lantern stations
    *
@@ -123,7 +123,7 @@ function handle(io) {
    * @apiName GetLanternStation
    * @apiGroup LanternStations
    *
-   * @apiHeader {String} Authorization Your JSON Web Token
+   * @apiHeader {string} Authorization Your JSON Web Token
    *
    * @apiDescription Get lantern station
    *
@@ -170,7 +170,7 @@ function handle(io) {
    * @apiName CreateLanternStation
    * @apiGroup LanternStations
    *
-   * @apiHeader {String} Authorization Your JSON Web Token
+   * @apiHeader {string} Authorization Your JSON Web Token
    *
    * @apiDescription Create a lantern station
    *
@@ -235,7 +235,7 @@ function handle(io) {
    * @apiName UpdateLanternStation
    * @apiGroup LanternStations
    *
-   * @apiHeader {String} Authorization Your JSON Web Token
+   * @apiHeader {string} Authorization Your JSON Web Token
    *
    * @apiDescription Update an existing lantern station
    *

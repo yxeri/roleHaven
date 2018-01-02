@@ -29,7 +29,7 @@ const mapPositionSchema = new mongoose.Schema(dbConnector.createSchema({
   positionType: { type: String, default: dbConfig.PositionTypes.WORLD },
   description: { type: [String], default: [] },
   radius: { type: Number, default: 0 },
-  isStatic: { type: Boolean, default: false },
+  isStationary: { type: Boolean, default: false },
 }), { collection: 'mapPositions' });
 
 const MapPosition = mongoose.model('MapPosition', mapPositionSchema);
@@ -256,7 +256,7 @@ function updatePositionCoordinates({ positionId, coordinates, callback }) {
  * @param {string} [params.position.ownerAliasId] - ID of the user's alias
  * @param {string} params.position.positionType - Type of position
  * @param {string} [params.position.deviceId] - Device ID
- * @param {boolean} [params.position.isStatic] - Is the position static? (most commonly used on everything non-user)
+ * @param {boolean} [params.position.isStationary] - Is the position stationary? (most commonly used on everything non-user)
  * @param {boolean} [params.position.isPublic] - Is the position public?
  * @param {string[]} [params.position.text] - Position text description
  * @param {string} [params.position.connectedToUser] - ID of the user that the position represents
@@ -274,7 +274,7 @@ function updatePosition({
     deviceId,
     positionName,
     ownerAliasId,
-    isStatic,
+    isStationary,
     positionType,
     text,
     isPublic,
@@ -329,7 +329,7 @@ function updatePosition({
   if (connectedToUser) { update.$set.connectedToUser = connectedToUser; }
 
   if (typeof isPublic !== 'undefined') { update.$set.isPublic = isPublic; }
-  if (typeof isStatic !== 'undefined') { update.$set.isStatic = isStatic; }
+  if (typeof isStationary !== 'undefined') { update.$set.isStationary = isStationary; }
 
   if (resetConnectedToUser) {
     update.$unset.connectedToUser = '';

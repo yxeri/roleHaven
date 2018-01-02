@@ -27,29 +27,29 @@ const router = new express.Router();
 
 
 /**
- * @param {object} io - Socket.IO
+ * @param {object} io Socket.IO
  * @returns {Object} Router
  */
 function handle(io) {
   /**
-   * @api {put} /threads/:threadId Update a forum thread.
+   * @api {put} /threads/:threadId Update a forum thread
    * @apiVersion 8.0.0
    * @apiName UpdateThread
    * @apiGroup Forums
    *
-   * @apiHeader {String} Authorization - Your JSON Web Token.
+   * @apiHeader {string} Authorization Your JSON Web Token.
    *
    * @apiDescription Update a forum thread.
    *
-   * @apiParam {String} threadId - Id of the forum thread to update.
+   * @apiParam {string} threadId Id of the forum thread to update.
    *
-   * @apiParam {String} data
-   * @apiParam {String} data.thread - Forum thread parameters to update.
-   * @apiParam {String} [data.options] - Update options.
-   * @apiParam {Object} [data.userId] - Id of the user updating the thread. It will default to the token's user Id.
+   * @apiParam {string} data
+   * @apiParam {string} data.thread Forum thread parameters to update.
+   * @apiParam {string} [data.options] Update options.
+   * @apiParam {Object} [data.userId] Id of the user updating the thread. It will default to the token's user Id.
    *
    * @apiSuccess {Object} data
-   * @apiSuccess {Object} data.post - Updated thread.
+   * @apiSuccess {Object} data.post Updated thread.
    */
   router.put('/:threadId', (request, response) => {
     if (!objectValidator.isValidData(request.params, { threadId: true })) {
@@ -90,22 +90,22 @@ function handle(io) {
   });
 
   /**
-   * @api {post} /:threadId/posts Create a forum thread post.
+   * @api {post} /:threadId/posts Create a forum thread post
    * @apiVersion 8.0.0
    * @apiName CreatePost
    * @apiGroup Forums
    *
-   * @apiHeader {String} Authorization - Your JSON Web Token.
+   * @apiHeader {string} Authorization Your JSON Web Token.
    *
    * @apiDescription Create a forum post.
    *
-   * @apiParam {string} threadId - Id of the forum thread to create a post for.
+   * @apiParam {string} threadId Id of the forum thread to create a post for.
    *
    * @apiParam {Object} data
-   * @apiParam {Object} data.post - Forum post to create.
+   * @apiParam {Object} data.post Forum post to create.
    *
    * @apiSuccess {Object} data
-   * @apiSuccess {Object} data.post - Created forum post.
+   * @apiSuccess {Object} data.post Created forum post.
    */
   router.post('/:threadId/posts', (request, response) => {
     if (!objectValidator.isValidData(request.params, { threadId: true })) {
@@ -140,22 +140,22 @@ function handle(io) {
   });
 
   /**
-   * @api {delete} /threads/:threadId Delete a forum thread.
+   * @api {delete} /threads/:threadId Delete a forum thread
    * @apiVersion 8.0.0
    * @apiName RemoveThread
    * @apiGroup Forums
    *
-   * @apiHeader {String} Authorization - Your JSON Web Token.
+   * @apiHeader {string} Authorization Your JSON Web Token.
    *
    * @apiDescription Delete a forum thread.
    *
-   * @apiParam {Object} threadId - Id of the forum thread to remove.
+   * @apiParam {Object} threadId Id of the forum thread to remove.
    *
    * @apiParam {Object} [data]
-   * @apiParam {Object} [data.userId] - Id of the user trying to remove a forum thread. It will default to the token's user Id.
+   * @apiParam {Object} [data.userId] Id of the user trying to remove a forum thread. It will default to the token's user Id.
    *
    * @apiSuccess {Object} data
-   * @apiSuccess {Object} data.success - Was the thread successfully removed?
+   * @apiSuccess {Object} data.success Was the thread successfully removed?
    */
   router.delete('/:threadId', (request, response) => {
     if (!objectValidator.isValidData(request.params, { threadId: true })) {
@@ -186,22 +186,22 @@ function handle(io) {
   });
 
   /**
-   * @api {get} /threads/:threadId Get a forum thread.
+   * @api {get} /threads/:threadId Get a forum thread
    * @apiVersion 8.0.0
    * @apiName GetThread
    * @apiGroup Forums
    *
-   * @apiHeader {String} Authorization - Your JSON Web Token.
+   * @apiHeader {string} Authorization Your JSON Web Token.
    *
    * @apiDescription Get a forum thread that the user has access to.
    *
-   * @apiParam {Object} threadId - Id of the thread to retrieve.
+   * @apiParam {Object} threadId Id of the thread to retrieve.
    *
    * @apiParam {Object} [data]
-   * @apiParam {Object} [data.userId] - Id of the user retrieving the forum thread.
+   * @apiParam {Object} [data.userId] Id of the user retrieving the forum thread.
    *
    * @apiSuccess {Object} data
-   * @apiSuccess {Object} data.post - Forum thread found.
+   * @apiSuccess {Object} data.post Forum thread found.
    */
   router.get('/:threadId', (request, response) => {
     if (!objectValidator.isValidData(request.params, { threadId: true })) {
@@ -231,22 +231,22 @@ function handle(io) {
   });
 
   /**
-   * @api {get} /threads/:threadId/posts Get forum thread posts.
+   * @api {get} /threads/:threadId/posts Get posts from thread
    * @apiVersion 8.0.0
    * @apiName GetThreadPosts
    * @apiGroup Forums
    *
-   * @apiHeader {String} Authorization - Your JSON Web Token.
+   * @apiHeader {string} Authorization Your JSON Web Token.
    *
    * @apiDescription Get forum thread posts.
    *
-   * @apiParam {Object} threadId - Id of the thread to retrieve posts from.
+   * @apiParam {Object} threadId Id of the thread to retrieve posts from.
    *
    * @apiParam {Object} [data]
-   * @apiParam {Object} [data.userId] - Id of the user retrieving the forum posts.
+   * @apiParam {Object} [data.userId] Id of the user retrieving the forum posts.
    *
    * @apiSuccess {Object} data
-   * @apiSuccess {Object[]} data.posts - Forum posts found.
+   * @apiSuccess {Object[]} data.posts Forum posts found.
    */
   router.get('/:threadId', (request, response) => {
     if (!objectValidator.isValidData(request.params, { threadId: true })) {

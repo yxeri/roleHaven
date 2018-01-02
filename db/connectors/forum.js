@@ -19,14 +19,8 @@ const errorCreator = require('../../objects/error/errorCreator');
 const dbConnector = require('../databaseConnector');
 const dbForumThread = require('./forumThread');
 
-const ForumObjectTypes = {
-  FORUM: 'forum',
-  POST: 'post',
-  THREAD: 'thread',
-};
-
 const forumSchema = new mongoose.Schema(dbConnector.createSchema({
-  title: String,
+  title: { type: String, unique: true },
   threadIds: { type: [String], default: [] },
   text: { type: [String], default: [] },
 }), { collection: 'forums' });
@@ -165,7 +159,7 @@ function createForum({ forum, callback }) {
 
       dbConnector.saveObject({
         object: new Forum(forum),
-        objectType: ForumObjectTypes.FORUM,
+        objectType: 'forum',
         callback: (forumData) => {
           if (forumData.error) {
             callback({ error: forumData.error });

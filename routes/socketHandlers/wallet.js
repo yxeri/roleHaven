@@ -32,8 +32,8 @@ function handle(socket, io) {
     });
   });
 
-  socket.on('getTransactions', ({ owner, token }, callback = () => {}) => {
-    transactionManager.getTransactions({
+  socket.on('getTransactionsByWallet', ({ owner, token }, callback = () => {}) => {
+    transactionManager.getTransactionsByWallet({
       owner,
       token,
       callback,

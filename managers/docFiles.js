@@ -135,7 +135,7 @@ function createDocFile({
         callback({ error: new errorCreator.InvalidData({ expected: '{ docFile: { code, text, title } }' }) });
 
         return;
-      } else if (!textTools.hasAllowedText(docFile.code) || docFile.code.length > appConfig.docFileCodeMaxLength || docFile.code === '') {
+      } else if (docFile.code && (!textTools.hasAllowedText(docFile.code) || docFile.code.length > appConfig.docFileCodeMaxLength || docFile.code === '')) {
         callback({ error: new errorCreator.InvalidCharacters({ expected: `Alphanumeric ${docFile.code}. Code length: ${appConfig.docFileCodeMaxLength}` }) });
 
         return;
@@ -149,14 +149,15 @@ function createDocFile({
         return;
       }
 
-      const authUser = data.user;
+      const { user } = data;
       const newDocFile = docFile;
-      newDocFile.ownerId = authUser.userId;
+      newDocFile.ownerId = user.userId;
+      newDocFile.code = newDocFile.code || textTools.generateTextCode();
 
       if (docFile.ownerAliasId) {
         aliasManager.getAccessibleAlias({
           token,
-          user: authUser,
+          user,
           aliasId: docFile.ownerAliasId,
           callback: (aliasData) => {
             if (aliasData.error) {

@@ -66,6 +66,15 @@ function getAccessibleInvitation({
   });
 }
 
+/**
+ * Remove an invitation.
+ * @param {Object} params - Parameters.
+ * @param {string} params.userId - Id of the user removing the invitation.
+ * @param {string} params.token - jwt.
+ * @param {Function} params.callback - Callback.
+ * @param {Object} params.io - Socket.io.
+ * @param {string} params.invitationId - Id of the invitation to remove.
+ */
 function removeInvitation({
   userId,
   token,

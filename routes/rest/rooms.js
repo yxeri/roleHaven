@@ -22,37 +22,36 @@ const messageManager = require('../../managers/messages');
 const objectValidator = require('../../utils/objectValidator');
 const restErrorChecker = require('../../helpers/restErrorChecker');
 const errorCreator = require('../../objects/error/errorCreator');
-const dbConfig = require('../../config/defaults/config').databasePopulation;
 
 const router = new express.Router();
 
 /**
- * @param {object} io - Socket.IO
+ * @param {object} io Socket.IO
  * @returns {Object} Router
  */
 function handle(io) {
   /**
-   * @api {get} /rooms/:roomId/messages Get messages from a room.
+   * @api {get} /rooms/:roomId/messages Get messages from a room
    * @apiVersion 8.0.0
    * @apiName GetMessages
-   * @apiGroup Rooms
+   * @apiGroup Messages
    *
-   * @apiHeader {String} Authorization Your JSON Web Token.
+   * @apiHeader {string} Authorization Your JSON Web Token.
    *
    * @apiDescription Retrieve messages from a room.
    *
-   * @apiParam {String} roomId - Id of the room.
+   * @apiParam {string} roomId Id of the room.
    *
    * @apiParam {Object} data
-   * @apiParam {Date} [data.startDate] - The cut off date for retrieving past/future messages.
-   * @apiParam {Date} [data.shouldGetFuture] - Should messages from the future be retrieved? startDate is the date that is the start of the retrieval.
+   * @apiParam {Date} [data.startDate] The cut off date for retrieving past/future messages.
+   * @apiParam {Date} [data.shouldGetFuture] Should messages from the future be retrieved? startDate is the date that is the start of the retrieval.
    *
    * @apiSuccess {Object} data
-   * @apiSuccess {Object[]} data.messages - Found messages.
+   * @apiSuccess {Object[]} data.messages Found messages.
    */
   router.get('/:roomId/messages', (request, response) => {
     if (!objectValidator.isValidData(request.params, { roomId: true })) {
-      restErrorChecker.checkAndSendError({ response, error: new errorCreator.InvalidData({ expected: '{ roomId }' }), sentData: request.params });
+      restErrorChecker.checkAndSendError({ response, error: new errorCreator.InvalidData({ expected: 'params = { roomId }' }) });
 
       return;
     }
@@ -80,20 +79,20 @@ function handle(io) {
   });
 
   /**
-   * @api {get} /rooms Get rooms.
+   * @api {get} /rooms Get rooms
    * @apiVersion 8.0.0
    * @apiName GetRooms
    * @apiGroup Rooms
    *
-   * @apiHeader {String} Authorization - Your JSON Web Token.
+   * @apiHeader {string} Authorization Your JSON Web Token.
    *
    * @apiDescription Get rooms.
    *
    * @apiParam {Object} data
-   * @apiParam {string} [data.userId] - Id of the user retrieving the rooms.
+   * @apiParam {string} [data.userId] Id of the user retrieving the rooms.
    *
    * @apiSuccess {Object} data
-   * @apiSuccess {Object} data.rooms - Found rooms.
+   * @apiSuccess {Object[]} data.rooms Found rooms.
    */
   router.get('/', (request, response) => {
     const { authorization: token } = request.headers;
@@ -115,26 +114,26 @@ function handle(io) {
   });
 
   /**
-   * @api {get} /rooms/:roomId Get a room.
+   * @api {get} /rooms/:roomId Get a room
    * @apiVersion 8.0.0
    * @apiName GetRoom
    * @apiGroup Rooms
    *
-   * @apiHeader {string} Authorization - Your JSON Web Token.
+   * @apiHeader {string} Authorization Your JSON Web Token.
    *
    * @apiDescription Retrieve a room.
    *
-   * @apiParam {string} roomId - Id of the room to retrieve.
+   * @apiParam {string} roomId Id of the room to retrieve.
    *
-   * @apiParam {Object} data - Id of the room to retrieve.
-   * @apiParam {string} [data.userId] - Id of the user retrieving the room.
+   * @apiParam {Object} data
+   * @apiParam {string} [data.userId] Id of the user retrieving the room.
    *
    * @apiSuccess {Object} data
-   * @apiSuccess {Object} data.room - Found room.
+   * @apiSuccess {Room} data.room Found room.
    */
   router.get('/:roomId', (request, response) => {
     if (!objectValidator.isValidData(request.params, { roomId: true })) {
-      restErrorChecker.checkAndSendError({ response, error: new errorCreator.InvalidData({ expected: '{ roomId }' }), sentData: request.params });
+      restErrorChecker.checkAndSendError({ response, error: new errorCreator.InvalidData({ expected: 'params = { roomId }' }) });
 
       return;
     }
@@ -160,28 +159,24 @@ function handle(io) {
   });
 
   /**
-   * @api {post} /rooms Create a room.
+   * @api {post} /rooms Create a room
    * @apiVersion 8.0.0
    * @apiName CreateRoom
    * @apiGroup Rooms
    *
-   * @apiHeader {String} Authorization - Your JSON Web Token.
+   * @apiHeader {string} Authorization Your JSON Web Token.
    *
    * @apiDescription Create a room.
    *
    * @apiParam {Object} data
-   * @apiParam {Object} data.room - The room to create.
+   * @apiParam {Room} data.room The room to create.
    *
    * @apiSuccess {Object} data
-   * @apiSuccess {Object} data.room - Room created.
+   * @apiSuccess {Room} data.room Room created.
    */
   router.post('/', (request, response) => {
-    if (!objectValidator.isValidData(request.body, { data: { room: { roomId: true } } })) {
-      restErrorChecker.checkAndSendError({ response, error: new errorCreator.InvalidData({ expected: '{ data: { room: { roomId } } }' }), sentData: request.body.data });
-
-      return;
-    } else if ((!request.body.data.options || !request.body.data.options.shouldSetIdToName) && !request.body.data.roomName) {
-      restErrorChecker.checkAndSendError({ response, error: new errorCreator.InvalidData({ expected: 'set roomId or shouldSetIdToName' }), sentData: request.body.data });
+    if (!objectValidator.isValidData(request.body, { data: { room: true } })) {
+      restErrorChecker.checkAndSendError({ response, error: new errorCreator.InvalidData({ expected: 'data = { room }' }), sentData: request.body.data });
 
       return;
     }
@@ -195,6 +190,107 @@ function handle(io) {
       io,
       userId,
       options,
+      callback: ({ error, data }) => {
+        if (error) {
+          restErrorChecker.checkAndSendError({ response, error, sentData: request.body.data });
+
+          return;
+        }
+
+        response.json({ data });
+      },
+    });
+  });
+
+  /**
+   * @api {put} /rooms/:roomId Update a room
+   * @apiVersion 8.0.0
+   * @apiName UpdateRoom
+   * @apiGroup Rooms
+   *
+   * @apiHeader {string} Authorization Your JSON Web Token.
+   *
+   * @apiDescription Update a room.
+   *
+   * @apiParam {string} roomId Id of the room to update.
+   *
+   * @apiParam {Object} data
+   * @apiParam {Room} data.room Room parameters to update.
+   * @apiParam {Object} [data.options] Update options.
+   *
+   * @apiSuccess {Object} data
+   * @apiSuccess {Room} data.room Updated room.
+   */
+  router.put('/:roomId', (request, response) => {
+    if (!objectValidator.isValidData(request.params, { roomId: true })) {
+      restErrorChecker.checkAndSendError({ response, error: new errorCreator.InvalidData({ expected: 'params = { roomId }' }) });
+
+      return;
+    } else if (!objectValidator.isValidData(request.body, { data: { room: true } })) {
+      restErrorChecker.checkAndSendError({ response, error: new errorCreator.InvalidData({ expected: 'data = { room }' }), sentData: request.body.data });
+
+      return;
+    }
+
+    const {
+      room,
+      options,
+    } = request.body.data;
+    const { roomId } = request.params;
+    const { authorization: token } = request.headers;
+
+    roomManager.updateRoom({
+      room,
+      options,
+      io,
+      roomId,
+      token,
+      callback: ({ error, data }) => {
+        if (error) {
+          restErrorChecker.checkAndSendError({ response, error, sentData: request.body.data });
+
+          return;
+        }
+
+        response.json({ data });
+      },
+    });
+  });
+
+  /**
+   * @api {delete} /rooms/:roomId Delete a room
+   * @apiVersion 8.0.0
+   * @apiName DeleteRoom
+   * @apiGroup Rooms
+   *
+   * @apiHeader {string} Authorization Your JSON Web Token.
+   *
+   * @apiDescription Delete a room.
+   *
+   * @apiParam {Object} roomId Id of the room to delete.
+   *
+   * @apiParam {Object} [data]
+   * @apiParam {Object} [data.userId] Id of the user deleting the room.
+   *
+   * @apiSuccess {Object} data
+   * @apiSuccess {Object} data.success Was the room successfully deleted?
+   */
+  router.delete('/:roomId', (request, response) => {
+    if (!objectValidator.isValidData(request.params, { roomId: true })) {
+      restErrorChecker.checkAndSendError({ response, error: new errorCreator.InvalidData({ expected: 'params = { roomId }' }) });
+
+      return;
+    }
+
+    const { userId } = request.body.data;
+    const { roomId } = request.params;
+    const { authorization: token } = request.headers;
+
+    roomManager.removeRoom({
+      userId,
+      io,
+      roomId,
+      token,
       callback: ({ error, data }) => {
         if (error) {
           restErrorChecker.checkAndSendError({ response, error, sentData: request.body.data });

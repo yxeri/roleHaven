@@ -164,7 +164,7 @@ function handle() {
    * @apiName GetGameUsers
    * @apiGroup GameItems
    *
-   * @apiHeader {String} Authorization Your JSON Web Token
+   * @apiHeader {string} Authorization Your JSON Web Token
    *
    * @apiDescription Get game users by station ID
    *
@@ -209,7 +209,7 @@ function handle() {
    * @apiName GetFakePasswords
    * @apiGroup GameItems
    *
-   * @apiHeader {String} Authorization Your JSON Web Token
+   * @apiHeader {string} Authorization Your JSON Web Token
    *
    * @apiDescription Get fake passwords
    *

@@ -35,7 +35,7 @@ function handle(io) {
    * @apiName GetCalibrationMissions
    * @apiGroup CalibrationMissions
    *
-   * @apiHeader {String} Authorization Your JSON Web Token
+   * @apiHeader {string} Authorization Your JSON Web Token
    *
    * @apiDescription Get all calibration missions
    *
@@ -80,7 +80,7 @@ function handle(io) {
    * @apiName RemoveCalibrationMissionsByStationId
    * @apiGroup CalibrationMissions
    *
-   * @apiHeader {String} Authorization Your JSON Web Token
+   * @apiHeader {string} Authorization Your JSON Web Token
    *
    * @apiDescription Delete all calibration missions for a specific station
    *
@@ -131,7 +131,7 @@ function handle(io) {
    * @apiName GetActiveCalibrationMissions
    * @apiGroup CalibrationMissions
    *
-   * @apiHeader {String} Authorization Your JSON Web Token
+   * @apiHeader {string} Authorization Your JSON Web Token
    *
    * @apiDescription Get all active calibration missions
    *

@@ -345,10 +345,10 @@ function updateOnline({
 }
 
 /**
- * Update user
- * @param {Object} params - Parameters
- * @param {Object} params.user - User update
- * @param {Function} params.callback - Callback
+ * Update a user.
+ * @param {Object} params - Parameters.
+ * @param {Object} params.user - User parameters to update.
+ * @param {Function} params.callback - Callback.
  */
 function updateUser({ userId, user, callback }) {
   const {

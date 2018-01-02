@@ -18,7 +18,6 @@
 
 const express = require('express');
 const objectValidator = require('../../utils/objectValidator');
-const walletManager = require('../../managers/wallets');
 const transactionManager = require('../../managers/transactions');
 const restErrorChecker = require('../../helpers/restErrorChecker');
 const errorCreator = require('../../objects/error/errorCreator');
@@ -31,72 +30,182 @@ const router = new express.Router();
  */
 function handle(io) {
   /**
-   * @api {post} /wallets/:walletId/transactions Create a transaction
+   * @api {post} /transactions Create a transaction
    * @apiVersion 8.0.0
    * @apiName CreateTransaction
-   * @apiGroup Wallets
+   * @apiGroup Transactions
    *
-   * @apiHeader {String} Authorization - Your JSON Web Token
+   * @apiHeader {string} Authorization Your JSON Web Token.
    *
-   * @apiDescription Create a transaction
+   * @apiDescription Create a transaction.
    *
    * @apiParam {Object} data
-   * @apiParam {Object} data.transaction Transaction
-   * @apiParam {string} data.transaction.to User or team name of the receiver
-   * @apiParam {string} data.transaction.amount Amount to transfer
-   * @apiParam {string} [data.transaction.note] Note to the receiver
-   * @apiParam {Object} [data.transaction.coordinates] GPS coordinates to where the transaction was made
-   * @apiParam {number} data.transaction.coordinates.longitude Longitude
-   * @apiParam {number} data.transaction.coordinates.latitude Latitude
-   * @apiParam {number} [data.isTeamWallet] Should the transaction be created on the user's team?
-   * @apiParamExample {json} Request-Example:
-   *   {
-     *    "data": {
-     *      "transaction": {
-     *        "to": "baz",
-     *        "amount": 10,
-     *        "note": "Bounty payment",
-     *        "coordinates": {
-     *          "longitude": 10.11,
-     *          "latitude": 12.4443
-     *        }
-     *      }
-     *    }
-     *  }
+   * @apiParam {Transaction} data.transaction Transaction to create.
    *
    * @apiSuccess {Object} data
-   * @apiSuccess {Object} data.transaction Transaction created
-   * @apiSuccess {Object} data.wallet Wallet with new amount after transfer
-   * @apiSuccessExample {json} Success-Response:
-   *   {
-     *    "data": {
-     *      "transaction": {
-     *        "to": "baz",
-     *        "amount": 10,
-     *        "note": "Bounty payment",
-     *        "coordinates": {
-     *          "longitude": 10.11,
-     *          "latitude": 12.4443
-     *        }
-     *      },
-     *      "wallet": {
-     *        "amount": 23
-     *      }
-     *    }
-     *  }
+   * @apiSuccess {Transaction} data.transaction Created transaction.
+   * @apiSuccess {Wallet} data.wallet Updated sender wallet.
    */
-  router.post('/:owner/transactions', (request, response) => {
-    if (!objectValidator.isValidData(request.body, { data: { transaction: { to: true, amount: true } } }) || isNaN(request.body.data.transaction.amount)) {
-      restErrorChecker.checkAndSendError({ response, error: new errorCreator.InvalidData({ expected: '' }), sentData: request.body.data });
+  router.post('/transactions', (request, response) => {
+    if (!objectValidator.isValidData(request.body.data, { transaction: { toWalletId: true, fromWalletId: true, amount: true } })) {
+      restErrorChecker.checkAndSendError({ response, error: new errorCreator.InvalidData({ expected: 'data = { transaction: { toWalletId, fromWalletId, amount }' }), sentData: request.body.data });
 
       return;
     }
 
+    const { transaction } = request.body.data;
+    const { authorization: token } = request.headers;
+
     transactionManager.createTransactionBasedOnToken({
       io,
-      transaction: request.body.data.transaction,
-      fromTeam: request.body.data.isTeamWallet,
-      token: request.headers.authorization,
+      transaction,
+      token,
+      callback: ({ error, data }) => {
+        if (error) {
+          restErrorChecker.checkAndSendError({ response, error, sentData: request.body.data });
+
+          return;
+        }
+
+        response.json({ data });
+      },
+    });
+  });
+
+  /**
+   * @api {get} /transactions/:transactionId Get a transaction
+   * @apiVersion 8.0.0
+   * @apiName GetTransaction
+   * @apiGroup Transactions
+   *
+   * @apiHeader {string} Authorization Your JSON Web Token.
+   *
+   * @apiDescription Get a transaction that the user has access to.
+   *
+   * @apiParam {string} transactionId Id of the transaction to retrieve.
+   *
+   * @apiParam {Object} [data]
+   * @apiParam {string} [data.userId] Id of the user retrieving the transaction.
+   *
+   * @apiSuccess {Object} data
+   * @apiSuccess {Transaction} data.transaction Transaction found.
+   */
+  router.get('/:transactionId', (request, response) => {
+    if (!objectValidator.isValidData(request.params, { transactionId: true })) {
+      restErrorChecker.checkAndSendError({ response, error: new errorCreator.InvalidData({ expected: 'params = { transactionId }' }) });
+
+      return;
+    }
+
+    const { userId } = request.body.data;
+    const { transactionId } = request.params;
+    const { authorization: token } = request.headers;
+
+    transactionManager.getTransactionById({
+      userId,
+      transactionId,
+      token,
+      callback: ({ error, data }) => {
+        if (error) {
+          restErrorChecker.checkAndSendError({ response, error, sentData: request.body.data });
+
+          return;
+        }
+
+        response.json({ data });
+      },
+    });
+  });
+
+  /**
+   * @api {delete} /transactions/:transactionId Delete a transaction
+   * @apiVersion 8.0.0
+   * @apiName DeleteTransaction
+   * @apiGroup Transactions
+   *
+   * @apiHeader {string} Authorization Your JSON Web Token.
+   *
+   * @apiDescription Delete a transaction.
+   *
+   * @apiParam {string} transactionId Id of the transaction to delete.
+   *
+   * @apiParam {Object} [data]
+   * @apiParam {string} [data.userId] Id of the user deleting the transaction.
+   *
+   * @apiSuccess {Object} data
+   * @apiSuccess {boolean} data.success Was it successfully deleted?
+   */
+  router.delete('/:transactionId', (request, response) => {
+    if (!objectValidator.isValidData(request.params, { transactionId: true })) {
+      restErrorChecker.checkAndSendError({ response, error: new errorCreator.InvalidData({ expected: 'params = { transactionId }' }) });
+
+      return;
+    }
+
+    const { userId } = request.body.data;
+    const { transactionId } = request.params;
+    const { authorization: token } = request.headers;
+
+    transactionManager.removeTransaction({
+      userId,
+      io,
+      transactionId,
+      token,
+      callback: ({ error, data }) => {
+        if (error) {
+          restErrorChecker.checkAndSendError({ response, error, sentData: request.body.data });
+
+          return;
+        }
+
+        response.json({ data });
+      },
+    });
+  });
+
+  /**
+   * @api {put} /transactions/:transactionId Update a transaction
+   * @apiVersion 8.0.0
+   * @apiName UpdateTransaction
+   * @apiGroup Transactions
+   *
+   * @apiHeader {string} Authorization Your JSON Web Token.
+   *
+   * @apiDescription Update a device.
+   *
+   * @apiParam {string} transactionId Id of the transaction to update.
+   *
+   * @apiParam {Object} data
+   * @apiParam {Transaction} data.transaction Transaction parameters to update.
+   * @apiParam {Object} [data.options] Update options.
+   *
+   * @apiSuccess {Object} data
+   * @apiSuccess {Transaction} data.transaction Updated transaction.
+   */
+  router.put('/:transactionId', (request, response) => {
+    if (!objectValidator.isValidData(request.params, { deviceId: true })) {
+      restErrorChecker.checkAndSendError({ response, error: new errorCreator.InvalidData({ expected: 'params = { transactionId }' }) });
+
+      return;
+    } else if (!objectValidator.isValidData(request.body, { data: { transaction: true } })) {
+      restErrorChecker.checkAndSendError({ response, error: new errorCreator.InvalidData({ expected: 'data = { transaction }' }), sentData: request.body.data });
+
+      return;
+    }
+
+    const {
+      transaction,
+      options,
+    } = request.body.data;
+    const { transactionId } = request.params;
+    const { authorization: token } = request.headers;
+
+    transactionManager.updateTransaction({
+      transaction,
+      options,
+      io,
+      transactionId,
+      token,
       callback: ({ error, data }) => {
         if (error) {
           restErrorChecker.checkAndSendError({ response, error, sentData: request.body.data });

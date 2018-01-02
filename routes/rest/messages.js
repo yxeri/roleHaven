@@ -26,36 +26,36 @@ const dbConfig = require('../../config/defaults/config').databasePopulation;
 const router = new express.Router();
 
 /**
- * @param {Object} io - Socket.io.
+ * @param {Object} io Socket.io.
  * @returns {Object} Router
  */
 function handle(io) {
   /**
-   * @api {put} /messages/:messageId Update a message.
+   * @api {put} /messages/:messageId Update a message
    * @apiVersion 8.0.0
    * @apiName UpdateMessage
    * @apiGroup Messages
    *
-   * @apiHeader {String} Authorization - Your JSON Web Token.
+   * @apiHeader {string} Authorization Your JSON Web Token.
    *
    * @apiDescription Update a message.
    *
-   * @apiParam {String} messageId - Id of the message to update.
+   * @apiParam {string} messageId Id of the message to update.
    *
-   * @apiParam {String} data
-   * @apiParam {String} data.message - Message parameters to update.
-   * @apiParam {String} [data.options] - Update options.
+   * @apiParam {Object} data
+   * @apiParam {Message} data.message Message parameters to update.
+   * @apiParam {Object} [data.options] Update options.
    *
    * @apiSuccess {Object} data
-   * @apiSuccess {Object} data.message - Updated message.
+   * @apiSuccess {Message} data.message Updated message.
    */
   router.put('/:messageId', (request, response) => {
     if (!objectValidator.isValidData(request.params, { messageId: true })) {
-      restErrorChecker.checkAndSendError({ response, error: new errorCreator.InvalidData({ expected: '{ messageId }' }), sentData: request.params });
+      restErrorChecker.checkAndSendError({ response, error: new errorCreator.InvalidData({ expected: 'params = { messageId }' }) });
 
       return;
     } else if (!objectValidator.isValidData(request.body, { data: { message: true } })) {
-      restErrorChecker.checkAndSendError({ response, error: new errorCreator.InvalidData({ expected: '{ data: { message } }' }), sentData: request.body.data });
+      restErrorChecker.checkAndSendError({ response, error: new errorCreator.InvalidData({ expected: 'data = { message }' }), sentData: request.body.data });
 
       return;
     }
@@ -86,26 +86,26 @@ function handle(io) {
   });
 
   /**
-   * @api {delete} /messages/:messageId Delete a message.
+   * @api {delete} /messages/:messageId Delete a message
    * @apiVersion 8.0.0
    * @apiName DeleteMessage
    * @apiGroup Messages
    *
-   * @apiHeader {String} Authorization - Your JSON Web Token.
+   * @apiHeader {string} Authorization Your JSON Web Token.
    *
    * @apiDescription Delete a message.
    *
-   * @apiParam {Object} messageId - Id of the message to delete.
+   * @apiParam {string} messageId Id of the message to delete.
    *
    * @apiParam {Object} [data]
-   * @apiParam {Object} [data.userId] - Id of the user deleting the message.
+   * @apiParam {string} [data.userId] Id of the user deleting the message.
    *
    * @apiSuccess {Object} data
-   * @apiSuccess {Object} data.success - Was it successfully deleted?
+   * @apiSuccess {boolean} data.success Was the message successfully deleted?
    */
   router.delete('/:messageId', (request, response) => {
     if (!objectValidator.isValidData(request.params, { messageId: true })) {
-      restErrorChecker.checkAndSendError({ response, error: new errorCreator.InvalidData({ expected: '{ messageId }' }), sentData: request.params });
+      restErrorChecker.checkAndSendError({ response, error: new errorCreator.InvalidData({ expected: 'params = { messageId }' }) });
 
       return;
     }
@@ -132,28 +132,29 @@ function handle(io) {
   });
 
   /**
-   * @api {post} /messages Send a message.
+   * @api {post} /messages Send a message
    * @apiVersion 8.0.0
    * @apiName SendMessage
    * @apiGroup Messages
    *
-   * @apiHeader {String} Authorization Your JSON Web Token.
+   * @apiHeader {string} Authorization Your JSON Web Token.
    *
    * @apiDescription Send a message. Available messages types are:
-   * BROADCAST - This message will be transmitted to all users and ignores roomId.
-   * WHISPER - A private message sent to another user. participantIds has to contain the Id of the receiver and sender user.
-   * CHAT - Normal chat message sent to a room.
+   * BROADCAST This message will be transmitted to all users and ignores roomId.
+   * WHISPER A private message sent to another user. participantIds has to contain the Id of the receiver and sender user.
+   * CHAT Normal chat message sent to a room.
    *
    * @apiParam {Object} data
-   * @apiParam {Object} data.message - Message.
-   * @apiParam {Object} data.image - Image parameters to attach to the message.
+   * @apiParam {Message} data.message Message.
+   * @apiParam {string} data.messageType Type of message. Default is CHAT.
+   * @apiParam {Object} [data.image Image parameters to attach to the message.
    *
    * @apiSuccess {Object} data
-   * @apiSuccess {Object} data.message - Message sent.
+   * @apiSuccess {Message} data.message Sent message.
    */
   router.post('/', (request, response) => {
-    if (!objectValidator.isValidData(request.body, { data: { message: { roomId: true, text: true } } })) {
-      restErrorChecker.checkAndSendError({ response, error: new errorCreator.InvalidData({ expected: '{ data: { message: { roomId, text } } }' }), sentData: request.body.data });
+    if (!objectValidator.isValidData(request.body, { data: { message: { text: true } } })) {
+      restErrorChecker.checkAndSendError({ response, error: new errorCreator.InvalidData({ expected: 'data = { message: { text } } }' }), sentData: request.body.data });
 
       return;
     }

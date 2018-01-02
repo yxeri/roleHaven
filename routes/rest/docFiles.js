@@ -25,25 +25,38 @@ const errorCreator = require('../../objects/error/errorCreator');
 const router = new express.Router();
 
 /**
+ * @api {OBJECT DEFINITION} DocFile 1. DocFile definition
+ * @apiGroup DocFiles
+ * @apiVersion 8.0.0
+ *
+ * @apiDescription The DocFile object.
+ *
+ * @apiParam {string} docFileId [Unique, immutable] Id of the DocFile. It is used to target this specific object.
+ * @apiParam {string} code [Unique, mutable] Human-readable code to find and/or unlock the document for a user.
+ * @apiParam {string} title [Unique, mutable] Title of the document.
+ * @apiParam {string[]} text Text content in the document.
+ */
+
+/**
  * @param {object} io Socket.IO
  * @returns {Object} Router
  */
 function handle(io) {
   /**
-   * @api {get} /docFiles Get files.
+   * @api {get} /docFiles Get documents
    * @apiVersion 8.0.0
    * @apiName GetDocFiles
    * @apiGroup DocFiles
    *
-   * @apiHeader {String} Authorization - Your JSON Web Token.
+   * @apiHeader {string} Authorization Your JSON Web Token.
    *
-   * @apiDescription Retrieve files.
+   * @apiDescription Retrieve documents.
    *
    * @apiParam {Object} [data]
-   * @apiParam {Object} data.userId - Id of the user retrieving the files.
+   * @apiParam {string} data.userId Id of the user retrieving the document.
    *
    * @apiSuccess {Object} data
-   * @apiSuccess {Object[]} data.docFiles - Retrieved Files.
+   * @apiSuccess {DocFile[]} data.docFiles Found documents.
    */
   router.get('/', (request, response) => {
     const { userId } = request.body.data;
@@ -65,23 +78,23 @@ function handle(io) {
   });
 
   /**
-   * @api {get} /docFiles/:docFileId Get a file.
+   * @api {get} /docFiles/:docFileId Get a document
    * @apiVersion 8.0.0
    * @apiName GetDocFile
    * @apiGroup DocFiles
    *
-   * @apiHeader {String} Authorization - Your JSON Web Token.
+   * @apiHeader {string} Authorization Your JSON Web Token.
    *
-   * @apiDescription Retrieve a specific docFile based on the sent docFile ID.
+   * @apiDescription Retrieve a document.
    *
-   * @apiParam {String} docFileId - The docFile ID.
+   * @apiParam {string} docFileId The Id of the document to retrieve.
    *
    * @apiSuccess {Object} data
-   * @apiSuccess {Object} data.docFile - Found file.
+   * @apiSuccess {DocFile} data.docFile Found document.
    */
   router.get('/:docFileId', (request, response) => {
     if (!objectValidator.isValidData(request.params, { docFileId: true })) {
-      restErrorChecker.checkAndSendError({ response, error: new errorCreator.InvalidData({ expected: '' }), sentData: request.params });
+      restErrorChecker.checkAndSendError({ response, error: new errorCreator.InvalidData({ expected: 'params = { docFileId }' }) });
 
       return;
     }
@@ -105,25 +118,25 @@ function handle(io) {
   });
 
   /**
-   * @api {post} /docFiles Create a docFile.
+   * @api {post} /docFiles Create a document
    * @apiVersion 8.0.0
    * @apiName CreateDocFile
    * @apiGroup DocFiles
    *
-   * @apiHeader {String} Authorization - Your JSON Web Token.
+   * @apiHeader {string} Authorization Your JSON Web Token.
    *
-   * @apiDescription Create a file.
+   * @apiDescription Create a document.
    *
    * @apiParam {Object} data
-   * @apiParam {Object} data.docFile - File to create.
-   * @apiParam {Object} [data.userId] - Id of the user creating the file. It will default to the token owner.
+   * @apiParam {DocFile} data.docFile Document to create.
+   * @apiParam {string} [data.userId] Id of the user creating the document. It will default to the token owner.
    *
    * @apiSuccess {Object} data
-   * @apiSuccess {Object[]} data.docFile - The created file.
+   * @apiSuccess {DocFile[]} data.docFile The created document.
    */
   router.post('/', (request, response) => {
-    if (!objectValidator.isValidData(request.body, { data: { docFile: { docFileId: true, text: true, title: true } } })) {
-      restErrorChecker.checkAndSendError({ response, error: new errorCreator.InvalidData({ expected: '' }), sentData: request.body.data });
+    if (!objectValidator.isValidData(request.body, { data: { docFile: { code: true, text: true, title: true } } })) {
+      restErrorChecker.checkAndSendError({ response, error: new errorCreator.InvalidData({ expected: 'data = { docFile: { text, title } }' }), sentData: request.body.data });
 
       return;
     }
@@ -149,26 +162,26 @@ function handle(io) {
   });
 
   /**
-   * @api {delete} /docFiles/:docFileId Delete a file.
+   * @api {delete} /docFiles/:docFileId Delete a document
    * @apiVersion 8.0.0
    * @apiName RemoveDocFile
    * @apiGroup DocFiles
    *
-   * @apiHeader {String} Authorization - Your JSON Web Token.
+   * @apiHeader {string} Authorization Your JSON Web Token.
    *
-   * @apiDescription Get files that the user has access to.
+   * @apiDescription Delete a document.
    *
-   * @apiParam {Object} docFileId - Id of the file to retrieve.
+   * @apiParam {Object} docFileId Id of the document to retrieve.
    *
    * @apiParam {Object} [data]
-   * @apiParam {Object} [data.userId] - Id of the user retrieving the file.
+   * @apiParam {string} [data.userId] Id of the user deleting the document.
    *
    * @apiSuccess {Object} data
-   * @apiSuccess {Object} data.docFile - File found.
+   * @apiSuccess {DocFile} data.success Was the document successfully removed?
    */
   router.delete('/:docFileId', (request, response) => {
     if (!objectValidator.isValidData(request.params, { docFileId: true })) {
-      restErrorChecker.checkAndSendError({ response, error: new errorCreator.InvalidData({ expected: '' }), sentData: request.params });
+      restErrorChecker.checkAndSendError({ response, error: new errorCreator.InvalidData({ expected: 'params = { docFileId }' }) });
 
       return;
     }
@@ -195,31 +208,32 @@ function handle(io) {
   });
 
   /**
-   * @api {put} /docFiles/:docFileId Update a file.
+   * @api {put} /docFiles/:docFileId Update a document
    * @apiVersion 8.0.0
    * @apiName UpdateDocFile
    * @apiGroup DocFiles
    *
-   * @apiHeader {String} Authorization - Your JSON Web Token.
+   * @apiHeader {string} Authorization Your JSON Web Token.
    *
-   * @apiDescription Update a file.
+   * @apiDescription Update a document.
    *
-   * @apiParam {String} docFileId - Id of the file to update.
+   * @apiParam {string} docFileId Id of the document to update.
    *
-   * @apiParam {String} data
-   * @apiParam {String} data.docFile - File parameters to update.
-   * @apiParam {String} [data.options] - Update options.
+   * @apiParam {Object} data
+   * @apiParam {DocFile} data.docFile File parameters to update.
+   * @apiParam {Object} [data.options] Update options.
+   * @apiParam {boolean} [data.options.resetOwnerAliasId] Should the owner alias Id be removed?
    *
    * @apiSuccess {Object} data
-   * @apiSuccess {Object} data.docFile - Updated file.
+   * @apiSuccess {DocFile} data.docFile Updated document.
    */
   router.put('/:docFileId', (request, response) => {
     if (!objectValidator.isValidData(request.params, { docFileId: true })) {
-      restErrorChecker.checkAndSendError({ response, error: new errorCreator.InvalidData({ expected: '' }), sentData: request.params });
+      restErrorChecker.checkAndSendError({ response, error: new errorCreator.InvalidData({ expected: 'params = { docFileId }' }) });
 
       return;
     } else if (!objectValidator.isValidData(request.body, { data: { docFile: true } })) {
-      restErrorChecker.checkAndSendError({ response, error: new errorCreator.InvalidData({ expected: '' }), sentData: request.body.data });
+      restErrorChecker.checkAndSendError({ response, error: new errorCreator.InvalidData({ expected: 'data = { docFile }' }), sentData: request.body.data });
 
       return;
     }

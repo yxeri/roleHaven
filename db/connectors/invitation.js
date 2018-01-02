@@ -26,7 +26,6 @@ const invitationSchema = new mongoose.Schema(dbConnector.createSchema({
   itemId: String,
   senderId: String,
   senderAliasId: String,
-  onlyOne: { type: Boolean, default: true },
 }), { collection: 'invitations' });
 
 const Invitation = mongoose.model('Invitation', invitationSchema);

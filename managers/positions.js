@@ -24,10 +24,10 @@ const dbPosition = require('../db/connectors/position');
 const aliasManager = require('./aliases');
 
 /**
- * Get position by ID and check if the user has access to it.
+ * Get position by Id and check if the user has access to it.
  * @param {Object} params - Parameters.
  * @param {Object} params.user - User retrieving the position.
- * @param {string} params.positionId - ID of the alias to retrieve.
+ * @param {string} params.positionId - Id of the alias to retrieve.
  * @param {Function} params.callback - Callback.
  * @param {string} [params.errorContentText] - Text to be printed on error.
  * @param {boolean} [params.shouldBeAdmin] - Does the user have to be an admin?
@@ -62,49 +62,76 @@ function getAccessiblePosition({
 }
 
 /**
- * Get position from all users
- * @param {Object} params - Parameters
- * @param {string} params.token - jwt
- * @param {Function} params.callback - Callback
+ * Get positions that the user has access to.
+ * @param {Object} params - Parameters.
+ * @param {Object} params.user - User retrieving the positions.
+ * @param {Function} params.callback - Callback.
+ * @param {string} [params.errorContentText] - Text to be printed on error.
+ * @param {boolean} [params.shouldBeAdmin] - Does the user have to be an admin?
+ * @param {string} [params.positionType] - Type of positions to retrieve.
  */
-function getAllUserPositions({ token, callback }) {
-  authenticator.isUserAllowed({
-    token,
-    commandName: dbConfig.apiCommands.GetAll.name,
-    callback: ({ error }) => {
-      if (error) {
-        callback({ error });
+function getAccessiblePositions({
+  user,
+  callback,
+  shouldBeAdmin,
+  positionType,
+}) {
+  const accessCallback = (positionsData) => {
+    if (positionsData.error) {
+      callback({ error: positionsData.error });
 
-        return;
-      }
+      return;
+    }
 
-      dbPosition.getPositionsByType({
-        positionType: dbConfig.PositionTypes.USER,
-        callback: (positionsData) => {
-          if (positionsData.error) {
-            callback({ error: positionsData.error });
-
-            return;
-          }
-
-          callback(positionsData);
-        },
+    const positions = positionsData.data.positions.map((position) => {
+      return !authenticator.hasAccessTo({
+        shouldBeAdmin,
+        toAuth: user,
+        objectToAccess: position,
       });
-    },
-  });
+    });
+
+    callback({ data: { positions } });
+  };
+
+  switch (positionType) {
+    case dbConfig.PositionTypes.USER: {
+      dbPosition.getPositionsByType({
+        callback: accessCallback,
+        positionType,
+      });
+
+      break;
+    }
+    default: {
+      dbPosition.getPositionsByType({
+        positionType: dbConfig.PositionTypes.WORLD,
+        callback: accessCallback,
+      });
+
+      break;
+    }
+  }
 }
 
 /**
- * Get position from user
- * @param {Object} params - Parameters
- * @param {string} params.userId - ID of user to get position from
- * @param {string} params.token - jwt
- * @param {Function} params.callback - Callback
+ * Get position.
+ * @param {Object} params - Parameters.
+ * @param {string} params.token - jwt.
+ * @param {Function} params.callback - Callback.
+ * @param {string} params.positionId - Id of the position that will be retrieved.
+ * @param {string} [params.userId] - Id of user that is trying to retrieve a position.
  */
-function getUserPosition({ userId, token, callback }) {
+function getPositionById({
+  positionId,
+  userId,
+  token,
+  callback,
+}) {
   authenticator.isUserAllowed({
     token,
-    commandName: dbConfig.apiCommands.GetUserPosition.name,
+    matchToId: userId,
+    commandName: dbConfig.apiCommands.GetPositions.name,
     callback: ({ error, data }) => {
       if (error) {
         callback({ error });
@@ -112,23 +139,12 @@ function getUserPosition({ userId, token, callback }) {
         return;
       }
 
-      const userAccessLevel = data.user.accessLevel;
+      const { user } = data;
 
-      dbPosition.getUserPosition({
-        userId,
-        callback: (userData) => {
-          if (userData.error) {
-            callback({ error: userData.error });
-
-            return;
-          } else if (userAccessLevel >= userData.data.position.visibility) {
-            callback({ error: new errorCreator.NotAllowed({ name: `position for user ${userId}` }) });
-
-            return;
-          }
-
-          callback({ data: { position: userData.data.position } });
-        },
+      getAccessiblePosition({
+        user,
+        positionId,
+        callback,
       });
     },
   });
@@ -211,13 +227,14 @@ function updatePosition({
 }
 
 /**
- * Create position
- * @param {Object} params - Parameters
- * @param {Object} params.position - Position to create
- * @param {string} params.token - jwt
- * @param {Object} params.io - Socket io. Will be used if socket is not set
- * @param {Object} [params.socket] - Socket io
- * @param {Function} params.callback - Callback
+ * Create a position.
+ * @param {Object} params - Parameters.
+ * @param {Object} params.position - Position to create.
+ * @param {string} params.token - jwt.
+ * @param {Object} params.io - Socket.io. Will be used if socket is not set.
+ * @param {Function} params.callback - Callback.
+ * @param {Object} [params.socket] - Socket.io.
+ * @param {string} [params.userId] - Id of the user creating a position.
  */
 function createPosition({
   userId,
@@ -246,9 +263,9 @@ function createPosition({
         return;
       }
 
-      const authUser = data.user;
+      const { user } = data.user;
       const newPosition = position;
-      newPosition.ownerId = authUser.userId;
+      newPosition.ownerId = user.userId;
 
       if (!newPosition.coordinates) {
         newPosition.coordinates = {
@@ -256,10 +273,9 @@ function createPosition({
           longitude: 0,
           speed: 0,
           heading: 0,
+          accuracy: newPosition.coordinates.accuracy || appConfig.minimumPositionAccuracy,
         };
       }
-
-      newPosition.coordinates.accuracy = newPosition.coordinates.accuracy || appConfig.minimumPositionAccuracy;
 
       const savePosition = () => {
         dbPosition.createPosition({
@@ -272,6 +288,7 @@ function createPosition({
             }
 
             const updatedPosition = positionData.position;
+            const { ownerAliasId } = updatedPosition;
             const dataToReturn = {
               data: {
                 position: updatedPosition,
@@ -286,7 +303,6 @@ function createPosition({
                 changeType: dbConfig.ChangeTypes.CREATE,
               },
             };
-            const { ownerAliasId } = updatedPosition;
 
             if (ownerAliasId) {
               dataToSend.data.position.ownerId = ownerAliasId;
@@ -306,7 +322,7 @@ function createPosition({
 
       if (newPosition.ownerAliasId) {
         aliasManager.getAccessibleAlias({
-          user: authUser,
+          user,
           aliasId: newPosition.ownerAliasId,
           callback: ({ error: aliasError }) => {
             if (aliasError) {
@@ -328,23 +344,30 @@ function createPosition({
 }
 
 /**
- * Get all positions
- * @param {Object} params - Parameters
- * @param {string} params.token - jwt
- * @param {Function} params.callback - Callback
+ * Get positions.
+ * @param {Object} params - Parameters.
+ * @param {string} params.token - jwt.
+ * @param {Function} params.callback - Callback.
+ * @param {string} params.positionType - Position type to get.
  */
-function getAllPositions({ token, callback }) {
+function getPositions({ positionType, token, callback }) {
   authenticator.isUserAllowed({
     token,
-    commandName: dbConfig.apiCommands.GetAll.name,
-    callback: ({ error }) => {
+    commandName: dbConfig.apiCommands.GetPositions.name,
+    callback: ({ error, data }) => {
       if (error) {
         callback({ error });
 
         return;
       }
 
-      dbPosition.getAllPositions({ callback });
+      const { user } = data;
+
+      getAccessiblePositions({
+        positionType,
+        user,
+        callback,
+      });
     },
   });
 }
@@ -419,9 +442,8 @@ function removePosition({
 }
 
 exports.getAccessiblePosition = getAccessiblePosition;
-exports.getAllUserPositions = getAllUserPositions;
-exports.getUserPosition = getUserPosition;
 exports.updatePosition = updatePosition;
-exports.getAllPositions = getAllPositions;
+exports.getPositions = getPositions;
 exports.createPosition = createPosition;
 exports.removePosition = removePosition;
+exports.getPositionById = getPositionById;

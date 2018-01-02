@@ -22,6 +22,7 @@ const dbConnector = require('../databaseConnector');
 
 const imageSchema = new mongoose.Schema(dbConnector.createSchema({
   imageName: String,
+  fileName: String,
   width: Number,
   height: Number,
 }), { collection: 'images' });

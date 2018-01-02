@@ -33,7 +33,7 @@ function handle(io) {
    * @apiName StartLanternRound
    * @apiGroup LanternRounds
    *
-   * @apiHeader {String} Authorization Your JSON Web Token
+   * @apiHeader {string} Authorization Your JSON Web Token
    *
    * @apiDescription Start a lantern round
    *
@@ -78,7 +78,7 @@ function handle(io) {
    * @apiName EndLanternRound
    * @apiGroup LanternRounds
    *
-   * @apiHeader {String} Authorization Your JSON Web Token
+   * @apiHeader {string} Authorization Your JSON Web Token
    *
    * @apiDescription End active lantern round
    *
@@ -123,7 +123,7 @@ function handle(io) {
    * @apiName ChangeRoundTime
    * @apiGroup LanternRounds
    *
-   * @apiHeader {String} Authorization Your JSON Web Token
+   * @apiHeader {string} Authorization Your JSON Web Token
    *
    * @apiDescription Change start or end time of round
    *
@@ -174,7 +174,7 @@ function handle(io) {
    * @apiName GetLanternRound
    * @apiGroup LanternRounds
    *
-   * @apiHeader {String} Authorization Your JSON Web Token
+   * @apiHeader {string} Authorization Your JSON Web Token
    *
    * @apiDescription Get lantern round
    *

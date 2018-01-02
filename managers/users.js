@@ -30,6 +30,44 @@ const dbDevice = require('../db/connectors/device');
 const socketUtils = require('../utils/socketIo');
 
 /**
+ * Get user by Id and check if the user has access to it.
+ * @param {Object} params - Parameters.
+ * @param {Object} params.user - User retrieving the user.
+ * @param {string} params.userId - Id of the user to retrieve.
+ * @param {Function} params.callback - Callback
+ * @param {string} [params.errorContentText] - Text to be printed on error.
+ * @param {boolean} [params.shouldBeAdmin] - Does the user have to be an admin?
+ */
+function getAccessibleUser({
+  user,
+  userId,
+  callback,
+  shouldBeAdmin,
+  errorContentText = `userId ${userId}`,
+}) {
+  dbUser.getUserById({
+    userId,
+    callback: (userData) => {
+      if (userData.error) {
+        callback({ error: userData.error });
+
+        return;
+      } else if (!authenticator.hasAccessTo({
+        shouldBeAdmin,
+        toAuth: user,
+        objectToAccess: userData.data.user,
+      })) {
+        callback({ error: new errorCreator.NotAllowed({ name: errorContentText }) });
+
+        return;
+      }
+
+      callback(userData);
+    },
+  });
+}
+
+/**
  * Create a user.
  * @param {Object} params - Parameters.
  * @param {Object} params.user - User to create.
@@ -268,6 +306,55 @@ function getUserByName({
             return;
           } else if (userData.user.accessLevel >= data.user.accessLevel) {
             callback({ error: new errorCreator.NotAllowed({ name: 'retrieved user too high access' }) });
+
+            return;
+          }
+
+          callback({ data: userData });
+        },
+      });
+    },
+  });
+}
+
+/**
+ * Get user by Id.
+ * @param {Object} params - Parameters.
+ * @param {string} params.userIdToGet - Id of the user to retrieve.
+ * @param {Object} params.userId - Id of the user retrieving the user.
+ * @param {Function} params.callback - Callback.
+ */
+function getUserById({
+  token,
+  userIdToGet,
+  userId,
+  callback,
+}) {
+  authenticator.isUserAllowed({
+    token,
+    matchToId: userId,
+    commandName: dbConfig.apiCommands.GetUser.name,
+    callback: ({ error, data }) => {
+      if (error) {
+        callback({ error });
+
+        return;
+      }
+
+      const { user } = data;
+
+      if (userIdToGet === user.userId) {
+        callback({ data });
+
+        return;
+      }
+
+      getAccessibleUser({
+        user,
+        userId,
+        callback: ({ error: userError, data: userData }) => {
+          if (userError) {
+            callback({ error: userError });
 
             return;
           }
@@ -656,8 +743,129 @@ function verifyUser({
   });
 }
 
+/**
+ * Update a user.
+ * @param {Object} params - Parameters.
+ * @param {string} params.token - jwt.
+ * @param {Object} params.io - Socket.io.
+ * @param {Function} params.callback - Callback.
+ * @param {string} params.userId - Id of the user updating a user.
+ * @param {string} params.userIdToUpdate - Id of the user to update.
+ * @param {Object} params.user - User parameter to update.
+ * @param {Object} [params.options] - Update options.
+ */
+function updateUser({
+  token,
+  io,
+  callback,
+  userId,
+  userIdToUpdate,
+  user,
+  options,
+}) {
+  authenticator.isUserAllowed({
+    token,
+    matchToId: userId,
+    commandName: dbConfig.apiCommands.UpdateUser.name,
+    callback: ({ error }) => {
+      if (error) {
+        callback({ error });
+
+        return;
+      }
+
+      getAccessibleUser({
+        user,
+        shouldBeAdmin: true,
+        userId: userIdToUpdate,
+        callback: (userData) => {
+          if (userData.error) {
+            callback({ error: userData.error });
+
+            return;
+          }
+
+          dbUser.updateUser({
+            user,
+            options,
+            userId: userIdToUpdate,
+            callback: (updateData) => {
+              if (updateData.error) {
+                callback({ error: updateData.error });
+
+                return;
+              }
+
+              const updatedUser = updateData.data.user;
+
+              const dataToSend = {
+                data: {
+                  user: updatedUser,
+                  changeType: dbConfig.ChangeTypes.UPDATE,
+                },
+              };
+
+              io.emit(dbConfig.EmitTypes.USER, dataToSend);
+
+              callback(dataToSend);
+            },
+          });
+        },
+      });
+    },
+  });
+}
+
+/**
+ * Remove a user.
+ * @param {Object} params - Parameters.
+ * @param {string} params.token - jwt.
+ * @param {string} params.userIdToRemove - Id of the user to remove.
+ * @param {Function} params.callback - Callback.
+ */
+function removeUser({
+  token,
+  userIdToRemove,
+  callback,
+}) {
+  authenticator.isUserAllowed({
+    token,
+    commandName: dbConfig.apiCommands.RemoveUser.name,
+    callback: ({ error, data }) => {
+      if (error) {
+        callback({ error });
+
+        return;
+      }
+
+      const { user } = data;
+
+      getAccessibleUser({
+        user,
+        shouldBeAdmin: true,
+        userId: userIdToRemove,
+        callback: (userData) => {
+          if (userData.error) {
+            callback({ error: userData.error });
+
+            return;
+          }
+
+          // TODO Remove everything connected to the user. Should EVERYTHING be removed?
+
+          dbUser.removeUser({
+            callback,
+            userId: userIdToRemove,
+          });
+        },
+      });
+    },
+  });
+}
+
 exports.createUser = createUser;
 exports.getUserByName = getUserByName;
+exports.getUserById = getUserById;
 exports.changePassword = changePassword;
 exports.login = login;
 exports.logout = logout;
@@ -666,3 +874,5 @@ exports.listUsers = listUsers;
 exports.banUser = banUser;
 exports.unbanUser = unbanUser;
 exports.verifyUser = verifyUser;
+exports.updateUser = updateUser;
+exports.removeUser = removeUser;

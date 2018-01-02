@@ -35,7 +35,7 @@ function handle(io) {
    * @apiName DeleteLanternTeam
    * @apiGroup LanternTeams
    *
-   * @apiHeader {String} Authorization Your JSON Web Token
+   * @apiHeader {string} Authorization Your JSON Web Token
    *
    * @apiDescription Delete existing lantern team
    *
@@ -78,7 +78,7 @@ function handle(io) {
    * @apiName GetLanternTeams
    * @apiGroup LanternTeams
    *
-   * @apiHeader {String} Authorization Your JSON Web Token
+   * @apiHeader {string} Authorization Your JSON Web Token
    *
    * @apiDescription Get all lantern teams
    *
@@ -124,7 +124,7 @@ function handle(io) {
    * @apiName CreateLanternTeam
    * @apiGroup LanternTeams
    *
-   * @apiHeader {String} Authorization Your JSON Web Token
+   * @apiHeader {string} Authorization Your JSON Web Token
    *
    * @apiDescription Create a lantern team
    *
@@ -188,7 +188,7 @@ function handle(io) {
    * @apiName UpdateLanternTeam
    * @apiGroup LanternTeams
    *
-   * @apiHeader {String} Authorization Your JSON Web Token
+   * @apiHeader {string} Authorization Your JSON Web Token
    *
    * @apiDescription Update an existing lantern team
    *

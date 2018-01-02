@@ -27,16 +27,10 @@ const messageSchema = new mongoose.Schema(dbConnector.createSchema({
   messageType: { type: String, default: dbConfig.MessageTypes.CHAT },
   text: { type: [String], default: [] },
   roomId: String,
-  coordinates: dbConnector.createSchema({
-    longitude: Number,
-    latitude: Number,
-    speed: Number,
-    accuracy: Number,
-    heading: Number,
-  }),
+  coordinates: dbConnector.coordinatesSchema,
   intro: { type: [String], default: [] },
   extro: { type: [String], default: [] },
-  images: dbConnector.createSchema({
+  image: dbConnector.createSchema({
     imageName: String,
     fileName: String,
     width: Number,

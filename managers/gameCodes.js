@@ -27,15 +27,6 @@ const textTools = require('../utils/textTools');
 const docFileManager = require('./docFiles');
 
 /**
- * Creates game code
- * @private
- * @returns {string} - Alphanumerical game code
- */
-function generateGameCode() {
-  return textTools.shuffleArray(['0', '1', '2', '3', '4', '5', '6', '7', '8', '9', 'A', 'B', 'D', 'E', 'F']).slice(0, 8).join('');
-}
-
-/**
  * Get game code by code and check if the user has access to it.
  * @param {Object} params - Parameters.
  * @param {Object} params.user - User retrieving the alias.
@@ -196,14 +187,14 @@ function createGameCode({
         });
       };
 
-      const authUser = data.user;
+      const { user } = data;
       const gameCodeToSave = gameCode;
-      gameCodeToSave.ownerId = authUser.userId;
-      gameCodeToSave.code = generateGameCode();
+      gameCodeToSave.ownerId = user.userId;
+      gameCodeToSave.code = gameCodeToSave.code || textTools.generateTextCode();
 
       if (gameCodeToSave.ownerAliasId) {
         aliasManager.getAccessibleAlias({
-          user: authUser,
+          user,
           aliasId: gameCodeToSave.ownerAliasId,
           callback: (aliasData) => {
             if (aliasData.error) {
@@ -335,7 +326,7 @@ function useGameCode({
                         codeType: usedGameCode.codeType,
                         codeContent: usedGameCode.codeContent,
                         isRenewable: true,
-                        code: generateGameCode(),
+                        code: textTools.generateTextCode(),
                       },
                       callback: (createData) => {
                         if (createData.error) {

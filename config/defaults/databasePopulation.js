@@ -203,6 +203,7 @@ config.DeviceTypes = {
   USERDEVICE: 'userDevice',
   GPS: 'gps',
   CUSTOM: 'custom',
+  RESTAPI: 'restApi',
 };
 
 config.GameCodeTypes = {
@@ -352,6 +353,7 @@ config.apiCommands = {
   },
   RemoveRoom: config.apiCommands.RemoveRoom || {
     name: 'RemoveRoom',
+    selfAccessLevel: config.AccessLevels.STANDARD,
     accessLevel: config.AccessLevels.ADMIN,
   },
   FollowWhisperRoom: config.apiCommands.FollowWhisperRoom || {
@@ -371,7 +373,8 @@ config.apiCommands = {
   },
   UpdateRoom: config.apiCommands.UpdateRoom || {
     name: 'UpdateRoom',
-    accessLevel: config.AccessLevels.STANDARD,
+    selfAccessLevel: config.AccessLevels.STANDARD,
+    accessLevel: config.AccessLevels.MODERATOR,
   },
 
   /**
@@ -385,6 +388,15 @@ config.apiCommands = {
     name: 'GetTransaction',
     accessLevel: config.AccessLevels.MODERATOR,
     selfAccessLevel: config.AccessLevels.STANDARD,
+  },
+  RemoveTransaction: config.apiCommands.RemoveTransaction || {
+    name: 'RemoveTransaction',
+    selfAccessLevel: config.AccessLevels.STANDARD,
+    accessLevel: config.AccessLevels.ADMIN,
+  },
+  UpdateTransaction: config.apiCommands.UpdateTransaction || {
+    name: 'UpdateTransaction',
+    accessLevel: config.AccessLevels.MODERATOR,
   },
 
   /**
@@ -403,6 +415,10 @@ config.apiCommands = {
     name: 'GetWallet',
     accessLevel: config.AccessLevels.MODERATOR,
     selfAccessLevel: config.AccessLevels.STANDARD,
+  },
+  RemoveWallet: config.apiCommands.RemoveRoom || {
+    name: 'RemoveRoom',
+    accessLevel: config.AccessLevels.ADMIN,
   },
 
   /**
@@ -467,6 +483,15 @@ config.apiCommands = {
     name: 'ChangePassword',
     accessLevel: config.AccessLevels.ADMIN,
     selfAccessLevel: config.AccessLevels.STANDARD,
+  },
+  UpdateUser: config.apiCommands.UpdateUser || {
+    name: 'UpdateUser',
+    accessLevel: config.AccessLevels.ADMIN,
+    selfAccessLevel: config.AccessLevels.STANDARD,
+  },
+  RemoveUser: config.apiCommands.RemoveUser || {
+    name: 'RemoveUser',
+    accessLevel: config.AccessLevels.ADMIN,
   },
 
   /**

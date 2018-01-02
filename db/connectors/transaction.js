@@ -26,19 +26,13 @@ const transactionSchema = new mongoose.Schema(dbConnector.createSchema({
   toWalletId: String,
   fromWalletId: String,
   note: String,
-  coordinates: dbConnector.createSchema({
-    longitude: Number,
-    latitude: Number,
-    speed: Number,
-    accuracy: Number,
-    heading: Number,
-  }),
+  coordinates: dbConnector.coordinatesSchema,
 }), { collection: 'transactions' });
 
 const Transaction = mongoose.model('transaction', transactionSchema);
 
 /**
- * Add custom id to the object
+ * Add custom id to the object.
  * @param {Object} transaction - Transaction object
  * @return {Object} - Transaction object with id
  */
@@ -47,6 +41,31 @@ function addCustomId(transaction) {
   updatedTransaction.transactionId = transaction.objectId;
 
   return updatedTransaction;
+}
+
+/**
+ * Update transaction properties.
+ * @param {Object} params - Parameters.
+ * @param {string} params.transactionId - Id of the transaction to update.
+ * @param {Object} params.update - Properties to update.
+ * @param {Function} params.callback - Callback.
+ */
+function updateObject({ transactionId, update, callback }) {
+  dbConnector.updateObject({
+    update,
+    object: Transaction,
+    query: { _id: transactionId },
+    errorNameContent: 'updateTransactionObject',
+    callback: ({ error, data }) => {
+      if (error) {
+        callback({ error });
+
+        return;
+      }
+
+      callback({ data: { transaction: addCustomId(data.object) } });
+    },
+  });
 }
 
 /**
@@ -215,10 +234,55 @@ function getTransactionById({ transactionId, callback }) {
   });
 }
 
+/**
+ * Update transaction properties.
+ * @param {Object} params - Parameters
+ * @param {Object} params.transaction - Properties to update in the transaction.
+ * @param {string} params.transactionId - Id of the transaction to update.
+ * @param {Object} [params.options] - Update options.
+ * @param {Function} params.callback - Callback.
+ */
+function updateTransaction({
+  transactionId,
+  transaction,
+  callback,
+  options = {},
+}) {
+  const {
+    note,
+    ownerAliasId,
+  } = transaction;
+  const {
+    resetCoordinates = false,
+    resetOwnerAliasId = false,
+  } = options;
+  const update = {
+    $set: {},
+    $unset: {},
+  };
+
+  if (resetOwnerAliasId) {
+    update.$unset.ownerAliasId = '';
+  } else if (ownerAliasId) {
+    update.$set.ownerAliasId = ownerAliasId;
+  }
+
+  if (resetCoordinates) { update.$unset.coordinates = ''; }
+
+  if (note) { update.$set.note = note; }
+
+  updateObject({
+    transactionId,
+    update,
+    callback,
+  });
+}
+
 exports.createTransaction = createTransaction;
 exports.getTransactionsByWallet = getTransactionsByWallet;
 exports.getTransactionsByUser = getTransactionsByUser;
 exports.removeTransaction = removeTransaction;
 exports.getAllTransactions = getAllTransactions;
 exports.getTransactionById = getTransactionById;
+exports.updateTransaction = updateTransaction;
 

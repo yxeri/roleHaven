@@ -25,25 +25,25 @@ const errorCreator = require('../../objects/error/errorCreator');
 const router = new express.Router();
 
 /**
- * @param {object} io - Socket.IO
+ * @param {object} io Socket.IO
  * @returns {Object} Router
  */
 function handle(io) {
   /**
-   * @api {get} /teams/list Get teams.
+   * @api {get} /teams/list Get teams
    * @apiVersion 8.0.0
    * @apiName GetTeams
    * @apiGroup Teams
    *
-   * @apiHeader {String} Authorization - Your JSON Web Token.
+   * @apiHeader {string} Authorization Your JSON Web Token.
    *
    * @apiDescription Get teams.
    *
-   * @apiParam {String} data
-   * @apiParam {String} [data.userId] - Id of the user retrieving the teams.
+   * @apiParam {Object} data
+   * @apiParam {string} [data.userId] Id of the user retrieving the teams.
    *
    * @apiSuccess {Object} data
-   * @apiSuccess {Object[]} data.teams - Found teams.
+   * @apiSuccess {Team[]} data.teams Found teams.
    */
   router.get('/', (request, response) => {
     const { userId } = request.body.data;
@@ -65,23 +65,23 @@ function handle(io) {
   });
 
   /**
-   * @api {get} /teams/:teamId Get a team.
+   * @api {get} /teams/:teamId Get a team
    * @apiVersion 8.0.0
    * @apiName GetTeam
    * @apiGroup Teams
    *
-   * @apiHeader {String} Authorization Your JSON Web Token
+   * @apiHeader {string} Authorization Your JSON Web Token
    *
    * @apiDescription Get a team.
    *
-   * @apiParam {String} teamId - Id of the team to retrieve.
+   * @apiParam {string} teamId Id of the team to retrieve.
    *
    * @apiSuccess {Object} data
-   * @apiSuccess {Object} data.team - Found team.
+   * @apiSuccess {Team} data.team Found team.
    */
   router.get('/:teamId', (request, response) => {
     if (!objectValidator.isValidData(request.params, { teamId: true })) {
-      restErrorChecker.checkAndSendError({ response, error: new errorCreator.InvalidData({ expected: '{ teamId }' }), sentData: request.params });
+      restErrorChecker.checkAndSendError({ response, error: new errorCreator.InvalidData({ expected: 'params = { teamId }' }) });
 
       return;
     }
@@ -110,19 +110,19 @@ function handle(io) {
    * @apiName CreateTeam
    * @apiGroup Teams
    *
-   * @apiHeader {String} Authorization - Your JSON Web Token.
+   * @apiHeader {string} Authorization Your JSON Web Token.
    *
    * @apiDescription Create a team.
    *
    * @apiParam {Object} data
-   * @apiParam {Object} data.team - Team to create.
+   * @apiParam {Team} data.team Team to create.
    *
    * @apiSuccess {Object} data
-   * @apiSuccess {Object} data.team - Created team.
+   * @apiSuccess {Team} data.team Created team.
    */
   router.post('/', (request, response) => {
     if (!objectValidator.isValidData(request.body, { data: { team: { teamName: true, shortName: true } } })) {
-      restErrorChecker.checkAndSendError({ response, error: new errorCreator.InvalidData({ expected: '{ data: { team: { teamName, shortName } } }' }), sentData: request.body.data });
+      restErrorChecker.checkAndSendError({ response, error: new errorCreator.InvalidData({ expected: 'data = { team: { teamName, shortName } }' }), sentData: request.body.data });
 
       return;
     }
@@ -147,26 +147,26 @@ function handle(io) {
   });
 
   /**
-   * @api {delete} /teams/:teamId Delete a team.
+   * @api {delete} /teams/:teamId Delete a team
    * @apiVersion 8.0.0
    * @apiName DeleteTeam
    * @apiGroup Teams
    *
-   * @apiHeader {String} Authorization - Your JSON Web Token.
+   * @apiHeader {string} Authorization Your JSON Web Token.
    *
    * @apiDescription Delete a team.
    *
-   * @apiParam {Object} teamId - Id of the team to delete.
+   * @apiParam {string} teamId Id of the team to delete.
    *
    * @apiParam {Object} [data]
-   * @apiParam {Object} [data.userId] - Id of the user deleting the team.
+   * @apiParam {string} [data.userId] Id of the user deleting the team.
    *
    * @apiSuccess {Object} data
-   * @apiSuccess {Object} data.success - Was it successfully deleted?
+   * @apiSuccess {boolean} data.success Was it successfully deleted?
    */
   router.delete('/:teamId', (request, response) => {
     if (!objectValidator.isValidData(request.params, { teamId: true })) {
-      restErrorChecker.checkAndSendError({ response, error: new errorCreator.InvalidData({ expected: '{ teamId }' }), sentData: request.params });
+      restErrorChecker.checkAndSendError({ response, error: new errorCreator.InvalidData({ expected: 'params = { teamId }' }) });
 
       return;
     }
@@ -193,31 +193,31 @@ function handle(io) {
   });
 
   /**
-   * @api {put} /teams/:teamId Update a team.
+   * @api {put} /teams/:teamId Update a team
    * @apiVersion 8.0.0
    * @apiName UpdateTeam
    * @apiGroup Teams
    *
-   * @apiHeader {String} Authorization - Your JSON Web Token.
+   * @apiHeader {string} Authorization Your JSON Web Token.
    *
    * @apiDescription Update a team.
    *
-   * @apiParam {String} teamId - Id of the team to update.
+   * @apiParam {string} teamId Id of the team to update.
    *
-   * @apiParam {String} data
-   * @apiParam {String} data.team - team parameters to update.
-   * @apiParam {String} [data.options] - Update options.
+   * @apiParam {Object} data
+   * @apiParam {Team} data.team Team parameters to update.
+   * @apiParam {Object} [data.options] Update options.
    *
    * @apiSuccess {Object} data
-   * @apiSuccess {Object} data.team - Updated team.
+   * @apiSuccess {Team} data.team Updated team.
    */
   router.put('/:teamId', (request, response) => {
     if (!objectValidator.isValidData(request.params, { teamId: true })) {
-      restErrorChecker.checkAndSendError({ response, error: new errorCreator.InvalidData({ expected: '{ teamId }' }), sentData: request.params });
+      restErrorChecker.checkAndSendError({ response, error: new errorCreator.InvalidData({ expected: 'params = { teamId }' }) });
 
       return;
     } else if (!objectValidator.isValidData(request.body, { data: { team: true } })) {
-      restErrorChecker.checkAndSendError({ response, error: new errorCreator.InvalidData({ expected: '{ data: { team } }' }), sentData: request.body.data });
+      restErrorChecker.checkAndSendError({ response, error: new errorCreator.InvalidData({ expected: 'data = { team }' }), sentData: request.body.data });
 
       return;
     }
@@ -248,30 +248,30 @@ function handle(io) {
   });
 
   /**
-   * @api {post} /teams/:teamId/invitations Invite a user to the team.
+   * @api {post} /teams/:teamId/invitations Invite a user to the team
    * @apiVersion 8.0.0
    * @apiName InviteUser
    * @apiGroup Teams
    *
-   * @apiHeader {String} Authorization - Your JSON Web Token.
+   * @apiHeader {string} Authorization Your JSON Web Token.
    *
    * @apiDescription Invite a user to the team.
    *
-   * @apiParam {String} teamId - Id of the team to invite to.
+   * @apiParam {string} teamId Id of the team to invite to.
    *
-   * @apiParam {String} data
-   * @apiParam {String} data.invitation - Invitation to create.
+   * @apiParam {Object} data
+   * @apiParam {Invitation} data.invitation Invitation to create.
    *
    * @apiSuccess {Object} data
-   * @apiSuccess {Object} data.invitation - Created invitation.
+   * @apiSuccess {Invitation} data.invitation Created invitation.
    */
   router.post('/:teamId/invitations', (request, response) => {
     if (!objectValidator.isValidData(request.params, { teamId: true })) {
-      restErrorChecker.checkAndSendError({ response, error: new errorCreator.InvalidData({ expected: '{ teamId }' }), sentData: request.params });
+      restErrorChecker.checkAndSendError({ response, error: new errorCreator.InvalidData({ expected: 'params = { teamId }' }) });
 
       return;
     } else if (!objectValidator.isValidData(request.body, { data: { invitation: true } })) {
-      restErrorChecker.checkAndSendError({ response, error: new errorCreator.InvalidData({ expected: '{ data: { invitation } }' }), sentData: request.body.data });
+      restErrorChecker.checkAndSendError({ response, error: new errorCreator.InvalidData({ expected: 'data = { invitation }' }), sentData: request.body.data });
 
       return;
     }

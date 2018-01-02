@@ -332,6 +332,60 @@ function getWalletsByUser({
   });
 }
 
+/**
+ * Remove a wallet.
+ * @param {Object} params - Parameters.
+ * @param {string} params.token - jwt.
+ * @param {string} params.userId - Id of the user trying to remove a wallet.
+ * @param {string} params.walletId - Id of the wallet to remove.
+ * @param {Function} params.callback - Callback.
+ * @param {Object} params.io - Socket.io.
+ */
+function removeWallet({
+  token,
+  userId,
+  walletId,
+  callback,
+  io,
+}) {
+  authenticator.isUserAllowed({
+    token,
+    matchToId: userId,
+    commandName: dbConfig.apiCommands.RemoveWallet.name,
+    callback: ({ error }) => {
+      if (error) {
+        callback({ error });
+
+        return;
+      }
+
+      dbWallet.removeWallet({
+        walletId,
+        callback: ({ error: walletError }) => {
+          if (walletError) {
+            callback({ error: walletError });
+
+            return;
+          }
+
+          const dataToSend = {
+            data: {
+              changeType: dbConfig.ChangeTypes.REMOVE,
+              wallet: { walletId },
+            },
+          };
+          const callbackData = dataToSend;
+          dataToSend.success = true;
+
+          io.emit(dbConfig.EmitTypes.WALLET, dataToSend);
+
+          callback(callbackData);
+        },
+      });
+    },
+  });
+}
+
 exports.updateWallet = updateWallet;
 exports.getWallet = getWallet;
 exports.emptyWallet = emptyWallet;
@@ -339,3 +393,4 @@ exports.getAccessibleWallet = getAccessibleWallet;
 exports.runTransaction = runTransaction;
 exports.getWalletsAndCheckAmount = getWalletsAndCheckAmount;
 exports.getWalletsByUser = getWalletsByUser;
+exports.removeWallet = removeWallet;

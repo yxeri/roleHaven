@@ -81,7 +81,7 @@ function createCoordsCollection(coords) {
  * @param {string} params.position.LineString.coordinates - Google Maps line coordinates
  * @param {Object} [params.position.Point] - Google Maps position point
  * @param {string} params.layerName - Name of the layer
- * @returns {{positionName: string, position: Object, isStatic: boolean, type: string, geometry: string, description: string[]}} New position
+ * @returns {{positionName: string, position: Object, isStationary: boolean, type: string, geometry: string, description: string[]}} New position
  */
 function createPosition({ position, layerName }) {
   const coordinates = {};
@@ -100,7 +100,7 @@ function createPosition({ position, layerName }) {
 
   return {
     positionName: position.name,
-    isStatic: true,
+    isStationary: true,
     markerType: layerName.toLowerCase(),
     description: position.description ? position.description.replace(/<img .+?\/>/, '').split(/<br>/) : ['No information'],
     coordinates,

@@ -160,9 +160,7 @@ function hasAccessTo({
 
   if (hasFullAccess) {
     return true;
-  }
-
-  if (shouldBeAdmin) {
+  } else if (shouldBeAdmin) {
     return ((userAdminIds.includes(authUserId)) || (teamAdminIds.find(adminId => authTeamIds.includes(adminId))));
   }
 

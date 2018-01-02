@@ -26,7 +26,7 @@ const router = new express.Router();
 
 
 /**
- * @param {object} io - Socket.IO
+ * @param {object} io Socket.IO
  * @returns {Object} Router
  */
 function handle(io) {
@@ -36,50 +36,30 @@ function handle(io) {
    * @apiName SendSimpleMsgs
    * @apiGroup SimpleMsgs
    *
-   * @apiHeader {String} Authorization Your JSON Web Token
+   * @apiHeader {string} Authorization Your JSON Web Token
    *
-   * @apiDescription Send a simple message
+   * @apiDescription Send a simple message.
    *
    * @apiParam {Object} data
-   * @apiParam {Object} data.simpleMsg Simple message
-   * @apiParam {String[]} data.message.text Content of the message
-   * @apiParamExample {json} Request-Example:
-   *   {
-     *    "data": {
-     *      "simpleMsg": {
-     *        "text": [
-     *          "Hello world!"
-     *        ]
-     *      }
-     *    }
-     *  }
+   * @apiParam {SimpleMsg} data.simpleMsg Simple message to send.
    *
    * @apiSuccess {Object} data
-   * @apiSuccess {Object[]} data.message Message sent
-   * @apiSuccessExample {json} Success-Response:
-   *   {
-     *    "data": {
-     *      "message": {
-     *        "text": [
-     *          "Hello world!"
-     *        ],
-     *        "username": "rez",
-     *        "time": "2016-10-28T22:42:06.262Z"
-     *      }
-     *    }
-     *  }
+   * @apiSuccess {SimpleMsg[]} data.message Sent simple message.
    */
   router.post('/', (request, response) => {
     if (!objectValidator.isValidData(request.body, { data: { simpleMsg: true } })) {
-      restErrorChecker.checkAndSendError({ response, error: new errorCreator.InvalidData({ expected: '{ data { simpleMsg } }' }) });
+      restErrorChecker.checkAndSendError({ response, error: new errorCreator.InvalidData({ expected: 'data = { simpleMsg } }', sendDate: request.body.data }) });
 
       return;
     }
 
+    const { simpleMsg } = request.body.data;
+    const { authorization: token } = request.headers;
+
     simpleMsgManager.sendSimpleMsg({
       io,
-      token: request.headers.authorization,
-      text: request.body.data.simpleMsg.text,
+      token,
+      text: simpleMsg.text,
       callback: ({ error, data }) => {
         if (error) {
           restErrorChecker.checkAndSendError({ response, error, sentData: request.body.data });
@@ -93,21 +73,23 @@ function handle(io) {
   });
 
   /**
-   * @api {post} /simpleMsgs Get simple messages.
+   * @api {post} /simpleMsgs Get simple messages
    * @apiVersion 6.0.0
    * @apiName GetSimpleMsgs
    * @apiGroup SimpleMsgs
    *
-   * @apiHeader {String} Authorization - Your JSON Web Token.
+   * @apiHeader {string} Authorization Your JSON Web Token.
    *
    * @apiDescription Get simple messages.
    *
    * @apiSuccess {Object} data
-   * @apiSuccess {Object[]} data.simpleMsgs - Messages found.
+   * @apiSuccess {SimpleMsg[]} data.simpleMsgs Messages found.
    */
   router.get('/', (request, response) => {
+    const { authorization: token } = request.headers;
+
     simpleMsgManager.getSimpleMsgs({
-      token: request.headers.authorization,
+      token,
       callback: ({ error, data }) => {
         if (error) {
           restErrorChecker.checkAndSendError({ response, error, sentData: request.body.data });
@@ -121,26 +103,26 @@ function handle(io) {
   });
 
   /**
-   * @api {delete} /simpleMsgs/:simpleMsgId Delete a simple message.
+   * @api {delete} /simpleMsgs/:simpleMsgId Delete a simple message
    * @apiVersion 8.0.0
    * @apiName DeleteSimpleMsg
    * @apiGroup SimpleMsgs
    *
-   * @apiHeader {String} Authorization - Your JSON Web Token.
+   * @apiHeader {string} Authorization Your JSON Web Token.
    *
    * @apiDescription Delte a simple message.
    *
-   * @apiParam {Object} simpleMsgId - Id of the simple message to delete.
+   * @apiParam {string} simpleMsgId Id of the simple message to delete.
    *
    * @apiParam {Object} [data]
-   * @apiParam {Object} [data.userId] - Id of the user deleting the message.
+   * @apiParam {string} [data.userId] Id of the user deleting the message.
    *
    * @apiSuccess {Object} data
-   * @apiSuccess {Object} data.success - Was it successfully deleted?
+   * @apiSuccess {boolean} data.success Was it successfully deleted?
    */
   router.delete('/:deviceId', (request, response) => {
     if (!objectValidator.isValidData(request.params, { simpleMsgId: true })) {
-      restErrorChecker.checkAndSendError({ response, error: new errorCreator.InvalidData({ expected: '{ simpleMsgId }' }), sentData: request.params });
+      restErrorChecker.checkAndSendError({ response, error: new errorCreator.InvalidData({ expected: 'params = { simpleMsgId }' }) });
 
       return;
     }
@@ -151,6 +133,61 @@ function handle(io) {
 
     simpleMsgManager.removeSimpleMsg({
       userId,
+      io,
+      simpleMsgId,
+      token,
+      callback: ({ error, data }) => {
+        if (error) {
+          restErrorChecker.checkAndSendError({ response, error, sentData: request.body.data });
+
+          return;
+        }
+
+        response.json({ data });
+      },
+    });
+  });
+
+  /**
+   * @api {put} /simpleMsgs/:deviceId Update a simple message.
+   * @apiVersion 8.0.0
+   * @apiName UpdateSimpleMsg
+   * @apiGroup SimpleMsgs
+   *
+   * @apiHeader {string} Authorization Your JSON Web Token.
+   *
+   * @apiDescription Update a simple message.
+   *
+   * @apiParam {string} simpleMsgId Id of the simple message to update.
+   *
+   * @apiParam {Object} data
+   * @apiParam {SimpleMsg} data.simpleMsg Simple message parameters to update.
+   * @apiParam {Object} [data.options] Update options.
+   *
+   * @apiSuccess {Object} data
+   * @apiSuccess {SimpleMsg} data.simpleMsg Updated simple message.
+   */
+  router.put('/:deviceId', (request, response) => {
+    if (!objectValidator.isValidData(request.params, { simpleMsgId: true })) {
+      restErrorChecker.checkAndSendError({ response, error: new errorCreator.InvalidData({ expected: 'params = { simpleMsgId }' }) });
+
+      return;
+    } else if (!objectValidator.isValidData(request.body, { data: { simpleMsg: true } })) {
+      restErrorChecker.checkAndSendError({ response, error: new errorCreator.InvalidData({ expected: 'data = { simpleMsg }' }), sentData: request.body.data });
+
+      return;
+    }
+
+    const {
+      simpleMsg,
+      options,
+    } = request.body.data;
+    const { simpleMsgId } = request.params;
+    const { authorization: token } = request.headers;
+
+    simpleMsgManager.updateSimpleMsg({
+      simpleMsg,
+      options,
       io,
       simpleMsgId,
       token,
