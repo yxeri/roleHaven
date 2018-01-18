@@ -28,17 +28,15 @@ const docFileSchema = new mongoose.Schema(dbConnector.createSchema({
 
 const DocFile = mongoose.model('DocFile', docFileSchema);
 
-/**
- * Add custom id to the object
- * @param {Object} docFile - Doc file object
- * @return {Object} - Doc file object with id
- */
-function addCustomId(docFile) {
-  const updatedDocFile = docFile;
-  updatedDocFile.docFileId = docFile.objectId;
-
-  return updatedDocFile;
-}
+const docFileFilter = {
+  title: 1,
+  lastUpdated: 1,
+  ownerId: 1,
+  ownerAliasId: 1,
+  text: 1,
+  customTimeCreated: 1,
+  customLastUpdated: 1,
+};
 
 /**
  * Update doc file.
@@ -61,7 +59,7 @@ function updateObject({ docFileId, update, callback }) {
         return;
       }
 
-      callback({ data: { docFile: addCustomId(data.object) } });
+      callback({ data: { docFile: data.object } });
     },
   });
 }
@@ -70,15 +68,11 @@ function updateObject({ docFileId, update, callback }) {
  * Get doc files.
  * @private
  * @param {Object} params - Parameters.
- * @param {Object} params.query - Query to get doc files.
  * @param {Function} params.callback - Callback.
+ * @param {Object} [params.query] - Query to get doc files.
  */
-function getDocFiles({ query, callback, lite }) {
+function getDocFiles({ query, callback }) {
   const filter = {};
-
-  if (lite) {
-    filter.text = 0;
-  }
 
   dbConnector.getObjects({
     query,
@@ -91,29 +85,24 @@ function getDocFiles({ query, callback, lite }) {
         return;
       }
 
-      callback({
-        data: {
-          docFiles: data.objects.map(docFile => addCustomId(docFile)),
-        },
-      });
+      callback({ data: { docFiles: data.objects } });
     },
   });
 }
 
 /**
- * Get doc file.
+ * Get a doc file.
  * @private
  * @param {Object} params - Parameters.
  * @param {string} params.query - Query to get doc file.
  * @param {Function} params.callback - Callback.
+ * @param {Object} [params.filter] - Result filter.
  */
-function getDocFile({ lite, query, callback }) {
-  const filter = {};
-
-  if (lite) {
-    filter.text = 0;
-  }
-
+function getDocFile({
+  query,
+  callback,
+  filter = {},
+}) {
   dbConnector.getObject({
     query,
     filter,
@@ -129,7 +118,7 @@ function getDocFile({ lite, query, callback }) {
         return;
       }
 
-      callback({ data: { docFile: addCustomId(data.object) } });
+      callback({ data: { docFile: data.object } });
     },
   });
 }
@@ -185,7 +174,7 @@ function createDocFile({ docFile, callback }) {
             return;
           }
 
-          callback({ data: { docFile: addCustomId(savedData.data.savedObject) } });
+          callback({ data: { docFile: savedData.data.savedObject } });
         },
       });
     },
@@ -278,7 +267,7 @@ function addAccess({
         return;
       }
 
-      callback({ data: { docFile: addCustomId(data.object) } });
+      callback({ data: { docFile: data.object } });
     },
   });
 }
@@ -318,7 +307,7 @@ function removeAccess({
         return;
       }
 
-      callback({ data: { docFile: addCustomId(data.object) } });
+      callback({ data: { docFile: data.object } });
     },
   });
 }
@@ -342,12 +331,10 @@ function removeDocFile({ docFileId, callback }) {
 /**
  * Get all doc files.
  * @param {Object} params - Parameters.
- * @param {boolean} [params.lite] - Should parameters with a large amount of data be filtered out?
  * @param {Function} params.callback - Callback.
  */
-function getAllDocFiles({ callback, lite = true }) {
+function getAllDocFiles({ callback }) {
   getDocFiles({
-    lite,
     callback,
     errorNameContent: 'getAllDocFiles',
   });
@@ -357,13 +344,18 @@ function getAllDocFiles({ callback, lite = true }) {
  * Get doc file by id.
  * @param {Object} params - Parameters.
  * @param {string} params.docFileId - ID of the doc file.
- * @param {boolean} [params.lite] - Should parameters with a large amount of data be filtered out?
  * @param {Function} params.callback - Callback.
  */
-function getDocFileById({ lite, docFileId, callback }) {
+function getDocFileById({
+  docFileId,
+  callback,
+  full,
+}) {
+  const filter = !full ? docFileFilter : {};
+
   getDocFile({
     callback,
-    lite,
+    filter,
     query: { _id: docFileId },
   });
 }
@@ -385,45 +377,21 @@ function getDocFileByCode({
 }
 
 /**
- * Get a list of doc files that the user can try to access.
- * @param {Object} params - Parameters.
- * @param {Object} params.user - User.
- * @param {Function} params.callback - Callback.
- */
-function getDocFilesListByUser({ user, callback }) {
-  const userIdToCheck = [user.userId];
-  const query = {
-    bannedIds: { $nin: userIdToCheck.concat(user.partOfTeams) },
-    $or: [
-      { isPublic: true },
-      { userIds: { $in: userIdToCheck } },
-      { visibility: { $lte: user.accessLevel } },
-      { teamIds: { $in: user.partOfTeams } },
-    ],
-  };
-
-  getDocFiles({
-    query,
-    callback,
-    lite: true,
-  });
-}
-
-/**
  * Get files by user.
  * @param {Object} params - Parameters.
- * @param {Object} params.userId - ID of the user retrieving the files.
+ * @param {Object} params.user - User retrieving the files.
  * @param {Function} params.callback - Callback.
  */
-function getDocFilesByUser({ userId, callback }) {
-  const query = {
-    $or: [
-      { ownerId: userId },
-      { userIds: { $in: [userId] } },
-    ],
-  };
+function getDocFilesByUser({
+  user,
+  full,
+  callback,
+}) {
+  const query = dbConnector.createUserQuery({ user });
+  const filter = !full ? docFileFilter : {};
 
   getDocFiles({
+    filter,
     query,
     callback,
   });
@@ -437,5 +405,5 @@ exports.getDocFileById = getDocFileById;
 exports.removeDocFile = removeDocFile;
 exports.getAllDocFiles = getAllDocFiles;
 exports.getDocFileByCode = getDocFileByCode;
-exports.getDocFilesListByUser = getDocFilesListByUser;
 exports.getDocFilesByUser = getDocFilesByUser;
+exports.getAllDocFiles = getAllDocFiles;

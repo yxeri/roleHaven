@@ -39,9 +39,8 @@ function handle(io) {
    *
    * @apiDescription Create a device.
    *
-   * @apiParam {Object} data
+   * @apiParam {Object} data Body params.
    * @apiParam {Device} data.device Device to create.
-   * @apiParam {string} [data.userId] Id of the user creating the file. It will default to the token owner.
    *
    * @apiSuccess {Object} data
    * @apiSuccess {Device[]} data.device Created device.
@@ -53,12 +52,11 @@ function handle(io) {
       return;
     }
 
-    const { device, userId } = request.body.data;
+    const { device } = request.body.data;
     const { authorization: token } = request.headers;
 
     deviceManager.createDevice({
       io,
-      userId,
       token,
       device,
       callback: ({ error, data }) => {
@@ -83,22 +81,21 @@ function handle(io) {
    *
    * @apiDescription Get devices that the user has access to.
    *
-   * @apiParam {Object} [data]
-   * @apiParam {string} data.userId Id of the user retrieving the devices.
+   * @apiParam {boolean} [full] [Query] Should the complete object be retrieved?
    *
    * @apiSuccess {Object} data
    * @apiSuccess {Device[]} data.devices Found devices.
    */
   router.get('/', (request, response) => {
-    const { userId } = request.body.data;
     const { authorization: token } = request.headers;
+    const { full } = request.query;
 
     deviceManager.getDevicesByUser({
-      userId,
+      full,
       token,
       callback: ({ error, data }) => {
         if (error) {
-          restErrorChecker.checkAndSendError({ response, error, sentData: request.body.data });
+          restErrorChecker.checkAndSendError({ response, error });
 
           return;
         }
@@ -118,32 +115,31 @@ function handle(io) {
    *
    * @apiDescription Get a device that the user has access to.
    *
-   * @apiParam {string} deviceId Id of the device to retrieve.
+   * @apiParam {string} deviceId [Url] Id of the device to retrieve.
    *
-   * @apiParam {Object} [data]
-   * @apiParam {string} [data.userId] Id of the user retrieving the device.
+   * @apiParam {boolean} [full] [Query] Should the complete object be retrieved?
    *
    * @apiSuccess {Object} data
-   * @apiSuccess {Device} data.device Device found.
+   * @apiSuccess {Device} data.device Found device.
    */
   router.get('/:deviceId', (request, response) => {
     if (!objectValidator.isValidData(request.params, { deviceId: true })) {
-      restErrorChecker.checkAndSendError({ response, error: new errorCreator.InvalidData({ expected: 'params = { deviceId }' }), sentData: request.params });
+      restErrorChecker.checkAndSendError({ response, error: new errorCreator.InvalidData({ expected: 'params = { deviceId }' }) });
 
       return;
     }
 
-    const { userId } = request.body.data;
     const { deviceId } = request.params;
     const { authorization: token } = request.headers;
+    const { full } = request.query;
 
-    deviceManager.getDevice({
-      userId,
+    deviceManager.getDeviceById({
       deviceId,
       token,
+      full,
       callback: ({ error, data }) => {
         if (error) {
-          restErrorChecker.checkAndSendError({ response, error, sentData: request.body.data });
+          restErrorChecker.checkAndSendError({ response, error });
 
           return;
         }
@@ -163,9 +159,9 @@ function handle(io) {
    *
    * @apiDescription Update a device.
    *
-   * @apiParam {string} deviceId Id of the device to update.
+   * @apiParam {string} deviceId [Url] Id of the device to update.
    *
-   * @apiParam {Object} data
+   * @apiParam {Object} data Body params.
    * @apiParam {Device} data.device Device parameters to update.
    * @apiParam {Object} [data.options] Update options.
    * @apiParam {Object} [data.options.resetSocket] Should the socket Id be removed from the device?
@@ -220,33 +216,28 @@ function handle(io) {
    *
    * @apiDescription Delete a device.
    *
-   * @apiParam {string} deviceId Id of the device to delete.
-   *
-   * @apiParam {Object} [data]
-   * @apiParam {string} [data.userId] Id of the user deleting the device.
+   * @apiParam {string} deviceId [Url] Id of the device to delete.
    *
    * @apiSuccess {Object} data
    * @apiSuccess {boolean} data.success Was it successfully deleted?
    */
   router.delete('/:deviceId', (request, response) => {
     if (!objectValidator.isValidData(request.params, { deviceId: true })) {
-      restErrorChecker.checkAndSendError({ response, error: new errorCreator.InvalidData({ expected: 'params = { deviceId }' }), sentData: request.params });
+      restErrorChecker.checkAndSendError({ response, error: new errorCreator.InvalidData({ expected: 'params = { deviceId }' }) });
 
       return;
     }
 
-    const { userId } = request.body.data;
     const { deviceId } = request.params;
     const { authorization: token } = request.headers;
 
     deviceManager.removeDevice({
-      userId,
       io,
       deviceId,
       token,
       callback: ({ error, data }) => {
         if (error) {
-          restErrorChecker.checkAndSendError({ response, error, sentData: request.body.data });
+          restErrorChecker.checkAndSendError({ response, error });
 
           return;
         }

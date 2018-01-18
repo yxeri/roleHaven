@@ -18,10 +18,10 @@
 
 const express = require('express');
 const roomManager = require('../../managers/rooms');
-const messageManager = require('../../managers/messages');
 const objectValidator = require('../../utils/objectValidator');
 const restErrorChecker = require('../../helpers/restErrorChecker');
 const errorCreator = require('../../objects/error/errorCreator');
+const helper = require('./helper');
 
 const router = new express.Router();
 
@@ -40,42 +40,17 @@ function handle(io) {
    *
    * @apiDescription Retrieve messages from a room.
    *
-   * @apiParam {string} roomId Id of the room.
+   * @apiParam {string} roomId [Url] Id of the room.
    *
-   * @apiParam {Object} data
-   * @apiParam {Date} [data.startDate] The cut off date for retrieving past/future messages.
-   * @apiParam {Date} [data.shouldGetFuture] Should messages from the future be retrieved? startDate is the date that is the start of the retrieval.
+   * @apiParam {boolean} [full] [Query] Should the complete object be retrieved?
+   * @apiParam {string} [startDate] [Query] Start date of when to retrieve messages from the past.
+   * @apiParam {boolean} [shouldGetFuture] [Query] Should messages be retrieved from the future instead of the past?
    *
    * @apiSuccess {Object} data
-   * @apiSuccess {Object[]} data.messages Found messages.
+   * @apiSuccess {Message[]} data.messages Found messages.
    */
   router.get('/:roomId/messages', (request, response) => {
-    if (!objectValidator.isValidData(request.params, { roomId: true })) {
-      restErrorChecker.checkAndSendError({ response, error: new errorCreator.InvalidData({ expected: 'params = { roomId }' }) });
-
-      return;
-    }
-
-    const { authorization: token } = request.headers;
-    const { roomId } = request.params;
-    const { startDate, shouldGetFuture } = request.body.data;
-
-    messageManager.getMessagesByRoom({
-      io,
-      roomId,
-      token,
-      startDate,
-      shouldGetFuture,
-      callback: ({ error, data }) => {
-        if (error) {
-          restErrorChecker.checkAndSendError({ response, error, sentData: request.body.data });
-
-          return;
-        }
-
-        response.json({ data });
-      },
-    });
+    helper.getMessages({ request, response });
   });
 
   /**
@@ -88,22 +63,21 @@ function handle(io) {
    *
    * @apiDescription Get rooms.
    *
-   * @apiParam {Object} data
-   * @apiParam {string} [data.userId] Id of the user retrieving the rooms.
+   * @apiParam {boolean} [full] [Query] Should admin info be returned?
    *
    * @apiSuccess {Object} data
-   * @apiSuccess {Object[]} data.rooms Found rooms.
+   * @apiSuccess {Room[]} data.rooms Rooms found.
    */
   router.get('/', (request, response) => {
     const { authorization: token } = request.headers;
-    const { userId } = request.body.data;
+    const { full } = request.query;
 
     roomManager.getRoomsByUser({
-      userId,
       token,
+      full,
       callback: ({ error, data }) => {
         if (error) {
-          restErrorChecker.checkAndSendError({ response, error, sentData: request.body.data });
+          restErrorChecker.checkAndSendError({ response, error });
 
           return;
         }
@@ -123,10 +97,9 @@ function handle(io) {
    *
    * @apiDescription Retrieve a room.
    *
-   * @apiParam {string} roomId Id of the room to retrieve.
+   * @apiParam {string} roomId [Url] Id of the room to retrieve.
    *
-   * @apiParam {Object} data
-   * @apiParam {string} [data.userId] Id of the user retrieving the room.
+   * @apiParam {string} [full] [Query]
    *
    * @apiSuccess {Object} data
    * @apiSuccess {Room} data.room Found room.
@@ -140,15 +113,15 @@ function handle(io) {
 
     const { authorization: token } = request.headers;
     const { roomId } = request.params;
-    const { userId } = request.body.data;
+    const { full } = request.query;
 
     roomManager.getRoom({
       token,
       roomId,
-      userId,
+      full,
       callback: ({ error, data }) => {
         if (error) {
-          restErrorChecker.checkAndSendError({ response, error, sentData: request.body.data });
+          restErrorChecker.checkAndSendError({ response, error });
 
           return;
         }
@@ -168,11 +141,11 @@ function handle(io) {
    *
    * @apiDescription Create a room.
    *
-   * @apiParam {Object} data
+   * @apiParam {Object} data Body parameters.
    * @apiParam {Room} data.room The room to create.
    *
    * @apiSuccess {Object} data
-   * @apiSuccess {Room} data.room Room created.
+   * @apiSuccess {Room} data.room Created room.
    */
   router.post('/', (request, response) => {
     if (!objectValidator.isValidData(request.body, { data: { room: true } })) {
@@ -267,10 +240,7 @@ function handle(io) {
    *
    * @apiDescription Delete a room.
    *
-   * @apiParam {Object} roomId Id of the room to delete.
-   *
-   * @apiParam {Object} [data]
-   * @apiParam {Object} [data.userId] Id of the user deleting the room.
+   * @apiParam {Object} roomId [Url] Id of the room to delete.
    *
    * @apiSuccess {Object} data
    * @apiSuccess {Object} data.success Was the room successfully deleted?
@@ -282,24 +252,50 @@ function handle(io) {
       return;
     }
 
-    const { userId } = request.body.data;
     const { roomId } = request.params;
     const { authorization: token } = request.headers;
 
     roomManager.removeRoom({
-      userId,
       io,
       roomId,
       token,
       callback: ({ error, data }) => {
         if (error) {
-          restErrorChecker.checkAndSendError({ response, error, sentData: request.body.data });
+          restErrorChecker.checkAndSendError({ response, error });
 
           return;
         }
 
         response.json({ data });
       },
+    });
+  });
+
+  /**
+   * @api {post} /rooms/:roomId/messages Send a message to a room
+   * @apiVersion 8.0.0
+   * @apiName SendMessage
+   * @apiGroup Rooms
+   *
+   * @apiHeader {string} Authorization Your JSON Web Token.
+   *
+   * @apiDescription Send a message. Available messages types are:
+   * WHISPER A private message sent to another user. participantIds has to contain the Id of the receiver and sender user.
+   * CHAT Normal chat message sent to a room.
+   *
+   * @apiParam {Object} data Body params.
+   * @apiParam {Message} data.message Message.
+   * @apiParam {string} data.messageType Type of message. Default is CHAT.
+   * @apiParam {Object} [data.image] Image parameters to attach to the message.
+   *
+   * @apiSuccess {Object} data
+   * @apiSuccess {Message} data.message Sent message.
+   */
+  router.post('/:roomId/messages', (request, response) => {
+    helper.sendMessage({
+      request,
+      response,
+      io,
     });
   });
 

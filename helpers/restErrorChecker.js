@@ -17,7 +17,7 @@ function checkAndSendError({
   detail,
   sentData,
 }) {
-  const errorDetail = error.text.join('') || detail;
+  const errorDetail = detail || error.text.join('');
   const sendError = {
     status: 500,
     title: title || 'Internal server error',

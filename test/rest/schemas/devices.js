@@ -16,52 +16,53 @@
 
 'use strict';
 
+const tools = require('../helper/tools');
+const dbConfig = require('../../../config/defaults/config').databasePopulation;
 
 const schemas = {};
 
-const deviceBase = {
+schemas.device = tools.buildLiteSchema({
   type: 'object',
   required: [
-    'deviceId',
-    'lastAlive',
-    'deviceAlias',
+    'deviceName',
+    'deviceType',
   ],
   properties: {
-    deviceId: { type: 'string' },
-    lastAlive: { type: 'string' },
-    deviceAlias: { type: 'string' },
+    deviceName: { type: 'string' },
+    deviceType: {
+      type: 'string',
+      enum: Object.values(dbConfig.DeviceTypes),
+    },
+    lastUserId: { type: 'string' },
+    socketId: { type: 'string' },
   },
-};
+});
+
+schemas.fullDevice = tools.buildFullSchema({
+  type: 'object',
+  required: [
+    'deviceName',
+    'deviceType',
+  ],
+  properties: {
+    deviceName: { type: 'string' },
+    deviceType: {
+      type: 'string',
+      enum: Object.values(dbConfig.DeviceTypes),
+    },
+    lastUserId: { type: 'string' },
+    socketId: { type: 'string' },
+  },
+});
 
 schemas.devices = {
-  type: 'object',
-  required: ['data'],
-  properties: {
-    data: {
-      type: 'object',
-      required: ['devices'],
-      properties: {
-        devices: {
-          type: 'array',
-          items: deviceBase,
-        },
-      },
-    },
-  },
+  type: 'array',
+  items: schemas.device,
 };
 
-schemas.device = {
-  type: 'object',
-  required: ['data'],
-  properties: {
-    data: {
-      type: 'object',
-      required: ['device'],
-      properties: {
-        device: deviceBase,
-      },
-    },
-  },
+schemas.fullDevices = {
+  type: 'array',
+  items: schemas.fullDevice,
 };
 
 module.exports = schemas;

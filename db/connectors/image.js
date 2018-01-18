@@ -30,18 +30,6 @@ const imageSchema = new mongoose.Schema(dbConnector.createSchema({
 const Image = mongoose.model('Image', imageSchema);
 
 /**
- * Add custom id to the object.
- * @param {Object} image - Image object.
- * @return {Object} - Image object with id.
- */
-function addCustomId(image) {
-  const updatedImage = image;
-  updatedImage.imageId = image.objectId;
-
-  return updatedImage;
-}
-
-/**
  * Update image.
  * @param {Object} params - Parameters.
  * @param {string} params.imageId - ID of the device to update.
@@ -61,7 +49,7 @@ function updateObject({ imageId, update, callback }) {
         return;
       }
 
-      callback({ data: { image: addCustomId(data.object) } });
+      callback({ data: { image: data.object } });
     },
   });
 }
@@ -130,7 +118,7 @@ function getImages({ query, callback }) {
 
       callback({
         data: {
-          images: data.objects.map(image => addCustomId(image)),
+          images: data.objects,
         },
       });
     },
@@ -158,7 +146,7 @@ function getImage({ query, callback }) {
         return;
       }
 
-      callback({ data: { image: addCustomId(data.object) } });
+      callback({ data: { image: data.object } });
     },
   });
 }
@@ -180,7 +168,7 @@ function createImage({ image, callback }) {
         return;
       }
 
-      callback({ data: { image: addCustomId(data.savedObject) } });
+      callback({ data: { image: data.savedObject } });
     },
   });
 }
@@ -219,7 +207,7 @@ function addAccess({
         return;
       }
 
-      callback({ data: { image: addCustomId(data.object) } });
+      callback({ data: { image: data.object } });
     },
   });
 }
@@ -259,7 +247,7 @@ function removeAccess({
         return;
       }
 
-      callback({ data: { image: addCustomId(data.object) } });
+      callback({ data: { image: data.object } });
     },
   });
 }

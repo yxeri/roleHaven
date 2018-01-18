@@ -16,112 +16,76 @@
 
 'use strict';
 
+const tools = require('../helper/tools');
 
 const schemas = {};
 
+schemas.liteUser = tools.buildLiteSchema({
+  type: 'object',
+  required: [
+    'username',
+  ],
+  properties: {
+    username: { type: 'string' },
+    fullName: { type: 'string' },
+    isVerified: { type: 'boolean' },
+    isBanned: { type: 'boolean' },
+    isOnline: { type: 'boolean' },
+  },
+  not: {
+    required: [
+      'password',
+      'mailAddress',
+      'hasFullAccess',
+      'socketId',
+      'isLootable',
+      'defaultRoomId',
+      'followingRooms',
+      'registerDevice',
+    ],
+  },
+});
+
+schemas.fullUser = tools.buildFullSchema({
+  type: 'object',
+  required: [
+    'username',
+    'isVerified',
+    'isBanned',
+    'isOnline',
+    'hasFullAccess',
+    'isLootable',
+    'defaultRoomId',
+    'followingRooms',
+    'registerDevice',
+  ],
+  properties: {
+    password: { type: 'boolean' },
+    fullName: { type: 'string' },
+    socketId: { type: 'string' },
+    username: { type: 'string' },
+    isVerified: { type: 'boolean' },
+    isBanned: { type: 'boolean' },
+    isOnline: { type: 'boolean' },
+    hasFullAccess: { type: 'boolean' },
+    isLootable: { type: 'boolean' },
+    defaultRoomId: { type: 'string' },
+    registerDevice: { type: 'string' },
+    followingRooms: {
+      type: 'array',
+      items: { type: 'string' },
+    },
+  },
+});
+
 schemas.users = {
-  type: 'object',
-  required: ['data'],
-  properties: {
-    data: {
-      type: 'object',
-      required: ['users'],
-      properties: {
-        users: {
-          type: 'array',
-          items: {
-            type: 'object',
-            required: ['username'],
-            properties: {
-              username: { type: 'string' },
-              online: { type: 'boolean' },
-            },
-          },
-        },
-      },
-    },
-  },
+  type: 'array',
+  items: schemas.liteUser,
 };
 
-schemas.usernames = {
-  type: 'object',
-  required: ['data'],
-  properties: {
-    data: {
-      type: 'object',
-      required: ['users'],
-      properties: {
-        users: {
-          type: 'array',
-          items: { type: 'string' },
-        },
-      },
-    },
-  },
-};
-
-schemas.matches = {
-  type: 'object',
-  required: ['data'],
-  properties: {
-    data: {
-      type: 'object',
-      required: ['matches'],
-      properties: {
-        matches: {
-          type: 'array',
-          items: { type: 'string' },
-        },
-      },
-    },
-  },
-};
-
-schemas.user = {
-  type: 'object',
-  required: ['data'],
-  properties: {
-    data: {
-      type: 'object',
-      required: ['user'],
-      properties: {
-        user: {
-          required: [
-            'username',
-            'verified',
-            'banned',
-            'online',
-            'lootable',
-            'accessLevel',
-            'visibility',
-            'warnings',
-            'mail',
-            'rooms',
-            'whisperRooms',
-            'registeredAt',
-            'registerDevice',
-            'aliases',
-          ],
-          properties: {
-            username: { type: 'string' },
-            verified: { type: 'boolean' },
-            banned: { type: 'boolean' },
-            online: { type: 'boolean' },
-            lootable: { type: 'boolean' },
-            accessLevel: { type: 'number' },
-            visibility: { type: 'number' },
-            warnings: { type: 'number' },
-            mail: { type: ['boolean', 'string'] },
-            rooms: { type: 'array', items: { type: 'string' } },
-            whisperRooms: { type: 'array', items: { type: 'string' } },
-            registeredAt: { type: 'string' },
-            registerDevice: { type: 'string' },
-            aliases: { type: 'array', items: { type: 'string' } },
-          },
-        },
-      },
-    },
-  },
+schemas.fullUsers = {
+  type: 'array',
+  items: schemas.fullUser,
 };
 
 module.exports = schemas;

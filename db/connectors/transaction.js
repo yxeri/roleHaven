@@ -31,17 +31,19 @@ const transactionSchema = new mongoose.Schema(dbConnector.createSchema({
 
 const Transaction = mongoose.model('transaction', transactionSchema);
 
-/**
- * Add custom id to the object.
- * @param {Object} transaction - Transaction object
- * @return {Object} - Transaction object with id
- */
-function addCustomId(transaction) {
-  const updatedTransaction = transaction;
-  updatedTransaction.transactionId = transaction.objectId;
-
-  return updatedTransaction;
-}
+const transactionFilter = {
+  amount: 1,
+  toWalletId: 1,
+  fromWalletId: 1,
+  note: 1,
+  coordinates: 1,
+  ownerId: 1,
+  ownerAliasId: 1,
+  timeCreated: 1,
+  customTimeCreated: 1,
+  lastUpdated: 1,
+  customLastUpdated: 1,
+};
 
 /**
  * Update transaction properties.
@@ -63,7 +65,7 @@ function updateObject({ transactionId, update, callback }) {
         return;
       }
 
-      callback({ data: { transaction: addCustomId(data.object) } });
+      callback({ data: { transaction: data.object } });
     },
   });
 }
@@ -75,9 +77,10 @@ function updateObject({ transactionId, update, callback }) {
  * @param {Object} params.query - Query to get transactions
  * @param {Function} params.callback - Callback
  */
-function getTransactions({ query, callback }) {
+function getTransactions({ filter, query, callback }) {
   dbConnector.getObjects({
     query,
+    filter,
     object: Transaction,
     callback: ({ error, data }) => {
       if (error) {
@@ -88,7 +91,7 @@ function getTransactions({ query, callback }) {
 
       callback({
         data: {
-          transactions: data.objects.map(transaction => addCustomId(transaction)),
+          transactions: data.objects,
         },
       });
     },
@@ -117,7 +120,7 @@ function getTransaction({ query, callback }) {
         return;
       }
 
-      callback({ data: { transaction: addCustomId(data.object) } });
+      callback({ data: { transaction: data.object } });
     },
   });
 }
@@ -193,7 +196,7 @@ function createTransaction({ transaction, callback }) {
         return;
       }
 
-      callback({ data: { transaction: addCustomId(data.savedObject) } });
+      callback({ data: { transaction: data.savedObject } });
     },
   });
 }
@@ -222,12 +225,15 @@ function getAllTransactions({ callback }) {
 }
 
 /**
- * Get transaction by ID
- * @param {Object} params - Parameters
- * @param {string} params.transactionId - ID of the transaction
- * @param {Function} params.callback - Callback
+ * Get transaction by Id.
+ * @param {Object} params - Parameters.
+ * @param {string} params.transactionId - Id of the transaction.
+ * @param {Function} params.callback - Callback.
  */
-function getTransactionById({ transactionId, callback }) {
+function getTransactionById({
+  transactionId,
+  callback,
+}) {
   getTransaction({
     callback,
     query: { _id: transactionId },
@@ -278,6 +284,27 @@ function updateTransaction({
   });
 }
 
+/**
+ * Get transactions created by the user.
+ * @param {Object} params - Parameters.
+ * @param {string} params.userId - Id of the user.
+ * @param {Function} params.callback - Callback.
+ * @param {boolean} [params.full] - Should the complete objects be returned?
+ */
+function getTransactionsCreatedByUser({
+  userId,
+  callback,
+  full,
+}) {
+  const filter = !full ? transactionFilter : {};
+
+  getTransactions({
+    filter,
+    callback,
+    query: { ownerId: userId },
+  });
+}
+
 exports.createTransaction = createTransaction;
 exports.getTransactionsByWallet = getTransactionsByWallet;
 exports.getTransactionsByUser = getTransactionsByUser;
@@ -285,4 +312,5 @@ exports.removeTransaction = removeTransaction;
 exports.getAllTransactions = getAllTransactions;
 exports.getTransactionById = getTransactionById;
 exports.updateTransaction = updateTransaction;
+exports.getTransactionsCreatedByUser = getTransactionsCreatedByUser;
 

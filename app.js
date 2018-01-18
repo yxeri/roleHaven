@@ -25,8 +25,6 @@ const compression = require('compression');
 const appConfig = require('./config/defaults/config').app;
 const dbConfig = require('./config/defaults/config').databasePopulation;
 const dbRoom = require('./db/connectors/room');
-const dbCommand = require('./db/connectors/command');
-const lanternHacking = require('./managers/lanternHacking');
 
 const app = express();
 
@@ -49,7 +47,6 @@ app.use(morgan(appConfig.logLevel));
 // Serve files from public path
 app.use(express.static(appConfig.publicBase));
 
-
 appConfig.routes.forEach((route) => {
   // eslint-disable-next-line global-require, import/no-dynamic-require
   app.use(route.sitePath, require(path.resolve(route.filePath))(app.io));
@@ -57,10 +54,7 @@ appConfig.routes.forEach((route) => {
 
 if (appConfig.mode !== appConfig.Modes.TEST) {
   dbRoom.populateDbRooms({ rooms: dbConfig.rooms });
-  dbCommand.populateDbCommands({ commands: dbConfig.commands });
 }
-
-lanternHacking.startResetInterval({ io: app.io });
 
 /*
  * Catches all exceptions and keeps the server running

@@ -37,32 +37,46 @@ const socketUtils = require('../utils/socketIo');
  * @param {Function} params.callback - Callback
  * @param {string} [params.errorContentText] - Text to be printed on error.
  * @param {boolean} [params.shouldBeAdmin] - Does the user have to be an admin?
+ * @param {boolean} [params.full] - Full.
  */
 function getAccessibleUser({
   user,
   userId,
   callback,
   shouldBeAdmin,
+  full,
   errorContentText = `userId ${userId}`,
 }) {
   dbUser.getUserById({
     userId,
-    callback: (userData) => {
-      if (userData.error) {
-        callback({ error: userData.error });
+    callback: ({ error: userError, data: userData }) => {
+      if (userError) {
+        callback({ error: userError });
 
         return;
       } else if (!authenticator.hasAccessTo({
         shouldBeAdmin,
         toAuth: user,
-        objectToAccess: userData.data.user,
+        objectToAccess: userData.user,
       })) {
         callback({ error: new errorCreator.NotAllowed({ name: errorContentText }) });
 
         return;
       }
 
-      callback(userData);
+      const foundUser = userData.user;
+      const filteredUser = {
+        username: foundUser.username,
+        lastOnline: foundUser.lastOnline,
+        lastUpdated: foundUser.lastUpdated,
+        isOnline: foundUser.isOnline,
+      };
+
+      callback({
+        data: {
+          user: full ? foundUser : filteredUser,
+        },
+      });
     },
   });
 }
@@ -108,14 +122,7 @@ function createUser({
 
       const newUser = user;
       newUser.isVerified = appConfig.userVerify;
-      newUser.rooms = [
-        dbConfig.rooms.public.roomId,
-        dbConfig.rooms.bcast.roomId,
-        dbConfig.rooms.important.roomId,
-        dbConfig.rooms.user.roomId,
-        dbConfig.rooms.news.roomId,
-        dbConfig.rooms.schedule.roomId,
-      ];
+      newUser.followingRooms = Object.keys(dbConfig.rooms).map(key => dbConfig.rooms[key].objectId);
 
       dbUser.createUser({
         user: newUser,
@@ -130,16 +137,17 @@ function createUser({
 
           dbRoom.createRoom({
             room: {
-              ownerId: createdUser.userId,
-              roomName: createdUser.userId,
+              ownerId: createdUser.objectId,
+              roomName: createdUser.objectId,
+              objectId: createdUser.objectId,
               visibility: dbConfig.AccessLevels.SUPERUSER,
               accessLevel: dbConfig.AccessLevels.SUPERUSER,
             },
             options: {
-              shouldSetIdToName: true,
+              shouldSetId: true,
               isFollower: true,
             },
-            callback: ({ error: roomError }) => {
+            callback: ({ error: roomError, data: roomData }) => {
               if (roomError) {
                 callback({ error: roomError });
 
@@ -147,9 +155,9 @@ function createUser({
               }
 
               const wallet = {
-                walletId: createdUser.userId,
+                objectId: createdUser.objectId,
                 accessLevel: createdUser.accessLevel,
-                ownerId: createdUser.userId,
+                ownerId: createdUser.objectId,
                 amount: appConfig.defaultWalletAmount,
               };
               const walletOptions = { setId: true };
@@ -164,10 +172,11 @@ function createUser({
                     return;
                   }
 
+
                   const dataToSend = {
                     data: {
                       user: {
-                        userId: createdUser.userId,
+                        objectId: createdUser.objectId,
                         username: createdUser.username,
                       },
                       changeType: dbConfig.ChangeTypes.CREATE,
@@ -184,6 +193,8 @@ function createUser({
                     data: {
                       user: createdUser,
                       wallet: walletData.wallet,
+                      room: roomData.room,
+                      changeType: dbConfig.ChangeTypes.CREATE,
                     },
                   });
                 },
@@ -197,20 +208,22 @@ function createUser({
 }
 
 /**
- * List users.
+ * Get users that the user has access to.
  * @param {Object} params - Parameters.
- * @param {boolean} params.includeInactive - Should banned and verified users be retrieved?
  * @param {Object} params.token - jwt.
  * @param {Function} params.callback - Callback.
+ * @param {boolean} [params.includeInactive] - Should banned and unverified users be in the result?
+ * @param {boolean} [params.full] - Should
  */
-function listUsers({
-  includeInactive,
+function getUsersByUser({
   token,
+  includeInactive,
   callback,
+  full,
 }) {
   authenticator.isUserAllowed({
     token,
-    commandName: includeInactive ? dbConfig.apiCommands.GetInactiveUsers : dbConfig.apiCommands.GetUsers.name,
+    commandName: full || includeInactive ? dbConfig.apiCommands.GetFull.name : dbConfig.apiCommands.GetUsers.name,
     callback: ({ error, data }) => {
       if (error) {
         callback({ error });
@@ -218,9 +231,13 @@ function listUsers({
         return;
       }
 
-      dbUser.getUsersListByUser({
+      const { user } = data;
+
+      dbUser.getUsersByUser({
+        user,
+        full,
+        includeInactive,
         callback,
-        user: data.user,
       });
     },
   });
@@ -231,28 +248,27 @@ function listUsers({
  * @param {Object} params - Parameters.
  * @param {string} params.password - Password.
  * @param {Function} params.callback - Callback.
- * @param {string} params.userId - Id of the user changing the password.
  */
 function changePassword({
   token,
-  userId,
   password,
   callback,
 }) {
   authenticator.isUserAllowed({
     token,
-    matchToId: userId,
     commandName: dbConfig.apiCommands.ChangePassword.name,
-    callback: ({ error }) => {
+    callback: ({ error, data }) => {
       if (error) {
         callback({ error });
 
         return;
       }
 
+      const { user } = data;
+
       dbUser.updateUserPassword({
         password,
-        userId,
+        userId: user.objectId,
         callback: ({ error: updateError }) => {
           if (updateError) {
             callback({ error: updateError });
@@ -267,22 +283,21 @@ function changePassword({
   });
 }
 
+// TODO Fix access
+
 /**
  * Get user by name.
  * @param {Object} params - Parameters.
  * @param {string} params.username - Name of the user to retrieve.
- * @param {Object} params.userId - ID of the user retrieving the user.
  * @param {Function} params.callback - Callback.
  */
 function getUserByName({
   token,
   username,
-  userId,
   callback,
 }) {
   authenticator.isUserAllowed({
     token,
-    matchToId: userId,
     commandName: dbConfig.apiCommands.GetUser.name,
     callback: ({ error, data }) => {
       if (error) {
@@ -320,19 +335,17 @@ function getUserByName({
 /**
  * Get user by Id.
  * @param {Object} params - Parameters.
- * @param {string} params.userIdToGet - Id of the user to retrieve.
- * @param {Object} params.userId - Id of the user retrieving the user.
+ * @param {string} params.userId - Id of the user to retrieve.
  * @param {Function} params.callback - Callback.
  */
 function getUserById({
   token,
-  userIdToGet,
   userId,
   callback,
+  full,
 }) {
   authenticator.isUserAllowed({
     token,
-    matchToId: userId,
     commandName: dbConfig.apiCommands.GetUser.name,
     callback: ({ error, data }) => {
       if (error) {
@@ -343,7 +356,7 @@ function getUserById({
 
       const { user } = data;
 
-      if (userIdToGet === user.userId) {
+      if (userId === user.objectId) {
         callback({ data });
 
         return;
@@ -351,16 +364,10 @@ function getUserById({
 
       getAccessibleUser({
         user,
+        full,
         userId,
-        callback: ({ error: userError, data: userData }) => {
-          if (userError) {
-            callback({ error: userError });
-
-            return;
-          }
-
-          callback({ data: userData });
-        },
+        callback,
+        shouldBeAdmin: full && dbConfig.apiCommands.GetFull.accessLevel > user.accessLevel,
       });
     },
   });
@@ -403,7 +410,7 @@ function login({
       const authUser = userData.user;
 
       authenticator.createToken({
-        userId: authUser.userId,
+        userId: authUser.objectId,
         password: user.password,
         callback: ({ error, data: tokenData }) => {
           if (error) {
@@ -413,7 +420,7 @@ function login({
           }
 
           dbUser.updateOnline({
-            userId: authUser.userId,
+            userId: authUser.objectId,
             socketId: socket.id,
             isOnline: true,
             callback: (socketData) => {
@@ -424,11 +431,11 @@ function login({
               }
 
               const newDevice = device;
-              newDevice.lastUserId = authUser.userId;
+              newDevice.lastUserId = authUser.objectId;
               newDevice.socketId = socket.id;
 
               dbDevice.updateDevice({
-                deviceId: newDevice.deviceId,
+                deviceId: newDevice.objectId,
                 device: newDevice,
                 callback: ({ error: deviceError }) => {
                   if (deviceError) {
@@ -473,19 +480,16 @@ function login({
  * @param {Object} params.device - The device of the user that is logging out.
  * @param {string} params.token jwt.
  * @param {Object} params.socket - Socket.io.
- * @param {string} params.userId - ID of the user trying to log out the user.
  * @param {Function} params.callback - Callback.
  */
 function logout({
   device,
-  userId,
   token,
   socket,
   callback,
 }) {
   authenticator.isUserAllowed({
     token,
-    matchToId: userId,
     commandName: dbConfig.apiCommands.Logout.name,
     callback: ({ error, data }) => {
       if (error) {
@@ -497,7 +501,7 @@ function logout({
       const authUser = data.user;
 
       dbUser.updateOnline({
-        userId: authUser.userId,
+        userId: authUser.objectId,
         isOnline: false,
         callback: ({ error: socketError }) => {
           if (socketError) {
@@ -507,7 +511,7 @@ function logout({
           }
 
           const deviceToUpdate = device;
-          deviceToUpdate.lastUserId = authUser.userId;
+          deviceToUpdate.lastUserId = authUser.objectId;
           deviceToUpdate.socketId = '';
 
           deviceManager.updateDevice({
@@ -531,42 +535,6 @@ function logout({
 }
 
 /**
- * Get banned users.
- * @param {Object} params - Parameters.
- * @param {string} params.token - jwt.
- * @param {Function} params.callback - Callback.
- */
-function getBannedUsers({ token, callback }) {
-  authenticator.isUserAllowed({
-    token,
-    commandName: dbConfig.apiCommands.GetInactiveUsers.name,
-    callback: ({ error }) => {
-      if (error) {
-        callback({ error });
-
-        return;
-      }
-
-      dbUser.getUsersListByUser({
-        callback: (usersData) => {
-          if (usersData.error) {
-            callback({ error: usersData.error });
-
-            return;
-          }
-
-          const { users } = usersData.data;
-
-          callback({
-            data: { users: users.map(user => user.username) },
-          });
-        },
-      });
-    },
-  });
-}
-
-/**
  * Unban user.
  * @param {Object} params - Parameters.
  * @param {string} params.token - jwt token.
@@ -582,7 +550,6 @@ function unbanUser({
 }) {
   authenticator.isUserAllowed({
     token,
-    matchToId: bannedUserId,
     commandName: dbConfig.apiCommands.UnbanUser.name,
     callback: ({ error }) => {
       if (error) {
@@ -604,7 +571,7 @@ function unbanUser({
           const dataToSend = {
             data: {
               user: {
-                userId: bannedUserId,
+                objectId: bannedUserId,
                 isBanned: false,
               },
               changeType: dbConfig.ChangeTypes.UPDATE,
@@ -644,7 +611,7 @@ function banUser({
         callback({ error });
 
         return;
-      } else if (banUserId === data.user.userId) {
+      } else if (banUserId === data.user.objectId) {
         callback({ error: new errorCreator.InvalidData({ name: 'cannot ban self' }) });
 
         return;
@@ -664,13 +631,13 @@ function banUser({
           const banDataToSend = {
             data: {
               reason,
-              user: { userId: banUserId },
+              user: { objectId: banUserId },
             },
           };
           const dataToSend = {
             data: {
               user: {
-                userId: banUserId,
+                objectId: banUserId,
                 isBanned: true,
               },
               changeType: dbConfig.ChangeTypes.UPDATE,
@@ -727,7 +694,7 @@ function verifyUser({
           const dataToSend = {
             data: {
               user: {
-                userId: userIdToVerify,
+                objectId: userIdToVerify,
                 isVerified: true,
               },
               changeType: dbConfig.ChangeTypes.UPDATE,
@@ -749,8 +716,7 @@ function verifyUser({
  * @param {string} params.token - jwt.
  * @param {Object} params.io - Socket.io.
  * @param {Function} params.callback - Callback.
- * @param {string} params.userId - Id of the user updating a user.
- * @param {string} params.userIdToUpdate - Id of the user to update.
+ * @param {string} params.userId - Id of the user to update.
  * @param {Object} params.user - User parameter to update.
  * @param {Object} [params.options] - Update options.
  */
@@ -759,28 +725,32 @@ function updateUser({
   io,
   callback,
   userId,
-  userIdToUpdate,
   user,
   options,
 }) {
   authenticator.isUserAllowed({
     token,
-    matchToId: userId,
     commandName: dbConfig.apiCommands.UpdateUser.name,
-    callback: ({ error }) => {
+    callback: ({ error, data }) => {
       if (error) {
         callback({ error });
 
         return;
+      } else if ((user.accessLevel || user.visibility || user.hasFullAccess) && userId === data.user.userId) {
+        callback({ error: new errorCreator.NotAllowed({ name: 'update self' }) });
+
+        return;
       }
 
+      const authUser = data.user;
+
       getAccessibleUser({
-        user,
+        userId,
+        user: authUser,
         shouldBeAdmin: true,
-        userId: userIdToUpdate,
-        callback: (userData) => {
-          if (userData.error) {
-            callback({ error: userData.error });
+        callback: ({ error: userError }) => {
+          if (userError) {
+            callback({ error: userError });
 
             return;
           }
@@ -788,15 +758,15 @@ function updateUser({
           dbUser.updateUser({
             user,
             options,
-            userId: userIdToUpdate,
-            callback: (updateData) => {
-              if (updateData.error) {
-                callback({ error: updateData.error });
+            userId,
+            callback: ({ error: updateError, data: updateData }) => {
+              if (updateError) {
+                callback({ error: updateError });
 
                 return;
               }
 
-              const updatedUser = updateData.data.user;
+              const updatedUser = updateData.user;
 
               const dataToSend = {
                 data: {
@@ -820,12 +790,12 @@ function updateUser({
  * Remove a user.
  * @param {Object} params - Parameters.
  * @param {string} params.token - jwt.
- * @param {string} params.userIdToRemove - Id of the user to remove.
+ * @param {string} params.userId - Id of the user to remove.
  * @param {Function} params.callback - Callback.
  */
 function removeUser({
   token,
-  userIdToRemove,
+  userId,
   callback,
 }) {
   authenticator.isUserAllowed({
@@ -842,8 +812,7 @@ function removeUser({
 
       getAccessibleUser({
         user,
-        shouldBeAdmin: true,
-        userId: userIdToRemove,
+        userId,
         callback: (userData) => {
           if (userData.error) {
             callback({ error: userData.error });
@@ -854,8 +823,23 @@ function removeUser({
           // TODO Remove everything connected to the user. Should EVERYTHING be removed?
 
           dbUser.removeUser({
-            callback,
-            userId: userIdToRemove,
+            userId,
+            callback: ({ error: removeError }) => {
+              if (removeError) {
+                callback({ error: removeError });
+
+                return;
+              }
+
+              const dataToSend = {
+                data: {
+                  user: { objectId: userId },
+                  changeType: dbConfig.ChangeTypes.REMOVE,
+                },
+              };
+
+              callback(dataToSend);
+            },
           });
         },
       });
@@ -869,10 +853,9 @@ exports.getUserById = getUserById;
 exports.changePassword = changePassword;
 exports.login = login;
 exports.logout = logout;
-exports.getBannedUsers = getBannedUsers;
-exports.listUsers = listUsers;
 exports.banUser = banUser;
 exports.unbanUser = unbanUser;
 exports.verifyUser = verifyUser;
 exports.updateUser = updateUser;
 exports.removeUser = removeUser;
+exports.getUsersByUser = getUsersByUser;

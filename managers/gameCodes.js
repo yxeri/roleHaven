@@ -30,20 +30,22 @@ const docFileManager = require('./docFiles');
  * Get game code by code and check if the user has access to it.
  * @param {Object} params - Parameters.
  * @param {Object} params.user - User retrieving the alias.
- * @param {string} params.code - Code of the game code to retrieve.
+ * @param {string} params.gameCodeId - Id of the game code to retrieve.
  * @param {Function} params.callback - Callback.
  * @param {string} [params.errorContentText] - Text to be printed on error.
  * @param {boolean} [params.shouldBeAdmin] - Does the user have to be an admin?
  */
 function getAccessibleGameCode({
   user,
-  code,
+  gameCodeId,
   callback,
   shouldBeAdmin,
-  errorContentText = `gameCode ${code}`,
+  full,
+  errorContentText = `gameCode ${gameCodeId}`,
 }) {
-  dbGameCode.getGameCodeByCode({
-    code,
+  dbGameCode.getGameCodeById({
+    gameCodeId,
+    full: true,
     callback: (gameCodeData) => {
       if (gameCodeData.error) {
         callback({ error: gameCodeData.error });
@@ -59,7 +61,19 @@ function getAccessibleGameCode({
         return;
       }
 
-      callback(gameCodeData);
+      const foundGameCode = gameCodeData.data.gameCode;
+      const filteredGameCode = {
+        objectId: foundGameCode.objectId,
+        code: foundGameCode.code,
+        codeContent: foundGameCode.codeContent,
+        codeType: foundGameCode.codeType,
+        lastUpdated: foundGameCode.lastUpdated,
+        used: foundGameCode.used,
+        ownerId: foundGameCode.ownerId,
+        ownerAliasId: foundGameCode.ownerAliasId,
+      };
+
+      callback({ data: { gameCode: full ? foundGameCode : filteredGameCode } });
     },
   });
 }
@@ -156,14 +170,12 @@ function triggerUnlockedContent({
  * @param {Function} params.callback - Callback.
  */
 function createGameCode({
-  userId,
   gameCode,
   token,
   callback,
 }) {
   authenticator.isUserAllowed({
     token,
-    matchToId: userId,
     commandName: dbConfig.apiCommands.CreateGameCode.name,
     callback: ({ error, data }) => {
       if (error) {
@@ -182,15 +194,22 @@ function createGameCode({
               return;
             }
 
-            callback(gameCodeData);
+            const dataToSend = {
+              data: {
+                gameCode: gameCodeData.data.gameCode,
+                changeType: dbConfig.ChangeTypes.CREATE,
+              },
+            };
+
+            callback(dataToSend);
           },
         });
       };
 
       const { user } = data;
       const gameCodeToSave = gameCode;
-      gameCodeToSave.ownerId = user.userId;
-      gameCodeToSave.code = gameCodeToSave.code || textTools.generateTextCode();
+      gameCodeToSave.ownerId = user.objectId;
+      gameCodeToSave.code = (gameCodeToSave.code || textTools.generateTextCode()).toLowerCase();
 
       if (gameCodeToSave.ownerAliasId) {
         aliasManager.getAccessibleAlias({
@@ -216,16 +235,21 @@ function createGameCode({
 }
 
 /**
- * Get game codes by owner.
+ * Get a game code by Id.
  * @param {Object} params - Parameters.
  * @param {string} params.token - jwt.
- * @param {string} [params.userId] - ID of the user to auth and retrieve codes with.
  * @param {Function} params.callback - Callback.
+ * @param {string} params.gameCodeId - Code of the game code.
+ * @param {boolean} [params.full] - Should the complete object be returned?
  */
-function getGameCodesByOwner({ token, userId, callback }) {
+function getGameCodeById({
+  token,
+  callback,
+  gameCodeId,
+  full,
+}) {
   authenticator.isUserAllowed({
     token,
-    matchToId: userId,
     commandName: dbConfig.apiCommands.GetGameCode.name,
     callback: ({ error, data }) => {
       if (error) {
@@ -234,8 +258,40 @@ function getGameCodesByOwner({ token, userId, callback }) {
         return;
       }
 
+      const { user } = data;
+
+      getAccessibleGameCode({
+        user,
+        gameCodeId,
+        full,
+        callback,
+        shouldBeAdmin: full && dbConfig.apiCommands.GetFull.accessLevel > user.accessLevel,
+      });
+    },
+  });
+}
+
+/**
+ * Get game codes by owner.
+ * @param {Object} params - Parameters.
+ * @param {string} params.token - jwt.
+ * @param {Function} params.callback - Callback.
+ */
+function getGameCodesByOwner({ token, callback }) {
+  authenticator.isUserAllowed({
+    token,
+    commandName: dbConfig.apiCommands.GetGameCode.name,
+    callback: ({ error, data }) => {
+      if (error) {
+        callback({ error });
+
+        return;
+      }
+
+      const { user } = data;
+
       dbGameCode.getGameCodesByOwner({
-        ownerId: data.user.userId,
+        ownerId: user.objectId,
         callback: (gameCodeData) => {
           if (gameCodeData.error) {
             callback({ error: gameCodeData.error });
@@ -276,14 +332,14 @@ function useGameCode({
         return;
       }
 
-      dbGameCode.getGameCodeByCode({
+      dbGameCode.getGameCodeById({
         code,
         callback: (gameCodeData) => {
           if (gameCodeData.error) {
             callback({ error: gameCodeData.error });
 
             return;
-          } else if (gameCodeData.data.gameCode.ownerId === data.user.userId) {
+          } else if (gameCodeData.data.gameCode.ownerId === data.user.objectId) {
             callback({ error: new errorCreator.NotAllowed({ name: 'useGameCode on yourself' }) });
 
             return;
@@ -302,7 +358,7 @@ function useGameCode({
 
               triggerUnlockedContent({
                 token,
-                userId: data.user.userId,
+                userId: data.user.objectId,
                 gameCode: usedGameCode,
                 callback: (unlockedData) => {
                   if (unlockedData.error) {
@@ -326,7 +382,6 @@ function useGameCode({
                         codeType: usedGameCode.codeType,
                         codeContent: usedGameCode.codeContent,
                         isRenewable: true,
-                        code: textTools.generateTextCode(),
                       },
                       callback: (createData) => {
                         if (createData.error) {
@@ -364,19 +419,17 @@ function useGameCode({
 /**
  * Remove game code.
  * @param {Object} params - Parameters.
- * @param {string} params.code - Code of the game code.
+ * @param {string} params.gameCodeId - Id of the game code.
  * @param {Object} params.token - jwt.
  * @param {Function} params.callback - Callback.
  */
 function removeGameCode({
-  code,
+  gameCodeId,
   token,
   callback,
-  userId,
 }) {
   authenticator.isUserAllowed({
     token,
-    matchToId: userId,
     commandName: dbConfig.apiCommands.RemoveGameCode.name,
     callback: ({ error, data }) => {
       if (error) {
@@ -388,8 +441,9 @@ function removeGameCode({
       const { user } = data;
 
       getAccessibleGameCode({
-        code,
+        gameCodeId,
         user,
+        shouldBeAdmin: true,
         callback: (gameCodeData) => {
           if (gameCodeData.error) {
             callback({ error: gameCodeData.error });
@@ -398,8 +452,23 @@ function removeGameCode({
           }
 
           dbGameCode.removeGameCode({
-            code,
-            callback,
+            gameCodeId,
+            callback: ({ error: removeError }) => {
+              if (removeError) {
+                callback({ error: removeError });
+
+                return;
+              }
+
+              const dataToSend = {
+                data: {
+                  gameCode: { objectId: gameCodeId },
+                  changeType: dbConfig.ChangeTypes.REMOVE,
+                },
+              };
+
+              callback(dataToSend);
+            },
           });
         },
       });
@@ -410,21 +479,18 @@ function removeGameCode({
 /**
  * Get user's profile code.
  * @param {Object} params - Parameters.
- * @param {string} params.userId - Id of the user retrieving the code.
  * @param {string} params.ownerId - Id of the owner of the code.
  * @param {Function} params.callback - Callback.
  * @param {string} params.token - jwt.
  */
 function getProfileGameCode({
-  userId,
   ownerId,
   callback,
   token,
 }) {
   authenticator.isUserAllowed({
     token,
-    matchToId: userId,
-    commandName: dbConfig.apiCommands.GetGameCode.commandName,
+    commandName: dbConfig.apiCommands.GetGameCode.name,
     callback: ({ error }) => {
       if (error) {
         callback({ error });
@@ -445,21 +511,18 @@ function getProfileGameCode({
  * @param {Object} params - Parameters.
  * @param {string} params.token - jwt.
  * @param {Function} params.callback - Callback.
- * @param {string} params.code - Code of the game code.
+ * @param {string} params.gameCodeId - Id of the game code.
  * @param {Object} params.gameCode - Game code parameters to update.
- * @param {string} [params.userId] - Id of the user updating the game code.
  */
 function updateGameCode({
   token,
   callback,
-  code,
-  userId,
+  gameCodeId,
   gameCode,
 }) {
   authenticator.isUserAllowed({
     token,
-    matchToId: userId,
-    commandName: dbConfig.apiCommands.UpdateGameCode.commandName,
+    commandName: dbConfig.apiCommands.UpdateGameCode.name,
     callback: ({ error, data }) => {
       if (error) {
         callback({ error });
@@ -470,18 +533,37 @@ function updateGameCode({
       const { user } = data;
 
       getAccessibleGameCode({
-        code,
+        gameCodeId,
         user,
+        shouldBeAdmin: true,
         callback: ({ error: gameCodeError }) => {
           if (gameCodeError) {
             callback({ error: gameCodeError });
 
             return;
           }
+
           dbGameCode.updateGameCode({
-            code,
+            gameCodeId,
             gameCode,
-            callback,
+            callback: ({ error: updateError, data: updateData }) => {
+              if (updateError) {
+                callback({ error: updateError });
+
+                return;
+              }
+
+              const updatedGameCode = updateData.gameCode;
+
+              const dataToSend = {
+                data: {
+                  gameCode: updatedGameCode,
+                  changeType: dbConfig.ChangeTypes.UPDATE,
+                },
+              };
+
+              callback(dataToSend);
+            },
           });
         },
       });
@@ -495,3 +577,4 @@ exports.removeGameCode = removeGameCode;
 exports.getGameCodesByOwner = getGameCodesByOwner;
 exports.getProfileGameCode = getProfileGameCode;
 exports.updateGameCode = updateGameCode;
+exports.getGameCodeById = getGameCodeById;

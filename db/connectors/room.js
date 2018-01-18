@@ -34,17 +34,14 @@ const roomSchema = new mongoose.Schema(dbConnector.createSchema({
 
 const Room = mongoose.model('Room', roomSchema);
 
-/**
- * Add custom id to the object.
- * @param {Object} room - Room object.
- * @return {Object} - Room object with id.
- */
-function addCustomId(room) {
-  const updatedRoom = room;
-  updatedRoom.roomId = room.objectId;
-
-  return updatedRoom;
-}
+const roomFilter = {
+  roomName: 1,
+  lastUpdated: 1,
+  isAnonymous: 1,
+  followers: 1,
+  isWhisper: 1,
+  participantIds: 1,
+};
 
 /**
  * Remove private parameters from room.
@@ -61,12 +58,12 @@ function cleanParameters(room) {
 }
 
 /**
- * Update room
+ * Update room.
  * @private
- * @param {Object} params - Parameters
- * @param {string} params.roomId - ID of the room to update
- * @param {Object} params.update - Update
- * @param {Function} params.callback - Callback
+ * @param {Object} params - Parameters.
+ * @param {string} params.roomId - Id of the room to update.
+ * @param {Object} params.update - Update.
+ * @param {Function} params.callback - Callback.
  */
 function updateObject({ update, roomId, callback }) {
   dbConnector.updateObject({
@@ -81,17 +78,16 @@ function updateObject({ update, roomId, callback }) {
         return;
       }
 
-      callback({ data: { room: addCustomId(cleanParameters(data.object)) } });
+      callback({ data: { room: cleanParameters(data.object) } });
     },
   });
 }
 
 /**
- * Get room
- * @private
- * @param {Object} params - Parameters
- * @param {string} params.query - Query to get room
- * @param {Function} params.callback - Callback
+ * Get a room.
+ * @param {Object} params - Parameters-
+ * @param {string} params.query - Query to get room.
+ * @param {Function} params.callback - Callback.
  */
 function getRoom({ query, callback }) {
   dbConnector.getObject({
@@ -108,17 +104,17 @@ function getRoom({ query, callback }) {
         return;
       }
 
-      callback({ room: addCustomId(cleanParameters(data.object)) });
+      callback({ data: { room: cleanParameters(data.object) } });
     },
   });
 }
 
 /**
- * Get rooms
+ * Get rooms.
  * @private
- * @param {Object} params - Parameters
- * @param {Object} params.query - Query to get rooms
- * @param {Function} params.callback - Callback
+ * @param {Object} params - Parameters.
+ * @param {Object} params.query - Query to get rooms.
+ * @param {Function} params.callback - Callback.
  * @param {Object} [params.filter] - Parameters to be filtered from the db result.
  */
 function getRooms({
@@ -137,24 +133,33 @@ function getRooms({
         return;
       }
 
-      callback({ rooms: data.objects.map(room => addCustomId(cleanParameters(room))) });
+      callback({
+        data: {
+          rooms: data.objects.map(room => cleanParameters(room)),
+        },
+      });
     },
   });
 }
 
 /**
  * Does the room exist?
- * @param {Object} params - Parameters
- * @param {string} params.roomName - Name of the room
- * @param {Function} params.callback - Callback
+ * @param {Object} params - Parameters.
+ * @param {string} [params.roomName] - Name of the room.
+ * @param {string} [params.roomId] - Id of the room.
+ * @param {Function} params.callback - Callback.
  */
-function doesRoomExist({ roomName, callback }) {
-  const query = {
-    $or: [
-      { roomName },
-      { _id: roomName },
-    ],
-  };
+function doesRoomExist({ roomName, roomId, callback }) {
+  if (!roomName && !roomId) {
+    callback({ error: new errorCreator.InvalidData({ expected: 'roomName || roomId' }) });
+
+    return;
+  }
+
+  const query = { $or: [] };
+
+  if (roomName) { query.$or.push({ roomName }); }
+  if (roomId) { query.$or.push({ _id: roomId }); }
 
   dbConnector.doesObjectExist({
     query,
@@ -164,19 +169,23 @@ function doesRoomExist({ roomName, callback }) {
 }
 
 /**
- * Add followers
- * @param {Object} params - Parameters
- * @param {string[]} params.userIds - ID of the users to add
- * @param {string} params.roomId - ID of the room
- * @param {Function} params.callback - Callback
+ * Add followers.
+ * @param {Object} params - Parameters.
+ * @param {string[]} params.userIds - Id of the users to add.
+ * @param {string} params.roomId - Id of the room.
+ * @param {Function} params.callback - Callback.
  */
 function addFollowers({ userIds, roomId, callback }) {
+  const update = {
+    $addToSet: {
+      followers: { $each: userIds },
+    },
+  };
+
   updateObject({
     roomId,
     callback,
-    update: {
-      $addToSet: { followers: { $each: userIds } },
-    },
+    update,
   });
 }
 
@@ -194,7 +203,7 @@ function createRoom({
   callback,
   options = {},
 }) {
-  const { shouldSetIdToName, isFollower } = options;
+  const { shouldSetId, isFollower } = options;
 
   doesRoomExist({
     roomName: room.roomName,
@@ -215,7 +224,7 @@ function createRoom({
 
       const roomToSave = room;
 
-      if (shouldSetIdToName) { roomToSave._id = roomToSave.roomName; } // eslint-disable-line no-underscore-dangle
+      if (shouldSetId) { roomToSave._id = mongoose.Types.ObjectId(roomToSave.objectId); } // eslint-disable-line no-underscore-dangle
 
       dbConnector.saveObject({
         object: new Room(roomToSave),
@@ -227,12 +236,12 @@ function createRoom({
             return;
           }
 
-          const createdRoom = addCustomId(cleanParameters(data.savedObject));
+          const createdRoom = cleanParameters(data.savedObject);
 
           if (isFollower) {
             addFollowers({
               userIds: [createdRoom.ownerAliasId || createdRoom.ownerId],
-              roomId: createdRoom.roomId,
+              roomId: createdRoom.objectId,
               callback: ({ error: followerError }) => {
                 if (followerError) {
                   callback({ error: followerError });
@@ -284,7 +293,7 @@ function removeRoom({ roomId, fullRemoval, callback }) {
 
             callback({
               data: {
-                userIds: usersData.users.map(user => user.userId),
+                userIds: usersData.users.map(user => user.objectId),
                 success: true,
               },
             });
@@ -297,15 +306,6 @@ function removeRoom({ roomId, fullRemoval, callback }) {
       callback({ data: { success: true } });
     },
   });
-}
-
-/**
- * Get all rooms
- * @param {Object} params - Parameters
- * @param {Function} params.callback - Callback
- */
-function getAllRooms({ callback }) {
-  getRooms({ callback });
 }
 
 /**
@@ -373,14 +373,14 @@ function addAccess({
               return;
             }
 
-            callback({ room: addCustomId(cleanParameters(roomData.data.object)) });
+            callback({ room: cleanParameters(roomData.data.object) });
           },
         });
 
         return;
       }
 
-      callback({ room: addCustomId(cleanParameters(data.object)) });
+      callback({ room: cleanParameters(data.object) });
     },
   });
 }
@@ -431,7 +431,7 @@ function removeAccess({
 
           callback({
             data: {
-              room: addCustomId(cleanParameters(roomData.data.object)),
+              room: cleanParameters(roomData.data.object),
             },
           });
         },
@@ -512,10 +512,10 @@ function updateRoom({
 }
 
 /**
- * Get room by ID
- * @param {Object} params - Parameters
- * @param {string} params.roomId - ID of the room
- * @param {Function} params.callback - Callback
+ * Get room by Id.
+ * @param {Object} params - Parameters.
+ * @param {string} params.roomId - I of the room.
+ * @param {Function} params.callback - Callback.
  */
 function getRoomById({ roomId, callback }) {
   getRoom({
@@ -525,10 +525,10 @@ function getRoomById({ roomId, callback }) {
 }
 
 /**
- * Get rooms by IDs
- * @param {Object} params - Parameters
- * @param {string[]} params.roomIds - IDs of the rooms
- * @param {Function} params.callback - Callback
+ * Get rooms by Ids
+ * @param {Object} params - Parameters.
+ * @param {string[]} params.roomIds - Ids of the rooms.
+ * @param {Function} params.callback - Callback.
  */
 function getRoomsByIds({ roomIds, callback }) {
   getRooms({
@@ -538,30 +538,32 @@ function getRoomsByIds({ roomIds, callback }) {
 }
 
 /**
- * Get rooms by user.
+ * Get rooms that the user has access to
  * @param {Object} params - Parameters.
- * @param {Object} params.user - ID of the room.
+ * @param {Object} params.user - User retrieving the rooms.
  * @param {Function} params.callback - Callback.
+ * @param {boolean} [params.full] - Should access information be retrieved?
  */
-function getRoomsByUser({ user, callback }) {
+function getRoomsByUser({
+  user,
+  callback,
+  full,
+}) {
+  const query = dbConnector.createUserQuery({ user });
+  const filter = !full ? roomFilter : {};
+
   getRooms({
+    filter,
     callback,
-    query: {
-      $or: [
-        { public: true },
-        { ownerId: user.userId },
-        { userIds: { $in: user.userIds } },
-        { teamIds: { $in: user.teamIds } },
-      ],
-    },
+    query,
   });
 }
 
 /**
- * Get whisper room
- * @param {Object} params - Parameters
- * @param {string} params.participantIds - ID of the users
- * @param {Function} params.callback - Callback
+ * Get whisper room.
+ * @param {Object} params - Parameters.
+ * @param {string} params.participantIds - Id of the users.
+ * @param {Function} params.callback - Callback.
  */
 function getWhisperRoom({ participantIds, callback }) {
   const query = {
@@ -569,33 +571,40 @@ function getWhisperRoom({ participantIds, callback }) {
     participantIds: { $all: participantIds },
   };
 
-  dbConnector.getObject({
+  getRoom({
     query,
-    object: Room,
-    callback: ({ error, data }) => {
-      if (error) {
-        callback({ error });
+    callback,
+  });
+}
 
-        return;
-      }
-
-      callback({ data: { room: addCustomId(cleanParameters(data.object)) } });
+/**
+ * Get all rooms
+ * @param {Object} params - Parameters.
+ * @param {Function} params.callback - Callback.
+ */
+function getAllRooms({ callback }) {
+  getRooms({
+    callback,
+    filter: {
+      isWhisper: 1,
+      participantIds: 1,
+      roomName: 1,
     },
   });
 }
 
 /**
- * Add rooms to db
- * @param {Object} params - Parameters
- * @param {Object} params.rooms Rooms to be added
- * @param {Function} params.callback Callback
+ * Add rooms to db.
+ * @param {Object} params - Parameters.
+ * @param {Object} params.rooms - Rooms to be added.
+ * @param {Function} params.callback - Callback.
  */
 function populateDbRooms({ rooms, callback = () => {} }) {
   console.info('Creating default rooms, if needed');
 
   /**
-   * Adds a room to database. Recursive
-   * @param {string[]} roomNames Room names
+   * Adds a room to database. Recursive.
+   * @param {string[]} roomNames - Room names.
    */
   function addRoom(roomNames) {
     const roomName = roomNames.shift();
@@ -604,7 +613,7 @@ function populateDbRooms({ rooms, callback = () => {} }) {
       createRoom({
         room: rooms[roomName],
         silentExistsError: true,
-        options: { shouldSetIdToName: true },
+        options: { shouldSetId: true },
         callback: ({ error }) => {
           if (error) {
             callback({ error });
@@ -625,30 +634,6 @@ function populateDbRooms({ rooms, callback = () => {} }) {
   addRoom(Object.keys(rooms));
 }
 
-/**
- * Get a list of rooms that the user can try to access.
- * @param {Object} params - Parameters.
- * @param {Object} params.user - User.
- * @param {Function} params.callback - Callback.
- */
-function getRoomsListByUser({ user, callback }) {
-  const query = {
-    bannedIds: { $nin: [user.userId] },
-    $or: [
-      { isPublic: true },
-      { userIds: { $in: [user.userId] } },
-      { visibility: { $lte: user.accessLevel } },
-    ],
-  };
-
-  getRooms({
-    query,
-    callback,
-    filter: { roomName: 1 },
-  });
-}
-
-exports.getAllRooms = getAllRooms;
 exports.createRoom = createRoom;
 exports.removeRoom = removeRoom;
 exports.populateDbRooms = populateDbRooms;
@@ -662,4 +647,4 @@ exports.addFollowers = addFollowers;
 exports.removeFollowers = removeFollowers;
 exports.getRoomsByUser = getRoomsByUser;
 exports.getRoomsByIds = getRoomsByIds;
-exports.getRoomsListByUser = getRoomsListByUser;
+exports.getAllRooms = getAllRooms;

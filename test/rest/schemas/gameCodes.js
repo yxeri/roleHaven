@@ -16,51 +16,61 @@
 
 'use strict';
 
+const tools = require('../helper/tools');
+const dbConfig = require('../../../config/defaults/config').databasePopulation;
 
 const schemas = {};
 
-const gameCodeBase = {
+schemas.gameCode = tools.buildLiteSchema({
   type: 'object',
   required: [
     'code',
     'codeType',
-    'owner',
-    'renewable',
   ],
   properties: {
     code: { type: 'string' },
-    codeType: { type: 'string' },
-    owner: { type: 'string' },
-    renewable: { type: 'boolean' },
+    codeType: {
+      type: 'string',
+      enum: Object.values(dbConfig.GameCodeTypes),
+    },
+    codeContent: {
+      type: 'array',
+      items: { type: 'string' },
+    },
+    used: { type: 'boolean' },
+    isRenewable: { type: 'boolean' },
   },
+});
+
+schemas.fullGameCode = tools.buildFullSchema({
+  type: 'object',
+  required: [
+    'code',
+    'codeType',
+  ],
+  properties: {
+    code: { type: 'string' },
+    codeType: {
+      type: 'string',
+      enum: Object.values(dbConfig.GameCodeTypes),
+    },
+    codeContent: {
+      type: 'array',
+      items: { type: 'string' },
+    },
+    used: { type: 'boolean' },
+    isRenewable: { type: 'boolean' },
+  },
+});
+
+schemas.gameCodes = {
+  type: 'array',
+  items: schemas.gameCode,
 };
 
-schemas.usedGameCode = {
-  type: 'object',
-  required: ['data'],
-  properties: {
-    data: {
-      type: 'object',
-      required: ['reward'],
-      properties: {
-        reward: { type: 'object' },
-      },
-    },
-  },
-};
-
-schemas.gameCode = {
-  type: 'object',
-  required: ['data'],
-  properties: {
-    data: {
-      type: 'object',
-      required: ['gameCode'],
-      properties: {
-        gameCode: gameCodeBase,
-      },
-    },
-  },
+schemas.fullGameCodes = {
+  type: 'array',
+  items: schemas.fullGameCode,
 };
 
 module.exports = schemas;

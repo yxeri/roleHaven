@@ -21,6 +21,7 @@ const objectValidator = require('../../utils/objectValidator');
 const restErrorChecker = require('../../helpers/restErrorChecker');
 const errorCreator = require('../../objects/error/errorCreator');
 const forumPostManager = require('../../managers/forumPosts');
+const helper = require('./helper');
 
 const router = new express.Router();
 
@@ -30,21 +31,20 @@ const router = new express.Router();
  */
 function handle(io) {
   /**
-   * @api {put} /posts/:postId Update a post
+   * @api {put} /forumPosts/:postId Update a post
    * @apiVersion 8.0.0
    * @apiName UpdatePost
-   * @apiGroup Forums
+   * @apiGroup ForumPosts
    *
    * @apiHeader {string} Authorization Your JSON Web Token.
    *
    * @apiDescription Update a forum post.
    *
-   * @apiParam {string} postId Id of the post to update.
+   * @apiParam {string} postId [Url] Id of the post to update.
    *
    * @apiParam {Object} data
    * @apiParam {ForumPost} data.post Post parameters to update.
    * @apiParam {Object} [data.options] Update options.
-   * @apiParam {string} [data.userId] Id of the user updating the post. Will default to the token's user Id.
    *
    * @apiSuccess {Object} data
    * @apiSuccess {ForumPost} data.post Updated Post.
@@ -63,14 +63,12 @@ function handle(io) {
     const {
       post,
       options,
-      userId,
     } = request.body.data;
     const { postId } = request.params;
     const { authorization: token } = request.headers;
 
     forumPostManager.updatePost({
       post,
-      userId,
       options,
       io,
       postId,
@@ -88,19 +86,16 @@ function handle(io) {
   });
 
   /**
-   * @api {delete} /posts/:postId Delete a post
+   * @api {delete} /forumPosts/:postId Delete a post
    * @apiVersion 8.0.0
    * @apiName RemovePost
-   * @apiGroup Forums
+   * @apiGroup ForumPosts
    *
    * @apiHeader {string} Authorization Your JSON Web Token.
    *
    * @apiDescription Delete a forum post.
    *
-   * @apiParam {string} postId Id of the post to delete.
-   *
-   * @apiParam {Object} [data]
-   * @apiParam {string} [data.userId] Id of the user removing the post. Will default to the token's user Id.
+   * @apiParam {string} postId [Url] Id of the post to delete.
    *
    * @apiSuccess {Object} data
    * @apiSuccess {boolean} data.success Was the post successfully deleted?
@@ -112,18 +107,16 @@ function handle(io) {
       return;
     }
 
-    const { userId } = request.body.data;
     const { postId } = request.params;
     const { authorization: token } = request.headers;
 
     forumPostManager.removePost({
-      userId,
       io,
       postId,
       token,
       callback: ({ error, data }) => {
         if (error) {
-          restErrorChecker.checkAndSendError({ response, error, sentData: request.body.data });
+          restErrorChecker.checkAndSendError({ response, error });
 
           return;
         }
@@ -134,22 +127,21 @@ function handle(io) {
   });
 
   /**
-   * @api {get} /posts/:postId Get a post
+   * @api {get} /forumPosts/:postId Get a post
    * @apiVersion 8.0.0
    * @apiName GetPost
-   * @apiGroup Forums
+   * @apiGroup ForumPosts
    *
    * @apiHeader {string} Authorization Your JSON Web Token.
    *
    * @apiDescription Get a forum post.
    *
-   * @apiParam {Object} postId Id of the post to retrieve.
+   * @apiParam {string} postId [Url] Id of the post to retrieve.
    *
-   * @apiParam {Object} [data]
-   * @apiParam {Object} [data.userId] Id of the user retrieving the forum post.
+   * @apiParam {boolean} [full] [Query] Should the complete object be retrieved?
    *
    * @apiSuccess {Object} data
-   * @apiSuccess {Object} data.post Found forum post.
+   * @apiSuccess {ForumPost} data.post Found forum post.
    */
   router.get('/:postId', (request, response) => {
     if (!objectValidator.isValidData(request.params, { postId: true })) {
@@ -158,23 +150,69 @@ function handle(io) {
       return;
     }
 
-    const { userId } = request.body.data;
     const { postId } = request.params;
     const { authorization: token } = request.headers;
+    const { full } = request.query;
 
     forumPostManager.getPostById({
-      userId,
       postId,
       token,
+      full,
       callback: ({ error, data }) => {
         if (error) {
-          restErrorChecker.checkAndSendError({ response, error, sentData: request.body.data });
+          restErrorChecker.checkAndSendError({ response, error });
 
           return;
         }
 
         response.json({ data });
       },
+    });
+  });
+
+  /**
+   * @api {get} /forumPosts/ Get posts
+   * @apiVersion 8.0.0
+   * @apiName GetPosts
+   * @apiGroup ForumPosts
+   *
+   * @apiHeader {string} Authorization Your JSON Web Token.
+   *
+   * @apiDescription Get posts. The default is to return all posts made by the user. Setting threadId or forumId will instead retrieve all posts connected to the thread/forum.
+   *
+   * @apiParam {boolean} [full] [Query] Should the complete object be retrieved?
+   * @apiParam {string} [threadId] [Query] Id of the thread to retrieve posts from.
+   * @apiParam {string} [forumId] [Query] Id of the forum to retrieve posts from.
+   *
+   * @apiSuccess {Object} data
+   * @apiSuccess {ForumPost[]} data.posts Found posts.
+   */
+  router.get('/', (request, response) => {
+    helper.getForumPosts({ request, response });
+  });
+
+  /**
+   * @api {post} /forumPosts Create a forum post in a thread
+   * @apiVersion 8.0.0
+   * @apiName CreatePost
+   * @apiGroup ForumPosts
+   *
+   * @apiHeader {string} Authorization Your JSON Web Token.
+   *
+   * @apiDescription Create a forum post in a thread.
+   *
+   * @apiParam {Object} data Body parameters
+   * @apiParam {Object} data.post Forum post to create.
+   * @apiParam {string} data.post.threadId Id of the thread to create a post in.
+   *
+   * @apiSuccess {Object} data
+   * @apiSuccess {Object} data.post Created forum post.
+   */
+  router.post('/', (request, response) => {
+    helper.createForumPost({
+      request,
+      response,
+      io,
     });
   });
 

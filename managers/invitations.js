@@ -16,17 +16,10 @@
 
 'use strict';
 
-const dbUser = require('../db/connectors/user');
-const dbWallet = require('../db/connectors/wallet');
-const appConfig = require('../config/defaults/config').app;
 const dbConfig = require('../config/defaults/config').databasePopulation;
 const errorCreator = require('../objects/error/errorCreator');
 const dbInvitation = require('../db/connectors/invitation');
-const dbTeam = require('../db/connectors/team');
 const authenticator = require('../helpers/authenticator');
-const aliasManager = require('./aliases');
-const dbRoom = require('../db/connectors/room');
-const socketUtils = require('../utils/socketIo');
 
 /**
  * Get invitation by Id and check if the user has access to it.
@@ -69,14 +62,12 @@ function getAccessibleInvitation({
 /**
  * Remove an invitation.
  * @param {Object} params - Parameters.
- * @param {string} params.userId - Id of the user removing the invitation.
  * @param {string} params.token - jwt.
  * @param {Function} params.callback - Callback.
  * @param {Object} params.io - Socket.io.
  * @param {string} params.invitationId - Id of the invitation to remove.
  */
 function removeInvitation({
-  userId,
   token,
   callback,
   io,
@@ -84,7 +75,6 @@ function removeInvitation({
 }) {
   authenticator.isUserAllowed({
     token,
-    matchToId: userId,
     commandName: dbConfig.apiCommands.RemoveTeamInvitation.name,
     callback: ({ error, data }) => {
       if (error) {
@@ -119,7 +109,7 @@ function removeInvitation({
 
               const dataToSend = {
                 data: {
-                  invitation: { invitationId },
+                  invitation: { objectId: invitationId },
                   changeType: dbConfig.ChangeTypes.REMOVE,
                 },
               };

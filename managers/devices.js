@@ -18,17 +18,16 @@
 
 const dbConfig = require('../config/defaults/config').databasePopulation;
 const errorCreator = require('../objects/error/errorCreator');
-const objectValidator = require('../utils/objectValidator');
 const dbDevice = require('../db/connectors/device');
 const authenticator = require('../helpers/authenticator');
 
 /**
- * Get device by Id and check if the user has access to it
- * @param {Object} params - Parameters
- * @param {Object} params.user - User retrieving the device
- * @param {string} params.deviceId - ID of the device to retrieve
- * @param {Function} params.callback - Callback
- * @param {string} [params.errorContentText] - Text to be printed on error
+ * Get device by Id and check if the user has access to it.
+ * @param {Object} params - Parameters.
+ * @param {Object} params.user - User retrieving the device.
+ * @param {string} params.deviceId - Id of the device to retrieve.
+ * @param {Function} params.callback - Callback.
+ * @param {string} [params.errorContentText] - Text to be printed on error.
  * @param {boolean} [params.shouldBeAdmin] - Does the user have to be an admin?
  */
 function getAccessibleDevice({
@@ -36,10 +35,12 @@ function getAccessibleDevice({
   deviceId,
   callback,
   shouldBeAdmin,
+  full,
   errorContentText = `deviceId ${deviceId}`,
 }) {
   dbDevice.getDeviceById({
     deviceId,
+    full: true,
     callback: (deviceData) => {
       if (deviceData.error) {
         callback({ error: deviceData.error });
@@ -55,29 +56,20 @@ function getAccessibleDevice({
         return;
       }
 
-      callback(deviceData);
-    },
-  });
-}
+      const foundDevice = deviceData.data.device;
+      const filteredDevice = {
+        objectId: foundDevice.objectId,
+        deviceName: foundDevice.deviceName,
+        deviceType: foundDevice.deviceType,
+        connectedToUser: foundDevice.connectedToUser,
+        lastUpdated: foundDevice.lastUpdated,
+      };
 
-/**
- * Get devices.
- * @param {Object} params - Parameters.
- * @param {string} params.token - jwt.
- * @param {Function} params.callback - Callback.
- */
-function getAllDevices({ token, callback }) {
-  authenticator.isUserAllowed({
-    token,
-    commandName: dbConfig.apiCommands.GetAll.name,
-    callback: ({ error }) => {
-      if (error) {
-        callback({ error });
-
-        return;
-      }
-
-      dbDevice.getAllDevices({ callback });
+      callback({
+        data: {
+          device: full ? foundDevice : filteredDevice,
+        },
+      });
     },
   });
 }
@@ -89,7 +81,7 @@ function getAllDevices({ token, callback }) {
  * @param {Object} params.device - Device parameters to create.
  * @param {Function} params.callback - Callback.
  * @param {Object} params.io - Socket io. Will be used if socket is not set.
- * @param {Object} [params.socket] - Socket io.
+ * @param {Object} [params.socket] - Socket.io.
  */
 function createDevice({
   token,
@@ -101,12 +93,16 @@ function createDevice({
   authenticator.isUserAllowed({
     token,
     commandName: dbConfig.apiCommands.CreateDevice.name,
-    callback: ({ error }) => {
+    callback: ({ error, data }) => {
       if (error) {
         callback({ error });
 
         return;
       }
+
+      const { user } = data;
+      const deviceToCreate = device;
+      deviceToCreate.ownerId = user.objectId;
 
       dbDevice.createDevice({
         device,
@@ -142,9 +138,9 @@ function createDevice({
  * Update device.
  * @param {Object} params - Parameters.
  * @param {Object} params.device - Device.
- * @parm {Object} params.options - Options.
+ * @param {Object} params.options - Options.
  * @param {Function} params.callback - Callback.
- * @param {Object} params.io - Socket io. Will be used if socket is not set.
+ * @param {Object} params.io - Socket.io. Will be used if socket is not set.
  * @param {Object} [params.socket] - Socket io.
  */
 function updateDevice({
@@ -162,10 +158,6 @@ function updateDevice({
     callback: ({ error, data }) => {
       if (error) {
         callback({ error });
-
-        return;
-      } else if (!objectValidator.isValidData({ device }, { device: { deviceId: true } })) {
-        callback({ error: new errorCreator.InvalidData({ expected: '{ device: { deviceId } }' }) });
 
         return;
       }
@@ -219,18 +211,16 @@ function updateDevice({
  * Get devices that are accessible to the user.
  * @param {Object} params - Parameters.
  * @param {string} params.token - jwt.
- * @param {string} params.userId - ID of the user.
  * @param {Function} params.callback - Callback.
  */
 function getDevicesByUser({
   token,
-  userId,
+  full,
   callback,
 }) {
   authenticator.isUserAllowed({
     token,
-    matchToId: userId,
-    commandName: dbConfig.apiCommands.GetDevices,
+    commandName: full ? dbConfig.apiCommands.GetFull.name : dbConfig.apiCommands.GetDevices.name,
     callback: ({ error, data }) => {
       if (error) {
         callback({ error });
@@ -238,36 +228,36 @@ function getDevicesByUser({
         return;
       }
 
+      const { user } = data;
+
       dbDevice.getDevicesByUser({
         callback,
-        userId: data.user.userId,
+        full,
+        user,
       });
     },
   });
 }
 
 /**
- * Remove device
- * @param {Object} params - Parameters
- * @param {string} params.token - jwt
- * @param {string} params.deviceId - ID of the device
- * @param {string} params.userId - ID of the user who is removing the device
- * @param {Object} params.io - Socket io. Will be used if socket is not set
- * @param {Function} params.callback - Callback
- * @param {Object} [params.socket] - Socket io.
+ * Remove device.
+ * @param {Object} params - Parameters.
+ * @param {string} params.token - jwt.
+ * @param {string} params.deviceId - Id of the device.
+ * @param {Object} params.io - Socket.io. Will be used if socket is not set.
+ * @param {Function} params.callback - Callback.
+ * @param {Object} [params.socket] - Socket.io.
  */
 function removeDevice({
   token,
   deviceId,
-  userId,
   callback,
   socket,
   io,
 }) {
   authenticator.isUserAllowed({
     token,
-    matchToId: userId,
-    commandName: dbConfig,
+    commandName: dbConfig.apiCommands.RemoveDevice.name,
     callback: ({ error, data }) => {
       if (error) {
         callback({ error });
@@ -275,16 +265,16 @@ function removeDevice({
         return;
       }
 
-      const authUser = data.user;
+      const { user } = data;
 
       getAccessibleDevice({
         deviceId,
+        user,
         shouldBeAdmin: true,
-        user: authUser,
         errorContentText: `remove device id ${deviceId}`,
-        callback: (aliasData) => {
-          if (aliasData.error) {
-            callback({ error: aliasData });
+        callback: (deviceData) => {
+          if (deviceData.error) {
+            callback({ error: deviceData.error });
 
             return;
           }
@@ -300,7 +290,7 @@ function removeDevice({
 
               const dataToSend = {
                 data: {
-                  device: { deviceId },
+                  device: { objectId: deviceId },
                   changeType: dbConfig.ChangeTypes.REMOVE,
                 },
               };
@@ -321,22 +311,20 @@ function removeDevice({
 }
 
 /**
- * Get a device.
+ * Get a device by Id.
  * @param {Object} params - Parameters.
  * @param {string} params.token - jwt.
- * @param {string} params.userId - Id of the user retrieving the device.
- * @param {Function} params.callback - Callback
+ * @param {Function} params.callback - Callback.
  */
-function getDevice({
+function getDeviceById({
   token,
-  userId,
   callback,
   deviceId,
+  full,
 }) {
   authenticator.isUserAllowed({
     token,
-    matchToId: userId,
-    commandName: dbConfig,
+    commandName: dbConfig.apiCommands.GetDevices.name,
     callback: ({ error, data }) => {
       if (error) {
         callback({ error });
@@ -344,10 +332,14 @@ function getDevice({
         return;
       }
 
+      const { user } = data;
+
       getAccessibleDevice({
         deviceId,
         callback,
-        user: data.user,
+        user,
+        full,
+        shouldBeAdmin: full && dbConfig.apiCommands.GetFull.accessLevel > user.accessLevel,
       });
     },
   });
@@ -356,6 +348,5 @@ function getDevice({
 exports.createDevice = createDevice;
 exports.removeDevice = removeDevice;
 exports.updateDevice = updateDevice;
-exports.getDevice = getDevice;
-exports.getAllDevices = getAllDevices;
+exports.getDeviceById = getDeviceById;
 exports.getDevicesByUser = getDevicesByUser;

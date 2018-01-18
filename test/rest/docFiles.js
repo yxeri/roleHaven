@@ -20,227 +20,53 @@
 
 const chai = require('chai');
 const chaiHttp = require('chai-http');
-const app = require('../../app');
 const chaiJson = require('chai-json-schema');
 const docFileSchemas = require('./schemas/docFiles');
-const errorSchemas = require('./schemas/errors');
-const tokens = require('./testData/tokens');
-const docFileData = require('./testData/docFiles');
+const testData = require('./testData/docFiles');
+const testBuilder = require('./helper/testBuilder');
 
 chai.should();
 chai.use(chaiHttp);
 chai.use(chaiJson);
 
 describe('DocFiles', () => {
-  describe('Create DocFile', () => {
-    it('Should NOT create docFile with incorrect authorization on /api/docFiles POST', (done) => {
-      chai
-        .request(app)
-        .post('/api/docFiles')
-        .set('Authorization', tokens.incorrectJwt)
-        .send({ data: { docFile: docFileData.privateDocFileToCreate } })
-        .end((error, response) => {
-          response.should.have.status(401);
-          response.should.be.json;
-          response.body.should.be.jsonSchema(errorSchemas.error);
+  const apiPath = '/api/docFiles/';
+  const objectIdType = 'docFileId';
+  const objectType = 'docFile';
+  const objectsType = 'docFiles';
 
-          done();
-        });
-    });
-
-    it('Should create new private docFile on /api/docFiles POST', (done) => {
-      chai
-        .request(app)
-        .post('/api/docFiles')
-        .set('Authorization', tokens.adminUser)
-        .send({ data: { docFile: docFileData.privateDocFileToCreate } })
-        .end((error, response) => {
-          response.should.have.status(200);
-          response.should.be.json;
-          response.body.should.be.jsonSchema(docFileSchemas.docFile);
-
-          done();
-        });
-    });
-
-    it('Should NOT create docFile with existing docFileId on /api/docFiles POST', (done) => {
-      chai
-        .request(app)
-        .post('/api/docFiles')
-        .set('Authorization', tokens.adminUser)
-        .send({ data: { docFile: docFileData.privateDocWithSameId } })
-        .end((error, response) => {
-          response.should.have.status(403);
-          response.should.be.json;
-          response.body.should.be.jsonSchema(errorSchemas.error);
-
-          done();
-        });
-    });
-
-    it('Should NOT create docFile with existing title on /api/docFiles POST', (done) => {
-      chai
-        .request(app)
-        .post('/api/docFiles')
-        .set('Authorization', tokens.adminUser)
-        .send({ data: { docFile: docFileData.privateDocWithSameTitle } })
-        .end((error, response) => {
-          response.should.have.status(403);
-          response.should.be.json;
-          response.body.should.be.jsonSchema(errorSchemas.error);
-
-          done();
-        });
-    });
-
-    it('Should NOT create docFile with empty docFileId on /api/docFiles POST', (done) => {
-      chai
-        .request(app)
-        .post('/api/docFiles')
-        .set('Authorization', tokens.adminUser)
-        .send({ data: { docFile: docFileData.docWithNoDocFileId } })
-        .end((error, response) => {
-          response.should.have.status(400);
-          response.should.be.json;
-          response.body.should.be.jsonSchema(errorSchemas.error);
-
-          done();
-        });
-    });
-
-    it('Should NOT create docFile with empty text on /api/docFiles POST', (done) => {
-      chai
-        .request(app)
-        .post('/api/docFiles')
-        .set('Authorization', tokens.adminUser)
-        .send({ data: { docFile: docFileData.docWithNoText } })
-        .end((error, response) => {
-          response.should.have.status(400);
-          response.should.be.json;
-          response.body.should.be.jsonSchema(errorSchemas.error);
-
-          done();
-        });
-    });
-
-    it('Should NOT create docFile with empty title on /api/docFiles POST', (done) => {
-      chai
-        .request(app)
-        .post('/api/docFiles')
-        .set('Authorization', tokens.adminUser)
-        .send({ data: { docFile: docFileData.docWithNoTitle } })
-        .end((error, response) => {
-          response.should.have.status(400);
-          response.should.be.json;
-          response.body.should.be.jsonSchema(errorSchemas.error);
-
-          done();
-        });
-    });
-
-    it('Should create new public docFile on /api/docFiles POST', (done) => {
-      chai
-        .request(app)
-        .post('/api/docFiles')
-        .set('Authorization', tokens.adminUser)
-        .send({ data: { docFile: docFileData.publicDocToCreate } })
-        .end((error, response) => {
-          response.should.have.status(200);
-          response.should.be.json;
-          response.body.should.be.jsonSchema(docFileSchemas.docFile);
-
-          done();
-        });
-    });
+  testBuilder.createTestCreate({
+    objectType,
+    apiPath,
+    objectIdType,
+    testData: testData.create,
+    schema: docFileSchemas.docFile,
   });
 
-  describe('List DocFiles', () => {
-    it('Should NOT list docFiles with incorrect authorization on /api/docFiles GET', (done) => {
-      chai
-        .request(app)
-        .get('/api/docFiles')
-        .set('Authorization', tokens.incorrectJwt)
-        .end((error, response) => {
-          response.should.have.status(401);
-          response.should.be.json;
-          response.body.should.be.jsonSchema(errorSchemas.error);
-
-          done();
-        });
-    });
-
-    it('Should list docFiles on /api/docFiles GET', (done) => {
-      chai
-        .request(app)
-        .get('/api/docFiles')
-        .set('Authorization', tokens.adminUser)
-        .end((error, response) => {
-          response.should.have.status(200);
-          response.should.be.json;
-          response.body.should.be.jsonSchema(docFileSchemas.docFilesList);
-
-          done();
-        });
-    });
+  testBuilder.createTestUpdate({
+    objectType,
+    objectIdType,
+    apiPath,
+    testData: testData.update,
+    schema: docFileSchemas.docFile,
   });
 
-  describe('Get specific DocFile', () => {
-    before('Create private docFile on /api/docFiles', (done) => {
-      chai
-        .request(app)
-        .post('/api/docFiles')
-        .set('Authorization', tokens.adminUser)
-        .send({ data: { docFile: docFileData.privateDocFileToCreateAndGet } })
-        .end((error, response) => {
-          response.should.have.status(200);
-          response.should.be.json;
-          response.body.should.be.jsonSchema(docFileSchemas.docFile);
+  testBuilder.createTestGet({
+    objectIdType,
+    apiPath,
+    objectType,
+    objectsType,
+    testData: testData.create,
+    singleLiteSchema: docFileSchemas.liteDocFile,
+    multiLiteSchema: docFileSchemas.liteDocFiles,
+    singleFullSchema: docFileSchemas.fullDocFile,
+    multiFullSchema: docFileSchemas.fullDocFiles,
+  });
 
-          done();
-        });
-    });
-
-    before('Create public docFile on /api/docFiles', (done) => {
-      chai
-        .request(app)
-        .post('/api/docFiles')
-        .set('Authorization', tokens.adminUser)
-        .send({ data: { docFile: docFileData.publicDocFileToCreateAndGet } })
-        .end((error, response) => {
-          response.should.have.status(200);
-          response.should.be.json;
-          response.body.should.be.jsonSchema(docFileSchemas.docFile);
-
-          done();
-        });
-    });
-
-    it('Should get specific public docFile on /api/docFiles/:id GET', (done) => {
-      chai
-        .request(app)
-        .get(`/api/docFiles/${docFileData.publicDocFileToCreateAndGet.docFileId}`)
-        .set('Authorization', tokens.basicUser)
-        .end((error, response) => {
-          response.should.have.status(200);
-          response.should.be.json;
-          response.body.should.be.jsonSchema(docFileSchemas.docFile);
-
-          done();
-        });
-    });
-
-    it('Should get specific private docFile on /api/docFiles/:id GET', (done) => {
-      chai
-        .request(app)
-        .get(`/api/docFiles/${docFileData.privateDocFileToCreateAndGet.docFileId}`)
-        .set('Authorization', tokens.basicUser)
-        .end((error, response) => {
-          response.should.have.status(200);
-          response.should.be.json;
-          response.body.should.be.jsonSchema(docFileSchemas.docFile);
-
-          done();
-        });
-    });
+  testBuilder.createTestDelete({
+    objectType,
+    objectIdType,
+    apiPath,
+    testData: testData.remove,
   });
 });

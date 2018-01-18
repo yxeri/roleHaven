@@ -30,7 +30,7 @@ const router = new express.Router();
  */
 function handle(io) {
   /**
-   * @api {get} /teams/list Get teams
+   * @api {get} /teams Get teams
    * @apiVersion 8.0.0
    * @apiName GetTeams
    * @apiGroup Teams
@@ -39,28 +39,31 @@ function handle(io) {
    *
    * @apiDescription Get teams.
    *
-   * @apiParam {Object} data
-   * @apiParam {string} [data.userId] Id of the user retrieving the teams.
+   * @apiParam {boolean} [Query] [full] Should the returned team contain all content? Default is that only some content is returned.
+   * @apiParam {boolean} [Query] [includeInactive] Should unverified teams be included in the results?
    *
    * @apiSuccess {Object} data
    * @apiSuccess {Team[]} data.teams Found teams.
    */
   router.get('/', (request, response) => {
-    const { userId } = request.body.data;
     const { authorization: token } = request.headers;
+    const { full, includeInactive } = request.query;
 
-    teamManager.getTeamsList({
-      userId,
+    const callback = ({ error, data }) => {
+      if (error) {
+        restErrorChecker.checkAndSendError({ response, error, sentData: request.body.data });
+
+        return;
+      }
+
+      response.json({ data });
+    };
+
+    teamManager.getTeamsByUser({
       token,
-      callback: ({ error, data }) => {
-        if (error) {
-          restErrorChecker.checkAndSendError({ response, error, sentData: request.body.data });
-
-          return;
-        }
-
-        response.json({ data });
-      },
+      full,
+      includeInactive,
+      callback,
     });
   });
 
@@ -76,6 +79,8 @@ function handle(io) {
    *
    * @apiParam {string} teamId Id of the team to retrieve.
    *
+   * @apiParam {boolean} [full] [Query] Should the returned result contain all information? Default is that only some content is returned.
+   *
    * @apiSuccess {Object} data
    * @apiSuccess {Team} data.team Found team.
    */
@@ -88,13 +93,15 @@ function handle(io) {
 
     const { teamId } = request.params;
     const { authorization: token } = request.headers;
+    const { full } = request.query;
 
-    teamManager.getTeam({
+    teamManager.getTeamById({
       teamId,
       token,
+      full,
       callback: ({ error, data }) => {
         if (error) {
-          restErrorChecker.checkAndSendError({ response, error, sentData: request.body.data });
+          restErrorChecker.checkAndSendError({ response, error });
 
           return;
         }
@@ -156,10 +163,7 @@ function handle(io) {
    *
    * @apiDescription Delete a team.
    *
-   * @apiParam {string} teamId Id of the team to delete.
-   *
-   * @apiParam {Object} [data]
-   * @apiParam {string} [data.userId] Id of the user deleting the team.
+   * @apiParam {string} teamId [Url] Id of the team to delete.
    *
    * @apiSuccess {Object} data
    * @apiSuccess {boolean} data.success Was it successfully deleted?
@@ -171,18 +175,16 @@ function handle(io) {
       return;
     }
 
-    const { userId } = request.body.data;
     const { teamId } = request.params;
     const { authorization: token } = request.headers;
 
     teamManager.removeTeam({
-      userId,
       io,
       teamId,
       token,
       callback: ({ error, data }) => {
         if (error) {
-          restErrorChecker.checkAndSendError({ response, error, sentData: request.body.data });
+          restErrorChecker.checkAndSendError({ response, error });
 
           return;
         }
@@ -202,9 +204,9 @@ function handle(io) {
    *
    * @apiDescription Update a team.
    *
-   * @apiParam {string} teamId Id of the team to update.
+   * @apiParam {string} teamId [Url] Id of the team to update.
    *
-   * @apiParam {Object} data
+   * @apiParam {Object} data Body parameters.
    * @apiParam {Team} data.team Team parameters to update.
    * @apiParam {Object} [data.options] Update options.
    *

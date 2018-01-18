@@ -21,80 +21,60 @@ const appConfig = require('../../../config/defaults/config').app;
 
 const data = {};
 
-data.privateDocFileToCreate = {
-  title: tools.createRandString({ length: appConfig.docFileTitleMaxLength }),
-  docFileId: tools.createRandString({ length: appConfig.docFileCodeMaxLength }),
-  text: [
-    tools.createRandString({ length: appConfig.docFileMaxLength / 2 }),
-    tools.createRandString({ length: appConfig.docFileMaxLength / 2 }),
-  ],
-  isPublic: false,
+data.create = {
+  first: {
+    code: 'first',
+    title: tools.createRandString({ length: appConfig.docFileTitleMaxLength }),
+    text: [
+      tools.createRandString({ length: appConfig.docFileMaxLength / 2 }),
+      tools.createRandString({ length: appConfig.docFileMaxLength / 2 }),
+    ],
+  },
+  second: {
+    code: 'second',
+    title: tools.createRandString({ length: appConfig.docFileTitleMaxLength }),
+    text: [
+      tools.createRandString({ length: appConfig.docFileMaxLength / 2 }),
+      tools.createRandString({ length: appConfig.docFileMaxLength / 2 }),
+    ],
+  },
 };
-data.privateDocWithSameTitle = {
-  title: data.privateDocFileToCreate.title,
-  docFileId: tools.createRandString({ length: appConfig.docFileCodeMaxLength }),
-  text: [
-    tools.createRandString({ length: appConfig.docFileMaxLength / 2 }),
-    tools.createRandString({ length: appConfig.docFileMaxLength / 2 }),
-  ],
-  isPublic: false,
+
+data.update = {
+  toUpdate: {
+    code: 'third',
+    title: tools.createRandString({ length: appConfig.docFileTitleMaxLength }),
+    text: [
+      tools.createRandString({ length: appConfig.docFileMaxLength / 2 }),
+      tools.createRandString({ length: appConfig.docFileMaxLength / 2 }),
+    ],
+  },
+  updateWith: {
+    title: tools.createRandString({ length: appConfig.docFileTitleMaxLength }),
+    text: [
+      tools.createRandString({ length: appConfig.docFileMaxLength / 2 }),
+      tools.createRandString({ length: appConfig.docFileMaxLength / 2 }),
+    ],
+  },
 };
-data.privateDocWithSameId = {
-  title: tools.createRandString({ length: appConfig.docFileTitleMaxLength }),
-  docFileId: data.privateDocFileToCreate.docFileId,
-  text: [
-    tools.createRandString({ length: appConfig.docFileMaxLength / 2 }),
-    tools.createRandString({ length: appConfig.docFileMaxLength / 2 }),
-  ],
-  isPublic: false,
-};
-data.docWithNoText = {
-  title: tools.createRandString({ length: appConfig.docFileTitleMaxLength }),
-  docFileId: tools.createRandString({ length: appConfig.docFileCodeMaxLength }),
-  text: [],
-};
-data.docWithNoTitle = {
-  title: '',
-  docFileId: tools.createRandString({ length: appConfig.docFileCodeMaxLength }),
-  text: [
-    tools.createRandString({ length: appConfig.docFileMaxLength / 2 }),
-    tools.createRandString({ length: appConfig.docFileMaxLength / 2 }),
-  ],
-};
-data.docWithNoDocFileId = {
-  title: tools.createRandString({ length: appConfig.docFileTitleMaxLength }),
-  docFileId: '',
-  text: [
-    tools.createRandString({ length: appConfig.docFileMaxLength / 2 }),
-    tools.createRandString({ length: appConfig.docFileMaxLength / 2 }),
-  ],
-};
-data.publicDocToCreate = {
-  title: tools.createRandString({ length: appConfig.docFileTitleMaxLength }),
-  docFileId: tools.createRandString({ length: appConfig.docFileCodeMaxLength }),
-  text: [
-    tools.createRandString({ length: appConfig.docFileMaxLength / 2 }),
-    tools.createRandString({ length: appConfig.docFileMaxLength / 2 }),
-  ],
-  isPublic: true,
-};
-data.publicDocFileToCreateAndGet = {
-  title: tools.createRandString({ length: appConfig.docFileTitleMaxLength }),
-  docFileId: tools.createRandString({ length: appConfig.docFileCodeMaxLength }),
-  text: [
-    tools.createRandString({ length: appConfig.docFileMaxLength / 2 }),
-    tools.createRandString({ length: appConfig.docFileMaxLength / 2 }),
-  ],
-  isPublic: true,
-};
-data.privateDocFileToCreateAndGet = {
-  title: tools.createRandString({ length: appConfig.docFileTitleMaxLength }),
-  docFileId: tools.createRandString({ length: appConfig.docFileCodeMaxLength }),
-  text: [
-    tools.createRandString({ length: appConfig.docFileMaxLength / 2 }),
-    tools.createRandString({ length: appConfig.docFileMaxLength / 2 }),
-  ],
-  isPublic: true,
+
+data.remove = {
+  toRemove: {
+    code: 'fifth',
+    title: tools.createRandString({ length: appConfig.docFileTitleMaxLength }),
+    text: [
+      tools.createRandString({ length: appConfig.docFileMaxLength / 2 }),
+      tools.createRandString({ length: appConfig.docFileMaxLength / 2 }),
+    ],
+  },
+  secondToRemove: {
+    code: 'sixth',
+    title: tools.createRandString({ length: appConfig.docFileTitleMaxLength }),
+    text: [
+      tools.createRandString({ length: appConfig.docFileMaxLength / 2 }),
+      tools.createRandString({ length: appConfig.docFileMaxLength / 2 }),
+    ],
+  },
 };
 
 module.exports = data;

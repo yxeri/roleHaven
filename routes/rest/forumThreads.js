@@ -20,8 +20,8 @@ const express = require('express');
 const objectValidator = require('../../utils/objectValidator');
 const restErrorChecker = require('../../helpers/restErrorChecker');
 const errorCreator = require('../../objects/error/errorCreator');
-const forumPostManager = require('../../managers/forumPosts');
 const forumThreadManager = require('../../managers/forumThreads');
+const helper = require('./helper');
 
 const router = new express.Router();
 
@@ -32,10 +32,10 @@ const router = new express.Router();
  */
 function handle(io) {
   /**
-   * @api {put} /threads/:threadId Update a forum thread
+   * @api {put} /forumThreads/:threadId Update a forum thread
    * @apiVersion 8.0.0
    * @apiName UpdateThread
-   * @apiGroup Forums
+   * @apiGroup ForumThreads
    *
    * @apiHeader {string} Authorization Your JSON Web Token.
    *
@@ -46,7 +46,6 @@ function handle(io) {
    * @apiParam {string} data
    * @apiParam {string} data.thread Forum thread parameters to update.
    * @apiParam {string} [data.options] Update options.
-   * @apiParam {Object} [data.userId] Id of the user updating the thread. It will default to the token's user Id.
    *
    * @apiSuccess {Object} data
    * @apiSuccess {Object} data.post Updated thread.
@@ -65,14 +64,12 @@ function handle(io) {
     const {
       thread,
       options,
-      userId,
     } = request.body.data;
     const { threadId } = request.params;
     const { authorization: token } = request.headers;
 
     forumThreadManager.updateThread({
       thread,
-      userId,
       options,
       io,
       threadId,
@@ -90,10 +87,10 @@ function handle(io) {
   });
 
   /**
-   * @api {post} /:threadId/posts Create a forum thread post
+   * @api {post} /forumThreads/:threadId/posts Create a thread post
    * @apiVersion 8.0.0
    * @apiName CreatePost
-   * @apiGroup Forums
+   * @apiGroup ForumThreads
    *
    * @apiHeader {string} Authorization Your JSON Web Token.
    *
@@ -108,51 +105,24 @@ function handle(io) {
    * @apiSuccess {Object} data.post Created forum post.
    */
   router.post('/:threadId/posts', (request, response) => {
-    if (!objectValidator.isValidData(request.params, { threadId: true })) {
-      restErrorChecker.checkAndSendError({ response, error: new errorCreator.InvalidData({ expected: '{ threadId }' }), sentData: request.params });
-
-      return;
-    } else if (!objectValidator.isValidData(request.body, { data: { post: { text: true } } })) {
-      restErrorChecker.checkAndSendError({ response, error: new errorCreator.InvalidData({ expected: '{ data: { post } }' }), sentData: request.body.data });
-
-      return;
-    }
-
-    const { authorization: token } = request.headers;
-    const { threadId } = request.params;
-    const { post } = request.body.data;
-
-    forumPostManager.createPost({
+    helper.createForumPost({
+      request,
+      response,
       io,
-      token,
-      threadId,
-      post,
-      callback: ({ error, data }) => {
-        if (error) {
-          restErrorChecker.checkAndSendError({ response, error, sentData: request.body.data });
-
-          return;
-        }
-
-        response.json({ data });
-      },
     });
   });
 
   /**
-   * @api {delete} /threads/:threadId Delete a forum thread
+   * @api {delete} /forumThreads/:threadId Delete a forum thread
    * @apiVersion 8.0.0
    * @apiName RemoveThread
-   * @apiGroup Forums
+   * @apiGroup ForumThreads
    *
    * @apiHeader {string} Authorization Your JSON Web Token.
    *
    * @apiDescription Delete a forum thread.
    *
    * @apiParam {Object} threadId Id of the forum thread to remove.
-   *
-   * @apiParam {Object} [data]
-   * @apiParam {Object} [data.userId] Id of the user trying to remove a forum thread. It will default to the token's user Id.
    *
    * @apiSuccess {Object} data
    * @apiSuccess {Object} data.success Was the thread successfully removed?
@@ -164,12 +134,10 @@ function handle(io) {
       return;
     }
 
-    const { userId } = request.body.data;
     const { threadId } = request.params;
     const { authorization: token } = request.headers;
 
     forumThreadManager.removeThread({
-      userId,
       io,
       threadId,
       token,
@@ -186,41 +154,40 @@ function handle(io) {
   });
 
   /**
-   * @api {get} /threads/:threadId Get a forum thread
+   * @api {get} /forumThreads/:threadId Get a forum thread
    * @apiVersion 8.0.0
    * @apiName GetThread
-   * @apiGroup Forums
+   * @apiGroup ForumThreads
    *
    * @apiHeader {string} Authorization Your JSON Web Token.
    *
    * @apiDescription Get a forum thread that the user has access to.
    *
-   * @apiParam {Object} threadId Id of the thread to retrieve.
+   * @apiParam {Object} threadId [Url] Id of the thread to retrieve.
    *
-   * @apiParam {Object} [data]
-   * @apiParam {Object} [data.userId] Id of the user retrieving the forum thread.
+   * @apiParam {boolean} [full] [Query] Should the complete object be retrieved?
    *
    * @apiSuccess {Object} data
-   * @apiSuccess {Object} data.post Forum thread found.
+   * @apiSuccess {ForumThread} data.thread Found thread.
    */
   router.get('/:threadId', (request, response) => {
     if (!objectValidator.isValidData(request.params, { threadId: true })) {
-      restErrorChecker.checkAndSendError({ response, error: new errorCreator.InvalidData({ expected: '{ threadId }' }), sentData: request.params });
+      restErrorChecker.checkAndSendError({ response, error: new errorCreator.InvalidData({ expected: '{ threadId }' }) });
 
       return;
     }
 
-    const { userId } = request.body.data;
     const { threadId } = request.params;
     const { authorization: token } = request.headers;
+    const { full } = request.query;
 
     forumThreadManager.getThreadById({
-      userId,
       threadId,
+      full,
       token,
       callback: ({ error, data }) => {
         if (error) {
-          restErrorChecker.checkAndSendError({ response, error, sentData: request.body.data });
+          restErrorChecker.checkAndSendError({ response, error });
 
           return;
         }
@@ -231,38 +198,78 @@ function handle(io) {
   });
 
   /**
-   * @api {get} /threads/:threadId/posts Get posts from thread
+   * @api {get} /forumThreads/ Get threads
+   * @apiVersion 8.0.0
+   * @apiName GetThreads
+   * @apiGroup ForumThreads
+   *
+   * @apiHeader {string} Authorization Your JSON Web Token.
+   *
+   * @apiDescription Get threads. The default is to return all threads made by the user. Setting forumId will instead retrieve all threads connected to the forum.
+   *
+   * @apiParam {boolean} [full] [Query] Should the complete object be retrieved?
+   * @apiParam {string} [forumId] [Query] Id of the forum to retrieve posts from.
+   *
+   * @apiSuccess {Object} data
+   * @apiSuccess {ForumPost[]} data.posts Found posts.
+   */
+  router.get('/', (request, response) => {
+    helper.getForumThreads({ request, response });
+  });
+
+  /**
+   * @api {get} /forumThreads/:threadId/posts Get posts from thread
    * @apiVersion 8.0.0
    * @apiName GetThreadPosts
-   * @apiGroup Forums
+   * @apiGroup ForumThreads
    *
    * @apiHeader {string} Authorization Your JSON Web Token.
    *
    * @apiDescription Get forum thread posts.
    *
-   * @apiParam {Object} threadId Id of the thread to retrieve posts from.
+   * @apiParam {Object} threadId [Url] Id of the thread to retrieve posts from.
    *
-   * @apiParam {Object} [data]
-   * @apiParam {Object} [data.userId] Id of the user retrieving the forum posts.
+   * @apiParam {boolean} [full] [Query] Should the complete object be retrieved?
    *
    * @apiSuccess {Object} data
-   * @apiSuccess {Object[]} data.posts Forum posts found.
+   * @apiSuccess {ForumPost[]} data.posts Found posts.
    */
-  router.get('/:threadId', (request, response) => {
-    if (!objectValidator.isValidData(request.params, { threadId: true })) {
-      restErrorChecker.checkAndSendError({ response, error: new errorCreator.InvalidData({ expected: '{ threadId }' }), sentData: request.params });
+  router.get('/:threadId/posts', (request, response) => {
+    helper.getForumPosts({ request, response });
+  });
+
+  /**
+   * @api {post} /forumThreads Create a thread
+   * @apiVersion 8.0.0
+   * @apiName CreateThread
+   * @apiGroup ForumThreads
+   *
+   * @apiHeader {string} Authorization Your JSON Web Token.
+   *
+   * @apiDescription Create a forum thread.
+   *
+   * @apiParam {Object} data Body parameters.
+   * @apiParam {Object} data.thread Forum thread to create.
+   * @apiParam {string} data.thread.forumId Id of the forum to create a thread for.
+   *
+   * @apiSuccess {Object} data
+   * @apiSuccess {ForumThread} data.thread Created forum thread.
+   */
+  router.post('/', (request, response) => {
+    if (!objectValidator.isValidData(request.body, { data: { thread: { title: true, text: true } } })) {
+      restErrorChecker.checkAndSendError({ response, error: new errorCreator.InvalidData({ expected: 'data = { thread: { title, text } }' }), sentData: request.body.data });
 
       return;
     }
 
-    const { userId } = request.body.data;
-    const { threadId } = request.params;
     const { authorization: token } = request.headers;
+    const { thread } = request.body.data;
+    thread.forumId = thread.forumId || request.params.forumId;
 
-    forumPostManager.getPostsByThread({
-      userId,
-      threadId,
+    forumThreadManager.createThread({
+      io,
       token,
+      thread,
       callback: ({ error, data }) => {
         if (error) {
           restErrorChecker.checkAndSendError({ response, error, sentData: request.body.data });

@@ -25,35 +25,44 @@ const deviceSchema = new mongoose.Schema(dbConnector.createSchema({
   deviceName: { type: String, unique: true },
   socketId: String,
   lastUserId: String,
+  connectedToUser: { type: String, unique: true, sparse: true },
   deviceType: { type: String, default: dbConfig.DeviceTypes.USERDEVICE },
 }), { collection: 'devices' });
 
 const Device = mongoose.model('Device', deviceSchema);
 
-/**
- * Add custom id to the object
- * @param {Object} device - Device object
- * @return {Object} - Device object with id
- */
-function addCustomId(device) {
-  const updatedDevice = device;
-  updatedDevice.deviceId = device.objectId;
-
-  return updatedDevice;
-}
+const deviceFilter = {
+  deviceName: 1,
+  lastUpdated: 1,
+  deviceType: 1,
+  connectedToUser: 1,
+};
 
 /**
- * Update device fields
- * @param {Object} params - Parameters
- * @param {string} params.deviceId - ID of the device to update
- * @param {Object} params.update - Update
- * @param {Function} params.callback - Callback
+ * Update device object.
+ * @param {Object} params - Parameters.
+ * @param {string} params.deviceId - Id of the device to update.
+ * @param {Object} params.update - Update.
+ * @param {Function} params.callback - Callback.
  */
-function updateObject({ deviceId, update, callback }) {
+function updateObject({
+  deviceId,
+  deviceSocketId,
+  update,
+  callback,
+}) {
+  const query = {};
+
+  if (deviceId) {
+    query._id = deviceId;
+  } else {
+    query.socketId = deviceSocketId;
+  }
+
   dbConnector.updateObject({
     update,
+    query,
     object: Device,
-    query: { _id: deviceId },
     errorNameContent: 'updateDeviceObject',
     callback: ({ error, data }) => {
       if (error) {
@@ -62,19 +71,22 @@ function updateObject({ deviceId, update, callback }) {
         return;
       }
 
-      callback({ data: { device: addCustomId(data.object) } });
+      callback({ data: { device: data.object } });
     },
   });
 }
 
 /**
- * Get devices
+ * Get devices.
  * @private
- * @param {Object} params - Parameters
- * @param {Object} params.query - Query to get devices
- * @param {Function} params.callback - Callback
+ * @param {Object} params - Parameters.
+ * @param {Object} params.query - Query to get devices.
+ * @param {Function} params.callback - Callback.
  */
-function getDevices({ query, callback }) {
+function getDevices({
+  query,
+  callback,
+}) {
   dbConnector.getObjects({
     query,
     object: Device,
@@ -85,21 +97,17 @@ function getDevices({ query, callback }) {
         return;
       }
 
-      callback({
-        data: {
-          devices: data.objects.map(device => addCustomId(device)),
-        },
-      });
+      callback({ data: { devices: data.objects } });
     },
   });
 }
 
 /**
- * Get device
+ * Get device.
  * @private
- * @param {Object} params - Parameters
- * @param {string} params.query - Query to get device
- * @param {Function} params.callback - Callback
+ * @param {Object} params - Parameters.
+ * @param {string} params.query - Query to get device.
+ * @param {Function} params.callback - Callback.
  */
 function getDevice({ query, callback }) {
   dbConnector.getObject({
@@ -116,7 +124,7 @@ function getDevice({ query, callback }) {
         return;
       }
 
-      callback({ data: { device: addCustomId(data.object) } });
+      callback({ data: { device: data.object } });
     },
   });
 }
@@ -165,7 +173,7 @@ function createDevice({ device, callback }) {
             return;
           }
 
-          callback({ data: { device: addCustomId(data.savedObject) } });
+          callback({ data: { device: data.savedObject } });
         },
       });
     },
@@ -173,16 +181,17 @@ function createDevice({ device, callback }) {
 }
 
 /**
- * Update device properties. Creates a new device if one doesn't exist with sent deviceId
- * @param {Object} params - Parameters
- * @param {Object} params.device - Properties to update in device
- * @param {string} params.device.deviceId - Device ID
- * @param {string} [params.device.socketId] - Socket.IO socket ID
- * @param {Object} [params.options] - Options
- * @param {Function} params.callback - Callback
+ * Update device properties. Creates a new device if one doesn't exist with sent deviceId.
+ * @param {Object} params - Parameters.
+ * @param {Function} params.callback - Callback.
+ * @param {Object} params.device - Properties to update in device.
+ * @param {string} [params.deviceId] - Device Id. It overrides deviceSocketId and will be used to get and update a device.
+ * @param {string} [params.deviceSocketId] - Socket Id of the device. It will be used to get and update a device. deviceId overrides it.
+ * @param {Object} [params.options] - Options.
  */
 function updateDevice({
   deviceId,
+  deviceSocketId,
   device,
   callback,
   options = {},
@@ -204,7 +213,7 @@ function updateDevice({
 
   if (resetSocket) {
     update.$unset.socketId = '';
-  } else if (device.socketId) {
+  } else if (socketId) {
     update.$set.socketId = socketId;
   }
 
@@ -233,6 +242,7 @@ function updateDevice({
         }
 
         updateObject({
+          deviceSocketId,
           deviceId,
           update,
           callback,
@@ -284,7 +294,7 @@ function addAccess({
         return;
       }
 
-      callback({ data: { device: addCustomId(data.object) } });
+      callback({ data: { device: data.object } });
     },
   });
 }
@@ -324,75 +334,48 @@ function removeAccess({
         return;
       }
 
-      callback({ data: { device: addCustomId(data.object) } });
+      callback({ data: { device: data.object } });
     },
   });
 }
 
 /**
- * Get all devices
- * @param {Object} params - Parameters
- * @param {Function} params.callback - Callback
+ * Get devices that the user has access to
+ * @param {Object} params - Parameters.
+ * @param {Object} params.user - User retrieving the devices.
+ * @param {Function} params.callback - Callback.
  */
-function getAllDevices({ callback }) {
-  getDevices({ callback });
-}
-
-/**
- * Get devices that the teams have access to
- * @param {Object} params - Parameters
- * @param {Object} params.teamIds - IDs of the team retrieving the devices
- * @param {Function} params.callback - Callback
- */
-function getDevicesByTeams({ teamIds, callback }) {
-  getDevices({
-    callback,
-    query: { teamIds: { $in: teamIds } },
-  });
-}
-
-/**
- * Get devices by user
- * @param {Object} params - Parameters
- * @param {Object} params.userId - ID of the user retrieving the devices
- * @param {Function} params.callback - Callback
- */
-function getDevicesByUser({ userId, callback }) {
-  const query = {
-    $or: [
-      { ownerId: userId },
-      { userIds: { $in: [userId] } },
-    ],
-  };
+function getDevicesByUser({
+  full,
+  user,
+  callback,
+}) {
+  const query = dbConnector.createUserQuery({ user });
+  const filter = !full ? deviceFilter : {};
 
   getDevices({
     query,
+    filter,
     callback,
   });
 }
 
 /**
- * Get devices by type
- * @param {Object} params - Parameters
- * @param {string} params.deviceType - Device type
- * @param {Function} params.callback - Callback
+ * Get device by Id.
+ * @param {Object} params - Parameters.
+ * @param {string} params.deviceId - Id of the device.
+ * @param {Function} params.callback - Callback.
  */
-function getDevicesByType({ deviceType, callback }) {
-  getDevices({
-    callback,
-    query: { deviceType },
-  });
-}
+function getDeviceById({
+  deviceId,
+  full,
+  callback,
+}) {
+  const filter = !full ? deviceFilter : {};
 
-/**
- * Get device by id
- * @param {Object} params - Parameters
- * @param {string} params.deviceId - ID of the device
- * @param {Function} params.callback - Callback
- */
-function getDeviceById({ deviceId, callback }) {
   getDevice({
     callback,
+    filter,
     query: { _id: deviceId },
   });
 }
@@ -411,13 +394,24 @@ function removeDevice({ deviceId, callback }) {
   });
 }
 
+/**
+ * Get device by socket Id.
+ * @param {Object} params - Parameters.
+ * @param {string} params.socketId - Socket.io Id.
+ * @param {Function} params.callback - Callback.
+ */
+function getDeviceBySocketId({ socketId, callback }) {
+  getDevice({
+    callback,
+    query: { socketId },
+  });
+}
+
 exports.addAccessToDevice = addAccess;
 exports.removeAccessToDevice = removeAccess;
 exports.updateDevice = updateDevice;
-exports.getAllDevices = getAllDevices;
 exports.createDevice = createDevice;
 exports.getDevicesByUser = getDevicesByUser;
-exports.getDevicesByType = getDevicesByType;
-exports.getDevicesByTeams = getDevicesByTeams;
 exports.getDeviceById = getDeviceById;
 exports.removeDevice = removeDevice;
+exports.getDeviceBySocketId = getDeviceBySocketId;

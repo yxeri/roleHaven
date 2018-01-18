@@ -17,7 +17,6 @@
 const mongoose = require('mongoose');
 const errorCreator = require('../../objects/error/errorCreator');
 const dbConnector = require('../databaseConnector');
-const dbForum = require('./forum');
 const dbForumPost = require('./forumPost');
 
 const forumThreadSchema = new mongoose.Schema(dbConnector.createSchema({
@@ -29,17 +28,18 @@ const forumThreadSchema = new mongoose.Schema(dbConnector.createSchema({
 
 const ForumThread = mongoose.model('ForumThread', forumThreadSchema);
 
-/**
- * Add custom id to the object
- * @param {Object} thread - Forum thread object
- * @return {Object} - Forum thread object with id
- */
-function addCustomId(thread) {
-  const updatedThread = thread;
-  updatedThread.threadId = thread.objectId;
-
-  return updatedThread;
-}
+const threadFilter = {
+  ownerId: 1,
+  title: 1,
+  postIds: 1,
+  ownerAliasId: 1,
+  forumId: 1,
+  text: 1,
+  lastUpdated: 1,
+  timeCreated: 1,
+  customLastUpdated: 1,
+  customTimeCreated: 1,
+};
 
 /**
  * Get forum threads
@@ -48,9 +48,14 @@ function addCustomId(thread) {
  * @param {Object} params.query - Query to get doc files
  * @param {Function} params.callback - Callback
  */
-function getThreads({ query, callback }) {
+function getThreads({
+  filter,
+  query,
+  callback,
+}) {
   dbConnector.getObjects({
     query,
+    filter,
     object: ForumThread,
     callback: ({ error, data }) => {
       if (error) {
@@ -61,7 +66,7 @@ function getThreads({ query, callback }) {
 
       callback({
         data: {
-          threads: data.objects.map(thread => addCustomId(thread)),
+          threads: data.objects,
         },
       });
     },
@@ -90,7 +95,7 @@ function getThread({ query, callback }) {
         return;
       }
 
-      callback({ data: { thread: addCustomId(data.object) } });
+      callback({ data: { thread: data.object } });
     },
   });
 }
@@ -120,7 +125,7 @@ function updateObject({
         return;
       }
 
-      callback({ data: { thread: addCustomId(data.object) } });
+      callback({ data: { thread: data.object } });
     },
   });
 }
@@ -132,32 +137,17 @@ function updateObject({
  * @param {Function} params.callback - Callback
  */
 function createThread({ thread, callback }) {
-  dbForum.getForumById({
-    query: { _id: thread.forumId },
-    callback: ({ error, data }) => {
-      if (error) {
-        callback({ error });
-
-        return;
-      } else if (!data.forum) {
-        callback({ error: errorCreator.DoesNotExist({ name: `forum ID ${thread.forumId}` }) });
+  dbConnector.saveObject({
+    object: new ForumThread(thread),
+    objectType: 'ForumThread',
+    callback: (threadData) => {
+      if (threadData.error) {
+        callback({ error: threadData.error });
 
         return;
       }
 
-      dbConnector.saveObject({
-        object: new ForumThread(thread),
-        objectType: 'ForumThread',
-        callback: (threadData) => {
-          if (threadData.error) {
-            callback({ error: threadData.error });
-
-            return;
-          }
-
-          callback({ data: { thread: addCustomId(threadData.data.savedObject) } });
-        },
-      });
+      callback({ data: { thread: threadData.data.savedObject } });
     },
   });
 }
@@ -207,14 +197,14 @@ function getThreadsByForums({ forumIds, callback }) {
  * @param {string} params.threadId - ID of the thread
  * @param {Object} params.thread - Thread updates
  * @param {Object} [params.options] - Options
- * @param {Object} params.options.resetOwnerAliasId - Should ownerAliasId be removed?
+ * @param {Object} [params.options.resetOwnerAliasId] - Should ownerAliasId be removed?
  * @param {Function} params.callback - Callback
  */
 function updateThread({
   threadId,
   thread,
   callback,
-  options,
+  options = {},
 }) {
   const update = { $set: {} };
 
@@ -384,7 +374,7 @@ function addAccess({
         return;
       }
 
-      callback({ data: { thread: addCustomId(data.object) } });
+      callback({ data: { thread: data.object } });
     },
   });
 }
@@ -424,7 +414,7 @@ function removeAccess({
         return;
       }
 
-      callback({ data: { thr: addCustomId(data.object) } });
+      callback({ data: { thread: data.object } });
     },
   });
 }
@@ -438,6 +428,27 @@ function getAllThreads({ callback }) {
   getThreads({ callback });
 }
 
+/**
+ * Get threads created by the user.
+ * @param {Object} params - Parameters.
+ * @param {string} params.userId - Id of the user.
+ * @param {Function} params.callback - Callback.
+ * @param {boolean} [params.full] - Should the complete objects be returned?
+ */
+function getThreadsCreatedByUser({
+  userId,
+  callback,
+  full,
+}) {
+  const filter = !full ? threadFilter : {};
+
+  getThreads({
+    filter,
+    callback,
+    query: { ownerId: userId },
+  });
+}
+
 exports.createThread = createThread;
 exports.getThreadById = getThreadById;
 exports.getThreadsByForum = getThreadsByForum;
@@ -449,3 +460,4 @@ exports.addAccess = addAccess;
 exports.removeAccess = removeAccess;
 exports.getAllThreads = getAllThreads;
 exports.removeThread = removeThread;
+exports.getThreadsCreatedByUser = getThreadsCreatedByUser;

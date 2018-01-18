@@ -98,6 +98,7 @@ function updateWallet({
       getAccessibleWallet({
         walletId,
         user,
+        full: true,
         callback: (walletData) => {
           if (walletData.error) {
             callback({ error: walletData.error });
@@ -123,7 +124,7 @@ function updateWallet({
               const dataToSend = {
                 data: {
                   wallet: {
-                    walletId,
+                    objectId: walletId,
                     amount: updateData.data.wallet.amount,
                   },
                   changeType: dbConfig.ChangeTypes.UPDATE,
@@ -147,17 +148,15 @@ function updateWallet({
  * @param {string} params.walletId - Id of the wallet.
  * @param {string} params.token - jwt.
  * @param {Function} params.callback - Callback.
- * @param {string} [params.userId] - ID of the user retrieving a wallet.
  */
-function getWallet({
-  userId,
+function getWalletById({
   walletId,
   token,
   callback,
+  full,
 }) {
   authenticator.isUserAllowed({
     token,
-    matchToId: userId,
     commandName: dbConfig.apiCommands.GetWallet.name,
     callback: ({ error, data }) => {
       if (error) {
@@ -166,12 +165,13 @@ function getWallet({
         return;
       }
 
-      const authUser = data.user;
+      const { user } = data;
 
       getAccessibleWallet({
         walletId,
         callback,
-        user: authUser,
+        user,
+        shouldBeAdmin: full && dbConfig.apiCommands.GetFull.accessLevel > user.accessLevel,
       });
     },
   });
@@ -193,7 +193,7 @@ function emptyWallet({
 }) {
   authenticator.isUserAllowed({
     token,
-    commandName: dbConfig.apiCommands.DecreaseWalletAmount.name,
+    commandName: dbConfig.apiCommands.ChangeWalletAmount.name,
     callback: ({ error }) => {
       if (error) {
         callback({ error });
@@ -209,7 +209,7 @@ function emptyWallet({
           const dataToSend = {
             data: {
               wallet: {
-                walletId,
+                objectId: walletId,
                 amount: updateData.data.wallet.amount,
               },
               changeType: dbConfig.ChangeTypes.UPDATE,
@@ -289,7 +289,7 @@ function getWalletsAndCheckAmount({
         return;
       }
 
-      const fromWallet = data.wallets.find(wallet => wallet.walletId === fromWalletId);
+      const fromWallet = data.wallets.find(wallet => wallet.objectId === fromWalletId);
 
       if (fromWallet.amount - amount < 0) {
         callback({ error: new errorCreator.Insufficient({ name: 'transfer too much' }) });
@@ -305,28 +305,30 @@ function getWalletsAndCheckAmount({
 /**
  * Get wallets that the user has access to.
  * @param {Object} params - Parameters.
- * @param {string} params.userId - Id of the user retrieving the users.
  * @param {Function} params.callback - Callback.
  * @param {string} params.token - jwt.
  */
 function getWalletsByUser({
-  userId,
   callback,
   token,
+  full,
 }) {
   authenticator.isUserAllowed({
     token,
-    commandName: dbConfig.apiCommands.GetWallet.name,
-    callback: ({ error }) => {
+    commandName: full ? dbConfig.apiCommands.GetFull.name : dbConfig.apiCommands.GetWallet.name,
+    callback: ({ error, data }) => {
       if (error) {
         callback({ error });
 
         return;
       }
 
+      const { user } = data;
+
       dbWallet.getWalletsByUser({
-        userId,
         callback,
+        user,
+        full,
       });
     },
   });
@@ -336,21 +338,18 @@ function getWalletsByUser({
  * Remove a wallet.
  * @param {Object} params - Parameters.
  * @param {string} params.token - jwt.
- * @param {string} params.userId - Id of the user trying to remove a wallet.
  * @param {string} params.walletId - Id of the wallet to remove.
  * @param {Function} params.callback - Callback.
  * @param {Object} params.io - Socket.io.
  */
 function removeWallet({
   token,
-  userId,
   walletId,
   callback,
   io,
 }) {
   authenticator.isUserAllowed({
     token,
-    matchToId: userId,
     commandName: dbConfig.apiCommands.RemoveWallet.name,
     callback: ({ error }) => {
       if (error) {
@@ -371,7 +370,7 @@ function removeWallet({
           const dataToSend = {
             data: {
               changeType: dbConfig.ChangeTypes.REMOVE,
-              wallet: { walletId },
+              wallet: { objectId: walletId },
             },
           };
           const callbackData = dataToSend;
@@ -387,7 +386,7 @@ function removeWallet({
 }
 
 exports.updateWallet = updateWallet;
-exports.getWallet = getWallet;
+exports.getWalletById = getWalletById;
 exports.emptyWallet = emptyWallet;
 exports.getAccessibleWallet = getAccessibleWallet;
 exports.runTransaction = runTransaction;

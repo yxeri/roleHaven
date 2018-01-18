@@ -31,30 +31,28 @@ const gameCodeSchema = new mongoose.Schema(dbConnector.createSchema({
 
 const GameCode = mongoose.model('GameCode', gameCodeSchema);
 
-/**
- * Add custom id to the object
- * @param {Object} gameCode - Game code object
- * @return {Object} - Game code object with id
- */
-function addCustomId(gameCode) {
-  const updatedGameCode = gameCode;
-  updatedGameCode.gameCodeId = gameCode.objectId;
-
-  return updatedGameCode;
-}
+const gameCodeFilter = {
+  code: 1,
+  codeType: 1,
+  codeContent: 1,
+  used: 1,
+  lastUpdated: 1,
+  ownerId: 1,
+  ownerIdAlias: 1,
+};
 
 /**
  * Update game code
  * @private
- * @param {Object} params - Parameters
- * @param {string} params.code - ID of the game code to update
- * @param {Object} params.update - Update
- * @param {Function} params.callback - Callback
+ * @param {Object} params - Parameters.
+ * @param {string} params.gameCodeId - Id of the game code to update.
+ * @param {Object} params.update - Update.
+ * @param {Function} params.callback - Callback.
  */
-function updateObject({ code, update, callback }) {
+function updateObject({ gameCodeId, update, callback }) {
   dbConnector.updateObject({
     update,
-    query: { code },
+    query: { _id: gameCodeId },
     object: GameCode,
     errorNameContent: 'updateGameCode',
     callback: ({ error, data }) => {
@@ -64,7 +62,7 @@ function updateObject({ code, update, callback }) {
         return;
       }
 
-      callback({ data: { gameCode: addCustomId(data.object) } });
+      callback({ data: { gameCode: data.object } });
     },
   });
 }
@@ -76,9 +74,14 @@ function updateObject({ code, update, callback }) {
  * @param {string} params.query - Query to get game code
  * @param {Function} params.callback - Callback
  */
-function getGameCode({ query, callback }) {
+function getGameCode({
+  query,
+  callback,
+  filter,
+}) {
   dbConnector.getObject({
     query,
+    filter,
     object: GameCode,
     callback: ({ error, data }) => {
       if (error) {
@@ -91,7 +94,7 @@ function getGameCode({ query, callback }) {
         return;
       }
 
-      callback({ data: { gameCode: addCustomId(data.object) } });
+      callback({ data: { gameCode: data.object } });
     },
   });
 }
@@ -99,13 +102,18 @@ function getGameCode({ query, callback }) {
 /**
  * Get game codes
  * @private
- * @param {Object} params - Parameters
- * @param {Object} params.query - Query to get game codes
- * @param {Function} params.callback - Callback
+ * @param {Object} params - Parameters.
+ * @param {Object} params.query - Query to get game codes.
+ * @param {Function} params.callback - Callback.
  */
-function getGameCodes({ query, callback }) {
+function getGameCodes({
+  query,
+  filter,
+  callback,
+}) {
   dbConnector.getObjects({
     query,
+    filter,
     object: GameCode,
     callback: ({ error, data }) => {
       if (error) {
@@ -116,7 +124,7 @@ function getGameCodes({ query, callback }) {
 
       callback({
         data: {
-          gameCodes: data.objects.map(gameCode => addCustomId(gameCode)),
+          gameCodes: data.objects,
         },
       });
     },
@@ -124,20 +132,35 @@ function getGameCodes({ query, callback }) {
 }
 
 /**
+ * Does the game code exist?
+ * @private
+ * @param {Object} params - Parameters.
+ * @param {string} params.query - Query to get game code.
+ * @param {Function} params.callback - Callback.
+ */
+function doesExist({ query, callback }) {
+  dbConnector.getObject({
+    query,
+    callback,
+    object: GameCode,
+  });
+}
+
+/**
  * Create game code
- * @param {Object} params - Parameters
- * @param {Object} params.gameCode - Game code
- * @param {Function} params.callback - Callback
+ * @param {Object} params - Parameters.
+ * @param {Object} params.gameCode - Game code.
+ * @param {Function} params.callback - Callback.
  */
 function createGameCode({ gameCode, callback }) {
-  getGameCode({
+  doesExist({
     query: { code: gameCode.code },
     callback: ({ error, data }) => {
       if (error) {
         callback({ error });
 
         return;
-      } else if (data.gameCode) {
+      } else if (data.exists) {
         callback({ error: new error.AlreadyExists({ name: `Game code ${gameCode.code}` }) });
 
         return;
@@ -153,7 +176,7 @@ function createGameCode({ gameCode, callback }) {
             return;
           }
 
-          callback({ data: { gameCode: addCustomId(savedData.data.savedObject) } });
+          callback({ data: { gameCode: savedData.data.savedObject } });
         },
       });
     },
@@ -170,7 +193,11 @@ function createGameCode({ gameCode, callback }) {
  * @param {boolean} [params.gameCode.isRenewable] - Should a new game code be created after usage?
  * @param {string[]} [params.gameCode.codeContent] - Content that will be retrieved by user that uses the code.
  */
-function updateGameCode({ code, gameCode, callback }) {
+function updateGameCode({
+  gameCodeId,
+  gameCode,
+  callback,
+}) {
   const {
     codeType,
     isRenewable,
@@ -188,7 +215,7 @@ function updateGameCode({ code, gameCode, callback }) {
   updateObject({
     update,
     callback,
-    code,
+    gameCodeId,
   });
 }
 
@@ -198,27 +225,41 @@ function updateGameCode({ code, gameCode, callback }) {
  * @param {string} params.ownerId - User or team ID of the owner of the game code
  * @param {Function} params.callback - Callback
  */
-function getGameCodesByOwner({ ownerId, callback }) {
+function getGameCodesByOwner({
+  ownerId,
+  full,
+  callback,
+}) {
+  const filter = !full ? gameCodeFilter : {};
+  const query = {
+    ownerId,
+    used: false,
+  };
+
   getGameCodes({
     callback,
-    query: {
-      ownerId,
-      used: false,
-    },
+    filter,
+    query,
   });
 }
 
 /**
- * Get game code by code
+ * Get game code by Id.
  * @param {Object} params - Parameters
- * @param {string} params.code - Code of the game code
- * @param {Function} params.callback - Callback
+ * @param {string} params.gameCodeId - Id of the game code to retrieve.
+ * @param {Function} params.callback - Callback.
  */
-function getGameCodeByCode({ code, callback }) {
-  const query = { code };
+function getGameCodeById({
+  full,
+  gameCodeId,
+  callback,
+}) {
+  const query = { _id: gameCodeId };
+  const filter = !full ? gameCodeFilter : {};
 
   getGameCode({
     query,
+    filter,
     callback,
   });
 }
@@ -226,14 +267,14 @@ function getGameCodeByCode({ code, callback }) {
 /**
  * Remove game code.
  * @param {Object} params - Parameters.
- * @param {string} params.code - Code of the game code.
+ * @param {string} params.gameCodeId - Id of the game code.
  * @param {Function} params.callback - Callback.
  */
-function removeGameCode({ code, callback }) {
+function removeGameCode({ gameCodeId, callback }) {
   dbConnector.removeObject({
     callback,
     object: GameCode,
-    query: { code },
+    query: { _id: gameCodeId },
   });
 }
 
@@ -244,18 +285,20 @@ function removeGameCode({ code, callback }) {
  * @param {Function} params.callback - Callback
  */
 function getProfileGameCode({ ownerId, callback }) {
+  const query = {
+    ownerId,
+    codeType: dbConfig.GameCodeTypes.PROFILE,
+  };
+
   getGameCode({
     callback,
-    query: {
-      ownerId,
-      codeType: dbConfig.GameCodeTypes.PROFILE,
-    },
+    query,
   });
 }
 
 exports.createGameCode = createGameCode;
 exports.updateGameCode = updateGameCode;
 exports.removeGameCode = removeGameCode;
-exports.getGameCodeByCode = getGameCodeByCode;
+exports.getGameCodeById = getGameCodeById;
 exports.getGameCodesByOwner = getGameCodesByOwner;
 exports.getProfileGameCode = getProfileGameCode;

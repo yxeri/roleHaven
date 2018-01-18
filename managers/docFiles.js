@@ -39,10 +39,12 @@ function getAccessibleDocFile({
   docFileId,
   callback,
   shouldBeAdmin,
+  full,
   errorContentText = `docFileId ${docFileId}`,
 }) {
   dbDocFile.getDocFileById({
     docFileId,
+    full: true,
     callback: (docFileData) => {
       if (docFileData.error) {
         callback({ error: docFileData.error });
@@ -58,7 +60,24 @@ function getAccessibleDocFile({
         return;
       }
 
-      callback(docFileData);
+      const foundDocFile = docFileData.data.docFile;
+      const filteredDocFile = {
+        objectId: foundDocFile.objectId,
+        title: foundDocFile.title,
+        ownerId: foundDocFile.ownerId,
+        ownerAliasId: foundDocFile.ownerAliasId,
+        lastUpdated: foundDocFile.lastUpdated,
+        timeCreated: foundDocFile.timeCreated,
+        customLastUpdated: foundDocFile.customLastUpdated,
+        customTimeCreated: foundDocFile.customTimeCreated,
+        text: foundDocFile.text,
+      };
+
+      callback({
+        data: {
+          docFile: full ? foundDocFile : filteredDocFile,
+        },
+      });
     },
   });
 }
@@ -111,7 +130,6 @@ function saveAndTransmitDocFile({
  * @param {Object} params.docFile - DocFile to create.
  * @param {Object} params.io - Socket io. Will be used if socket is not set.
  * @param {Function} params.callback - Callback.
- * @param {string} [params.userId] - ID of the creator. Will default to socket user.
  * @param {Object} [params.socket] - Socket io.
  */
 function createDocFile({
@@ -120,11 +138,9 @@ function createDocFile({
   io,
   docFile,
   callback,
-  userId,
 }) {
   authenticator.isUserAllowed({
     token,
-    matchToId: userId,
     commandName: dbConfig.apiCommands.CreateDocFile.name,
     callback: ({ error, data }) => {
       if (error) {
@@ -151,7 +167,7 @@ function createDocFile({
 
       const { user } = data;
       const newDocFile = docFile;
-      newDocFile.ownerId = user.userId;
+      newDocFile.ownerId = user.objectId;
       newDocFile.code = newDocFile.code || textTools.generateTextCode();
 
       if (docFile.ownerAliasId) {
@@ -193,7 +209,6 @@ function createDocFile({
  * @param {Object} params - Parameters.
  * @param {Object} params.docFile - Doc file changes.
  * @param {tring} params.docFileId - Doc file.
- * @param {string} params.userId - ID of the creator.
  * @param {Object} params.io - Socket io. Will be used if socket is undefined.
  * @param {Function} params.callback - Callback.
  * @param {Object} params.io - Socket io. Will be used if socket is not set.
@@ -206,13 +221,11 @@ function updateDocFile({
   socket,
   io,
   token,
-  userId,
   callback,
   options,
 }) {
   authenticator.isUserAllowed({
     token,
-    matchToId: userId,
     commandName: dbConfig.apiCommands.CreateDocFile.name,
     callback: ({ error, data }) => {
       if (error) {
@@ -229,10 +242,12 @@ function updateDocFile({
         return;
       }
 
+      const { user } = data;
+
       getAccessibleDocFile({
         docFileId,
+        user,
         shouldBeAdmin: true,
-        user: data.user,
         callback: (docFileData) => {
           if (docFileData.error) {
             callback({ error: docFileData.error });
@@ -264,9 +279,16 @@ function updateDocFile({
                   docFile: {
                     title,
                     isPublic,
+                    objectId: docFileId,
                     ownerId: ownerAliasId || ownerId,
                     code: isPublic ? code : undefined,
                   },
+                  changeType: dbConfig.ChangeTypes.UPDATE,
+                },
+              };
+              const dataToReturn = {
+                data: {
+                  docFile: updateData.docFile,
                   changeType: dbConfig.ChangeTypes.UPDATE,
                 },
               };
@@ -277,7 +299,7 @@ function updateDocFile({
                 io.emit(dbConfig.EmitTypes.DOCFILE, dataToSend);
               }
 
-              callback({ data: { docFile: updateData.docFile } });
+              callback(dataToReturn);
             },
           });
         },
@@ -287,26 +309,53 @@ function updateDocFile({
 }
 
 /**
- * Get all doc files.
+ * Get a list of available files.
  * @param {Object} params - Parameters.
  * @param {string} params.token - jwt.
- * @param {boolean} [params.lite] - Should parameters storing a lot of data be filtered?
  * @param {Function} params.callback - Callback.
  */
-function getAllDocFiles({ token, lite, callback }) {
+function getDocFilesList({ token, callback }) {
   authenticator.isUserAllowed({
     token,
-    commandName: dbConfig.apiCommands.GetAll.name,
-    callback: ({ error }) => {
+    commandName: dbConfig.apiCommands.GetDocFilesList.name,
+    callback: ({ error, data }) => {
       if (error) {
         callback({ error });
 
         return;
       }
 
+      const { user } = data;
+
       dbDocFile.getAllDocFiles({
-        lite,
-        callback,
+        callback: ({ error: docFilesError, data: docFilesData }) => {
+          if (docFilesError) {
+            callback({ error: docFilesError });
+
+            return;
+          }
+
+          const { docFiles } = docFilesData;
+          const modifiedFiles = docFiles.map((docFile) => {
+            const newDocFile = {
+              objectId: docFile.objectId,
+              isPublic: docFile.isPublic,
+              ownerId: docFile.ownerAliasId || docFile.ownerId,
+              title: docFile.title,
+            };
+
+            if (docFile.isPublic || authenticator.hasAccessTo({
+              objectToAccess: docFile,
+              toAuth: user,
+            })) {
+              newDocFile.code = docFile.code;
+            }
+
+            return newDocFile;
+          });
+
+          callback({ data: { docFiles: modifiedFiles } });
+        },
       });
     },
   });
@@ -330,7 +379,7 @@ function unlockDocFile({ code, token, callback }) {
         return;
       }
 
-      const authUser = data.user;
+      const { user } = data;
 
       dbDocFile.getDocFileByCode({
         code,
@@ -343,15 +392,15 @@ function unlockDocFile({ code, token, callback }) {
 
           const foundDocFile = docFileData.data.docFile;
 
-          if (foundDocFile.accessLevel > authUser.accessLevel) {
+          if (foundDocFile.accessLevel > user.accessLevel) {
             callback({ error: new errorCreator.NotAllowed({ name: `docFile ${code}` }) });
 
             return;
           }
 
           dbDocFile.addAccess({
-            docFileId: foundDocFile.docFileId,
-            userIds: [authUser.userId],
+            docFileId: foundDocFile.objectId,
+            userIds: [user.objectId],
             callback: (accessData) => {
               if (accessData.error) {
                 callback({ error: accessData.error });
@@ -374,17 +423,15 @@ function unlockDocFile({ code, token, callback }) {
  * @param {string} params.token - jwt.
  * @param {Function} params.callback - Callback.
  * @param {string} params.docFileId - Id of Docfile to retrieve.
- * @param {string} [params.userId] - Id of the user creating the file.
  */
 function getDocFileById({
   docFileId,
   token,
   callback,
-  userId,
+  full,
 }) {
   authenticator.isUserAllowed({
     token,
-    matchToId: userId,
     commandName: dbConfig.apiCommands.GetDocFile.name,
     callback: ({ error, data }) => {
       if (error) {
@@ -393,60 +440,14 @@ function getDocFileById({
         return;
       }
 
+      const { user } = data;
+
       getAccessibleDocFile({
         docFileId,
         callback,
-        user: data.user,
-      });
-    },
-  });
-}
-
-/**
- * Get a list of doc files that the user can see.
- * @param {Object} params - Parameters.
- * @param {string} params.token - jwt.
- * @param {string} params.userId - ID of the user that is trying to retrieve a list.
- * @param {Function} params.callback - Callback.
- */
-function getDocFilesList({
-  token,
-  userId,
-  callback,
-}) {
-  authenticator.isUserAllowed({
-    token,
-    matchToId: userId,
-    commandName: dbConfig.apiCommands.GetDocFilesList.name,
-    callback: ({ error, data }) => {
-      if (error) {
-        callback({ error });
-
-        return;
-      }
-
-      dbDocFile.getDocFilesListByUser({
-        user: data.user,
-        callback: (listData) => {
-          if (listData.error) {
-            callback({ error: listData.error });
-
-            return;
-          }
-
-          const docFiles = listData.data.docFiles.map((docFile) => {
-            const { isPublic } = docFile;
-
-            return {
-              isPublic,
-              title: docFile.title,
-              ownerId: docFile.ownerAliasId || docFile.ownerId,
-              code: isPublic || authenticator.hasAccessTo({ toAuth: data.user, objectToAccess: docFile }) ? docFile.code : undefined,
-            };
-          });
-
-          callback({ data: { docFiles } });
-        },
+        user,
+        full,
+        shouldBeAdmin: full && dbConfig.apiCommands.GetFull.accessLevel > user.accessLevel,
       });
     },
   });
@@ -457,7 +458,6 @@ function getDocFilesList({
  * @param {Object} params - Parameters.
  * @param {string} params.docFileId - ID of the file to remove.
  * @param {string} params.token - jwt.
- * @param {string} params.userId - ID of the user removing the file
  * @param {Function} params.callback - Callback
  * @param {Object} params.io - Socket io. Will be used if socket is not set.
  * @param {Object} [params.socket] - Socket io.
@@ -465,15 +465,13 @@ function getDocFilesList({
 function removeDocFile({
   docFileId,
   token,
-  userId,
   callback,
   socket,
   io,
 }) {
   authenticator.isUserAllowed({
     token,
-    commandName: dbConfig.apiCommands.RemoveDocFile.commandName,
-    matchToId: userId,
+    commandName: dbConfig.apiCommands.RemoveDocFile.name,
     callback: ({ error, data }) => {
       if (error) {
         callback({ error });
@@ -481,9 +479,12 @@ function removeDocFile({
         return;
       }
 
+      const { user } = data;
+
       getAccessibleDocFile({
         docFileId,
-        user: data.user,
+        user,
+        shouldBeAdmin: true,
         callback: (aliasData) => {
           if (aliasData.error) {
             callback({ error: aliasData.error });
@@ -501,7 +502,7 @@ function removeDocFile({
 
               const dataToSend = {
                 data: {
-                  docFile: { docFileId },
+                  docFile: { objectId: docFileId },
                   changeType: dbConfig.ChangeTypes.REMOVE,
                 },
               };
@@ -525,23 +526,28 @@ function removeDocFile({
  * Get files by user.
  * @param {Object} params - Parameters.
  * @param {string} params.token - jwt.
- * @param {string} params.userId - Id of the user retrieving the files.
  * @param {Function} params.callback - Callback
  */
-function getDocFilesByUser({ token, userId, callback }) {
+function getDocFilesByUser({
+  full,
+  token,
+  callback,
+}) {
   authenticator.isUserAllowed({
     token,
-    commandName: dbConfig.apiCommands.GetDocFile.commandName,
-    matchToId: userId,
-    callback: ({ error }) => {
+    commandName: full ? dbConfig.apiCommands.GetFull.name : dbConfig.apiCommands.GetDocFile.name,
+    callback: ({ error, data }) => {
       if (error) {
         callback({ error });
 
         return;
       }
 
+      const { user } = data;
+
       dbDocFile.getDocFilesByUser({
-        userId,
+        user,
+        full,
         callback,
       });
     },
@@ -550,7 +556,6 @@ function getDocFilesByUser({ token, userId, callback }) {
 
 exports.createDocFile = createDocFile;
 exports.updateDocFile = updateDocFile;
-exports.getAllDocFiles = getAllDocFiles;
 exports.unlockDocFile = unlockDocFile;
 exports.getDocFileById = getDocFileById;
 exports.removeDocFile = removeDocFile;

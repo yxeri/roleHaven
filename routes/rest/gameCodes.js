@@ -39,22 +39,17 @@ function handle(io) {
    *
    * @apiDescription Get game codes.
    *
-   * @apiParam {Object} [data]
-   * @apiParam {string} data.userId Id of the user retrieving the game codes.
-   *
    * @apiSuccess {Object} data
-   * @apiSuccess {GameCode[]} data.gameCodes Game codes found.
+   * @apiSuccess {GameCode[]} data.gameCodes Found game codes.
    */
   router.get('/', (request, response) => {
-    const { userId } = request.body.data;
     const { authorization: token } = request.headers;
 
     gameCodeManager.getGameCodesByOwner({
-      userId,
       token,
       callback: ({ error, data }) => {
         if (error) {
-          restErrorChecker.checkAndSendError({ response, error, sentData: request.body.data });
+          restErrorChecker.checkAndSendError({ response, error });
 
           return;
         }
@@ -65,7 +60,49 @@ function handle(io) {
   });
 
   /**
-   * @api {put} /gameCodes/:code Update a game code
+   * @api {get} /gameCodes/:gameCodeId Get game code
+   * @apiVersion 8.0.0
+   * @apiName GetGameCodes
+   * @apiGroup GameCodes
+   *
+   * @apiHeader {string} Authorization Your JSON Web Token.
+   *
+   * @apiDescription Get game code.
+   *
+   * @apiParam {string} gameCodeId Id of the game code to retrieve.
+   *
+   * @apiSuccess {Object} data
+   * @apiSuccess {GameCode} data.gameCode Found game code.
+   */
+  router.get('/:gameCodeId', (request, response) => {
+    if (!objectValidator.isValidData(request.params, { gameCodeId: true })) {
+      restErrorChecker.checkAndSendError({ response, error: new errorCreator.InvalidData({ expected: 'params = { gameCodeId }' }) });
+
+      return;
+    }
+
+    const { authorization: token } = request.headers;
+    const { gameCodeId } = request.params;
+    const { full } = request.query;
+
+    gameCodeManager.getGameCodeById({
+      token,
+      gameCodeId,
+      full,
+      callback: ({ error, data }) => {
+        if (error) {
+          restErrorChecker.checkAndSendError({ response, error });
+
+          return;
+        }
+
+        response.json({ data });
+      },
+    });
+  });
+
+  /**
+   * @api {put} /gameCodes/:gameCodeId Update a game code
    * @apiVersion 8.0.0
    * @apiName UpdateGameCode
    * @apiGroup GameCodes
@@ -74,18 +111,18 @@ function handle(io) {
    *
    * @apiDescription Update a game code.
    *
-   * @apiParam {string} code Code of the game code to update.
+   * @apiParam {string} gameCodeId [Url] Id of the game code to update.
    *
-   * @apiParam {Object} data
+   * @apiParam {Object} data Body parameters
    * @apiParam {GameCode} data.gameCode Game code parameters to update.
    * @apiParam {Object} [data.options] Update options.
    *
    * @apiSuccess {Object} data
    * @apiSuccess {GameCode} data.gameCode Updated game code.
    */
-  router.put('/:code', (request, response) => {
-    if (!objectValidator.isValidData(request.params, { code: true })) {
-      restErrorChecker.checkAndSendError({ response, error: new errorCreator.InvalidData({ expected: 'params = { code }' }) });
+  router.put('/:gameCodeId', (request, response) => {
+    if (!objectValidator.isValidData(request.params, { gameCodeId: true })) {
+      restErrorChecker.checkAndSendError({ response, error: new errorCreator.InvalidData({ expected: 'params = { gameCodeId }' }) });
 
       return;
     } else if (!objectValidator.isValidData(request.body, { data: { gameCode: true } })) {
@@ -98,13 +135,13 @@ function handle(io) {
       gameCode,
       options,
     } = request.body.data;
-    const { code } = request.params;
+    const { gameCodeId } = request.params;
     const { authorization: token } = request.headers;
 
     gameCodeManager.updateGameCode({
       gameCode,
       io,
-      code,
+      gameCodeId,
       token,
       options,
       callback: ({ error, data }) => {
@@ -120,42 +157,37 @@ function handle(io) {
   });
 
   /**
-   * @api {delete} /gameCodes/:code Delete a game code
+   * @api {delete} /gameCodes/:gameCodeId Delete a game code
    * @apiVersion 8.0.0
    * @apiName DeleteGameCode
    * @apiGroup GameCodes
    *
    * @apiHeader {string} Authorization Your JSON Web Token.
    *
-   * @apiDescription Delete the game code.
+   * @apiDescription Delete a game code.
    *
    * @apiParam {string} gameCodeId Id of the game code to delete.
-   *
-   * @apiParam {Object} [data]
-   * @apiParam {string} [data.userId] Id of the user deleting the game code.
    *
    * @apiSuccess {Object} data
    * @apiSuccess {boolean} data.success Was the game code successfully deleted?
    */
-  router.delete('/:code', (request, response) => {
-    if (!objectValidator.isValidData(request.params, { code: true })) {
-      restErrorChecker.checkAndSendError({ response, error: new errorCreator.InvalidData({ expected: 'params = { code }' }) });
+  router.delete('/:gameCodeId', (request, response) => {
+    if (!objectValidator.isValidData(request.params, { gameCodeId: true })) {
+      restErrorChecker.checkAndSendError({ response, error: new errorCreator.InvalidData({ expected: 'params = { gameCodeId }' }) });
 
       return;
     }
 
-    const { userId } = request.body.data;
-    const { code } = request.params;
+    const { gameCodeId } = request.params;
     const { authorization: token } = request.headers;
 
     gameCodeManager.removeGameCode({
-      userId,
       io,
-      code,
+      gameCodeId,
       token,
       callback: ({ error, data }) => {
         if (error) {
-          restErrorChecker.checkAndSendError({ response, error, sentData: request.body.data });
+          restErrorChecker.checkAndSendError({ response, error });
 
           return;
         }
@@ -167,7 +199,7 @@ function handle(io) {
 
   /**
    * @api {post} /gameCodes/:code/use Use a game code
-   * @apiVersion 6.0.0
+   * @apiVersion 8.0.0
    * @apiName UseGameCode
    * @apiGroup GameCodes
    *
@@ -216,8 +248,7 @@ function handle(io) {
    *
    * @apiDescription Create a game code.
    *
-   * @apiParam {Object} data
-   * @apiParam {string} [data.userId] Id of the user trying to create a game code.
+   * @apiParam {string} [userId] [Query] Id of the user trying to create a game code. It will default to the owner of the token.
    *
    * @apiSuccess {Object} data
    * @apiSuccess {GameCode} data.gameCode Created game code.
@@ -231,10 +262,12 @@ function handle(io) {
 
     const { gameCode } = request.body.data;
     const { authorization: token } = request.headers;
+    const { userId } = request.query;
 
     gameCodeManager.createGameCode({
       gameCode,
       token,
+      userId,
       callback: ({ error, data }) => {
         if (error) {
           restErrorChecker.checkAndSendError({ response, error, sentData: request.body.data });

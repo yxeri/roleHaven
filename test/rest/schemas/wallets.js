@@ -16,73 +16,40 @@
 
 'use strict';
 
+const tools = require('../helper/tools');
+
 const schemas = {};
 
-// owner: { type: String, unique: true },
-// amount: { type: Number, default: 0 },
-// accessLevel: { type: Number, default: 1 },
-// protected: { type: Boolean, default: false },
-// team: String,
+schemas.wallet = tools.buildLiteSchema({
+  type: 'object',
+  required: [
+    'amount',
+  ],
+  properties: {
+    amount: { type: 'number' },
+    isProtected: { type: 'boolean' },
+  },
+});
 
-const walletBase = {
+schemas.fullWallet = tools.buildFullSchema({
   type: 'object',
-  required: ['wallet'],
+  required: [
+    'amount',
+  ],
   properties: {
-    room: {
-      type: 'object',
-      required: [
-        'owner',
-        'amount',
-        'accessLevel',
-        'protected',
-      ],
-      properties: {
-        owner: { type: 'string' },
-        accessLevel: { type: 'number' },
-        amount: { type: 'number' },
-        protected: { type: 'boolean' },
-      },
-    },
+    amount: { type: 'number' },
+    isProtected: { type: 'boolean' },
   },
-};
-const teamWalletBase = {
-  type: 'object',
-  required: ['wallet'],
-  properties: {
-    room: {
-      type: 'object',
-      required: [
-        'owner',
-        'amount',
-        'accessLevel',
-        'protected',
-        'team',
-      ],
-      properties: {
-        owner: { type: 'string' },
-        accessLevel: { type: 'number' },
-        amount: { type: 'number' },
-        protected: { type: 'boolean' },
-        team: { type: 'string' },
-      },
-    },
-  },
+});
+
+schemas.wallets = {
+  type: 'array',
+  items: schemas.wallet,
 };
 
-schemas.wallet = {
-  type: 'object',
-  required: ['data'],
-  properties: {
-    data: walletBase,
-  },
-};
-
-schemas.teamWallet = {
-  type: 'object',
-  required: ['data'],
-  properties: {
-    data: teamWalletBase,
-  },
+schemas.fullWallets = {
+  type: 'array',
+  items: schemas.fullWallet,
 };
 
 module.exports = schemas;

@@ -21,64 +21,37 @@ const appConfig = require('../../../config/defaults/config').app;
 
 const data = {};
 
-data.teamToCreate = {
-  teamName: tools.createRandString({ length: appConfig.teamNameMaxLength }),
-  shortName: tools.createRandString({ length: appConfig.shortTeamMaxLength }),
+data.create = {
+  first: {
+    teamName: tools.createRandString({ length: appConfig.teamNameMaxLength }),
+    shortName: tools.createRandString({ length: appConfig.shortTeamMaxLength }),
+  },
+  second: {
+    teamName: tools.createRandString({ length: appConfig.teamNameMaxLength }),
+    shortName: tools.createRandString({ length: appConfig.shortTeamMaxLength }),
+  },
 };
-data.teamDoesNotExist = {
-  teamName: tools.createRandString({ length: appConfig.teamNameMaxLength }),
-  shortName: tools.createRandString({ length: appConfig.shortTeamMaxLength }),
+
+data.update = {
+  toUpdate: {
+    teamName: tools.createRandString({ length: appConfig.teamNameMaxLength }),
+    shortName: tools.createRandString({ length: appConfig.shortTeamMaxLength }),
+  },
+  updateWith: {
+    teamName: tools.createRandString({ length: appConfig.teamNameMaxLength }),
+    shortName: tools.createRandString({ length: appConfig.shortTeamMaxLength }),
+  },
 };
-data.teamToTryAndCreateTwice = {
-  teamName: tools.createRandString({ length: appConfig.teamNameMaxLength }),
-  shortName: tools.createRandString({ length: appConfig.shortTeamMaxLength }),
-};
-data.teamWithExistingTeamName = {
-  teamName: data.teamToTryAndCreateTwice.teamName,
-  shortName: tools.createRandString({ length: appConfig.shortTeamMaxLength }),
-};
-data.teamWithExistingShortName = {
-  teamName: tools.createRandString({ length: appConfig.teamNameMaxLength }),
-  shortName: data.teamToTryAndCreateTwice.shortName,
-};
-data.userToCreateTeamWith = {
-  username: tools.createRandString({ length: appConfig.usernameMaxLength }),
-  password: tools.createRandString({ length: appConfig.passwordMaxLength }),
-  registerDevice: tools.createRandString({ length: appConfig.deviceIdLength }),
-  mail: `${tools.createRandString({ length: 10 })}@${tools.createRandString({ length: 10 })}.com`,
-  verified: true,
-};
-data.anotherUserToCreateTeam = {
-  username: tools.createRandString({ length: appConfig.usernameMaxLength }),
-  password: tools.createRandString({ length: appConfig.passwordMaxLength }),
-  registerDevice: tools.createRandString({ length: appConfig.deviceIdLength }),
-  mail: `${tools.createRandString({ length: 10 })}@${tools.createRandString({ length: 10 })}.com`,
-  verified: true,
-};
-data.userTryingToCreateExistingTeam = {
-  username: tools.createRandString({ length: appConfig.usernameMaxLength }),
-  password: tools.createRandString({ length: appConfig.passwordMaxLength }),
-  registerDevice: tools.createRandString({ length: appConfig.deviceIdLength }),
-  mail: `${tools.createRandString({ length: 10 })}@${tools.createRandString({ length: 10 })}.com`,
-  verified: true,
-};
-data.userToCreateTeamAndSendInvitation = {
-  username: tools.createRandString({ length: appConfig.usernameMaxLength }),
-  password: tools.createRandString({ length: appConfig.passwordMaxLength }),
-  registerDevice: tools.createRandString({ length: appConfig.deviceIdLength }),
-  mail: `${tools.createRandString({ length: 10 })}@${tools.createRandString({ length: 10 })}.com`,
-  verified: true,
-};
-data.userToInvite = {
-  username: tools.createRandString({ length: appConfig.usernameMaxLength }),
-  password: tools.createRandString({ length: appConfig.passwordMaxLength }),
-  registerDevice: tools.createRandString({ length: appConfig.deviceIdLength }),
-  mail: `${tools.createRandString({ length: 10 })}@${tools.createRandString({ length: 10 })}.com`,
-  verified: true,
-};
-data.teamToCreateAndInviteTo = {
-  teamName: tools.createRandString({ length: appConfig.teamNameMaxLength }),
-  shortName: tools.createRandString({ length: appConfig.shortTeamMaxLength }),
+
+data.remove = {
+  toRemove: {
+    teamName: tools.createRandString({ length: appConfig.teamNameMaxLength }),
+    shortName: tools.createRandString({ length: appConfig.shortTeamMaxLength }),
+  },
+  secondToRemove: {
+    teamName: tools.createRandString({ length: appConfig.teamNameMaxLength }),
+    shortName: tools.createRandString({ length: appConfig.shortTeamMaxLength }),
+  },
 };
 
 module.exports = data;

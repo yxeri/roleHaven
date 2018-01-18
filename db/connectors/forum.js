@@ -27,17 +27,17 @@ const forumSchema = new mongoose.Schema(dbConnector.createSchema({
 
 const Forum = mongoose.model('Forum', forumSchema);
 
-/**
- * Add custom id to the object
- * @param {Object} forum - Forum object
- * @return {Object} - Forum object with id
- */
-function addCustomId(forum) {
-  const updatedForum = forum;
-  updatedForum.forumId = forum.objectId;
-
-  return updatedForum;
-}
+const forumFilter = {
+  ownerId: 1,
+  title: 1,
+  threadIds: 1,
+  ownerAliasId: 1,
+  text: 1,
+  lastUpdated: 1,
+  timeCreated: 1,
+  customLastUpdated: 1,
+  customTimeCreated: 1,
+};
 
 /**
  * Update forum object fields
@@ -64,7 +64,7 @@ function updateObject({
         return;
       }
 
-      callback({ data: { forum: addCustomId(data.object) } });
+      callback({ data: { forum: data.object } });
     },
   });
 }
@@ -76,9 +76,14 @@ function updateObject({
  * @param {Object} params.query - Query to get forums
  * @param {Function} params.callback - Callback
  */
-function getForums({ query, callback }) {
+function getForums({
+  query,
+  filter,
+  callback,
+}) {
   dbConnector.getObjects({
     query,
+    filter,
     object: Forum,
     callback: ({ error, data }) => {
       if (error) {
@@ -89,7 +94,7 @@ function getForums({ query, callback }) {
 
       callback({
         data: {
-          forums: data.objects.map(forum => addCustomId(forum)),
+          forums: data.objects,
         },
       });
     },
@@ -118,7 +123,7 @@ function getForum({ query, callback }) {
         return;
       }
 
-      callback({ data: { forum: addCustomId(data.object) } });
+      callback({ data: { forum: data.object } });
     },
   });
 }
@@ -167,7 +172,7 @@ function createForum({ forum, callback }) {
             return;
           }
 
-          callback({ data: { forum: addCustomId(forumData.data.savedObject) } });
+          callback({ data: { forum: forumData.data.savedObject } });
         },
       });
     },
@@ -333,7 +338,7 @@ function addAccess({
         return;
       }
 
-      callback({ data: { forum: addCustomId(data.object) } });
+      callback({ data: { forum: data.object } });
     },
   });
 }
@@ -373,8 +378,29 @@ function removeAccess({
         return;
       }
 
-      callback({ data: { forum: addCustomId(data.object) } });
+      callback({ data: { forum: data.object } });
     },
+  });
+}
+
+/**
+ * Get forums by user.
+ * @param {Object} params - Parameters.
+ * @param {Object} params.user - User retrieving the forums.
+ * @param {Function} params.callback - Callback.
+ */
+function getForumsByUser({
+  user,
+  full,
+  callback,
+}) {
+  const query = dbConnector.createUserQuery({ user });
+  const filter = !full ? forumFilter : {};
+
+  getForums({
+    filter,
+    query,
+    callback,
   });
 }
 
@@ -387,3 +413,4 @@ exports.getForumsByIds = getForumsByIds;
 exports.removeForum = removeForum;
 exports.addAccess = addAccess;
 exports.removeAccess = removeAccess;
+exports.getForumsByUser = getForumsByUser;

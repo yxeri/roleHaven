@@ -38,6 +38,7 @@ function getAccessiblePost({
   postId,
   callback,
   shouldBeAdmin,
+  full,
   errorContentText = `postId ${postId}`,
 }) {
   dbPost.getPostById({
@@ -57,7 +58,26 @@ function getAccessiblePost({
         return;
       }
 
-      callback(postData);
+      const foundPost = postData.data.post;
+      const filteredPost = {
+        objectId: foundPost.objectId,
+        text: foundPost.text,
+        depth: foundPost.depth,
+        lastUpdated: foundPost.lastUpdated,
+        timeCreated: foundPost.timeCreated,
+        customLastUpdated: foundPost.customLastUpdated,
+        customTimeCreated: foundPost.customTimeCreated,
+        ownerId: foundPost.ownerId,
+        ownerAliasId: foundPost.ownerAliasId,
+        threadId: foundPost.threadId,
+        parentPostId: foundPost.parentPostId,
+      };
+
+      callback({
+        data: {
+          post: full ? foundPost : filteredPost,
+        },
+      });
     },
   });
 }
@@ -76,9 +96,11 @@ function getAccessibleThreadPosts({
   threadId,
   callback,
   shouldBeAdmin,
+  full,
 }) {
   dbPost.getPostsByThread({
     threadId,
+    full,
     callback: (postsData) => {
       if (postsData.error) {
         callback({ error: postsData.error });
@@ -93,10 +115,25 @@ function getAccessibleThreadPosts({
           objectToAccess: post,
         });
       });
+      const filteredPosts = posts.map((post) => {
+        return {
+          objectId: post.objectId,
+          ownerId: post.ownerId,
+          ownerAliasId: post.ownerAliasId,
+          threadId: post.threadId,
+          parentPostId: post.parentPostId,
+          text: post.text,
+          depth: post.depth,
+          lastUpdated: post.lastUpdated,
+          timeCreated: post.timeCreated,
+          customTimeCreated: post.customTimeCreated,
+          customLastUpdated: post.customLastUpdated,
+        };
+      });
 
       callback({
         data: {
-          posts,
+          posts: full ? posts : filteredPosts,
         },
       });
     },
@@ -150,7 +187,6 @@ function getAccessibleThreadsPosts({
  * @param {Object} params.callback - Callback.
  * @param {Object} params.token - jwt.
  * @param {Object} params.io - Socket.io. Will be used if socket is not set.
- * @param {string} params.threadId - Id of the thread that will get a new post.
  * @param {Object} [params.socket] - Socket.io.
  */
 function createPost({
@@ -159,7 +195,6 @@ function createPost({
   token,
   io,
   socket,
-  threadId,
 }) {
   authenticator.isUserAllowed({
     token,
@@ -171,15 +206,14 @@ function createPost({
         return;
       }
 
-      const authUser = data.user;
+      const { user } = data;
 
       const postToCreate = post;
-      postToCreate.ownerId = authUser.userId;
-      postToCreate.threadId = threadId;
+      postToCreate.ownerId = user.objectId;
 
       const saveCallback = () => {
         threadManager.getAccessibleThread({
-          user: authUser,
+          user,
           threadId: postToCreate.threadId,
           callback: (threadData) => {
             if (threadData.error) {
@@ -197,10 +231,8 @@ function createPost({
                   return;
                 }
 
-                const createdPost = postData.data.post;
-
                 threadManager.updateThreadTime({
-                  threadId: createdPost.threadId,
+                  threadId: postToCreate.threadId,
                   callback: (updateData) => {
                     if (updateData.error) {
                       callback({ error: updateData.error });
@@ -210,7 +242,7 @@ function createPost({
 
                     const dataToSend = {
                       data: {
-                        post: createdPost,
+                        post: postData.data.post,
                         changeType: dbConfig.ChangeTypes.CREATE,
                       },
                     };
@@ -232,7 +264,7 @@ function createPost({
 
       if (postToCreate.ownerAliasId) {
         aliasManager.getAccessibleAlias({
-          user: authUser,
+          user,
           aliasId: postToCreate.ownerAliasId,
           callback: (aliasData) => {
             if (aliasData.error) {
@@ -269,11 +301,9 @@ function updatePost({
   token,
   io,
   socket,
-  userId,
 }) {
   authenticator.isUserAllowed({
     token,
-    matchNameTo: userId,
     commandName: dbConfig.apiCommands.UpdateForumPost.name,
     callback: ({ error, data }) => {
       if (error) {
@@ -282,9 +312,11 @@ function updatePost({
         return;
       }
 
+      const { user } = data;
+
       getAccessiblePost({
         postId,
-        user: data.user,
+        user,
         shouldBeAdmin: true,
         callback: (accessData) => {
           if (accessData.error) {
@@ -326,6 +358,39 @@ function updatePost({
 }
 
 /**
+ * Get posts created by the user.
+ * @param {Object} params - Parameters.
+ * @param {string} params.token - jwt.
+ * @param {Function} params.callback - Callback.
+ * @param {boolean} [params.full] - Should the complete objects be returned?
+ */
+function getPostsCreatedByUser({
+  token,
+  callback,
+  full,
+}) {
+  authenticator.isUserAllowed({
+    token,
+    commandName: full ? dbConfig.apiCommands.GetFull.name : dbConfig.apiCommands.GetForumPost.name,
+    callback: ({ error, data }) => {
+      if (error) {
+        callback({ error });
+
+        return;
+      }
+
+      const { userId } = data.user;
+
+      dbPost.getPostsCreatedByUser({
+        callback,
+        full,
+        userId,
+      });
+    },
+  });
+}
+
+/**
  * Get forum posts
  * @param {Object} params - Parameters
  * @param {string} params.forumId - ID of the roum
@@ -343,11 +408,11 @@ function getPostsByForum({ forumId, callback, token }) {
         return;
       }
 
-      const authUser = data.user;
+      const { user } = data;
 
       forumManager.getAccessibleForum({
         forumId,
-        user: authUser,
+        user,
         callback: (forumData) => {
           if (forumData.error) {
             callback({ error: forumData.error });
@@ -357,7 +422,7 @@ function getPostsByForum({ forumId, callback, token }) {
 
           threadManager.getAccessibleThreads({
             forumId,
-            user: authUser,
+            user,
             callback: (threadsData) => {
               if (threadsData.error) {
                 callback({ error: threadsData.error });
@@ -365,11 +430,11 @@ function getPostsByForum({ forumId, callback, token }) {
                 return;
               }
 
-              const threadIds = threadsData.data.threads.map(thread => thread.threadId);
+              const threadIds = threadsData.data.threads.map(thread => thread.objectId);
 
               getAccessibleThreadsPosts({
                 threadIds,
-                user: authUser,
+                user,
                 callback: (postsData) => {
                   if (postsData.error) {
                     callback({ error: postsData.error });
@@ -397,7 +462,6 @@ function getPostsByForum({ forumId, callback, token }) {
  * @param {Object} params - Parameters,.
  * @param {string} params.token - jwt.
  * @param {string} params.postId - ID of the forum ppost.
- * @param {string} params.userId - ID of the user who is removing the forum post.
  * @param {Object} params.io - Socket io. Will be used if socket is not set.
  * @param {Function} params.callback - Callback.
  * @param {Object} [params.socket] - Socket io.
@@ -405,15 +469,13 @@ function getPostsByForum({ forumId, callback, token }) {
 function removePost({
   token,
   postId,
-  userId,
   callback,
   socket,
   io,
 }) {
   authenticator.isUserAllowed({
     token,
-    matchToId: userId,
-    commandName: dbConfig.apiCommands.RemoveForumPost,
+    commandName: dbConfig.apiCommands.RemoveForumPost.name,
     callback: ({ error, data }) => {
       if (error) {
         callback({ error });
@@ -421,14 +483,16 @@ function removePost({
         return;
       }
 
+      const { user } = data;
+
       getAccessiblePost({
         postId,
+        user,
         shouldBeAdmin: true,
-        user: data.user,
         errorContentText: `remove forum post ${postId}`,
         callback: (forumData) => {
           if (forumData.error) {
-            callback({ error: forumData });
+            callback({ error: forumData.error });
 
             return;
           }
@@ -445,7 +509,7 @@ function removePost({
 
               const dataToSend = {
                 data: {
-                  post: { postId },
+                  post: { objectId: postId },
                   changeType: dbConfig.ChangeTypes.REMOVE,
                 },
               };
@@ -473,15 +537,14 @@ function removePost({
  * @param {Object} params.token - jwt
  */
 function getPostsByThread({
-  userId,
   token,
   threadId,
+  full,
   callback,
 }) {
   authenticator.isUserAllowed({
     token,
-    matchToId: userId,
-    commandName: dbConfig.apiCommands.GetForumPost,
+    commandName: full ? dbConfig.apiCommands.GetFull.name : dbConfig.apiCommands.GetForumPost.name,
     callback: ({ error, data }) => {
       if (error) {
         callback({ error });
@@ -489,11 +552,11 @@ function getPostsByThread({
         return;
       }
 
-      const authUser = data.user;
+      const { user } = data;
 
       threadManager.getAccessibleThread({
         threadId,
-        user: authUser,
+        user,
         callback: (threadData) => {
           if (threadData.error) {
             callback({ error: threadData.error });
@@ -503,7 +566,8 @@ function getPostsByThread({
 
           getAccessibleThreadPosts({
             threadId,
-            user: authUser,
+            user,
+            full,
             callback: (postsData) => {
               if (postsData.error) {
                 callback({ error: postsData.error });
@@ -511,11 +575,7 @@ function getPostsByThread({
                 return;
               }
 
-              callback({
-                data: {
-                  posts: postsData.data.posts,
-                },
-              });
+              callback(postsData);
             },
           });
         },
@@ -530,18 +590,16 @@ function getPostsByThread({
  * @param {string} params.postId - Id of the post.
  * @param {Function} params.callback - Callback.
  * @param {string} params.token - jwt.
- * @param {string} [params.userId] - Id of the user retrieving a forum post.
  */
 function getPostById({
-  userId,
   postId,
   callback,
   token,
+  full,
 }) {
   authenticator.isUserAllowed({
     token,
-    matchToId: userId,
-    commandName: dbConfig.apiCommands.GetForumPost,
+    commandName: dbConfig.apiCommands.GetForumPost.name,
     callback: ({ error, data }) => {
       if (error) {
         callback({ error });
@@ -552,9 +610,11 @@ function getPostById({
       const { user } = data;
 
       getAccessiblePost({
+        full,
         user,
         postId,
         callback,
+        shouldBeAdmin: full && dbConfig.apiCommands.GetFull.accessLevel > user.accessLevel,
       });
     },
   });
@@ -566,3 +626,4 @@ exports.removePost = removePost;
 exports.getPostsByForum = getPostsByForum;
 exports.getPostsByThread = getPostsByThread;
 exports.getPostById = getPostById;
+exports.getPostsCreatedByUser = getPostsCreatedByUser;

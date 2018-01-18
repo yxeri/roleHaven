@@ -39,7 +39,7 @@ function handle(io) {
    *
    * @apiDescription Create a position.
    *
-   * @apiParam {Object} data
+   * @apiParam {Object} data Body parameters.
    * @apiParam {Position} data.position Position to create.
    * @apiParam {string} [data.userId] Id of the user that is creating the position.
    *
@@ -51,12 +51,11 @@ function handle(io) {
       restErrorChecker.checkAndSendError({ response, error: new errorCreator.InvalidData({ expected: 'data = { position }' }), sentData: request.body.data });
     }
 
-    const { position, userId } = request.body.data;
+    const { position } = request.body.data;
     const { authorization: token } = request.headers;
 
     positionManager.createPosition({
       io,
-      userId,
       position,
       token,
       callback: ({ error, data }) => {
@@ -81,30 +80,37 @@ function handle(io) {
    *
    * @apiDescription Gets positions.
    *
+   * @apiParam {boolean} [full] [Query]
+   * @apiParam {string} [type] [Query] Type of positions to retrieve. Default is WORLD.
+   *
    * @apiSuccess {Object} data
    * @apiSuccess {Position[]} data.positions Found positions.
    */
   router.get('/', (request, response) => {
-    const { type } = request.query;
+    const { type, full } = request.query;
     const { authorization: token } = request.headers;
 
-    positionManager.getPositions({
+    const params = {
       token,
-      type,
+      full,
       callback: ({ error, data }) => {
         if (error) {
-          restErrorChecker.checkAndSendError({ response, error, sentData: request.body.data });
+          restErrorChecker.checkAndSendError({ response, error });
 
           return;
         }
 
         response.json({ data });
       },
-    });
+    };
+
+    if (type) { params.positionTypes = [type]; }
+
+    positionManager.getPositions(params);
   });
 
   /**
-   * @api {get} /position Get a position
+   * @api {get} /position/:positionId Get a position
    * @apiVersion 8.0.0
    * @apiName GetPosition
    * @apiGroup Positions
@@ -113,12 +119,14 @@ function handle(io) {
    *
    * @apiDescription Gets a position.
    *
-   * @apiParam {string} positionId Id of the position to update
+   * @apiParam {string} positionId [Url] Id of the position to update.
+   *
+   * @apiParam {boolean} full [Query]
    *
    * @apiSuccess {Object} data
    * @apiSuccess {Position} data.position Found position.
    */
-  router.get('/', (request, response) => {
+  router.get('/:positionId', (request, response) => {
     if (!objectValidator.isValidData(request.params, { positionId: true })) {
       restErrorChecker.checkAndSendError({ response, error: new errorCreator.InvalidData({ expected: 'params = { positionId }' }) });
 
@@ -127,13 +135,15 @@ function handle(io) {
 
     const { authorization: token } = request.headers;
     const { positionId } = request.params;
+    const { full } = request.query;
 
     positionManager.getPositionById({
       token,
+      full,
       positionId,
       callback: ({ error, data }) => {
         if (error) {
-          restErrorChecker.checkAndSendError({ response, error, sentData: request.body.data });
+          restErrorChecker.checkAndSendError({ response, error });
 
           return;
         }
@@ -153,10 +163,7 @@ function handle(io) {
    *
    * @apiDescription Delete a position.
    *
-   * @apiParam {string} positionId Id of the position to delete.
-   *
-   * @apiParam {Object} [data]
-   * @apiParam {string} [data.userId] Id of the user deleting the position.
+   * @apiParam {string} positionId [Url] Id of the position to delete.
    *
    * @apiSuccess {Object} data
    * @apiSuccess {Object} data.success Was it successfully deleted?
@@ -168,18 +175,16 @@ function handle(io) {
       return;
     }
 
-    const { userId } = request.body.data;
     const { positionId } = request.params;
     const { authorization: token } = request.headers;
 
     positionManager.removePosition({
-      userId,
       io,
       positionId,
       token,
       callback: ({ error, data }) => {
         if (error) {
-          restErrorChecker.checkAndSendError({ response, error, sentData: request.body.data });
+          restErrorChecker.checkAndSendError({ response, error });
 
           return;
         }
@@ -199,16 +204,16 @@ function handle(io) {
    *
    * @apiDescription Update a position.
    *
-   * @apiParam {string} positionId Id of the position to update
+   * @apiParam {string} positionId [Url] Id of the position to update
    *
-   * @apiParam {Object} data
+   * @apiParam {Object} data Body parameters.
    * @apiParam {Position} data.position Position parameters to update.
    * @apiParam {Object} [data.options] Update options.
    *
    * @apiSuccess {Object} data
    * @apiSuccess {Position} data.position Updated position.
    */
-  router.put('/:deviceId', (request, response) => {
+  router.put('/:positionId', (request, response) => {
     if (!objectValidator.isValidData(request.params, { positionId: true })) {
       restErrorChecker.checkAndSendError({ response, error: new errorCreator.InvalidData({ expected: 'params = { positionId }' }) });
 

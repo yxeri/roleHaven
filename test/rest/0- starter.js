@@ -23,42 +23,18 @@ const chaiHttp = require('chai-http');
 const chaiJson = require('chai-json-schema');
 const dbConnector = require('../../db/databaseConnector');
 const dbRoom = require('../../db/connectors/room');
-const dbCommand = require('../../db/connectors/command');
 const dbConfig = require('../../config/defaults/config').databasePopulation;
 const tokens = require('./testData/tokens');
 const starterData = require('./testData/starter');
 const app = require('../../app');
 const authenticateSchemas = require('./schemas/authentications');
 const dbUser = require('../../db/connectors/user');
-const dbLanternHack = require('../../db/connectors/lanternHack');
+const baseObjectSchemas = require('./schemas/baseObjects');
 
 chai.should();
 
 chai.use(chaiHttp);
 chai.use(chaiJson);
-
-before('Clear database', function clearDatabase(done) {
-  this.timeout(10000);
-
-  dbConnector.dropDatabase({
-    callback: (dropData) => {
-      dropData.should.have.property('data');
-      done();
-    },
-  });
-});
-
-before('Create all app default commands', function createCommands(done) {
-  this.timeout(10000);
-
-  dbCommand.populateDbCommands({
-    commands: dbConfig.commands,
-    callback: (popData) => {
-      popData.should.have.property('data');
-      done();
-    },
-  });
-});
 
 before('Create all app default rooms', function createRooms(done) {
   this.timeout(10000);
@@ -66,17 +42,95 @@ before('Create all app default rooms', function createRooms(done) {
   dbRoom.populateDbRooms({
     rooms: dbConfig.rooms,
     callback: (popData) => {
+      popData.should.be.jsonSchema(baseObjectSchemas.returnData);
       popData.should.have.property('data');
+      popData.data.should.have.property('success', true);
       done();
     },
   });
 });
 
-before('Create adminUser user', (done) => {
+before('Create admin user 1', (done) => {
   dbUser.createUser({
-    user: starterData.adminUserToAuth,
+    user: starterData.adminUserOne,
     callback: (createData) => {
+      createData.should.be.jsonSchema(baseObjectSchemas.returnData);
       createData.should.have.property('data');
+
+      starterData.adminUserOne.objectId = createData.data.user.objectId;
+
+      console.log('admin user 1', createData.data.user);
+
+      done();
+    },
+  });
+});
+
+before('Create admin user 2', (done) => {
+  dbUser.createUser({
+    user: starterData.adminUserTwo,
+    callback: (createData) => {
+      createData.should.be.jsonSchema(baseObjectSchemas.returnData);
+      createData.should.have.property('data');
+
+      starterData.adminUserTwo.objectId = createData.data.user.objectId;
+
+      done();
+    },
+  });
+});
+
+before('Create basic user 1', (done) => {
+  dbUser.createUser({
+    user: starterData.basicUserOne,
+    callback: (createData) => {
+      createData.should.be.jsonSchema(baseObjectSchemas.returnData);
+      createData.should.have.property('data');
+
+      starterData.basicUserOne.objectId = createData.data.user.objectId;
+
+      done();
+    },
+  });
+});
+
+before('Create basic user 2', (done) => {
+  dbUser.createUser({
+    user: starterData.basicUserTwo,
+    callback: (createData) => {
+      createData.should.be.jsonSchema(baseObjectSchemas.returnData);
+      createData.should.have.property('data');
+
+      starterData.basicUserTwo.objectId = createData.data.user.objectId;
+
+      done();
+    },
+  });
+});
+
+before('Create moderator user 1', (done) => {
+  dbUser.createUser({
+    user: starterData.moderatorUserOne,
+    callback: (createData) => {
+      createData.should.be.jsonSchema(baseObjectSchemas.returnData);
+      createData.should.have.property('data');
+
+      starterData.moderatorUserOne.objectId = createData.data.user.objectId;
+
+      done();
+    },
+  });
+});
+
+before('Create moderator user 2', (done) => {
+  dbUser.createUser({
+    user: starterData.moderatorUserTwo,
+    callback: (createData) => {
+      createData.should.be.jsonSchema(baseObjectSchemas.returnData);
+      createData.should.have.property('data');
+
+      starterData.moderatorUserTwo.objectId = createData.data.user.objectId;
+
       done();
     },
   });
@@ -84,9 +138,13 @@ before('Create adminUser user', (done) => {
 
 before('Create unverified user', (done) => {
   dbUser.createUser({
-    user: starterData.unverifiedUserToAuth,
+    user: starterData.unverifiedUser,
     callback: (createData) => {
+      createData.should.be.jsonSchema(baseObjectSchemas.returnData);
       createData.should.have.property('data');
+
+      starterData.unverifiedUser.objectId = createData.data.user.objectId;
+
       done();
     },
   });
@@ -94,72 +152,126 @@ before('Create unverified user', (done) => {
 
 before('Create banned user', (done) => {
   dbUser.createUser({
-    user: starterData.bannedUserToAuth,
+    user: starterData.bannedUser,
     callback: (createData) => {
+      createData.should.be.jsonSchema(baseObjectSchemas.returnData);
       createData.should.have.property('data');
+
+      starterData.bannedUser.objectId = createData.data.user.objectId;
+
       done();
     },
   });
 });
 
-before('Create basicUser user', (done) => {
-  dbUser.createUser({
-    user: starterData.basicUserToAuth,
-    callback: (createData) => {
-      createData.should.have.property('data');
-      done();
-    },
-  });
-});
-
-before('Authenticate adminUser user on /api/authenticate', (done) => {
+before('Authenticate admin user one on /api/authenticate', (done) => {
   chai
     .request(app)
     .post('/api/authenticate')
-    .send({ data: { user: starterData.adminUserToAuth } })
+    .send({ data: { user: starterData.adminUserOne } })
     .end((error, response) => {
       response.should.have.status(200);
       response.should.be.json;
-      response.body.should.be.jsonSchema(authenticateSchemas.authenticate);
+      response.body.should.be.jsonSchema(baseObjectSchemas.returnData);
+      response.body.data.should.be.jsonSchema(authenticateSchemas.authenticate);
 
-      tokens.adminUser = response.body.data.token;
+      tokens.adminUserOne = response.body.data.token;
 
       done();
     });
 });
 
-before('Authenticate basic user on /api/authenticate', (done) => {
+before('Authenticate admin user two on /api/authenticate', (done) => {
   chai
     .request(app)
     .post('/api/authenticate')
-    .send({ data: { user: starterData.basicUserToAuth } })
+    .send({ data: { user: starterData.adminUserTwo } })
     .end((error, response) => {
       response.should.have.status(200);
       response.should.be.json;
-      response.body.should.be.jsonSchema(authenticateSchemas.authenticate);
+      response.body.should.be.jsonSchema(baseObjectSchemas.returnData);
+      response.body.data.should.be.jsonSchema(authenticateSchemas.authenticate);
 
-      tokens.basicUser = response.body.data.token;
+      tokens.adminUserTwo = response.body.data.token;
 
       done();
     });
 });
 
-before('Create fake password container', (done) => {
-  dbLanternHack.createfakePasswordContainer(() => {
-    done();
-  });
+before('Authenticate basic user one on /api/authenticate', (done) => {
+  chai
+    .request(app)
+    .post('/api/authenticate')
+    .send({ data: { user: starterData.basicUserOne } })
+    .end((error, response) => {
+      response.should.have.status(200);
+      response.should.be.json;
+      response.body.should.be.jsonSchema(baseObjectSchemas.returnData);
+      response.body.data.should.be.jsonSchema(authenticateSchemas.authenticate);
+
+      tokens.basicUserOne = response.body.data.token;
+
+      done();
+    });
 });
 
-before('Create lantern round', (done) => {
-  dbLanternHack.createFirstRound(() => {
-    done();
-  });
+before('Authenticate basic user two on /api/authenticate', (done) => {
+  chai
+    .request(app)
+    .post('/api/authenticate')
+    .send({ data: { user: starterData.basicUserTwo } })
+    .end((error, response) => {
+      response.should.have.status(200);
+      response.should.be.json;
+      response.body.should.be.jsonSchema(baseObjectSchemas.returnData);
+      response.body.data.should.be.jsonSchema(authenticateSchemas.authenticate);
+
+      tokens.basicUserTwo = response.body.data.token;
+
+      done();
+    });
 });
 
-before('Activate lantern round', (done) => {
-  dbLanternHack.updateLanternRound({
-    isActive: true,
-    callback: () => {
+before('Authenticate moderator user one on /api/authenticate', (done) => {
+  chai
+    .request(app)
+    .post('/api/authenticate')
+    .send({ data: { user: starterData.moderatorUserOne } })
+    .end((error, response) => {
+      response.should.have.status(200);
+      response.should.be.json;
+      response.body.should.be.jsonSchema(baseObjectSchemas.returnData);
+      response.body.data.should.be.jsonSchema(authenticateSchemas.authenticate);
+
+      tokens.moderatorUserOne = response.body.data.token;
+
+      done();
+    });
+});
+
+before('Authenticate moderator user two on /api/authenticate', (done) => {
+  chai
+    .request(app)
+    .post('/api/authenticate')
+    .send({ data: { user: starterData.moderatorUserTwo } })
+    .end((error, response) => {
+      response.should.have.status(200);
+      response.should.be.json;
+      response.body.should.be.jsonSchema(baseObjectSchemas.returnData);
+      response.body.data.should.be.jsonSchema(authenticateSchemas.authenticate);
+
+      tokens.moderatorUserTwo = response.body.data.token;
+
+      done();
+    });
+});
+
+after('Clear database', function clearDatabase(done) {
+  this.timeout(10000);
+
+  dbConnector.dropDatabase({
+    callback: (dropData) => {
+      dropData.should.be.jsonSchema(baseObjectSchemas.returnData);
       done();
     },
   });

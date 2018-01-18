@@ -16,110 +16,76 @@
 
 'use strict';
 
+const tools = require('../helper/tools');
 
 const schemas = {};
 
-const roomListBase = {
-  type: 'array',
-  items: {
-    type: 'object',
-    required: ['roomName', 'password'],
-    properties: {
-      roomName: { type: 'string' },
-      password: { type: 'boolean' },
-    },
+schemas.createdRoom = tools.buildLiteSchema({
+  type: 'object',
+  required: [
+    'roomName',
+  ],
+  properties: {
+    roomName: { type: 'string' },
+    isAnonymous: { type: 'boolean' },
+    isWhisper: { type: 'boolean' },
+    nameIsLocked: { type: 'boolean' },
+    isSystemRoom: { type: 'boolean' },
+    password: { type: 'boolean' },
   },
-};
+});
+
+schemas.room = tools.buildLiteSchema({
+  type: 'object',
+  required: [
+    'roomName',
+  ],
+  properties: {
+    roomName: { type: 'string' },
+    isAnonymous: { type: 'boolean' },
+    isWhisper: { type: 'boolean' },
+    nameIsLocked: { type: 'boolean' },
+    isSystemRoom: { type: 'boolean' },
+    participantIds: {
+      type: 'array',
+      items: { type: 'string ' },
+    },
+    password: { type: 'boolean' },
+  },
+});
+
+schemas.fullRoom = tools.buildFullSchema({
+  type: 'object',
+  required: [
+    'roomName',
+  ],
+  properties: {
+    roomName: { type: 'string' },
+    isAnonymous: { type: 'boolean' },
+    isWhisper: { type: 'boolean' },
+    nameIsLocked: { type: 'boolean' },
+    isSystemRoom: { type: 'boolean' },
+    participantIds: {
+      type: 'array',
+      items: { type: 'string' },
+    },
+    password: { type: 'boolean' },
+  },
+});
 
 schemas.rooms = {
-  type: 'object',
-  required: ['data'],
-  properties: {
-    data: {
-      type: 'object',
-      required: [
-        'rooms',
-        'whisperRooms',
-        'followedRooms',
-        'ownedRooms',
-        'protectedRooms',
-      ],
-      properties: {
-        rooms: roomListBase,
-        whisperRooms: roomListBase,
-        followedRooms: roomListBase,
-        protectedRooms: roomListBase,
-        ownedRooms: roomListBase,
-      },
-    },
-  },
+  type: 'array',
+  items: schemas.room,
 };
 
-schemas.room = {
-  type: 'object',
-  required: ['data'],
-  properties: {
-    data: {
-      type: 'object',
-      required: ['room'],
-      properties: {
-        room: {
-          type: 'object',
-          required: [
-            'roomName',
-            'accessLevel',
-            'visibility',
-            'owner',
-            'anonymous',
-          ],
-          properties: {
-            roomName: { type: 'string' },
-            accessLevel: { type: 'number' },
-            visibility: { type: 'number' },
-            owner: { type: 'string' },
-            anonymous: { type: 'boolean' },
-          },
-        },
-      },
-    },
-  },
+schemas.followedRooms = {
+  type: 'array',
+  items: schemas.followedRoom,
 };
 
-schemas.unfollowRoom = {
-  type: 'object',
-  required: ['data'],
-  properties: {
-    data: {
-      type: 'object',
-      required: ['room'],
-      properties: {
-        room: {
-          type: 'object',
-          required: ['roomName'],
-          properties: {
-            roomName: { type: 'string' },
-          },
-        },
-      },
-    },
-  },
-};
-
-schemas.matched = {
-  type: 'object',
-  required: ['data'],
-  properties: {
-    data: {
-      type: 'object',
-      required: ['matched'],
-      properties: {
-        matched: {
-          type: 'array',
-          items: { type: 'string' },
-        },
-      },
-    },
-  },
+schemas.fullRooms = {
+  type: 'array',
+  items: schemas.fullRoom,
 };
 
 module.exports = schemas;

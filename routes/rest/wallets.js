@@ -32,7 +32,7 @@ const router = new express.Router();
 function handle(io) {
   /**
    * @api {get} /wallets/ Get wallets
-   * @apiVersion 6.0.0
+   * @apiVersion 8.0.0
    * @apiName GetWallets
    * @apiGroup Wallets
    *
@@ -72,14 +72,14 @@ function handle(io) {
   });
 
   /**
-   * @api {put} /wallets/:walletId/ Update the wallet.
-   * @apiVersion 6.0.0
+   * @api {put} /wallets/:walletId/ Update a wallet.
+   * @apiVersion 8.0.0
    * @apiName UpdateWallet
    * @apiGroup Wallets
    *
    * @apiHeader {string} Authorization Your JSON Web Token
    *
-   * @apiDescription Update the wallet.
+   * @apiDescription Update a wallet.
    *
    * @apiParam {string} walletId Id of the wallet to update.
    *
@@ -123,7 +123,7 @@ function handle(io) {
 
   /**
    * @api {get} /wallets/:walletId/transactions Get transactions from wallet.
-   * @apiVersion 6.0.0
+   * @apiVersion 8.0.0
    * @apiName GetTransactions
    * @apiGroup Transactions
    *
@@ -131,14 +131,11 @@ function handle(io) {
    *
    * @apiDescription Get transactions from wallet
    *
-   * @apiParam {string} walletId Id of the wallet to retrieve transactions from.
-   *
-   * @apiParam {Object} data
-   * @apiParam {string} [data.userId] Id of the user retrieving the transactions.
+   * @apiParam {string} walletId [Url] Id of the wallet to retrieve transactions from.
    *
    * @apiSuccess {Object} data
-   * @apiSuccess {Object[]} data.toTransactions Transactions with the retrieved wallet being the receiver.
-   * @apiSuccess {Object[]} data.fromTransactions Transactions made from other wallets to the retrieved one.
+   * @apiSuccess {Transaction[]} data.toTransactions Transactions with the retrieved wallet being the receiver.
+   * @apiSuccess {Transaction[]} data.fromTransactions Transactions made from other wallets to the retrieved one.
    */
   router.get('/:walletId/transactions', (request, response) => {
     if (!objectValidator.isValidData(request.params, { walletId: true })) {
@@ -155,52 +152,6 @@ function handle(io) {
       walletId,
       token,
       userId,
-      callback: ({ error, data }) => {
-        if (error) {
-          restErrorChecker.checkAndSendError({ response, error, sentData: request.body.data });
-
-          return;
-        }
-
-        response.json({ data });
-      },
-    });
-  });
-
-  /**
-   * @api {delete} /wallets/:walletId Delete a wallet.
-   * @apiVersion 8.0.0
-   * @apiName DeleteWallet
-   * @apiGroup Wallets
-   *
-   * @apiHeader {string} Authorization Your JSON Web Token.
-   *
-   * @apiDescription Delete a wallet.
-   *
-   * @apiParam {string} walletId Id of the wallet to delete.
-   *
-   * @apiParam {Object} [data]
-   * @apiParam {string} [data.userId] Id of the user deleting the device.
-   *
-   * @apiSuccess {Object} data
-   * @apiSuccess {boolean} data.success Was it successfully deleted?
-   */
-  router.delete('/:deviceId', (request, response) => {
-    if (!objectValidator.isValidData(request.params, { walletId: true })) {
-      restErrorChecker.checkAndSendError({ response, error: new errorCreator.InvalidData({ expected: 'params = { walletId }' }) });
-
-      return;
-    }
-
-    const { userId } = request.body.data;
-    const { walletId } = request.params;
-    const { authorization: token } = request.headers;
-
-    walletManager.removeWallet({
-      userId,
-      io,
-      walletId,
-      token,
       callback: ({ error, data }) => {
         if (error) {
           restErrorChecker.checkAndSendError({ response, error, sentData: request.body.data });

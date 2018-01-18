@@ -43,12 +43,12 @@ config.AccessLevels = config.AccessLevels || {
 
 config.users = {
   systemUser: {
-    userId: 'config-user-system',
+    objectId: 'config-user-system',
     username: 'system',
   },
   anonymous: {
     username: 'anonymous',
-    userId: 'config-user-anonymous',
+    objectId: 'config-user-anonymous',
   },
 };
 
@@ -61,12 +61,11 @@ config.rooms = {
    * It is also reachable by anonymous users.
    */
   public: config.rooms.public || {
-    roomId: 'public',
+    objectId: 'public789012',
     roomName: 'public',
     visibility: config.AccessLevels.ANONYMOUS,
     accessLevel: config.AccessLevels.ANONYMOUS,
-    ownerId: config.users.systemUser.userId,
-    lockedName: true,
+    ownerId: config.users.systemUser.objectId,
     isSystemRoom: true,
   },
 
@@ -75,12 +74,11 @@ config.rooms = {
    * E.g. when a user needs verification.
    */
   admin: config.rooms.admin || {
-    roomId: 'hqroom',
+    objectId: 'hqroom789012',
     roomName: 'hqroom',
     visibility: config.AccessLevels.MODERATOR,
     accessLevel: config.AccessLevels.MODERATOR,
-    ownerId: config.users.systemUser.userId,
-    lockedName: true,
+    ownerId: config.users.systemUser.objectId,
     isSystemRoom: true,
   },
 
@@ -88,43 +86,39 @@ config.rooms = {
    * Messages sent to anonymous will have their user and team name stripped.
    */
   anonymous: config.rooms.anonymous || {
-    roomId: 'anonymous',
+    objectId: 'anonymous012',
     roomName: 'anonymous',
     visibility: config.AccessLevels.ANONYMOUS,
     accessLevel: config.AccessLevels.ANONYMOUS,
     isAnonymous: true,
-    ownerId: config.users.systemUser.userId,
-    lockedName: true,
+    ownerId: config.users.systemUser.objectId,
     isSystemRoom: true,
   },
 
   important: config.rooms.important || {
-    roomId: 'important-room',
+    objectId: 'important012',
     roomName: 'important-room',
     visibility: config.AccessLevels.SUPERUSER,
     accessLevel: config.AccessLevels.SUPERUSER,
-    ownerId: config.users.systemUser.userId,
-    lockedName: true,
+    ownerId: config.users.systemUser.objectId,
     isSystemRoom: true,
   },
 
   news: config.rooms.news || {
-    roomId: 'news-room',
+    objectId: 'news56789012',
     roomName: 'news-room',
     visibility: config.AccessLevels.SUPERUSER,
     accessLevel: config.AccessLevels.SUPERUSER,
-    ownerId: config.users.systemUser.userId,
-    lockedName: true,
+    ownerId: config.users.systemUser.objectId,
     isSystemRoom: true,
   },
 
   schedule: config.rooms.schedule || {
-    roomId: 'schedule-room',
+    objectId: 'schedule9012',
     roomName: 'schedule-room',
     visibility: config.AccessLevels.SUPERUSER,
     accessLevel: config.AccessLevels.SUPERUSER,
-    ownerId: config.users.systemUser.userId,
-    lockedName: true,
+    ownerId: config.users.systemUser.objectId,
     isSystemRoom: true,
   },
 
@@ -133,31 +127,14 @@ config.rooms = {
    * Not used as an ordinary chat room
    */
   bcast: config.rooms.bcast || {
-    roomId: 'broadcast-room',
+    objectId: 'broadcast012',
     roomName: 'broadcast-room',
     visibility: config.AccessLevels.SUPERUSER,
     accessLevel: config.AccessLevels.SUPERUSER,
-    ownerId: config.users.systemUser.userId,
-    lockedName: true,
+    ownerId: config.users.systemUser.objectId,
     isSystemRoom: true,
   },
 };
-
-/**
- * Access level rooms.
- * Users will follow them based on their access level.
- */
-Object.keys(config.AccessLevels).forEach((key) => {
-  const roomName = key.toString();
-
-  config.rooms[roomName] = {
-    roomName,
-    visibility: config.AccessLevels.SUPERUSER,
-    accessLevel: config.AccessLevels.SUPERUSER,
-    ownerId: config.users.systemUser.userId,
-    lockedName: true,
-  };
-});
 
 config.requiredRooms = [
   config.rooms.anonymous.roomName,
@@ -168,7 +145,7 @@ config.requiredRooms = [
   config.rooms.schedule.roomName,
 ];
 
-config.protectedRoomNames = Object.keys(config.rooms).map(roomId => config.rooms[roomId].roomName);
+config.protectedRoomNames = Object.keys(config.rooms).map(objectId => config.rooms[objectId].roomName);
 
 config.roomsToBeHidden = [
   config.rooms.bcast.roomName,
@@ -184,12 +161,12 @@ config.anonymousUser = {
   accessLevel: config.AccessLevels.ANONYMOUS,
   visibility: config.AccessLevels.ANONYMOUS,
   roomIds: [
-    config.rooms.anonymous.roomId,
-    config.rooms.bcast.roomId,
-    config.rooms.public.roomId,
-    config.rooms.important.roomId,
-    config.rooms.news.roomId,
-    config.rooms.schedule.roomId,
+    config.rooms.anonymous.objectId,
+    config.rooms.bcast.objectId,
+    config.rooms.public.objectId,
+    config.rooms.important.objectId,
+    config.rooms.news.objectId,
+    config.rooms.schedule.objectId,
   ],
   isAnonymous: true,
 };
@@ -289,22 +266,19 @@ config.apiCommands = {
    */
   CreateAlias: config.apiCommands.CreateAlias || {
     name: 'CreateAlias',
-    accessLevel: config.AccessLevels.MODERATOR,
-    selfAccessLevel: config.AccessLevels.STANDARD,
+    accessLevel: config.AccessLevels.STANDARD,
   },
   GetAliases: config.apiCommands.GetAliases || {
     name: 'GetAliases',
-    accessLevel: config.AccessLevels.MODERATOR,
-    selfAccessLevel: config.AccessLevels.STANDARD,
+    accessLevel: config.AccessLevels.STANDARD,
   },
   UpdateAlias: config.apiCommands.UpdateAlias || {
     name: 'UpdateAlias',
-    accessLevel: config.AccessLevels.MODERATOR,
-    selfAccessLevel: config.AccessLevels.STANDARD,
+    accessLevel: config.AccessLevels.STANDARD,
   },
   RemoveAlias: config.apiCommands.RemoveAlias || {
     name: 'RemoveAlias',
-    accessLevel: config.AccessLevels.ADMIN,
+    accessLevel: config.AccessLevels.STANDARD,
   },
 
   /**
@@ -336,8 +310,19 @@ config.apiCommands = {
   },
   RemoveMessage: config.apiCommands.RemoveMessage || {
     name: 'RemoveMessage',
-    selfAccessLevel: config.AccessLevels.STANDARD,
-    accessLevel: config.AccessLevels.MODERATOR,
+    accessLevel: config.AccessLevels.STANDARD,
+  },
+  UpdateMessage: config.apiCommands.UpdateMessage || {
+    name: 'UpdateMessage',
+    accessLevel: config.AccessLevels.STANDARD,
+  },
+  GetMessage: config.apiCommands.GetMessage || {
+    name: 'UpdateMessage',
+    accessLevel: config.AccessLevels.ANONYMOUS,
+  },
+  GetAllMessages: config.apiCommands.GetAllMessages || {
+    name: 'GetAllMessages',
+    accessLevel: config.AccessLevels.ADMIN,
   },
 
   /**
@@ -351,30 +336,29 @@ config.apiCommands = {
     name: 'GetRoom',
     accessLevel: config.AccessLevels.ANONYMOUS,
   },
+  GetRoomsList: config.apiCommands.GetRoomsList || {
+    name: 'GetRoomsList',
+    accessLevel: config.AccessLevels.STANDARD,
+  },
   RemoveRoom: config.apiCommands.RemoveRoom || {
     name: 'RemoveRoom',
-    selfAccessLevel: config.AccessLevels.STANDARD,
-    accessLevel: config.AccessLevels.ADMIN,
+    accessLevel: config.AccessLevels.STANDARD,
   },
   FollowWhisperRoom: config.apiCommands.FollowWhisperRoom || {
     name: 'FollowWhisperRoom',
-    accessLevel: config.AccessLevels.SUPERUSER,
-    selfAccessLevel: config.AccessLevels.STANDARD,
+    accessLevel: config.AccessLevels.STANDARD,
   },
   FollowRoom: config.apiCommands.FollowRoom || {
     name: 'FollowRoom',
-    accessLevel: config.AccessLevels.SUPERUSER,
-    selfAccessLevel: config.AccessLevels.STANDARD,
+    accessLevel: config.AccessLevels.STANDARD,
   },
   UnfollowRoom: config.apiCommands.UnfollowRoom || {
     name: 'UnfollowRoom',
-    accessLevel: config.AccessLevels.SUPERUSER,
-    selfAccessLevel: config.AccessLevels.STANDARD,
+    accessLevel: config.AccessLevels.STANDARD,
   },
   UpdateRoom: config.apiCommands.UpdateRoom || {
     name: 'UpdateRoom',
-    selfAccessLevel: config.AccessLevels.STANDARD,
-    accessLevel: config.AccessLevels.MODERATOR,
+    accessLevel: config.AccessLevels.STANDARD,
   },
 
   /**
@@ -386,17 +370,15 @@ config.apiCommands = {
   },
   GetTransaction: config.apiCommands.GetTransaction || {
     name: 'GetTransaction',
-    accessLevel: config.AccessLevels.MODERATOR,
-    selfAccessLevel: config.AccessLevels.STANDARD,
+    accessLevel: config.AccessLevels.STANDARD,
   },
   RemoveTransaction: config.apiCommands.RemoveTransaction || {
     name: 'RemoveTransaction',
-    selfAccessLevel: config.AccessLevels.STANDARD,
-    accessLevel: config.AccessLevels.ADMIN,
+    accessLevel: config.AccessLevels.MODERATOR,
   },
   UpdateTransaction: config.apiCommands.UpdateTransaction || {
     name: 'UpdateTransaction',
-    accessLevel: config.AccessLevels.MODERATOR,
+    accessLevel: config.AccessLevels.STANDARD,
   },
 
   /**
@@ -405,7 +387,6 @@ config.apiCommands = {
   UpdateWallet: config.apiCommands.UpdateWallet || {
     name: 'UpdateWallet',
     accessLevel: config.AccessLevels.MODERATOR,
-    selfAccessLevel: config.AccessLevels.STANDARD,
   },
   UpdateWalletAmount: config.apiCommands.UpdateWalletAmount || {
     name: 'UpdateWalletAmount',
@@ -413,12 +394,15 @@ config.apiCommands = {
   },
   GetWallet: config.apiCommands.GetWallet || {
     name: 'GetWallet',
-    accessLevel: config.AccessLevels.MODERATOR,
-    selfAccessLevel: config.AccessLevels.STANDARD,
+    accessLevel: config.AccessLevels.STANDARD,
   },
-  RemoveWallet: config.apiCommands.RemoveRoom || {
-    name: 'RemoveRoom',
+  RemoveWallet: config.apiCommands.RemoveWallet || {
+    name: 'RemoveWallet',
     accessLevel: config.AccessLevels.ADMIN,
+  },
+  ChangeWalletAmount: config.apiCommands.ChangeWalletAmount || {
+    name: 'ChangeWalletAmount',
+    accessLevel: config.AccessLevels.MODERATOR,
   },
 
   /**
@@ -426,7 +410,7 @@ config.apiCommands = {
    */
   CreateUser: config.apiCommands.CreateUser || {
     name: 'CreateUser',
-    accessLevel: config.AccessLevels.MODERATOR,
+    accessLevel: config.AccessLevels.ANONYMOUS,
   },
   CreateUserThroughSocket: config.apiCommands.CreateUserThroughSocket || {
     name: 'CreateUserThroughSocket',
@@ -438,7 +422,6 @@ config.apiCommands = {
   },
   UnbanUser: config.apiCommands.UnbanUser || {
     name: 'UnbanUser',
-    selfAccessLevel: config.AccessLevels.GOD,
     accessLevel: config.AccessLevels.MODERATOR,
   },
   VerifyUser: config.apiCommands.VerifyUser || {
@@ -451,8 +434,7 @@ config.apiCommands = {
   },
   Logout: config.apiCommands.Logout || {
     name: 'Logout',
-    accessLevel: config.AccessLevels.ADMIN,
-    selfAccessLevel: config.AccessLevels.STANDARD,
+    accessLevel: config.AccessLevels.STANDARD,
   },
   SetFullAccess: config.apiCommands.SetFullAccess || {
     name: 'SetFullAccess',
@@ -464,8 +446,7 @@ config.apiCommands = {
   },
   GetUser: config.apiCommands.GetUser || {
     name: 'GetUser',
-    accessLevel: config.AccessLevels.MODERATOR,
-    selfAccessLevel: config.AccessLevels.STANDARD,
+    accessLevel: config.AccessLevels.STANDARD,
   },
   GetUsers: config.apiCommands.GetUsers || {
     name: 'GetUsers',
@@ -481,13 +462,11 @@ config.apiCommands = {
   },
   ChangePassword: config.apiCommands.ChangePassword || {
     name: 'ChangePassword',
-    accessLevel: config.AccessLevels.ADMIN,
-    selfAccessLevel: config.AccessLevels.STANDARD,
+    accessLevel: config.AccessLevels.STANDARD,
   },
   UpdateUser: config.apiCommands.UpdateUser || {
     name: 'UpdateUser',
-    accessLevel: config.AccessLevels.ADMIN,
-    selfAccessLevel: config.AccessLevels.STANDARD,
+    accessLevel: config.AccessLevels.STANDARD,
   },
   RemoveUser: config.apiCommands.RemoveUser || {
     name: 'RemoveUser',
@@ -507,14 +486,14 @@ config.apiCommands = {
   },
 
   /**
-   * Utilities
+   * Misc.
    */
   RebootAll: config.apiCommands.RebootAll || {
     name: 'RebootAll',
     accessLevel: config.AccessLevels.ADMIN,
   },
-  GetAll: config.apiCommands.GetAll || {
-    name: 'GetAll',
+  GetFull: config.apiCommands.GetFull || {
+    name: 'GetFull',
     accessLevel: config.AccessLevels.MODERATOR,
   },
 
@@ -527,7 +506,7 @@ config.apiCommands = {
   },
   GetTeam: config.apiCommands.GetTeam || {
     name: 'GetTeam',
-    accessLevel: config.AccessLevels.PRIVILEGED,
+    accessLevel: config.AccessLevels.STANDARD,
   },
   GetTeams: config.apiCommands.GetTeams || {
     name: 'GetTeams',
@@ -551,8 +530,7 @@ config.apiCommands = {
   },
   UpdateTeam: config.apiCommands.UpdateTeam || {
     name: 'UpdateTeam',
-    accessLevel: config.AccessLevels.ADMIN,
-    selfAccessLevel: config.AccessLevels.STANDARD,
+    accessLevel: config.AccessLevels.STANDARD,
   },
 
   /**
@@ -560,7 +538,7 @@ config.apiCommands = {
    */
   CreateForum: config.apiCommands.CreateForum || {
     name: 'CreateForum',
-    accessLevel: config.AccessLevels.ADMIN,
+    accessLevel: config.AccessLevels.MODERATOR,
   },
   GetForum: config.apiCommands.GetForum || {
     name: 'GetForum',
@@ -588,13 +566,11 @@ config.apiCommands = {
   },
   UpdateForumPost: config.apiCommands.UpdateForumPost || {
     name: 'UpdateForumPost',
-    accessLevel: config.AccessLevels.MODERATOR,
-    selfAccessLevel: config.AccessLevels.STANDARD,
+    accessLevel: config.AccessLevels.STANDARD,
   },
   RemoveForumPost: config.apiCommands.RemoveForumPost || {
     name: 'RemoveForumPost',
-    accessLevel: config.AccessLevels.ADMIN,
-    selfAccessLevel: config.AccessLevels.STANDARD,
+    accessLevel: config.AccessLevels.STANDARD,
   },
 
   /**
@@ -610,13 +586,11 @@ config.apiCommands = {
   },
   UpdateForumThread: config.apiCommands.UpdateForumThread || {
     name: 'UpdateForumThread',
-    accessLevel: config.AccessLevels.MODERATOR,
-    selfAccessLevel: config.AccessLevels.STANDARD,
+    accessLevel: config.AccessLevels.STANDARD,
   },
   RemoveForumThread: config.apiCommands.RemoveForumThread || {
     name: 'RemoveForumThread',
-    accessLevel: config.AccessLevels.MODERATOR,
-    selfAccessLevel: config.AccessLevels.STANDARD,
+    accessLevel: config.AccessLevels.STANDARD,
   },
 
   /**
@@ -624,7 +598,11 @@ config.apiCommands = {
    */
   CreateDevice: config.apiCommands.CreateDevice || {
     name: 'CreateDevice',
-    accessLevel: config.AccessLevels.PRIVILEGED,
+    accessLevel: config.AccessLevels.STANDARD,
+  },
+  RemoveDevice: config.apiCommands.RemoveDevice || {
+    name: 'RemoveDevice',
+    accessLevel: config.AccessLevels.STANDARD,
   },
   UpdateDevice: config.apiCommands.UpdateDevice || {
     name: 'UpdateDevice',
@@ -648,8 +626,7 @@ config.apiCommands = {
   },
   RemoveDocFile: config.apiCommands.RemoveDocFile || {
     name: 'RemoveDocFile',
-    accessLevel: config.AccessLevels.MODERATOR,
-    selfAccessLevel: config.AccessLevels.STANDARD,
+    accessLevel: config.AccessLevels.STANDARD,
   },
   GetDocFile: config.apiCommands.GetDocFile || {
     name: 'GetDocFile',
@@ -673,13 +650,11 @@ config.apiCommands = {
   },
   RemoveSimpleMsg: config.apiCommands.RemoveSimpleMsg || {
     name: 'RemoveSimpleMsg',
-    selfAccessLevel: config.AccessLevels.STANDARD,
-    accessLevel: config.AccessLevels.MODERATOR,
+    accessLevel: config.AccessLevels.STANDARD,
   },
   UpdateSimpleMsg: config.apiCommands.UpdateSimpleMsg || {
     name: 'UpdateSimpleMsg',
-    selfAccessLevel: config.AccessLevels.STANDARD,
-    accessLevel: config.AccessLevels.MODERATOR,
+    accessLevel: config.AccessLevels.STANDARD,
   },
 
   /**
@@ -687,8 +662,7 @@ config.apiCommands = {
    */
   CreateGameCode: config.apiCommands.CreateGameCode || {
     name: 'CreateGameCode',
-    selfAccessLevel: config.AccessLevels.STANDARD,
-    accessLevel: config.AccessLevels.MODERATOR,
+    accessLevel: config.AccessLevels.STANDARD,
   },
   UseGameCode: config.apiCommands.UseGameCode || {
     name: 'UseGameCode',
@@ -696,18 +670,15 @@ config.apiCommands = {
   },
   GetGameCode: config.apiCommands.GetGameCode || {
     name: 'GetGameCode',
-    accessLevel: config.AccessLevels.MODERATOR,
-    selfAccessLevel: config.AccessLevels.STANDARD,
+    accessLevel: config.AccessLevels.STANDARD,
   },
   RemoveGameCode: config.apiCommands.RemoveGameCode || {
     name: 'RemoveGameCode',
-    accessLevel: config.AccessLevels.MODERATOR,
-    selfAccessLevel: config.AccessLevels.STANDARD,
+    accessLevel: config.AccessLevels.STANDARD,
   },
   UpdateGameCode: config.apiCommands.UpdateGameCode || {
     name: 'UpdateGameCode',
-    accessLevel: config.AccessLevels.MODERATOR,
-    selfAccessLevel: config.AccessLevels.STANDARD,
+    accessLevel: config.AccessLevels.STANDARD,
   },
 
   /**
@@ -715,33 +686,27 @@ config.apiCommands = {
    */
   CreatePosition: config.apiCommands.CreatePosition || {
     name: 'CreatePosition',
-    accessLevel: config.AccessLevels.MODERATOR,
-    selfAccessLevel: config.AccessLevels.STANDARD,
+    accessLevel: config.AccessLevels.STANDARD,
   },
   GetPositions: config.apiCommands.GetPositions || {
     name: 'GetPositions',
-    accessLevel: config.AccessLevels.MODERATOR,
-    selfAccessLevel: config.AccessLevels.STANDARD,
+    accessLevel: config.AccessLevels.STANDARD,
   },
   GetUserPosition: config.apiCommands.GetUserPosition || {
     name: 'GetUserPosition',
-    accessLevel: config.AccessLevels.MODERATOR,
-    selfAccessLevel: config.AccessLevels.STANDARD,
+    accessLevel: config.AccessLevels.STANDARD,
   },
   UpdatePosition: config.apiCommands.UpdatePosition || {
     name: 'UpdatePosition',
-    accessLevel: config.AccessLevels.MODERATOR,
-    selfAccessLevel: config.AccessLevels.STANDARD,
+    accessLevel: config.AccessLevels.STANDARD,
   },
   UpdatePositionCoordinates: config.apiCommands.UpdatePositionCoordinates || {
     name: 'UpdatePositionCoordinates',
-    accessLevel: config.AccessLevels.MODERATOR,
-    selfAccessLevel: config.AccessLevels.STANDARD,
+    accessLevel: config.AccessLevels.STANDARD,
   },
   RemovePosition: config.apiCommands.RemovePosition || {
     name: 'RemovePosition',
-    accessLevel: config.AccessLevels.MODERATOR,
-    selfAccessLevel: config.AccessLevels.STANDARD,
+    accessLevel: config.AccessLevels.STANDARD,
   },
 
   /**
@@ -761,13 +726,11 @@ config.apiCommands = {
   },
   GetInvitations: config.apiCommands.GetInvitations || {
     name: 'GetInvitations',
-    acessLevel: config.AccessLevels.ADMIN,
-    selfAccessLevel: config.AccessLevels.STANDARD,
+    acessLevel: config.AccessLevels.STANDARD,
   },
   RemoveInvitation: config.apiCommands.RemoveInvitation || {
     name: 'RemoveInvitation',
-    accessLevel: config.AccessLevels.MODERATOR,
-    selfAccessLevel: config.AccessLevels.STANDARD,
+    accessLevel: config.AccessLevels.STANDARD,
   },
 
   /**
@@ -863,16 +826,15 @@ config.apiCommands = {
    */
   GetCalibrationMission: config.apiCommands.GetCalibrationMission || {
     name: 'GetCalibrationMission',
-    accessLevel: config.AccessLevels.MODERATOR,
+    accessLevel: config.AccessLevels.STANDARD,
   },
   GetCalibrationMissions: config.apiCommands.GetCalibrationMissions || {
     name: 'GetCalibrationMissions',
-    accessLevel: config.AccessLevels.MODERATOR,
-    selfAccessLevel: config.AccessLevels.STANDARD,
+    accessLevel: config.AccessLevels.STANDARD,
   },
   CancelCalibrationMission: config.apiCommands.CancelCalibrationMission || {
     name: 'CancelCalibrationMission',
-    accessLevel: config.AccessLevels.MODERATOR,
+    accessLevel: config.AccessLevels.STANDARD,
   },
   CompleteCalibrationMission: config.apiCommands.CompleteCalibrationMission || {
     name: 'CompleteCalibrationMission',

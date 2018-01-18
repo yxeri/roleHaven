@@ -21,7 +21,6 @@ const objectValidator = require('../../utils/objectValidator');
 const userManager = require('../../managers/users');
 const roomManager = require('../../managers/rooms');
 const aliasManager = require('../../managers/aliases');
-const calibrationMissionManager = require('../../managers/calibrationMissions');
 const restErrorChecker = require('../../helpers/restErrorChecker');
 const errorCreator = require('../../objects/error/errorCreator');
 const gameCodeManager = require('../../managers/gameCodes');
@@ -73,36 +72,6 @@ function handle(io) {
   });
 
   /**
-   * @api {get} /users/banned Get banned users.
-   * @apiVersion 6.0.0
-   * @apiName GetBannedUsers
-   * @apiGroup Users
-   *
-   * @apiHeader {string} Authorization Your JSON Web Token.
-   *
-   * @apiDescription Get banned users.
-   *
-   * @apiSuccess {Object} data
-   * @apiSuccess {Object} data.users Found users.
-   */
-  router.get('/banned', (request, response) => {
-    const { authorization: token } = request.headers;
-
-    userManager.getBannedUsers({
-      token,
-      callback: ({ error, data }) => {
-        if (error) {
-          restErrorChecker.checkAndSendError({ response, error, sentData: request.body.data });
-
-          return;
-        }
-
-        response.json({ data });
-      },
-    });
-  });
-
-  /**
    * @api {get} /users Get users.
    * @apiVersion 8.0.0
    * @apiName GetUsers
@@ -112,17 +81,23 @@ function handle(io) {
    *
    * @apiDescription Get users.
    *
+   * @apiParam {boolean} [Query] [full] Should the returned user contain all user information? Default is that only some information is returned.
+   * @apiParam {boolean} [Query] [includeInactive] Should banned and unverified users be in the result?
+   *
    * @apiSuccess {Object} data
    * @apiSuccess {Object} data.users Found users.
    */
   router.get('/', (request, response) => {
     const { authorization: token } = request.headers;
+    const { full, includeInactive } = request.query;
 
-    userManager.listUsers({
+    userManager.getUsersByUser({
       token,
+      full,
+      includeInactive,
       callback: ({ error, data }) => {
         if (error) {
-          restErrorChecker.checkAndSendError({ response, error, sentData: request.body.data });
+          restErrorChecker.checkAndSendError({ response, error });
 
           return;
         }
@@ -209,9 +184,13 @@ function handle(io) {
     userManager.createUser({
       user,
       token,
+      io,
       callback: ({ error, data }) => {
         if (error) {
-          restErrorChecker.checkAndSendError({ response, error, sentData: request.body.data });
+          const filteredData = request.body.data;
+          filteredData.user.password = typeof filteredData.user.password === 'string';
+
+          restErrorChecker.checkAndSendError({ response, error, sentData: filteredData });
 
           return;
         }
@@ -222,7 +201,7 @@ function handle(io) {
   });
 
   /**
-   * @api {put} /users/:userIdToUpdate Update a user.
+   * @api {put} /users/:userId Update a user.
    * @apiVersion 8.0.0
    * @apiName UpdateUser
    * @apiGroup Users
@@ -231,19 +210,18 @@ function handle(io) {
    *
    * @apiDescription Update a user.
    *
-   * @apiParam {string} userIdToUpdate Id of the user to update.
+   * @apiParam {string} userIdToUpdate [Url] Id of the user to update.
    *
-   * @apiParam {string} data
+   * @apiParam {string} data Body parameters.
    * @apiParam {string} data.user User parameters to update.
    * @apiParam {string} [data.options] Update options.
-   * @apiParam {string} [data.userId] Id of the user updating a user.
    *
    * @apiSuccess {Object} data
-   * @apiSuccess {Object} data.user Updated user.
+   * @apiSuccess {User} data.user Updated user.
    */
-  router.put('/:userIdToUpdate', (request, response) => {
-    if (!objectValidator.isValidData(request.params, { userIdToUpdate: true })) {
-      restErrorChecker.checkAndSendError({ response, error: new errorCreator.InvalidData({ expected: '{ userIdToUpdate }' }), sentData: request.params });
+  router.put('/:userId', (request, response) => {
+    if (!objectValidator.isValidData(request.params, { userId: true })) {
+      restErrorChecker.checkAndSendError({ response, error: new errorCreator.InvalidData({ expected: '{ userId }' }) });
 
       return;
     } else if (!objectValidator.isValidData(request.body, { data: { user: true } })) {
@@ -255,9 +233,8 @@ function handle(io) {
     const {
       user,
       options,
-      userId,
     } = request.body.data;
-    const { userIdToUpdate } = request.params;
+    const { userId } = request.params;
     const { authorization: token } = request.headers;
 
     userManager.updateUser({
@@ -265,7 +242,6 @@ function handle(io) {
       options,
       io,
       userId,
-      userIdToUpdate,
       token,
       callback: ({ error, data }) => {
         if (error) {
@@ -280,7 +256,7 @@ function handle(io) {
   });
 
   /**
-   * @api {delete} /users/:userIdToRemove Delete a user.
+   * @api {delete} /users/:userId Delete a user.
    * @apiVersion 8.0.0
    * @apiName DeleteUser
    * @apiGroup Users
@@ -289,23 +265,23 @@ function handle(io) {
    *
    * @apiDescription Delete a user.
    *
-   * @apiParam {string} userIdToRemove Id of the user to delete.
+   * @apiParam {string} userId [Url] Id of the user to delete.
    *
    * @apiSuccess {Object} data
    * @apiSuccess {Object} data.success Was it successfully deleted?
    */
-  router.delete('/:userIdToRemove', (request, response) => {
-    if (!objectValidator.isValidData(request.params, { userIdToRemove: true })) {
-      restErrorChecker.checkAndSendError({ response, error: new errorCreator.InvalidData({ expected: '{ userIdToRemove }' }), sentData: request.params });
+  router.delete('/:userId', (request, response) => {
+    if (!objectValidator.isValidData(request.params, { userId: true })) {
+      restErrorChecker.checkAndSendError({ response, error: new errorCreator.InvalidData({ expected: '{ userId }' }) });
 
       return;
     }
 
-    const { userIdToRemove } = request.params;
+    const { userId } = request.params;
     const { authorization: token } = request.headers;
 
     userManager.removeUser({
-      userIdToRemove,
+      userId,
       io,
       token,
       callback: ({ error, data }) => {
@@ -321,7 +297,7 @@ function handle(io) {
   });
 
   /**
-   * @api {get} /users/:userIdToGet Get a user.
+   * @api {get} /users/:userId Get a user.
    * @apiVersion 8.0.0
    * @apiName GetUser
    * @apiGroup Users
@@ -330,32 +306,31 @@ function handle(io) {
    *
    * @apiDescription Get a user.
    *
-   * @apiParam {string} userIdToGet Id of the user to get.
+   * @apiParam {string} userId [Url] Id of the user to get.
    *
-   * @apiParam {Object} data
-   * @apiParam {string} [data.userId] Id of the user trying to get a user.
+   * @apiParam {boolean} [full] [Query] Should the returned user contain all information? Default is that only some content is returned.
    *
    * @apiSuccess {Object} data
    * @apiSuccess {Object} data.user Found user.
    */
-  router.get('/:userIdToGet', (request, response) => {
-    if (!objectValidator.isValidData(request.params, { userIdToGet: true })) {
-      restErrorChecker.checkAndSendError({ response, error: new errorCreator.InvalidData({ expected: '{ userId }' }), sentData: request.body.data });
+  router.get('/:userId', (request, response) => {
+    if (!objectValidator.isValidData(request.params, { userId: true })) {
+      restErrorChecker.checkAndSendError({ response, error: new errorCreator.InvalidData({ expected: '{ userId }' }) });
 
       return;
     }
 
     const { authorization: token } = request.headers;
-    const { userIdToGet } = request.params;
-    const { userId } = request.body.data;
+    const { userId } = request.params;
+    const { full } = request.query;
 
     userManager.getUserById({
       token,
       userId,
-      userIdToGet,
+      full,
       callback: ({ error, data }) => {
         if (error) {
-          restErrorChecker.checkAndSendError({ response, error, sentData: request.body.data });
+          restErrorChecker.checkAndSendError({ response, error });
 
           return;
         }
@@ -366,7 +341,7 @@ function handle(io) {
   });
 
   /**
-   * @api {post} /users/:userId/rooms/:roomId/follow Follow a room.
+   * @api {put} /users/:userId/rooms/:roomId/follow Follow a room.
    * @apiVersion 8.0.0
    * @apiName FollowRoom
    * @apiGroup Users
@@ -382,7 +357,7 @@ function handle(io) {
    * @apiSuccess {Object} data
    * @apiSuccess {Object} data.room Followed room.
    */
-  router.post('/:userId/rooms/:roomId/follow', (request, response) => {
+  router.put('/:userId/rooms/:roomId/follow', (request, response) => {
     if (!objectValidator.isValidData(request.params, { userId: true, roomId: true })) {
       restErrorChecker.checkAndSendError({ response, error: new errorCreator.InvalidData({ expected: '{ userId, roomId }' }), sentData: request.body.data });
 
@@ -413,7 +388,7 @@ function handle(io) {
   });
 
   /**
-   * @api {post} /users/:userId/rooms/:roomId/unfollow Unfollow a room.
+   * @api {put} /users/:userId/rooms/:roomId/unfollow Unfollow a room.
    * @apiVersion 8.0.0
    * @apiName UnfollowRoom
    * @apiGroup Users
@@ -422,8 +397,8 @@ function handle(io) {
    *
    * @apiDescription Unfollow a room.
    *
-   * @apiParam {Object} userId Id of the user that will unfollow the room.
-   * @apiParam {Object} roomId Id of the room to unfollow.
+   * @apiParam {Object} userId [Url] Id of the user that will unfollow the room.
+   * @apiParam {Object} roomId [Url] Id of the room to unfollow.
    *
    * @apiParam {Object} data.
    * @apiParam {Object} [data.aliasId] Id of the alias that will unfollow a room. It overrides userId.
@@ -431,7 +406,7 @@ function handle(io) {
    * @apiSuccess {Object} data
    * @apiSuccess {Object} data.room Room that was unfollowed.
    */
-  router.post('/:userId/rooms/:roomId/unfollow', (request, response) => {
+  router.put('/:userId/rooms/:roomId/unfollow', (request, response) => {
     if (!objectValidator.isValidData(request.params, { userId: true, roomId: true })) {
       restErrorChecker.checkAndSendError({ response, error: new errorCreator.InvalidData({ expected: 'params: { userId, roomId }' }), sentData: request.body.data });
 
@@ -483,7 +458,7 @@ function handle(io) {
     const { userId } = request.params;
     const { authorization: token } = request.headers;
 
-    aliasManager.getAliases({
+    aliasManager.getAliasesByUser({
       userId,
       token,
       callback: ({ error, data }) => {
@@ -499,57 +474,7 @@ function handle(io) {
   });
 
   /**
-   * @api {post} /users/:userId/aliases/ Create an alias for the user.
-   * @apiVersion 8.0.0
-   * @apiName CreateAlias
-   * @apiGroup Users
-   *
-   * @apiHeader {string} Authorization Your JSON Web Token
-   *
-   * @apiDescription Create an alias for the user.
-   *
-   * @apiParam {string} userId Id of the user that will get a new alias.
-   *
-   * @apiParam {Object} data
-   * @apiParam {string} data.alias Alias to create.
-   *
-   * @apiSuccess {Object} data
-   * @apiSuccess {Object} data.alias Created alias.
-   */
-  router.post('/:userId/aliases', (request, response) => {
-    if (!objectValidator.isValidData(request.params, { userId: true })) {
-      restErrorChecker.checkAndSendError({ response, error: new errorCreator.InvalidData({ expected: '{ userId }' }), sentData: request.body.data });
-
-      return;
-    } else if (!objectValidator.isValidData(request.body, { data: { alias: true } })) {
-      restErrorChecker.checkAndSendError({ response, error: new errorCreator.InvalidData({ expected: '{ data: { alias } }' }), sentData: request.body.data });
-
-      return;
-    }
-
-    const { userId } = request.params;
-    const { authorization: token } = request.headers;
-    const { alias } = request.body.data;
-
-    aliasManager.createAlias({
-      io,
-      token,
-      alias,
-      userId,
-      callback: ({ error, data }) => {
-        if (error) {
-          restErrorChecker.checkAndSendError({ response, error, sentData: request.body.data });
-
-          return;
-        }
-
-        response.json({ data });
-      },
-    });
-  });
-
-  /**
-   * @api {post} /users/:userIdToVerify/verify Verify a user.
+   * @api {put} /users/:userIdToVerify/verify Verify a user.
    * @apiVersion 8.0.0
    * @apiName VerifyUser
    * @apiGroup Users
@@ -563,7 +488,7 @@ function handle(io) {
    * @apiSuccess {Object} data
    * @apiSuccess {Object} data.user Verified user.
    */
-  router.post('/:userIdToVerify/verify', (request, response) => {
+  router.put('/:userIdToVerify/verify', (request, response) => {
     if (!objectValidator.isValidData(request.params, { userIdToVerify: true })) {
       restErrorChecker.checkAndSendError({ response, error: new errorCreator.InvalidData({ expected: '{ userId }' }), sentData: request.body.data });
 
@@ -577,141 +502,6 @@ function handle(io) {
       userIdToVerify,
       token,
       io,
-      callback: ({ error, data }) => {
-        if (error) {
-          restErrorChecker.checkAndSendError({ response, error, sentData: request.body.data });
-
-          return;
-        }
-
-        response.json({ data });
-      },
-    });
-  });
-
-  /**
-   * @api {get} /users/:username/calibrationMission Get user's calibration mission
-   * @apiVersion 6.0.0
-   * @apiName GetCalibrationMission
-   * @apiGroup Users
-   *
-   * @apiHeader {string} Authorization Your JSON Web Token
-   *
-   * @apiDescription Get user's calibration mission
-   *
-   * @apiSuccess {Object} data
-   * @apiSuccess {Object[]} data.mission Mission found
-   * @apiSuccessExample {json} Success-Response:
-   *   {
-   *    "data": {
-   *      "mission": {
-   *        owner: 'raz',
-   *        stationId: 1,
-   *        code: 81855211,
-   *        completed: false,
-   *      }
-   *    }
-   *  }
-   */
-  router.get('/:username/calibrationMission', (request, response) => {
-    calibrationMissionManager.getActiveCalibrationMission({
-      token: request.headers.authorization,
-      username: request.params.username,
-      callback: ({ error: calibrationError, data: calibrationData }) => {
-        if (calibrationError) {
-          restErrorChecker.checkAndSendError({ response, error: calibrationError, sentData: request.body.data });
-
-          return;
-        }
-
-        response.json({ data: calibrationData });
-      },
-    });
-  });
-
-  /**
-   * @api {post} /users/:username/calibrationMission/complete Complete user's calibration mission
-   * @apiVersion 6.0.0
-   * @apiName CompleteCalibrationMission
-   * @apiGroup Users
-   *
-   * @apiHeader {string} Authorization Your JSON Web Token
-   *
-   * @apiDescription Complete the mission. A transaction will be created
-   *
-   * @apiParam {string} username Owner of the mission
-   *
-   * @apiSuccess {Object} data
-   * @apiSuccess {Object[]} data.mission Mission completed
-   * @apiSuccess {Object[]} data.transaction Transaction for completed mission
-   * @apiSuccessExample {json} Success-Response:
-   *   {
-   *    "data": {
-   *      "mission": {
-   *        "code": 12345678,
-   *        "stationId": 1,
-   *        "completed": true,
-   *        "timeCompleted": "2016-10-14T11:13:03.555Z"
-   *      },
-   *      "transaction": {
-   *        "to": "raz",
-   *        "from": "SYSTEM",
-   *        "amount": 50
-   *        "time": "2016-10-14T11:13:03.555Z"
-   *      }
-   *    }
-   *  }
-   */
-  router.post('/:username/calibrationMission/complete', (request, response) => {
-    calibrationMissionManager.completeActiveCalibrationMission({
-      io,
-      token: request.headers.authorization,
-      owner: request.params.username,
-      callback: ({ error, data }) => {
-        if (error) {
-          restErrorChecker.checkAndSendError({ response, error, sentData: request.body.data });
-
-          return;
-        }
-
-        response.json({ data });
-      },
-    });
-  });
-
-  /**
-   * @api {post} /users/:username/calibrationMission/cancel Cancel user's mission
-   * @apiVersion 6.0.0
-   * @apiName CancelCalibrationMission
-   * @apiGroup Users
-   *
-   * @apiHeader {string} Authorization Your JSON Web Token
-   *
-   * @apiDescription Cancel a calibration mission. Mission will still be set to completed, but no transaction will be created
-   *
-   * @apiParam {string} username Owner of the mission
-   *
-   * @apiSuccess {Object} data
-   * @apiSuccess {Object[]} data.mission Mission completed
-   * @apiSuccess {Boolean} data.cancelled Was mission cancelled?
-   * @apiSuccessExample {json} Success-Response:
-   *   {
-   *    "data": {
-   *      "mission": {
-   *        "code": 12345678,
-   *        "stationId": 1,
-   *        "completed": true,
-   *        "timeCompleted": "2016-10-14T11:13:03.555Z"
-   *      },
-   *      "cancelled": true
-   *    }
-   *  }
-   */
-  router.post('/:username/calibrationMission/cancel', (request, response) => {
-    calibrationMissionManager.cancelActiveCalibrationMission({
-      io,
-      token: request.headers.authorization,
-      owner: request.params.username,
       callback: ({ error, data }) => {
         if (error) {
           restErrorChecker.checkAndSendError({ response, error, sentData: request.body.data });

@@ -32,15 +32,15 @@ const router = new express.Router();
 function handle(io) {
   /**
    * @api {post} /simpleMsgs Send a simple message
-   * @apiVersion 6.0.0
+   * @apiVersion 8.0.0
    * @apiName SendSimpleMsgs
    * @apiGroup SimpleMsgs
    *
-   * @apiHeader {string} Authorization Your JSON Web Token
+   * @apiHeader {string} Authorization Your JSON Web Token.
    *
    * @apiDescription Send a simple message.
    *
-   * @apiParam {Object} data
+   * @apiParam {Object} data Body parameters.
    * @apiParam {SimpleMsg} data.simpleMsg Simple message to send.
    *
    * @apiSuccess {Object} data
@@ -74,7 +74,7 @@ function handle(io) {
 
   /**
    * @api {post} /simpleMsgs Get simple messages
-   * @apiVersion 6.0.0
+   * @apiVersion 8.0.0
    * @apiName GetSimpleMsgs
    * @apiGroup SimpleMsgs
    *
@@ -82,17 +82,63 @@ function handle(io) {
    *
    * @apiDescription Get simple messages.
    *
+   * @apiParam {boolean} [Query] [full] Should the returned messages contain all parameters? Default is that only some parameters are returned.
+   *
    * @apiSuccess {Object} data
    * @apiSuccess {SimpleMsg[]} data.simpleMsgs Messages found.
    */
   router.get('/', (request, response) => {
     const { authorization: token } = request.headers;
+    const { full } = request.query;
 
-    simpleMsgManager.getSimpleMsgs({
+    simpleMsgManager.getSimpleMsgsByUser({
       token,
+      full,
       callback: ({ error, data }) => {
         if (error) {
-          restErrorChecker.checkAndSendError({ response, error, sentData: request.body.data });
+          restErrorChecker.checkAndSendError({ response, error });
+
+          return;
+        }
+
+        response.json({ data });
+      },
+    });
+  });
+
+  /**
+   * @api {post} /simpleMsg/:simpleMsgId Get a simple message
+   * @apiVersion 8.0.0
+   * @apiName GetSimpleMsg
+   * @apiGroup SimpleMsgs
+   *
+   * @apiHeader {string} Authorization Your JSON Web Token.
+   *
+   * @apiDescription Get a simple message.
+   *
+   * @apiParam {string} simpleMsgId [Url] Id of the message to retrieve.
+   *
+   * @apiSuccess {Object} data
+   * @apiSuccess {SimpleMsg} data.simpleMsg Found message.
+   */
+  router.get('/:simpleMsgId', (request, response) => {
+    if (!objectValidator.isValidData(request.params, { simpleMsgId: true })) {
+      restErrorChecker.checkAndSendError({ response, error: new errorCreator.InvalidData({ expected: 'params = { simpleMsgId }' }) });
+
+      return;
+    }
+
+    const { authorization: token } = request.headers;
+    const { simpleMsgId } = request.params;
+    const { full } = request.query;
+
+    simpleMsgManager.getSimpleMsgById({
+      simpleMsgId,
+      token,
+      full,
+      callback: ({ error, data }) => {
+        if (error) {
+          restErrorChecker.checkAndSendError({ response, error });
 
           return;
         }
@@ -114,31 +160,26 @@ function handle(io) {
    *
    * @apiParam {string} simpleMsgId Id of the simple message to delete.
    *
-   * @apiParam {Object} [data]
-   * @apiParam {string} [data.userId] Id of the user deleting the message.
-   *
    * @apiSuccess {Object} data
    * @apiSuccess {boolean} data.success Was it successfully deleted?
    */
-  router.delete('/:deviceId', (request, response) => {
+  router.delete('/:simpleMsgId', (request, response) => {
     if (!objectValidator.isValidData(request.params, { simpleMsgId: true })) {
       restErrorChecker.checkAndSendError({ response, error: new errorCreator.InvalidData({ expected: 'params = { simpleMsgId }' }) });
 
       return;
     }
 
-    const { userId } = request.body.data;
     const { simpleMsgId } = request.params;
     const { authorization: token } = request.headers;
 
     simpleMsgManager.removeSimpleMsg({
-      userId,
       io,
       simpleMsgId,
       token,
       callback: ({ error, data }) => {
         if (error) {
-          restErrorChecker.checkAndSendError({ response, error, sentData: request.body.data });
+          restErrorChecker.checkAndSendError({ response, error });
 
           return;
         }
@@ -149,7 +190,7 @@ function handle(io) {
   });
 
   /**
-   * @api {put} /simpleMsgs/:deviceId Update a simple message.
+   * @api {put} /simpleMsgs/:simpleMsgId Update a simple message.
    * @apiVersion 8.0.0
    * @apiName UpdateSimpleMsg
    * @apiGroup SimpleMsgs
@@ -158,16 +199,16 @@ function handle(io) {
    *
    * @apiDescription Update a simple message.
    *
-   * @apiParam {string} simpleMsgId Id of the simple message to update.
+   * @apiParam {string} simpleMsgId [Url] Id of the simple message to update.
    *
-   * @apiParam {Object} data
+   * @apiParam {Object} data Body parameters.
    * @apiParam {SimpleMsg} data.simpleMsg Simple message parameters to update.
    * @apiParam {Object} [data.options] Update options.
    *
    * @apiSuccess {Object} data
    * @apiSuccess {SimpleMsg} data.simpleMsg Updated simple message.
    */
-  router.put('/:deviceId', (request, response) => {
+  router.put('/:simpleMsgId', (request, response) => {
     if (!objectValidator.isValidData(request.params, { simpleMsgId: true })) {
       restErrorChecker.checkAndSendError({ response, error: new errorCreator.InvalidData({ expected: 'params = { simpleMsgId }' }) });
 

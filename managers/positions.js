@@ -37,6 +37,7 @@ function getAccessiblePosition({
   positionId,
   callback,
   shouldBeAdmin,
+  full,
   errorContentText = `positionId ${positionId}`,
 }) {
   dbPosition.getPositionById({
@@ -56,62 +57,29 @@ function getAccessiblePosition({
         return;
       }
 
-      callback(positionData);
+      const foundPosition = positionData.data.position;
+      const filteredPosition = {
+        objectId: foundPosition.objectId,
+        connectedUser: foundPosition.connectedToUser,
+        deviceId: foundPosition.deviceId,
+        coordinatesHistory: foundPosition.coordinatesHistory,
+        positionName: foundPosition.positionName,
+        positionType: foundPosition.positionType,
+        radius: foundPosition.radius,
+        isStationary: foundPosition.isStationary,
+        lastUpdated: foundPosition.lastUpdated,
+        customLastUpdated: foundPosition.customLastUpdated,
+        timeCreated: foundPosition.timeCreated,
+        customTimeCreated: foundPosition.customTimeCreated,
+      };
+
+      callback({
+        data: {
+          position: full ? foundPosition : filteredPosition,
+        },
+      });
     },
   });
-}
-
-/**
- * Get positions that the user has access to.
- * @param {Object} params - Parameters.
- * @param {Object} params.user - User retrieving the positions.
- * @param {Function} params.callback - Callback.
- * @param {string} [params.errorContentText] - Text to be printed on error.
- * @param {boolean} [params.shouldBeAdmin] - Does the user have to be an admin?
- * @param {string} [params.positionType] - Type of positions to retrieve.
- */
-function getAccessiblePositions({
-  user,
-  callback,
-  shouldBeAdmin,
-  positionType,
-}) {
-  const accessCallback = (positionsData) => {
-    if (positionsData.error) {
-      callback({ error: positionsData.error });
-
-      return;
-    }
-
-    const positions = positionsData.data.positions.map((position) => {
-      return !authenticator.hasAccessTo({
-        shouldBeAdmin,
-        toAuth: user,
-        objectToAccess: position,
-      });
-    });
-
-    callback({ data: { positions } });
-  };
-
-  switch (positionType) {
-    case dbConfig.PositionTypes.USER: {
-      dbPosition.getPositionsByType({
-        callback: accessCallback,
-        positionType,
-      });
-
-      break;
-    }
-    default: {
-      dbPosition.getPositionsByType({
-        positionType: dbConfig.PositionTypes.WORLD,
-        callback: accessCallback,
-      });
-
-      break;
-    }
-  }
 }
 
 /**
@@ -120,17 +88,15 @@ function getAccessiblePositions({
  * @param {string} params.token - jwt.
  * @param {Function} params.callback - Callback.
  * @param {string} params.positionId - Id of the position that will be retrieved.
- * @param {string} [params.userId] - Id of user that is trying to retrieve a position.
  */
 function getPositionById({
   positionId,
-  userId,
   token,
   callback,
+  full,
 }) {
   authenticator.isUserAllowed({
     token,
-    matchToId: userId,
     commandName: dbConfig.apiCommands.GetPositions.name,
     callback: ({ error, data }) => {
       if (error) {
@@ -145,6 +111,8 @@ function getPositionById({
         user,
         positionId,
         callback,
+        full,
+        shouldBeAdmin: full && dbConfig.apiCommands.GetFull.accessLevel > user.accessLevel,
       });
     },
   });
@@ -153,7 +121,7 @@ function getPositionById({
 /**
  * Update user position. Will create a new one if it doesn't exist.
  * @param {Object} params - Parameters.
- * @param {string} params.positionId - ID of the position to update.
+ * @param {string} params.positionId - Id of the position to update.
  * @param {Object} params.position - User position to update or create.
  * @param {string} params.token - jwt.
  * @param {Object} params.io - Socket io. Will be used if socket is not set.
@@ -180,11 +148,11 @@ function updatePosition({
         return;
       }
 
-      const authUser = data.user;
+      const { user } = data;
 
       getAccessiblePosition({
         positionId,
-        user: authUser,
+        user,
         shouldBeAdmin: true,
         callback: ({ error: trackError }) => {
           if (trackError) {
@@ -194,6 +162,7 @@ function updatePosition({
           }
 
           dbPosition.updatePosition({
+            positionId,
             position,
             options,
             callback: ({ error: updateError, data: positionData }) => {
@@ -234,10 +203,8 @@ function updatePosition({
  * @param {Object} params.io - Socket.io. Will be used if socket is not set.
  * @param {Function} params.callback - Callback.
  * @param {Object} [params.socket] - Socket.io.
- * @param {string} [params.userId] - Id of the user creating a position.
  */
 function createPosition({
-  userId,
   position,
   token,
   socket,
@@ -246,7 +213,6 @@ function createPosition({
 }) {
   authenticator.isUserAllowed({
     token,
-    matchToId: userId,
     commandName: dbConfig.apiCommands.CreatePosition.name,
     callback: ({ error, data }) => {
       if (error) {
@@ -257,15 +223,15 @@ function createPosition({
         callback({ error: new errorCreator.InvalidCharacters({ expected: `text length: ${appConfig.docFileMaxLength}, title length: ${appConfig.positionNameMaxLength}` }) });
 
         return;
-      } else if (position.coordinates.accuracy > appConfig.minimumPositionAccuracy) {
+      } else if (position.coordinates && position.coordinates.accuracy && position.coordinates.accuracy > appConfig.minimumPositionAccuracy) {
         callback({ error: new errorCreator.InvalidData({ name: 'accuracy' }) });
 
         return;
       }
 
-      const { user } = data.user;
+      const { user } = data;
       const newPosition = position;
-      newPosition.ownerId = user.userId;
+      newPosition.ownerId = user.objectId;
 
       if (!newPosition.coordinates) {
         newPosition.coordinates = {
@@ -273,7 +239,8 @@ function createPosition({
           longitude: 0,
           speed: 0,
           heading: 0,
-          accuracy: newPosition.coordinates.accuracy || appConfig.minimumPositionAccuracy,
+          radius: 0,
+          accuracy: appConfig.minimumPositionAccuracy,
         };
       }
 
@@ -348,12 +315,18 @@ function createPosition({
  * @param {Object} params - Parameters.
  * @param {string} params.token - jwt.
  * @param {Function} params.callback - Callback.
- * @param {string} params.positionType - Position type to get.
+ * @param {string[]} [params.positionTypes] - Types of positions to retrieve.
  */
-function getPositions({ positionType, token, callback }) {
+function getPositions({
+  token,
+  callback,
+  full = false,
+  lite = true,
+  positionTypes = [dbConfig.PositionTypes.WORLD],
+}) {
   authenticator.isUserAllowed({
     token,
-    commandName: dbConfig.apiCommands.GetPositions.name,
+    commandName: full ? dbConfig.apiCommands.GetFull.name : dbConfig.apiCommands.GetPositions.name,
     callback: ({ error, data }) => {
       if (error) {
         callback({ error });
@@ -363,10 +336,12 @@ function getPositions({ positionType, token, callback }) {
 
       const { user } = data;
 
-      getAccessiblePositions({
-        positionType,
+      dbPosition.getPositionsByUser({
         user,
         callback,
+        full,
+        positionTypes,
+        lite,
       });
     },
   });
@@ -385,15 +360,13 @@ function getPositions({ positionType, token, callback }) {
 function removePosition({
   positionId,
   token,
-  userId,
   callback,
   socket,
   io,
 }) {
   authenticator.isUserAllowed({
     token,
-    commandName: dbConfig.apiCommands.RemovePosition.commandName,
-    matchToId: userId,
+    commandName: dbConfig.apiCommands.RemovePosition.name,
     callback: ({ error, data }) => {
       if (error) {
         callback({ error });
@@ -401,9 +374,12 @@ function removePosition({
         return;
       }
 
+      const { user } = data;
+
       getAccessiblePosition({
         positionId,
-        user: data.user,
+        user,
+        shouldBeAdmin: true,
         callback: (aliasData) => {
           if (aliasData.error) {
             callback({ error: aliasData.error });
@@ -421,7 +397,7 @@ function removePosition({
 
               const dataToSend = {
                 data: {
-                  position: { positionId },
+                  position: { objectId: positionId },
                   changeType: dbConfig.ChangeTypes.REMOVE,
                 },
               };

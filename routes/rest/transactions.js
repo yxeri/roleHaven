@@ -21,6 +21,7 @@ const objectValidator = require('../../utils/objectValidator');
 const transactionManager = require('../../managers/transactions');
 const restErrorChecker = require('../../helpers/restErrorChecker');
 const errorCreator = require('../../objects/error/errorCreator');
+const helper = require('./helper');
 
 const router = new express.Router();
 
@@ -46,7 +47,7 @@ function handle(io) {
    * @apiSuccess {Transaction} data.transaction Created transaction.
    * @apiSuccess {Wallet} data.wallet Updated sender wallet.
    */
-  router.post('/transactions', (request, response) => {
+  router.post('/', (request, response) => {
     if (!objectValidator.isValidData(request.body.data, { transaction: { toWalletId: true, fromWalletId: true, amount: true } })) {
       restErrorChecker.checkAndSendError({ response, error: new errorCreator.InvalidData({ expected: 'data = { transaction: { toWalletId, fromWalletId, amount }' }), sentData: request.body.data });
 
@@ -82,13 +83,10 @@ function handle(io) {
    *
    * @apiDescription Get a transaction that the user has access to.
    *
-   * @apiParam {string} transactionId Id of the transaction to retrieve.
-   *
-   * @apiParam {Object} [data]
-   * @apiParam {string} [data.userId] Id of the user retrieving the transaction.
+   * @apiParam {string} transactionId [Url] Id of the transaction to retrieve.
    *
    * @apiSuccess {Object} data
-   * @apiSuccess {Transaction} data.transaction Transaction found.
+   * @apiSuccess {Transaction} data.transaction Found transaction.
    */
   router.get('/:transactionId', (request, response) => {
     if (!objectValidator.isValidData(request.params, { transactionId: true })) {
@@ -97,14 +95,14 @@ function handle(io) {
       return;
     }
 
-    const { userId } = request.body.data;
+    const { full } = request.query;
     const { transactionId } = request.params;
     const { authorization: token } = request.headers;
 
     transactionManager.getTransactionById({
-      userId,
       transactionId,
       token,
+      full,
       callback: ({ error, data }) => {
         if (error) {
           restErrorChecker.checkAndSendError({ response, error, sentData: request.body.data });
@@ -115,6 +113,26 @@ function handle(io) {
         response.json({ data });
       },
     });
+  });
+
+  /**
+   * @api {get} /transactions/ Get transactions
+   * @apiVersion 8.0.0
+   * @apiName GetTransactions
+   * @apiGroup Transactions
+   *
+   * @apiHeader {string} Authorization Your JSON Web Token.
+   *
+   * @apiDescription Get transactions. The default is to return all transactions made by the user. Setting walletId will instead retrieve all transactions connected to the wallet.
+   *
+   * @apiParam {boolean} [full] [Query] Should the complete object be retrieved?
+   * @apiParam {string} [walletId] [Query] Id of the wallet to retrieve transactions from.
+   *
+   * @apiSuccess {Object} data
+   * @apiSuccess {Transaction[]} data.transactions Found transactions.
+   */
+  router.get('/', (request, response) => {
+    helper.getTransactions({ request, response });
   });
 
   /**
@@ -129,9 +147,6 @@ function handle(io) {
    *
    * @apiParam {string} transactionId Id of the transaction to delete.
    *
-   * @apiParam {Object} [data]
-   * @apiParam {string} [data.userId] Id of the user deleting the transaction.
-   *
    * @apiSuccess {Object} data
    * @apiSuccess {boolean} data.success Was it successfully deleted?
    */
@@ -142,12 +157,10 @@ function handle(io) {
       return;
     }
 
-    const { userId } = request.body.data;
     const { transactionId } = request.params;
     const { authorization: token } = request.headers;
 
     transactionManager.removeTransaction({
-      userId,
       io,
       transactionId,
       token,
@@ -175,7 +188,7 @@ function handle(io) {
    *
    * @apiParam {string} transactionId Id of the transaction to update.
    *
-   * @apiParam {Object} data
+   * @apiParam {Object} data Body parameters.
    * @apiParam {Transaction} data.transaction Transaction parameters to update.
    * @apiParam {Object} [data.options] Update options.
    *
@@ -183,7 +196,7 @@ function handle(io) {
    * @apiSuccess {Transaction} data.transaction Updated transaction.
    */
   router.put('/:transactionId', (request, response) => {
-    if (!objectValidator.isValidData(request.params, { deviceId: true })) {
+    if (!objectValidator.isValidData(request.params, { transactionId: true })) {
       restErrorChecker.checkAndSendError({ response, error: new errorCreator.InvalidData({ expected: 'params = { transactionId }' }) });
 
       return;

@@ -21,7 +21,7 @@ const objectValidator = require('../../utils/objectValidator');
 const messageManager = require('../../managers/messages');
 const restErrorChecker = require('../../helpers/restErrorChecker');
 const errorCreator = require('../../objects/error/errorCreator');
-const dbConfig = require('../../config/defaults/config').databasePopulation;
+const helper = require('./helper');
 
 const router = new express.Router();
 
@@ -86,6 +86,74 @@ function handle(io) {
   });
 
   /**
+   * @api {put} /messages/:messageId Get a message
+   * @apiVersion 8.0.0
+   * @apiName GetMessage
+   * @apiGroup Messages
+   *
+   * @apiHeader {string} Authorization Your JSON Web Token.
+   *
+   * @apiDescription Get a message.
+   *
+   * @apiParam {string} messageId [Url] Id of the message to retrieve.
+   *
+   * @apiParam {boolean} full [Query]
+   *
+   * @apiSuccess {Object} data
+   * @apiSuccess {Message} data.message Found message.
+   */
+  router.get('/:messageId', (request, response) => {
+    if (!objectValidator.isValidData(request.params, { messageId: true })) {
+      restErrorChecker.checkAndSendError({ response, error: new errorCreator.InvalidData({ expected: 'params = { messageId }' }) });
+
+      return;
+    }
+
+    const { messageId } = request.params;
+    const { authorization: token } = request.headers;
+    const { full } = request.query;
+
+    messageManager.getMessageById({
+      messageId,
+      token,
+      full,
+      callback: ({ error, data }) => {
+        if (error) {
+          restErrorChecker.checkAndSendError({ response, error });
+
+          return;
+        }
+
+        response.json({ data });
+      },
+    });
+  });
+
+  /**
+   * @api {get} /messages/ Get messages
+   * @apiVersion 8.0.0
+   * @apiName GetMessages
+   * @apiGroup Messages
+   *
+   * @apiHeader {string} Authorization Your JSON Web Token.
+   *
+   * @apiDescription Get messages. Setting roomId will retrieve messages from a specific room. Otherwise, the messages created by the user will be retrieved.
+   *
+   * @apiParam {string} [roomId] [Url] Id of the room to retrieve messages from.
+   *
+   * @apiParam {boolean} [full] [Query] Should the complete object be retrieved?
+   * @apiParam {string} [startDate] [Query] Start date of when to retrieve messages from the past.
+   * @apiParam {boolean} [fullHistory] [Query] Should all messages and rooms be returned?
+   * @apiParam {boolean} [shouldGetFuture] [Query] Should messages be retrieved from the future instead of the past?
+   *
+   * @apiSuccess {Object} data
+   * @apiSuccess {Message[]} data.messages Found messages.
+   */
+  router.get('/', (request, response) => {
+    helper.getMessages({ request, response });
+  });
+
+  /**
    * @api {delete} /messages/:messageId Delete a message
    * @apiVersion 8.0.0
    * @apiName DeleteMessage
@@ -97,9 +165,6 @@ function handle(io) {
    *
    * @apiParam {string} messageId Id of the message to delete.
    *
-   * @apiParam {Object} [data]
-   * @apiParam {string} [data.userId] Id of the user deleting the message.
-   *
    * @apiSuccess {Object} data
    * @apiSuccess {boolean} data.success Was the message successfully deleted?
    */
@@ -110,18 +175,16 @@ function handle(io) {
       return;
     }
 
-    const { userId } = request.body.data;
     const { messageId } = request.params;
     const { authorization: token } = request.headers;
 
-    messageManager.removeMsg({
-      userId,
+    messageManager.removeMesssage({
       io,
       messageId,
       token,
       callback: ({ error, data }) => {
         if (error) {
-          restErrorChecker.checkAndSendError({ response, error, sentData: request.body.data });
+          restErrorChecker.checkAndSendError({ response, error });
 
           return;
         }
@@ -144,61 +207,21 @@ function handle(io) {
    * WHISPER A private message sent to another user. participantIds has to contain the Id of the receiver and sender user.
    * CHAT Normal chat message sent to a room.
    *
-   * @apiParam {Object} data
+   * @apiParam {Object} data Body params.
    * @apiParam {Message} data.message Message.
    * @apiParam {string} data.messageType Type of message. Default is CHAT.
-   * @apiParam {Object} [data.image Image parameters to attach to the message.
+   * @apiParam {Object} [data.image] Image parameters to attach to the message.
+   * @apiParam {string} data.roomId - Id of the room to send the message to.
    *
    * @apiSuccess {Object} data
    * @apiSuccess {Message} data.message Sent message.
    */
   router.post('/', (request, response) => {
-    if (!objectValidator.isValidData(request.body, { data: { message: { text: true } } })) {
-      restErrorChecker.checkAndSendError({ response, error: new errorCreator.InvalidData({ expected: 'data = { message: { text } } }' }), sentData: request.body.data });
-
-      return;
-    }
-
-    const {
-      image,
-      message,
-    } = request.body.data;
-    const { authorization: token } = request.headers;
-    const messageType = message.messageType || dbConfig.MessageTypes.CHAT;
-    const callback = ({ data, error }) => {
-      if (error) {
-        restErrorChecker.checkAndSendError({ response, error, sentData: request.body.data });
-
-        return;
-      }
-
-      response.json({ data });
-    };
-    const messageData = {
-      token,
-      message,
-      callback,
+    helper.sendMessage({
+      request,
+      response,
       io,
-      image,
-    };
-
-    switch (messageType) {
-      case dbConfig.MessageTypes.WHISPER: {
-        messageManager.sendWhisperMsg(messageData);
-
-        break;
-      }
-      case dbConfig.MessageTypes.BROADCAST: {
-        messageManager.sendBroadcastMsg(messageData);
-
-        break;
-      }
-      default: {
-        messageManager.sendChatMsg(messageData);
-
-        break;
-      }
-    }
+    });
   });
 
   return router;

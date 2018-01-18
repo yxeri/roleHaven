@@ -24,10 +24,10 @@ const aliasManager = require('./aliases');
 const forumManager = require('./forums');
 
 /**
- * Get forum thread by ID and check if the user has access to it.
+ * Get forum thread by Id and check if the user has access to it.
  * @param {Object} params - Parameters.
  * @param {Object} params.user - User retrieving the forum thread.
- * @param {string} params.threadId - ID of the forum thread to retrieve.
+ * @param {string} params.threadId - Id of the forum thread to retrieve.
  * @param {Function} params.callback - Callback.
  * @param {string} [params.errorContentText] - Text to be printed on error.
  * @param {boolean} [params.shouldBeAdmin] - Does the user have to be an admin?
@@ -37,6 +37,7 @@ function getAccessibleThread({
   threadId,
   callback,
   shouldBeAdmin,
+  full,
   errorContentText = `forumThreadId ${threadId}`,
 }) {
   dbThread.getThreadById({
@@ -56,7 +57,26 @@ function getAccessibleThread({
         return;
       }
 
-      callback(forumData);
+      const foundThread = forumData.data.thread;
+      const filteredThread = {
+        title: foundThread.title,
+        objectId: foundThread.objectId,
+        forumId: foundThread.forumId,
+        text: foundThread.text,
+        postIds: foundThread.postIds,
+        lastUpdated: foundThread.lastUpdated,
+        timeCreated: foundThread.timeCreated,
+        customLastUpdated: foundThread.customLastUpdated,
+        customTimeCreated: foundThread.customTimeCreated,
+        ownerId: foundThread.ownerId,
+        ownerAliasId: foundThread.ownerAliasId,
+      };
+
+      callback({
+        data: {
+          thread: full ? foundThread : filteredThread,
+        },
+      });
     },
   });
 }
@@ -74,6 +94,7 @@ function getAccessibleThreads({
   forumId,
   callback,
   shouldBeAdmin,
+  full,
 }) {
   dbThread.getThreadsByForum({
     forumId,
@@ -84,15 +105,33 @@ function getAccessibleThreads({
         return;
       }
 
-      const threads = forumData.data.threads.map((thread) => {
-        return !authenticator.hasAccessTo({
+      const accessibleThreads = forumData.data.threads.filter((thread) => {
+        return authenticator.hasAccessTo({
           shouldBeAdmin,
           toAuth: user,
           objectToAccess: thread,
         });
       });
+      const filteredThreads = accessibleThreads.map((thread) => {
+        return {
+          objectId: thread.objectId,
+          forumId: thread.forumId,
+          text: thread.text,
+          postIds: thread.postIds,
+          lastUpdated: thread.lastUpdated,
+          timeCreated: thread.timeCreated,
+          customLastUpdated: thread.customLastUpdated,
+          customTimeCreated: thread.customTimeCreated,
+          ownerId: thread.ownerId,
+          ownerAliasId: thread.ownerAliasId,
+        };
+      });
 
-      callback({ data: { threads } });
+      callback({
+        data: {
+          threads: full ? accessibleThreads : filteredThreads,
+        },
+      });
     },
   });
 }
@@ -119,7 +158,6 @@ function updateThreadTime({ threadId, callback }) {
  * @param {string} params.token - jwt
  * @param {Object} params.io - Socket.io. Will be used if socket is not set
  * @param {Object} [params.socket] - Socket.io
- * @param {string} [params.userId] - Id of the user creating the thread.
  */
 function createThread({
   thread,
@@ -127,11 +165,9 @@ function createThread({
   token,
   io,
   socket,
-  userId,
 }) {
   authenticator.isUserAllowed({
     token,
-    matchToId: userId,
     commandName: dbConfig.apiCommands.CreateForumThread.name,
     callback: ({ error, data }) => {
       if (error) {
@@ -140,10 +176,10 @@ function createThread({
         return;
       }
 
-      const authUser = data.user;
+      const { user } = data;
 
       forumManager.getAccessibleForum({
-        user: authUser,
+        user,
         forumId: thread.forumId,
         callback: (forumData) => {
           if (forumData.error) {
@@ -153,7 +189,7 @@ function createThread({
           }
 
           const threadToCreate = thread;
-          threadToCreate.ownerId = authUser.userId;
+          threadToCreate.ownerId = user.objectId;
 
           const saveCallback = () => {
             dbThread.createThread({
@@ -173,6 +209,7 @@ function createThread({
 
                       return;
                     }
+
                     const dataToSend = {
                       data: {
                         thread: threadData.data.thread,
@@ -195,7 +232,7 @@ function createThread({
 
           if (threadToCreate.ownerAliasId) {
             aliasManager.getAccessibleAlias({
-              user: authUser,
+              user,
               aliasId: threadToCreate.ownerAliasId,
               callback: (aliasData) => {
                 if (aliasData.error) {
@@ -224,9 +261,13 @@ function createThread({
  * @param {string[]} params.forumId - Id of the forum.
  * @param {Function} params.callback - Callback.
  * @param {string} params.token - jwt.
- * @param {string} [params.userId] - Id of the user retrieving the threads.
  */
-function getForumThreadsByForum({ forumId, callback, token }) {
+function getForumThreadsByForum({
+  forumId,
+  callback,
+  token,
+  full,
+}) {
   authenticator.isUserAllowed({
     token,
     commandName: dbConfig.apiCommands.GetForumThread.name,
@@ -237,11 +278,11 @@ function getForumThreadsByForum({ forumId, callback, token }) {
         return;
       }
 
-      const authUser = data.user;
+      const { user } = data;
 
       forumManager.getAccessibleForum({
         forumId,
-        user: authUser,
+        user,
         callback: (forumData) => {
           if (forumData.error) {
             callback({ error: forumData.error });
@@ -251,7 +292,9 @@ function getForumThreadsByForum({ forumId, callback, token }) {
 
           getAccessibleThreads({
             forumId,
-            user: authUser,
+            user,
+            full,
+            shouldBeAdmin: full && dbConfig.apiCommands.GetFull.accessLevel > user.accessLevel,
             callback: (threadsData) => {
               if (threadsData.error) {
                 callback({ error: threadsData.error });
@@ -263,6 +306,39 @@ function getForumThreadsByForum({ forumId, callback, token }) {
             },
           });
         },
+      });
+    },
+  });
+}
+
+/**
+ * Get threads created by the user.
+ * @param {Object} params - Parameters.
+ * @param {string} params.token - jwt.
+ * @param {Function} params.callback - Callback.
+ * @param {boolean} [params.full] - Should the complete objects be returned?
+ */
+function getThreadsCreatedByUser({
+  token,
+  callback,
+  full,
+}) {
+  authenticator.isUserAllowed({
+    token,
+    commandName: full ? dbConfig.apiCommands.GetFull.name : dbConfig.apiCommands.GetForumThread.name,
+    callback: ({ error, data }) => {
+      if (error) {
+        callback({ error });
+
+        return;
+      }
+
+      const { userId } = data.user;
+
+      dbThread.getThreadsCreatedByUser({
+        callback,
+        full,
+        userId,
       });
     },
   });
@@ -297,10 +373,12 @@ function updateThread({
         return;
       }
 
+      const { user } = data;
+
       getAccessibleThread({
         threadId,
+        user,
         shouldBeAdmin: true,
-        user: data.user,
         errorContentText: `update thread ${threadId}`,
         callback: (deviceData) => {
           if (deviceData.error) {
@@ -347,7 +425,6 @@ function updateThread({
  * @param {Object} params - Parameters.
  * @param {string} params.token - jwt.
  * @param {string} params.threadId - ID of the forum thread.
- * @param {string} params.userId - ID of the user who is removing the forum.
  * @param {Object} params.io - Socket io. Will be used if socket is not set.
  * @param {Function} params.callback - Callback.
  * @param {Object} [params.socket] - Socket io.
@@ -355,15 +432,13 @@ function updateThread({
 function removeThread({
   token,
   threadId,
-  userId,
   callback,
   socket,
   io,
 }) {
   authenticator.isUserAllowed({
     token,
-    matchToId: userId,
-    commandName: dbConfig.apiCommands.RemoveForumThread,
+    commandName: dbConfig.apiCommands.RemoveForumThread.name,
     callback: ({ error, data }) => {
       if (error) {
         callback({ error });
@@ -371,14 +446,16 @@ function removeThread({
         return;
       }
 
+      const { user } = data;
+
       getAccessibleThread({
         threadId,
+        user,
         shouldBeAdmin: true,
-        user: data.user,
         errorContentText: `remove forum threadId ${threadId}`,
         callback: (forumData) => {
           if (forumData.error) {
-            callback({ error: forumData });
+            callback({ error: forumData.error });
 
             return;
           }
@@ -395,7 +472,7 @@ function removeThread({
 
               const dataToSend = {
                 data: {
-                  thread: { threadId },
+                  thread: { objectId: threadId },
                   changeType: dbConfig.ChangeTypes.REMOVE,
                 },
               };
@@ -422,7 +499,12 @@ function removeThread({
  * @param {string} params.token - jwt.
  * @param {Function} params.callback - Callback.
  */
-function getThreadById({ threadId, token, callback }) {
+function getThreadById({
+  threadId,
+  token,
+  full,
+  callback,
+}) {
   authenticator.isUserAllowed({
     token,
     commandName: dbConfig.apiCommands.GetForumThread.name,
@@ -433,10 +515,14 @@ function getThreadById({ threadId, token, callback }) {
         return;
       }
 
+      const { user } = data;
+
       getAccessibleThread({
         callback,
         threadId,
-        user: data.user,
+        user,
+        full,
+        shouldBeAdmin: full && dbConfig.apiCommands.GetFull.accessLevel > user.accessLevel,
       });
     },
   });
@@ -451,7 +537,7 @@ function getThreadById({ threadId, token, callback }) {
 function getAllThreads({ callback, token }) {
   authenticator.isUserAllowed({
     token,
-    commandName: dbConfig.apiCommands.GetAll.name,
+    commandName: dbConfig.apiCommands.GetFull.name,
     callback: ({ error }) => {
       if (error) {
         callback({ error });
@@ -473,3 +559,4 @@ exports.getThreadById = getThreadById;
 exports.getAccessibleThreads = getAccessibleThreads;
 exports.getAccessibleThread = getAccessibleThread;
 exports.updateThreadTime = updateThreadTime;
+exports.getThreadsCreatedByUser = getThreadsCreatedByUser;

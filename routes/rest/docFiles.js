@@ -52,22 +52,21 @@ function handle(io) {
    *
    * @apiDescription Retrieve documents.
    *
-   * @apiParam {Object} [data]
-   * @apiParam {string} data.userId Id of the user retrieving the document.
+   * @apiParam {boolean} [full] [Query] Should the complete object be retrieved?
    *
    * @apiSuccess {Object} data
    * @apiSuccess {DocFile[]} data.docFiles Found documents.
    */
   router.get('/', (request, response) => {
-    const { userId } = request.body.data;
+    const { full } = request.query;
     const { authorization: token } = request.headers;
 
     docFileManager.getDocFilesByUser({
-      userId,
       token,
+      full,
       callback: ({ error, data }) => {
         if (error) {
-          restErrorChecker.checkAndSendError({ response, error, sentData: request.body.data });
+          restErrorChecker.checkAndSendError({ response, error });
 
           return;
         }
@@ -87,7 +86,9 @@ function handle(io) {
    *
    * @apiDescription Retrieve a document.
    *
-   * @apiParam {string} docFileId The Id of the document to retrieve.
+   * @apiParam {string} docFileId [Url] The Id of the document to retrieve.
+   *
+   * @apiParam {boolean} [full] [Query] Should the complete object be retrieved?
    *
    * @apiSuccess {Object} data
    * @apiSuccess {DocFile} data.docFile Found document.
@@ -101,13 +102,15 @@ function handle(io) {
 
     const { docFileId } = request.params;
     const { authorization: token } = request.headers;
+    const { full } = request.query;
 
     docFileManager.getDocFileById({
       docFileId,
       token,
+      full,
       callback: ({ error, data }) => {
         if (error) {
-          restErrorChecker.checkAndSendError({ response, error, sentData: request.body.data });
+          restErrorChecker.checkAndSendError({ response, error });
 
           return;
         }
@@ -127,12 +130,11 @@ function handle(io) {
    *
    * @apiDescription Create a document.
    *
-   * @apiParam {Object} data
+   * @apiParam {Object} data Body parameters.
    * @apiParam {DocFile} data.docFile Document to create.
-   * @apiParam {string} [data.userId] Id of the user creating the document. It will default to the token owner.
    *
    * @apiSuccess {Object} data
-   * @apiSuccess {DocFile[]} data.docFile The created document.
+   * @apiSuccess {DocFile[]} data.docFile Created document.
    */
   router.post('/', (request, response) => {
     if (!objectValidator.isValidData(request.body, { data: { docFile: { code: true, text: true, title: true } } })) {
@@ -141,12 +143,11 @@ function handle(io) {
       return;
     }
 
-    const { docFile, userId } = request.body.data;
+    const { docFile } = request.body.data;
     const { authorization: token } = request.headers;
 
     docFileManager.createDocFile({
       io,
-      userId,
       token,
       docFile,
       callback: ({ error, data }) => {
@@ -171,10 +172,7 @@ function handle(io) {
    *
    * @apiDescription Delete a document.
    *
-   * @apiParam {Object} docFileId Id of the document to retrieve.
-   *
-   * @apiParam {Object} [data]
-   * @apiParam {string} [data.userId] Id of the user deleting the document.
+   * @apiParam {string} docFileId [Url] Id of the document to remove.
    *
    * @apiSuccess {Object} data
    * @apiSuccess {DocFile} data.success Was the document successfully removed?
@@ -186,12 +184,10 @@ function handle(io) {
       return;
     }
 
-    const { userId } = request.body.data;
     const { docFileId } = request.params;
     const { authorization: token } = request.headers;
 
     docFileManager.removeDocFile({
-      userId,
       io,
       docFileId,
       token,

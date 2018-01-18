@@ -26,17 +26,15 @@ const simpleMsgSchema = new mongoose.Schema(dbConnector.createSchema({
 
 const SimpleMsg = mongoose.model('SimpleMsg', simpleMsgSchema);
 
-/**
- * Add custom id to the object
- * @param {Object} simpleMsg - Simple message object
- * @return {Object} - Simple message object with id
- */
-function addCustomId(simpleMsg) {
-  const updatedSimpleMsg = simpleMsg;
-  updatedSimpleMsg.simpleMsgId = simpleMsg.objectId;
-
-  return updatedSimpleMsg;
-}
+const simpleMsgFilter = {
+  lastUpdated: 1,
+  customLastUpdated: 1,
+  timeCreated: 1,
+  customTimeCreated: 1,
+  ownerId: 1,
+  ownerAliasId: 1,
+  text: 1,
+};
 
 /**
  * Update simple msg
@@ -58,16 +56,16 @@ function updateObject({ update, simpleMsgId, callback }) {
         return;
       }
 
-      callback({ simpleMsg: addCustomId(data.object) });
+      callback({ data: { simpleMsg: data.object } });
     },
   });
 }
 
 /**
  * Create and save a simple message
- * @param {Object} params - Parameters
- * @param {Object} params.simpleMsg - Simple message
- * @param {Function} params.callback - Callback
+ * @param {Object} params - Parameters.
+ * @param {Object} params.simpleMsg - Simple message.
+ * @param {Function} params.callback - Callback.
  */
 function createSimpleMsg({ simpleMsg, callback }) {
   dbConnector.saveObject({
@@ -80,7 +78,7 @@ function createSimpleMsg({ simpleMsg, callback }) {
         return;
       }
 
-      callback({ data: { simpleMsg: addCustomId(data.savedObject) } });
+      callback({ data: { simpleMsg: data.savedObject } });
     },
   });
 }
@@ -89,13 +87,15 @@ function createSimpleMsg({ simpleMsg, callback }) {
 /**
  * Get simple msgs
  * @private
- * @param {Object} params - Parameters
- * @param {Object} params.query - Query to get simple msgs
- * @param {Function} params.callback - Callback
+ * @param {Object} params - Parameters.
+ * @param {Function} params.callback - Callback.
+ * @param {Object} [params.query] - Query to get simple msgs.
+ * @param {Object} [params.filter] - Parameters to filter out from the result.
  */
-function getSimpleMsgs({ query, callback }) {
+function getSimpleMsgs({ query, callback, filter }) {
   dbConnector.getObjects({
     query,
+    filter,
     object: SimpleMsg,
     callback: ({ error, data }) => {
       if (error) {
@@ -106,7 +106,7 @@ function getSimpleMsgs({ query, callback }) {
 
       callback({
         data: {
-          simpleMsgs: data.objects.map(simpleMsg => addCustomId(simpleMsg)),
+          simpleMsgs: data.objects,
         },
       });
     },
@@ -135,7 +135,7 @@ function getSimpleMsg({ query, callback }) {
         return;
       }
 
-      callback({ data: { simpleMsg: addCustomId(data.object) } });
+      callback({ data: { simpleMsg: data.object } });
     },
   });
 }
@@ -169,21 +169,29 @@ function removeSimpleMsg({ simpleMsgId, callback }) {
 }
 
 /**
- * Get all simple messages
- * @param {Object} params - Parameters
- * @param {Function} params.callback - Callback
+ * Get simple messages
+ * @param {Object} params - Parameters.
+ * @param {Function} params.callback - Callback.
+ * @param {boolean} [params.full] - Should access information be retrieved?
  */
-function getAllSimpleMsgs({ callback }) {
-  getSimpleMsgs({ callback });
+function getAllSimpleMsgs({
+  callback,
+  full = false,
+}) {
+  const filter = !full ? simpleMsgFilter : {};
+
+  getSimpleMsgs({
+    filter,
+    callback,
+  });
 }
 
 /**
  * Update simple msg
- * @param {Object} params - Parameters
- * @param {string} params.simpleMsgId - ID of the message to update
- * @param {Object} params.simpleMsg - Simple msg
- * @param {string[]} [params.simpleMsg.text] - Message text
- * @param {Function} params.callback - Callback
+ * @param {Object} params - Parameters.
+ * @param {string} params.simpleMsgId - Id of the message to update.
+ * @param {Object} params.simpleMsg - Simple msg.
+ * @param {Function} params.callback - Callback.
  */
 function updateSimpleMsg({ simpleMsgId, simpleMsg, callback }) {
   const { text } = simpleMsg;
@@ -199,10 +207,10 @@ function updateSimpleMsg({ simpleMsgId, simpleMsg, callback }) {
 }
 
 /**
- * Get a simple msg by its ID
- * @param {Object} params - Parameters
- * @param {string} params.simpleMsgId - ID of the message
- * @param {Function} params.callback - Callback
+ * Get a simple msg by its Id.
+ * @param {Object} params - Parameters.
+ * @param {string} params.simpleMsgId - Id of the message.
+ * @param {Function} params.callback - Callback.
  */
 function getSimpleMsgById({ simpleMsgId, callback }) {
   getSimpleMsg({

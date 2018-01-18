@@ -26,10 +26,11 @@ const appConfig = require('../../config/defaults/config').app;
 const messageSchema = new mongoose.Schema(dbConnector.createSchema({
   messageType: { type: String, default: dbConfig.MessageTypes.CHAT },
   text: { type: [String], default: [] },
+  altText: [String],
   roomId: String,
   coordinates: dbConnector.coordinatesSchema,
-  intro: { type: [String], default: [] },
-  extro: { type: [String], default: [] },
+  intro: [String],
+  extro: [String],
   image: dbConnector.createSchema({
     imageName: String,
     fileName: String,
@@ -40,23 +41,26 @@ const messageSchema = new mongoose.Schema(dbConnector.createSchema({
 
 const Message = mongoose.model('Message', messageSchema);
 
-/**
- * Add custom id to the object
- * @param {Object} message - Message object
- * @return {Object} - Message object with id
- */
-function addCustomId(message) {
-  const updatedMessage = message;
-  updatedMessage.messageId = message.objectId;
-
-  return updatedMessage;
-}
+const messageFilter = {
+  messageType: 1,
+  roomId: 1,
+  lastUpdated: 1,
+  timeCreated: 1,
+  image: 1,
+  coordinates: 1,
+  intro: 1,
+  extro: 1,
+  text: 1,
+  altText: 1,
+  customTimeCreated: 1,
+  customLastUpdated: 1,
+};
 
 /**
  * Update message.
  * @private
  * @param {Object} params - Parameters.
- * @param {string} params.messageId - ID of the message.
+ * @param {string} params.messageId - Id of the message.
  * @param {Object} params.update - Update.
  * @param {Function} params.callback Callback.
  */
@@ -73,7 +77,7 @@ function updateObject({ messageId, update, callback }) {
         return;
       }
 
-      callback({ data: { message: addCustomId(data.savedObject) } });
+      callback({ data: { message: data.object } });
     },
   });
 }
@@ -92,6 +96,7 @@ function getMessages({
   query,
   callback,
   errorNameContent,
+  filter,
   startDate = new Date(),
   shouldGetFuture = false,
   limit = appConfig.maxHistoryAmount,
@@ -106,10 +111,10 @@ function getMessages({
 
   if (!shouldGetFuture) {
     customTimeQuery.customTimeCreated.$lte = startDate;
-    timeQuery.timeCreated.$lte = startDate;
+    timeQuery.timeCreated = { $lte: startDate };
   } else {
-    customTimeQuery.customTimeCreated.$gte = startDate;
-    timeQuery.timeCreated.$gte = startDate;
+    customTimeQuery.customTimeCreated = { $gte: startDate };
+    timeQuery.timeCreated = { $gte: startDate };
   }
 
   fullQuery.$or = [
@@ -118,6 +123,7 @@ function getMessages({
   ];
 
   dbConnector.getObjects({
+    filter,
     errorNameContent,
     limit,
     query: fullQuery,
@@ -131,7 +137,7 @@ function getMessages({
 
       callback({
         data: {
-          messages: data.objects.map(message => addCustomId(message)),
+          messages: data.objects,
         },
       });
     },
@@ -166,23 +172,8 @@ function getMessage({
         return;
       }
 
-      callback({ data: { message: addCustomId(data.object) } });
+      callback({ data: { message: data.object } });
     },
-  });
-}
-
-/**
- * Get all messages.
- * It is recommended to not use this for normal usage.
- * @param {Object} params - Parameters.
- * @param {boolean} [params.lite] - Should parameters with a large amount of data be filtered out?
- * @param {Function} params.callback - Callback.
- */
-function getAllMessages({ callback, lite = true }) {
-  getMessages({
-    lite,
-    callback,
-    errorNameContent: 'getAllMessages',
   });
 }
 
@@ -203,7 +194,7 @@ function createMessage({ message, callback }) {
         return;
       }
 
-      callback({ data: { message: addCustomId(saveData.data.savedObject) } });
+      callback({ data: { message: saveData.data.savedObject } });
     },
   });
 }
@@ -227,8 +218,8 @@ function createMessage({ message, callback }) {
 function updateMessage({
   messageId,
   message,
-  options,
   callback,
+  options = {},
 }) {
   const { resetOwnerAliasId = false } = options;
   const {
@@ -263,11 +254,15 @@ function updateMessage({
   if (roomId) {
     update.$set.roomId = roomId;
 
-    dbRoom.getRoomById({
+    dbRoom.doesRoomExist({
       roomId,
-      callback: ({ error }) => {
+      callback: ({ error, data }) => {
         if (error) {
           callback({ error });
+
+          return;
+        } else if (!data.exists) {
+          callback({ error: new errorCreator.DoesNotExist({ name: `room ${roomId}` }) });
 
           return;
         }
@@ -293,28 +288,55 @@ function updateMessage({
 }
 
 /**
- * Gets messages by room ID.
+ * Gets messages by room Id
  * @param {Object} params - Parameters.
- * @param {string} params.roomId - ID of the room.
+ * @param {string} params.roomId - Id of the room.
  * @param {Function} params.callback - Callback.
- * @param {boolean} [params.lite] - Should parameters with a large amount of data be filtered out?
+ * @param {Object} params.user - User retrieving the messages.
  * @param {Date} [params.startDate] - Date for when to start the span of messages.
  * @param {boolean} [params.shouldGetFuture] - Should messages from the future of the start date be retrieved?
+ * @param {boolean} [params.full] - Should access information be retrieved?
  */
 function getMessagesByRoom({
   roomId,
-  lite,
   callback,
   startDate,
   shouldGetFuture,
+  user,
+  full,
 }) {
+  const query = dbConnector.createUserQuery({ user });
+  const filter = !full ? messageFilter : {};
+  query.roomId = roomId;
+
   getMessages({
     callback,
-    lite,
     startDate,
     shouldGetFuture,
-    query: { roomId },
+    query,
+    filter,
     errorNameContent: 'getMessagesByRoom',
+  });
+}
+
+/**
+ * @param {Object} params - Parameters.
+ * @param {string} params.userId - Id of the user.
+ * @param {Function} params.callback - Callback.
+ * @param {boolean} [params.full] - Should the full object be returned?
+ */
+function getMessagesCreatedByUser({
+  userId,
+  callback,
+  full,
+}) {
+  const query = { ownerId: userId };
+  const filter = !full ? messageFilter : {};
+
+  getMessages({
+    query,
+    filter,
+    callback,
   });
 }
 
@@ -389,12 +411,51 @@ function removeMessage({ messageId, callback }) {
   });
 }
 
+/**
+ * Get all messages.
+ * @param {Object} params - Parameters.
+ * @param {Function} params.callback - Callback
+ */
+function getAllMessages({ callback }) {
+  dbConnector.getObjects({
+    object: Message,
+    filter: {
+      text: 1,
+      altText: 1,
+      intro: 1,
+      extro: 1,
+      roomId: 1,
+      coordinates: 1,
+      messageType: 1,
+      timeCreated: 1,
+      lastUpdated: 1,
+      customTimeCreated: 1,
+      customLastUpdated: 1,
+      image: 1,
+    },
+    callback: ({ error, data }) => {
+      if (error) {
+        callback({ error });
+
+        return;
+      }
+
+      callback({
+        data: {
+          messages: data.objects,
+        },
+      });
+    },
+  });
+}
+
 exports.createMessage = createMessage;
 exports.updateMessage = updateMessage;
 exports.getMessagesByRoom = getMessagesByRoom;
 exports.removeMessagesByRoom = removeMessagesByRoom;
 exports.removeMessagesByUser = removeMessagesByUser;
 exports.removeMessage = removeMessage;
-exports.getAllMessages = getAllMessages;
 exports.getMessageById = getMessageById;
 exports.removeMessagesByAlias = removeMessagesByAlias;
+exports.getMessagesCreatedByUser = getMessagesCreatedByUser;
+exports.getAllMessages = getAllMessages;

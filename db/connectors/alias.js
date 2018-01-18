@@ -24,29 +24,23 @@ const dbUser = require('./user');
 const aliasSchema = new mongoose.Schema(dbConnector.createSchema({
   aliasName: { type: String, unique: true },
   isIdentity: { type: Boolean, default: false },
+  fullName: { type: String },
 }), { collection: 'aliases' });
 
 const Alias = mongoose.model('Alias', aliasSchema);
 
-/**
- * Add custom id to the object
- * @param {Object} alias - Alias object
- * @return {Object} - Alias object with id
- */
-function addCustomId(alias) {
-  const updatedAlias = alias;
-  updatedAlias.aliasId = alias.objectId;
-
-  return updatedAlias;
-}
+const aliasFilter = {
+  aliasName: 1,
+  lastUpdated: 1,
+};
 
 /**
  * Update alias
  * @private
- * @param {Object} params - Parameters
- * @param {string} params.aliasId - ID of the alias to update
- * @param {Object} params.update - Update
- * @param {Function} params.callback Callback
+ * @param {Object} params - Parameters.
+ * @param {string} params.aliasId - Id of the alias to update.
+ * @param {Object} params.update - Update.
+ * @param {Function} params.callback Callback.
  */
 function updateObject({ aliasId, update, callback }) {
   dbConnector.updateObject({
@@ -61,7 +55,7 @@ function updateObject({ aliasId, update, callback }) {
         return;
       }
 
-      callback({ data: { alias: addCustomId(data.object) } });
+      callback({ data: { alias: data.object } });
     },
   });
 }
@@ -73,9 +67,10 @@ function updateObject({ aliasId, update, callback }) {
  * @param {Object} params.query - Query to get aliases
  * @param {Function} params.callback - Callback
  */
-function getAliases({ query, callback }) {
+function getAliases({ filter, query, callback }) {
   dbConnector.getObjects({
     query,
+    filter,
     object: Alias,
     callback: ({ error, data }) => {
       if (error) {
@@ -84,11 +79,7 @@ function getAliases({ query, callback }) {
         return;
       }
 
-      callback({
-        data: {
-          aliases: data.objects.map(alias => addCustomId(alias)),
-        },
-      });
+      callback({ data: { aliases: data.objects } });
     },
   });
 }
@@ -115,21 +106,21 @@ function getAlias({ query, callback }) {
         return;
       }
 
-      callback({ data: { alias: addCustomId(data.object) } });
+      callback({ data: { alias: data.object } });
     },
   });
 }
 
 /**
  * Add access to the alias for users or teams
- * @param {Object} params - Parameters
- * @param {string} params.aliasId - ID of the alias
- * @param {string[]} [params.userIds] - ID of the users
- * @param {string[]} [params.teamIds] - ID of the teams
- * @param {string[]} [params.bannedIds] - ID of the blocked Ids to add
- * @param {string[]} [params.teamAdminIds] - ID of the team admins to add
- * @param {string[]} [params.userAdminIds] - ID of the user admins to add
- * @param {Function} params.callback - Callback
+ * @param {Object} params - Parameters.
+ * @param {string} params.aliasId - Id of the alias.
+ * @param {string[]} [params.userIds] - Id of the users.
+ * @param {string[]} [params.teamIds] - Id of the teams.
+ * @param {string[]} [params.bannedIds] - Id of the blocked Ids to add.
+ * @param {string[]} [params.teamAdminIds] - Id of the team admins to add.
+ * @param {string[]} [params.userAdminIds] - Id of the user admins to add.
+ * @param {Function} params.callback - Callback.
  */
 function addAccess({
   userIds,
@@ -155,21 +146,21 @@ function addAccess({
         return;
       }
 
-      callback({ alias: addCustomId(data.object) });
+      callback({ alias: data.object });
     },
   });
 }
 
 /**
  * Remove access to the alias for user or team
- * @param {Object} params - Parameters
- * @param {string} params.aliasId - ID of the alias
- * @param {string[]} [params.userIds] - ID of the users to remove
- * @param {string[]} [params.teamIds] - ID of the teams to remove
- * @param {string[]} [params.bannedIds] - Blocked IDs to remove
+ * @param {Object} params - Parameters.
+ * @param {string} params.aliasId - Id of the alias.
+ * @param {string[]} [params.userIds] - Id of the users to remove.
+ * @param {string[]} [params.teamIds] - Id of the teams to remove.
+ * @param {string[]} [params.bannedIds] - Blocked Ids to remove.
  * @param {string[]} [params.teamAdminIds] - Id of the teams to remove admin access from. They will not be removed from teamIds.
  * @param {string[]} [params.userAdminIds] - Id of the users to remove admin access from. They will not be removed from userIds.
- * @param {Function} params.callback - Callback
+ * @param {Function} params.callback - Callback.
  */
 function removeAccess({
   userIds,
@@ -195,7 +186,7 @@ function removeAccess({
         return;
       }
 
-      callback({ alias: addCustomId(data.object) });
+      callback({ alias: data.object });
     },
   });
 }
@@ -270,11 +261,7 @@ function createAlias({ alias, callback }) {
             return;
           }
 
-          callback({
-            data: {
-              alias: addCustomId(saveData.data.savedObject),
-            },
-          });
+          callback({ data: { alias: saveData.data.savedObject } });
         },
       });
     },
@@ -362,48 +349,23 @@ function updateAlias({
 }
 
 /**
- * Get aliases that the teams have access to
- * @param {Object} params - Parameters
- * @param {string[]} params.teamIds - ID of the teams
- * @param {Function} params.callback - Callback
- */
-function getAliasesByTeams({ teamIds, callback }) {
-  getAliases({
-    callback,
-    query: { teamIds: { $in: teamIds } },
-  });
-}
-
-/**
  * Get aliases that the user has access to.
  * @param {Object} params - Parameters.
- * @param {string} params.userId - ID of the user.
+ * @param {string} params.user - User retrieving the aliases.
  * @param {Function} params.callback - Callback.
+ * @param {boolean} [params.full] - Should access information be retrieved?
  */
-function getAliasesByUser({ user, callback }) {
-  const query = {
-    $or: [
-      { isPublic: true },
-      { ownerId: user.userId },
-      { userIds: { $in: user.userId } },
-      { visibility: { $lte: user.accessLevel } },
-      { teamIds: { $in: user.partOfTeams } },
-    ],
-  };
+function getAliasesByUser({
+  user,
+  callback,
+  full = false,
+}) {
+  const query = dbConnector.createUserQuery({ user });
+  const filter = !full ? aliasFilter : {};
 
   getAliases({
     query,
-    callback,
-  });
-}
-
-/**
- * Get all aliases
- * @param {Object} params - Parameters
- * @param {Function} params.callback - Callback
- */
-function getAllAliases({ callback }) {
-  getAliases({
+    filter,
     callback,
   });
 }
@@ -423,42 +385,15 @@ function removeAlias({ aliasId, callback }) {
 }
 
 /**
- * Gets all alias Ids and corresponding names.
+ * Get all names from aliases.
  * @param {Object} params - Parameters.
- * @param {Object} params.user - The user retrieving the list.
  * @param {Function} params.callback - Callback
  */
-function getAliasesListByUser({ user, callback }) {
-  const query = {
-    $or: [
-      { isPublic: true },
-      { ownerId: user.userId },
-      { userIds: { $in: user.userId } },
-      { visibility: { $lte: user.accessLevel } },
-      { teamIds: { $in: user.partOfTeams } },
-    ],
-  };
-
+function getAllAliasNames({ callback }) {
   getAliases({
-    query,
-    filter: { aliasName: 1 },
-    callback: ({ error, data }) => {
-      if (error) {
-        callback({ error });
-
-        return;
-      }
-
-      callback({
-        data: {
-          aliases: data.aliases.map((alias) => {
-            return {
-              aliasId: alias.aliasId,
-              aliasName: alias.aliasName,
-            };
-          }),
-        },
-      });
+    callback,
+    filter: {
+      aliasName: 1,
     },
   });
 }
@@ -466,12 +401,10 @@ function getAliasesListByUser({ user, callback }) {
 exports.createAlias = createAlias;
 exports.removeAccess = removeAccess;
 exports.addAccess = addAccess;
-exports.getAllAliases = getAllAliases;
 exports.getAliasesByUser = getAliasesByUser;
 exports.updateAlias = updateAlias;
 exports.removeAlias = removeAlias;
 exports.getAliasByName = getAliasByName;
 exports.doesAliasExist = doesAliasExist;
-exports.getAliasesByTeams = getAliasesByTeams;
 exports.getAliasById = getAliasById;
-exports.getAliasesListByUser = getAliasesListByUser;
+exports.getAllAliasNames = getAllAliasNames;

@@ -28,7 +28,7 @@ const baseSchema = {
   ownerAliasId: String,
   lastUpdated: Date,
   timeCreated: Date,
-  customLastUpdate: Date,
+  customLastUpdated: Date,
   customTimeCreated: Date,
   visibility: { type: Number, default: dbConfig.AccessLevels.ANONYMOUS },
   accessLevel: { type: Number, default: dbConfig.AccessLevels.ANONYMOUS },
@@ -48,7 +48,7 @@ const coordinatesSchema = {
   heading: Number,
 };
 
-mongoose.connect(dbPath, { useMongoClient: true }, (err) => {
+mongoose.connect(dbPath, {}, (err) => {
   if (err) {
     console.error('Failed to connect to the database');
 
@@ -59,31 +59,31 @@ mongoose.connect(dbPath, { useMongoClient: true }, (err) => {
 });
 
 /**
- * Create and return db schema
- * @param {Object} schemaParameters - Parameters to add to the schema
- * @return {Object} - Schema
+ * Create and return full schema.
+ * @param {Object} schema - Schema to expand.
+ * @return {Object} - Schema.
  */
-function createSchema(schemaParameters) {
-  const schema = baseSchema;
+function createSchema(schema) {
+  const fullSchema = schema;
 
-  Object.keys(schemaParameters).forEach((parameterKey) => {
-    schema[parameterKey] = schemaParameters[parameterKey];
+  Object.keys(baseSchema).forEach((parameterKey) => {
+    fullSchema[parameterKey] = baseSchema[parameterKey];
   });
 
-  return schema;
+  return fullSchema;
 }
 
 /**
- * Add object identifier
+ * Add object identifier.
  * @private
- * @param {Object} params - Parameters
- * @param {Object} params.object - Object to add an ID to
- * @returns {Object} Updated object
+ * @param {Object} params - Parameters.
+ * @param {Object} params.object - Object to add an Id to.
+ * @returns {Object} Updated object.
  */
 function addObjectId({ object }) {
   const modifiedObject = object;
 
-  modifiedObject.objectId = object._id; // eslint-disable-line no-underscore-dangle
+  modifiedObject.objectId = object._id.toString(); // eslint-disable-line no-underscore-dangle
 
   return modifiedObject;
 }
@@ -100,19 +100,27 @@ function saveObject({
   callback,
 }) {
   const now = new Date();
-  const objectToSave = object;
+  const newObject = object;
 
-  objectToSave.lastUpdated = objectToSave.lastUpdated || now;
-  objectToSave.timeCreated = objectToSave.timeCreated || now;
+  newObject.lastUpdated = newObject.lastUpdated || now;
+  newObject.timeCreated = newObject.timeCreated || now;
 
-  object.save((saveErr, savedObject) => {
+  object.save((saveErr, result) => {
     if (saveErr) {
       callback({ error: new errorCreator.Database({ errorObject: saveErr, name: `saveObject ${objectType} ${object}` }) });
 
       return;
     }
 
-    callback({ data: { savedObject: addObjectId({ object: savedObject }), objectType } });
+    const objectToSend = newObject.toObject();
+    objectToSend.objectId = result._id.toString();
+
+    callback({
+      data: {
+        objectType,
+        savedObject: objectToSend,
+      },
+    });
   });
 }
 
@@ -232,30 +240,35 @@ function getObject({
       return;
     }
 
-    callback({ data: { object: addObjectId({ object: foundObject }) } });
+    callback({
+      data: {
+        exists: true,
+        object: addObjectId({ object: foundObject }),
+      },
+    });
   });
 }
 
 /**
  * Does the object exist?
- * @param {Object} params - Parameters
- * @param {Function} params.callback - Callback
- * @param {Object} params.object - Object to call and get
- * @param {string} params.query - Database query
+ * @param {Object} params - Parameters.
+ * @param {Function} params.callback - Callback.
+ * @param {Object} params.object - Object to call and get.
+ * @param {string} params.query - Database query.
  */
 function doesObjectExist({
   object,
   callback,
   query,
 }) {
-  object.findOne(query, { _id: 1 }).lean().exec((error, foundObject) => {
+  object.findOne(query).lean().exec((error, foundObject) => {
     if (error) {
       callback({ error: new errorCreator.Database({ errorObject: error, name: 'doesObjectExist' }) });
 
       return;
     }
 
-    callback({ data: { exists: typeof foundObject !== 'undefined' } });
+    callback({ data: { exists: typeof foundObject !== 'undefined' && foundObject !== null } });
   });
 }
 
@@ -295,12 +308,12 @@ function getObjects({
 }
 
 /**
- * Update object
- * @param {Object} params - Parameters
- * @param {Function} params.callback - Callback
- * @param {Object} params.object - Object to call and get
- * @param {string} params.query - Database query
- * @param {string} [params.errorNameContent] - Content that will be sent with error
+ * Update object.
+ * @param {Object} params - Parameters.
+ * @param {Function} params.callback - Callback.
+ * @param {Object} params.object - Object to call and get.
+ * @param {string} params.query - Database query.
+ * @param {string} [params.errorNameContent] - Content that will be sent with error.
  */
 function updateObject({
   object,
@@ -310,8 +323,13 @@ function updateObject({
   errorNameContent = 'updateObject',
 }) {
   const options = { new: true };
-  const toUpdate = update;
+  const toUpdate = {
+    $set: update.$set || {},
+  };
+
   toUpdate.$set.lastUpdated = new Date();
+
+  if (update.$unset && Object.keys(update.$unset).length > 0) { toUpdate.$unset = update.$unset; }
 
   object.findOneAndUpdate(query, toUpdate, options).lean().exec((err, foundObject) => {
     if (err) {
@@ -329,12 +347,12 @@ function updateObject({
 }
 
 /**
- * Update objects
- * @param {Object} params - Parameters
- * @param {Function} params.callback - Callback
- * @param {Object} params.object - Object to call and get
- * @param {string} [params.query] - Database query
- * @param {string} [params.errorNameContent] - Content that will be sent with error
+ * Update objects.
+ * @param {Object} params - Parameters.
+ * @param {Function} params.callback - Callback.
+ * @param {Object} params.object - Object to call and get.
+ * @param {string} [params.query] - Database query.
+ * @param {string} [params.errorNameContent] - Content that will be sent with error.
  */
 function updateObjects({
   object,
@@ -348,18 +366,34 @@ function updateObjects({
     multi: true,
   };
   const toUpdate = update;
-  toUpdate.$set.lastUpdated = new Date();
+  const now = new Date();
+  toUpdate.$set = toUpdate.$set || {};
+  toUpdate.$set.lastUpdated = now;
 
-  object.update(query, toUpdate, options).lean().exec((err, foundObjects = []) => {
+  object.update(query, toUpdate, options).lean().exec((err) => {
     if (err) {
       callback({ error: new errorCreator.Database({ errorObject: err, name: errorNameContent }) });
 
       return;
     }
 
-    callback({
-      data: {
-        objects: foundObjects.map(foundObject => addObjectId({ object: foundObject })),
+    getObjects({
+      object,
+      query: { lastUpdated: now },
+      callback: ({ error: errorGet, data: updatedData }) => {
+        if (errorGet) {
+          callback({ error: errorGet });
+
+          return;
+        }
+
+        const { objects } = updatedData;
+
+        callback({
+          data: {
+            objects: objects.map(foundObject => addObjectId({ object: foundObject })),
+          },
+        });
       },
     });
   });
@@ -379,7 +413,7 @@ function removeObject({
 }) {
   const options = { justOne: true };
 
-  object.findOneAndDelete(query, options).lean().exec((err) => {
+  object.findOneAndRemove(query, options).lean().exec((err) => {
     if (err) {
       callback({ error: new errorCreator.Database({ errorObject: err, name: 'removeObject' }) });
 
@@ -416,13 +450,13 @@ function removeObjects({
 /**
  * Add object access for users or teams.
  * @param {Object} params - Parameters.
- * @param {string} params.objectId - ID of the device to update.
+ * @param {string} params.objectId - Id of the device to update.
  * @param {Function} params.callback - Callback.
- * @param {string[]} [params.userIds] - ID of the users to add.
- * @param {string[]} [params.teamIds] - ID of the teams to add.
- * @param {string[]} [params.bannedIds] - ID of the banned user/teams to add.
- * @param {string[]} [params.teamAdminIds] - ID of the team admins to remove.
- * @param {string[]} [params.userAdminIds] - ID of the user admins to remove.
+ * @param {string[]} [params.userIds] - Id of the users to add.
+ * @param {string[]} [params.teamIds] - Id of the teams to add.
+ * @param {string[]} [params.bannedIds] - Id of the banned user/teams to add.
+ * @param {string[]} [params.teamAdminIds] - Id of the team admins to remove.
+ * @param {string[]} [params.userAdminIds] - Id of the user admins to remove.
  */
 function addObjectAccess({
   objectId,
@@ -458,14 +492,9 @@ function addObjectAccess({
     update.$pull.teamIds = { $each: bannedIds };
   }
 
-  if (teamAdminIds) {
-    update.$addToSet.teamAdminIds = teamAdminIds;
+  if (teamAdminIds) { update.$addToSet.teamAdminIds = teamAdminIds; }
 
-  }
-
-  if (userAdminIds) {
-    update.$addToSet.userAdminIds = userAdminIds;
-  }
+  if (userAdminIds) { update.$addToSet.userAdminIds = userAdminIds; }
 
   updateObject({
     update,
@@ -476,15 +505,15 @@ function addObjectAccess({
 }
 
 /**
- * Remove object access for users or teams
- * @param {Object} params - Parameters
- * @param {string} params.objectId - ID of the device to update
- * @param {Function} params.callback - Callback
- * @param {string[]} [params.userIds] - ID of the users to remove
- * @param {string[]} [params.teamIds] - ID of the teams to remove
- * @param {string[]} [params.bannedIds] - ID of the banned users/teams to remove
- * @param {string[]} [params.teamAdminIds] - ID of the team admins to remove
- * @param {string[]} [params.userAdminIds] - ID of the user admins to remove
+ * Remove object access for users or teams.
+ * @param {Object} params - Parameters.
+ * @param {string} params.objectId - Id of the device to update.
+ * @param {Function} params.callback - Callback.
+ * @param {string[]} [params.userIds] - Id of the users to remove.
+ * @param {string[]} [params.teamIds] - Id of the teams to remove.
+ * @param {string[]} [params.bannedIds] - Id of the banned users/teams to remove.
+ * @param {string[]} [params.teamAdminIds] - Id of the team admins to remove.
+ * @param {string[]} [params.userAdminIds] - Id of the user admins to remove.
  */
 function removeObjectAccess({
   objectId,
@@ -518,6 +547,25 @@ function removeObjectAccess({
   });
 }
 
+/**
+ * Create base query to check if the user has access to the object
+ * @param {Object} params - Parameters.
+ * @param {Object} params.user - User running a query.
+ * @return {Object} Query.
+ */
+function createUserQuery({ user }) {
+  return {
+    bannedIds: { $nin: [user.objectId] },
+    $or: [
+      { isPublic: true },
+      { ownerId: user.objectId },
+      { userIds: { $in: [user.objectId] } },
+      { visibility: { $lte: user.accessLevel } },
+      { teamIds: { $in: user.partOfTeams } },
+    ],
+  };
+}
+
 exports.coordinatesSchema = coordinatesSchema;
 
 exports.saveObject = saveObject;
@@ -534,3 +582,4 @@ exports.removeObjectAccess = removeObjectAccess;
 exports.addObjectAccess = addObjectAccess;
 exports.doesObjectExist = doesObjectExist;
 exports.updateObjects = updateObjects;
+exports.createUserQuery = createUserQuery;

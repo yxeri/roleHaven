@@ -39,6 +39,7 @@ function getAccessibleAlias({
   user,
   aliasId,
   callback,
+  full,
   shouldBeAdmin,
   errorContentText = `aliasId ${aliasId}`,
 }) {
@@ -59,7 +60,18 @@ function getAccessibleAlias({
         return;
       }
 
-      callback(aliasData);
+      const foundAlias = aliasData.data.alias;
+      const filteredAlias = {
+        objectId: foundAlias.objectId,
+        aliasName: foundAlias.aliasName,
+        lastUpdated: foundAlias.lastUpdated,
+      };
+
+      callback({
+        data: {
+          alias: full ? foundAlias : filteredAlias,
+        },
+      });
     },
   });
 }
@@ -100,7 +112,7 @@ function createAlias({
       const { user } = data;
 
       const aliasToSave = alias;
-      aliasToSave.ownerId = user.userId;
+      aliasToSave.ownerId = user.objectId;
 
       dbAlias.createAlias({
         alias: aliasToSave,
@@ -114,10 +126,11 @@ function createAlias({
           const createdAlias = aliasData.alias;
 
           dbRoom.createRoom({
-            options: { shouldSetIdToName: true },
+            options: { shouldSetId: true },
             room: {
-              ownerId: user.userId,
-              roomName: createdAlias.aliasId,
+              ownerId: user.objectId,
+              roomName: createdAlias.objectId,
+              roomId: createdAlias.objectId,
               accessLevel: dbConfig.AccessLevels.SUPERUSER,
               visibility: dbConfig.AccessLevels.SUPERUSER,
               isWhisper: true,
@@ -131,10 +144,9 @@ function createAlias({
               }
 
               const wallet = {
-                walletId: createdAlias.aliasId,
-                accessLevel: createdAlias.accessLevel,
-                ownerId: user.userId,
-                ownerIdAlias: createdAlias.aliasId,
+                walletId: createdAlias.objectId,
+                ownerId: user.objectId,
+                ownerAliasId: createdAlias.objectId,
                 amount: appConfig.defaultWalletAmount,
               };
               const walletOptions = { setId: true };
@@ -149,12 +161,12 @@ function createAlias({
                     return;
                   }
 
-                  const createdWallet = walletData.wallet;
-                  const newRoom = roomData.data.room;
+                  const newWallet = walletData.wallet;
+                  const newRoom = roomData.room;
                   const dataToSend = {
                     data: {
                       user: {
-                        userId: createdAlias.aliasId,
+                        userId: createdAlias.objectId,
                         username: createdAlias.aliasName,
                       },
                       changeType: dbConfig.ChangeTypes.CREATE,
@@ -162,11 +174,11 @@ function createAlias({
                   };
                   const creatorDataToSend = {
                     data: {
+                      wallet: newWallet,
                       room: newRoom,
                       alias: createdAlias,
-                      wallet: createdWallet,
+                      changeType: dbConfig.ChangeTypes.CREATE,
                     },
-                    changeType: dbConfig.ChangeTypes.CREATE,
                   };
 
                   if (socket) {
@@ -174,9 +186,9 @@ function createAlias({
                   } else {
                     const userSocket = socketUtils.getUserSocket({ io, socketId: user.socketId });
 
-                    if (userSocket) { userSocket.join(newRoom.roomId); }
+                    if (userSocket) { userSocket.join(newRoom.objectId); }
 
-                    io.to(user.userId).emit(dbConfig.EmitTypes.ALIAS, creatorDataToSend);
+                    io.to(user.objectId).emit(dbConfig.EmitTypes.ALIAS, creatorDataToSend);
                     io.emit(dbConfig.EmitTypes.USER, dataToSend);
                   }
 
@@ -197,17 +209,14 @@ function createAlias({
  * @param {string} params.token - jwt.
  * @param {string} params.aliasName - Name of the alias.
  * @param {Function} params.callback - Callback.
- * @param {string} [params.userId] - ID of the user that is retrieving the alias.
  */
 function getAliasByName({
   token,
   aliasName,
   callback,
-  userId,
 }) {
   authenticator.isUserAllowed({
     token,
-    matchToId: userId,
     commandName: dbConfig.apiCommands.GetAliases.name,
     callback: ({ error, data }) => {
       if (error) {
@@ -240,22 +249,20 @@ function getAliasByName({
 }
 
 /**
- * Get alias.
+ * Get alias by Id.
  * @param {Object} params - Parameter.
  * @param {string} params.token - jwt.
- * @param {string} params.aliasId - ID of the alias.
+ * @param {string} params.aliasId - Id of the alias.
  * @param {Function} params.callback - Callback.
- * @param {Object} params.userId - ID of the user to retrieve alias with.
  */
-function getAlias({
+function getAliasById({
   token,
   aliasId,
   callback,
-  userId,
+  full,
 }) {
   authenticator.isUserAllowed({
     token,
-    matchToId: userId,
     commandName: dbConfig.apiCommands.GetAliases.name,
     callback: ({ error, data }) => {
       if (error) {
@@ -264,28 +271,34 @@ function getAlias({
         return;
       }
 
+      const { user } = data;
+
       getAccessibleAlias({
         aliasId,
         callback,
+        user,
+        full,
+        shouldBeAdmin: full && dbConfig.apiCommands.GetFull.accessLevel > user.accessLevel,
         errorContentText: `get alias by id ${aliasId}`,
-        user: data.user,
       });
     },
   });
 }
 
 /**
- * Get aliases by user.
+ * Get aliases that the user has access to.
  * @param {Object} params - Parameter.
- * @param {Object} params.userId - ID of the user to retrieve aliases for.
  * @param {Object} params.token - jwt.
  * @param {Function} params.callback - Callback.
  */
-function getAliasesByUser({ token, callback, userId }) {
+function getAliasesByUser({
+  token,
+  full,
+  callback,
+}) {
   authenticator.isUserAllowed({
     token,
-    matchToId: userId,
-    commandName: dbConfig.apiCommands.GetAliases.name,
+    commandName: full ? dbConfig.apiCommands.GetFull.name : dbConfig.apiCommands.GetAliases.name,
     callback: ({ error, data }) => {
       if (error) {
         callback({ error });
@@ -293,9 +306,12 @@ function getAliasesByUser({ token, callback, userId }) {
         return;
       }
 
+      const { user } = data;
+
       dbAlias.getAliasesByUser({
         callback,
-        user: data.user,
+        full,
+        user,
       });
     },
   });
@@ -304,7 +320,6 @@ function getAliasesByUser({ token, callback, userId }) {
 /**
  * Remove alias.
  * @param {Object} params - Parameter.
- * @param {Object} params.userId - ID of the user to retrieve aliases for.
  * @param {Object} params.token - jwt.
  * @param {Function} params.callback - Callback.
  * @param {Object} params.io - Socket io. Will be used if socket is not set.
@@ -313,15 +328,13 @@ function getAliasesByUser({ token, callback, userId }) {
 function removeAlias({
   token,
   callback,
-  userId,
   aliasId,
   socket,
   io,
 }) {
   authenticator.isUserAllowed({
     token,
-    matchToId: userId,
-    commandName: dbConfig.apiCommands.RemoveAlias,
+    commandName: dbConfig.apiCommands.RemoveAlias.name,
     callback: ({ error, data }) => {
       if (error) {
         callback({ error });
@@ -329,21 +342,25 @@ function removeAlias({
         return;
       }
 
+      const { user } = data;
+
       getAccessibleAlias({
         aliasId,
+        user,
         shouldBeAdmin: true,
-        user: data.user,
         errorContentText: `remove alias by id ${aliasId}`,
         callback: (aliasData) => {
           if (aliasData.error) {
             callback({ error: aliasData.error });
+
+            return;
           }
 
           dbAlias.removeAlias({
             aliasId,
             fullRemoval: true,
             callback: (removeData) => {
-              if (removeData) {
+              if (removeData.error) {
                 callback({ error: removeData.error });
 
                 return;
@@ -358,12 +375,12 @@ function removeAlias({
                     return;
                   }
 
-                  const removedAlias = aliasData.data.alias.aliasId;
-                  const removedAliasId = removedAlias.aliasId;
+                  const removedAlias = aliasData.data.alias;
+                  const removedAliasId = removedAlias.objectId;
 
                   const dataToSend = {
                     data: {
-                      user: { userId: removedAlias.alias },
+                      user: { objectId: removedAliasId },
                       changeType: dbConfig.ChangeTypes.REMOVE,
                     },
                   };
@@ -398,10 +415,9 @@ function removeAlias({
 /**
  * Update alias.
  * @param {Object} params - Parameter.
- * @param {Object} params.userId - ID of the user to retrieve aliases for.
  * @param {Object} params.token - jwt.
  * @param {Function} params.callback - Callback.
- * @param {Object} params.aliasId - ID of the alias to update.
+ * @param {Object} params.aliasId - Id of the alias to update.
  * @param {Object} params.alias - Alias parameters to update.
  * @param {Object} params.io - Socket io. Will be used if socket is not set.
  * @param {Object} [params.options] - Alias update options.
@@ -413,14 +429,12 @@ function updateAlias({
   alias,
   options,
   aliasId,
-  userId,
   socket,
   io,
 }) {
   authenticator.isUserAllowed({
     token,
-    matchToId: userId,
-    commandName: dbConfig.apiCommands.UpdateAlias,
+    commandName: dbConfig.apiCommands.UpdateAlias.name,
     callback: ({ error, data }) => {
       if (error) {
         callback({ error });
@@ -428,12 +442,12 @@ function updateAlias({
         return;
       }
 
-      const authUser = data.user;
+      const { user } = data;
 
       getAccessibleAlias({
         aliasId,
+        user,
         shouldBeAdmin: true,
-        user: authUser,
         errorContentText: `update alias id ${aliasId}`,
         callback: (aliasData) => {
           if (aliasData.error) {
@@ -463,7 +477,7 @@ function updateAlias({
               const dataToSend = {
                 data: {
                   user: {
-                    userId: updatedAlias.aliasId,
+                    userId: updatedAlias.objectId,
                     username: updatedAlias.aliasName,
                   },
                   changeType: dbConfig.ChangeTypes.UPDATE,
@@ -472,10 +486,10 @@ function updateAlias({
 
               if (socket) {
                 socket.broadcast.emit(dbConfig.EmitTypes.USER, dataToSend);
-                socket.broadcast.to(updatedAlias.aliasId).emit(dbConfig.EmitTypes.ALIAS, aliasDataToSend);
+                socket.broadcast.to(updatedAlias.objectId).emit(dbConfig.EmitTypes.ALIAS, aliasDataToSend);
               } else {
                 io.emit(dbConfig.EmitTypes.USER, dataToSend);
-                io.to(updatedAlias.aliasId).emit(dbConfig.EmitTypes.ALIAS, aliasDataToSend);
+                io.to(updatedAlias.objectId).emit(dbConfig.EmitTypes.ALIAS, aliasDataToSend);
               }
 
               callback(aliasDataToSend);
@@ -490,10 +504,10 @@ function updateAlias({
 /**
  * Add access to the alias for users or teams.
  * @param {Object} params - Parameters.
- * @param {string} params.aliasId - ID of the alias.
- * @param {string[]} [params.userIds] - ID of the users.
- * @param {string[]} [params.teamIds] - ID of the teams.
- * @param {string[]} [params.bannedIds] - ID of the blocked Ids to add.
+ * @param {string} params.aliasId - Id of the alias.
+ * @param {string[]} [params.userIds] - Id of the users.
+ * @param {string[]} [params.teamIds] - Id of the teams.
+ * @param {string[]} [params.bannedIds] - Id of the blocked Ids to add.
  * @param {string[]} [params.teamAdminIds] - Id of the teams to give admin access to. They will also be added to teamIds.
  * @param {string[]} [params.userAdminIds] - Id of the users to give admin access to. They will also be added to userIds.
  * @param {Function} params.callback - Callback.
@@ -501,7 +515,6 @@ function updateAlias({
 function addAccess({
   token,
   aliasId,
-  userId,
   teamAdminIds,
   userAdminIds,
   userIds,
@@ -511,8 +524,7 @@ function addAccess({
 }) {
   authenticator.isUserAllowed({
     token,
-    matchToId: userId,
-    commandName: dbConfig.apiCommands.UpdateAlias,
+    commandName: dbConfig.apiCommands.UpdateAlias.name,
     callback: ({ error, data }) => {
       if (error) {
         callback({ error });
@@ -520,12 +532,12 @@ function addAccess({
         return;
       }
 
-      const authUser = data.user;
+      const { user } = data;
 
       getAccessibleAlias({
         aliasId,
+        user,
         shouldBeAdmin: true,
-        user: authUser,
         errorContentText: `add access alias id ${aliasId}`,
         callback: (aliasData) => {
           if (aliasData.error) {
@@ -563,7 +575,6 @@ function addAccess({
 function removeAccess({
   token,
   aliasId,
-  userId,
   teamAdminIds,
   userAdminIds,
   userIds,
@@ -573,8 +584,7 @@ function removeAccess({
 }) {
   authenticator.isUserAllowed({
     token,
-    matchToId: userId,
-    commandName: dbConfig.apiCommands.UpdateAlias,
+    commandName: dbConfig.apiCommands.UpdateAlias.name,
     callback: ({ error, data }) => {
       if (error) {
         callback({ error });
@@ -582,12 +592,12 @@ function removeAccess({
         return;
       }
 
-      const authUser = data.user;
+      const { user } = data;
 
       getAccessibleAlias({
         aliasId,
+        user,
         shouldBeAdmin: true,
-        user: authUser,
         errorContentText: `add access alias id ${aliasId}`,
         callback: (aliasData) => {
           if (aliasData.error) {
@@ -617,6 +627,6 @@ exports.removeAlias = removeAlias;
 exports.addAccess = addAccess;
 exports.removeAccess = removeAccess;
 exports.getAliasByName = getAliasByName;
-exports.getAlias = getAlias;
-exports.getAliases = getAliasesByUser;
+exports.getAliasById = getAliasById;
+exports.getAliasesByUser = getAliasesByUser;
 exports.getAccessibleAlias = getAccessibleAlias;

@@ -33,7 +33,6 @@ const teamVerifyEnv = textTools.convertToBoolean(process.env.TEAMVERIFY);
 const disallowRegisterEnv = textTools.convertToBoolean(process.env.DISALLOWUSERREGISTER);
 const verboseErrorEnv = textTools.convertToBoolean(process.env.VERBOSEERROR);
 const allowMessageImageEnv = textTools.convertToBoolean(process.env.ALLOWMESSAGEIMAGE);
-const bypassMailerEnv = textTools.convertToBoolean(process.env.BYPASSMAILER);
 const bypassExternalConnectionEnv = textTools.convertToBoolean(process.env.BYPASSEXTERNALCONNECTIONS);
 const userVerifyEnv = textTools.convertToBoolean(process.env.USERVERIFY);
 const showDevInfoEnv = textTools.convertToBoolean(process.env.SHOWDEVINFO);
@@ -79,24 +78,21 @@ config.privateBase = path.normalize(`${__dirname}/../../../../private`);
 config.routes = config.routes || [
   { sitePath: '/', filePath: `${__dirname}/../../routes/index.js` },
   { sitePath: '/api/authenticate', filePath: `${__dirname}/../../routes/rest/authenticate.js` },
-  { sitePath: '/api/gameItems', filePath: `${__dirname}/../../routes/rest/gameItems.js` },
   { sitePath: '/api/gameCodes', filePath: `${__dirname}/../../routes/rest/gameCodes.js` },
   { sitePath: '/api/rooms', filePath: `${__dirname}/../../routes/rest/rooms.js` },
   { sitePath: '/api/positions', filePath: `${__dirname}/../../routes/rest/positions.js` },
   { sitePath: '/api/docFiles', filePath: `${__dirname}/../../routes/rest/docFiles.js` },
-  { sitePath: '/api/broadcasts', filePath: `${__dirname}/../../routes/rest/broadcasts.js` },
   { sitePath: '/api/users', filePath: `${__dirname}/../../routes/rest/users.js` },
-  { sitePath: '/api/calibrationMissions', filePath: `${__dirname}/../../routes/rest/calibrationMissions.js` },
-  { sitePath: '/api/lanternRounds', filePath: `${__dirname}/../../routes/rest/lanternRounds.js` },
-  { sitePath: '/api/lanternStations', filePath: `${__dirname}/../../routes/rest/lanternStations.js` },
-  { sitePath: '/api/lanternTeams', filePath: `${__dirname}/../../routes/rest/lanternTeams` },
+  { sitePath: '/api/aliases', filePath: `${__dirname}/../../routes/rest/aliases.js` },
   { sitePath: '/api/wallets', filePath: `${__dirname}/../../routes/rest/wallets` },
   { sitePath: '/api/teams', filePath: `${__dirname}/../../routes/rest/teams` },
   { sitePath: '/api/devices', filePath: `${__dirname}/../../routes/rest/devices` },
   { sitePath: '/api/simpleMsgs', filePath: `${__dirname}/../../routes/rest/simpleMsgs` },
-  { sitePath: '/api/mailEvents', filePath: `${__dirname}/../../routes/rest/mailEvents` },
   { sitePath: '/api/forums', filePath: `${__dirname}/../../routes/rest/forums` },
-  { sitePath: '/api/forums', filePath: `${__dirname}/../../routes/rest/forums` },
+  { sitePath: '/api/forumThreads', filePath: `${__dirname}/../../routes/rest/forumThreads` },
+  { sitePath: '/api/forumPosts', filePath: `${__dirname}/../../routes/rest/forumPosts` },
+  { sitePath: '/api/messages', filePath: `${__dirname}/../../routes/rest/messages` },
+  { sitePath: '/api/transactions', filePath: `${__dirname}/../../routes/rest/transactions` },
   { sitePath: '*', filePath: `${__dirname}/../../routes/error.js` },
 ];
 
@@ -501,42 +497,6 @@ config.deviceAliasMaxLength = process.env.DEVICEALIASMAXLENGTH || config.deviceA
 config.defaultWalletAmount = process.env.DEFAULTWALLETAMOUNT || config.defaultWalletAmount || 10;
 
 /**
- * ********
- * * Mail *
- * ********
- */
-
-/**
- * Should the mails for user verification on register or password request be disabled?
- * @type {boolean}
- */
-config.bypassMailer = typeof bypassMailerEnv !== 'undefined' ? bypassMailerEnv : config.bypassMailer || true;
-
-/**
- * Secret key used when sending mail
- * @type {string}
- */
-config.mailKey = process.env.MAILKEY || undefined;
-
-/**
- * Public key used when sending mail
- * @type {string}
- */
-config.publicMailKey = process.env.PUBLICMAILKEY || undefined;
-
-/**
- * Mail domain
- * @type {string}
- */
-config.mailDomain = process.env.MAILDOMAIN || config.mailDomain || undefined;
-
-/**
- * Mail sender address. Will append mailDomain to name
- * @type {string}
- */
-config.mailSender = `${process.env.MAILSENDER || config.mailSender || 'no_reply'}@${config.mailDomain}`;
-
-/**
  * ************
  * * Position *
  * ************
@@ -595,83 +555,5 @@ config.spotifyClientId = process.env.SPOTIFYCLIENTID;
 config.spotifySecret = process.env.SPOTIFYSECRET;
 
 config.spotifyRedirectUri = process.env.SPOTIFYREDIRECTURI;
-
-/**
- * **************************************
- * * Blodsband Reloaded specific config *
- * **************************************
- */
-
-/**
- * Amount of milliseconds between each increment/decrement of signal value.
- * @type {number}
- */
-config.signalResetTimeout = process.env.SIGNALRESETINTERVAL || config.signalResetTimeout || 0;
-
-/**
- * Signal default value.
- * @type {number}
- */
-config.signalDefaultValue = process.env.SIGNALDEFAULTVALUE || config.signalDefaultValue || 100;
-
-/**
- * Max signal value below and above the default value.
- * @type {number}
- */
-config.signalThreshold = process.env.SIGNALTRESHHOLD || config.signalThreshold || 50;
-
-/**
- * Signal percentage change on completed hack.
- * @type {number}
- */
-config.signalChangePercentage = process.env.SIGNALCHANGEPERCENTAGE || config.signalChangePercentage || 0.2;
-
-/**
- * Max amount that the signal value can be changed on a successful hack.
- * @type {number}
- */
-config.signalMaxChange = process.env.SIGNALMAXCHANGE || config.signalMaxChange || 10;
-
-/**
- * Secret key used with BBR events.
- * @type {string}
- */
-config.hackingApiKey = process.env.HACKINGAPIKEY;
-
-/**
- * URL to API. Used for BBR events.
- * @type {string}
- */
-config.hackingApiHost = process.env.HACKINGAPIHOST;
-
-/**
- * Amount of currency to give on a completed calibration mission.
- * @type {number}
- */
-config.calibrationRewardAmount = process.env.CALIBRATIONREWARDAMOUNT || config.calibrationRewardAmount || 5;
-
-/**
- * Minimum amount of currency that can be given on a completed calibration mission.
- * @type {number}
- */
-config.calibrationRewardMinimum = process.env.CALIBRATIONREWARDMINIMUM || config.calibrationRewardMinimum || 0;
-
-/**
- * Max amount of currency that can be given on a completed calibration mission.
- * @type {number}
- */
-config.calibrationRewardMax = process.env.CALIBRATIONREWARDMAX || config.calibrationRewardMax || 20;
-
-/**
- * Amount of time (minutes) between calibration missions can be generated.
- * @type {number}
- */
-config.calibrationTimeout = process.env.CALIBRATIONTIMEOUT || config.calibrationTimeout || 20;
-
-/**
- * Amount of hacking tries before the hack fails.
- * @type {number}
- */
-config.hackingTriesAmount = process.env.HACKINGTRIESAMOUNT || config.hackingTriesAmount || 3;
 
 module.exports = config;

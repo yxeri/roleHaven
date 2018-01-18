@@ -16,24 +16,24 @@
 
 'use strict';
 
-const appConfig = require('../../../config/defaults/config').app;
-const tools = require('../helper/tools');
 
 const data = {};
 
-data.userWithoutTeam = {
-  username: tools.createRandString({ length: appConfig.usernameMaxLength }),
-  password: tools.createRandString({ length: appConfig.passwordMaxLength }),
-  registerDevice: tools.createRandString({ length: appConfig.deviceIdLength }),
-  mail: `${tools.createRandString({ length: 10 })}@${tools.createRandString({ length: 10 })}.com`,
-  verified: true,
+data.create = {
+  first: {},
+  second: {},
 };
-data.userWithTeam = {
-  username: tools.createRandString({ length: appConfig.usernameMaxLength }),
-  password: tools.createRandString({ length: appConfig.passwordMaxLength }),
-  registerDevice: tools.createRandString({ length: appConfig.deviceIdLength }),
-  mail: `${tools.createRandString({ length: 10 })}@${tools.createRandString({ length: 10 })}.com`,
-  verified: true,
+
+data.update = {
+  toUpdate: {},
+  updateWith: {
+    amount: 12,
+  },
+};
+
+data.remove = {
+  toRemove: {},
+  secondToRemove: {},
 };
 
 module.exports = data;

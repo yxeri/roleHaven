@@ -26,21 +26,17 @@ const teamSchema = new mongoose.Schema(dbConnector.createSchema({
   shortName: { type: String, unique: true },
   isVerified: { type: Boolean, default: false },
   isProtected: { type: Boolean, default: false },
+  members: { type: [String], default: [] },
 }), { collection: 'teams' });
 
 const Team = mongoose.model('Team', teamSchema);
 
-/**
- * Add custom id to the object
- * @param {Object} team - Team object
- * @return {Object} - Team object with id
- */
-function addCustomId(team) {
-  const updatedTeam = team;
-  updatedTeam.teamId = team.objectId;
-
-  return updatedTeam;
-}
+const teamFilter = {
+  teamName: 1,
+  shortName: 1,
+  lastUpdated: 1,
+  members: 1,
+};
 
 /**
  * Update team
@@ -62,21 +58,27 @@ function updateObject({ teamId, update, callback }) {
         return;
       }
 
-      callback({ data: { team: addCustomId(data.object) } });
+      callback({ data: { team: data.object } });
     },
   });
 }
 
 /**
- * Get teams
+ * Get teams.
  * @private
- * @param {Object} params - Parameters
- * @param {Object} params.query - Query to get teams
- * @param {Function} params.callback - Callback
+ * @param {Object} params - Parameters.
+ * @param {Object} params.query - Query to get teams.
+ * @param {Object} [params.filter] - Filter for the result.
+ * @param {Function} params.callback - Callback.
  */
-function getTeams({ query, callback }) {
+function getTeams({
+  query,
+  filter,
+  callback,
+}) {
   dbConnector.getObjects({
     query,
+    filter,
     object: Team,
     callback: ({ error, data }) => {
       if (error) {
@@ -87,7 +89,7 @@ function getTeams({ query, callback }) {
 
       callback({
         data: {
-          teams: data.objects.map(team => addCustomId(team)),
+          teams: data.objects,
         },
       });
     },
@@ -95,11 +97,11 @@ function getTeams({ query, callback }) {
 }
 
 /**
- * Get team
+ * Get a team.
  * @private
- * @param {Object} params - Parameters
- * @param {Object} params.query - Query to get teams
- * @param {Function} params.callback - Callback
+ * @param {Object} params - Parameters.
+ * @param {Object} params.query - Query to get teams.
+ * @param {Function} params.callback - Callback.
  */
 function getTeam({ query, callback }) {
   dbConnector.getObject({
@@ -116,18 +118,18 @@ function getTeam({ query, callback }) {
         return;
       }
 
-      callback({ data: { team: addCustomId(data.object) } });
+      callback({ data: { team: data.object } });
     },
   });
 }
 
 /**
- * Does team exist?
+ * Does the team exist?
  * @private
- * @param {Object} params - Parameters
- * @param {string} params.teamName - Name of the team
- * @param {string} params.shortName - Short name of the team
- * @param {Function} params.callback - Callback
+ * @param {Object} params - Parameters.
+ * @param {string} params.teamName - Name of the team.
+ * @param {string} params.shortName - Short name of the team.
+ * @param {Function} params.callback - Callback.
  */
 function doesTeamExist({ teamName, shortName, callback }) {
   if (!teamName && !shortName) {
@@ -187,7 +189,7 @@ function createTeam({ team, callback }) {
             return;
           }
 
-          callback({ data: { team: addCustomId(data.savedObject) } });
+          callback({ data: { team: data.savedObject } });
         },
       });
     },
@@ -228,7 +230,7 @@ function updateTeam({
           return;
         }
 
-        callback({ data: { team: addCustomId(updateData.data.team) } });
+        callback({ data: { team: updateData.data.team } });
       },
     });
   };
@@ -305,7 +307,7 @@ function addAccess({
         return;
       }
 
-      callback({ team: addCustomId(data.object) });
+      callback({ team: data.object });
     },
   });
 }
@@ -345,27 +347,33 @@ function removeAccess({
         return;
       }
 
-      callback({ team: addCustomId(data.object) });
+      callback({ team: data.object });
     },
   });
 }
 
 /**
- * Get teams by user.
+ * Get teams that the user has access to.
  * @param {Object} params - Parameters.
- * @param {string} params.userId - Id of the user.
+ * @param {string} params.user - User retrieving the teams.
  * @param {Function} params.callback - Callback.
+ * @param {boolean} [params.full] - Should access data be returned?
+ * @param {boolean} [params.includeInactive] - Should unverified teams be returned?
  */
-function getTeamsByUser({ userId, callback }) {
-  const query = {
-    $or: [
-      { ownerId: userId },
-      { userIds: { $in: [userId] } },
-    ],
-  };
+function getTeamsByUser({
+  user,
+  callback,
+  includeInactive,
+  full = false,
+}) {
+  const query = dbConnector.createUserQuery({ user });
+  const filter = !full ? teamFilter : {};
+
+  if (!includeInactive) { query.isVerified = true; }
 
   getTeams({
     query,
+    filter,
     callback,
   });
 }
@@ -422,29 +430,6 @@ function verifyTeam({ teamId, callback }) {
   });
 }
 
-/**
- * Get a list of teams that the user can try to access.
- * @param {Object} params - Parameters.
- * @param {Object} params.user - User.
- * @param {Function} params.callback - Callback.
- */
-function getTeamsListByUser({ user, callback }) {
-  const query = {
-    bannedIds: { $nin: [user.userId] },
-    $or: [
-      { isPublic: true },
-      { userIds: { $in: [user.userId] } },
-      { visibility: { $lte: user.accessLevel } },
-    ],
-  };
-
-  getTeams({
-    query,
-    callback,
-    lite: true,
-  });
-}
-
 exports.createTeam = createTeam;
 exports.removeTeam = removeTeam;
 exports.getTeamsByUser = getTeamsByUser;
@@ -453,4 +438,3 @@ exports.addAccess = addAccess;
 exports.removeAccess = removeAccess;
 exports.getTeamById = getTeamById;
 exports.verifyTeam = verifyTeam;
-exports.getTeamsListByUser = getTeamsListByUser;

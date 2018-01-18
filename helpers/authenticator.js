@@ -37,7 +37,7 @@ function createToken({
 
       const { user } = data;
 
-      const jwtUser = { userId: user.userId };
+      const jwtUser = { userId: user.objectId };
 
       jwt.sign({ data: jwtUser }, appConfig.jsonKey, (err, token) => {
         if (err) {
@@ -57,13 +57,11 @@ function createToken({
  * @param {Object} params - Parameters.
  * @param {string} params.token - Json web token.
  * @param {string} params.commandName - Name of the command.
- * @param {string} [params.matchToId] - Checks if sent user Id is the same as authenticated. Used for current user get, as they need less permission than get from other users.
  * @param {Function} params.callback - callback.
  */
 function isUserAllowed({
   commandName,
   token,
-  matchToId,
   callback,
 }) {
   const commandUsed = dbConfig.apiCommands[commandName];
@@ -94,10 +92,11 @@ function isUserAllowed({
       return;
     }
 
-    const jwtData = decoded.data;
+    const { userId } = decoded.data;
 
     dbUser.getUserById({
-      userId: matchToId || jwtData.userId,
+      userId,
+      full: true,
       callback: ({ error, data }) => {
         if (error) {
           callback({ error });
@@ -106,9 +105,9 @@ function isUserAllowed({
         }
 
         const { user } = data;
-        const commandAccessLevel = jwtData.userId === user.userId ? (commandUsed.selfAccessLevel || commandUsed.accessLevel) : commandUsed.accessLevel;
+        const { accessLevel } = commandUsed;
 
-        if (commandAccessLevel > user.accessLevel) {
+        if (accessLevel > user.accessLevel) {
           callback({ error: new errorCreator.NotAllowed({ name: commandName }) });
 
           return;
@@ -154,14 +153,14 @@ function hasAccessTo({
   } = objectToAccess;
   const {
     hasFullAccess,
+    accessLevel,
     teamIds: authTeamIds,
-    userId: authUserId,
+    objectId: authUserId,
   } = toAuth;
-
-  if (hasFullAccess) {
+  if (hasFullAccess || accessLevel >= dbConfig.AccessLevels.ADMIN) {
     return true;
   } else if (shouldBeAdmin) {
-    return ((userAdminIds.includes(authUserId)) || (teamAdminIds.find(adminId => authTeamIds.includes(adminId))));
+    return (ownerId === authUserId || (userAdminIds.includes(authUserId)) || (teamAdminIds.find(adminId => authTeamIds.includes(adminId))));
   }
 
   const userHasAccess = userIds.concat([ownerId]).includes(authUserId);

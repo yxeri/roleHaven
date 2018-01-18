@@ -36,6 +36,7 @@ function getAccessibleForum({
   forumId,
   callback,
   shouldBeAdmin,
+  full,
   errorContentText = `forumId ${forumId}`,
 }) {
   dbForum.getForumById({
@@ -55,7 +56,26 @@ function getAccessibleForum({
         return;
       }
 
-      callback(forumData);
+      const foundForum = forumData.data.forum;
+      const filteredForum = {
+        objectId: foundForum.objectId,
+        forumId: foundForum.forumId,
+        text: foundForum.text,
+        title: foundForum.title,
+        threadIds: foundForum.threadIds,
+        lastUpdated: foundForum.lastUpdated,
+        timeCreated: foundForum.timeCreated,
+        customLastUpdated: foundForum.customLastUpdated,
+        customTimeCreated: foundForum.customTimeCreated,
+        ownerId: foundForum.ownerId,
+        ownerAliasId: foundForum.ownerAliasId,
+      };
+
+      callback({
+        data: {
+          forum: full ? foundForum : filteredForum,
+        },
+      });
     },
   });
 }
@@ -68,7 +88,6 @@ function getAccessibleForum({
  * @param {Object} params.token - jwt.
  * @param {Object} params.io - Socket.io. Will be used if socket is not set.
  * @param {Object} [params.socket] - Socket.io.
- * @param {string} [params.userId] - Id of the user creating the forum.
  */
 function createForum({
   forum,
@@ -76,11 +95,9 @@ function createForum({
   token,
   io,
   socket,
-  userId,
 }) {
   authenticator.isUserAllowed({
     token,
-    matchToId: userId,
     commandName: dbConfig.apiCommands.CreateForum.name,
     callback: ({ error, data }) => {
       if (error) {
@@ -89,10 +106,10 @@ function createForum({
         return;
       }
 
-      const authUser = data.user;
+      const { user } = data;
 
       const forumToCreate = forum;
-      forumToCreate.ownerId = authUser.userId;
+      forumToCreate.ownerId = user.objectId;
 
       const saveCallback = () => {
         dbForum.createForum({
@@ -104,7 +121,7 @@ function createForum({
               return;
             }
 
-            const createdForum = forumData.data.post;
+            const createdForum = forumData.data.forum;
             const dataToSend = {
               data: {
                 forum: createdForum,
@@ -125,7 +142,7 @@ function createForum({
 
       if (forumToCreate.ownerAliasId) {
         aliasManager.getAccessibleAlias({
-          user: authUser,
+          user,
           aliasId: forumToCreate.ownerAliasId,
           callback: (aliasData) => {
             if (aliasData.error) {
@@ -155,7 +172,7 @@ function createForum({
 function getAllForums({ callback, token }) {
   authenticator.isUserAllowed({
     token,
-    commandName: dbConfig.apiCommands.GetAll.name,
+    commandName: dbConfig.apiCommands.GetFull.name,
     callback: ({ error }) => {
       if (error) {
         callback({ error });
@@ -185,11 +202,9 @@ function updateForum({
   callback,
   socket,
   io,
-  userId,
 }) {
   authenticator.isUserAllowed({
     token,
-    matchToId: userId,
     commandName: dbConfig.apiCommands.UpdateForumThread.name,
     callback: ({ error, data }) => {
       if (error) {
@@ -250,21 +265,18 @@ function updateForum({
  * @param {string} params.forumId - Id of the forum.
  * @param {Object} params.io - Socket io. Will be used if socket is not set.
  * @param {Function} params.callback - Callback.
- * @param {string} [params.userId] - Id of the user who is removing the forum.
  * @param {Object} [params.socket] - Socket.io.
  */
 function removeForum({
   token,
   forumId,
-  userId,
   callback,
   socket,
   io,
 }) {
   authenticator.isUserAllowed({
     token,
-    matchToId: userId,
-    commandName: dbConfig.apiCommands.RemoveForum,
+    commandName: dbConfig.apiCommands.RemoveForum.name,
     callback: ({ error, data }) => {
       if (error) {
         callback({ error });
@@ -272,14 +284,16 @@ function removeForum({
         return;
       }
 
+      const { user } = data;
+
       getAccessibleForum({
         forumId,
+        user,
         shouldBeAdmin: true,
-        user: data.user,
         errorContentText: `remove forumId ${forumId}`,
         callback: (forumData) => {
           if (forumData.error) {
-            callback({ error: forumData });
+            callback({ error: forumData.error });
 
             return;
           }
@@ -296,7 +310,7 @@ function removeForum({
 
               const dataToSend = {
                 data: {
-                  forum: { forumId },
+                  forum: { objectId: forumId },
                   changeType: dbConfig.ChangeTypes.REMOVE,
                 },
               };
@@ -322,17 +336,15 @@ function removeForum({
  * @param {string} params.token - jwt.
  * @param {Function} params.callback - Callback.
  * @param {string} [params.forumId] - Id of forum to retrieve.
- * @param {string} [params.userId] - Id of the user retrieving the forum.
  */
 function getForumById({
   forumId,
   token,
   callback,
-  userId,
+  full,
 }) {
   authenticator.isUserAllowed({
     token,
-    matchToId: userId,
     commandName: dbConfig.apiCommands.GetForum.name,
     callback: ({ error, data }) => {
       if (error) {
@@ -341,10 +353,14 @@ function getForumById({
         return;
       }
 
+      const { user } = data;
+
       getAccessibleForum({
         callback,
         forumId,
-        user: data.user,
+        user,
+        full,
+        shouldBeAdmin: full && dbConfig.apiCommands.GetFull.accessLevel > user.accessLevel,
       });
     },
   });
@@ -364,6 +380,38 @@ function updateForumTime({ forumId, callback }) {
   });
 }
 
+/**
+ * Get forums by user.
+ * @param {Object} params - Parameters.
+ * @param {string} params.token - jwt.
+ * @param {Function} params.callback - Callback
+ */
+function getForumsByUser({
+  full,
+  token,
+  callback,
+}) {
+  authenticator.isUserAllowed({
+    token,
+    commandName: full ? dbConfig.apiCommands.GetFull.name : dbConfig.apiCommands.GetForum.name,
+    callback: ({ error, data }) => {
+      if (error) {
+        callback({ error });
+
+        return;
+      }
+
+      const { user } = data;
+
+      dbForum.getForumsByUser({
+        user,
+        full,
+        callback,
+      });
+    },
+  });
+}
+
 exports.createForum = createForum;
 exports.removeForum = removeForum;
 exports.updateForum = updateForum;
@@ -371,3 +419,4 @@ exports.getAllForums = getAllForums;
 exports.getForumById = getForumById;
 exports.getAccessibleForum = getAccessibleForum;
 exports.updateForumTime = updateForumTime;
+exports.getForumsByUser = getForumsByUser;

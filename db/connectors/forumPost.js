@@ -28,37 +28,31 @@ const forumPostSchema = new mongoose.Schema(dbConnector.createSchema({
 
 const ForumPost = mongoose.model('ForumPost', forumPostSchema);
 
-/**
- * Add custom id to the object
- * @param {Object} post - Forum post object
- * @return {Object} - Forum post object with id
- */
-function addCustomId(post) {
-  const updatedPost = post;
-  updatedPost.postId = post.objectId;
-
-  return updatedPost;
-}
+const postFilter = {
+  ownerId: 1,
+  ownerAliasId: 1,
+  threadId: 1,
+  parentPostId: 1,
+  text: 1,
+  depth: 1,
+  lastUpdated: 1,
+  timeCreated: 1,
+  customLastUpdated: 1,
+  customTimeCreated: 1,
+};
 
 /**
  * Get forum posts
  * @private
  * @param {Object} params - Parameters
  * @param {Object} params.query - Query to get doc files
- * @param {boolean} [params.lite] - Should parameters including a lot of data be filtered away?
  * @param {Function} params.callback - Callback
  */
 function getPosts({
   query,
   callback,
-  lite = true,
+  filter = {},
 }) {
-  const filter = {};
-
-  if (lite) {
-    filter.text = 0;
-  }
-
   dbConnector.getObjects({
     query,
     filter,
@@ -72,7 +66,7 @@ function getPosts({
 
       callback({
         data: {
-          posts: data.objects.map(post => addCustomId(post)),
+          posts: data.objects,
         },
       });
     },
@@ -84,20 +78,13 @@ function getPosts({
  * @private
  * @param {Object} params - Parameters
  * @param {string} params.query - Query to get forum object
- * @param {boolean} [params.lite] - Should parameters including a lot of data be filtered away?
  * @param {Function} params.callback - Callback
  */
 function getPost({
-  lite,
   query,
   callback,
+  filter,
 }) {
-  const filter = {};
-
-  if (lite) {
-    filter.text = 0;
-  }
-
   dbConnector.getObject({
     query,
     filter,
@@ -113,7 +100,7 @@ function getPost({
         return;
       }
 
-      callback({ data: { post: addCustomId(data.object) } });
+      callback({ data: { post: data.object } });
     },
   });
 }
@@ -143,7 +130,7 @@ function updateObject({
         return;
       }
 
-      callback({ data: { post: addCustomId(data.object) } });
+      callback({ data: { post: data.object } });
     },
   });
 }
@@ -188,7 +175,7 @@ function createPost({ post, callback }) {
               return;
             }
 
-            callback({ data: { post: addCustomId(saveData.data.savedObject) } });
+            callback({ data: { post: saveData.savedObject } });
           },
         });
       },
@@ -257,23 +244,58 @@ function getPostsById({ postIds, callback }) {
  * @param {string} params.threadIds - ID of the threads
  * @param {Function} params.callback - Callback
  */
-function getPostsByThreads({ threadIds, callback }) {
+function getPostsByThreads({
+  threadIds,
+  full,
+  callback,
+}) {
+  const filter = !full ? postFilter : {};
+
   getPosts({
     callback,
+    filter,
     query: { threadId: { $in: threadIds } },
   });
 }
 
 /**
- * Get forum posts by thread id
- * @param {Object} params - Parameters
- * @param {string} params.threadId - ID of the thread
- * @param {Function} params.callback - Callback
+ * Get forum posts by thread Id.
+ * @param {Object} params - Parameters.
+ * @param {string} params.threadId - Id of the thread.
+ * @param {Function} params.callback - Callback.
  */
-function getPostsByThread({ threadId, callback }) {
+function getPostsByThread({
+  full,
+  threadId,
+  callback,
+}) {
+  const filter = !full ? postFilter : {};
+
   getPosts({
     callback,
+    filter,
     query: { threadId },
+  });
+}
+
+/**
+ * Get posts created by the user.
+ * @param {Object} params - Parameters.
+ * @param {string} params.userId - Id of the user.
+ * @param {Function} params.callback - Callback.
+ * @param {boolean} [params.full] - Should the complete objects be returned?
+ */
+function getPostsCreatedByUser({
+  userId,
+  callback,
+  full,
+}) {
+  const filter = !full ? postFilter : {};
+
+  getPosts({
+    filter,
+    callback,
+    query: { ownerId: userId },
   });
 }
 
@@ -400,7 +422,7 @@ function addAccess({
         return;
       }
 
-      callback({ data: { post: addCustomId(data.object) } });
+      callback({ data: { post: data.object } });
     },
   });
 }
@@ -440,7 +462,7 @@ function removeAccess({
         return;
       }
 
-      callback({ data: { post: addCustomId(data.object) } });
+      callback({ data: { post: data.object } });
     },
   });
 }
@@ -457,3 +479,4 @@ exports.removeAccess = removeAccess;
 exports.removePostById = removePostById;
 exports.getPostsByThread = getPostsByThread;
 exports.removePostsByThreadId = removePostsByThreadId;
+exports.getPostsCreatedByUser = getPostsCreatedByUser;

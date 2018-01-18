@@ -16,66 +16,69 @@
 
 'use strict';
 
+const tools = require('../helper/tools');
+const baseObjects = require('./baseObjects');
 
 const schemas = {};
 
-const positionBase = {
+schemas.position = tools.buildLiteSchema({
   type: 'object',
   required: [
-    'coordinates',
     'positionName',
-    'markerType',
-    'lastUpdated',
+    'positionType',
+    'radius',
   ],
   properties: {
+    deviceId: { type: 'string' },
+    connectedToUser: { type: 'string' },
+    coordinatesHistory: {
+      type: 'array',
+      items: baseObjects.coordinates,
+    },
     positionName: { type: 'string' },
-    markerType: { type: 'string' },
-    lastUpdated: { type: 'string' },
-    coordinates: {
-      type: 'object',
-      required: [
-        'longitude',
-        'latitude',
-        'accuracy',
-      ],
-      properties: {
-        longitude: { type: 'number' },
-        latitude: { type: 'number' },
-        accuracy: { type: 'number' },
-      },
+    positionType: { type: 'string' },
+    radius: { type: 'number' },
+    isStationary: { type: 'boolean' },
+    description: {
+      type: 'array',
+      items: { type: 'string' },
     },
   },
-};
+});
 
-schemas.position = {
+schemas.fullPosition = tools.buildFullSchema({
   type: 'object',
-  required: ['data'],
+  required: [
+    'positionName',
+    'positionType',
+    'radius',
+  ],
   properties: {
-    data: {
-      type: 'object',
-      required: ['position'],
-      properties: {
-        position: positionBase,
-      },
+    deviceId: { type: 'string' },
+    connectedToUser: { type: 'string' },
+    coordinatesHistory: {
+      type: 'array',
+      items: baseObjects.coordinates,
+    },
+    positionName: { type: 'string' },
+    positionType: { type: 'string' },
+    radius: { type: 'number' },
+    isStationary: { type: 'boolean' },
+    description: {
+      type: 'array',
+      items: { type: 'string' },
     },
   },
-};
+});
 
 schemas.positions = {
-  type: 'object',
-  required: ['data'],
-  properties: {
-    data: {
-      type: 'object',
-      required: ['positions'],
-      properties: {
-        positions: {
-          type: 'array',
-          items: positionBase,
-        },
-      },
-    },
-  },
+  type: 'array',
+  items: schemas.position,
+};
+
+schemas.fullPositions = {
+  type: 'array',
+  items: schemas.fullPosition,
 };
 
 module.exports = schemas;

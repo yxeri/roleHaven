@@ -1,3 +1,7 @@
+// *********************************
+// Devices
+// *********************************
+
 /**
  * @api {OBJECT DEFINITION} Device 1. Device definition
  * @apiGroup Devices
@@ -11,6 +15,10 @@
  * @apiParam {string} deviceType Type of device. Allowed: USERDEVICE, GPS, CUSTOM. Default is USERDEVICE.
  */
 
+// *********************************
+// DocFiles
+// *********************************
+
 /**
  * @api {OBJECT DEFINITION} DocFile 1. DocFile definition
  * @apiGroup DocFiles
@@ -23,6 +31,10 @@
  * @apiParam {string} title [Unique, mutable] Title of the document.
  * @apiParam {string[]} text Text content in the document.
  */
+
+// *********************************
+// Forums
+// *********************************
 
 /**
  * @api {OBJECT DEFINITION} Forum 1. Forum definition
@@ -51,7 +63,7 @@
 
 /**
  * @api {OBJECT DEFINITION} ForumPost 3. ForumPost definition
- * @apiGroup Forums
+ * @apiGroup ForumPosts
  * @apiVersion 8.0.0
  *
  * @apiDescription The ForumPost object.
@@ -61,6 +73,10 @@
  * @apiParam {number} depth The sub-post depth level of this post. Default is 0.
  * @apiParam {string[]} text Text content in the forum post.
  */
+
+// *********************************
+// GameCodes
+// *********************************
 
 /**
  * @api {OBJECT DEFINITION} GameCode 1. GameCode definition
@@ -76,6 +92,10 @@
  * @apiParam {string[]} codeContent Content that will be unlocked by the user when the code is used.
  * @apiParam {boolean} used Has the game code been used?
  */
+
+// *********************************
+// Messages
+// *********************************
 
 /**
  * @api {OBJECT DEFINITION} Message 1. Message definition
@@ -121,6 +141,10 @@
  * @apiParam {number} height Height of the image in pixels.
  */
 
+// *********************************
+// Positions
+// *********************************
+
 /**
  * @api {OBJECT DEFINITION} Position 1. Position definition
  * @apiGroup Positions
@@ -153,6 +177,10 @@
  * @apiParam {number} [coordinates.heading] Heading of the tracked position. Represented with 0-359, where 0 is true north.
  */
 
+// *********************************
+// Rooms
+// *********************************
+
 /**
  * @api {OBJECT DEFINITION} Room 1. Room definition
  * @apiGroup Rooms
@@ -165,10 +193,15 @@
  * @apiParam {string} [password] Password that is required to enter the room.
  * @apiParam {string[]} participantIds Ids of the users who are part of the room. This is used for whisper rooms.
  * @apiParam {boolean} nameIsLocked Is the name of the room locked from being changed?
- * @apiParam {boolean} isAnonymous Is the room anonymous? Setting a room to anonymous will most commonly hide the sender in the messages sent to the room for other users. Sender data will still be stored in the system.
+ * @apiParam {boolean} isAnonymous Is the room anonymous? Setting a room to anonymous will most commonly hide the sender in the messages sent to the room for other users.
+ * Sender data will still be stored in the system.
  * @apiParam {boolean} isWhisper Is it a whisper room? A whisper room is a private chat room between two to * participants.
  * @apiParam {boolean} isSystemRoom Is it a system room? A system room is created on first run of the system. Removing or modifying them might break features in the system.
  */
+
+// *********************************
+// SimpleMsgs
+// *********************************
 
 /**
  * @api {OBJECT DEFINITION} SimpleMsg 1. SimpleMsg definition
@@ -180,6 +213,10 @@
  * @apiParam {string} simpleMsgId [Unique, immutable] Id of the simple message. It is used to target this specific object.
  * @apiParam {string} text Single-line text content of the message.
  */
+
+// *********************************
+// Teams
+// *********************************
 
 /**
  * @api {OBJECT DEFINITION} Team 1. Team definition
@@ -206,8 +243,6 @@
  * @apiParam {string} receiverId Id of the user that is receiving the invitation.
  * @apiParam {string} invitationType Type of invitation. Valid types: TEAM. Default is TEAM.
  * @apiParam {string} itemId Id of the object connected to the invitation. itemId would be set to the team's Id when inviting a user to a team.
- * @apiParam {string} senderId Id of the user that created the invitation.
- * @apiParam {string} [senderAliasId] Id of the alias of the sender.
  */
 
 /**
@@ -221,9 +256,11 @@
  * @apiParam {string} receiverId Id of the user that is receiving the invitation.
  * @apiParam {string} invitationType Type of invitation. Valid types: TEAM. Default is TEAM.
  * @apiParam {string} itemId Id of the object connected to the invitation. itemId would be set to the team's Id when inviting a user to a team.
- * @apiParam {string} senderId Id of the user that created the invitation.
- * @apiParam {string} [senderAliasId] Id of the alias of the sender.
  */
+
+// *********************************
+// Transactions
+// *********************************
 
 /**
  * @api {OBJECT DEFINITION} Transaction 1. Transaction definition
@@ -267,6 +304,10 @@
  * @apiParam {number} [coordinates.heading] Heading of the tracked position. Represented with 0-359, where 0 is true north.
  */
 
+// *********************************
+// Users
+// *********************************
+
 /**
  * @api {OBJECT DEFINITION} User 2. User definition
  * @apiGroup Users
@@ -290,6 +331,10 @@
  * @apiParam {string[]} partOfTeams Ids of the teams that the user is part off.
  * @apiParam {string[]} followingRooms Ids of the rooms that the user is following.
  */
+
+// *********************************
+// Wallets
+// *********************************
 
 /**
  * @api {OBJECT DEFINITION} Wallet 1. Wallet definition

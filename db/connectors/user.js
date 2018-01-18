@@ -29,7 +29,7 @@ const dbTeam = require('./team');
 
 const userSchema = new mongoose.Schema(dbConnector.createSchema({
   username: { type: String, unique: true },
-  mailAddress: { type: String, unique: true },
+  mailAddress: { type: String, unique: true, sparse: true },
   fullName: String,
   password: String,
   socketId: String,
@@ -40,24 +40,13 @@ const userSchema = new mongoose.Schema(dbConnector.createSchema({
   isBanned: { type: Boolean, default: false },
   isOnline: { type: Boolean, default: false },
   isLootable: { type: Boolean, default: false },
-  defaultRoomId: { type: String, default: dbConfig.rooms.public.roomId },
+  defaultRoomId: { type: String, default: dbConfig.rooms.public.objectId },
   partOfTeams: { type: [String], default: [] },
   followingRooms: { type: [String], default: [] },
+  aliases: { type: [String], default: [] },
 }), { collection: 'users' });
 
 const User = mongoose.model('User', userSchema);
-
-/**
- * Add custom id to the object
- * @param {Object} user - User object
- * @return {Object} - User object with id
- */
-function addCustomId(user) {
-  const updatedUser = user;
-  updatedUser.userId = user.objectId;
-
-  return updatedUser;
-}
 
 /**
  * Remove private parameters
@@ -85,10 +74,23 @@ function modifyUserParameters(user, noClean) {
  * @param {Object} params.update - Update
  * @param {Function} params.callback Callback
  */
-function updateObject({ userId, update, callback }) {
+function updateObject({
+  userSocketId,
+  userId,
+  update,
+  callback,
+}) {
+  const query = {};
+
+  if (userId) {
+    query._id = userId;
+  } else {
+    query.socketId = userSocketId;
+  }
+
   dbConnector.updateObject({
     update,
-    query: { _id: userId },
+    query,
     object: User,
     callback: ({ error, data }) => {
       if (error) {
@@ -97,7 +99,7 @@ function updateObject({ userId, update, callback }) {
         return;
       }
 
-      callback({ data: { user: addCustomId(modifyUserParameters(data.object)) } });
+      callback({ data: { user: modifyUserParameters(data.object) } });
     },
   });
 }
@@ -123,7 +125,7 @@ function updateObjects({ query, update, callback }) {
 
       callback({
         data: {
-          users: data.objects.map(object => addCustomId(modifyUserParameters(object))),
+          users: data.objects.map(object => modifyUserParameters(object)),
         },
       });
     },
@@ -152,7 +154,7 @@ function getUsers({ filter, query, callback }) {
 
       callback({
         data: {
-          users: data.objects.map(user => addCustomId(modifyUserParameters(user))),
+          users: data.objects.map(user => modifyUserParameters(user)),
         },
       });
     },
@@ -166,9 +168,10 @@ function getUsers({ filter, query, callback }) {
  * @param {string} params.query - Query to get alias
  * @param {Function} params.callback - Callback
  */
-function getUser({ query, callback }) {
+function getUser({ filter, query, callback }) {
   dbConnector.getObject({
     query,
+    filter,
     object: User,
     callback: ({ error, data }) => {
       if (error) {
@@ -181,7 +184,7 @@ function getUser({ query, callback }) {
         return;
       }
 
-      callback({ data: { user: addCustomId(modifyUserParameters(data.object)) } });
+      callback({ data: { user: modifyUserParameters(data.object) } });
     },
   });
 }
@@ -200,10 +203,10 @@ function getUserByName({ username, callback }) {
 }
 
 /**
- * Get user by ID
- * @param {Object} params - Parameters
- * @param {string} params.userId - ID of the user
- * @param {Function} params.callback - Callback
+ * Get user by Id.
+ * @param {Object} params - Parameters.
+ * @param {string} params.userId - Id of the user.
+ * @param {Function} params.callback - Callback.
  */
 function getUserById({ userId, callback }) {
   getUser({
@@ -217,7 +220,7 @@ function getUserById({ userId, callback }) {
  * @param {Object} params - Parameters.
  * @param {string} params.password - Password of the user.
  * @param {Function} params.callback - Callback.
- * @param {string} [params.userId] - ID of the user.
+ * @param {string} [params.userId] - Id of the user.
  * @param {string} [params.username] - Name of the user.
  */
 function authUser({
@@ -226,14 +229,21 @@ function authUser({
   password,
   callback,
 }) {
+  const query = {
+    password,
+    isBanned: false,
+    isVerified: true,
+  };
+
+  if (userId) {
+    query._id = userId;
+  } else {
+    query.username = username;
+  }
+
   getUser({
     callback,
-    query: {
-      password,
-      _id: userId,
-      isBanned: false,
-      isVerified: true,
-    },
+    query,
   });
 }
 
@@ -291,8 +301,13 @@ function createUser({ user, callback }) {
         callback({ error: new errorCreator.AlreadyExists({ name: `username: ${user.username}` }) });
       }
 
+      const userId = mongoose.Types.ObjectId();
+      const userToSave = user;
+      userToSave._id = userId;
+      userToSave.ownerId = userId.toString();
+
       dbConnector.saveObject({
-        object: new User(user),
+        object: new User(userToSave),
         objectType: 'user',
         callback: ({ error, data }) => {
           if (error) {
@@ -301,7 +316,7 @@ function createUser({ user, callback }) {
             return;
           }
 
-          callback({ data: { user: addCustomId(modifyUserParameters(data.savedObject)) } });
+          callback({ data: { user: modifyUserParameters(data.savedObject) } });
         },
       });
     },
@@ -318,6 +333,7 @@ function createUser({ user, callback }) {
  */
 function updateOnline({
   userId,
+  userSocketId,
   isOnline,
   socketId,
   callback,
@@ -339,6 +355,7 @@ function updateOnline({
 
   updateObject({
     userId,
+    userSocketId,
     update,
     callback,
   });
@@ -349,8 +366,16 @@ function updateOnline({
  * @param {Object} params - Parameters.
  * @param {Object} params.user - User parameters to update.
  * @param {Function} params.callback - Callback.
+ * @param {string} [params.userId] - Id of the user. Will override userSocketId to get and update a device.
+ * @param {string} [params.userSocketId] - Socket Id. Will be used to get and update a device. Overriden by userId.
  */
-function updateUser({ userId, user, callback }) {
+function updateUser({
+  userSocketId,
+  userId,
+  user,
+  callback,
+  options = {},
+}) {
   const {
     mailAddress,
     username,
@@ -360,8 +385,18 @@ function updateUser({ userId, user, callback }) {
     defaultRoomId,
     isLootable,
     hasFullAccess,
+    socketId,
   } = user;
+  const {
+    resetSocket,
+  } = options;
   const update = { $set: {}, $unset: {} };
+
+  if (resetSocket) {
+    update.$unset.socketId = '';
+  } else if (socketId) {
+    update.$set.socketId = socketId;
+  }
 
   if (mailAddress) { update.$set.mailAddress = mailAddress; }
   if (username) { update.$set.username = username; }
@@ -390,6 +425,7 @@ function updateUser({ userId, user, callback }) {
         updateObject({
           update,
           callback,
+          userSocketId,
           userId,
         });
       },
@@ -442,7 +478,7 @@ function updateBanUser({ shouldBan, userId, callback }) {
         return;
       }
 
-      callback({ data: { user: addCustomId(data.user) } });
+      callback({ data: { user: modifyUserParameters(data.user) } });
     },
   });
 }
@@ -465,40 +501,27 @@ function updateUserPassword({ userId, password, callback }) {
 }
 
 /**
- * Get all users
- * @param {Object} params - Parameters
- * @param {Function} params.callback - Callback
- */
-function getAllUsers({ callback }) {
-  getUsers({
-    callback,
-  });
-}
-
-/**
- * Get all users and aliases.
+ * Get users that the user has access to.
  * @param {Object} params - Parameters.
  * @param {Function} params.callback - Callback.
- * @param {boolean} [params.includeAliases] - Should aliases be added to the result?
+ * @param {boolean} [params.includeInactive] - Should banned and unverified users be retrieved?
+ * @param {boolean} [params.full] - Should access information be retrieved?
  */
-function getUsersListByUser({
+function getUsersByUser({
+  includeInactive,
   user,
   callback,
-  includeAliases = true,
+  full = false,
 }) {
-  const query = {
-    $or: [
-      { isPublic: true },
-      { ownerId: user.userId },
-      { userIds: { $in: user.userId } },
-      { visibility: { $lte: user.accessLevel } },
-      { teamIds: { $in: user.partOfTeams } },
-    ],
-  };
+  const query = dbConnector.createUserQuery({ user });
+
+  if (!includeInactive) {
+    query.isBanned = false;
+    query.isVerified = true;
+  }
 
   getUsers({
     query,
-    filter: { username: 1 },
     callback: ({ error, data }) => {
       if (error) {
         callback({ error });
@@ -508,9 +531,10 @@ function getUsersListByUser({
 
       const { users } = data;
 
-      if (includeAliases) {
+      if (!full) {
         dbAlias.getAliasesByUser({
           user,
+          full,
           callback: ({ error: aliasError, data: aliasData }) => {
             if (aliasError) {
               callback({ error: aliasError });
@@ -533,7 +557,8 @@ function getUsersListByUser({
             }).map((item) => {
               return {
                 username: item.username || item.aliasName,
-                userId: item.userId || item.aliasId,
+                objectId: item.objectId,
+                lastUpdated: item.lastUpdated,
               };
             });
 
@@ -619,6 +644,68 @@ function addToTeam({
 }
 
 /**
+ * Add alias to user.
+ * @param {Object} params - Parameters.
+ * @param {string} params.aliasId - Id of the alias.
+ * @param {string} params.userId - Id of the user.
+ * @param {Function} params.callback - Callback
+ */
+function addAlias({
+  aliasId,
+  userId,
+  callback,
+}) {
+  updateObject({
+    userId,
+    update: { aliases: { $addToSet: aliasId } },
+    callback: ({ error, data }) => {
+      if (error) {
+        callback({ error });
+
+        return;
+      }
+
+      callback({ data });
+    },
+  });
+}
+
+/**
+ * Remove alias from user.
+ * @param {Object} params - Parameters.
+ * @param {string} params.aliasId - Id of the alias.
+ * @param {string} params.userId - Id of the user.
+ * @param {Function} params.callback - Callback
+ */
+function removeAlias({
+  aliasId,
+  userId,
+  callback,
+}) {
+  updateObject({
+    userId,
+    callback,
+    update: { aliases: { $pull: aliasId } },
+  });
+}
+
+/**
+ * Remove alias from all users.
+ * @param {Object} params - Parameters.
+ * @param {string} params.aliasId - Id of the alias.
+ * @param {Function} params.callback - Callback
+ */
+function removeAliasFromAllUsers({
+  aliasId,
+  callback,
+}) {
+  updateObjects({
+    callback,
+    update: { aliases: { $pull: aliasId } },
+  });
+}
+
+/**
  * Remove a team from the user
  * @param {Object} params - Parameters
  * @param {string} params.userId - ID of the user
@@ -682,7 +769,7 @@ function getAllSocketIds({ callback }) {
 function removeRoomFromAll({ roomId, callback }) {
   updateObjects({
     callback,
-    update: { $pull: { rooms: roomId } },
+    update: { $pull: { followingRooms: roomId } },
   });
 }
 
@@ -700,32 +787,101 @@ function removeTeamFromAll({ teamId, callback }) {
 }
 
 /**
- * Get banned users.
+ * Get banned and unverified users.
  * @param {Object} params - Parameters.
  * @param {Function} params.callback - Callback.
  */
-function getBannedUsersList({ callback }) {
-  const query = { isBanned: true };
+function getInactiveUsers({ callback }) {
+  const query = {
+    $or: [
+      { isBanned: true },
+      { isVerified: false },
+    ],
+  };
 
   getUsers({
     query,
     callback,
-    filter: { username: 1 },
+    filter: {
+      fullName: 1,
+      username: 1,
+      lastUpdated: 1,
+      isBanned: 1,
+      isVerified: 1,
+    },
   });
 }
 
 /**
- * Get verified users.
+ * Add a room to a user.
  * @param {Object} params - Parameters.
- * @param {Function} params.callback - Callback.
+ * @param {string} params.roomId - Id of the room to add.
+ * @param {string} params.userId - Id of the user to update.
+ * @param {Function} params.callback - Callback
  */
-function getVerifiedUsersList({ callback }) {
-  const query = { isVerified: true };
+function followRoom({
+  roomId,
+  userId,
+  callback,
+}) {
+  updateObject({
+    userId,
+    update: {
+      followingRooms: { $addToSet: roomId },
+    },
+    callback: ({ error, data }) => {
+      if (error) {
+        callback({ error });
 
+        return;
+      }
+
+      callback({ data });
+    },
+  });
+}
+
+/**
+ * Remove a room from a user.
+ * @param {Object} params - Parameters.
+ * @param {string} params.roomId - Id of the room to remove.
+ * @param {string} params.userId - Id of the user to update.
+ * @param {Function} params.callback - Callback
+ */
+function unfollowRoom({
+  roomId,
+  userId,
+  callback,
+}) {
+  updateObject({
+    userId,
+    update: {
+      followingRooms: { $pull: roomId },
+    },
+    callback: ({ error, data }) => {
+      if (error) {
+        callback({ error });
+
+        return;
+      }
+
+      callback({ data });
+    },
+  });
+}
+
+/**
+ * Get all names from the users.
+ * @param {Object} params - Parameters.
+ * @param {Function} params.callback - Callback
+ */
+function getAllUserNames({ callback }) {
   getUsers({
-    query,
     callback,
-    filter: { username: 1 },
+    filter: {
+      username: 1,
+      fullName: 1,
+    },
   });
 }
 
@@ -735,7 +891,6 @@ exports.createUser = createUser;
 exports.updateUser = updateUser;
 exports.verifyUser = verifyUser;
 exports.updateBanUser = updateBanUser;
-exports.getAllUsers = getAllUsers;
 exports.updateUserPassword = updateUserPassword;
 exports.getUserById = getUserById;
 exports.removeUser = removeUser;
@@ -745,7 +900,12 @@ exports.addToTeam = addToTeam;
 exports.removeFromTeam = removeFromTeam;
 exports.removeRoomFromAll = removeRoomFromAll;
 exports.removeTeamFromAll = removeTeamFromAll;
-exports.getUsersListByUser = getUsersListByUser;
 exports.updateOnline = updateOnline;
-exports.getBannedUsersList = getBannedUsersList;
-exports.getVerifiedUsersList = getVerifiedUsersList;
+exports.getInactiveUsers = getInactiveUsers;
+exports.followRoom = followRoom;
+exports.unfollowRoom = unfollowRoom;
+exports.getUsersByUser = getUsersByUser;
+exports.addAlias = addAlias;
+exports.removeAlias = removeAlias;
+exports.removeAliasFromAllUsers = removeAliasFromAllUsers;
+exports.getAllUserNames = getAllUserNames;

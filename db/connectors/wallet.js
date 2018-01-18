@@ -27,17 +27,12 @@ const walletSchema = new mongoose.Schema(dbConnector.createSchema({
 
 const Wallet = mongoose.model('Wallet', walletSchema);
 
-/**
- * Add custom id to the object
- * @param {Object} wallet - Wallet object
- * @return {Object} - Wallet object with id
- */
-function addCustomId(wallet) {
-  const updatedWallet = wallet;
-  updatedWallet.walletId = wallet.objectId;
-
-  return updatedWallet;
-}
+const walletFilter = {
+  amount: 1,
+  lastUpdated: 1,
+  ownerId: 1,
+  ownerAliasId: 1,
+};
 
 /**
  * Get wallets
@@ -46,9 +41,10 @@ function addCustomId(wallet) {
  * @param {string} params.query - Database query
  * @param {Function} params.callback - Callback
  */
-function getWallets({ query, callback }) {
+function getWallets({ filter, query, callback }) {
   dbConnector.getObjects({
     query,
+    filter,
     object: Wallet,
     errorNameContent: 'getWallets',
     callback: ({ error, data }) => {
@@ -60,7 +56,7 @@ function getWallets({ query, callback }) {
 
       callback({
         data: {
-          wallets: data.objects.map(wallet => addCustomId(wallet)),
+          wallets: data.objects,
         },
       });
     },
@@ -89,7 +85,7 @@ function getWallet({ query, callback }) {
         return;
       }
 
-      callback({ data: { wallet: addCustomId(data.object) } });
+      callback({ data: { wallet: data.object } });
     },
   });
 }
@@ -114,7 +110,7 @@ function updateObject({ update, walletId, callback }) {
         return;
       }
 
-      callback({ data: { wallet: addCustomId(data.object) } });
+      callback({ data: { wallet: data.object } });
     },
   });
 }
@@ -152,21 +148,18 @@ function getWalletsByTeams({ teamIds, callback }) {
 }
 
 /**
- * Get wallets by user's access
+ * Get wallets that the user has access to.
  * @param {Object} params - Parameters
- * @param {string} params.userId - ID of the user
+ * @param {string} params.user - User retrieving wallets.
  * @param {Function} params.callback - Callback
  */
-function getWalletsByUser({ userId, callback }) {
-  const query = {
-    $or: [
-      { ownerId: userId },
-      { userIds: { $in: [userId] } },
-    ],
-  };
+function getWalletsByUser({ full, user, callback }) {
+  const query = dbConnector.createUserQuery({ user });
+  const filter = !full ? walletFilter : {};
 
   getWallets({
     query,
+    filter,
     callback,
   });
 }
@@ -185,8 +178,8 @@ function createWallet({
 }) {
   const walletToSave = wallet;
 
-  if (options.setId && walletToSave.walletId) {
-    walletToSave._id = walletToSave.walletId; // eslint-disable-line no-underscore-dangle
+  if (options.setId && walletToSave.objectId) {
+    walletToSave._id = walletToSave.objectId; // eslint-disable-line no-underscore-dangle
   }
 
   dbConnector.saveObject({
@@ -199,7 +192,7 @@ function createWallet({
         return;
       }
 
-      callback({ data: { wallet: addCustomId(data.savedObject) } });
+      callback({ data: { wallet: data.savedObject } });
     },
   });
 }
