@@ -22,50 +22,118 @@ const errorCreator = require('../objects/error/errorCreator');
 const authenticator = require('../helpers/authenticator');
 
 /**
- * Decrease wallet amount
- * @param {string} params.owner Name of the owner of the wallet
- * @param {number} params.amount The amount to decrease wallet amount with
- * @param {Function} params.callback Callback
+ * Get wallet by ID and check if the user has access to it.
+ * @param {Object} params - Parameters.
+ * @param {Object} params.user - User retrieving the wallet.
+ * @param {string} params.walletId - ID of the wallet to retrieve.
+ * @param {Function} params.callback - Callback.
+ * @param {string} [params.errorContentText] - Text to be printed on error.
+ * @param {boolean} [params.shouldBeAdmin] - Does the user have to be an admin?
  */
-function decreaseWalletAmount({ owner, amount, token, callback }) {
+function getAccessibleWallet({
+  user,
+  walletId,
+  callback,
+  shouldBeAdmin,
+  errorContentText = `walletId ${walletId}`,
+}) {
+  dbWallet.getWalletById({
+    walletId,
+    callback: (walletData) => {
+      if (walletData.error) {
+        callback({ error: walletData.error });
+
+        return;
+      } else if (!authenticator.hasAccessTo({
+        shouldBeAdmin,
+        toAuth: user,
+        objectToAccess: walletData.data.wallet,
+      })) {
+        callback({ error: new errorCreator.NotAllowed({ name: errorContentText }) });
+
+        return;
+      }
+
+      callback(walletData);
+    },
+  });
+}
+
+/**
+ * Update wallet.
+ * @param {Object} params - Parameters.
+ * @param {string} params.walletId - Id of the wallet.
+ * @param {Object} params.wallet - Wallet parameters to update.
+ * @param {Object} params.options - Update options.
+ * @param {Function} params.callback - Callback.
+ * @param {Object} params.io - Socket.io.
+ */
+function updateWallet({
+  walletId,
+  wallet,
+  token,
+  callback,
+  io,
+  options,
+}) {
+  const { amount } = wallet;
+  const { resetAmount } = options;
+
   authenticator.isUserAllowed({
     token,
-    commandName: dbConfig.apiCommands.DecreaseWalletAmount.name,
-    callback: ({ error }) => {
+    commandName: !amount && !resetAmount ? dbConfig.apiCommands.UpdateWallet.name : dbConfig.apiCommands.UpdateWalletAmount.name,
+    callback: ({ error, data }) => {
       if (error) {
         callback({ error });
 
         return;
       } else if (amount <= 0) {
-        callback({ error: new errorCreator.InvalidData({ name: 'amount is 0' }) });
+        callback({ error: new errorCreator.InvalidData({ name: 'amount is 0 or lower' }) });
 
         return;
       }
 
-      dbWallet.getWallet({
-        owner,
-        callback: ({ error: walletError, data: walletData }) => {
-          if (walletError) {
-            callback({ error: walletError });
+      const { user } = data;
+
+      getAccessibleWallet({
+        walletId,
+        user,
+        full: true,
+        callback: (walletData) => {
+          if (walletData.error) {
+            callback({ error: walletData.error });
 
             return;
-          } else if (walletData.wallet.amount < amount) {
+          } else if (walletData.data.wallet.amount < amount) {
             callback({ error: new errorCreator.InvalidData({ name: 'wallet amount' }) });
 
             return;
           }
 
-          dbWallet.decreaseAmount({
-            amount,
-            owner,
-            callback: ({ error: decreasedError, data: decreasedData }) => {
-              if (decreasedError) {
-                callback({ error: decreasedError });
+          dbWallet.updateWallet({
+            walletId,
+            options,
+            wallet: { amount },
+            callback: (updateData) => {
+              if (updateData.error) {
+                callback({ error: updateData.error });
 
                 return;
               }
 
-              callback({ data: decreasedData });
+              const dataToSend = {
+                data: {
+                  wallet: {
+                    objectId: walletId,
+                    amount: updateData.data.wallet.amount,
+                  },
+                  changeType: dbConfig.ChangeTypes.UPDATE,
+                },
+              };
+
+              io.to(walletId).emit(dbConfig.EmitTypes.WALLET, dataToSend);
+
+              callback({ data: updateData.data });
             },
           });
         },
@@ -75,28 +143,223 @@ function decreaseWalletAmount({ owner, amount, token, callback }) {
 }
 
 /**
- * Increase wallet amount
- * @param {string} params.owner Name of the owner of the wallet
- * @param {number} params.amount The amount to increase wallet amount with
- * @param {Function} params.callback Callback
+ * Get wallet.
+ * @param {Object} params - Parameters.
+ * @param {string} params.walletId - Id of the wallet.
+ * @param {string} params.token - jwt.
+ * @param {Function} params.callback - Callback.
  */
-function increaseWalletAmount({ owner, amount, token, callback }) {
+function getWalletById({
+  walletId,
+  token,
+  callback,
+  full,
+}) {
   authenticator.isUserAllowed({
     token,
-    commandName: dbConfig.apiCommands.IncreaseWalletAmount.name,
+    commandName: dbConfig.apiCommands.GetWallet.name,
+    callback: ({ error, data }) => {
+      if (error) {
+        callback({ error });
+
+        return;
+      }
+
+      const { user } = data;
+
+      getAccessibleWallet({
+        walletId,
+        callback,
+        user,
+        shouldBeAdmin: full && dbConfig.apiCommands.GetFull.accessLevel > user.accessLevel,
+      });
+    },
+  });
+}
+
+/**
+ * Set wallet amount to 0.
+ * @param {Object} params - Parameters.
+ * @param {string} params.walletId - Id of the wallet.
+ * @param {string} params.token - jwt
+ * @param {Function} params.callback - Callback.
+ * @param {Object} params.io - Socket.io.
+ */
+function emptyWallet({
+  walletId,
+  token,
+  callback,
+  io,
+}) {
+  authenticator.isUserAllowed({
+    token,
+    commandName: dbConfig.apiCommands.ChangeWalletAmount.name,
     callback: ({ error }) => {
       if (error) {
         callback({ error });
 
         return;
-      } else if (amount <= 0) {
-        callback({ error: new errorCreator.InvalidData({ name: 'amount is 0' }) });
+      }
+
+      dbWallet.updateWallet({
+        walletId,
+        wallet: {},
+        options: { resetAmount: true },
+        callback: (updateData) => {
+          const dataToSend = {
+            data: {
+              wallet: {
+                objectId: walletId,
+                amount: updateData.data.wallet.amount,
+              },
+              changeType: dbConfig.ChangeTypes.UPDATE,
+            },
+          };
+
+          io.to(walletId).emit(dbConfig.EmitTypes.WALLET, dataToSend);
+
+          callback({ data: updateData.data });
+        },
+      });
+    },
+  });
+}
+
+/**
+ * Modifies wallets based on transaction.
+ * @param {Object} params - Parameters.
+ * @param {Object} params.transaction - Transaction.
+ * @param {Function} params.callback - Callback
+ */
+function runTransaction({ transaction, callback }) {
+  dbWallet.updateWallet({
+    walletId: transaction.fromWalletId,
+    wallet: {},
+    options: { shouldDecreaseAmount: true },
+    callback: (decreasedWalletData) => {
+      if (decreasedWalletData.error) {
+        callback({ error: decreasedWalletData.error });
 
         return;
       }
 
-      dbWallet.getWallet({
-        owner,
+      dbWallet.updateWallet({
+        walletId: transaction.toWalletId,
+        wallet: {},
+        options: { shouldDecreaseAmount: false },
+        callback: (increasedWalletData) => {
+          if (increasedWalletData.error) {
+            callback({ error: increasedWalletData.error });
+
+            return;
+          }
+
+          callback({
+            data: {
+              fromWallet: decreasedWalletData.data.wallet,
+              toWallet: increasedWalletData.data.wallet,
+            },
+          });
+        },
+      });
+    },
+  });
+}
+
+/**
+ * Checks if the sender wallet has enough amount and returns both sender and receiver wallets.
+ * @param {Object} params - Parameters.
+ * @param {string} params.fromWalletId - Id of the sender wallet.
+ * @param {string} params.toWalletId - Id of the receiver wallet.
+ * @param {number} params.amount - Amount.
+ * @param {Function} params.callback - Callback
+ */
+function getWalletsAndCheckAmount({
+  fromWalletId,
+  toWalletId,
+  amount,
+  callback,
+}) {
+  dbWallet.getWalletsByIds({
+    walletIds: [fromWalletId, toWalletId],
+    callback: ({ error, data }) => {
+      if (error) {
+        callback({ error });
+
+        return;
+      }
+
+      const fromWallet = data.wallets.find(wallet => wallet.objectId === fromWalletId);
+
+      if (fromWallet.amount - amount < 0) {
+        callback({ error: new errorCreator.Insufficient({ name: 'transfer too much' }) });
+
+        return;
+      }
+
+      callback({ data });
+    },
+  });
+}
+
+/**
+ * Get wallets that the user has access to.
+ * @param {Object} params - Parameters.
+ * @param {Function} params.callback - Callback.
+ * @param {string} params.token - jwt.
+ */
+function getWalletsByUser({
+  callback,
+  token,
+  full,
+}) {
+  authenticator.isUserAllowed({
+    token,
+    commandName: full ? dbConfig.apiCommands.GetFull.name : dbConfig.apiCommands.GetWallet.name,
+    callback: ({ error, data }) => {
+      if (error) {
+        callback({ error });
+
+        return;
+      }
+
+      const { user } = data;
+
+      dbWallet.getWalletsByUser({
+        callback,
+        user,
+        full,
+      });
+    },
+  });
+}
+
+/**
+ * Remove a wallet.
+ * @param {Object} params - Parameters.
+ * @param {string} params.token - jwt.
+ * @param {string} params.walletId - Id of the wallet to remove.
+ * @param {Function} params.callback - Callback.
+ * @param {Object} params.io - Socket.io.
+ */
+function removeWallet({
+  token,
+  walletId,
+  callback,
+  io,
+}) {
+  authenticator.isUserAllowed({
+    token,
+    commandName: dbConfig.apiCommands.RemoveWallet.name,
+    callback: ({ error }) => {
+      if (error) {
+        callback({ error });
+
+        return;
+      }
+
+      dbWallet.removeWallet({
+        walletId,
         callback: ({ error: walletError }) => {
           if (walletError) {
             callback({ error: walletError });
@@ -104,131 +367,29 @@ function increaseWalletAmount({ owner, amount, token, callback }) {
             return;
           }
 
-          dbWallet.increaseAmount({
-            amount,
-            owner,
-            callback: ({ error: decreasedError, data: decreasedData }) => {
-              if (decreasedError) {
-                callback({ error: decreasedError });
-
-                return;
-              }
-
-              callback({ data: decreasedData });
+          const dataToSend = {
+            data: {
+              changeType: dbConfig.ChangeTypes.REMOVE,
+              wallet: { objectId: walletId },
             },
-          });
+          };
+          const callbackData = dataToSend;
+          dataToSend.success = true;
+
+          io.emit(dbConfig.EmitTypes.WALLET, dataToSend);
+
+          callback(callbackData);
         },
       });
     },
   });
 }
 
-/**
- * Get wallets
- * @param {string} prams.userName Name of the user retrieving wallets
- * @param {string} params.token jwt
- * @param {Function} params.callback Callback
- */
-function getWallets({ userName, token, callback }) {
-  authenticator.isUserAllowed({
-    token,
-    matchNameTo: userName,
-    commandName: dbConfig.apiCommands.GetWallet.name,
-    callback: ({ error, data }) => {
-      if (error) {
-        callback({ error });
-
-        return;
-      }
-
-      dbWallet.getUserWallets({
-        user: data.user,
-        callback: ({ error: walletError, data: walletsData }) => {
-          if (walletError) {
-            callback({ error: walletError });
-
-            return;
-          }
-
-          callback({ data: walletsData });
-        },
-      });
-    },
-  });
-}
-
-/**
- * Get wallet
- * @param {string} params.owner Owner of the wallet
- * @param {string} params.token jwt
- * @param {Function} params.callback Callback
- */
-function getWallet({ owner, token, callback }) {
-  authenticator.isUserAllowed({
-    token,
-    matchNameTo: owner,
-    commandName: dbConfig.apiCommands.GetWallet.name,
-    callback: ({ error, data }) => {
-      if (error) {
-        callback({ error });
-
-        return;
-      }
-
-      const walletOwner = owner || data.user.userName;
-
-      dbWallet.getWallet({
-        owner: walletOwner,
-        callback: ({ error: walletError, data: walletData }) => {
-          if (walletError) {
-            callback({ error: walletError });
-
-            return;
-          }
-
-          callback({ data: walletData });
-        },
-      });
-    },
-  });
-}
-
-/**
- * Set wallet amount to 0
- * @param {string} params.owner User name of owner
- * @param {string} params.token jwt
- * @param {boolean} [params.isTeam] Is it a team wallet?
- * @param {Function} params.callback Callback
- */
-function emptyWallet({ owner, token, callback }) {
-  authenticator.isUserAllowed({
-    token,
-    commandName: dbConfig.apiCommands.DecreaseWalletAmount.name,
-    callback: ({ error }) => {
-      if (error) {
-        callback({ error });
-
-        return;
-      }
-
-      dbWallet.resetWalletAmount({
-        owner,
-        callback: ({ error: walletError, data: walletData }) => {
-          if (walletError) {
-            callback({ error: walletError });
-
-            return;
-          }
-
-          callback({ data: walletData });
-        },
-      });
-    },
-  });
-}
-
-exports.decreaseWalletAmount = decreaseWalletAmount;
-exports.increaseWalletAmount = increaseWalletAmount;
-exports.getWallets = getWallets;
-exports.getWallet = getWallet;
+exports.updateWallet = updateWallet;
+exports.getWalletById = getWalletById;
 exports.emptyWallet = emptyWallet;
+exports.getAccessibleWallet = getAccessibleWallet;
+exports.runTransaction = runTransaction;
+exports.getWalletsAndCheckAmount = getWalletsAndCheckAmount;
+exports.getWalletsByUser = getWalletsByUser;
+exports.removeWallet = removeWallet;

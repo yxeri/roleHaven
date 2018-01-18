@@ -16,48 +16,34 @@
 
 'use strict';
 
+const tools = require('../helper/tools');
 
 const schemas = {};
 
-const simpleMsgBase = {
+schemas.simpleMsg = tools.buildLiteSchema({
   type: 'object',
-  required: ['text', 'time', 'userName'],
+  required: ['text'],
   properties: {
-    userName: { type: 'string' },
     text: { type: 'string' },
-    time: { type: 'string' },
   },
-};
+});
 
-schemas.simpleMsg = {
+schemas.fullSimpleMsg = tools.buildFullSchema({
   type: 'object',
-  required: ['data'],
+  required: ['text'],
   properties: {
-    data: {
-      type: 'object',
-      required: ['simpleMsg'],
-      properties: {
-        simpleMsg: simpleMsgBase,
-      },
-    },
+    text: { type: 'string' },
   },
-};
+});
 
 schemas.simpleMsgs = {
-  type: 'object',
-  required: ['data'],
-  properties: {
-    data: {
-      type: 'object',
-      required: ['simpleMsgs'],
-      properties: {
-        simpleMsg: {
-          type: 'array',
-          items: simpleMsgBase,
-        },
-      },
-    },
-  },
+  type: 'array',
+  items: schemas.simpleMsg,
+};
+
+schemas.fullSimpleMsgs = {
+  type: 'array',
+  items: schemas.fullSimpleMsg,
 };
 
 module.exports = schemas;

@@ -17,92 +17,45 @@
 'use strict';
 
 const appConfig = require('../../../config/defaults/config').app;
-const dbConfig = require('../../../config/defaults/config').databasePopulation;
 const tools = require('../helper/tools');
 
 const data = {};
 
-data.fakeMail = 'fakemail@thethirdgift.com';
-data.validMail = '4526b00f@opayq.com';
+data.create = {
+  first: {
+    username: tools.createRandString({ length: appConfig.usernameMaxLength }),
+    password: tools.createRandString({ length: appConfig.passwordMaxLength }),
+    registerDevice: tools.createRandString({ length: appConfig.deviceIdLength }),
+  },
+  second: {
+    username: tools.createRandString({ length: appConfig.usernameMaxLength }),
+    password: tools.createRandString({ length: appConfig.passwordMaxLength }),
+    registerDevice: tools.createRandString({ length: appConfig.deviceIdLength }),
+  },
+};
 
-data.newUserToCreate = {
-  userName: tools.createRandString({ length: appConfig.userNameMaxLength }),
-  password: tools.createRandString({ length: appConfig.passwordMaxLength }),
-  registerDevice: tools.createRandString({ length: appConfig.deviceIdLength }),
-  mail: `${tools.createRandString({ length: 10 })}@${tools.createRandString({ length: 10 })}.com`,
-  accessLevel: dbConfig.AccessLevels.PRO,
-  verified: true,
+data.update = {
+  toUpdate: {
+    username: tools.createRandString({ length: appConfig.usernameMaxLength }),
+    password: tools.createRandString({ length: appConfig.passwordMaxLength }),
+    registerDevice: tools.createRandString({ length: appConfig.deviceIdLength }),
+  },
+  updateWith: {
+    username: tools.createRandString({ length: appConfig.usernameMaxLength }),
+  },
 };
-data.newUserToCreateMissionWith = {
-  userName: tools.createRandString({ length: appConfig.userNameMaxLength }),
-  password: tools.createRandString({ length: appConfig.passwordMaxLength }),
-  registerDevice: tools.createRandString({ length: appConfig.deviceIdLength }),
-  mail: `${tools.createRandString({ length: 10 })}@${tools.createRandString({ length: 10 })}.com`,
-  accessLevel: dbConfig.AccessLevels.PRO,
-  verified: true,
-};
-data.newAdminUserToCreate = {
-  userName: tools.createRandString({ length: appConfig.userNameMaxLength }),
-  password: tools.createRandString({ length: appConfig.passwordMaxLength }),
-  registerDevice: tools.createRandString({ length: appConfig.deviceIdLength }),
-  mail: `${tools.createRandString({ length: 10 })}@${tools.createRandString({ length: 10 })}.com`,
-  accessLevel: dbConfig.AccessLevels.ADMIN,
-  visibility: dbConfig.AccessLevels.PRO,
-  verified: true,
-};
-data.newUserToCreateWithValidMail = {
-  userName: tools.createRandString({ length: appConfig.userNameMaxLength }),
-  password: tools.createRandString({ length: appConfig.passwordMaxLength }),
-  registerDevice: tools.createRandString({ length: appConfig.deviceIdLength }),
-  mail: data.validMail,
-};
-data.nonExistingUser = {
-  userName: tools.createRandString({ length: appConfig.userNameMaxLength }),
-  password: tools.createRandString({ length: appConfig.passwordMaxLength }),
-  registerDevice: tools.createRandString({ length: appConfig.deviceIdLength }),
-  mail: data.validMail,
-};
-data.roomToCreate = {
-  roomName: tools.createRandString({ length: appConfig.roomNameMaxLength }),
-};
-data.publicRoomToCreate = {
-  roomName: tools.createRandString({ length: appConfig.roomNameMaxLength }),
-  visibility: dbConfig.AccessLevels.ANONYMOUS,
-  accessLevel: dbConfig.AccessLevels.BASIC,
-};
-data.passwordProtectedRoomToCreate = {
-  roomName: tools.createRandString({ length: appConfig.roomNameMaxLength }),
-  password: tools.createRandString({ length: appConfig.passwordMaxLength }),
-};
-data.invisibleRoomToCreate = {
-  roomName: tools.createRandString({ length: appConfig.roomNameMaxLength }),
-  visibility: dbConfig.AccessLevels.GOD,
-};
-data.highAccessLevelRoomToCreate = {
-  roomName: tools.createRandString({ length: appConfig.roomNameMaxLength }),
-  accessLevel: dbConfig.AccessLevels.GOD,
-};
-data.roomThatDoesNotExist = {
-  roomName: tools.createRandString({ length: appConfig.roomNameMaxLength }),
-};
-data.alias = tools.createRandString({ length: appConfig.userNameMaxLength });
 
-data.incorrectPassword = tools.createRandString({ length: appConfig.passwordMaxLength });
-
-data.lanternStationToCreate = {
-  stationId: 20,
-  stationName: `${tools.createRandString({ length: 5 })}`,
-  isActive: true,
-};
-data.anotherLanternStationToCreate = {
-  stationId: 21,
-  stationName: `${tools.createRandString({ length: 5 })}`,
-  isActive: true,
-};
-data.aThirdLanternStationToCreate = {
-  stationId: 22,
-  stationName: `${tools.createRandString({ length: 5 })}`,
-  isActive: true,
+data.remove = {
+  toRemove: {
+    username: tools.createRandString({ length: appConfig.usernameMaxLength }),
+    password: tools.createRandString({ length: appConfig.passwordMaxLength }),
+    registerDevice: tools.createRandString({ length: appConfig.deviceIdLength }),
+  },
+  secondToRemove: {
+    username: tools.createRandString({ length: appConfig.usernameMaxLength }),
+    password: tools.createRandString({ length: appConfig.passwordMaxLength }),
+    registerDevice: tools.createRandString({ length: appConfig.deviceIdLength }),
+  },
 };
 
 module.exports = data;

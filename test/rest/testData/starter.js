@@ -22,45 +22,85 @@ const tools = require('../helper/tools');
 
 const data = {};
 
-data.adminUserToAuth = {
-  userName: tools.createRandString({ length: appConfig.userNameMaxLength }),
+data.adminUserOne = {
+  username: 'adminOne',
   password: tools.createRandString({ length: appConfig.passwordMaxLength }),
   registerDevice: tools.createRandString({ length: appConfig.deviceIdLength }),
-  mail: `${tools.createRandString({ length: 10 })}@${tools.createRandString({ length: 10 })}.com`,
   accessLevel: dbConfig.AccessLevels.ADMIN,
-  visibility: dbConfig.AccessLevels.PRO,
-  verified: true,
-  registeredAt: new Date(),
-  fullName: tools.createRandString({ length: appConfig.userNameMaxLength }),
+  visibility: dbConfig.AccessLevels.ADMIN,
+  isVerified: true,
+  fullName: tools.createRandString({ length: appConfig.usernameMaxLength }),
 };
-data.basicUserToAuth = {
-  userName: tools.createRandString({ length: appConfig.userNameMaxLength }),
+
+data.adminUserTwo = {
+  username: 'adminTwo',
   password: tools.createRandString({ length: appConfig.passwordMaxLength }),
   registerDevice: tools.createRandString({ length: appConfig.deviceIdLength }),
-  mail: `${tools.createRandString({ length: 10 })}@${tools.createRandString({ length: 10 })}.com`,
-  verified: true,
-  accessLevel: dbConfig.AccessLevels.BASIC,
-  registeredAt: new Date(),
-  fullName: tools.createRandString({ length: appConfig.userNameMaxLength }),
+  accessLevel: dbConfig.AccessLevels.ADMIN,
+  visibility: dbConfig.AccessLevels.STANDARD,
+  isVerified: true,
+  fullName: tools.createRandString({ length: appConfig.usernameMaxLength }),
 };
-data.unverifiedUserToAuth = {
-  userName: tools.createRandString({ length: appConfig.userNameMaxLength }),
+
+data.basicUserOne = {
+  username: 'basicOne',
   password: tools.createRandString({ length: appConfig.passwordMaxLength }),
   registerDevice: tools.createRandString({ length: appConfig.deviceIdLength }),
-  mail: `${tools.createRandString({ length: 10 })}@${tools.createRandString({ length: 10 })}.com`,
-  verified: false,
-  registeredAt: new Date(),
-  fullName: tools.createRandString({ length: appConfig.userNameMaxLength }),
+  isVerified: true,
+  accessLevel: dbConfig.AccessLevels.STANDARD,
+  fullName: tools.createRandString({ length: appConfig.usernameMaxLength }),
 };
-data.bannedUserToAuth = {
-  userName: tools.createRandString({ length: appConfig.userNameMaxLength }),
+
+data.basicUserTwo = {
+  username: 'basicTwo',
   password: tools.createRandString({ length: appConfig.passwordMaxLength }),
   registerDevice: tools.createRandString({ length: appConfig.deviceIdLength }),
-  mail: `${tools.createRandString({ length: 10 })}@${tools.createRandString({ length: 10 })}.com`,
-  verified: true,
-  banned: true,
-  registeredAt: new Date(),
-  fullName: tools.createRandString({ length: appConfig.userNameMaxLength }),
+  isVerified: true,
+  accessLevel: dbConfig.AccessLevels.STANDARD,
+  fullName: tools.createRandString({ length: appConfig.usernameMaxLength }),
+};
+
+data.moderatorUserOne = {
+  username: 'moderatorOne',
+  password: tools.createRandString({ length: appConfig.passwordMaxLength }),
+  registerDevice: tools.createRandString({ length: appConfig.deviceIdLength }),
+  isVerified: true,
+  accessLevel: dbConfig.AccessLevels.MODERATOR,
+  fullName: tools.createRandString({ length: appConfig.usernameMaxLength }),
+};
+data.moderatorUserTwo = {
+  username: 'moderatorTwo',
+  password: tools.createRandString({ length: appConfig.passwordMaxLength }),
+  registerDevice: tools.createRandString({ length: appConfig.deviceIdLength }),
+  isVerified: true,
+  accessLevel: dbConfig.AccessLevels.MODERATOR,
+  fullName: tools.createRandString({ length: appConfig.usernameMaxLength }),
+};
+
+data.unverifiedUser = {
+  username: 'unverified',
+  password: tools.createRandString({ length: appConfig.passwordMaxLength }),
+  registerDevice: tools.createRandString({ length: appConfig.deviceIdLength }),
+  isVerified: false,
+  fullName: tools.createRandString({ length: appConfig.usernameMaxLength }),
+};
+
+data.bannedUser = {
+  username: 'banned',
+  password: tools.createRandString({ length: appConfig.passwordMaxLength }),
+  registerDevice: tools.createRandString({ length: appConfig.deviceIdLength }),
+  isVerified: true,
+  isBanned: true,
+  fullName: tools.createRandString({ length: appConfig.usernameMaxLength }),
+};
+
+data.nonExistingUser = {
+  username: 'nonExisting',
+  password: tools.createRandString({ length: appConfig.passwordMaxLength }),
+  registerDevice: tools.createRandString({ length: appConfig.deviceIdLength }),
+  isVerified: true,
+  isBanned: true,
+  fullName: tools.createRandString({ length: appConfig.usernameMaxLength }),
 };
 
 module.exports = data;

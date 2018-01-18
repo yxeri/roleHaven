@@ -49,14 +49,21 @@ function printError(errorObject) {
 
 class GeneralError {
   /**
-   * Create a general error
-   * @param {string} [params.text] Human-readable text to send back with the error
-   * @param {string} [params.type] Type of error
-   * @param {Error} [params.errorObject] Error object
-   * @param {Object} [params.extraData] Extra data that client can use when an error is sent
-   * @param {boolean} [params.verbose] Should error messages be printed?
+   * Create a general error.
+   * @param {Object} params - Parameters.
+   * @param {string[]} [params.text] - Human-readable text to send back with the error.
+   * @param {string} [params.type] - Type of error.
+   * @param {Error} [params.errorObject] - Error object.
+   * @param {Object} [params.extraData] - Extra data that client can use when an error is sent.
+   * @param {boolean} [params.verbose] - Should error messages be printed?
    */
-  constructor({ text = ['Something went wrong'], type = ErrorTypes.GENERAL, errorObject, verbose = true, extraData }) {
+  constructor({
+    errorObject,
+    extraData,
+    text = ['Something went wrong'],
+    type = ErrorTypes.GENERAL,
+    verbose = true,
+  }) {
     this.text = text;
     this.type = type;
     this.extraData = extraData;

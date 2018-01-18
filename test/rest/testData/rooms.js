@@ -16,44 +16,36 @@
 
 'use strict';
 
-const dbConfig = require('../../../config/defaults/config').databasePopulation;
 const appConfig = require('../../../config/defaults/config').app;
 const tools = require('../helper/tools');
 
 const data = {};
 
-data.roomToCreate = {
-  roomName: tools.createRandString({ length: appConfig.roomNameMaxLength }),
+data.create = {
+  first: {
+    roomName: tools.createRandString({ length: appConfig.roomNameMaxLength }),
+  },
+  second: {
+    roomName: tools.createRandString({ length: appConfig.roomNameMaxLength }),
+  },
 };
-data.publicRoomToCreate = {
-  roomName: tools.createRandString({ length: appConfig.roomNameMaxLength }),
-  visibility: dbConfig.AccessLevels.ANONYMOUS,
-  accessLevel: dbConfig.AccessLevels.BASIC,
-};
-data.passwordProtectedRoomToCreate = {
-  roomName: tools.createRandString({ length: appConfig.roomNameMaxLength }),
-  password: tools.createRandString({ length: appConfig.passwordMaxLength }),
-};
-data.invisibleRoomToCreate = {
-  roomName: tools.createRandString({ length: appConfig.roomNameMaxLength }),
-  visibility: dbConfig.AccessLevels.GOD,
-};
-data.highAccessLevelRoomToCreate = {
-  roomName: tools.createRandString({ length: appConfig.roomNameMaxLength }),
-  accessLevel: dbConfig.AccessLevels.GOD,
-};
-data.roomThatDoesNotExist = {
-  roomName: tools.createRandString({ length: appConfig.roomNameMaxLength }),
-};
-data.incorrectPassword = tools.createRandString({ length: appConfig.passwordMaxLength });
-data.roomStartingWithZz = {
-  roomName: `zzzzzz${tools.createRandString({ length: appConfig.roomNameMaxLength - 6 })}`,
-};
-data.secondRoomStartingWithZz = {
-  roomName: `zzzzzz${tools.createRandString({ length: appConfig.roomNameMaxLength - 6 })}`,
-};
-data.partialRoomName = 'zzzzzz';
 
-data.incorrectPassword = tools.createRandString({ length: appConfig.passwordMaxLength });
+data.update = {
+  toUpdate: {
+    roomName: tools.createRandString({ length: appConfig.roomNameMaxLength }),
+  },
+  updateWith: {
+    roomName: tools.createRandString({ length: appConfig.roomNameMaxLength }),
+  },
+};
+
+data.remove = {
+  toRemove: {
+    roomName: tools.createRandString({ length: appConfig.roomNameMaxLength }),
+  },
+  secondToRemove: {
+    roomName: tools.createRandString({ length: appConfig.roomNameMaxLength }),
+  },
+};
 
 module.exports = data;

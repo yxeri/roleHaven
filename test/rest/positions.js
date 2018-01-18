@@ -20,78 +20,53 @@
 
 const chai = require('chai');
 const chaiHttp = require('chai-http');
-const app = require('../../app');
 const chaiJson = require('chai-json-schema');
-const errorSchemas = require('./schemas/errors');
-const tokens = require('./testData/tokens');
 const positionSchemas = require('./schemas/positions');
-const positionData = require('./testData/positions');
+const testData = require('./testData/positions');
+const testBuilder = require('./helper/testBuilder');
 
 chai.should();
-
 chai.use(chaiHttp);
 chai.use(chaiJson);
 
 describe('Positions', () => {
-  describe('Create position', () => {
-    it('Should NOT create position with incorrect authorization on /api/positions POST', (done) => {
-      chai
-        .request(app)
-        .post('/api/positions')
-        .send({ data: { position: positionData.updatePositionData } })
-        .set('Authorization', tokens.incorrectJwt)
-        .end((error, response) => {
-          response.should.have.status(401);
-          response.should.be.json;
-          response.body.should.be.jsonSchema(errorSchemas.error);
+  const apiPath = '/api/positions/';
+  const objectIdType = 'positionId';
+  const objectType = 'position';
+  const objectsType = 'positions';
 
-          done();
-        });
-    });
-
-    it('Should create position on /api/positions POST', (done) => {
-      chai
-        .request(app)
-        .post('/api/positions')
-        .send({ data: { position: positionData.updatePositionData } })
-        .set('Authorization', tokens.adminUser)
-        .end((error, response) => {
-          response.should.have.status(200);
-          response.should.be.json;
-          response.body.should.be.jsonSchema(positionSchemas.position);
-
-          done();
-        });
-    });
+  testBuilder.createTestCreate({
+    objectType,
+    apiPath,
+    objectIdType,
+    testData: testData.create,
+    schema: positionSchemas.position,
   });
 
-  describe('Get positions', () => {
-    it('Should NOT get positions with incorrect authorization on /api/positions GET', (done) => {
-      chai
-        .request(app)
-        .get('/api/positions')
-        .set('Authorization', tokens.incorrectJwt)
-        .end((error, response) => {
-          response.should.have.status(401);
-          response.should.be.json;
-          response.body.should.be.jsonSchema(errorSchemas.error);
+  testBuilder.createTestUpdate({
+    objectType,
+    objectIdType,
+    apiPath,
+    testData: testData.update,
+    schema: positionSchemas.position,
+  });
 
-          done();
-        });
-    });
+  testBuilder.createTestGet({
+    objectIdType,
+    apiPath,
+    objectType,
+    objectsType,
+    testData: testData.create,
+    singleLiteSchema: positionSchemas.position,
+    multiLiteSchema: positionSchemas.positions,
+    singleFullSchema: positionSchemas.fullPosition,
+    multiFullSchema: positionSchemas.fullPositions,
+  });
 
-    it('Should get positions on /api/positions GET', (done) => {
-      chai
-        .request(app)
-        .get('/api/positions')
-        .set('Authorization', tokens.basicUser)
-        .end((error, response) => {
-          response.should.have.status(200);
-          response.should.be.json;
-          response.body.should.be.jsonSchema(positionSchemas.positions);
-
-          done();
-        });
-    });
+  testBuilder.createTestDelete({
+    objectType,
+    objectIdType,
+    apiPath,
+    testData: testData.remove,
   });
 });

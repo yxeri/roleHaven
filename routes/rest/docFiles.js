@@ -25,46 +25,48 @@ const errorCreator = require('../../objects/error/errorCreator');
 const router = new express.Router();
 
 /**
+ * @api {OBJECT DEFINITION} DocFile 1. DocFile definition
+ * @apiGroup DocFiles
+ * @apiVersion 8.0.0
+ *
+ * @apiDescription The DocFile object.
+ *
+ * @apiParam {string} docFileId [Unique, immutable] Id of the DocFile. It is used to target this specific object.
+ * @apiParam {string} code [Unique, mutable] Human-readable code to find and/or unlock the document for a user.
+ * @apiParam {string} title [Unique, mutable] Title of the document.
+ * @apiParam {string[]} text Text content in the document.
+ */
+
+/**
  * @param {object} io Socket.IO
  * @returns {Object} Router
  */
 function handle(io) {
   /**
-   * @api {get} /docFiles Get docFiles
-   * @apiVersion 6.0.0
+   * @api {get} /docFiles Get documents
+   * @apiVersion 8.0.0
    * @apiName GetDocFiles
    * @apiGroup DocFiles
    *
-   * @apiHeader {String} Authorization Your JSON Web Token
+   * @apiHeader {string} Authorization Your JSON Web Token.
    *
-   * @apiDescription Retrieve docFiles
+   * @apiDescription Retrieve documents.
+   *
+   * @apiParam {boolean} [full] [Query] Should the complete object be retrieved?
    *
    * @apiSuccess {Object} data
-   * @apiSuccess {Object[]} data.docFiles All public docFiles. Empty if no match was found
-   * @apiSuccessExample {json} Success-Response:
-   *  {
-   *    "data": {
-   *      "docFiles": [
-   *        {
-   *          "title": "Hello",
-   *          "docFileId": "hello",
-   *          "creator": "rez5",
-   *          "text": [
-   *            "Hello world!",
-   *            "This is great"
-   *          ],
-   *          "isPublic": true,
-   *        }
-   *      ]
-   *    }
-   *  }
+   * @apiSuccess {DocFile[]} data.docFiles Found documents.
    */
   router.get('/', (request, response) => {
-    docFileManager.getDocFiles({
-      token: request.headers.authorization,
+    const { full } = request.query;
+    const { authorization: token } = request.headers;
+
+    docFileManager.getDocFilesByUser({
+      token,
+      full,
       callback: ({ error, data }) => {
         if (error) {
-          restErrorChecker.checkAndSendError({ response, error, sentData: request.body.data });
+          restErrorChecker.checkAndSendError({ response, error });
 
           return;
         }
@@ -75,49 +77,79 @@ function handle(io) {
   });
 
   /**
-   * @api {get} /docFiles/:docFileId Get specific docFile
-   * @apiVersion 6.0.0
+   * @api {get} /docFiles/:docFileId Get a document
+   * @apiVersion 8.0.0
    * @apiName GetDocFile
    * @apiGroup DocFiles
    *
-   * @apiHeader {String} Authorization Your JSON Web Token
+   * @apiHeader {string} Authorization Your JSON Web Token.
    *
-   * @apiDescription Retrieve a specific docFile based on the sent docFile ID
+   * @apiDescription Retrieve a document.
    *
-   * @apiParam {String} docFileId The docFile ID.
+   * @apiParam {string} docFileId [Url] The Id of the document to retrieve.
+   *
+   * @apiParam {boolean} [full] [Query] Should the complete object be retrieved?
    *
    * @apiSuccess {Object} data
-   * @apiSuccess {Object[]} data.docFiles Found docFile with sent docFile ID. Empty if no match was found
-   * @apiSuccessExample {json} Success-Response:
-   *  {
-   *    "data": {
-   *      "docFiles": [
-   *        {
-   *          "_id": "58093459d3b44c3400858273",
-   *          "title": "Hello",
-   *          "docFileId": "hello",
-   *          "creator": "rez5",
-   *          "text": [
-   *            "Hello world!",
-   *            "This is great"
-   *          ],
-   *          "isPublic": true,
-   *          "visibility": 0
-   *        }
-   *      ]
-   *    }
-   *  }
+   * @apiSuccess {DocFile} data.docFile Found document.
    */
   router.get('/:docFileId', (request, response) => {
     if (!objectValidator.isValidData(request.params, { docFileId: true })) {
-      restErrorChecker.checkAndSendError({ response, error: new errorCreator.InvalidData({ expected: '' }), sentData: request.body.data });
+      restErrorChecker.checkAndSendError({ response, error: new errorCreator.InvalidData({ expected: 'params = { docFileId }' }) });
 
       return;
     }
 
-    docFileManager.getDocFile({
-      docFileId: request.params.docFileId,
-      token: request.headers.authorization,
+    const { docFileId } = request.params;
+    const { authorization: token } = request.headers;
+    const { full } = request.query;
+
+    docFileManager.getDocFileById({
+      docFileId,
+      token,
+      full,
+      callback: ({ error, data }) => {
+        if (error) {
+          restErrorChecker.checkAndSendError({ response, error });
+
+          return;
+        }
+
+        response.json({ data });
+      },
+    });
+  });
+
+  /**
+   * @api {post} /docFiles Create a document
+   * @apiVersion 8.0.0
+   * @apiName CreateDocFile
+   * @apiGroup DocFiles
+   *
+   * @apiHeader {string} Authorization Your JSON Web Token.
+   *
+   * @apiDescription Create a document.
+   *
+   * @apiParam {Object} data Body parameters.
+   * @apiParam {DocFile} data.docFile Document to create.
+   *
+   * @apiSuccess {Object} data
+   * @apiSuccess {DocFile[]} data.docFile Created document.
+   */
+  router.post('/', (request, response) => {
+    if (!objectValidator.isValidData(request.body, { data: { docFile: { code: true, text: true, title: true } } })) {
+      restErrorChecker.checkAndSendError({ response, error: new errorCreator.InvalidData({ expected: 'data = { docFile: { text, title } }' }), sentData: request.body.data });
+
+      return;
+    }
+
+    const { docFile } = request.body.data;
+    const { authorization: token } = request.headers;
+
+    docFileManager.createDocFile({
+      io,
+      token,
+      docFile,
       callback: ({ error, data }) => {
         if (error) {
           restErrorChecker.checkAndSendError({ response, error, sentData: request.body.data });
@@ -131,68 +163,90 @@ function handle(io) {
   });
 
   /**
-   * @api {post} /docFiles Create an docFile
-   * @apiVersion 6.0.0
-   * @apiName CreateDocFile
+   * @api {delete} /docFiles/:docFileId Delete a document
+   * @apiVersion 8.0.0
+   * @apiName RemoveDocFile
    * @apiGroup DocFiles
    *
-   * @apiHeader {String} Authorization Your JSON Web Token
+   * @apiHeader {string} Authorization Your JSON Web Token.
    *
-   * @apiDescription Create an docFile
+   * @apiDescription Delete a document.
    *
-   * @apiParam {Object} data
-   * @apiParam {Object} data.docFile DocFile
-   * @apiParam {String} data.docFile.title Title for the docFile
-   * @apiParam {String} data.docFile.docFileId ID of the docFile. Will be used to retrieve this specific docFile
-   * @apiParam {String[]} data.docFile.text Content of the docFile
-   * @apiParam {Boolean} data.docFile.isPublic Should the docFile be public? Non-public docFiles can only be retrieved with its docFile ID
-   * @apiParamExample {json} Request-Example:
-   *   {
-   *    "data": {
-   *      "docFiles": [
-   *        {
-   *          "title": "Hello",
-   *          "docFileId": "hello",
-   *          "text": [
-   *            "Hello world!",
-   *            "This is great"
-   *          ],
-   *          "isPublic": true
-   *        }
-   *      ]
-   *    }
-   *  }
+   * @apiParam {string} docFileId [Url] Id of the document to remove.
    *
    * @apiSuccess {Object} data
-   * @apiSuccess {Object[]} data.docFiles Found docFile with sent docFile ID. Empty if no match was found
-   * @apiSuccessExample {json} Success-Response:
-   *  {
-   *    "data": {
-   *      "docFile": {
-   *        "title": "Hello",
-   *        "docFileId": "hello",
-   *        "creator": "rez5",
-   *        "text": [
-   *          "Hello world!",
-   *          "This is great"
-   *        ],
-   *        "isPublic": true,
-   *        "visibility": 0
-   *      }
-   *    }
-   *  }
+   * @apiSuccess {DocFile} data.success Was the document successfully removed?
    */
-  router.post('/', (request, response) => {
-    if (!objectValidator.isValidData(request.body, { data: { docFile: { docFileId: true, text: true, title: true } } })) {
-      restErrorChecker.checkAndSendError({ response, error: new errorCreator.InvalidData({ expected: '' }), sentData: request.body.data });
+  router.delete('/:docFileId', (request, response) => {
+    if (!objectValidator.isValidData(request.params, { docFileId: true })) {
+      restErrorChecker.checkAndSendError({ response, error: new errorCreator.InvalidData({ expected: 'params = { docFileId }' }) });
 
       return;
     }
 
-    docFileManager.createDocFile({
+    const { docFileId } = request.params;
+    const { authorization: token } = request.headers;
+
+    docFileManager.removeDocFile({
       io,
-      token: request.headers.authorization,
-      docFile: request.body.data.docFile,
+      docFileId,
+      token,
+      callback: ({ error, data }) => {
+        if (error) {
+          restErrorChecker.checkAndSendError({ response, error, sentData: request.body.data });
+
+          return;
+        }
+
+        response.json({ data });
+      },
+    });
+  });
+
+  /**
+   * @api {put} /docFiles/:docFileId Update a document
+   * @apiVersion 8.0.0
+   * @apiName UpdateDocFile
+   * @apiGroup DocFiles
+   *
+   * @apiHeader {string} Authorization Your JSON Web Token.
+   *
+   * @apiDescription Update a document.
+   *
+   * @apiParam {string} docFileId Id of the document to update.
+   *
+   * @apiParam {Object} data
+   * @apiParam {DocFile} data.docFile File parameters to update.
+   * @apiParam {Object} [data.options] Update options.
+   * @apiParam {boolean} [data.options.resetOwnerAliasId] Should the owner alias Id be removed?
+   *
+   * @apiSuccess {Object} data
+   * @apiSuccess {DocFile} data.docFile Updated document.
+   */
+  router.put('/:docFileId', (request, response) => {
+    if (!objectValidator.isValidData(request.params, { docFileId: true })) {
+      restErrorChecker.checkAndSendError({ response, error: new errorCreator.InvalidData({ expected: 'params = { docFileId }' }) });
+
+      return;
+    } else if (!objectValidator.isValidData(request.body, { data: { docFile: true } })) {
+      restErrorChecker.checkAndSendError({ response, error: new errorCreator.InvalidData({ expected: 'data = { docFile }' }), sentData: request.body.data });
+
+      return;
+    }
+
+    const {
+      docFile,
+      options,
+    } = request.body.data;
+    const { docFileId } = request.params;
+    const { authorization: token } = request.headers;
+
+    docFileManager.updateDocFile({
+      docFile,
+      options,
+      io,
+      docFileId,
+      token,
       callback: ({ error, data }) => {
         if (error) {
           restErrorChecker.checkAndSendError({ response, error, sentData: request.body.data });

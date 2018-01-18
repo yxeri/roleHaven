@@ -16,53 +16,37 @@
 
 'use strict';
 
-const tools = require('../helper/tools');
-const appConfig = require('../../../config/defaults/config').app;
-const dbConfig = require('../../../config/defaults/config').databasePopulation;
-
 const data = {};
 
-data.updatePositionData = {
-  description: [tools.createRandString({ length: appConfig.docFileMaxLength })],
-  title: tools.createRandString({ length: appConfig.docFileTitleMaxLength }),
-  positionName: tools.createRandString({ length: 5 }),
-  coordinates: {
-    longitude: 59,
-    latitude: 49,
+data.create = {
+  first: {
+    positionName: 'posOne',
   },
-  markerType: 'custom',
-};
-data.userPositionToUpdateWith = {
-  coordinates: {
-    longitude: 10,
-    latitude: 10,
+  second: {
+    positionName: 'posTwo',
   },
 };
-data.otherUserPositionToUpdateWith = {
-  coordinates: {
-    longitude: 5,
-    latitude: 5,
+
+data.update = {
+  toUpdate: {
+    positionName: 'posThree',
+  },
+  updateWith: {
+    coordinates: {
+      longitude: 1,
+      latitude: 1,
+      accuracy: 50,
+    },
   },
 };
-data.userThatDoesNotExist = {
-  userName: tools.createRandString({ length: appConfig.userNameMaxLength }),
-};
-data.adminUserToCreateAndGetPositionFrom = {
-  userName: tools.createRandString({ length: appConfig.userNameMaxLength }),
-  password: tools.createRandString({ length: appConfig.passwordMaxLength }),
-  registerDevice: tools.createRandString({ length: appConfig.deviceIdLength }),
-  mail: `${tools.createRandString({ length: 10 })}@${tools.createRandString({ length: 10 })}.com`,
-  accessLevel: dbConfig.AccessLevels.ADMIN,
-  visibility: dbConfig.AccessLevels.PRO,
-  verified: true,
-};
-data.basicUserToCreateAndGetPositionFrom = {
-  userName: tools.createRandString({ length: appConfig.userNameMaxLength }),
-  password: tools.createRandString({ length: appConfig.passwordMaxLength }),
-  registerDevice: tools.createRandString({ length: appConfig.deviceIdLength }),
-  mail: `${tools.createRandString({ length: 10 })}@${tools.createRandString({ length: 10 })}.com`,
-  verified: true,
-  accessLevel: dbConfig.AccessLevels.BASIC,
+
+data.remove = {
+  toRemove: {
+    positionName: 'postFive',
+  },
+  secondToRemove: {
+    positionName: 'postSix',
+  },
 };
 
 module.exports = data;

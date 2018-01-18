@@ -15,168 +15,230 @@
  */
 
 const mongoose = require('mongoose');
-const databaseConnector = require('../databaseConnector');
+const dbConnector = require('../databaseConnector');
 const errorCreator = require('../../objects/error/errorCreator');
 
-const calibrationMissionSchema = new mongoose.Schema({
-  owner: String,
+const calibrationMissionSchema = new mongoose.Schema(dbConnector.createSchema({
   stationId: Number,
   code: Number,
-  completed: { type: Boolean, default: false },
+  isCompleted: { type: Boolean, default: false },
   timeCompleted: Date,
-  timeCreated: Date,
-}, { collection: 'calibrationMissions' });
+}), { collection: 'calibrationMissions' });
 
 const CalibrationMission = mongoose.model('CalibrationMission', calibrationMissionSchema);
 
 /**
- * Get active mission
- * @param {string} params.owner User name
- * @param {boolean} [params.silentOnDoesNotExist] Should the error on does not exist be supressed?
- * @param {Function} params.callback Callback
+ * Update mission
+ * @private
+ * @param {Object} params - Parameters
+ * @param {string} params.objectId - ID of the mission to update
+ * @param {Object} params.update - Update
+ * @param {Function} params.callback - Callback
  */
-function getActiveMission({ owner, silentOnDoesNotExist, callback }) {
-  const query = { $and: [{ owner }, { completed: false }] };
-  const filter = { _id: 0 };
+function updateObject({ objectId, update, callback }) {
+  dbConnector.updateObject({
+    update,
+    query: { _id: objectId },
+    object: CalibrationMission,
+    errorNameContent: 'updateCalibrationMission',
+    callback: ({ error, data }) => {
+      if (error) {
+        callback({ error });
 
-  CalibrationMission.findOne(query, filter).lean().exec((err, foundMission) => {
-    if (err) {
-      callback({ error: new errorCreator.Database({ errorObject: err, name: 'getActiveMission' }) });
-
-      return;
-    } else if (!foundMission) {
-      if (!silentOnDoesNotExist) {
-        callback({ error: new errorCreator.DoesNotExist({ name: `calibration mission ${owner}` }) });
-      } else {
-        callback({ data: { doesNotExist: true } });
+        return;
       }
 
-      return;
-    }
+      callback({ data: { mission: data.object } });
+    },
+  });
+}
 
-    callback({ data: { mission: foundMission } });
+/**
+ * Get calibration missions
+ * @private
+ * @param {Object} params - Parameters
+ * @param {Object} params.query - Query to get calibration missions
+ * @param {Object} [params.sort] - Sorting instructions
+ * @param {Function} params.callback - Callback
+ */
+function getMissions({ query, sort, callback }) {
+  dbConnector.getObjects({
+    query,
+    sort,
+    object: CalibrationMission,
+    callback: ({ error, data }) => {
+      if (error) {
+        callback({ error });
+
+        return;
+      }
+
+      callback({ data: { missions: data.objects } });
+    },
+  });
+}
+
+/**
+ * Get calibration mission
+ * @private
+ * @param {Object} params - Parameters
+ * @param {string} params.query - Query to get calibration mission
+ * @param {boolean} [params.silentDoesNotExist] - Should the error when an object does not exist be surpressed?
+ * @param {Function} params.callback - Callback
+ */
+function getMission({ query, silentDoesNotExist, callback }) {
+  dbConnector.getObject({
+    query,
+    object: CalibrationMission,
+    callback: ({ error, data }) => {
+      if (error) {
+        callback({ error });
+
+        return;
+      } else if (!data.object) {
+        if (!silentDoesNotExist) {
+          callback({ error: new errorCreator.DoesNotExist({ name: `calibration mission ${query.toString()}` }) });
+        } else {
+          callback({ data: { exists: false } });
+        }
+
+        return;
+      }
+
+      callback({ data: { mission: data.object } });
+    },
+  });
+}
+
+/**
+ * Get active mission
+ * @param {Object} params - Parameters
+ * @param {string} params.ownerId - ID of the user who is the owner
+ * @param {boolean} [params.silentDoesNotExist] - Should the error be surpressed if the mission does not exist?
+ * @param {Function} params.callback - Callback
+ */
+function getActiveMission({ ownerId, silentDoesNotExist, callback }) {
+  getMission({
+    callback,
+    silentDoesNotExist,
+    query: { $and: [{ ownerId }, { isCompleted: false }] },
   });
 }
 
 /**
  * Get finished missions
- * @param {string} params.owner User name of the owner of the mission
- * @param {Function} params.callback Callback
+ * @param {Object} params - Parameters
+ * @param {string} params.ownerId - ID of the user
+ * @param {Function} params.callback - Callback
  */
-function getInactiveMissions({ owner, callback }) {
-  const query = { $and: [{ owner }, { completed: true }] };
-  const filter = { _id: 0 };
-  const sort = { timeCompleted: 1 };
-
-  CalibrationMission.find(query, filter).sort(sort).lean().exec((err, foundMissions = []) => {
-    if (err) {
-      callback({ error: new errorCreator.Database({ errorObject: err, name: 'getInactiveMissions' }) });
-
-      return;
-    }
-
-    callback({ data: { missions: foundMissions } });
+function getInactiveMissions({ ownerId, callback }) {
+  getMissions({
+    callback,
+    query: { $and: [{ ownerId }, { isCompleted: true }] },
+    sort: { timeCompleted: 1 },
   });
 }
 
 /**
- * Get missions
- * @param {Function} params.callback Callback
+ * Get all missions
+ * @param {Object} params - Parameters
+ * @param {boolean} params.includeCompleted - Should completed missions be included?
+ * @param {Function} params.callback - Callback
  */
-function getMissions({ getInactive, callback }) {
+function getAllMissions({ includeCompleted, callback }) {
   const query = {};
-  const filter = { _id: 0 };
 
-  if (!getInactive) { query.completed = false; }
+  if (!includeCompleted) { query.isCompleted = false; }
 
-  CalibrationMission.find(query, filter).lean().exec((err, foundMissions = []) => {
-    if (err) {
-      callback({ error: new errorCreator.Database({ errorObject: err, name: 'getMissions' }) });
-
-      return;
-    }
-
-    callback({ data: { missions: foundMissions } });
+  getMissions({
+    query,
+    callback,
   });
 }
 
 /**
  * Removes mission based on owner
- * @param {Object} params.mission Mission
+ * @param {Object} params - Parameters
+ * @param {Object} params.ownerId - ID of the user
  * @param {Function} params.callback Callback
  */
-function removeMission({ mission, callback }) {
-  const query = { owner: mission.owner, completed: false };
-
-  CalibrationMission.findOneAndRemove(query).lean().exec((error) => {
-    if (error) {
-      callback({ error });
-
-      return;
-    }
-
-    callback({ data: { success: true } });
+function removeMission({ ownerId, callback }) {
+  dbConnector.removeObject({
+    callback,
+    query: { ownerId, isCompleted: false },
+    object: CalibrationMission,
   });
 }
 
 /**
  * Create and save mission
- * @param {Object} params.mission New mission
- * @param {Function} params.callback Callback
+ * @param {Object} params - Parameters
+ * @param {Object} params.mission - New mission
+ * @param {Function} params.callback - Callback
  */
 function createMission({ mission, callback }) {
   const newMission = new CalibrationMission(mission);
-  const query = { owner: mission.owner, completed: false };
+  const query = { ownerId: mission.ownerId, isCompleted: false };
 
-  CalibrationMission.findOne(query).lean().exec((err, foundMission) => {
-    if (err) {
-      callback({ error: new errorCreator.Database({ errorObject: err, name: 'createMission' }) });
+  getMission({
+    query,
+    callback: (missionData) => {
+      if (missionData.error) {
+        callback({ error: new errorCreator.Database({ errorObject: missionData.error, name: 'createMission' }) });
 
-      return;
-    } else if (foundMission) {
-      callback({ error: new errorCreator.AlreadyExists({ name: `Calibration mission ${mission.owner}` }) });
+        return;
+      } else if (missionData.data.mission) {
+        callback({ error: new errorCreator.AlreadyExists({ name: `Calibration mission ${mission.ownerId}` }) });
 
-      return;
-    }
+        return;
+      }
 
-    databaseConnector.saveObject({
-      object: newMission,
-      objectType: 'calibrationMission',
-      callback: ({ error, data }) => {
-        if (error) {
-          callback({ error });
+      dbConnector.saveObject({
+        object: newMission,
+        objectType: 'calibrationMission',
+        callback: ({ error, data }) => {
+          if (error) {
+            callback({ error });
 
-          return;
-        }
+            return;
+          }
 
-        callback({ data: { mission: data.savedObject } });
-      },
-    });
+          callback({ data: { mission: data.savedObject } });
+        },
+      });
+    },
   });
 }
 
 /**
  * Set mission completed
- * @param {number} params.owner User name
- * @param {Function} params.callback Callback
+ * @param {Object} params - Parameters
+ * @param {number} params.ownerId - ID of the user
+ * @param {Function} params.callback - Callback
  */
-function setMissionCompleted({ owner, callback }) {
-  const query = { owner, completed: false };
-  const update = { $set: { completed: true, timeCompleted: new Date() } };
-  const options = { new: true };
+function setMissionCompleted({ ownerId, callback }) {
+  const query = { ownerId, isCompleted: false };
+  const update = { $set: { isCompleted: true, timeCompleted: new Date() } };
 
-  CalibrationMission.findOneAndUpdate(query, update, options).lean().exec((err, foundMission) => {
-    if (err) {
-      callback({ error: new errorCreator.Database({ errorObject: err, name: 'setMissionCompleted' }) });
+  getMission({
+    query,
+    callback: ({ error, data }) => {
+      if (error) {
+        callback({ error: new errorCreator.Database({ errorObject: error, name: 'setMissionCompleted' }) });
 
-      return;
-    } else if (!foundMission) {
-      callback({ error: new errorCreator.DoesNotExist({ name: `Mission owner: ${owner}` }) });
+        return;
+      } else if (!data.mission) {
+        callback({ error: new errorCreator.DoesNotExist({ name: `Mission ownerId: ${ownerId}` }) });
 
-      return;
-    }
+        return;
+      }
 
-    callback({ data: { mission: foundMission } });
+      updateObject({
+        update,
+        callback,
+        objectId: data.mission.objectId,
+      });
+    },
   });
 }
 
@@ -184,5 +246,5 @@ exports.getActiveMission = getActiveMission;
 exports.createMission = createMission;
 exports.setMissionCompleted = setMissionCompleted;
 exports.getInactiveMissions = getInactiveMissions;
-exports.getMissions = getMissions;
+exports.getAllMissions = getAllMissions;
 exports.removeMission = removeMission;

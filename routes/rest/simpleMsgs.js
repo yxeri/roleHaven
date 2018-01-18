@@ -26,60 +26,40 @@ const router = new express.Router();
 
 
 /**
- * @param {object} io - Socket.IO
+ * @param {object} io Socket.IO
  * @returns {Object} Router
  */
 function handle(io) {
   /**
    * @api {post} /simpleMsgs Send a simple message
-   * @apiVersion 6.0.0
+   * @apiVersion 8.0.0
    * @apiName SendSimpleMsgs
    * @apiGroup SimpleMsgs
    *
-   * @apiHeader {String} Authorization Your JSON Web Token
+   * @apiHeader {string} Authorization Your JSON Web Token.
    *
-   * @apiDescription Send a simple message
+   * @apiDescription Send a simple message.
    *
-   * @apiParam {Object} data
-   * @apiParam {Object} data.simpleMsg Simple message
-   * @apiParam {String[]} data.message.text Content of the message
-   * @apiParamExample {json} Request-Example:
-   *   {
-     *    "data": {
-     *      "simpleMsg": {
-     *        "text": [
-     *          "Hello world!"
-     *        ]
-     *      }
-     *    }
-     *  }
+   * @apiParam {Object} data Body parameters.
+   * @apiParam {SimpleMsg} data.simpleMsg Simple message to send.
    *
    * @apiSuccess {Object} data
-   * @apiSuccess {Object[]} data.message Message sent
-   * @apiSuccessExample {json} Success-Response:
-   *   {
-     *    "data": {
-     *      "message": {
-     *        "text": [
-     *          "Hello world!"
-     *        ],
-     *        "userName": "rez",
-     *        "time": "2016-10-28T22:42:06.262Z"
-     *      }
-     *    }
-     *  }
+   * @apiSuccess {SimpleMsg[]} data.message Sent simple message.
    */
   router.post('/', (request, response) => {
     if (!objectValidator.isValidData(request.body, { data: { simpleMsg: true } })) {
-      restErrorChecker.checkAndSendError({ response, error: new errorCreator.InvalidData({ expected: '{ data { simpleMsg } }' }) });
+      restErrorChecker.checkAndSendError({ response, error: new errorCreator.InvalidData({ expected: 'data = { simpleMsg } }', sendDate: request.body.data }) });
 
       return;
     }
 
+    const { simpleMsg } = request.body.data;
+    const { authorization: token } = request.headers;
+
     simpleMsgManager.sendSimpleMsg({
       io,
-      token: request.headers.authorization,
-      text: request.body.data.simpleMsg.text,
+      token,
+      text: simpleMsg.text,
       callback: ({ error, data }) => {
         if (error) {
           restErrorChecker.checkAndSendError({ response, error, sentData: request.body.data });
@@ -94,38 +74,164 @@ function handle(io) {
 
   /**
    * @api {post} /simpleMsgs Get simple messages
-   * @apiVersion 6.0.0
+   * @apiVersion 8.0.0
    * @apiName GetSimpleMsgs
    * @apiGroup SimpleMsgs
    *
-   * @apiHeader {String} Authorization Your JSON Web Token
+   * @apiHeader {string} Authorization Your JSON Web Token.
    *
-   * @apiDescription Get simple messages
+   * @apiDescription Get simple messages.
+   *
+   * @apiParam {boolean} [Query] [full] Should the returned messages contain all parameters? Default is that only some parameters are returned.
    *
    * @apiSuccess {Object} data
-   * @apiSuccess {Object[]} data.simpleMsgs Messages retrievec
-   * @apiSuccessExample {json} Success-Response:
-   *   {
-   *    "data": {
-   *      "simpleMsgs": [{
-   *        "text": [
-   *          "Hello world!"
-   *        ],
-   *        "userName": "rez",
-   *        "time": "2016-10-28T22:42:06.262Z"
-   *      }, {
-   *        "text": [
-   *          "Hello back!"
-   *        ],
-   *        "userName": "bez",
-   *        "time": "2016-11-28T22:42:06.262Z"
-   *      }]
-   *    }
-   *  }
+   * @apiSuccess {SimpleMsg[]} data.simpleMsgs Messages found.
    */
   router.get('/', (request, response) => {
-    simpleMsgManager.getSimpleMsgs({
-      token: request.headers.authorization,
+    const { authorization: token } = request.headers;
+    const { full } = request.query;
+
+    simpleMsgManager.getSimpleMsgsByUser({
+      token,
+      full,
+      callback: ({ error, data }) => {
+        if (error) {
+          restErrorChecker.checkAndSendError({ response, error });
+
+          return;
+        }
+
+        response.json({ data });
+      },
+    });
+  });
+
+  /**
+   * @api {post} /simpleMsg/:simpleMsgId Get a simple message
+   * @apiVersion 8.0.0
+   * @apiName GetSimpleMsg
+   * @apiGroup SimpleMsgs
+   *
+   * @apiHeader {string} Authorization Your JSON Web Token.
+   *
+   * @apiDescription Get a simple message.
+   *
+   * @apiParam {string} simpleMsgId [Url] Id of the message to retrieve.
+   *
+   * @apiSuccess {Object} data
+   * @apiSuccess {SimpleMsg} data.simpleMsg Found message.
+   */
+  router.get('/:simpleMsgId', (request, response) => {
+    if (!objectValidator.isValidData(request.params, { simpleMsgId: true })) {
+      restErrorChecker.checkAndSendError({ response, error: new errorCreator.InvalidData({ expected: 'params = { simpleMsgId }' }) });
+
+      return;
+    }
+
+    const { authorization: token } = request.headers;
+    const { simpleMsgId } = request.params;
+    const { full } = request.query;
+
+    simpleMsgManager.getSimpleMsgById({
+      simpleMsgId,
+      token,
+      full,
+      callback: ({ error, data }) => {
+        if (error) {
+          restErrorChecker.checkAndSendError({ response, error });
+
+          return;
+        }
+
+        response.json({ data });
+      },
+    });
+  });
+
+  /**
+   * @api {delete} /simpleMsgs/:simpleMsgId Delete a simple message
+   * @apiVersion 8.0.0
+   * @apiName DeleteSimpleMsg
+   * @apiGroup SimpleMsgs
+   *
+   * @apiHeader {string} Authorization Your JSON Web Token.
+   *
+   * @apiDescription Delte a simple message.
+   *
+   * @apiParam {string} simpleMsgId Id of the simple message to delete.
+   *
+   * @apiSuccess {Object} data
+   * @apiSuccess {boolean} data.success Was it successfully deleted?
+   */
+  router.delete('/:simpleMsgId', (request, response) => {
+    if (!objectValidator.isValidData(request.params, { simpleMsgId: true })) {
+      restErrorChecker.checkAndSendError({ response, error: new errorCreator.InvalidData({ expected: 'params = { simpleMsgId }' }) });
+
+      return;
+    }
+
+    const { simpleMsgId } = request.params;
+    const { authorization: token } = request.headers;
+
+    simpleMsgManager.removeSimpleMsg({
+      io,
+      simpleMsgId,
+      token,
+      callback: ({ error, data }) => {
+        if (error) {
+          restErrorChecker.checkAndSendError({ response, error });
+
+          return;
+        }
+
+        response.json({ data });
+      },
+    });
+  });
+
+  /**
+   * @api {put} /simpleMsgs/:simpleMsgId Update a simple message.
+   * @apiVersion 8.0.0
+   * @apiName UpdateSimpleMsg
+   * @apiGroup SimpleMsgs
+   *
+   * @apiHeader {string} Authorization Your JSON Web Token.
+   *
+   * @apiDescription Update a simple message.
+   *
+   * @apiParam {string} simpleMsgId [Url] Id of the simple message to update.
+   *
+   * @apiParam {Object} data Body parameters.
+   * @apiParam {SimpleMsg} data.simpleMsg Simple message parameters to update.
+   * @apiParam {Object} [data.options] Update options.
+   *
+   * @apiSuccess {Object} data
+   * @apiSuccess {SimpleMsg} data.simpleMsg Updated simple message.
+   */
+  router.put('/:simpleMsgId', (request, response) => {
+    if (!objectValidator.isValidData(request.params, { simpleMsgId: true })) {
+      restErrorChecker.checkAndSendError({ response, error: new errorCreator.InvalidData({ expected: 'params = { simpleMsgId }' }) });
+
+      return;
+    } else if (!objectValidator.isValidData(request.body, { data: { simpleMsg: true } })) {
+      restErrorChecker.checkAndSendError({ response, error: new errorCreator.InvalidData({ expected: 'data = { simpleMsg }' }), sentData: request.body.data });
+
+      return;
+    }
+
+    const {
+      simpleMsg,
+      options,
+    } = request.body.data;
+    const { simpleMsgId } = request.params;
+    const { authorization: token } = request.headers;
+
+    simpleMsgManager.updateSimpleMsg({
+      simpleMsg,
+      options,
+      io,
+      simpleMsgId,
+      token,
       callback: ({ error, data }) => {
         if (error) {
           restErrorChecker.checkAndSendError({ response, error, sentData: request.body.data });

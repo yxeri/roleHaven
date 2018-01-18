@@ -18,12 +18,18 @@ const GeneralError = require('./GeneralError');
 
 class Internal extends GeneralError.create {
   /**
-   * Create an internal error object
+   * Create an internal error object.
    * Indicates that something went wrong locally
-   * @param {string} [params.name] Retrieval source
-   * @param {Error} [params.errorObject] Error object
+   * @param {Object} params - Parameters.
+   * @param {string} [params.name] - Retrieval source.
+   * @param {Error} [params.errorObject] - Error object.
    */
-  constructor({ name = '-', errorObject, verbose, extraData }) {
+  constructor({
+    errorObject,
+    verbose,
+    extraData,
+    name = '-',
+  }) {
     super({
       errorObject,
       verbose,

@@ -20,143 +20,53 @@
 
 const chai = require('chai');
 const chaiHttp = require('chai-http');
-const app = require('../../app');
 const chaiJson = require('chai-json-schema');
 const deviceSchemas = require('./schemas/devices');
-const errorSchemas = require('./schemas/errors');
-const tokens = require('./testData/tokens');
-const deviceData = require('./testData/devices');
-const userSchemas = require('./schemas/users');
-const authenticateSchemas = require('./schemas/authentications');
+const testData = require('./testData/devices');
+const testBuilder = require('./helper/testBuilder');
 
 chai.should();
 chai.use(chaiHttp);
 chai.use(chaiJson);
 
 describe('Devices', () => {
-  describe('Update device', () => {
-    const userTokens = {
-      adminUser: '',
-    };
+  const apiPath = '/api/devices/';
+  const objectIdType = 'deviceId';
+  const objectType = 'device';
+  const objectsType = 'devices';
 
-    before('Create admin user on /api/users POST', (done) => {
-      chai
-        .request(app)
-        .post('/api/users')
-        .set('Authorization', tokens.adminUser)
-        .send({ data: { user: deviceData.adminUserToChangeDeviceAliasWith } })
-        .end((error, response) => {
-          response.should.have.status(200);
-          response.should.be.json;
-          response.body.should.be.jsonSchema(userSchemas.user);
-
-          done();
-        });
-    });
-
-    before('Authenticate admin user user on /api/authenticate', (done) => {
-      chai
-        .request(app)
-        .post('/api/authenticate')
-        .send({ data: { user: deviceData.adminUserToChangeDeviceAliasWith } })
-        .end((error, response) => {
-          response.should.have.status(200);
-          response.should.be.json;
-          response.body.should.be.jsonSchema(authenticateSchemas.authenticate);
-
-          userTokens.adminUser = response.body.data.token;
-
-          done();
-        });
-    });
-
-    it('Should update device without user auth on /api/devices/:deviceId POST', (done) => {
-      chai
-        .request(app)
-        .post(`/api/devices/${deviceData.deviceWithoutUser}`)
-        .end((error, response) => {
-          response.should.have.status(200);
-          response.should.be.json;
-          response.body.should.be.jsonSchema(deviceSchemas.device);
-
-          done();
-        });
-    });
-
-    it('Should update device with user authentication on /api/devices/:deviceId POST', (done) => {
-      chai
-        .request(app)
-        .post(`/api/devices/${deviceData.deviceWithUser.deviceId}`)
-        .set('Authorization', userTokens.adminUser)
-        .end((error, response) => {
-          response.should.have.status(200);
-          response.should.be.json;
-          response.body.should.be.jsonSchema(deviceSchemas.device);
-          response.body.data.device.lastUser.should.equal(deviceData.adminUserToChangeDeviceAliasWith.userName);
-
-          done();
-        });
-    });
-
-    describe('Update device alias', () => {
-      before('Update device without user on /api/devices/:deviceId POST', (done) => {
-        chai
-          .request(app)
-          .post(`/api/devices/${deviceData.deviceWithoutUser.deviceId}`)
-          .end((error, response) => {
-            response.should.have.status(200);
-            response.should.be.json;
-            response.body.should.be.jsonSchema(deviceSchemas.device);
-
-            done();
-          });
-      });
-
-      it('Should update device alias on existing device /api/devices/:deviceId/alias POST', (done) => {
-        chai
-          .request(app)
-          .post(`/api/devices/${deviceData.deviceWithoutUser.deviceId}/alias`)
-          .send({ data: { device: deviceData.deviceWithNewAlias } })
-          .set('Authorization', userTokens.adminUser)
-          .end((error, response) => {
-            response.should.have.status(200);
-            response.should.be.json;
-            response.body.should.be.jsonSchema(deviceSchemas.device);
-            response.body.data.device.deviceAlias.should.equal(deviceData.deviceWithNewAlias.deviceAlias);
-
-            done();
-          });
-      });
-    });
+  testBuilder.createTestCreate({
+    objectType,
+    objectIdType,
+    apiPath,
+    testData: testData.create,
+    schema: deviceSchemas.device,
   });
 
-  describe('Get devices', () => {
-    it('Should NOT retrieve devices with incorrect authorization on /api/devices GET', (done) => {
-      chai
-        .request(app)
-        .get('/api/devices')
-        .set('Authorization', tokens.incorrectJwt)
-        .end((error, response) => {
-          response.should.have.status(401);
-          response.should.be.json;
-          response.body.should.be.jsonSchema(errorSchemas.error);
+  testBuilder.createTestUpdate({
+    objectType,
+    objectIdType,
+    apiPath,
+    testData: testData.update,
+    schema: deviceSchemas.device,
+  });
 
-          done();
-        });
-    });
+  testBuilder.createTestGet({
+    objectIdType,
+    apiPath,
+    objectType,
+    objectsType,
+    testData: testData.create,
+    singleLiteSchema: deviceSchemas.device,
+    multiLiteSchema: deviceSchemas.devices,
+    singleFullSchema: deviceSchemas.fullDevice,
+    multiFullSchema: deviceSchemas.fullDevices,
+  });
 
-    it('Should get devices on /api/devices GET', (done) => {
-      chai
-        .request(app)
-        .get('/api/devices')
-        .set('Authorization', tokens.adminUser)
-        .end((error, response) => {
-          response.should.have.status(200);
-          response.should.be.json;
-          response.body.should.be.jsonSchema(deviceSchemas.devices);
-
-          done();
-        });
-    });
+  testBuilder.createTestDelete({
+    objectType,
+    objectIdType,
+    apiPath,
+    testData: testData.remove,
   });
 });

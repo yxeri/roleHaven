@@ -13,11 +13,10 @@ function run() {
   app.set('port', appConfig.port);
 
   // Starts Express server
-  const server = app.listen(app.get('port'), () => {
-  });
+  const server = app.listen(app.get('port'), () => {});
 
   // SocketIO
-  const io = app.io;
+  const { io } = app;
 
   io.attach(server);
 }

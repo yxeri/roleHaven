@@ -18,41 +18,34 @@
 
 const tools = require('../helper/tools');
 const appConfig = require('../../../config/defaults/config').app;
-const dbConfig = require('../../../config/defaults/config').databasePopulation;
 
 const data = {};
 
-// deviceId: { type: String, unique: true },
-// socketId: String,
-//   deviceAlias: { type: String, unique: true },
-// lastUser: String,
-//   lastAlive: Date,
+data.create = {
+  first: {
+    deviceName: tools.createRandString({ length: appConfig.deviceAliasMaxLength }),
+  },
+  second: {
+    deviceName: tools.createRandString({ length: appConfig.deviceAliasMaxLength }),
+  },
+};
 
-data.deviceWithoutUser = {
-  deviceId: tools.createRandString({ length: appConfig.deviceIdLength }),
+data.update = {
+  toUpdate: {
+    deviceName: tools.createRandString({ length: appConfig.deviceAliasMaxLength }),
+  },
+  updateWith: {
+    deviceName: tools.createRandString({ length: appConfig.deviceAliasMaxLength }),
+  },
 };
-data.deviceWithNewAlias = {
-  deviceAlias: tools.createRandString({ length: appConfig.deviceAliasMaxLength }),
-};
-data.deviceWithUser = {
-  deviceId: tools.createRandString({ length: appConfig.deviceIdLength }),
-};
-data.adminUserToChangeDeviceAliasWith = {
-  userName: tools.createRandString({ length: appConfig.userNameMaxLength }),
-  password: tools.createRandString({ length: appConfig.passwordMaxLength }),
-  registerDevice: tools.createRandString({ length: appConfig.deviceIdLength }),
-  mail: `${tools.createRandString({ length: 10 })}@${tools.createRandString({ length: 10 })}.com`,
-  accessLevel: dbConfig.AccessLevels.ADMIN,
-  visibility: dbConfig.AccessLevels.PRO,
-  verified: true,
-};
-data.basicUserToUpdateDeviceWith = {
-  userName: tools.createRandString({ length: appConfig.userNameMaxLength }),
-  password: tools.createRandString({ length: appConfig.passwordMaxLength }),
-  registerDevice: tools.createRandString({ length: appConfig.deviceIdLength }),
-  mail: `${tools.createRandString({ length: 10 })}@${tools.createRandString({ length: 10 })}.com`,
-  verified: true,
-  accessLevel: dbConfig.AccessLevels.BASIC,
+
+data.remove = {
+  toRemove: {
+    deviceName: tools.createRandString({ length: appConfig.deviceAliasMaxLength }),
+  },
+  secondToRemove: {
+    deviceName: tools.createRandString({ length: appConfig.deviceAliasMaxLength }),
+  },
 };
 
 module.exports = data;

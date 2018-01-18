@@ -30,52 +30,244 @@ const router = new express.Router();
  */
 function handle(io) {
   /**
-   * @api {post} /gameCodes/:code/use Use game code
-   * @apiVersion 6.0.0
-   * @apiName UseGameCode
+   * @api {get} /gameCodes Get game codes
+   * @apiVersion 8.0.0
+   * @apiName GetGameCodes
    * @apiGroup GameCodes
    *
-   * @apiHeader {String} Authorization Your JSON Web Token
+   * @apiHeader {string} Authorization Your JSON Web Token.
    *
-   * @apiDescription Use game code
-   *
-   * @apiParam {string} code Code for game code
-   *
-   * @apiParam {Object} data
-   * @apiParamExample {json} Request-Example:
-   *   {
-   *    "data": {
-   *      "position": {
-   *        "coordinates": {
-   *          "longitude": 55.401,
-   *          "latitude": 12.0041
-   *        }
-   *      }
-   *    }
-   *  }
+   * @apiDescription Get game codes.
    *
    * @apiSuccess {Object} data
-   * @apiSuccess {Object[]} data.gameCode New game code
-   * @apiSuccessExample {json} Success-Response:
-   *   {
-   *    "data": {
-   *      "reward": {
-   *        "amount": 2
-   *      }
-   *    }
-   *  }
+   * @apiSuccess {GameCode[]} data.gameCodes Found game codes.
    */
-  router.post('/:code/use', (request, response) => {
-    if (!objectValidator.isValidData(request.params, { code: true })) {
-      restErrorChecker.checkAndSendError({ response, error: new errorCreator.InvalidData({ expected: 'params: { code }' }), sentData: request.body.data });
+  router.get('/', (request, response) => {
+    const { authorization: token } = request.headers;
+
+    gameCodeManager.getGameCodesByOwner({
+      token,
+      callback: ({ error, data }) => {
+        if (error) {
+          restErrorChecker.checkAndSendError({ response, error });
+
+          return;
+        }
+
+        response.json({ data });
+      },
+    });
+  });
+
+  /**
+   * @api {get} /gameCodes/:gameCodeId Get game code
+   * @apiVersion 8.0.0
+   * @apiName GetGameCodes
+   * @apiGroup GameCodes
+   *
+   * @apiHeader {string} Authorization Your JSON Web Token.
+   *
+   * @apiDescription Get game code.
+   *
+   * @apiParam {string} gameCodeId Id of the game code to retrieve.
+   *
+   * @apiSuccess {Object} data
+   * @apiSuccess {GameCode} data.gameCode Found game code.
+   */
+  router.get('/:gameCodeId', (request, response) => {
+    if (!objectValidator.isValidData(request.params, { gameCodeId: true })) {
+      restErrorChecker.checkAndSendError({ response, error: new errorCreator.InvalidData({ expected: 'params = { gameCodeId }' }) });
 
       return;
     }
 
+    const { authorization: token } = request.headers;
+    const { gameCodeId } = request.params;
+    const { full } = request.query;
+
+    gameCodeManager.getGameCodeById({
+      token,
+      gameCodeId,
+      full,
+      callback: ({ error, data }) => {
+        if (error) {
+          restErrorChecker.checkAndSendError({ response, error });
+
+          return;
+        }
+
+        response.json({ data });
+      },
+    });
+  });
+
+  /**
+   * @api {put} /gameCodes/:gameCodeId Update a game code
+   * @apiVersion 8.0.0
+   * @apiName UpdateGameCode
+   * @apiGroup GameCodes
+   *
+   * @apiHeader {string} Authorization Your JSON Web Token.
+   *
+   * @apiDescription Update a game code.
+   *
+   * @apiParam {string} gameCodeId [Url] Id of the game code to update.
+   *
+   * @apiParam {Object} data Body parameters
+   * @apiParam {GameCode} data.gameCode Game code parameters to update.
+   * @apiParam {Object} [data.options] Update options.
+   *
+   * @apiSuccess {Object} data
+   * @apiSuccess {GameCode} data.gameCode Updated game code.
+   */
+  router.put('/:gameCodeId', (request, response) => {
+    if (!objectValidator.isValidData(request.params, { gameCodeId: true })) {
+      restErrorChecker.checkAndSendError({ response, error: new errorCreator.InvalidData({ expected: 'params = { gameCodeId }' }) });
+
+      return;
+    } else if (!objectValidator.isValidData(request.body, { data: { gameCode: true } })) {
+      restErrorChecker.checkAndSendError({ response, error: new errorCreator.InvalidData({ expected: 'data = { gameCode }' }), sentData: request.body.data });
+
+      return;
+    }
+
+    const {
+      gameCode,
+      options,
+    } = request.body.data;
+    const { gameCodeId } = request.params;
+    const { authorization: token } = request.headers;
+
+    gameCodeManager.updateGameCode({
+      gameCode,
+      io,
+      gameCodeId,
+      token,
+      options,
+      callback: ({ error, data }) => {
+        if (error) {
+          restErrorChecker.checkAndSendError({ response, error, sentData: request.body.data });
+
+          return;
+        }
+
+        response.json({ data });
+      },
+    });
+  });
+
+  /**
+   * @api {delete} /gameCodes/:gameCodeId Delete a game code
+   * @apiVersion 8.0.0
+   * @apiName DeleteGameCode
+   * @apiGroup GameCodes
+   *
+   * @apiHeader {string} Authorization Your JSON Web Token.
+   *
+   * @apiDescription Delete a game code.
+   *
+   * @apiParam {string} gameCodeId Id of the game code to delete.
+   *
+   * @apiSuccess {Object} data
+   * @apiSuccess {boolean} data.success Was the game code successfully deleted?
+   */
+  router.delete('/:gameCodeId', (request, response) => {
+    if (!objectValidator.isValidData(request.params, { gameCodeId: true })) {
+      restErrorChecker.checkAndSendError({ response, error: new errorCreator.InvalidData({ expected: 'params = { gameCodeId }' }) });
+
+      return;
+    }
+
+    const { gameCodeId } = request.params;
+    const { authorization: token } = request.headers;
+
+    gameCodeManager.removeGameCode({
+      io,
+      gameCodeId,
+      token,
+      callback: ({ error, data }) => {
+        if (error) {
+          restErrorChecker.checkAndSendError({ response, error });
+
+          return;
+        }
+
+        response.json({ data });
+      },
+    });
+  });
+
+  /**
+   * @api {post} /gameCodes/:code/use Use a game code
+   * @apiVersion 8.0.0
+   * @apiName UseGameCode
+   * @apiGroup GameCodes
+   *
+   * @apiHeader {string} Authorization Your JSON Web Token.
+   *
+   * @apiDescription Use a game code.
+   *
+   * @apiParam {string} code Code for game code that will be used up.
+   *
+   * @apiSuccess {Object} data
+   * @apiSuccess {GameCode} data.gameCode Used game code. It includes the content that was unlocked with the code.
+   */
+  router.post('/:code/use', (request, response) => {
+    if (!objectValidator.isValidData(request.params, { code: true })) {
+      restErrorChecker.checkAndSendError({ response, error: new errorCreator.InvalidData({ expected: 'params = { code }' }) });
+
+      return;
+    }
+
+    const { code } = request.params;
+    const { authorization: token } = request.headers;
+
     gameCodeManager.useGameCode({
       io,
-      code: request.params.code,
-      token: request.headers.authorization,
+      code,
+      token,
+      callback: ({ error, data }) => {
+        if (error) {
+          restErrorChecker.checkAndSendError({ response, error, sentData: request.body.data });
+
+          return;
+        }
+
+        response.json({ data });
+      },
+    });
+  });
+
+  /**
+   * @api {post} /gameCodes Create a game code
+   * @apiVersion 8.0.0
+   * @apiName CreateGameCode
+   * @apiGroup GameCodes
+   *
+   * @apiHeader {string} Authorization Your JSON Web Token.
+   *
+   * @apiDescription Create a game code.
+   *
+   * @apiParam {string} [userId] [Query] Id of the user trying to create a game code. It will default to the owner of the token.
+   *
+   * @apiSuccess {Object} data
+   * @apiSuccess {GameCode} data.gameCode Created game code.
+   */
+  router.post('/', (request, response) => {
+    if (!objectValidator.isValidData(request.body.data, { gameCode: true })) {
+      restErrorChecker.checkAndSendError({ response, error: new errorCreator.InvalidData({ expected: 'data = { gameCode }' }), sentData: request.body.data });
+
+      return;
+    }
+
+    const { gameCode } = request.body.data;
+    const { authorization: token } = request.headers;
+    const { userId } = request.query;
+
+    gameCodeManager.createGameCode({
+      gameCode,
+      token,
+      userId,
       callback: ({ error, data }) => {
         if (error) {
           restErrorChecker.checkAndSendError({ response, error, sentData: request.body.data });

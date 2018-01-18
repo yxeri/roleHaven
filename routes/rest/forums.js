@@ -21,46 +21,100 @@ const objectValidator = require('../../utils/objectValidator');
 const restErrorChecker = require('../../helpers/restErrorChecker');
 const forumsManager = require('../../managers/forums');
 const errorCreator = require('../../objects/error/errorCreator');
+const helper = require('./helper');
 
 const router = new express.Router();
 
-
 /**
- * @param {object} io - Socket.IO
+ * @param {object} io Socket.IO
  * @returns {Object} Router
  */
 function handle(io) {
   /**
-   * @api {post} /forums Create forum
-   * @apiVersion 7.0.0
-   * @apiName Create forum
+   * @api {put} /forums/:forumId Update a forum
+   * @apiVersion 8.0.0
+   * @apiName UpdateForum
    * @apiGroup Forums
    *
-   * @apiHeader {String} Authorization Your JSON Web Token.
+   * @apiHeader {string} Authorization Your JSON Web Token.
    *
-   * @apiDescription Create forum.
+   * @apiDescription Update a forum.
+   *
+   * @apiParam {string} forumId [Url] Id of the forum to update.
    *
    * @apiParam {Object} data
-   * @apiParam {Object} data.forum Forum to create.
-   * @apiParam {string} data.forum.title Title of the forum.
-   * @apiParam {string[]} [data.forum.text] text of the forum.
-   * @apiParam {string} [data.forum.ownerId] ID of the creator of the forum. It will default to the current user.
-   * @apiParam {string[]} [data.forum.ownerAliasId] Alias ID of the creator. It will be shown to other users.
+   * @apiParam {Forum} data.forum Forum parameters to update.
+   * @apiParam {Object} [data.options] Update options.
    *
    * @apiSuccess {Object} data
-   * @apiSuccess {Object[]} data.forum Created forum.
+   * @apiSuccess {Object} data.post Updated Post.
+   */
+  router.put('/:forumId', (request, response) => {
+    if (!objectValidator.isValidData(request.params, { forumId: true })) {
+      restErrorChecker.checkAndSendError({ response, error: new errorCreator.InvalidData({ expected: 'params = { forumId }' }) });
+
+      return;
+    } else if (!objectValidator.isValidData(request.body, { data: { forum: true } })) {
+      restErrorChecker.checkAndSendError({ response, error: new errorCreator.InvalidData({ expected: 'data = { forum: true }' }), sentData: request.body.data });
+
+      return;
+    }
+
+    const {
+      forum,
+      options,
+    } = request.body.data;
+    const { forumId } = request.params;
+    const { authorization: token } = request.headers;
+
+    forumsManager.updateForum({
+      forum,
+      options,
+      io,
+      forumId,
+      token,
+      callback: ({ error, data }) => {
+        if (error) {
+          restErrorChecker.checkAndSendError({ response, error, sentData: request.body.data });
+
+          return;
+        }
+
+        response.json({ data });
+      },
+    });
+  });
+
+  /**
+   * @api {post} /forums Create a forum
+   * @apiVersion 8.0.0
+   * @apiName CreateForum
+   * @apiGroup Forums
+   *
+   * @apiHeader {string} Authorization Your JSON Web Token.
+   *
+   * @apiDescription Create a forum.
+   *
+   * @apiParam {Object} data
+   * @apiParam {Forum} data.forum Forum to create.
+   *
+   * @apiSuccess {Object} data
+   * @apiSuccess {Object} data.forum Created forum.
    */
   router.post('/', (request, response) => {
     if (!objectValidator.isValidData(request.body, { data: { forum: { title: true } } })) {
-      restErrorChecker.checkAndSendError({ response, error: new errorCreator.InvalidData({ expected: '{ data: { forum: { title } } }' }), sentData: request.body.data });
+      restErrorChecker.checkAndSendError({ response, error: new errorCreator.InvalidData({ expected: 'data = { forum: { title } }' }), sentData: request.body.data });
 
       return;
     }
+
+    const { authorization: token } = request.headers;
+    const { forum } = request.body.data;
 
     forumsManager.createForum({
       io,
-      token: request.headers.authorization,
-      forum: request.body.data.forum,
+      token,
+      forum,
       callback: ({ error, data }) => {
         if (error) {
           restErrorChecker.checkAndSendError({ response, error, sentData: request.body.data });
@@ -74,47 +128,123 @@ function handle(io) {
   });
 
   /**
-   * @api {post} /forums/:forumId/threads Create forum thread
-   * @apiVersion 7.0.0
-   * @apiName Create forum thread
+   * @api {delete} /forums/:forumId Delete a forum
+   * @apiVersion 8.0.0
+   * @apiName RemoveForum
    * @apiGroup Forums
    *
-   * @apiHeader {String} Authorization Your JSON Web Token.
+   * @apiHeader {string} Authorization Your JSON Web Token.
    *
-   * @apiDescription Create forum thread.
+   * @apiDescription Remove a forum.
    *
-   * @apiParam {Object} data
-   * @apiParam {Object} data.thread Forum thread to create.
-   * @apiParam {string} data.thread.title Title of the forum.
-   * @apiParam {string[]} data.thread.text Text in the forum thread.
-   * @apiParam {boolean} [data.thread.isPublic] Should the post be accessible by all users?
-   * @apiParam {string} [data.thread.ownerId] ID of the creator of the forum. It will default to the current user.
-   * @apiParam {string} [data.thread.ownerAliasId] Alias ID of the creator. It will be shown to other users.
+   * @apiParam {string} forumId [Url] Id of the forum to delete.
    *
    * @apiSuccess {Object} data
-   * @apiSuccess {Object[]} data.thread Created forum thread.
+   * @apiSuccess {boolean} data.success Was the deletion successful?
+   */
+  router.delete('/:forumId', (request, response) => {
+    if (!objectValidator.isValidData(request.params, { forumId: true })) {
+      restErrorChecker.checkAndSendError({ response, error: new errorCreator.InvalidData({ expected: 'params = { forumId }' }) });
+
+      return;
+    }
+
+    const { forumId } = request.params;
+    const { authorization: token } = request.headers;
+
+    forumsManager.removeForum({
+      io,
+      forumId,
+      token,
+      callback: ({ error, data }) => {
+        if (error) {
+          restErrorChecker.checkAndSendError({ response, error });
+
+          return;
+        }
+
+        response.json({ data });
+      },
+    });
+  });
+
+  /**
+   * @api {post} /forums/:forumId/threads Create a thread
+   * @apiVersion 8.0.0
+   * @apiName CreateThread
+   * @apiGroup Forums
+   *
+   * @apiHeader {string} Authorization Your JSON Web Token.
+   *
+   * @apiDescription Create a forum thread.
+   *
+   * @apiParam {string} forumId [Url] Id of the forum to create a thread for.
+   *
+   * @apiParam {Object} data
+   * @apiParam {ForumThread} data.thread Forum thread to create.
+   *
+   * @apiSuccess {Object} data
+   * @apiSuccess {ForumThread} data.thread Created forum thread.
    */
   router.post('/:forumId/threads', (request, response) => {
-    if (!objectValidator.isValidData(request.params, { forumId: true })) {
-      restErrorChecker.checkAndSendError({ response, error: new errorCreator.InvalidData({ expected: '{ forumId }' }), sentData: request.body.data });
+    helper.createThread({ request, response, io });
+  });
 
-      return;
-    } else if (!objectValidator.isValidData(request.body, { data: { thread: { title: true, text: true } } })) {
-      restErrorChecker.checkAndSendError({ response, error: new errorCreator.InvalidData({ expected: '{ data: { title, text } }' }), sentData: request.body.data });
+  /**
+   * @api {get} /forums/:forumId Get a forum
+   * @apiVersion 8.0.0
+   * @apiName GetForum
+   * @apiGroup Forums
+   *
+   * @apiHeader {string} Authorization Your JSON Web Token.
+   *
+   * @apiDescription Get a forum.
+   *
+   * @apiParam {string} forumId [Url] Id of the forum to retrieve.
+   *
+   * @apiParam {boolean} [full] [Query] Should the complete object be retrieved?
+   *
+   * @apiSuccess {Object} data
+   * @apiSuccess {Forum} data.forum Found forum.
+   */
+  router.get('/:forumId', (request, response) => {
+    if (!objectValidator.isValidData(request.params, { forumId: true })) {
+      restErrorChecker.checkAndSendError({ response, error: new errorCreator.InvalidData({ expected: 'params = { forumId }' }) });
 
       return;
     }
 
-    const threadToSave = request.body.data.thread;
-    threadToSave.forumId = request.params.forumId;
+    const { forumId } = request.params;
+    const { authorization: token } = request.headers;
+    const { full } = request.query;
 
-    forumsManager.createThread({
-      io,
-      token: request.headers.authorization,
-      thread: threadToSave,
+    forumsManager.getForumById({
+      forumId,
+      token,
+      full,
       callback: ({ error, data }) => {
         if (error) {
-          restErrorChecker.checkAndSendError({ response, error, sentData: request.body.data });
+          restErrorChecker.checkAndSendError({ response, error });
+
+          return;
+        }
+
+        response.json({ data });
+      },
+    });
+  });
+
+
+  router.get('/', (request, response) => {
+    const { full } = request.query;
+    const { authorization: token } = request.headers;
+
+    forumsManager.getForumsByUser({
+      token,
+      full,
+      callback: ({ error, data }) => {
+        if (error) {
+          restErrorChecker.checkAndSendError({ response, error });
 
           return;
         }
@@ -125,55 +255,24 @@ function handle(io) {
   });
 
   /**
-   * @api {post} /forums/:forumId/threads/:threadId/posts Create forum post
-   * @apiVersion 7.0.0
-   * @apiName Create forum post
+   * @api {get} /forums/:forumId/threads Get forum threads
+   * @apiVersion 8.0.0
+   * @apiName GetThreads
    * @apiGroup Forums
    *
-   * @apiHeader {String} Authorization Your JSON Web Token.
+   * @apiHeader {string} Authorization Your JSON Web Token.
    *
-   * @apiDescription Create forum post.
+   * @apiDescription Get forum threads.
    *
-   * @apiParam {Object} data
-   * @apiParam {Object} data.post Forum post to create.
-   * @apiParam {string[]} data.post.text Text in the forum post.
-   * @apiParam {string} data.post.threadId ID of the thread that the post will be added to.
-   * @apiParam {string} [data.post.parentPostId] Should the post be accessible by all users?
-   * @apiParam {boolean} [data.post.isPublic] Should the post be accessible by all users?
-   * @apiParam {string} [data.post.ownerId] ID of the creator of the forum. It will default to the current user.
-   * @apiParam {string} [data.post.ownerAliasId] Alias ID of the creator. It will be shown to other users.
+   * @apiParam {string} forumId [Url] Id of the forum to retrieve threads from.
+   *
+   * @apiParam {boolean} [full] [Query] Should the complete object be retrieved?
    *
    * @apiSuccess {Object} data
-   * @apiSuccess {Object} data.post Created forum post.
+   * @apiSuccess {ForumThread[]} data.threads Found forum threads.
    */
-  router.post('/:forumId/threads/:threadId/posts', (request, response) => {
-    if (!objectValidator.isValidData(request.params, { forumId: true, threadId: true })) {
-      restErrorChecker.checkAndSendError({ response, error: new errorCreator.InvalidData({ expected: '{ forumId, threadId }' }), sentData: request.body.data });
-
-      return;
-    } else if (!objectValidator.isValidData(request.body, { data: { post: { text: true } } })) {
-      restErrorChecker.checkAndSendError({ response, error: new errorCreator.InvalidData({ expected: '{ data: { post } }' }), sentData: request.body.data });
-
-      return;
-    }
-
-    const postToSend = request.body.data.post;
-    postToSend.threadId = request.params.threadId;
-
-    forumsManager.createPost({
-      io,
-      token: request.headers.authorization,
-      post: postToSend,
-      callback: ({ error, data }) => {
-        if (error) {
-          restErrorChecker.checkAndSendError({ response, error, sentData: request.body.data });
-
-          return;
-        }
-
-        response.json({ data });
-      },
-    });
+  router.get('/:forumId/threads', (request, response) => {
+    helper.getForumThreads({ request, response });
   });
 
   return router;

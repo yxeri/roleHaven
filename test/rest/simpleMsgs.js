@@ -20,92 +20,53 @@
 
 const chai = require('chai');
 const chaiHttp = require('chai-http');
-const app = require('../../app');
 const chaiJson = require('chai-json-schema');
 const simpleMsgSchemas = require('./schemas/simpleMsgs');
-const errorSchemas = require('./schemas/errors');
-const simpleMsgData = require('./testData/simpleMsgs');
-const tokens = require('./testData/tokens');
+const testData = require('./testData/simpleMsgs');
+const testBuilder = require('./helper/testBuilder');
 
 chai.should();
 chai.use(chaiHttp);
 chai.use(chaiJson);
 
-describe('Simple messages', () => {
-  describe('Send simple message', () => {
-    it('Should NOT send simple message with incorrect authorization on /api/simpleMsgs POST', (done) => {
-      chai
-        .request(app)
-        .post('/api/simpleMsgs')
-        .set('Authorization', tokens.incorrectJwt)
-        .send({ data: { simpleMsg: simpleMsgData.simpleMsgToSend } })
-        .end((error, response) => {
-          response.should.have.status(401);
-          response.should.be.json;
-          response.body.should.be.jsonSchema(errorSchemas.error);
+describe('SimpleMsgs', () => {
+  const apiPath = '/api/simpleMsgs/';
+  const objectIdType = 'simpleMsgId';
+  const objectType = 'simpleMsg';
+  const objectsType = 'simpleMsgs';
 
-          done();
-        });
-    });
-
-    it('Should NOT send simple message that is too long on /api/simpleMsgs POST', (done) => {
-      chai
-        .request(app)
-        .post('/api/simpleMsgs')
-        .set('Authorization', tokens.adminUser)
-        .send({ data: { simpleMsg: simpleMsgData.tooLongMsg } })
-        .end((error, response) => {
-          response.should.have.status(400);
-          response.should.be.json;
-          response.body.should.be.jsonSchema(errorSchemas.error);
-
-          done();
-        });
-    });
-
-    it('Should send simple message on /api/simpleMsgs POST', (done) => {
-      chai
-        .request(app)
-        .post('/api/simpleMsgs')
-        .set('Authorization', tokens.adminUser)
-        .send({ data: { simpleMsg: simpleMsgData.simpleMsgToSend } })
-        .end((error, response) => {
-          response.should.have.status(200);
-          response.should.be.json;
-          response.body.should.be.jsonSchema(simpleMsgSchemas.simpleMsg);
-
-          done();
-        });
-    });
+  testBuilder.createTestCreate({
+    objectType,
+    apiPath,
+    objectIdType,
+    testData: testData.create,
+    schema: simpleMsgSchemas.simpleMsg,
   });
 
-  describe('Get simple messages', () => {
-    it('Should NOT get simple message with incorrect authorization on /api/simpleMsgs GET', (done) => {
-      chai
-        .request(app)
-        .get('/api/simpleMsgs')
-        .set('Authorization', tokens.incorrectJwt)
-        .end((error, response) => {
-          response.should.have.status(401);
-          response.should.be.json;
-          response.body.should.be.jsonSchema(errorSchemas.error);
+  testBuilder.createTestUpdate({
+    objectType,
+    objectIdType,
+    apiPath,
+    testData: testData.update,
+    schema: simpleMsgSchemas.simpleMsg,
+  });
 
-          done();
-        });
-    });
+  testBuilder.createTestGet({
+    objectIdType,
+    apiPath,
+    objectType,
+    objectsType,
+    testData: testData.create,
+    singleLiteSchema: simpleMsgSchemas.simpleMsg,
+    multiLiteSchema: simpleMsgSchemas.simpleMsgs,
+    singleFullSchema: simpleMsgSchemas.fullSimpleMsg,
+    multiFullSchema: simpleMsgSchemas.fullSimpleMsgs,
+  });
 
-    it('Should get simple messages on /api/simpleMsgs GET', (done) => {
-      chai
-        .request(app)
-        .get('/api/simpleMsgs')
-        .set('Authorization', tokens.adminUser)
-        .end((error, response) => {
-          response.should.have.status(200);
-          response.should.be.json;
-          response.body.should.be.jsonSchema(simpleMsgSchemas.simpleMsgs);
-
-          done();
-        });
-    });
+  testBuilder.createTestDelete({
+    objectType,
+    objectIdType,
+    apiPath,
+    testData: testData.remove,
   });
 });

@@ -29,51 +29,49 @@ const router = new express.Router();
  */
 function handle() {
   /**
-   * @api {post} /authenticate Create a JSON Web Token
-   * @apiVersion 6.0.0
+   * @api {post} /authenticate Create a JSON Web Token.
+   * @apiVersion 8.0.0
    * @apiName Authenticate
    * @apiGroup Authenticate
    *
-   * @apiDescription Create a JSON Web Token based on the sent user. This token is needed to access most of the API. The token should be set in the Authorization header
+   * @apiDescription Create a JSON Web Token based on the sent user. This token is needed to access most of the API. The token should be set in the Authorization header to access the rest of the API.
    *
    * @apiParam {Object} data
-   * @apiParam {Object} data.user User
-   * @apiParam {String} data.user.userName User name
-   * @apiParam {String} data.user.password Password
-   * @apiParamExample {json} Request-Example:
-   *  {
-   *    "data": {
-   *      "user": {
-   *        "userName": "rez",
-   *        "password": "1234"
-   *      }
-   *    }
-   *  }
+   * @apiParam {Object} data.user User.
+   * @apiParam {string} data.user.password Password.
+   * @apiParam {string} [data.user.userId] Id of the user. Either userId or username has to be set.
+   * @apiParam {string} [data.user.username] Name of the user. Will be used if userId is not set.
    *
    * @apiSuccess {Object} data
-   * @apiSuccess {String} data.token JSON Web Token. To be used in the Authorization header
-   * @apiSuccessExample {json} Success-Response:
-   *  {
-   *    "data": {
-   *      "token": ""
-   *    }
-   *  }
+   * @apiSuccess {string} data.token JSON Web Token. To be used in the Authorization header.
    */
   router.post('/', (request, response) => {
-    if (!objectValidator.isValidData(request.body, { data: { user: { userName: true, password: true } } })) {
-      restErrorChecker.checkAndSendError({ response, error: new errorCreator.InvalidData({ expected: '' }), sentData: request.body.data });
+    const sentData = request.body.data;
+    sentData.password = typeof sentData.password !== 'undefined';
+
+    if (!objectValidator.isValidData(request.body, { data: { user: { password: true } } })) {
+      restErrorChecker.checkAndSendError({ response, error: new errorCreator.InvalidData({ expected: 'data = { user: { password } }' }), sentData });
+
+      return;
+    } else if (!request.body.data.user.username && !request.body.data.user.userId) {
+      restErrorChecker.checkAndSendError({ response, error: new errorCreator.InvalidData({ expected: 'userId or username has to be set' }), sentData });
 
       return;
     }
 
-    const { userName, password } = request.body.data.user;
+    const {
+      username,
+      userId,
+      password,
+    } = request.body.data.user;
 
     authenticator.createToken({
-      userName,
+      userId,
+      username,
       password,
       callback: ({ error, data }) => {
         if (error) {
-          restErrorChecker.checkAndSendError({ response, error });
+          restErrorChecker.checkAndSendError({ response, error, sentData });
 
           return;
         }

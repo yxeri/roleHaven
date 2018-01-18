@@ -18,13 +18,19 @@ const GeneralError = require('./GeneralError');
 
 class Expired extends GeneralError.create {
   /**
-   * Create an expired error object
-   * Indicates that object has expired
+   * Create an expired error object.
+   * Indicates that object has expired.
+   * @param {Object} params - Parameters.
    * @param {string} [params.name] Retrieval source
    * @param {Date} [params.expiredAt] When the object expired
    * @param {Error} [params.errorObject] Error object
    */
-  constructor({ name = '-', expiredAt, errorObject, extraData }) {
+  constructor({
+    expiredAt,
+    errorObject,
+    extraData,
+    name = '-',
+  }) {
     super({
       errorObject,
       extraData,

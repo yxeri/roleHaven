@@ -18,329 +18,516 @@
 
 const mongoose = require('mongoose');
 const errorCreator = require('../../objects/error/errorCreator');
+const dbConnector = require('../databaseConnector');
+const dbConfig = require('../../config/defaults/config').databasePopulation;
 
-const mapPositionSchema = new mongoose.Schema({
-  coordinates: {
-    longitude: Number,
-    latitude: Number,
-    speed: Number,
-    accuracy: Number,
-    heading: Number,
-    radius: Number,
+const mapPositionSchema = new mongoose.Schema(dbConnector.createSchema({
+  deviceId: {
+    type: String,
+    unique: true,
+    sparse: true,
   },
-  isStatic: { type: Boolean, default: false },
-  isPublic: { type: Boolean, default: false },
-  owner: String,
-  deviceId: String,
-  markerType: String,
-  team: String,
-  lastUpdated: Date,
-  positionName: { type: String, unique: true }, // TODO Should not be unique. Should instead check for positionName + markerType
-  description: [String],
-}, { collection: 'mapPositions' });
+  connectedToUser: {
+    type: String,
+    unique: true,
+    sparse: true,
+  },
+  coordinatesHistory: [dbConnector.coordinatesSchema],
+  positionName: String,
+  positionType: { type: String, default: dbConfig.PositionTypes.WORLD },
+  description: { type: [String], default: [] },
+  radius: { type: Number, default: 0 },
+  isStationary: { type: Boolean, default: false },
+}), { collection: 'mapPositions' });
 
 const MapPosition = mongoose.model('MapPosition', mapPositionSchema);
 
+const positionFilter = {
+  connectedToUser: 1,
+  deviceId: 1,
+  coordinatesHistory: 1,
+  positionName: 1,
+  positionType: 1,
+  radius: 1,
+  isStationary: 1,
+  lastUpdated: 1,
+  customLastUpdated: 1,
+  timeCreated: 1,
+  customTimeCreated: 1,
+};
+
 /**
  * Update position
- * @param {Object} params Parameters
- * @param {Object} params.position Position object
- * @param {string} params.position.positionName Name of the position
- * @param {Object} params.position.coordinates GPS coordinates
- * @param {number} params.position.coordinates.longitude Longitude
- * @param {number} params.position.coordinates.latitude Latitude
- * @param {string} params.position.owner User name of the owner of the position
- * @param {string} params.position.markerType Type of position
- * @param {string} [params.position.deviceId] Device ID
- * @param {Date} params.position.lastUpdated Date when the position was last updated
- * @param {string} [params.position.team] Name of the team with access to the location
- * @param {boolean} [params.position.isStatic] Is the position static? (most commonly used on everything non-user)
- * @param {boolean} [params.position.isPublic] Is the position public?
- * @param {string[]} [params.position.description] Position text description
+ * @private
+ * @param {Object} params - Parameters
+ * @param {string} params.positionId - ID of the position to update
+ * @param {Object} params.update - Update
  * @param {Function} params.callback Callback
  */
-function updatePosition({ position: { deviceId, positionName, coordinates, owner, team, isStatic, markerType, description, isPublic, lastUpdated }, callback }) {
-  const query = { $and: [{ positionName }, { owner }] };
-  const update = {
-    owner,
-    coordinates,
-    markerType,
-    lastUpdated,
-  };
-  const options = { upsert: true, new: true };
+function updateObject({ positionId, update, callback }) {
+  dbConnector.updateObject({
+    update,
+    query: { _id: positionId },
+    object: MapPosition,
+    errorNameContent: 'updatePosition',
+    callback: ({ error, data }) => {
+      if (error) {
+        callback({ error });
 
-  if (typeof description !== 'undefined') {
-    update.description = description;
-  }
+        return;
+      }
 
-  if (typeof team !== 'undefined') {
-    update.team = team;
-  }
+      callback({ data: { position: data.object } });
+    },
+  });
+}
 
-  if (typeof isPublic !== 'undefined') {
-    update.isPublic = isPublic;
-  }
+/**
+ * Get positions
+ * @private
+ * @param {Object} params - Parameters.
+ * @param {Object} [params.query] - Query to get positions.
+ * @param {Function} params.callback - Callback.
+ */
+function getPositions({
+  query,
+  callback,
+  filter,
+}) {
+  dbConnector.getObjects({
+    query,
+    filter,
+    object: MapPosition,
+    callback: ({ error, data }) => {
+      if (error) {
+        callback({ error });
 
-  if (typeof isStatic !== 'undefined') {
-    update.team = isStatic;
-  }
+        return;
+      }
 
-  if (typeof deviceId !== 'undefined') {
-    update.deviceId = deviceId;
-  }
-
-  MapPosition.findOneAndUpdate(query, update, options).lean().exec((err, position) => {
-    if (err) {
-      callback({ error: new errorCreator.Database({ errorObject: err }) });
-
-      return;
-    } else if (!position) {
-      callback({ error: new errorCreator.DoesNotExist({ name: `position ${positionName}` }) });
-
-      return;
-    }
-
-    callback({ data: { position } });
+      callback({
+        data: {
+          positions: data.objects,
+        },
+      });
+    },
   });
 }
 
 /**
  * Get position
- * @param {string} params.positionName Name of the position
- * @param {Function} params.callback Callback
+ * @private
+ * @param {Object} params - Parameters.
+ * @param {Object} [params.query] - Query to get position.
+ * @param {Function} params.callback - Callback.
  */
-function getPosition({ positionName, callback }) {
-  const query = { positionName };
+function getPosition({ filter, query, callback }) {
+  dbConnector.getObject({
+    query,
+    filter,
+    object: MapPosition,
+    callback: ({ error, data }) => {
+      if (error) {
+        callback({ error });
 
-  MapPosition.findOne(query).lean().exec((err, position) => {
-    if (err) {
-      callback({ error: new errorCreator.Database({ errorObject: err }) });
+        return;
+      } else if (!data.object) {
+        callback({ error: new errorCreator.DoesNotExist({ name: `position ${query.toString()}` }) });
 
-      return;
-    } else if (!position) {
-      callback({ error: new errorCreator.DoesNotExist({ name: `position ${positionName}` }) });
+        return;
+      }
 
-      return;
-    }
-
-    callback({ data: { position } });
+      callback({ data: { position: data.object } });
+    },
   });
 }
 
 /**
- * Get user position by device ID
- * @param {string} params.deviceId Device id
- * @param {Function} params.callback Callback
+ * Get position by device
+ * @param {Object} params - Parameters
+ * @param {string} params.deviceId - ID of the device
+ * @param {Function} params.callback - Callback
  */
-function getUserPositionByDeviceId({ deviceId, callback }) {
-  const query = { deviceId, markerType: 'user' };
-
-  MapPosition.findOne(query).lean().exec((err, position) => {
-    if (err) {
-      callback({ error: new errorCreator.Database({ errorObject: err }) });
-
-      return;
-    } else if (!position) {
-      callback({ error: new errorCreator.DoesNotExist({ name: `position with device id ${deviceId}` }) });
-
-      return;
-    }
-
-    callback({ data: { position } });
+function getPositionByDevice({ deviceId, callback }) {
+  getPosition({
+    callback,
+    object: MapPosition,
+    query: { deviceId },
   });
 }
 
 /**
- * Get multiple positions
- * @param {string[]} params.positionNames Name of the positions
- * @param {Function} params.callback Callback
+ * Does the position exist?
+ * @param {Object} params - Parameters
+ * @param {string} [params.deviceId] - ID of the device
+ * @param {string} [params.connectedToUser] - ID of the user or alias
+ * @param {Function} params.callback - Callback
  */
-function getPositions({ positionNames, callback }) {
-  const query = { positionName: { $in: positionNames } };
+function doesPositionExist({ deviceId, connectedToUser, callback }) {
+  if (!deviceId && !connectedToUser) {
+    callback({ data: { exists: false } });
 
-  MapPosition.find(query).lean().exec((mapErr, positions = []) => {
-    if (mapErr) {
-      callback({ error: new errorCreator.Database({ errorObject: mapErr }) });
+    return;
+  }
 
-      return;
-    }
+  const query = {};
 
-    callback({ data: { positions } });
+  if (deviceId && connectedToUser) {
+    query.$or = [
+      { deviceId },
+      { connectedToUser },
+    ];
+  } else if (deviceId) {
+    query.deviceId = deviceId;
+  } else if (connectedToUser) {
+    query.connectedToUser = connectedToUser;
+  }
+
+  dbConnector.doesObjectExist({
+    callback,
+    query,
+    object: MapPosition,
   });
 }
 
 /**
- * Get all static positions
- * @param {Function} params.callback Callback
+ * Create position
+ * @param {Object} params - Parameters
+ * @param {Object} params.position - Position to add
+ * @param {Function} params.callback - Callback
  */
-function getAllStaticPositions({ callback }) {
-  const query = { isStatic: true };
+function createPosition({ position, callback }) {
+  const existCallback = ({ saveCallback }) => {
+    doesPositionExist({
+      deviceId: position.deviceId,
+      connectedToUser: position.connectedToUser,
+      callback: (deviceData) => {
+        if (deviceData.error) {
+          callback({ error: deviceData.error });
 
-  MapPosition.find(query).lean().exec((err, positions) => {
-    if (err) {
-      callback({ error: new errorCreator.Database({ errorObject: err }) });
+          return;
+        } else if (deviceData.data.exists) {
+          callback({ error: new errorCreator.AlreadyExists({ name: `device ${position.deviceId} || connectedToUser ${position.connectedToUser} in position` }) });
 
-      return;
-    }
+          return;
+        }
 
-    callback({ data: { positions } });
-  });
-}
-
-/**
- * Get user position
- * @param {string} params.userName User name
- * @param {Function} params.callback Callback
- */
-function getUserPosition({ userName, callback }) {
-  const query = { positionName: userName, markerType: 'user' };
-
-  MapPosition.findOne(query).lean().exec((err, position) => {
-    if (err) {
-      callback({ error: new errorCreator.Database({ errorObject: err }) });
-
-      return;
-    } else if (!position) {
-      callback({ error: new errorCreator.DoesNotExist({ name: `user position ${userName}` }) });
-
-      return;
-    }
-
-    callback({ data: { position } });
-  });
-}
-
-/**
- * Get all user positions
- * @param {Function} params.callback Callback
- */
-function getUserPositions({ callback }) {
-  const query = { markerType: 'user' };
-
-  MapPosition.find(query).lean().exec((err, positions) => {
-    if (err) {
-      callback({ error: new errorCreator.Database({ errorObject: err }) });
-
-      return;
-    }
-
-    callback({ data: { positions } });
-  });
-}
-
-/**
- * Get all signal block positions
- * @param {Function} params.callback Callback
- */
-function getSignalBlockPositions({ callback }) {
-  const query = { markerType: 'signalBlock' };
-
-  MapPosition.find(query).lean().exec((err, positions = []) => {
-    if (err) {
-      callback({ error: new errorCreator.Database({ errorObject: err }) });
-
-      return;
-    }
-
-    callback({ data: { positions } });
-  });
-}
-
-/**
- * Get all custom positions
- * @param {string} params.owner Name of the owner of the position
- * @param {Function} params.callback Callback
- */
-function getCustomPositions({ owner, callback }) {
-  const query = { $and: [{ markerType: 'custom' }, { $or: [{ isPublic: true }, { owner }] }] };
-
-  MapPosition.find(query).lean().exec((err, positions) => {
-    if (err) {
-      callback({ error: new errorCreator.Database({ errorObject: err }) });
-
-      return;
-    }
-
-    callback({ data: { positions } });
-  });
-}
-
-/**
- * Get pings
- * @param {Object} params.user User retrieving pings
- * @param {Function} params.callback Callback
- */
-function getPings({ user, callback }) {
-  const query = {
-    $and: [
-      { markerType: 'ping' },
-      { $or: [
-        { isPublic: true },
-        { owner: user.userName },
-        { team: user.team },
-      ] },
-    ],
+        saveCallback();
+      },
+    });
   };
 
-  MapPosition.find(query).lean().exec((err, positions = []) => {
-    if (err) {
-      callback({ error: new errorCreator.Database({ errorObject: err }) });
+  const saveCallback = () => {
+    dbConnector.saveObject({
+      object: new MapPosition(position),
+      objectType: 'mapPosition',
+      callback: ({ error, data }) => {
+        if (error) {
+          callback({ error });
 
-      return;
-    }
+          return;
+        }
 
-    callback({ data: { positions } });
+        callback({ data: { position: data.savedObject } });
+      },
+    });
+  };
+
+  if (position.connectedToUser || position.deviceId) {
+    existCallback({ saveCallback });
+  } else {
+    saveCallback();
+  }
+}
+
+/**
+ * Update position coordinates
+ * @param {Object} params - Parameters
+ * @param {string} params.positionId - ID of the position
+ * @param {Function} params.callback - Callback
+ * @param {Object} params.coordinates - GPS coordinates
+ * @param {number} params.coordinates.longitude - Longitude
+ * @param {number} params.coordinates.latitude - Latitude
+ * @param {number} params.coordinates.accuracy - Accuracy in meters
+ * @param {number} [params.coordinates.heading] - Heading (0 - 359)
+ * @param {number} [params.coordinates.speed] - Speed
+ */
+function updateCoordinates({ positionId, coordinates, callback }) {
+  const update = { $push: { coordinatesHistory: coordinates } };
+
+  updateObject({
+    positionId,
+    update,
+    callback,
+  });
+}
+
+
+// TODO Position should be automatically created when a user is created. connectedToUser should not be used to identify a user's position
+/**
+ * Update position.
+ * @param {Object} params - Parameters.
+ * @param {Object} params.position - Position object to update with.
+ * @param {Object} [params.options] - Options.
+ * @param {boolean} params.options.resetOwnerAliasId - Should the owner alias be reset on the position?
+ * @param {Function} params.callback - Callback.
+ */
+function updatePosition({
+  positionId,
+  position,
+  callback,
+  options = {},
+}) {
+  const {
+    deviceId,
+    positionName,
+    ownerAliasId,
+    isStationary,
+    positionType,
+    text,
+    isPublic,
+    connectedToUser,
+  } = position;
+  const { resetOwnerAliasId, resetConnectedToUser } = options;
+
+  const update = {
+    $set: {},
+    $unset: {},
+  };
+
+  const updateCallback = () => {
+    updateObject({
+      positionId,
+      update,
+      callback: ({ error, data }) => {
+        if (error) {
+          callback({ error });
+
+          return;
+        }
+
+        callback({ data });
+      },
+    });
+  };
+  const existCallback = () => {
+    doesPositionExist({
+      deviceId,
+      connectedToUser,
+      callback: (deviceData) => {
+        if (deviceData.error) {
+          callback({ error: deviceData.error });
+
+          return;
+        } else if (deviceData.data.exists) {
+          callback({ error: new errorCreator.AlreadyExists({ name: `position with device ${position.deviceId} || ${position.connectedToUser}` }) });
+
+          return;
+        }
+
+        updateCallback();
+      },
+    });
+  };
+
+  if (text) { update.$set.description = text; }
+  if (positionName) { update.$set.positionName = positionName; }
+  if (positionType) { update.$set.positionType = positionType; }
+  if (deviceId) { update.$set.deviceId = deviceId; }
+  if (connectedToUser) { update.$set.connectedToUser = connectedToUser; }
+
+  if (typeof isPublic !== 'undefined') { update.$set.isPublic = isPublic; }
+  if (typeof isStationary !== 'undefined') { update.$set.isStationary = isStationary; }
+
+  if (resetConnectedToUser) {
+    update.$unset.connectedToUser = '';
+  } else if (connectedToUser) {
+    update.$set.connectedToUser = connectedToUser;
+  }
+
+  if (resetOwnerAliasId) {
+    update.$unset.ownerAliasId = '';
+  } else if (ownerAliasId) {
+    update.$set.ownerAliasId = ownerAliasId;
+  }
+
+  if ((!resetConnectedToUser && connectedToUser) || deviceId) {
+    existCallback();
+  } else {
+    updateCallback();
+  }
+}
+
+/**
+ * Get positions that the user has access to.
+ * @param {Object} params - Parameters.
+ * @param {string} params.user - User retrieving the positions.
+ * @param {Function} params.callback - Callback.
+ * @param {boolean} [params.full] - Should access information be retrieved?
+ * @param {string[]} [params.positionTypes] - Types of positions to retrieve.
+ */
+function getPositionsByUser({
+  user,
+  callback,
+  positionTypes,
+  full = false,
+}) {
+  const query = dbConnector.createUserQuery({ user });
+  const filter = !full ? positionFilter : {};
+
+  if (positionTypes) {
+    query.positionType = { $in: positionTypes };
+  }
+
+  getPositions({
+    filter,
+    query,
+    callback,
   });
 }
 
 /**
  * Remove position
- * @param {string} params.positionName Name of the position
- * @param {string} params.markerType Position type
- * @param {Function} params.callback Callback
+ * @param {Object} params - Parameters
+ * @param {string} params.positionId - ID of the position
+ * @param {Function} params.callback - Callback
  */
-function removePosition({ positionName, markerType, callback }) {
-  const query = { positionName, markerType };
-
-  MapPosition.findOneAndRemove(query).lean().exec((err) => {
-    if (err) {
-      callback({ error: new errorCreator.Database({ errorObject: err }) });
-
-      return;
-    }
-
-    callback({ data: { success: true } });
+function removePosition({ positionId, callback }) {
+  dbConnector.removeObject({
+    callback,
+    query: { _id: positionId },
+    object: MapPosition,
   });
 }
 
 /**
  * Remove positions based on marker type
- * @param {string} params.markerType Marker type
- * @param {Function} params.callback Callback
+ * @param {Object} params - Parameters
+ * @param {string} params.positionType - Position type
+ * @param {Function} params.callback - Callback
  */
-function removePositionsByType({ markerType, callback }) {
-  const query = { markerType };
-
-  MapPosition.remove(query).lean().exec((err) => {
-    if (err) {
-      callback({ error: new errorCreator.Database({ errorObject: err }) });
-
-      return;
-    }
-
-    callback({ data: { success: true } });
+function removePositionsByType({ positionType, callback }) {
+  dbConnector.removeObjects({
+    callback,
+    object: MapPosition,
+    query: { positionType },
   });
 }
 
-exports.updatePosition = updatePosition;
-exports.getAllStaticPositions = getAllStaticPositions;
-exports.getPosition = getPosition;
-exports.getPositions = getPositions;
-exports.getCustomPositions = getCustomPositions;
-exports.getPings = getPings;
-exports.getUserPositions = getUserPositions;
+/**
+ * Get position by Id.
+ * @param {Object} params - Parameters.
+ * @param {string} params.positionId - Id of the position.
+ * @param {Function} params.callback - Callback.
+ */
+function getPositionById({ positionId, callback }) {
+  getPosition({
+    callback,
+    query: { _id: positionId },
+  });
+}
+
+/**
+ * Get position of user
+ * @param {Object} params - Parameters
+ * @param {Object} params.userId - ID of the user
+ * @param {Object} params.callback - Callback
+ */
+function getUserPosition({ userId, callback }) {
+  getPosition({
+    callback,
+    query: { connectedToUser: userId },
+  });
+}
+
+/**
+ * Add access to position
+ * @param {Object} params - Parameters
+ * @param {string} params.positionId - ID of the team
+ * @param {string[]} [params.userIds] - ID of the users
+ * @param {string[]} [params.teamIds] - ID of the teams
+ * @param {string[]} [params.bannedIds] - Blocked ids
+ * @param {string[]} [params.teamAdminIds] - Id of the teams to give admin access to. They will also be added to teamIds.
+ * @param {string[]} [params.userAdminIds] - Id of the users to give admin access to. They will also be added to userIds.
+ * @param {Function} params.callback - Callback
+ */
+function addAccess({
+  positionId,
+  userIds,
+  teamIds,
+  bannedIds,
+  teamAdminIds,
+  userAdminIds,
+  callback,
+}) {
+  dbConnector.addObjectAccess({
+    userIds,
+    teamIds,
+    bannedIds,
+    teamAdminIds,
+    userAdminIds,
+    objectId: positionId,
+    object: MapPosition,
+    callback: ({ error, data }) => {
+      if (error) {
+        callback({ error });
+
+        return;
+      }
+
+      callback({ data: { position: data.object } });
+    },
+  });
+}
+
+/**
+ * Remove access to position
+ * @param {Object} params - Parameters
+ * @param {string} params.positionId - ID of the team
+ * @param {string[]} params.teamIds - ID of the teams
+ * @param {string[]} [params.userIds] - ID of the user
+ * @param {string[]} [params.bannedIds] - Blocked ids
+ * @param {string[]} [params.teamAdminIds] - Id of the teams to remove admin access from. They will not be removed from teamIds.
+ * @param {string[]} [params.userAdminIds] - Id of the users to remove admin access from. They will not be removed from userIds.
+ * @param {Function} params.callback - Callback
+ */
+function removeAccess({
+  positionId,
+  userIds,
+  teamIds,
+  bannedIds,
+  teamAdminIds,
+  userAdminIds,
+  callback,
+}) {
+  dbConnector.removeObjectAccess({
+    userIds,
+    teamIds,
+    bannedIds,
+    teamAdminIds,
+    userAdminIds,
+    objectId: positionId,
+    object: MapPosition,
+    callback: ({ error, data }) => {
+      if (error) {
+        callback({ error });
+
+        return;
+      }
+
+      callback({ data: { position: data.object } });
+    },
+  });
+}
+
+exports.updateCoordinates = updateCoordinates;
 exports.removePosition = removePosition;
-exports.removePositionsByType = removePositionsByType;
-exports.getSignalBlockPositions = getSignalBlockPositions;
-exports.getUserPositionByDeviceId = getUserPositionByDeviceId;
+exports.createPosition = createPosition;
+exports.getPositionsByUser = getPositionsByUser;
+exports.updatePosition = updatePosition;
+exports.getPositionById = getPositionById;
 exports.getUserPosition = getUserPosition;
+exports.getPositionByDevice = getPositionByDevice;
+exports.addAccess = addAccess;
+exports.removeAccess = removeAccess;
+exports.removePositionsByType = removePositionsByType;
