@@ -59,8 +59,6 @@ before('Create admin user 1', (done) => {
 
       starterData.adminUserOne.objectId = createData.data.user.objectId;
 
-      console.log('admin user 1', createData.data.user);
-
       done();
     },
   });

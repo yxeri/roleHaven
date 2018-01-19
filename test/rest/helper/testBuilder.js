@@ -330,7 +330,6 @@ function createTestGet({
             response.body.should.be.jsonSchema(baseObjectSchemas.returnData);
 
             idOfObject = response.body.data[objectType].objectId;
-            console.log('id of forum', idOfObject);
 
             done();
           });
