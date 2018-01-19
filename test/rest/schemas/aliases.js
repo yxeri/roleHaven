@@ -16,60 +16,41 @@
 
 'use strict';
 
-const appConfig = require('../../../config/defaults/config').app;
+const tools = require('../helper/tools');
 
 const schemas = {};
 
+schemas.alias = tools.buildLiteSchema({
+  type: 'object',
+  required: [
+    'aliasName',
+  ],
+  properties: {
+    aliasName: { type: 'string' },
+    isIdentity: { type: 'boolean' },
+  },
+});
+
+schemas.fullAlias = tools.buildFullSchema({
+  type: 'object',
+  required: [
+    'aliasName',
+    'isIdentity',
+  ],
+  properties: {
+    aliasName: { type: 'string' },
+    isIdentity: { type: 'boolean' },
+  },
+});
+
 schemas.aliases = {
-  type: 'object',
-  required: ['data'],
-  properties: {
-    data: {
-      type: 'object',
-      required: ['aliases', 'userName'],
-      properties: {
-        aliases: {
-          type: 'array',
-          items: {
-            type: 'string',
-            maxLength: appConfig.userNameMaxLength,
-          },
-        },
-        userName: { type: 'string' },
-      },
-    },
-  },
+  type: 'array',
+  items: schemas.alias,
 };
 
-schemas.matches = {
-  type: 'object',
-  required: ['data'],
-  properties: {
-    data: {
-      type: 'object',
-      required: ['matches'],
-      properties: {
-        matches: {
-          type: 'array',
-          items: { type: 'string' },
-        },
-      },
-    },
-  },
-};
 
-schemas.alias = {
-  type: 'object',
-  required: ['data'],
-  properties: {
-    data: {
-      type: 'object',
-      required: ['alias'],
-      properties: {
-        alias: { type: 'string' },
-      },
-    },
-  },
+schemas.fullAliases = {
+  type: 'array',
+  items: schemas.fullAlias,
 };
-
 module.exports = schemas;

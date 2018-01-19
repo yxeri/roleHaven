@@ -21,11 +21,31 @@ const appConfig = require('../../../config/defaults/config').app;
 
 const data = {};
 
-data.simpleMsgToSend = {
-  text: tools.createRandString({ length: appConfig.messageMaxLength }),
+data.create = {
+  first: {
+    text: tools.createRandString({ length: appConfig.messageMaxLength }),
+  },
+  second: {
+    text: tools.createRandString({ length: appConfig.messageMaxLength }),
+  },
 };
-data.tooLongMsg = {
-  text: tools.createRandString({ length: appConfig.messageMaxLength + 3 }),
+
+data.update = {
+  toUpdate: {
+    text: tools.createRandString({ length: appConfig.messageMaxLength }),
+  },
+  updateWith: {
+    text: tools.createRandString({ length: appConfig.messageMaxLength }),
+  },
+};
+
+data.remove = {
+  toRemove: {
+    text: tools.createRandString({ length: appConfig.messageMaxLength }),
+  },
+  secondToRemove: {
+    text: tools.createRandString({ length: appConfig.messageMaxLength }),
+  },
 };
 
 module.exports = data;

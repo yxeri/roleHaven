@@ -16,105 +16,46 @@
 
 'use strict';
 
+const tools = require('../helper/tools');
 
 const schemas = {};
 
-schemas.team = {
+schemas.team = tools.buildLiteSchema({
   type: 'object',
-  required: ['data'],
+  required: [
+    'teamName',
+    'shortName',
+  ],
   properties: {
-    data: {
-      type: 'object',
-      required: [
-        'team',
-        'wallet',
-        'room',
-      ],
-      properties: {
-        team: {
-          type: 'object',
-          required: [
-            'teamName',
-            'shortName',
-            'admins',
-            'owner',
-            'verified',
-          ],
-          properties: {
-            teamName: { type: 'string' },
-            shortName: { type: 'string' },
-            admins: {
-              type: 'array',
-              items: { type: 'string' },
-            },
-            owner: { type: 'string' },
-            verified: { type: 'boolean' },
-          },
-        },
-        wallet: {
-          type: 'object',
-          required: [
-            'amount',
-            'owner',
-            'accessLevel',
-            'isProtected',
-            'team',
-          ],
-          properties: {
-            amount: { type: 'number' },
-            owner: { type: 'string' },
-            accessLevel: { type: 'number' },
-            isProtected: { type: 'boolean' },
-            team: { type: 'string' },
-          },
-        },
-        room: {
-          type: 'object',
-          required: [
-            'roomName',
-            'accessLevel',
-            'visibility',
-            'owner',
-            'anonymous',
-          ],
-          properties: {
-            roomName: { type: 'string' },
-            accessLevel: { type: 'number' },
-            visibility: { type: 'number' },
-            owner: { type: 'string' },
-            anonymous: { type: 'boolean' },
-          },
-        },
-      },
-    },
+    teamName: { type: 'string' },
+    shortName: { type: 'string' },
+    isVerified: { type: 'boolean' },
+    isProtected: { type: 'boolean' },
   },
-};
+});
+
+schemas.fullTeam = tools.buildFullSchema({
+  type: 'object',
+  required: [
+    'teamName',
+    'shortName',
+  ],
+  properties: {
+    teamName: { type: 'string' },
+    shortName: { type: 'string' },
+    isVerified: { type: 'boolean' },
+    isProtected: { type: 'boolean' },
+  },
+});
 
 schemas.teams = {
-  type: 'object',
-  required: ['data'],
-  properties: {
-    data: {
-      type: 'object',
-      required: ['teams'],
-      properties: {
-        teams: {
-          type: 'array',
-          items: {
-            type: 'object',
-            required: [
-              'teamName',
-              'shortName',
-            ],
-            properties: {
-              teamName: { type: 'string' },
-              shortName: { type: 'string' },
-            },
-          },
-        },
-      },
-    },
-  },
+  type: 'array',
+  items: schemas.team,
+};
+
+schemas.fullTeams = {
+  type: 'array',
+  items: schemas.fullTeam,
 };
 
 module.exports = schemas;

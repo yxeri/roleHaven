@@ -21,342 +21,60 @@ const dbWallet = require('../db/connectors/wallet');
 const appConfig = require('../config/defaults/config').app;
 const dbConfig = require('../config/defaults/config').databasePopulation;
 const errorCreator = require('../objects/error/errorCreator');
-const dbInvitation = require('../db/connectors/invitationList');
-const mailer = require('../helpers/mailer');
 const textTools = require('../utils/textTools');
-const objectValidator = require('../utils/objectValidator');
 const authenticator = require('../helpers/authenticator');
 const roomManager = require('./rooms');
-const dbMailEvent = require('../db/connectors/mailEvent');
 const deviceManager = require('../managers/devices');
+const dbRoom = require('../db/connectors/room');
+const dbDevice = require('../db/connectors/device');
+const socketUtils = require('../utils/socketIo');
 
 /**
- * Create a user and all other objects needed for it
- * @param {Object} params.user - User to create
- * @param {string} params.origin - Name of the caller origin. Allowed: "socket"
+ * Get user by Id and check if the user has access to it.
+ * @param {Object} params - Parameters.
+ * @param {Object} params.user - User retrieving the user.
+ * @param {string} params.userId - Id of the user to retrieve.
  * @param {Function} params.callback - Callback
+ * @param {string} [params.errorContentText] - Text to be printed on error.
+ * @param {boolean} [params.shouldBeAdmin] - Does the user have to be an admin?
+ * @param {boolean} [params.full] - Full.
  */
-function createUser({ token, user, callback, origin = '' }) {
-  authenticator.isUserAllowed({
-    token,
-    commandName: origin === 'socket' && !appConfig.disallowSocketUserRegister ? dbConfig.apiCommands.CreateUserThroughSocket.name : dbConfig.apiCommands.CreateUser.name,
-    callback: ({ error, data }) => {
-      if (error) {
-        callback({ error });
-
-        return;
-      } else if (!objectValidator.isValidData({ user }, { user: { userName: true, registerDevice: true, password: true } })) {
-        callback({ error: new errorCreator.InvalidData({ expected: '{ user: { userName, registerDevice, password } }' }) });
-
-        return;
-      } else if (!textTools.isAllowedFull(user.userName.toLowerCase())) {
-        callback({ error: new errorCreator.InvalidCharacters({ name: `User name: ${user.userName}` }) });
-
-        return;
-      } else if (user.userName.length > appConfig.userNameMaxLength || user.password.length > appConfig.passwordMaxLength || user.registerDevice.length > appConfig.deviceIdLength) {
-        callback({ error: new errorCreator.InvalidCharacters({ name: `User name length: ${appConfig.userNameMaxLength} Password length: ${appConfig.userNameMaxLength} Device length: ${appConfig.deviceIdLength}` }) });
-
-        return;
-      } else if ((user.visibility || user.accessLevel || user.verified) && dbConfig.apiCommands.ChangeUserLevels.accessLevel > data.user.accessLevel) {
-        callback({ error: new errorCreator.NotAllowed({ name: 'set access or visibility level' }) });
-
-        return;
-      } else if (dbConfig.protectedNames.indexOf(user.userName.toLowerCase()) > -1) {
-        callback({ error: new errorCreator.InvalidCharacters({ name: `protected name ${user.userName}` }) });
-
-        return;
-      } else if (appConfig.userVerify && (!user.mail || !textTools.isValidMail(user.mail))) {
-        callback({ error: new errorCreator.InvalidMail({}) });
-
-        return;
-      }
-
-      const createUserFunc = () => {
-        const { userName, fullName, password, registerDevice, banned, accessLevel, visibility } = user;
-        const lowerCaseUserName = userName.toLowerCase();
-        const mail = appConfig.userVerify ? user.mail.toLowerCase() : Date.now();
-        const verified = appConfig.userVerify ? user.verified : true;
-
-        const newUser = {
-          password,
-          registerDevice,
-          mail,
-          banned,
-          verified,
-          accessLevel,
-          visibility,
-          userName: lowerCaseUserName,
-          registeredAt: new Date(),
-          fullName: fullName || lowerCaseUserName,
-          rooms: [
-            dbConfig.rooms.public.roomName,
-            dbConfig.rooms.bcast.roomName,
-            dbConfig.rooms.important.roomName,
-            dbConfig.rooms.user.roomName,
-            dbConfig.rooms.news.roomName,
-            dbConfig.rooms.schedule.roomName,
-          ],
-        };
-
-        dbUser.createUser({
-          user: newUser,
-          callback: (userData) => {
-            if (userData.error) {
-              callback({ error: userData.error });
-
-              return;
-            }
-
-            const createdUser = userData.data.user;
-
-            roomManager.createSpecialRoom({
-              room: {
-                owner: createdUser.userName,
-                roomName: createdUser.userName + appConfig.whisperAppend,
-                visibility: dbConfig.AccessLevels.SUPERUSER,
-                accessLevel: dbConfig.AccessLevels.SUPERUSER,
-                isWhisper: true,
-              },
-              user: createdUser,
-              callback: ({ error: roomError }) => {
-                if (roomError) {
-                  callback({ error: roomError });
-
-                  return;
-                }
-
-                const wallet = {
-                  accessLevel: createdUser.accessLevel,
-                  owner: createdUser.userName,
-                  amount: appConfig.defaultWalletAmount,
-                };
-
-                dbWallet.createWallet({
-                  wallet,
-                  callback: ({ error: walletError, data: walletData }) => {
-                    if (walletError) {
-                      callback({ error: walletError });
-
-                      return;
-                    }
-
-                    dbInvitation.createInvitationList({
-                      userName: createdUser.userName,
-                      callback: ({ error: listError }) => {
-                        if (listError) {
-                          callback({ error: listError });
-
-                          return;
-                        }
-
-                        mailer.sendVerification({
-                          address: createdUser.mail,
-                          userName: createdUser.userName,
-                          callback: ({ error: mailError }) => {
-                            if (mailError) {
-                              callback({ error: mailError });
-
-                              return;
-                            }
-
-                            callback({
-                              data: {
-                                user: createdUser,
-                                wallet: walletData.wallet,
-                              },
-                            });
-                          },
-                        });
-                      },
-                    });
-                  },
-                });
-              },
-            });
-          },
-        });
-      };
-
-      dbMailEvent.isBlockedMail({
-        address: user.mail.toLowerCase(),
-        callback: ({ error: mailError, data: mailData }) => {
-          if (mailError) {
-            callback({ mailError });
-
-            return;
-          } else if (mailData.isBlocked) {
-            callback({ error: new errorCreator.InvalidMail({}) });
-
-            return;
-          }
-
-          createUserFunc();
-        },
-      });
-    },
-  });
-}
-
-/**
- * List users
- * @param {boolean} params.includeInactive Should banned and verified users be retrieved?
- * @param {Object} params.token jwt
- * @param {Function} params.callback Callback
- * @param {Object} [params.team] Team
- * @param {string} params.team.teamName Team name that will be checked against users
- * @param {boolean} params.team.shouldEqual Should the team name sent be the same as retrieved users?
- */
-function listUsers({ includeInactive, token, callback, team = {} }) {
-  authenticator.isUserAllowed({
-    token,
-    commandName: dbConfig.apiCommands.GetUsers.name,
-    callback: ({ error, data }) => {
-      if (error) {
-        callback({ error });
-
-        return;
-      }
-
-      const user = data.user;
-
-      dbUser.getUsers({
-        user,
-        includeInactive: includeInactive && user.accessLevel >= dbConfig.apiCommands.GetInactiveUsers.accessLevel,
-        noClean: user.accessLevel >= dbConfig.apiCommands.GetUserDetails.accessLevel,
-        callback: (usersData) => {
-          if (usersData.error) {
-            callback({ error: usersData.error });
-
-            return;
-          }
-
-          const users = usersData.data.users;
-          // Should the team name on the retrived user be checked against the sent team name?
-          const { teamName, shouldEqual } = team;
-          const usersToSend = [];
-
-          users.filter((currentUser) => {
-            if (teamName) {
-              if (shouldEqual && currentUser.team && currentUser.team === user.team) {
-                return true;
-              } else if (!shouldEqual && ((!currentUser.team && user.team) || currentUser.team !== user.team)) {
-                return true;
-              }
-
-              return false;
-            }
-
-            return true;
-          }).forEach((currentUser) => {
-            if (includeInactive || (currentUser.verified && !currentUser.banned)) {
-              const aliases = currentUser.aliases.map((alias) => {
-                return { userName: alias };
-              });
-              const filteredUser = {
-                userName: currentUser.userName,
-                online: currentUser.online,
-                team: currentUser.team,
-              };
-
-              if (user.accessLevel >= dbConfig.apiCommands.GetUserDetails.accessLevel) {
-                filteredUser.mail = currentUser.mail;
-                filteredUser.verified = currentUser.verified;
-                filteredUser.banned = currentUser.banned;
-                filteredUser.fullName = currentUser.fullName;
-                filteredUser.warnings = currentUser.warnings;
-                filteredUser.aliases = currentUser.aliases;
-              }
-
-              usersToSend.push(filteredUser);
-
-              if (!teamName && aliases && aliases.length > 0) {
-                Array.prototype.push.apply(filteredUser, aliases);
-              }
-            }
-          });
-
-          callback({
-            data: {
-              users: usersToSend,
-            },
-          });
-        },
-      });
-    },
-  });
-}
-
-/**
- * Change password
- * @param {string} params.key Password request key
- * @param {string} params.password Password
- * @param {Function} params.callback Callback
- */
-function changePassword({ key, password, callback }) {
-  if (!objectValidator.isValidData({ key, password }, { key: true, password: true })) {
-    callback({ error: new errorCreator.InvalidData({ expected: '{ key, password }' }) });
-
-    return;
-  }
-
-  dbMailEvent.getMailEventByKey({
-    key,
-    callback: ({ error, data }) => {
-      if (error) {
-        callback({ error });
-
-        return;
-      }
-
-      dbUser.updateUserPassword({
-        password,
-        userName: data.event.owner,
-        callback: ({ error: updateError }) => {
-          if (updateError) {
-            callback({ error: updateError });
-
-            return;
-          }
-
-          callback({ data: { success: true } });
-        },
-      });
-    },
-  });
-}
-
-/**
- * Send password reset mail
- * @param {string} params.mail Mail address to send password recovery to
- * @param {Function} params.callback Callback
- */
-function sendPasswordReset({ mail, callback }) {
-  if (!textTools.isValidMail(mail)) {
-    callback({ error: new errorCreator.InvalidMail({}) });
-
-    return;
-  }
-
-  dbUser.getUserByMail({
-    mail,
+function getAccessibleUser({
+  user,
+  userId,
+  callback,
+  shouldBeAdmin,
+  full,
+  errorContentText = `userId ${userId}`,
+}) {
+  dbUser.getUserById({
+    userId,
     callback: ({ error: userError, data: userData }) => {
       if (userError) {
         callback({ error: userError });
 
         return;
+      } else if (!authenticator.hasAccessTo({
+        shouldBeAdmin,
+        toAuth: user,
+        objectToAccess: userData.user,
+      })) {
+        callback({ error: new errorCreator.NotAllowed({ name: errorContentText }) });
+
+        return;
       }
 
-      mailer.sendPasswordReset({
-        address: userData.user.mail,
-        userName: userData.user.userName,
-        callback: ({ error: resetError }) => {
-          if (resetError) {
-            callback({ error: resetError });
+      const foundUser = userData.user;
+      const filteredUser = {
+        username: foundUser.username,
+        lastOnline: foundUser.lastOnline,
+        lastUpdated: foundUser.lastUpdated,
+        isOnline: foundUser.isOnline,
+      };
 
-            return;
-          }
-
-          callback({ data: { success: true } });
+      callback({
+        data: {
+          user: full ? foundUser : filteredUser,
         },
       });
     },
@@ -364,144 +82,119 @@ function sendPasswordReset({ mail, callback }) {
 }
 
 /**
- * Get user by name
- * @param {string} params.userName User to retrieve
- * @param {Object} params.user User retrieving the user
- * @param {Function} params.callback Callback
+ * Create a user.
+ * @param {Object} params - Parameters.
+ * @param {Object} params.user - User to create.
+ * @param {string} params.origin - Name of the caller origin.
+ * @param {Function} params.callback - Callback.
+ * @param {Object} params.io - Socket.io. Used if socket is not set.
+ * @param {Object} [params.socket] - Socket.io.
  */
-function getUser({ token, userName, callback }) {
+function createUser({
+  token,
+  user,
+  callback,
+  socket,
+  io,
+  origin = dbConfig.OriginTypes.NONE,
+}) {
   authenticator.isUserAllowed({
     token,
-    matchNameTo: userName,
-    commandName: dbConfig.apiCommands.GetUser.name,
-    callback: ({ error, data }) => {
+    commandName: origin === dbConfig.OriginTypes.SOCKET && !appConfig.disallowSocketUserRegister ? dbConfig.apiCommands.CreateUserThroughSocket.name : dbConfig.apiCommands.CreateUser.name,
+    callback: ({ error }) => {
       if (error) {
         callback({ error });
 
         return;
-      }
+      } else if (!textTools.isAllowedFull(user.username)) {
+        callback({ error: new errorCreator.InvalidCharacters({ name: `User name: ${user.username}` }) });
 
-      if (userName === data.user.userName) {
-        callback({ data });
+        return;
+      } else if (user.username.length > appConfig.usernameMaxLength || user.password.length > appConfig.passwordMaxLength || user.registerDevice.length > appConfig.deviceIdLength) {
+        callback({ error: new errorCreator.InvalidCharacters({ name: `User name length: ${appConfig.usernameMaxLength} Password length: ${appConfig.usernameMaxLength} Device length: ${appConfig.deviceIdLength}` }) });
+
+        return;
+      } else if (dbConfig.protectedNames.includes(user.username.toLowerCase())) {
+        callback({ error: new errorCreator.InvalidCharacters({ name: `protected name ${user.username}` }) });
 
         return;
       }
 
-      dbUser.getUser({
-        userName: userName.toLowerCase(),
+      const newUser = user;
+      newUser.isVerified = appConfig.userVerify;
+      newUser.followingRooms = Object.keys(dbConfig.rooms).map(key => dbConfig.rooms[key].objectId);
+
+      dbUser.createUser({
+        user: newUser,
         callback: ({ error: userError, data: userData }) => {
           if (userError) {
             callback({ error: userError });
 
             return;
-          } else if (userData.user.accessLevel > data.user.accessLevel) {
-            callback({ error: new errorCreator.NotAllowed({ name: 'retrieved user too high access' }) });
-
-            return;
           }
 
-          callback({ data: userData });
-        },
-      });
-    },
-  });
-}
+          const createdUser = userData.user;
 
-/**
- * Login user through socket client side
- * @param {Object} params.user User logging in
- * @param {Object} params.device Device logged in on
- * @param {Object} params.socket Socket io
- * @param {Object} params.io Socket io
- * @param {Function} params.callback Callback
- */
-function login({ user, device, socket, io, callback }) {
-  if (!objectValidator.isValidData({ user, device }, { user: { userName: true, password: true }, device: { deviceId: true } })) {
-    callback({ error: new errorCreator.InvalidData({ expected: '{ user: { userName, password } }' }) });
-
-    return;
-  }
-
-  const userName = user.userName.toLowerCase();
-
-  dbUser.getUser({
-    userName,
-    includeInactive: true,
-    callback: ({ error: userError, data: userData }) => {
-      if (userError) {
-        callback({ error: userError });
-
-        return;
-      } else if (userData.user.banned) {
-        callback({ error: new errorCreator.Banned({}) });
-
-        return;
-      } else if (!userData.user.verified) {
-        callback({ error: new errorCreator.NeedsVerification({}) });
-
-        return;
-      }
-
-      const authUser = userData.user;
-
-      authenticator.createToken({
-        userName: authUser.userName,
-        password: user.password,
-        callback: ({ error, data: tokenData }) => {
-          if (error) {
-            callback({ error });
-
-            return;
-          }
-
-          dbUser.updateUserSocketId({
-            userName: authUser.userName,
-            socketId: socket.id,
-            callback: (socketData) => {
-              if (socketData.error) {
-                callback({ error: socketData.error });
+          dbRoom.createRoom({
+            room: {
+              ownerId: createdUser.objectId,
+              roomName: createdUser.objectId,
+              objectId: createdUser.objectId,
+              visibility: dbConfig.AccessLevels.SUPERUSER,
+              accessLevel: dbConfig.AccessLevels.SUPERUSER,
+            },
+            options: {
+              shouldSetId: true,
+              isFollower: true,
+            },
+            callback: ({ error: roomError, data: roomData }) => {
+              if (roomError) {
+                callback({ error: roomError });
 
                 return;
               }
 
-              const newDevice = device;
-              newDevice.lastUser = authUser.userName;
-              newDevice.socketId = socket.id;
+              const wallet = {
+                objectId: createdUser.objectId,
+                accessLevel: createdUser.accessLevel,
+                ownerId: createdUser.objectId,
+                amount: appConfig.defaultWalletAmount,
+              };
+              const walletOptions = { setId: true };
 
-              deviceManager.updateDevice({
-                device: newDevice,
-                callback: ({ error: deviceError }) => {
-                  if (deviceError) {
-                    callback({ error: deviceError });
+              dbWallet.createWallet({
+                wallet,
+                options: walletOptions,
+                callback: ({ error: walletError, data: walletData }) => {
+                  if (walletError) {
+                    callback({ error: walletError });
 
                     return;
                   }
 
-                  const oldSocket = io.sockets.connected[authUser.socketId];
 
-                  if (oldSocket) {
-                    roomManager.leaveSocketRooms({ socket });
-                    oldSocket.emit('logout');
+                  const dataToSend = {
+                    data: {
+                      user: {
+                        objectId: createdUser.objectId,
+                        username: createdUser.username,
+                      },
+                      changeType: dbConfig.ChangeTypes.CREATE,
+                    },
+                  };
+
+                  if (socket) {
+                    socket.broadcast.emit(dbConfig.EmitTypes.USER, dataToSend);
+                  } else {
+                    io.emit(dbConfig.EmitTypes.USER, dataToSend);
                   }
 
-                  roomManager.joinRooms({ rooms: authUser.rooms, socket });
-
-                  dbUser.setUserLastOnline({
-                    userName: authUser.userName,
-                    date: new Date(),
-                    callback: ({ error: onlineError }) => {
-                      if (onlineError) {
-                        callback({ error: onlineError });
-
-                        return;
-                      }
-
-                      callback({
-                        data: {
-                          token: tokenData.token,
-                          user: authUser,
-                        },
-                      });
+                  callback({
+                    data: {
+                      user: createdUser,
+                      wallet: walletData.wallet,
+                      room: roomData.room,
+                      changeType: dbConfig.ChangeTypes.CREATE,
                     },
                   });
                 },
@@ -515,63 +208,262 @@ function login({ user, device, socket, io, callback }) {
 }
 
 /**
- * Logout user from socket client
- * @param {Object} params.device Device that is logging out
- * @param {string} params.token jwt
- * @param {Object} params.socket Socket io
- * @param {Function} params.callback Callback
+ * Get users that the user has access to.
+ * @param {Object} params - Parameters.
+ * @param {Object} params.token - jwt.
+ * @param {Function} params.callback - Callback.
+ * @param {boolean} [params.includeInactive] - Should banned and unverified users be in the result?
+ * @param {boolean} [params.full] - Should
  */
-function logout({ device, token, socket, callback }) {
+function getUsersByUser({
+  token,
+  includeInactive,
+  callback,
+  full,
+}) {
   authenticator.isUserAllowed({
     token,
-    commandName: dbConfig.apiCommands.Logout.name,
+    commandName: full || includeInactive ? dbConfig.apiCommands.GetFull.name : dbConfig.apiCommands.GetUsers.name,
     callback: ({ error, data }) => {
       if (error) {
         callback({ error });
 
         return;
-      } else if (!objectValidator.isValidData({ device }, { device: { deviceId: true } })) {
-        callback({ error: new errorCreator.InvalidData({ expected: '{ device: { deviceId } }' }) });
+      }
+
+      const { user } = data;
+
+      dbUser.getUsersByUser({
+        user,
+        full,
+        includeInactive,
+        callback,
+      });
+    },
+  });
+}
+
+/**
+ * Change password.
+ * @param {Object} params - Parameters.
+ * @param {string} params.password - Password.
+ * @param {Function} params.callback - Callback.
+ */
+function changePassword({
+  token,
+  password,
+  callback,
+}) {
+  authenticator.isUserAllowed({
+    token,
+    commandName: dbConfig.apiCommands.ChangePassword.name,
+    callback: ({ error, data }) => {
+      if (error) {
+        callback({ error });
 
         return;
       }
 
-      const user = data.user;
+      const { user } = data;
 
-      dbUser.updateUserSocketId({
-        userName: user.userName,
-        callback: ({ error: socketError }) => {
-          if (socketError) {
-            callback({ error: socketError });
+      dbUser.updateUserPassword({
+        password,
+        userId: user.objectId,
+        callback: ({ error: updateError }) => {
+          if (updateError) {
+            callback({ error: updateError });
 
             return;
           }
 
-          const deviceToUpdate = device;
-          deviceToUpdate.lastUser = user.userName;
-          deviceToUpdate.socketId = '';
+          callback({ data: { success: true } });
+        },
+      });
+    },
+  });
+}
 
-          deviceManager.updateDevice({
-            device: deviceToUpdate,
-            callback: ({ error: deviceError }) => {
-              if (deviceError) {
-                callback({ error: deviceError });
+// TODO Fix access
+
+/**
+ * Get user by name.
+ * @param {Object} params - Parameters.
+ * @param {string} params.username - Name of the user to retrieve.
+ * @param {Function} params.callback - Callback.
+ */
+function getUserByName({
+  token,
+  username,
+  callback,
+}) {
+  authenticator.isUserAllowed({
+    token,
+    commandName: dbConfig.apiCommands.GetUser.name,
+    callback: ({ error, data }) => {
+      if (error) {
+        callback({ error });
+
+        return;
+      }
+
+      if (username === data.user.username) {
+        callback({ data });
+
+        return;
+      }
+
+      dbUser.getUserByName({
+        username,
+        callback: ({ error: userError, data: userData }) => {
+          if (userError) {
+            callback({ error: userError });
+
+            return;
+          } else if (userData.user.accessLevel >= data.user.accessLevel) {
+            callback({ error: new errorCreator.NotAllowed({ name: 'retrieved user too high access' }) });
+
+            return;
+          }
+
+          callback({ data: userData });
+        },
+      });
+    },
+  });
+}
+
+/**
+ * Get user by Id.
+ * @param {Object} params - Parameters.
+ * @param {string} params.userId - Id of the user to retrieve.
+ * @param {Function} params.callback - Callback.
+ */
+function getUserById({
+  token,
+  userId,
+  callback,
+  full,
+}) {
+  authenticator.isUserAllowed({
+    token,
+    commandName: dbConfig.apiCommands.GetUser.name,
+    callback: ({ error, data }) => {
+      if (error) {
+        callback({ error });
+
+        return;
+      }
+
+      const { user } = data;
+
+      if (userId === user.objectId) {
+        callback({ data });
+
+        return;
+      }
+
+      getAccessibleUser({
+        user,
+        full,
+        userId,
+        callback,
+        shouldBeAdmin: full && dbConfig.apiCommands.GetFull.accessLevel > user.accessLevel,
+      });
+    },
+  });
+}
+
+/**
+ * Login user through socket client side.
+ * @param {Object} params - Parameters.
+ * @param {Object} params.user - User logging in.
+ * @param {Object} params.device - Device logged in on.
+ * @param {Object} params.io - Socket.io. Will be used if socket is not set.
+ * @param {Function} params.callback - Callback.
+ * @param {Object} [params.socket] - Socket.io.
+ */
+function login({
+  user,
+  device,
+  socket,
+  io,
+  callback,
+}) {
+  dbUser.getUserByName({
+    username: user.username,
+    includeInactive: true,
+    callback: ({ error: userError, data: userData }) => {
+      if (userError) {
+        callback({ error: userError });
+
+        return;
+      } else if (userData.user.isBanned) {
+        callback({ error: new errorCreator.Banned({}) });
+
+        return;
+      } else if (!userData.user.isVerified) {
+        callback({ error: new errorCreator.NeedsVerification({}) });
+
+        return;
+      }
+
+      const authUser = userData.user;
+
+      authenticator.createToken({
+        userId: authUser.objectId,
+        password: user.password,
+        callback: ({ error, data: tokenData }) => {
+          if (error) {
+            callback({ error });
+
+            return;
+          }
+
+          dbUser.updateOnline({
+            userId: authUser.objectId,
+            socketId: socket.id,
+            isOnline: true,
+            callback: (socketData) => {
+              if (socketData.error) {
+                callback({ error: socketData.error });
 
                 return;
               }
 
-              dbUser.updateUserOnline({
-                userName: user.userName,
-                online: false,
-                callback: (onlineData) => {
-                  if (onlineData.error) {
-                    callback({ error: onlineData.error });
+              const newDevice = device;
+              newDevice.lastUserId = authUser.objectId;
+              newDevice.socketId = socket.id;
+
+              dbDevice.updateDevice({
+                deviceId: newDevice.objectId,
+                device: newDevice,
+                callback: ({ error: deviceError }) => {
+                  if (deviceError) {
+                    callback({ error: deviceError });
 
                     return;
                   }
 
-                  roomManager.leaveSocketRooms({ socket });
-                  callback({ data: { success: true } });
+                  const oldSocket = io.sockets.connected[authUser.socketId];
+
+                  if (oldSocket) {
+                    roomManager.leaveSocketRooms(socket);
+                    oldSocket.emit(dbConfig.EmitTypes.LOGOUT);
+                  }
+
+                  socketUtils.joinRooms({
+                    io,
+                    roomIds: authUser.followingRooms,
+                    socketId: socket.id,
+                  });
+
+
+                  callback({
+                    data: {
+                      token: tokenData.token,
+                      user: authUser,
+                    },
+                  });
                 },
               });
             },
@@ -583,50 +475,22 @@ function logout({ device, token, socket, callback }) {
 }
 
 /**
- * Get banned user names
- * @param {string} params.token jwt
- * @param {Function} params.callback Callback
+ * Logout user.
+ * @param {Object} params - Parameters.
+ * @param {Object} params.device - The device of the user that is logging out.
+ * @param {string} params.token jwt.
+ * @param {Object} params.socket - Socket.io.
+ * @param {Function} params.callback - Callback.
  */
-function getBannedUsers({ token, callback }) {
+function logout({
+  device,
+  token,
+  socket,
+  callback,
+}) {
   authenticator.isUserAllowed({
     token,
-    commandName: dbConfig.apiCommands.GetInactiveUsers.name,
-    callback: ({ error }) => {
-      if (error) {
-        callback({ error });
-
-        return;
-      }
-
-      dbUser.getBannedUsers({
-        callback: (usersData) => {
-          if (usersData.error) {
-            callback({ error: usersData.error });
-
-            return;
-          }
-
-          const { users } = usersData.data;
-
-          callback({
-            data: { users: users.map(user => user.userName) },
-          });
-        },
-      });
-    },
-  });
-}
-
-/**
- * Match partial user name
- * @param {string} param.partialName Partial user name to match against
- * @param {string} params.token jwt
- * @param {Function} params.callback Callback
- */
-function matchPartialUserName({ partialName, token, callback }) {
-  authenticator.isUserAllowed({
-    token,
-    commandName: dbConfig.apiCommands.GetUser.name,
+    commandName: dbConfig.apiCommands.Logout.name,
     callback: ({ error, data }) => {
       if (error) {
         callback({ error });
@@ -634,112 +498,32 @@ function matchPartialUserName({ partialName, token, callback }) {
         return;
       }
 
-      dbUser.matchPartialUser({
-        partialName,
-        user: data.user,
-        callback: (usersData) => {
-          if (usersData.error) {
-            callback({ error: usersData.error });
+      const authUser = data.user;
+
+      dbUser.updateOnline({
+        userId: authUser.objectId,
+        isOnline: false,
+        callback: ({ error: socketError }) => {
+          if (socketError) {
+            callback({ error: socketError });
 
             return;
           }
 
-          const { users } = usersData.data;
+          const deviceToUpdate = device;
+          deviceToUpdate.lastUserId = authUser.objectId;
+          deviceToUpdate.socketId = '';
 
-          callback({ matches: Object.keys(users).map(userKey => users[userKey].userName) });
-        },
-      });
-    },
-  });
-}
-
-/**
- * Unban user
- * @param {string} params.token jwt token
- * @param {Object} params.user User to unban
- * @param {Function} params.callback Callback
- */
-function unbanUser({ token, user, callback }) {
-  authenticator.isUserAllowed({
-    token,
-    commandName: dbConfig.apiCommands.BanUser.name,
-    callback: ({ error }) => {
-      if (error) {
-        callback({ error });
-
-        return;
-      } else if (!objectValidator.isValidData({ user }, { user: { userName: true } })) {
-        callback({ error: new errorCreator.InvalidData({ expected: '{ user: { userName } }' }) });
-
-        return;
-      }
-
-      dbUser.unbanUser({
-        userName: user.userName.toLowerCase(),
-        callback: ({ error: unbanError }) => {
-          if (unbanError) {
-            callback({ error: unbanError });
-
-            return;
-          }
-
-          callback({ data: { success: true } });
-        },
-      });
-    },
-  });
-}
-
-/**
- * Ban user
- * @param {Object} params.user User to ban
- * @param {Object} params.io socket io
- * @param {string} params.token jwt
- * @param {Function} params.callback Callback
- */
-function banUser({ user, io, token, callback }) {
-  authenticator.isUserAllowed({
-    token,
-    commandName: dbConfig.apiCommands.BanUser.name,
-    callback: ({ error }) => {
-      if (error) {
-        callback({ error });
-
-        return;
-      } else if (!objectValidator.isValidData({ user }, { user: { userName: true } })) {
-        callback({ error: new errorCreator.InvalidData({ expected: '{ user: { userName } }' }) });
-
-        return;
-      }
-
-      const userName = user.userName.toLowerCase();
-
-      dbUser.updateUserSocketId({
-        userName,
-        callback: ({ error: updateError }) => {
-          if (updateError) {
-            callback({ error: updateError });
-
-            return;
-          }
-
-          dbUser.banUser({
-            userName,
-            noClean: true,
-            callback: ({ error: banError, data: banData }) => {
-              if (banError) {
-                callback({ error: banError });
+          deviceManager.updateDevice({
+            device: deviceToUpdate,
+            callback: ({ error: deviceError }) => {
+              if (deviceError) {
+                callback({ error: deviceError });
 
                 return;
               }
 
-              const bannedSocket = io.sockets.connected[banData.user.socketId];
-
-              if (bannedSocket) {
-                roomManager.leaveSocketRooms({ socket: bannedSocket });
-              }
-
-              io.to(userName + appConfig.whisperAppend).emit('ban');
+              roomManager.leaveSocketRooms({ socket });
 
               callback({ data: { success: true } });
             },
@@ -751,57 +535,249 @@ function banUser({ user, io, token, callback }) {
 }
 
 /**
- * Verify user
- * @param {Object} params.callback Callback
- * @param {Object} params.socket Socket.io
- * @param {string} params.userName Name of user to verify
- * @param {Object} params.io Socket io. Will be used if socket is not set
- * @param {string} params.token jwt token
+ * Unban user.
+ * @param {Object} params - Parameters.
+ * @param {string} params.token - jwt token.
+ * @param {Object} params.bannedUserId - ID of the user to unban.
+ * @param {Function} params.callback - Callback.
+ * @param {Object} params.io - Socket.io.
  */
-function verifyUserWithoutMail({ userName, callback, io, token }) {
-  if (!objectValidator.isValidData({ userName }, { userName: true })) {
-    callback({ error: new errorCreator.InvalidData({ expected: '{ userName }' }) });
-
-    return;
-  }
-
+function unbanUser({
+  token,
+  bannedUserId,
+  callback,
+  io,
+}) {
   authenticator.isUserAllowed({
-    commandName: dbConfig.apiCommands.VerifyUser.name,
     token,
-    callback: ({ error: authError }) => {
-      if (authError) {
-        callback({ error: authError });
+    commandName: dbConfig.apiCommands.UnbanUser.name,
+    callback: ({ error }) => {
+      if (error) {
+        callback({ error });
 
         return;
       }
 
-      dbMailEvent.getMailEvent({
-        owner: userName,
-        eventType: 'userVerify',
-        callback: ({ error: eventError, data: eventData }) => {
-          if (eventError) {
-            callback({ error: eventError });
+      dbUser.updateBanUser({
+        shouldBan: false,
+        userId: bannedUserId,
+        callback: ({ error: unbanError }) => {
+          if (unbanError) {
+            callback({ error: unbanError });
 
             return;
           }
 
-          const event = eventData.event;
+          const dataToSend = {
+            data: {
+              user: {
+                objectId: bannedUserId,
+                isBanned: false,
+              },
+              changeType: dbConfig.ChangeTypes.UPDATE,
+            },
+          };
 
-          dbUser.verifyUser({
-            userName,
-            callback: (verifyData) => {
-              if (verifyData.error) {
-                callback({ error: verifyData.error });
+          io.emit(dbConfig.EmitTypes.USER, dataToSend);
+
+          callback({ data: { success: true } });
+        },
+      });
+    },
+  });
+}
+
+/**
+ * Ban user.
+ * @param {Object} params - Parameters.
+ * @param {Object} params.banUserId - ID of the user to ban.
+ * @param {Object} params.io - socket-io.
+ * @param {string} params.token - jwt.
+ * @param {Function} params.callback - Callback.
+ * @param {string} [params.reason] - Text describing why the user was banned.
+ */
+function banUser({
+  banUserId,
+  reason,
+  io,
+  token,
+  callback,
+}) {
+  authenticator.isUserAllowed({
+    token,
+    commandName: dbConfig.apiCommands.BanUser.name,
+    callback: ({ error, data }) => {
+      if (error) {
+        callback({ error });
+
+        return;
+      } else if (banUserId === data.user.objectId) {
+        callback({ error: new errorCreator.InvalidData({ name: 'cannot ban self' }) });
+
+        return;
+      }
+
+      dbUser.updateBanUser({
+        userId: banUserId,
+        shouldBan: true,
+        callback: ({ error: banError }) => {
+          if (banError) {
+            callback({ error: banError });
+
+            return;
+          }
+
+          const bannedSocket = io.sockets.connected[banUserId];
+          const banDataToSend = {
+            data: {
+              reason,
+              user: { objectId: banUserId },
+            },
+          };
+          const dataToSend = {
+            data: {
+              user: {
+                objectId: banUserId,
+                isBanned: true,
+              },
+              changeType: dbConfig.ChangeTypes.UPDATE,
+            },
+          };
+
+          if (bannedSocket) {
+            roomManager.leaveSocketRooms({ socket: bannedSocket });
+          }
+
+          io.to(banUserId).emit(dbConfig.EmitTypes.BAN, banDataToSend);
+          io.emit(dbConfig.EmitTypes.USER, dataToSend);
+
+          callback({ data: { success: true } });
+        },
+      });
+    },
+  });
+}
+
+/**
+ * Verifies a user account and allows it to login.
+ * @param {Object} params - Parameters.
+ * @param {string} params.userIdToVerify - ID of the user to verify.
+ * @param {string} params.token - jwt.
+ * @param {Object} params.io - Socket.io. Will be used if socket is not set.
+ * @param {Function} params.callback - Callback.
+ */
+function verifyUser({
+  userIdToVerify,
+  token,
+  io,
+  callback,
+}) {
+  authenticator.isUserAllowed({
+    token,
+    commandName: dbConfig.apiCommands.VerifyUser.name,
+    callback: ({ error }) => {
+      if (error) {
+        callback({ error });
+
+        return;
+      }
+
+      dbUser.verifyUser({
+        userId: userIdToVerify,
+        callback: ({ error: verifyError }) => {
+          if (verifyError) {
+            callback({ error: verifyError });
+
+            return;
+          }
+
+          const dataToSend = {
+            data: {
+              user: {
+                objectId: userIdToVerify,
+                isVerified: true,
+              },
+              changeType: dbConfig.ChangeTypes.UPDATE,
+            },
+          };
+
+          io.emit(dbConfig.EmitTypes.USER, dataToSend);
+
+          callback({ data: { success: true } });
+        },
+      });
+    },
+  });
+}
+
+/**
+ * Update a user.
+ * @param {Object} params - Parameters.
+ * @param {string} params.token - jwt.
+ * @param {Object} params.io - Socket.io.
+ * @param {Function} params.callback - Callback.
+ * @param {string} params.userId - Id of the user to update.
+ * @param {Object} params.user - User parameter to update.
+ * @param {Object} [params.options] - Update options.
+ */
+function updateUser({
+  token,
+  io,
+  callback,
+  userId,
+  user,
+  options,
+}) {
+  authenticator.isUserAllowed({
+    token,
+    commandName: dbConfig.apiCommands.UpdateUser.name,
+    callback: ({ error, data }) => {
+      if (error) {
+        callback({ error });
+
+        return;
+      } else if ((user.accessLevel || user.visibility || user.hasFullAccess) && userId === data.user.userId) {
+        callback({ error: new errorCreator.NotAllowed({ name: 'update self' }) });
+
+        return;
+      }
+
+      const authUser = data.user;
+
+      getAccessibleUser({
+        userId,
+        user: authUser,
+        shouldBeAdmin: true,
+        callback: ({ error: userError }) => {
+          if (userError) {
+            callback({ error: userError });
+
+            return;
+          }
+
+          dbUser.updateUser({
+            user,
+            options,
+            userId,
+            callback: ({ error: updateError, data: updateData }) => {
+              if (updateError) {
+                callback({ error: updateError });
 
                 return;
               }
 
-              const user = verifyData.data.user;
+              const updatedUser = updateData.user;
 
-              dbMailEvent.removeMailEventByKey({ key: event.key, callback: () => {} });
+              const dataToSend = {
+                data: {
+                  user: updatedUser,
+                  changeType: dbConfig.ChangeTypes.UPDATE,
+                },
+              };
 
-              callback({ data: { userName: user.userName } });
-              io.emit('user', { data: { user: { userName: user.userName } } });
+              io.emit(dbConfig.EmitTypes.USER, dataToSend);
+
+              callback(dataToSend);
             },
           });
         },
@@ -811,71 +787,20 @@ function verifyUserWithoutMail({ userName, callback, io, token }) {
 }
 
 /**
- * Verify user
- * @param {string} params.key Verification key
- * @param {Object} params.callback Callback
- * @param {Object} params.socket Socket.io
- * @param {Object} params.io Socket io. Will be used if socket is not set
+ * Remove a user.
+ * @param {Object} params - Parameters.
+ * @param {string} params.token - jwt.
+ * @param {string} params.userId - Id of the user to remove.
+ * @param {Function} params.callback - Callback.
  */
-function verifyUser({ key, callback, socket, io }) {
-  if (!objectValidator.isValidData({ key }, { key: true })) {
-    callback({ error: new errorCreator.InvalidData({ expected: '{ key }' }) });
-
-    return;
-  }
-
-  dbMailEvent.getMailEventByKey({
-    key,
-    callback: ({ error, data }) => {
-      if (error) {
-        callback({ error });
-
-        return;
-      }
-
-      dbUser.verifyUser({
-        userName: data.event.owner,
-        callback: (verifyData) => {
-          if (verifyData.error) {
-            callback({ error: verifyData.error });
-
-            return;
-          }
-
-          const user = verifyData.data.user;
-
-          dbMailEvent.removeMailEventByKey({ key, callback: () => {} });
-          callback({ data: { userName: user.userName } });
-
-          if (socket) {
-            socket.broadcast.emit('user', { data: { user: { userName: user.userName } } });
-          } else {
-            io.emit('user', { data: { user: { userName: user.userName } } });
-          }
-        },
-      });
-    },
-  });
-}
-
-/**
- * Sends mail with verification link to mail address
- * @param {string} params.mail Mail address
- * @param {Function} params.callback Callback
- */
-function sendVerification({ mail, callback }) {
-  if (!objectValidator.isValidData({ mail }, { mail: true })) {
-    callback({ error: new errorCreator.InvalidData({ expected: '{ mail }' }) });
-
-    return;
-  } else if (!textTools.isValidMail(mail)) {
-    callback({ error: new errorCreator.InvalidMail({}) });
-
-    return;
-  }
-
-  dbUser.getUserByMail({
-    mail,
+function removeUser({
+  token,
+  userId,
+  callback,
+}) {
+  authenticator.isUserAllowed({
+    token,
+    commandName: dbConfig.apiCommands.RemoveUser.name,
     callback: ({ error, data }) => {
       if (error) {
         callback({ error });
@@ -885,124 +810,52 @@ function sendVerification({ mail, callback }) {
 
       const { user } = data;
 
-      mailer.sendVerification({
-        address: mail,
-        userName: user.userName,
-        callback: (verificationData) => {
-          if (verificationData.error) {
-            callback({ error: verificationData.error });
+      getAccessibleUser({
+        user,
+        userId,
+        callback: (userData) => {
+          if (userData.error) {
+            callback({ error: userData.error });
 
             return;
           }
 
-          callback({ data: { success: true } });
-        },
-      });
-    },
-  });
-}
+          // TODO Remove everything connected to the user. Should EVERYTHING be removed?
 
-/**
- * Sends mail with verification link to mail address
- * @param {string} params.mail Mail address
- * @param {Function} params.callback Callback
- */
-function sendAllVerificationMails({ mail, callback }) {
-  if (!objectValidator.isValidData({ mail }, { mail: true })) {
-    callback({ error: new errorCreator.InvalidData({ expected: '{ mail }' }) });
-
-    return;
-  } else if (!textTools.isValidMail(mail)) {
-    callback({ error: new errorCreator.InvalidMail({}) });
-
-    return;
-  }
-
-  dbUser.getUnverifiedUsers({
-    callback: ({ error, data }) => {
-      if (error) {
-        callback({ error });
-
-        return;
-      }
-
-      const users = data.users;
-
-      users.forEach((user) => {
-        if (textTools.isValidMail(user.mail)) {
-          mailer.sendVerification({
-            address: user.mail,
-            userName: user.userName,
-            callback: (verificationData) => {
-              if (verificationData.error) {
-                callback({ error: verificationData.error });
+          dbUser.removeUser({
+            userId,
+            callback: ({ error: removeError }) => {
+              if (removeError) {
+                callback({ error: removeError });
 
                 return;
               }
 
-              callback({ data: { success: true } });
+              const dataToSend = {
+                data: {
+                  user: { objectId: userId },
+                  changeType: dbConfig.ChangeTypes.REMOVE,
+                },
+              };
+
+              callback(dataToSend);
             },
           });
-        }
-      });
-    },
-  });
-}
-
-/**
- * Add blocked addresses and mail domains
- * @param {string} params.token jwt token
- * @param {string[]} [params.mailDomains] Mail domains
- * @param {string[]} [params.addresses] Mail addresses
- * @param {Function} params.callback Callback
- */
-function addBlockedMail({ token, mailDomains, addresses, callback }) {
-  if (!mailDomains && !addresses) {
-    callback({ error: new errorCreator.InvalidData({ expected: 'mailDomains or addresses' }) });
-
-    return;
-  }
-
-  authenticator.isUserAllowed({
-    token,
-    commandName: dbConfig.apiCommands.AddBlockedMail.name,
-    callback: ({ error }) => {
-      if (error) {
-        callback({ error });
-
-        return;
-      }
-
-      dbMailEvent.addBlockedMail({
-        mailDomains,
-        addresses,
-        callback: ({ error: blockedError }) => {
-          if (blockedError) {
-            callback({ error: blockedError });
-
-            return;
-          }
-
-          callback({ data: { success: true } });
         },
       });
     },
   });
 }
 
-exports.sendVerification = sendVerification;
 exports.createUser = createUser;
-exports.sendPasswordReset = sendPasswordReset;
-exports.getUser = getUser;
+exports.getUserByName = getUserByName;
+exports.getUserById = getUserById;
 exports.changePassword = changePassword;
 exports.login = login;
 exports.logout = logout;
-exports.getBannedUsers = getBannedUsers;
-exports.matchPartialUserName = matchPartialUserName;
-exports.listUsers = listUsers;
 exports.banUser = banUser;
-exports.verifyUser = verifyUser;
-exports.sendAllVerificationMails = sendAllVerificationMails;
-exports.addBlockedMail = addBlockedMail;
 exports.unbanUser = unbanUser;
-exports.verifyUserWithoutMail = verifyUserWithoutMail;
+exports.verifyUser = verifyUser;
+exports.updateUser = updateUser;
+exports.removeUser = removeUser;
+exports.getUsersByUser = getUsersByUser;

@@ -21,30 +21,49 @@ const appConfig = require('../../../config/defaults/config').app;
 
 const data = {};
 
-data.roomToCreateAndSendMessagesTo = {
-  roomName: tools.createRandString({ length: appConfig.roomNameMaxLength }),
+data.create = {
+  first: {
+    text: [
+      tools.createRandString({ length: appConfig.messageMaxLength / 2 }),
+      tools.createRandString({ length: appConfig.messageMaxLength / 2 }),
+    ],
+  },
+  second: {
+    text: [
+      tools.createRandString({ length: appConfig.messageMaxLength / 2 }),
+      tools.createRandString({ length: appConfig.messageMaxLength / 2 }),
+    ],
+  },
 };
-data.messageToSend = {
-  roomName: data.roomToCreateAndSendMessagesTo.roomName,
-  text: [
-    tools.createRandString({ length: appConfig.messageMaxLength / 2 }),
-    tools.createRandString({ length: appConfig.messageMaxLength / 2 }),
-  ],
+
+data.update = {
+  toUpdate: {
+    text: [
+      tools.createRandString({ length: appConfig.messageMaxLength / 2 }),
+      tools.createRandString({ length: appConfig.messageMaxLength / 2 }),
+    ],
+  },
+  updateWith: {
+    text: [
+      tools.createRandString({ length: appConfig.messageMaxLength / 2 }),
+      tools.createRandString({ length: appConfig.messageMaxLength / 2 }),
+    ],
+  },
 };
-data.roomThatDoesNotExist = {
-  roomName: tools.createRandString({ length: appConfig.roomNameMaxLength }),
-  text: [
-    tools.createRandString({ length: appConfig.messageMaxLength / 2 }),
-    tools.createRandString({ length: appConfig.messageMaxLength / 2 }),
-  ],
-};
-data.tooLongMessage = {
-  roomName: data.roomToCreateAndSendMessagesTo.roomName,
-  text: [
-    tools.createRandString({ length: appConfig.messageMaxLength / 2 }),
-    tools.createRandString({ length: appConfig.messageMaxLength / 2 }),
-    'word',
-  ],
+
+data.remove = {
+  toRemove: {
+    text: [
+      tools.createRandString({ length: appConfig.messageMaxLength / 2 }),
+      tools.createRandString({ length: appConfig.messageMaxLength / 2 }),
+    ],
+  },
+  secondToRemove: {
+    text: [
+      tools.createRandString({ length: appConfig.messageMaxLength / 2 }),
+      tools.createRandString({ length: appConfig.messageMaxLength / 2 }),
+    ],
+  },
 };
 
 module.exports = data;

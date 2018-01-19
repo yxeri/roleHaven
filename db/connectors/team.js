@@ -20,258 +20,421 @@ const mongoose = require('mongoose');
 const errorCreator = require('../../objects/error/errorCreator');
 const dbConnector = require('../databaseConnector');
 const dbUser = require('./user');
-const dbRoom = require('./room');
-const appConfig = require('../../config/defaults/config').app;
 
-const teamSchema = new mongoose.Schema({
+const teamSchema = new mongoose.Schema(dbConnector.createSchema({
   teamName: { type: String, unique: true },
   shortName: { type: String, unique: true },
-  owner: String,
-  admins: { type: [String], default: [] },
-  verified: { type: Boolean, default: false },
+  isVerified: { type: Boolean, default: false },
   isProtected: { type: Boolean, default: false },
-}, { collection: 'teams' });
+  members: { type: [String], default: [] },
+}), { collection: 'teams' });
 
 const Team = mongoose.model('Team', teamSchema);
 
+const teamFilter = {
+  teamName: 1,
+  shortName: 1,
+  lastUpdated: 1,
+  members: 1,
+};
+
 /**
- * Create and save team
- * @param {Object} params.team New team
+ * Update team
+ * @private
+ * @param {Object} params - Parameters
+ * @param {Object} params.teamId - ID of the team
  * @param {Function} params.callback Callback
  */
+function updateObject({ teamId, update, callback }) {
+  dbConnector.updateObject({
+    update,
+    query: { _id: teamId },
+    object: Team,
+    errorNameContent: 'updateTeam',
+    callback: ({ error, data }) => {
+      if (error) {
+        callback({ error });
+
+        return;
+      }
+
+      callback({ data: { team: data.object } });
+    },
+  });
+}
+
+/**
+ * Get teams.
+ * @private
+ * @param {Object} params - Parameters.
+ * @param {Object} params.query - Query to get teams.
+ * @param {Object} [params.filter] - Filter for the result.
+ * @param {Function} params.callback - Callback.
+ */
+function getTeams({
+  query,
+  filter,
+  callback,
+}) {
+  dbConnector.getObjects({
+    query,
+    filter,
+    object: Team,
+    callback: ({ error, data }) => {
+      if (error) {
+        callback({ error });
+
+        return;
+      }
+
+      callback({
+        data: {
+          teams: data.objects,
+        },
+      });
+    },
+  });
+}
+
+/**
+ * Get a team.
+ * @private
+ * @param {Object} params - Parameters.
+ * @param {Object} params.query - Query to get teams.
+ * @param {Function} params.callback - Callback.
+ */
+function getTeam({ query, callback }) {
+  dbConnector.getObject({
+    query,
+    object: Team,
+    callback: ({ error, data }) => {
+      if (error) {
+        callback({ error });
+
+        return;
+      } else if (!data.object) {
+        callback({ error: new errorCreator.DoesNotExist({ name: `team ${query.toString()}` }) });
+
+        return;
+      }
+
+      callback({ data: { team: data.object } });
+    },
+  });
+}
+
+/**
+ * Does the team exist?
+ * @private
+ * @param {Object} params - Parameters.
+ * @param {string} params.teamName - Name of the team.
+ * @param {string} params.shortName - Short name of the team.
+ * @param {Function} params.callback - Callback.
+ */
+function doesTeamExist({ teamName, shortName, callback }) {
+  if (!teamName && !shortName) {
+    callback({ data: { exists: false } });
+
+    return;
+  }
+
+  const query = {};
+
+  if (teamName && shortName) {
+    query.$or = [
+      { shortName },
+      { teamName },
+    ];
+  } else if (teamName) {
+    query.teamName = teamName;
+  } else {
+    query.shortName = shortName;
+  }
+
+  dbConnector.doesObjectExist({
+    callback,
+    query,
+    object: Team,
+  });
+}
+
+/**
+ * Create and save team
+ * @param {Object} params - Parameters
+ * @param {Object} params.team - New team
+ * @param {Function} params.callback - Callback
+ */
 function createTeam({ team, callback }) {
-  const newTeam = new Team(team);
-  const query = {
-    $or: [
-      { teamName: team.teamName },
-      { shortName: team.shortName },
-    ],
+  doesTeamExist({
+    teamName: team.teamName,
+    shortName: team.shortName,
+    callback: (nameData) => {
+      if (nameData.error) {
+        callback({ error: nameData.error });
+
+        return;
+      } else if (nameData.data.exists) {
+        callback({ error: new errorCreator.AlreadyExists({ name: `team ${team.teamName} ${team.shortName}` }) });
+
+        return;
+      }
+
+      dbConnector.saveObject({
+        object: new Team(team),
+        objectType: 'team',
+        callback: ({ error, data }) => {
+          if (error) {
+            callback({ error });
+
+            return;
+          }
+
+          callback({ data: { team: data.savedObject } });
+        },
+      });
+    },
+  });
+}
+
+/**
+ * Update team
+ * @param {Object} params - Parameters
+ * @param {Object} params.team - Fields to update
+ * @param {Object} [params.options] - Options
+ * @param {Function} params.callback - Callback
+ */
+function updateTeam({
+  teamId,
+  team,
+  callback,
+  options = {},
+}) {
+  const {
+    teamName,
+    shortName,
+    ownerAliasId,
+    isVerified,
+    isProtected,
+  } = team;
+  const { resetOwnerAliasId } = options;
+  const update = { $set: {} };
+
+  const updateCallback = () => {
+    updateObject({
+      update,
+      teamId,
+      callback: (updateData) => {
+        if (updateData.error) {
+          callback({ error: updateData.error });
+
+          return;
+        }
+
+        callback({ data: { team: updateData.data.team } });
+      },
+    });
   };
 
-  Team.findOne(query).lean().exec((err, foundTeam) => {
-    if (err) {
-      callback({ error: new errorCreator.Database({ errorObject: err, name: 'createTeam' }) });
+  if (resetOwnerAliasId) {
+    update.$unset = { ownerAliasId: '' };
+  } else if (ownerAliasId) {
+    update.$set.ownerAliasId = ownerAliasId;
+  }
 
-      return;
-    } else if (foundTeam) {
-      callback({ error: new errorCreator.AlreadyExists({ name: `team ${team.teamName}` }) });
+  if (typeof isVerified === 'boolean') { update.$set.isVerified = isVerified; }
+  if (typeof isProtected === 'boolean') { update.$set.isProtected = isProtected; }
 
-      return;
-    }
+  if (teamName || shortName) {
+    if (teamName) { update.$set.teamName = teamName; }
+    if (shortName) { update.$set.shortName = shortName; }
 
-    dbConnector.saveObject({
-      object: newTeam,
-      objectType: 'team',
+    doesTeamExist({
+      shortName,
+      teamName,
       callback: ({ error, data }) => {
         if (error) {
           callback({ error });
 
           return;
-        }
-
-        callback({ data: { team: data.savedObject } });
-      },
-    });
-  });
-}
-
-/**
- * Get team
- * @param {string} params.teamName Short name of full name of team to retrieve
- * @param {Function} params.callback Callback
- */
-function getTeam({ teamName, callback }) {
-  const query = {
-    $or: [
-      { shortName: teamName },
-      { teamName },
-    ],
-  };
-  const filter = { _id: 0 };
-
-  Team.findOne(query, filter).lean().exec((err, team) => {
-    if (err) {
-      callback({ error: new errorCreator.Database({ errorObject: err, name: 'getTeam' }) });
-
-      return;
-    } else if (!team) {
-      callback({ error: new errorCreator.DoesNotExist({ name: `team ${teamName}` }) });
-
-      return;
-    }
-
-    callback({ data: { team } });
-  });
-}
-
-/**
- * Get teams
- * @param {Object} params.user User retrieving the teams
- * @param {Function} params.callback Callback
- */
-function getTeams({ user, callback }) {
-  const query = {
-    $or: [
-      { owner: user.userName },
-      { isProtected: false },
-    ],
-    verified: true,
-  };
-  const filter = { teamName: 1, shortName: 1 };
-
-  Team.find(query, filter).lean().exec((err, teams = []) => {
-    if (err) {
-      callback({ error: new errorCreator.Database({ errorObject: err, name: 'getTeams' }) });
-
-      return;
-    }
-
-    callback({ data: { teams } });
-  });
-}
-
-/**
- * Verify team
- * @param {string} params.teamName Name of the team that will be verified
- * @param {Function} params.callback Callback
- */
-function verifyTeam({ teamName, callback }) {
-  const query = { teamName };
-  dbConnector.verifyObject({ query, object: Team, callback });
-}
-
-/**
- * Verify all teams
- * @param {Function} params.callback Callback
- */
-function verifyAllTeams({ callback }) {
-  const query = { verified: false };
-
-  dbConnector.verifyAllObjects({ query, object: Team, callback });
-}
-
-/**
- * Get all unverified teams
- * @param {Function} params.callback Callback
- */
-function getUnverifiedTeams({ callback }) {
-  const query = { verified: false };
-  const filter = { _id: 0 };
-  const sort = { teamName: 1 };
-
-  Team.find(query, filter).sort(sort).lean().exec((err, teams = []) => {
-    if (err) {
-      callback({ error: new errorCreator.Database({ errorObject: err, name: 'getUnverifiedTeams' }) });
-
-      return;
-    }
-
-    callback({ data: { teams } });
-  });
-}
-
-/**
- * Get team by owner
- * @param {string} params.owner User name of the team owner
- * @param {Function} params.callback Callback
- */
-function getTeamByOwner({ owner, callback }) {
-  const query = { owner };
-  const filter = { _id: 0 };
-
-  Team.findOne(query, filter).lean().exec((err, team) => {
-    if (err) {
-      callback({ error: new errorCreator.Database({ errorObject: err, name: 'getTeamByOwner' }) });
-
-      return;
-    } else if (!team) {
-      callback({ error: new errorCreator.DoesNotExist({ name: `team owner ${owner}` }) });
-
-      return;
-    }
-
-    callback({ data: { team } });
-  });
-}
-
-/**
- * Get team by owner
- * @param {string} params.owner User name of the team owner
- * @param {Function} params.callback Callback
- */
-function doesTeamExist({ owner, teamName, shortName, callback }) {
-  const query = {
-    $or: [
-      { owner },
-      { teamName },
-      { shortName },
-    ],
-  };
-  const filter = { _id: 0 };
-
-  Team.findOne(query, filter).lean().exec((err, team) => {
-    if (err) {
-      callback({ error: new errorCreator.Database({ errorObject: err, name: 'doesTeamExist' }) });
-
-      return;
-    }
-
-    if (!team) {
-      callback({ data: { exists: false } });
-    } else {
-      callback({ data: { exists: true } });
-    }
-  });
-}
-
-/**
- * Remove team
- * @param {string} params.teamName Name of the team to remove
- * @param {Object} params.user User trying to remove the team
- * @param {Function} params.callback Callback
- */
-function removeTeam({ teamName, callback }) {
-  const query = { teamName };
-
-  Team.findOneAndRemove(query).lean().exec((err) => {
-    if (err) {
-      callback({ error: new errorCreator.Database({ errorObject: err, name: 'removeTeam' }) });
-
-      return;
-    }
-
-    dbUser.removeAllUserTeam({
-      teamName,
-      callback: ({ error }) => {
-        if (error) {
-          callback({ error });
+        } else if (data.exists) {
+          callback({ error: new errorCreator.AlreadyExists({ name: `teamName ${teamName} ${shortName}` }) });
 
           return;
         }
 
-        dbRoom.removeRoom({
-          roomName: teamName + appConfig.teamAppend,
-          callback: (teamErr) => {
-            if (teamErr) {
-              callback({ error: teamErr });
-
-              return;
-            }
-
-            callback({ data: { success: true } });
-          },
-        });
+        updateCallback();
       },
     });
+
+    return;
+  }
+
+  updateCallback();
+}
+
+/**
+ * Add users to team
+ * @param {Object} params - Parameters
+ * @param {string} params.teamId - ID of the team
+ * @param {Function} params.callback - Callback
+ * @param {string[]} [params.userIds] - ID of the users
+ * @param {string[]} [params.teamIds] - ID of the teams
+ * @param {string[]} [params.bannedIds] - Blocked ids
+ * @param {string[]} [params.teamAdminIds] - Id of the teams to give admin access to. They will also be added to teamIds.
+ * @param {string[]} [params.userAdminIds] - Id of the users to give admin access to. They will also be added to userIds.
+ */
+function addAccess({
+  teamId,
+  userIds,
+  teamIds,
+  bannedIds,
+  callback,
+  teamAdminIds,
+  userAdminIds,
+}) {
+  dbConnector.addObjectAccess({
+    userIds,
+    teamIds,
+    bannedIds,
+    teamAdminIds,
+    userAdminIds,
+    objectId: teamId,
+    object: Team,
+    callback: ({ error, data }) => {
+      if (error) {
+        callback({ error });
+
+        return;
+      }
+
+      callback({ team: data.object });
+    },
+  });
+}
+
+/**
+ * Remove access to team.
+ * @param {Object} params - Parameters.
+ * @param {string} params.teamId - ID of the team.
+ * @param {Function} params.callback - Callback.
+ * @param {string[]} [params.teamIds] - ID of the teams.
+ * @param {string[]} [params.userIds] - ID of the user.
+ * @param {string[]} [params.bannedIds] - Blocked ids.
+ * @param {string[]} [params.teamAdminIds] - Id of the teams to remove admin access from. They will not be removed from teamIds.
+ * @param {string[]} [params.userAdminIds] - Id of the users to remove admin access from. They will not be removed from userIds.
+ */
+function removeAccess({
+  teamId,
+  userIds,
+  teamIds,
+  bannedIds,
+  teamAdminIds,
+  userAdminIds,
+  callback,
+}) {
+  dbConnector.removeObjectAccess({
+    userIds,
+    teamIds,
+    bannedIds,
+    teamAdminIds,
+    userAdminIds,
+    objectId: teamId,
+    object: Team,
+    callback: ({ error, data }) => {
+      if (error) {
+        callback({ error });
+
+        return;
+      }
+
+      callback({ team: data.object });
+    },
+  });
+}
+
+/**
+ * Get teams that the user has access to.
+ * @param {Object} params - Parameters.
+ * @param {string} params.user - User retrieving the teams.
+ * @param {Function} params.callback - Callback.
+ * @param {boolean} [params.full] - Should access data be returned?
+ * @param {boolean} [params.includeInactive] - Should unverified teams be returned?
+ */
+function getTeamsByUser({
+  user,
+  callback,
+  includeInactive,
+  full = false,
+}) {
+  const query = dbConnector.createUserQuery({ user });
+  const filter = !full ? teamFilter : {};
+
+  if (!includeInactive) { query.isVerified = true; }
+
+  getTeams({
+    query,
+    filter,
+    callback,
+  });
+}
+
+/**
+ * Get team by Id.
+ * @param {Object} params - Parameters.
+ * @param {string} params.teamId - Id of the team.
+ * @param {Function} params.callback - Callback.
+ */
+function getTeamById({ teamId, callback }) {
+  getTeam({
+    callback,
+    query: { _id: teamId },
+  });
+}
+
+/**
+ * Remove team.
+ * @param {Object} params - Parameters.
+ * @param {string} params.teamId - Id of the team to remove.
+ * @param {Function} params.callback Callback.
+ */
+function removeTeam({ teamId, callback }) {
+  dbUser.removeTeamFromAll({
+    teamId,
+    callback: ({ error }) => {
+      if (error) {
+        callback({ error });
+
+        return;
+      }
+
+      dbConnector.removeObject({
+        callback,
+        query: { _id: teamId },
+        object: Team,
+      });
+    },
+  });
+}
+
+/**
+ * Verify the team.
+ * @param {Object} params - Parameters.
+ * @param {string} params.teamId - Id of the team to verify.
+ * @param {Function} params.callback - Callback.
+ */
+function verifyTeam({ teamId, callback }) {
+  updateTeam({
+    teamId,
+    callback,
+    team: { isVerified: true },
   });
 }
 
 exports.createTeam = createTeam;
-exports.getTeam = getTeam;
-exports.verifyTeam = verifyTeam;
-exports.verifyAllTeams = verifyAllTeams;
-exports.getUnverifiedTeams = getUnverifiedTeams;
-exports.getTeamByOwner = getTeamByOwner;
 exports.removeTeam = removeTeam;
-exports.getTeams = getTeams;
-exports.doesTeamExist = doesTeamExist;
+exports.getTeamsByUser = getTeamsByUser;
+exports.updateTeam = updateTeam;
+exports.addAccess = addAccess;
+exports.removeAccess = removeAccess;
+exports.getTeamById = getTeamById;
+exports.verifyTeam = verifyTeam;

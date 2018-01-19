@@ -18,14 +18,13 @@
 
 const mongoose = require('mongoose');
 const errorCreator = require('../../objects/error/errorCreator');
-const winston = require('winston');
 
 const commandSchema = new mongoose.Schema({
   commandName: String,
   accessLevel: Number,
   visibility: Number,
-  authGroup: String,
-  category: String,
+  authGroups: { type: [String], default: [] },
+  categories: { type: [String], default: [] },
   timesUsed: Number,
 }, { collection: 'commands' });
 
@@ -33,7 +32,8 @@ const Command = mongoose.model('Command', commandSchema);
 
 /**
  * Increment command usage
- * @param {string} params.commandName Name of the command
+ * @param {Object} params - Parameters
+ * @param {string} params.commandName - Name of the command
  */
 function incrementCommandUsage({ commandName }) {
   const query = { commandName };
@@ -44,11 +44,12 @@ function incrementCommandUsage({ commandName }) {
 
 /**
  * Updates all commands. Creates new ones if they don't already exist
- * @param {Object} params.commands New commands
- * @param {Function} params.callback Callback
+ * @param {Object} params - Parameters
+ * @param {Object} params.commands - New commands
+ * @param {Function} params.callback - Callback
  */
 function populateDbCommands({ commands, callback = () => {} }) {
-  winston.info('Creating default commands, if needed');
+  console.log('Creating default commands, if needed');
 
   /**
    * Adds a command to database. Recursive
@@ -81,8 +82,9 @@ function populateDbCommands({ commands, callback = () => {} }) {
 
 /**
  * Get command
- * @param {string} params.commandName Name of the command
- * @param {Function} params.callback Callback
+ * @param {Object} params - Parameters
+ * @param {string} params.commandName - Name of the command
+ * @param {Function} params.callback - Callback
  */
 function getCommand({ commandName, callback }) {
   const query = { commandName };

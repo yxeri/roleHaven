@@ -16,60 +16,51 @@
 
 'use strict';
 
+const tools = require('../helper/tools');
+const baseObjects = require('./baseObjects');
 
 const schemas = {};
 
-schemas.baseTransaction = {
+schemas.transaction = tools.buildLiteSchema({
   type: 'object',
-  required: ['from', 'to', 'time', 'amount'],
+  required: [
+    'amount',
+    'toWalletId',
+    'fromWalletId',
+  ],
   properties: {
-    from: { type: 'string' },
-    to: { type: 'string' },
-    time: { type: 'string' },
     amount: { type: 'number' },
+    toWalletId: { type: 'string' },
+    fromWalletId: { type: 'string' },
+    note: { type: 'string' },
+    coordinates: baseObjects.coordinates,
   },
+});
+
+schemas.fullTransaction = tools.buildFullSchema({
+  type: 'object',
+  required: [
+    'amount',
+    'toWalletId',
+    'fromWalletId',
+  ],
+  properties: {
+    amount: { type: 'number' },
+    toWalletId: { type: 'string' },
+    fromWalletId: { type: 'string' },
+    note: { type: 'string' },
+    coordinates: baseObjects.coordinates,
+  },
+});
+
+schemas.transactions = {
+  type: 'array',
+  items: schemas.transaction,
 };
 
-schemas.fullTransaction = {
-  type: 'object',
-  required: ['data'],
-  properties: {
-    data: {
-      type: 'object',
-      required: ['wallet', 'transaction'],
-      properties: {
-        wallet: {
-          type: 'object',
-          required: ['amount'],
-          properties: {
-            amount: { type: 'number' },
-          },
-        },
-        transaction: schemas.baseTransaction,
-      },
-    },
-  },
-};
-
-schemas.allTransactions = {
-  type: 'object',
-  required: ['data'],
-  properties: {
-    data: {
-      type: 'object',
-      required: ['toTransactions', 'fromTransactions'],
-      properties: {
-        toTransactions: {
-          type: 'array',
-          items: schemas.baseTransaction,
-        },
-        fromTransactions: {
-          type: 'array',
-          items: schemas.baseTransaction,
-        },
-      },
-    },
-  },
+schemas.fullTransactions = {
+  type: 'array',
+  items: schemas.fullTransaction,
 };
 
 module.exports = schemas;

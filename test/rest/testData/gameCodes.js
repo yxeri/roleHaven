@@ -16,36 +16,50 @@
 
 'use strict';
 
-const GameCodeTypes = require('../../../config/defaults/config').databasePopulation.GameCodeTypes;
 const tools = require('../helper/tools');
 const appConfig = require('../../../config/defaults/config').app;
+const dbConfig = require('../../../config/defaults/config').databasePopulation;
+
+/**
+ * code: { type: String, unique: true },
+ codeType: { type: String, default: dbConfig.GameCodeTypes.TRANSACTION },
+ codeContent: { type: [String], default: [] },
+ isRenewable: { type: Boolean, default: false },
+ used: { type: Boolean, default: false },
+ * @type {{}}
+ */
 
 const data = {};
 
-data.GameCodeTypes = GameCodeTypes;
-
-data.codeToCreate = {
-  codeType: GameCodeTypes.LOOT,
+data.create = {
+  first: {
+    codeType: dbConfig.GameCodeTypes.TEXT,
+    codeContent: ['Two lines', 'of text'],
+  },
+  second: {
+    code: tools.createRandString({ length: appConfig.gameCodeLength }),
+  },
 };
 
-data.codeWithBadType = {
-  codeType: GameCodeTypes.PROFILE,
+data.update = {
+  toUpdate: {
+    codeType: dbConfig.GameCodeTypes.TEXT,
+    codeContent: ['Two lines', 'of text'],
+  },
+  updateWith: {
+    codeContent: ['Three lines', 'of text', 'in it'],
+  },
 };
 
-data.userWithWallet = {
-  userName: tools.createRandString({ length: appConfig.userNameMaxLength }),
-  password: tools.createRandString({ length: appConfig.passwordMaxLength }),
-  registerDevice: tools.createRandString({ length: appConfig.deviceIdLength }),
-  mail: `${tools.createRandString({ length: 10 })}@${tools.createRandString({ length: 10 })}.com`,
-  verified: true,
-};
-
-data.otherUserWithWallet = {
-  userName: tools.createRandString({ length: appConfig.userNameMaxLength }),
-  password: tools.createRandString({ length: appConfig.passwordMaxLength }),
-  registerDevice: tools.createRandString({ length: appConfig.deviceIdLength }),
-  mail: `${tools.createRandString({ length: 10 })}@${tools.createRandString({ length: 10 })}.com`,
-  verified: true,
+data.remove = {
+  toRemove: {
+    codeType: dbConfig.GameCodeTypes.TEXT,
+    codeContent: ['Two lines', 'of text'],
+  },
+  secondToRemove: {
+    codeType: dbConfig.GameCodeTypes.TEXT,
+    codeContent: ['Two lines', 'of text'],
+  },
 };
 
 module.exports = data;

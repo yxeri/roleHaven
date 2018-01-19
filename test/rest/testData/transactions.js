@@ -16,25 +16,35 @@
 
 'use strict';
 
-const appConfig = require('../../../config/defaults/config').app;
-const tools = require('../helper/tools');
-
 const data = {};
 
-data.newUserToSendCredits = {
-  userName: tools.createRandString({ length: appConfig.userNameMaxLength }),
-  password: tools.createRandString({ length: appConfig.passwordMaxLength }),
-  registerDevice: tools.createRandString({ length: appConfig.deviceIdLength }),
-  mail: `${tools.createRandString({ length: 10 })}@${tools.createRandString({ length: 10 })}.com`,
-  verified: true,
+data.create = {
+  first: {
+    amount: 1,
+  },
+  second: {
+    amount: 1,
+    note: 'transTwo',
+  },
 };
 
-data.newUserToReceiveCredits = {
-  userName: tools.createRandString({ length: appConfig.userNameMaxLength }),
-  password: tools.createRandString({ length: appConfig.passwordMaxLength }),
-  registerDevice: tools.createRandString({ length: appConfig.deviceIdLength }),
-  mail: `${tools.createRandString({ length: 10 })}@${tools.createRandString({ length: 10 })}.com`,
-  verified: true,
+data.update = {
+  toUpdate: {
+    note: 'new note',
+    amount: 1,
+  },
+  updateWith: {
+    note: 'transThree',
+  },
+};
+
+data.remove = {
+  toRemove: {
+    amount: 1,
+  },
+  secondToRemove: {
+    amount: 1,
+  },
 };
 
 module.exports = data;

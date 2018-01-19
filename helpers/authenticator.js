@@ -5,12 +5,19 @@ const errorCreator = require('../objects/error/errorCreator');
 const dbConfig = require('../config/defaults/config').databasePopulation;
 
 /**
- * Create json web token
- * @param {string} params.userName User name of user to auth
- * @param {string} params.password Password of user to auth
- * @param {Function} params.callback Callback
+ * Create json web token. The user can be found by either the username or userId.
+ * @param {Object} params - Parameters.
+ * @param {string} params.password - Password of user to auth.
+ * @param {Function} params.callback - Callback.
+ * @param {string} [params.userId] - Id of user to auth.
+ * @param {string} params.username] - Name of user to auth.
  */
-function createToken({ userName, password, callback }) {
+function createToken({
+  username,
+  userId,
+  password,
+  callback,
+}) {
   if (!appConfig.jsonKey) {
     callback({ error: new errorCreator.Internal({ name: 'json key not set' }) });
 
@@ -18,7 +25,8 @@ function createToken({ userName, password, callback }) {
   }
 
   dbUser.authUser({
-    userName,
+    userId,
+    username,
     password,
     callback: ({ error, data }) => {
       if (error) {
@@ -29,14 +37,7 @@ function createToken({ userName, password, callback }) {
 
       const { user } = data;
 
-      const jwtUser = {
-        _id: user._id, // eslint-disable-line no-underscore-dangle
-        userName: user.userName,
-        accessLevel: user.accessLevel,
-        visibility: user.visibility,
-        verified: user.verified,
-        banned: user.banned,
-      };
+      const jwtUser = { userId: user.objectId };
 
       jwt.sign({ data: jwtUser }, appConfig.jsonKey, (err, token) => {
         if (err) {
@@ -52,13 +53,17 @@ function createToken({ userName, password, callback }) {
 }
 
 /**
- * Checks if the user is allowed to use the command
- * @param {string} params.token Json web token
- * @param {string} params.commandName Name of the command
- * @param {string} [params.matchNameTo] Checks if sent user name is the same as authenticated. Used for current user get, as they need less permission than get from other users
- * @param {Function} params.callback callback
+ * Checks if the user is allowed to use the command.
+ * @param {Object} params - Parameters.
+ * @param {string} params.token - Json web token.
+ * @param {string} params.commandName - Name of the command.
+ * @param {Function} params.callback - callback.
  */
-function isUserAllowed({ commandName, token, matchNameTo = '', callback = () => {} }) {
+function isUserAllowed({
+  commandName,
+  token,
+  callback,
+}) {
   const commandUsed = dbConfig.apiCommands[commandName];
   const anonUser = dbConfig.anonymousUser;
 
@@ -70,49 +75,101 @@ function isUserAllowed({ commandName, token, matchNameTo = '', callback = () => 
 
   if (!token) {
     if (commandUsed.accessLevel > anonUser.accessLevel) {
-      callback({ error: new errorCreator.NotAllowed({ name: commandName }) });
+      callback({ error: new errorCreator.NotAllowed({ name: commandName, verbose: false }) });
 
       return;
     }
 
     callback({ data: { user: anonUser } });
-  } else {
-    jwt.verify(token, appConfig.jsonKey, (err, decoded) => {
-      if (err || !decoded) {
-        callback({ error: new errorCreator.NotAllowed({ name: commandName }) });
 
-        return;
-      }
-
-      dbUser.getUserByAlias({
-        alias: decoded.data.userName,
-        callback: ({ error, data }) => {
-          if (error) {
-            callback({ error });
-
-            return;
-          }
-
-          const user = data.user;
-          const commandAccessLevel = user.userName === matchNameTo
-          || user.aliases.indexOf(matchNameTo) > -1
-          || (user.team && `${user.team}${appConfig.teamAppend}` === matchNameTo)
-          || user.shortTeam === matchNameTo
-            ? commandUsed.selfAccessLevel
-            : commandUsed.accessLevel;
-
-          if (commandAccessLevel > user.accessLevel) {
-            callback({ error: new errorCreator.NotAllowed({ name: commandName }) });
-
-            return;
-          }
-
-          callback({ data: { user: data.user, matchedUserName: user.userName === matchNameTo } });
-        },
-      });
-    });
+    return;
   }
+
+  jwt.verify(token, appConfig.jsonKey, (err, decoded) => {
+    if (err || !decoded) {
+      callback({ error: new errorCreator.NotAllowed({ name: commandName }) });
+
+      return;
+    }
+
+    const { userId } = decoded.data;
+
+    dbUser.getUserById({
+      userId,
+      full: true,
+      callback: ({ error, data }) => {
+        if (error) {
+          callback({ error });
+
+          return;
+        }
+
+        const { user } = data;
+        const { accessLevel } = commandUsed;
+
+        if (accessLevel > user.accessLevel) {
+          callback({ error: new errorCreator.NotAllowed({ name: commandName }) });
+
+          return;
+        }
+
+        callback({ data: { user } });
+      },
+    });
+  });
+}
+
+/**
+ * Does the user have equal or higher access level to the set visibility/access level in the object that will be created?
+ * @param {Object} params - Parameters.
+ * @param {Object} params.objectToCreate - Object that is going to be created.
+ * @param {Object} params.toAuth - User trying to create an object.
+ * @return {boolean} - Does the user have a high enough access level?
+ */
+function isAllowedAccessLevel({ objectToCreate, toAuth }) {
+  return (!objectToCreate.accessLevel || toAuth.accessLevel >= objectToCreate.accessLevel) || (!objectToCreate.visibility || toAuth.accessLevel >= objectToCreate.visibility);
+}
+
+/**
+ * Checks if user has access, is admin or can see the object
+ * @param {Object} params - Parameter
+ * @param {Object} params.objectToAccess - Object to access
+ * @param {Object} params.toAuth - Object to auth
+ * @param {boolean} [params.shouldBeAdmin] - Should it check if the user or team are admins?
+ * @returns {boolean} - Does the user have access to the object?
+ */
+function hasAccessTo({
+  objectToAccess,
+  toAuth,
+  shouldBeAdmin = false,
+}) {
+  const {
+    teamIds,
+    userIds,
+    userAdminIds,
+    teamAdminIds,
+    ownerId,
+    isPublic,
+  } = objectToAccess;
+  const {
+    hasFullAccess,
+    accessLevel,
+    teamIds: authTeamIds,
+    objectId: authUserId,
+  } = toAuth;
+  if (hasFullAccess || accessLevel >= dbConfig.AccessLevels.ADMIN) {
+    return true;
+  } else if (shouldBeAdmin) {
+    return (ownerId === authUserId || (userAdminIds.includes(authUserId)) || (teamAdminIds.find(adminId => authTeamIds.includes(adminId))));
+  }
+
+  const userHasAccess = userIds.concat([ownerId]).includes(authUserId);
+  const teamHasAccess = teamIds.find(teamId => authTeamIds.includes(teamId));
+
+  return isPublic || userHasAccess || teamHasAccess;
 }
 
 exports.isUserAllowed = isUserAllowed;
 exports.createToken = createToken;
+exports.hasAccessTo = hasAccessTo;
+exports.isAllowedAccessLevel = isAllowedAccessLevel;

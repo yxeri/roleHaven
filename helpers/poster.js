@@ -22,13 +22,18 @@ const errorCreator = require('../objects/error/errorCreator');
 
 /**
  * Post request to external server
- * @param {string} params.host Host name
- * @param {string} params.path Path
- * @param {boolean} params.shouldBypass Should the request be bypassed. Used if external sources no longer exists
- * @param {Function} params.callback Callback
- * @param {Object} params.data Data to send
+ * @param {Object} params - Parameters.
+ * @param {string} params.host - Host name.
+ * @param {string} params.path - Path.
+ * @param {Function} params.callback - Callback.
+ * @param {Object} params.data - Data to send.
  */
-function postRequest({ host, path, data, callback }) {
+function postRequest({
+  host,
+  path,
+  data,
+  callback,
+}) {
   if (appConfig.bypassExternalConnections || appConfig.mode === appConfig.Modes.TEST) {
     callback({ data: { statusCode: 200 } });
 

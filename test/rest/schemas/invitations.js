@@ -16,37 +16,53 @@
 
 'use strict';
 
+const tools = require('../helper/tools');
+const dbConfig = require('../../../config/defaults/config').databasePopulation;
 
 const schemas = {};
 
-schemas.invitation = {
+schemas.invitation = tools.buildLiteSchema({
   type: 'object',
-  required: ['data'],
+  required: [
+    'invitationType',
+    'itemId',
+    'receiverId',
+  ],
   properties: {
-    data: {
-      type: 'object',
-      required: [
-        'invitation',
-        'to',
-      ],
-      properties: {
-        invitation: {
-          type: 'object',
-          required: [
-            'itemName',
-            'sender',
-            'time',
-          ],
-          properties: {
-            itemName: { type: 'string' },
-            sender: { type: 'string' },
-            item: { type: 'string' },
-          },
-        },
-        to: { type: 'string' },
-      },
+    invitationType: {
+      type: 'string',
+      enum: Object.keys(dbConfig.InvitationTypes),
     },
+    itemId: { type: 'string' },
+    receiverId: { type: 'string' },
   },
+});
+
+schemas.fullInvitation = tools.buildFullSchema({
+  type: 'object',
+  required: [
+    'invitationType',
+    'itemId',
+    'receiverId',
+  ],
+  properties: {
+    invitationType: {
+      type: 'string',
+      enum: Object.keys(dbConfig.InvitationTypes),
+    },
+    itemId: { type: 'string' },
+    receiverId: { type: 'string' },
+  },
+});
+
+schemas.invitations = {
+  type: 'array',
+  items: schemas.invitation,
+};
+
+schemas.fullInvitations = {
+  type: 'array',
+  items: schemas.fullInvitation,
 };
 
 module.exports = schemas;

@@ -21,15 +21,9 @@ const schemas = {};
 
 schemas.authenticate = {
   type: 'object',
-  required: ['data'],
+  required: ['token'],
   properties: {
-    data: {
-      type: 'object',
-      required: ['token'],
-      properties: {
-        token: { type: 'string' },
-      },
-    },
+    token: { type: 'string' },
   },
 };
 

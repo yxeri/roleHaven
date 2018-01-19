@@ -21,98 +21,58 @@ const dbWallet = require('../db/connectors/wallet');
 const appConfig = require('../config/defaults/config').app;
 const dbConfig = require('../config/defaults/config').databasePopulation;
 const errorCreator = require('../objects/error/errorCreator');
-const dbInvitation = require('../db/connectors/invitationList');
+const dbInvitation = require('../db/connectors/invitation');
 const dbTeam = require('../db/connectors/team');
-const objectValidator = require('../utils/objectValidator');
 const authenticator = require('../helpers/authenticator');
-const roomManager = require('./rooms');
+const aliasManager = require('./aliases');
+const dbRoom = require('../db/connectors/room');
+const socketUtils = require('../utils/socketIo');
 
 /**
- * Update user's team
- * @param {string} params.userName Name of the user
- * @param {string} params.teamName Name of the team
- * @param {string} params.shortTeamName Short name of the team
- * @param {Function} [params.callback] Callback
+ * Get team by Id and check if the user has access to it.
+ * @param {Object} params - Parameters.
+ * @param {Object} params.user - User retrieving the team.
+ * @param {string} params.teamId - Id of the team to retrieve.
+ * @param {Function} params.callback - Callback.
+ * @param {string} [params.errorContentText] - Text to be printed on error.
+ * @param {boolean} [params.shouldBeAdmin] - Does the user have to be an admin?
  */
-function updateUserTeam({ userName, teamName, shortTeamName, callback = () => {} }) {
-  dbUser.updateUserTeam({
-    userName,
-    team: teamName,
-    shortTeam: shortTeamName,
-    callback: (userData) => {
-      if (userData.error) {
-        callback({ error: userData.error });
+function getAccessibleTeam({
+  user,
+  teamId,
+  callback,
+  shouldBeAdmin,
+  full,
+  errorContentText = `teamId ${teamId}`,
+}) {
+  dbTeam.getTeamById({
+    teamId,
+    callback: ({ error: teamError, data: teamData }) => {
+      if (teamError) {
+        callback({ error: teamError });
+
+        return;
+      } else if (!authenticator.hasAccessTo({
+        shouldBeAdmin,
+        toAuth: user,
+        objectToAccess: teamData.team,
+      })) {
+        callback({ error: new errorCreator.NotAllowed({ name: errorContentText }) });
 
         return;
       }
 
-      callback({ data: { user: userData.data.user } });
-    },
-  });
-}
-
-/**
- * Add user to team
- * @param {Object} team Team
- * @param {Object} user User
- * @param {Object} io Socket io
- * @param {Object} socket Socket io
- * @param {Function} callback Callback
- */
-function addUserToTeam({ team, user, io, socket, callback }) {
-  updateUserTeam({
-    socket,
-    userName: user.userName,
-    teamName: team.teamName,
-    shortTeamName: team.shortName,
-    callback: ({ error }) => {
-      if (error) {
-        callback({ error });
-
-        return;
-      }
-
-      const room = {
-        roomName: team.teamName + appConfig.teamAppend,
+      const foundTeam = teamData.team;
+      const filteredTeam = {
+        objectId: foundTeam.objectId,
+        teamName: foundTeam.teamName,
+        shortName: foundTeam.shortName,
+        lastUpdated: foundTeam.lastUpdated,
       };
 
-      dbUser.addRoomToUser({
-        userName: user.userName,
-        roomName: room.roomName,
-        callback: ({ error: userError, data: userData }) => {
-          if (userError) {
-            callback({ error: userError });
-
-            return;
-          }
-
-          const roomName = room.roomName;
-          const dataToSend = {
-            roomName,
-            userName: userData.user.userName,
-            isFollowing: true,
-          };
-
-          if (socket) {
-            socket.broadcast.to(roomName).emit('roomFollower', { data: dataToSend });
-            socket.join(roomName);
-            socket.emit('follow', { data: { room } });
-          } else {
-            io.to(user.socketId).emit('follow', { data: { room } });
-            io.to(roomName).emit('roomFollower', { data: dataToSend });
-          }
-
-          callback({
-            data: {
-              room: {
-                roomName: room.roomName,
-              },
-              team: {
-                teamName: team.teamName,
-                shortName: team.shortName,
-              },
-            },
-          });
+      callback({
+        data: {
+          team: full ? foundTeam : filteredTeam,
         },
       });
     },
@@ -120,138 +80,118 @@ function addUserToTeam({ team, user, io, socket, callback }) {
 }
 
 /**
- * Create team
- * @param {Object} params.team Team to create
- * @param {Object} [params.socket] Socket io
- * @param {Object} params.io Socket io. Will be used if socket is not set
- * @param {string} params.token jwt
- * @param {Function} params.callback Callback
+ * Emits team to clients.
+ * @param {Object} params - Parameters.
+ * @param {Object} params.room - Team room.
+ * @param {Object} params.wallet - Team wallet.
+ * @param {Object} params.team - Team.
+ * @param {Object} params.user - User who created the team.
+ * @param {Function} params.callback - Callback.
+ * @param {Object} params.io - Socket.io. Will be used if socket is not set.
+ * @param {Object} [params.socket] - Socket.io.
  */
-function createTeam({ team, socket, io, callback, token }) {
-  authenticator.isUserAllowed({
-    token,
-    commandName: dbConfig.apiCommands.CreateTeam.name,
-    callback: ({ error, data }) => {
-      if (error) {
-        callback({ error });
+function emitTeam({
+  room,
+  wallet,
+  team,
+  user,
+  callback,
+  io,
+  socket,
+}) {
+  const dataToSend = {
+    data: {
+      wallet,
+      room,
+      team,
+      changeType: dbConfig.ChangeTypes.CREATE,
+    },
+  };
 
-        return;
-      } else if (data.user.team) {
-        callback({ error: new errorCreator.AlreadyExists({ name: 'already in team' }) });
+  if (team.isVerified) {
+    if (socket) {
+      socket.join(room.objectId);
+      socket.broadcast.to(team.accessLevel).emit(dbConfig.EmitTypes.TEAM, dataToSend);
+    } else {
+      const userSocket = socketUtils.getUserSocket({
+        io,
+        socketId: user.socketId,
+      });
 
-        return;
-      } else if (team.teamName.toLowerCase() === 'team') {
-        callback({ error: new errorCreator.InvalidData({ expected: 'team name !== team' }) });
+      if (userSocket) { userSocket.join(room.objectId); }
 
-        return;
-      } else if (team.teamName.length > appConfig.teamNameMaxLength || team.shortName.length > appConfig.shortTeamMaxLength) {
-        callback({ error: new errorCreator.InvalidData({ name: `Team name length: ${appConfig.teamNameMaxLength} Short name length: ${appConfig.shortTeamMaxLength}` }) });
+      io.to(team.accessLevel).emit(dbConfig.EmitTypes.TEAM, dataToSend);
+    }
+  }
 
-        return;
-      } else if (dbConfig.protectedNames.indexOf(team.teamName.toLowerCase()) > -1 || dbConfig.protectedNames.indexOf(team.shortName.toLowerCase()) > -1) {
-        callback({ error: new errorCreator.AlreadyExists({ expected: 'team name !== team' }) });
+  callback(dataToSend);
+}
+
+/**
+ * Create the team, together with the team's wallet and room.
+ * @private
+ * @param {Object} params - Parameters.
+ * @param {Object} params.team - The team to save.
+ * @param {Function} params.callback - Callback.
+ */
+function createTeamAndDependencies({
+  team,
+  callback,
+}) {
+  dbTeam.createTeam({
+    team,
+    callback: (createData) => {
+      if (createData.error) {
+        callback({ error: createData.error });
 
         return;
       }
 
-      const user = data.user;
-      const newTeam = team;
-      newTeam.owner = user.userName;
-      newTeam.shortName = newTeam.shortName.toLowerCase();
-      newTeam.teamName = newTeam.teamName.toLowerCase();
-      newTeam.verified = !appConfig.teamVerify;
+      const newTeam = createData.data.team;
 
-      dbTeam.createTeam({
-        team: newTeam,
-        callback: ({ error: teamError, data: teamData }) => {
-          if (teamError) {
-            callback({ error: teamError });
+      const wallet = {
+        ownerId: team.ownerId,
+        ownerAliasId: team.ownerAliasId,
+      };
+
+      dbWallet.createWallet({
+        wallet,
+        callback: ({ error: walletError, data: walletData }) => {
+          if (walletError) {
+            callback({ error: walletError });
 
             return;
           }
 
-          const createdTeam = teamData.team;
-          const wallet = {
-            owner: createdTeam.teamName + appConfig.teamAppend,
-            team: createdTeam.teamName,
+          const roomToCreate = {
+            ownerId: newTeam.ownerId,
+            ownerAliasId: newTeam.ownerAliasId,
+            roomName: newTeam.objectId,
+            roomId: newTeam.objectId,
+            accessLevel: dbConfig.AccessLevels.SUPERUSER,
+            visibility: dbConfig.AccessLevels.SUPERUSER,
+            nameIsLocked: true,
           };
 
-          dbWallet.createWallet({
-            wallet,
-            callback: ({ error: walletError, data: walletData }) => {
-              if (walletError) {
-                callback({ error: walletError });
+          if (team.ownerAliasId) {
+            roomToCreate.ownerAliasId = team.ownerAliasId;
+          }
+
+          dbRoom.createRoom({
+            options: { shouldSetId: true },
+            room: roomToCreate,
+            callback: ({ error: roomError, data: roomData }) => {
+              if (roomError) {
+                callback({ error: roomError });
 
                 return;
               }
 
-              roomManager.createSpecialRoom({
-                user,
-                room: {
-                  team: createdTeam.teamName,
-                  owner: dbConfig.systemUserName,
-                  roomName: createdTeam.teamName + appConfig.teamAppend,
-                  accessLevel: dbConfig.AccessLevels.SUPERUSER,
-                  visibility: dbConfig.AccessLevels.SUPERUSER,
-                },
-                callback: ({ error: roomError, data: roomData }) => {
-                  if (roomError) {
-                    callback({ error: roomError });
-
-                    return;
-                  }
-
-                  const dataToEmit = {
-                    team: {
-                      teamName: newTeam.teamName,
-                      shortName: newTeam.shortName,
-                    },
-                  };
-
-                  if (appConfig.teamVerify) {
-                    if (socket) {
-                      socket.broadcast.emit('team', { data: dataToEmit });
-                    } else {
-                      io.emit('team', { data: dataToEmit });
-                    }
-
-                    callback({
-                      data: {
-                        requiresVerify: appConfig.teamVerify,
-                        team: createdTeam,
-                        wallet: walletData.wallet,
-                        room: roomData.room,
-                      },
-                    });
-                  } else {
-                    addUserToTeam({
-                      socket,
-                      io,
-                      user,
-                      team: createdTeam,
-                      callback: ({ error: userError }) => {
-                        if (userError) {
-                          callback({ error: userError });
-
-                          return;
-                        }
-
-                        if (socket) {
-                          socket.broadcast.emit('team', { data: dataToEmit });
-                        } else {
-                          io.emit('team', { data: dataToEmit });
-                        }
-
-                        callback({
-                          data: {
-                            team: createdTeam,
-                            wallet: walletData.wallet,
-                            room: roomData.room,
-                          },
-                        });
-                      },
-                    });
-                  }
+              callback({
+                data: {
+                  room: roomData.room,
+                  wallet: walletData.wallet,
+                  team: newTeam,
                 },
               });
             },
@@ -263,13 +203,213 @@ function createTeam({ team, socket, io, callback, token }) {
 }
 
 /**
- * Invite user to team
- * @param {string} params.to Name of the user to invite
- * @param {Object} [params.socket] Socket io
- * @param {Object} [params.io] Socket io. Will be used if socket is not set
- * @param {Function} params.callback Callback
+ * Create a team.
+ * @param {Object} params - Parameters.
+ * @param {Object} params.team Team to create.
+ * @param {Object} params.io - Socket io. Will be used if socket is not set.
+ * @param {string} params.token - jwt.
+ * @param {Function} params.callback - Callback.
+ * @param {Object} [params.socket] - Socket io.
  */
-function inviteToTeam({ to, socket, io, callback, token }) {
+function createTeam({
+  team,
+  socket,
+  io,
+  callback,
+  token,
+}) {
+  authenticator.isUserAllowed({
+    token,
+    commandName: dbConfig.apiCommands.CreateTeam.name,
+    callback: ({ error, data }) => {
+      if (error) {
+        callback({ error });
+
+        return;
+      } else if (team.teamName.length > appConfig.teamNameMaxLength || team.shortName.length > appConfig.shortTeamMaxLength) {
+        callback({ error: new errorCreator.InvalidData({ name: `Team name length: ${appConfig.teamNameMaxLength} Short name length: ${appConfig.shortTeamMaxLength}` }) });
+
+        return;
+      } else if (dbConfig.protectedNames.indexOf(team.teamName.toLowerCase()) > -1 || dbConfig.protectedNames.indexOf(team.shortName.toLowerCase()) > -1) {
+        callback({ error: new errorCreator.AlreadyExists({ expected: 'not protected name' }) });
+
+        return;
+      }
+
+      const authUser = data.user;
+      const newTeam = team;
+      newTeam.ownerId = authUser.objectId;
+      newTeam.isVerified = !appConfig.teamVerify;
+
+      if (newTeam.ownerAliasId) {
+        aliasManager.getAccessibleAlias({
+          user: authUser,
+          aliasId: newTeam.ownerAliasId,
+          callback: ({ error: aliasError }) => {
+            if (aliasError.error) {
+              callback({ error: aliasError });
+
+              return;
+            }
+
+            createTeamAndDependencies({
+              socket,
+              io,
+              user: authUser,
+              team: newTeam,
+              callback: ({ error: teamError, data: teamData }) => {
+                if (teamError) {
+                  callback({ error: teamError });
+
+                  return;
+                }
+
+                emitTeam({
+                  socket,
+                  io,
+                  callback,
+                  room: teamData.room,
+                  wallet: teamData.wallet,
+                  team: teamData.team,
+                  user: authUser,
+                });
+              },
+            });
+          },
+        });
+
+        return;
+      }
+
+      createTeamAndDependencies({
+        socket,
+        io,
+        user: authUser,
+        team: newTeam,
+        callback: ({ error: teamError, data: teamData }) => {
+          if (teamError) {
+            callback({ error: teamError });
+
+            return;
+          }
+
+          emitTeam({
+            socket,
+            io,
+            callback,
+            room: teamData.room,
+            wallet: teamData.wallet,
+            team: teamData.team,
+            user: authUser,
+          });
+        },
+      });
+    },
+  });
+}
+
+/**
+ * Verify a team.
+ * @param {Object} params - Parameters.
+ * @param {string} params.token - jwt.
+ * @param {string} params.teamId - ID of the team to verify.
+ * @param {Function} params.callback - Callback.
+ * @param {Object} params.io - Socket.io. Will be used if socket is not set.
+ * @param {Object} params.socket - Socket.io.
+ */
+function verifyTeam({
+  token,
+  teamId,
+  callback,
+  socket,
+  io,
+}) {
+  authenticator.isUserAllowed({
+    token,
+    commandName: dbConfig.apiCommands.VerifyTeam.name,
+    callback: ({ error }) => {
+      if (error) {
+        callback({ error });
+
+        return;
+      }
+
+      dbTeam.verifyTeam({
+        teamId,
+        callback: ({ error: teamError, data: teamData }) => {
+          if (teamError) {
+            callback({ error: teamError });
+
+            return;
+          }
+
+          const { team } = teamData;
+          const dataToSend = {
+            data: {
+              team,
+              changeType: dbConfig.ChangeTypes.CREATE,
+            },
+          };
+
+          // TODO Join all members to team, set team to all members.
+
+          if (socket) {
+            socket.broadcast.to(team.visibility).emit(dbConfig.EmitTypes.TEAM, dataToSend);
+          } else {
+            io.to(team.visibility).emit(dbConfig.EmitTypes.TEAM, dataToSend);
+          }
+
+          callback(dataToSend);
+        },
+      });
+    },
+  });
+}
+
+/**
+ * Invite a user to a team.
+ * @param {Object} params - Parameters.
+ * @param {Object} params.invitation - The invitation to create.
+ * @param {Function} params.callback - Callback.
+ * @param {Object} params.io - Socket io. Will be used if socket is not set.
+ * @param {Object} [params.socket] - Socket io.
+ */
+function inviteToTeam({
+  socket,
+  invitation,
+  io,
+  callback,
+  token,
+}) {
+  const createCallback = (toCreate) => {
+    dbInvitation.createInvitation({
+      invitation: toCreate,
+      callback: ({ error: inviteError, data: invitationData }) => {
+        if (inviteError) {
+          callback({ error: inviteError });
+
+          return;
+        }
+
+        const newInvitation = invitationData.invitation;
+        const dataToSend = {
+          data: {
+            invitation: newInvitation,
+            changeType: dbConfig.ChangeTypes.CREATE,
+          },
+        };
+
+        if (socket) {
+          socket.broadcast.to(newInvitation.receiverId).emit(dbConfig.EmitTypes.INVITATION, dataToSend);
+        } else {
+          io.to(newInvitation.receiverId).emit(dbConfig.EmitTypes.INVITATION, dataToSend);
+        }
+
+        callback(dataToSend);
+      },
+    });
+  };
+
   authenticator.isUserAllowed({
     token,
     commandName: dbConfig.apiCommands.InviteToTeam.name,
@@ -280,17 +420,11 @@ function inviteToTeam({ to, socket, io, callback, token }) {
         return;
       }
 
-      const user = data.user;
+      const { user } = data;
 
-      const invitation = {
-        itemName: user.team,
-        time: new Date(),
-        invitationType: 'team',
-        sender: user.userName,
-      };
-
-      dbTeam.getTeam({
-        teamName: user.team,
+      getAccessibleTeam({
+        user,
+        teamId: invitation.itemId,
         callback: ({ error: teamError }) => {
           if (teamError) {
             callback({ error: teamError });
@@ -298,43 +432,31 @@ function inviteToTeam({ to, socket, io, callback, token }) {
             return;
           }
 
-          dbUser.getUserByAlias({
-            alias: to,
-            callback: ({ error: userError, data: userData }) => {
-              if (userError) {
-                callback({ error: userError });
+          // TODO Check if user receiver id exists
 
-                return;
-              }
+          const invitationToCreate = invitation;
+          invitationToCreate.ownerAliasId = user.objectId;
+          invitationToCreate.invitationType = dbConfig.InvitationTypes.TEAM;
 
-              dbInvitation.addInvitationToList({
-                invitation,
-                userName: userData.user.userName,
-                callback: ({ error: inviteError, data: invitationData }) => {
-                  if (inviteError) {
-                    callback({ error: inviteError });
+          if (invitationToCreate.ownerAliasId) {
+            aliasManager.getAccessibleAlias({
+              user,
+              aliasId: invitationToCreate.ownerAliasId,
+              callback: ({ error: aliasError }) => {
+                if (aliasError) {
+                  callback({ error: aliasError });
 
-                    return;
-                  }
+                  return;
+                }
 
-                  const newInvitation = invitationData.list.invitations[invitationData.list.invitations.length - 1];
-                  const dataToSend = {
-                    invitation: newInvitation,
-                    to: invitationData.list.userName,
-                  };
-                  const emitRoomName = `${to}${appConfig.whisperAppend}`;
+                createCallback(invitationToCreate);
+              },
+            });
 
-                  if (socket) {
-                    socket.broadcast.to(emitRoomName).emit('invitation', { data: dataToSend });
-                  } else {
-                    io.to(emitRoomName).emit('invitation', { data: dataToSend });
-                  }
+            return;
+          }
 
-                  callback({ data: dataToSend });
-                },
-              });
-            },
-          });
+          createCallback(invitationToCreate);
         },
       });
     },
@@ -342,14 +464,81 @@ function inviteToTeam({ to, socket, io, callback, token }) {
 }
 
 /**
- * User accepts sent invitation and joins the team
- * @param {Object} params.user User accepting invite
- * @param {Object} params.invitation Invitation that will be accepted
- * @param {Object} params.io Socket io. Will be used if socket is not set
- * @param {Object} [params.socket] Socket io.
- * @param {Function} params.callback Callback
+ * Add a user to a team.
+ * @private
+ * @param {Object} params - Parameters.
+ * @param {string} params.teamId - ID of the team.
+ * @param {string} params.memberId - ID of the user.
+ * @param {Object} params.user - User being added to the team.
+ * @param {Function} params.callback - Callback
+ * @param {Object} params.io - Socket.io. Will be used if socket is not set.
+ * @param {boolean} [params.isAdmin] - Should the user be set as an admin of the team?
+ * @param {Object} [params.socket] - Socket.io.
  */
-function acceptTeamInvitation({ token, invitation, io, socket, callback }) {
+function addUserToTeam({
+  teamId,
+  memberId,
+  isAdmin,
+  user,
+  callback,
+  socket,
+  io,
+}) {
+  dbUser.addToTeam({
+    teamId,
+    isAdmin,
+    userIds: [memberId],
+    callback: ({ error }) => {
+      if (error) {
+        callback({ error });
+
+        return;
+      }
+
+      const dataToSend = {
+        data: {
+          user: {
+            objectId: memberId,
+            partOfTeams: user.partOfTeams.concat(teamId),
+          },
+          changeType: dbConfig.ChangeTypes.UPDATE,
+        },
+      };
+      const teamDataToSend = dataToSend;
+      teamDataToSend.data.changeType = dbConfig.ChangeTypes.CREATE;
+
+      const userSocket = socketUtils.getUserSocket({ io, socketId: user.socketId });
+
+      if (userSocket) { userSocket.join(teamId); }
+
+      if (socket) {
+        socket.broadcast.to(teamId).emit(dbConfig.EmitTypes.TEAMMEMBER, teamDataToSend);
+        socket.broadcast.emit(dbConfig.EmitTypes.USER, dataToSend);
+      } else {
+        io.to(teamId).emit(dbConfig.EmitTypes.TEAMMEMBER, teamDataToSend);
+        io.emit(dbConfig.EmitTypes.USER, dataToSend);
+      }
+
+      callback(teamDataToSend);
+    },
+  });
+}
+
+/**
+ * User accepts sent invitation and joins the team.
+ * @param {Object} params - Parameters.
+ * @param {Object} params.invitationId - ID of the invitation that will be accepted.
+ * @param {Object} params.io - Socket io. Will be used if socket is not set.
+ * @param {Function} params.callback - Callback.
+ * @param {Object} [params.socket] Socket io.
+ */
+function acceptTeamInvitation({
+  token,
+  invitationId,
+  io,
+  socket,
+  callback,
+}) {
   authenticator.isUserAllowed({
     token,
     commandName: dbConfig.apiCommands.AcceptInvitation.name,
@@ -358,74 +547,178 @@ function acceptTeamInvitation({ token, invitation, io, socket, callback }) {
         callback({ error });
 
         return;
-      } else if (!objectValidator.isValidData({ invitation, io }, { invitation: { invitationType: true, itemName: true }, io: true })) {
-        callback({ error: new errorCreator.InvalidData({ expected: '{ invitation: { invitationType, itemName }, io }' }) });
+      }
+
+      const { user } = data;
+
+      dbInvitation.useInvitation({
+        invitationId,
+        callback: ({ error: invitationError, data: invitationData }) => {
+          if (invitationError) {
+            callback({ error: invitationError });
+
+            return;
+          }
+
+          const { invitation } = invitationData;
+
+          addUserToTeam({
+            socket,
+            io,
+            callback,
+            user,
+            memberId: invitation.receiverId,
+            teamId: invitation.itemId,
+          });
+        },
+      });
+    },
+  });
+}
+
+/**
+ * Get teams that the user has access to.
+ * @param {Object} params - Parameters.
+ * @param {string} params.token - jwt.
+ * @param {Function} params.callback - Callback.
+ * @param {boolean} [params.includeInactive] - Should unverified teams be returned?
+ * @param {boolean} [params.full] - Should access information be returned?
+ */
+function getTeamsByUser({
+  full,
+  token,
+  includeInactive,
+  callback,
+}) {
+  authenticator.isUserAllowed({
+    token,
+    commandName: full ? dbConfig.apiCommands.GetFull.name : dbConfig.apiCommands.GetTeams.name,
+    callback: ({ error, data }) => {
+      if (error) {
+        callback({ error });
 
         return;
       }
 
-      const user = data.user;
-      const userName = user.userName;
+      const { user } = data;
 
-      dbInvitation.getInvitations({
-        userName,
-        callback: (invitationData) => {
-          if (invitationData.error) {
-            callback({ error: invitationData.error });
+      dbTeam.getTeamsByUser({
+        user,
+        full,
+        includeInactive,
+        callback,
+      });
+    },
+  });
+}
+
+/**
+ * Get a team.
+ * @param {Object} params - Parameters.
+ * @param {string} params.teamId - ID of the team
+ * @param {string} params.token - jwt.
+ * @param {Function} params.callback - Callback.
+ * @param {boolean} [params.full] - Should all parameters be returned in the result?
+ */
+function getTeamById({
+  teamId,
+  token,
+  callback,
+  full,
+}) {
+  authenticator.isUserAllowed({
+    token,
+    commandName: full ? dbConfig.apiCommands.GetFull.name : dbConfig.apiCommands.GetTeam.name,
+    callback: ({ error, data }) => {
+      if (error) {
+        callback({ error });
+
+        return;
+      }
+
+      const { user } = data;
+
+      getAccessibleTeam({
+        full,
+        teamId,
+        user,
+        callback,
+      });
+    },
+  });
+}
+
+/**
+ * Remove a user from a team.
+ * @param {Object} params - Parameters.
+ * @param {string} params.userId - Id of the user or alias that is leaving a team.
+ * @param {string} params.token - jwt.
+ * @param {Object} params.io - Socket io. Will be used if socket is not set.
+ * @param {Function} params.callback - Callback.
+ * @param {Object} [params.socket] Socket io.
+ */
+function leaveTeam({
+  teamId,
+  userId,
+  token,
+  io,
+  socket,
+  callback,
+}) {
+  authenticator.isUserAllowed({
+    token,
+    commandName: dbConfig.apiCommands.LeaveTeam.name,
+    callback: ({ error, data }) => {
+      if (error) {
+        callback({ error });
+
+        return;
+      }
+
+      const authUser = data.user;
+
+      getAccessibleTeam({
+        teamId,
+        user: authUser,
+        callback: ({ error: teamError }) => {
+          if (teamError) {
+            callback({ error: teamError });
 
             return;
           }
 
-          const retrievedInvitation = invitationData.data.list.invitations.find(inv => inv.itemName === invitation.itemName && inv.invitationType === invitation.invitationType);
+          const dataToSend = {
+            data: {
+              user: {
+                objectId: userId,
+              },
+              changeType: dbConfig.ChangeTypes.REMOVE,
+            },
+          };
 
-          if (!retrievedInvitation) {
-            callback({ error: new errorCreator.DoesNotExist({ name: `invitation ${invitation.itemName} ${invitation.invitationType} for ${userName}` }) });
-
-            return;
-          }
-
-          dbTeam.getTeam({
-            teamName: retrievedInvitation.itemName,
-            callback: ({ error: teamError, data: teamData }) => {
-              if (teamError) {
-                callback({ error: teamError });
+          dbUser.removeFromTeam({
+            userId,
+            teamId,
+            callback: ({ error: removeError }) => {
+              if (removeError) {
+                callback({ error: removeError });
 
                 return;
               }
 
-              addUserToTeam({
-                socket,
+              socketUtils.leaveRooms({
                 io,
-                user,
-                team: teamData.team,
-                callback: (addUserData) => {
-                  if (addUserData.error) {
-                    callback({ error: addUserData.error });
-
-                    return;
-                  }
-
-                  dbInvitation.removeInvitationTypeFromList({
-                    userName,
-                    invitationType: 'team',
-                    callback: (removeData) => {
-                      if (removeData.error) {
-                        callback({ error: removeData.error });
-
-                        return;
-                      }
-
-                      callback({ data: addUserData.data });
-
-                      if (socket) {
-                        socket.broadcast.to(`${addUserData.data.team.teamName}${appConfig.teamAppend}`).emit('teamMember', { data: { user: { userName: user.userName } } });
-                      } else {
-                        io.to(`${addUserData.data.team.teamName}${appConfig.teamAppend}`).emit('teamMember', { data: { user: { userName: user.userName } } });
-                      }
-                    },
-                  });
-                },
+                roomIds: [teamId],
+                socketId: authUser.socketId,
               });
+
+              if (socket) {
+                socket.broadcast.to(teamId).emit(dbConfig.EmitTypes.TEAMMEMBER, dataToSend);
+              } else {
+                io.to(teamId).emit(dbConfig.EmitTypes.TEAMMEMBER, dataToSend);
+              }
+
+              callback(dataToSend);
             },
           });
         },
@@ -435,47 +728,24 @@ function acceptTeamInvitation({ token, invitation, io, socket, callback }) {
 }
 
 /**
- * Get teams
- * @param {string} params.token jwt
- * @param {Function} params.callback Callback
+ * Decline team invitation.
+ * @param {Object} params - Parameters.
+ * @param {string} params.invitationId - Id of the invitation to decline.
+ * @param {string} params.token - jwt.
+ * @param {Object} params.io - Socket.io. Will be used if socket is not set.
+ * @param {Function} params.callback - Callback.
+ * @param {Object} [params.socket] Socket.io.
  */
-function getTeams({ token, callback }) {
+function declineTeamInvitation({
+  invitationId,
+  token,
+  callback,
+  socket,
+  io,
+}) {
   authenticator.isUserAllowed({
     token,
-    commandName: dbConfig.apiCommands.GetTeams.name,
-    callback: ({ error, data }) => {
-      if (error) {
-        callback({ error });
-
-        return;
-      }
-
-      dbTeam.getTeams({
-        user: data.user,
-        callback: ({ error: teamError, data: teamData }) => {
-          if (teamError) {
-            callback({ error: teamError });
-
-            return;
-          }
-
-          callback({ data: teamData });
-        },
-      });
-    },
-  });
-}
-
-/**
- * Get team
- * @param {string} params.teamName Short of full team name
- * @param {string} params.token jwt
- * @param {Function} params.callback Callback
- */
-function getTeam({ teamName, token, callback }) {
-  authenticator.isUserAllowed({
-    token,
-    commandName: dbConfig.apiCommands.GetTeam.name,
+    commandName: dbConfig.apiCommands.DeclineInvitation.name,
     callback: ({ error }) => {
       if (error) {
         callback({ error });
@@ -483,135 +753,8 @@ function getTeam({ teamName, token, callback }) {
         return;
       }
 
-      dbTeam.getTeam({
-        teamName,
-        callback: ({ error: teamError, data: teamData }) => {
-          if (teamError) {
-            callback({ error: teamError });
-
-            return;
-          }
-
-          callback({ data: teamData });
-        },
-      });
-    },
-  });
-}
-
-/**
- * Remove team from user. Removes team from all user if the user is the owner
- * @param {string} params.token jwt
- * @param {Function} params.callback Callback
- */
-function leaveTeam({ token, io, socket, callback }) {
-  authenticator.isUserAllowed({
-    token,
-    commandName: dbConfig.apiCommands.LeaveTeam.name,
-    callback: ({ error, data }) => {
-      if (error) {
-        callback({ error });
-
-        return;
-      } else if (!data.user.team) {
-        callback({ error: new errorCreator.DoesNotExist({ name: 'not part of team' }) });
-
-        return;
-      }
-
-      const user = data.user;
-
-      dbTeam.getTeam({
-        teamName: user.team,
-        callback: (teamData) => {
-          if (teamData.error) {
-            callback({ error: teamData.error });
-
-            return;
-          }
-
-          const roomName = user.team + appConfig.teamAppend;
-          const room = { roomName };
-          const team = { teamName: user.team };
-
-          if (teamData.data.team.owner === user.userName) {
-            dbTeam.removeTeam({
-              user,
-              teamName: user.team,
-              callback: (removeTeamData) => {
-                if (removeTeamData.error) {
-                  callback({ error: removeTeamData.error });
-
-                  return;
-                }
-
-                const connectedIds = Object.keys(io.sockets.adapter.rooms[roomName].sockets);
-                const allSockets = io.sockets.connected;
-
-                if (socket) {
-                  socket.broadcast.to(roomName).emit('leaveTeam', { team, room });
-                } else {
-                  io.to(roomName).emit('leaveTeam', { team, room });
-                }
-
-                connectedIds.forEach((connectedId) => {
-                  allSockets[connectedId].leave(roomName);
-                });
-
-                callback({ data: { team, room } });
-              },
-            });
-          } else {
-            dbUser.removeUserTeam({
-              userName: user.userName,
-              callback: (removeUserData) => {
-                if (removeUserData.error) {
-                  callback({ error: removeUserData.error });
-
-                  return;
-                }
-
-                dbUser.removeRoomFromUser({
-                  roomName,
-                  userName: user.userName,
-                  callback: (removeRoomData) => {
-                    if (removeRoomData.error) {
-                      callback({ error: removeRoomData.error });
-
-                      return;
-                    }
-
-                    socket.leave(roomName);
-                    callback({ data: { team, room } });
-                  },
-                });
-              },
-            });
-          }
-        },
-      });
-    },
-  });
-}
-
-/**
- * Get team invitations from user
- * @param {string} params.token jwt
- * @param {Function} params.callback Callback
- */
-function getTeamInvitations({ token, callback }) {
-  authenticator.isUserAllowed({
-    token,
-    commandName: dbConfig.apiCommands.GetInvitations.name,
-    callback: ({ error, data }) => {
-      if (error) {
-        callback({ error });
-
-        return;
-      }
-
-      dbInvitation.getInvitations({
-        userName: data.user.userName,
+      dbInvitation.useInvitation({
+        invitationId,
         callback: ({ error: invitationError, data: invitationData }) => {
           if (invitationError) {
             callback({ error: invitationError });
@@ -619,7 +762,24 @@ function getTeamInvitations({ token, callback }) {
             return;
           }
 
-          callback({ data: { invitations: invitationData.list.invitations.filter(invitation => invitation.invitationType === 'team') } });
+          const { receiverId, itemId, invitationType } = invitationData;
+          const dataToSend = {
+            data: {
+              invitation: {
+                receiverId,
+                invitationType,
+              },
+              changeType: dbConfig.ChangeTypes.REMOVE,
+            },
+          };
+
+          if (socket) {
+            socket.broadcast.to(itemId).emit(dbConfig.EmitTypes.INVITATION, dataToSend);
+          } else {
+            io.to(itemId).emit(dbConfig.EmitTypes.INVITATION, dataToSend);
+          }
+
+          callback(dataToSend);
         },
       });
     },
@@ -627,15 +787,81 @@ function getTeamInvitations({ token, callback }) {
 }
 
 /**
- * Decline team invitation
- * @param {Object} params.invitation Invitation to remove
- * @param {string} params.token jwt
- * @param {Function} params.callback Callback
+ * Remove a team.
+ * @param {Object} params - Parameters.
+ * @param {string} params.teamId - ID of the team to remove.
+ * @param {string} params.token - jwt.
+ * @param {Object} params.io - Socket.io. Will be used if socket is not set.
+ * @param {Function} params.callback - Callback.
+ * @param {Object} [params.socket] - Socket.io.
  */
-function declineTeamInvitation({ invitation, token, callback }) {
+function removeTeam({
+  teamId,
+  token,
+  io,
+  socket,
+  callback,
+}) {
   authenticator.isUserAllowed({
     token,
-    commandName: dbConfig.apiCommands.DeclineInvitation.name,
+    commandName: dbConfig.apiCommands.RemoveTeam.name,
+    callback: ({ error }) => {
+      if (error) {
+        callback({ error });
+
+        return;
+      }
+
+      dbTeam.removeTeam({
+        teamId,
+        callback: ({ error: teamError }) => {
+          if (teamError) {
+            callback({ error: teamError });
+
+            return;
+          }
+
+          const dataToSend = {
+            data: {
+              team: { objectId: teamId },
+              changeType: dbConfig.ChangeTypes.REMOVE,
+            },
+          };
+
+          if (socket) {
+            socket.broadcast.emit(dbConfig.EmitTypes.TEAM, dataToSend);
+          } else {
+            io.emit(dbConfig.EmitTypes.TEAM, dataToSend);
+          }
+
+          callback(dataToSend);
+        },
+      });
+    },
+  });
+}
+
+/**
+ * Update a team.
+ * @param {Object} params - Parameters.
+ * @param {string} params.teamId ID of the team to update.
+ * @param {Object} params.team - New team parameters.
+ * @param {Object} params.token - jwt.
+ * @param {Object} params.io - Socket.io. Will be used if socket is not set.
+ * @param {Function} params.callback - Callback.
+ * @param {Object} [params.socket] - Socket.io.
+ */
+function updateTeam({
+  teamId,
+  team,
+  token,
+  io,
+  socket,
+  callback,
+}) {
+  authenticator.isUserAllowed({
+    token,
+    commandName: dbConfig.apiCommands.UpdateTeam.name,
     callback: ({ error, data }) => {
       if (error) {
         callback({ error });
@@ -643,31 +869,76 @@ function declineTeamInvitation({ invitation, token, callback }) {
         return;
       }
 
-      dbInvitation.removeInvitationFromList({
-        userName: data.user.userName,
-        itemName: invitation.itemName,
-        invitationType: 'team',
-        callback: ({ error: declineError }) => {
-          if (declineError) {
-            callback({ error: declineError });
+      const { user } = data;
+
+      getAccessibleTeam({
+        user,
+        teamId,
+        shouldBeAdmin: true,
+        callback: ({ error: accessError }) => {
+          if (accessError) {
+            callback({ error: accessError });
 
             return;
           }
 
-          callback({ data: { success: true } });
+          const updateCallback = () => {
+            dbTeam.updateTeam({
+              teamId,
+              team,
+              callback: ({ error: teamError, data: teamData }) => {
+                if (teamError) {
+                  callback({ error: teamError });
+
+                  return;
+                }
+
+                const dataToSend = {
+                  data: {
+                    team: teamData.team,
+                    changeType: dbConfig.ChangeTypes.UPDATE,
+                  },
+                };
+
+                if (socket) {
+                  socket.broadcast.emit(dbConfig.EmitTypes.TEAM, dataToSend);
+                } else {
+                  io.emit(dbConfig.EmitTypes.TEAM, dataToSend);
+                }
+
+                callback(dataToSend);
+              },
+            });
+          };
+          const authUser = data.user;
+
+          if (team.ownerAliasId) {
+            aliasManager.getAccessibleAlias({
+              callback,
+              user: authUser,
+              aliasId: team.ownerAliasId,
+            });
+
+            updateCallback();
+
+            return;
+          }
+
+          updateCallback();
         },
       });
     },
   });
 }
 
-exports.updateUserTeam = updateUserTeam;
+exports.verifyTeam = verifyTeam;
 exports.addUserToTeam = addUserToTeam;
 exports.createTeam = createTeam;
+exports.removeTeam = removeTeam;
+exports.updateTeam = updateTeam;
 exports.inviteToTeam = inviteToTeam;
 exports.acceptTeamInvitation = acceptTeamInvitation;
-exports.getTeams = getTeams;
-exports.getTeam = getTeam;
+exports.getTeamById = getTeamById;
 exports.leaveTeam = leaveTeam;
-exports.getTeamInvitations = getTeamInvitations;
 exports.declineTeamInvitation = declineTeamInvitation;
+exports.getTeamsByUser = getTeamsByUser;

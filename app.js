@@ -23,11 +23,8 @@ const bodyParser = require('body-parser');
 const morgan = require('morgan');
 const compression = require('compression');
 const appConfig = require('./config/defaults/config').app;
-const databasePopulation = require('./config/defaults/config').databasePopulation;
+const dbConfig = require('./config/defaults/config').databasePopulation;
 const dbRoom = require('./db/connectors/room');
-const dbCommand = require('./db/connectors/command');
-const winston = require('winston');
-const lanternHacking = require('./managers/lanternHacking');
 
 const app = express();
 
@@ -50,25 +47,21 @@ app.use(morgan(appConfig.logLevel));
 // Serve files from public path
 app.use(express.static(appConfig.publicBase));
 
-
 appConfig.routes.forEach((route) => {
   // eslint-disable-next-line global-require, import/no-dynamic-require
   app.use(route.sitePath, require(path.resolve(route.filePath))(app.io));
 });
 
 if (appConfig.mode !== appConfig.Modes.TEST) {
-  dbRoom.populateDbRooms({ rooms: databasePopulation.rooms });
-  dbCommand.populateDbCommands({ commands: databasePopulation.commands });
+  dbRoom.populateDbRooms({ rooms: dbConfig.rooms });
 }
-
-lanternHacking.startResetInterval({ io: app.io });
 
 /*
  * Catches all exceptions and keeps the server running
  */
 process.on('uncaughtException', (err) => {
-  winston.error('Caught exception', err);
-  winston.error(err.stack);
+  console.error('Caught exception', err);
+  console.error(err.stack);
 });
 
 module.exports = app;

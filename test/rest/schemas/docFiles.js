@@ -16,68 +16,68 @@
 
 'use strict';
 
+const tools = require('../helper/tools');
 
 const schemas = {};
 
-schemas.docFilesList = {
+schemas.liteDocFile = tools.buildLiteSchema({
   type: 'object',
-  required: ['data'],
+  required: [
+    'title',
+  ],
   properties: {
-    data: {
-      type: 'object',
-      required: ['docFiles'],
-      properties: {
-        docFiles: {
-          type: 'array',
-          items: {
-            type: 'object',
-            required: [
-              'isPublic',
-              'docFileId',
-              'title',
-              'creator',
-            ],
-            properties: {
-              docFileId: { type: 'string' },
-              title: { type: 'string' },
-              creator: { type: 'string' },
-              isPublic: { type: 'boolean' },
-            },
-          },
-        },
-      },
+    title: { type: 'string' },
+    code: { type: 'string' },
+  },
+});
+
+schemas.docFile = tools.buildLiteSchema({
+  type: 'object',
+  required: [
+    'code',
+    'title',
+    'text',
+  ],
+  properties: {
+    code: { type: 'string' },
+    title: { type: 'string' },
+    text: {
+      type: 'array',
+      items: { type: 'string' },
     },
   },
+});
+
+schemas.fullDocFile = tools.buildFullSchema({
+  type: 'object',
+  required: [
+    'code',
+    'title',
+    'text',
+  ],
+  properties: {
+    code: { type: 'string' },
+    title: { type: 'string' },
+    text: {
+      type: 'array',
+      items: { type: 'string' },
+    },
+  },
+});
+
+schemas.docFiles = {
+  type: 'array',
+  items: schemas.docFile,
 };
 
-schemas.docFile = {
-  type: 'object',
-  required: ['data'],
-  properties: {
-    data: {
-      type: 'object',
-      required: ['docFile'],
-      properties: {
-        docFile: {
-          type: 'object',
-          required: [
-            'isPublic',
-            'docFileId',
-            'title',
-            'creator',
-            'text',
-          ],
-          properties: {
-            docFileId: { type: 'string' },
-            title: { type: 'string' },
-            creator: { type: 'string' },
-            isPublic: { type: 'boolean' },
-            text: { type: 'array', items: { type: 'string' } },
-          },
-        },
-      },
-    },
-  },
+schemas.fullDocFiles = {
+  type: 'array',
+  items: schemas.fullDocFile,
+};
+
+schemas.liteDocFiles = {
+  type: 'array',
+  items: schemas.liteDocFile,
 };
 
 module.exports = schemas;

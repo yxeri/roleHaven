@@ -54,9 +54,9 @@ function createCoordsCollection(coords) {
      * Google Maps bugs out and will sometimes send large integer instead of double (64.5565 becomes 645565)
      * This adds a dot where needed
      */
-    if (!isNaN(parseInt(longitude.substr(0, 2), 10)) && coords[i].charAt(2) !== '.') {
+    if (!Number.isNaN(parseInt(longitude.substr(0, 2), 10)) && coords[i].charAt(2) !== '.') {
       longitude = `${coords[i].substr(0, 2)}.${coords[i].substr(2)}`;
-    } else if (!isNaN(parseInt(latitude.substr(0, 2), 10)) && coords[i + 1].charAt(2) !== '.') {
+    } else if (!Number.isNaN(parseInt(latitude.substr(0, 2), 10)) && coords[i + 1].charAt(2) !== '.') {
       latitude = `${coords[i + 1].substr(0, 2)}.${coords[i + 1].substr(2)}`;
     }
 
@@ -71,16 +71,17 @@ function createCoordsCollection(coords) {
 
 /**
  * Create and return a position with a position from Google Maps as base
- * @param {Object} params.position Google Maps position
- * @param {string} params.position.name Google Maps position name
- * @param {string} [params.position.description] Google Maps position description
- * @param {Object} [params.position.Polygon] Google Maps position polygon
- * @param {string} params.position.Polygon.outerBoundaryIs.LinearRing.coordinates Google Maps polygon coordinates
- * @param {Object} [params.position.LineString] Google Maps position line
- * @param {string} params.position.LineString.coordinates Google Maps line coordinates
- * @param {Object} [params.position.Point] Google Maps position point
- * @param {string} params.layerName Name of the layer
- * @returns {{positionName: string, position: Object, isStatic: boolean, type: string, geometry: string, description: string[]}} New position
+ * @param {Object} params - Parameters.
+ * @param {Object} params.position - Google Maps position
+ * @param {string} params.position.name - Google Maps position name
+ * @param {string} [params.position.description] - Google Maps position description
+ * @param {Object} [params.position.Polygon] - Google Maps position polygon
+ * @param {string} params.position.Polygon.outerBoundaryIs.LinearRing.coordinates - Google Maps polygon coordinates
+ * @param {Object} [params.position.LineString] - Google Maps position line
+ * @param {string} params.position.LineString.coordinates - Google Maps line coordinates
+ * @param {Object} [params.position.Point] - Google Maps position point
+ * @param {string} params.layerName - Name of the layer
+ * @returns {{positionName: string, position: Object, isStationary: boolean, type: string, geometry: string, description: string[]}} New position
  */
 function createPosition({ position, layerName }) {
   const coordinates = {};
@@ -93,14 +94,13 @@ function createPosition({ position, layerName }) {
     coordinates.coordsCollection = createCoordsCollection(parseGoogleCoords(position.LineString.coordinates));
     geometry = 'line';
   } else if (position.Point) {
-    coordinates.latitude = position.Point.coordinates.split(',')[1];
-    coordinates.longitude = position.Point.coordinates.split(',')[0];
+    [coordinates.longitude, coordinates.latitude] = position.Point.coordinates.split(',');
     geometry = 'point';
   }
 
   return {
     positionName: position.name,
-    isStatic: true,
+    isStationary: true,
     markerType: layerName.toLowerCase(),
     description: position.description ? position.description.replace(/<img .+?\/>/, '').split(/<br>/) : ['No information'],
     coordinates,
@@ -109,8 +109,9 @@ function createPosition({ position, layerName }) {
 }
 
 /**
- * Get Google Maps positions
- * @param {Function} params.callback Callback
+ * Get Google Maps positions.
+ * @param {Object} params - Parameters.
+ * @param {Function} params.callback - Callback.
  */
 function getGooglePositions({ callback }) {
   if (!appConfig.mapLayersPath) {
@@ -143,10 +144,10 @@ function getGooglePositions({ callback }) {
 }
 
 /**
- * Checks distane between two points
- * @param {Object} p1 Point 1 coordinates
- * @param {Object} p2 Point 2 coordiantes
- * @returns {number} Returns distance in meters
+ * Checks distane between two points.
+ * @param {Object} p1 Point 1 coordinates.
+ * @param {Object} p2 Point 2 coordiantes.
+ * @returns {number} Returns distance in meters.
  */
 function getDistance(p1, p2) {
   const radiusFunc = (x) => { return (x * Math.PI) / 180; };
