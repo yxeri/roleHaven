@@ -25,11 +25,14 @@ const compression = require('compression');
 const appConfig = require('./config/defaults/config').app;
 const dbConfig = require('./config/defaults/config').databasePopulation;
 const dbRoom = require('./db/connectors/room');
+const { version: appVersion, name: appName } = require('./package');
 
 const app = express();
+const io = socketIo();
 
-// noinspection JSCheckFunctionSignatures
-app.io = socketIo();
+console.log(`Running version ${appVersion} of ${appName}.`);
+
+app.io = io;
 
 app.disable('x-powered-by');
 
@@ -39,7 +42,6 @@ app.set('view engine', 'html');
 // eslint-disable-next-line no-underscore-dangle, import/newline-after-import
 app.engine('html', require('hbs').__express);
 app.use(bodyParser.json());
-// noinspection JSCheckFunctionSignatures
 app.use(compression());
 // Logging
 app.use(morgan(appConfig.logLevel));
@@ -57,7 +59,7 @@ if (appConfig.mode !== appConfig.Modes.TEST) {
 }
 
 /*
- * Catches all exceptions and keeps the server running
+ * Catches all exceptions.
  */
 process.on('uncaughtException', (err) => {
   console.error('Caught exception', err);
