@@ -96,11 +96,22 @@ function createUser({
   callback,
   socket,
   io,
-  origin = dbConfig.OriginTypes.NONE,
 }) {
+  let command;
+
+  if (appConfig.mode === appConfig.Modes.TEST) {
+    command = dbConfig.apiCommands.AnonymousCreation;
+  } else if (appConfig.disallowUserRegister) {
+    command = dbConfig.apiCommands.CreateDisallowedUser;
+  } else if (user.accessLevel) {
+    command = dbConfig.apiCommands.ChangeUserLevels;
+  } else {
+    command = dbConfig.apiCommands.CreateUser;
+  }
+
   authenticator.isUserAllowed({
     token,
-    commandName: origin === dbConfig.OriginTypes.SOCKET && !appConfig.disallowSocketUserRegister ? dbConfig.apiCommands.CreateUserThroughSocket.name : dbConfig.apiCommands.CreateUser.name,
+    commandName: command.name,
     callback: ({ error }) => {
       if (error) {
         callback({ error });
