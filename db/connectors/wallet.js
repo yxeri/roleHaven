@@ -80,7 +80,7 @@ function getWallet({ query, callback }) {
 
         return;
       } else if (!data.object) {
-        callback({ error: new errorCreator.DoesNotExist({ name: `wallet ${query.toString()}` }) });
+        callback({ error: new errorCreator.DoesNotExist({ name: `wallet ${JSON.stringify(query, null, 4)}` }) });
 
         return;
       }
