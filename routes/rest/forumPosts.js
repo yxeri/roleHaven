@@ -191,31 +191,6 @@ function handle(io) {
     helper.getForumPosts({ request, response });
   });
 
-  /**
-   * @api {post} /forumPosts Create a forum post in a thread
-   * @apiVersion 8.0.0
-   * @apiName CreatePost
-   * @apiGroup ForumPosts
-   *
-   * @apiHeader {string} Authorization Your JSON Web Token.
-   *
-   * @apiDescription Create a forum post in a thread.
-   *
-   * @apiParam {Object} data Body parameters
-   * @apiParam {Object} data.post Forum post to create.
-   * @apiParam {string} data.post.threadId Id of the thread to create a post in.
-   *
-   * @apiSuccess {Object} data
-   * @apiSuccess {Object} data.post Created forum post.
-   */
-  router.post('/', (request, response) => {
-    helper.createForumPost({
-      request,
-      response,
-      io,
-    });
-  });
-
   return router;
 }
 

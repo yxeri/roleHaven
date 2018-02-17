@@ -53,7 +53,7 @@ function createTestCreate({
 
       chai
         .request(app)
-        .post(apiPath)
+        .post(testData.apiCreatePath || apiPath)
         .set('Authorization', tokens.incorrectJwt)
         .send(dataToSend)
         .end((error, response) => {
@@ -71,7 +71,7 @@ function createTestCreate({
 
       chai
         .request(app)
-        .post(apiPath)
+        .post(testData.apiCreatePath || apiPath)
         .set('Authorization', createByAdmin ? tokens.adminUserOne : tokens.basicUserOne)
         .send(dataToSend)
         .end((error, response) => {
@@ -116,7 +116,7 @@ function createTestUpdate({
 
         chai
           .request(app)
-          .post(apiPath)
+          .post(testData.apiCreatePath || apiPath)
           .set('Authorization', createByAdmin ? tokens.adminUserOne : tokens.basicUserOne)
           .send(dataToSend)
           .end((error, response) => {
@@ -199,7 +199,7 @@ function createTestDelete({
 
         chai
           .request(app)
-          .post(apiPath)
+          .post(testData.apiCreatePath || apiPath)
           .set('Authorization', createByAdmin ? tokens.adminUserOne : tokens.basicUserOne)
           .send(dataToSend)
           .end((error, response) => {
@@ -219,7 +219,7 @@ function createTestDelete({
 
         chai
           .request(app)
-          .post(apiPath)
+          .post(testData.apiCreatePath || apiPath)
           .set('Authorization', createByAdmin ? tokens.adminUserOne : tokens.basicUserOne)
           .send(dataToSend)
           .end((error, response) => {
@@ -321,7 +321,7 @@ function createTestGet({
 
         chai
           .request(app)
-          .post(apiPath)
+          .post(testData.apiCreatePath || apiPath)
           .set('Authorization', createByAdmin ? tokens.adminUserOne : tokens.basicUserTwo)
           .send(dataToSend)
           .end((error, response) => {

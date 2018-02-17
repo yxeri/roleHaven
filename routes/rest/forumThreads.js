@@ -238,50 +238,6 @@ function handle(io) {
     helper.getForumPosts({ request, response });
   });
 
-  /**
-   * @api {post} /forumThreads Create a thread
-   * @apiVersion 8.0.0
-   * @apiName CreateThread
-   * @apiGroup ForumThreads
-   *
-   * @apiHeader {string} Authorization Your JSON Web Token.
-   *
-   * @apiDescription Create a forum thread.
-   *
-   * @apiParam {Object} data Body parameters.
-   * @apiParam {Object} data.thread Forum thread to create.
-   * @apiParam {string} data.thread.forumId Id of the forum to create a thread for.
-   *
-   * @apiSuccess {Object} data
-   * @apiSuccess {ForumThread} data.thread Created forum thread.
-   */
-  router.post('/', (request, response) => {
-    if (!objectValidator.isValidData(request.body, { data: { thread: { title: true, text: true } } })) {
-      restErrorChecker.checkAndSendError({ response, error: new errorCreator.InvalidData({ expected: 'data = { thread: { title, text } }' }), sentData: request.body.data });
-
-      return;
-    }
-
-    const { authorization: token } = request.headers;
-    const { thread } = request.body.data;
-    thread.forumId = thread.forumId || request.params.forumId;
-
-    forumThreadManager.createThread({
-      io,
-      token,
-      thread,
-      callback: ({ error, data }) => {
-        if (error) {
-          restErrorChecker.checkAndSendError({ response, error, sentData: request.body.data });
-
-          return;
-        }
-
-        response.json({ data });
-      },
-    });
-  });
-
   return router;
 }
 
