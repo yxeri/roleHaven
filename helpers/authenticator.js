@@ -150,6 +150,7 @@ function hasAccessTo({
     teamAdminIds,
     ownerId,
     isPublic,
+    visibility,
   } = objectToAccess;
   const {
     hasFullAccess,
@@ -165,8 +166,9 @@ function hasAccessTo({
 
   const userHasAccess = userIds.concat([ownerId]).includes(authUserId);
   const teamHasAccess = teamIds.find(teamId => authTeamIds.includes(teamId));
+  const canSee = accessLevel >= visibility;
 
-  return isPublic || userHasAccess || teamHasAccess;
+  return isPublic || canSee || userHasAccess || teamHasAccess;
 }
 
 exports.isUserAllowed = isUserAllowed;
