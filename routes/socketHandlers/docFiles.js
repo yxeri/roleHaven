@@ -64,6 +64,14 @@ function handle(socket, io) {
 
     docFileManager.getDocFilesByUser(params);
   });
+
+  socket.on('getDocFilesList', (params, callback = () => {}) => {
+    params.callback = callback;
+    params.io = io;
+    params.socket = socket;
+
+    docFileManager.getDocFilesList(params);
+  });
 }
 
 exports.handle = handle;
