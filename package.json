@@ -6,7 +6,7 @@
   "private": true,
   "scripts": {
     "start": "node bin/www",
-    "test": "MODE=test ./node_modules/nyc/bin/nyc.js ./node_modules/mocha/bin/mocha --recursive --timeout 5000 --exit && DEBUG=eslint:cli-engine eslint ./",
+    "test": "DEBUG=socket.io:server MODE=test ./node_modules/nyc/bin/nyc.js ./node_modules/mocha/bin/mocha --recursive --timeout 5000 --exit && eslint ./",
     "nsp": "nsp check"
   },
   "repository": {
@@ -24,33 +24,33 @@
     "chai": "4.1.2",
     "chai-http": "3.0.0",
     "chai-json-schema": "1.5.0",
-    "eslint": "4.14.0",
+    "eslint": "4.16.0",
     "eslint-config-airbnb": "16.1.0",
     "eslint-config-airbnb-base": "12.1.0",
     "eslint-plugin-import": "2.8.0",
     "eslint-plugin-jsx-a11y": "6.0.3",
     "eslint-plugin-mocha": "4.11.0",
     "eslint-plugin-react": "7.5.1",
-    "mocha": "4.1.0",
+    "mocha": "5.0.0",
     "nyc": "11.4.1"
   },
   "dependencies": {
     "babel-preset-es2015": "6.24.1",
     "babelify": "8.0.0",
     "body-parser": "1.18.2",
-    "browserify": "15.0.0",
+    "browserify": "15.2.0",
     "compression": "1.7.1",
     "express": "4.16.2",
     "hbs": "4.0.1",
     "html-minifier": "3.5.8",
-    "jsonwebtoken": "8.1.0",
+    "jsonwebtoken": "8.1.1",
     "mongodb": "3.0.1",
-    "mongoose": "5.0.0-rc2",
+    "mongoose": "5.0.1",
     "morgan": "1.9.0",
     "node-sass": "4.7.2",
     "request": "2.83.0",
     "socket.io": "2.0.4",
-    "uglify-js": "3.3.4",
+    "uglify-js": "3.3.8",
     "xml2json": "0.11.0"
   }
 }
