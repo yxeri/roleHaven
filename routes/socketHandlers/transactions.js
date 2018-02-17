@@ -64,6 +64,14 @@ function handle(socket, io) {
 
     transactionManager.getTransactionsCreatedByUser(params);
   });
+
+  socket.on('getTransactionsByWallet', (params, callback = () => {}) => {
+    params.callback = callback;
+    params.io = io;
+    params.socket = socket;
+
+    transactionManager.getTransactionsByWallet(params);
+  });
 }
 
 exports.handle = handle;

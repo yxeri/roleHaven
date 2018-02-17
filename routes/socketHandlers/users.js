@@ -64,6 +64,14 @@ function handle(socket, io) {
 
     userManager.getUsersByUser(params);
   });
+
+  socket.on('updateId', (params, callback = () => {}) => {
+    params.callback = callback;
+    params.io = io;
+    params.socket = socket;
+
+    userManager.updateId(params);
+  });
 }
 
 exports.handle = handle;
