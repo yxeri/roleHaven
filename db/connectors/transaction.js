@@ -31,19 +31,13 @@ const transactionSchema = new mongoose.Schema(dbConnector.createSchema({
 
 const Transaction = mongoose.model('transaction', transactionSchema);
 
-const transactionFilter = {
+const transactionFilter = dbConnector.createFilter({
   amount: 1,
   toWalletId: 1,
   fromWalletId: 1,
   note: 1,
   coordinates: 1,
-  ownerId: 1,
-  ownerAliasId: 1,
-  timeCreated: 1,
-  customTimeCreated: 1,
-  lastUpdated: 1,
-  customLastUpdated: 1,
-};
+});
 
 /**
  * Update transaction properties.
@@ -115,7 +109,7 @@ function getTransaction({ query, callback }) {
 
         return;
       } else if (!data.object) {
-        callback({ error: new errorCreator.DoesNotExist({ name: `transaction ${query.toString()}` }) });
+        callback({ error: new errorCreator.DoesNotExist({ name: `transaction ${JSON.stringify(query, null, 4)}` }) });
 
         return;
       }

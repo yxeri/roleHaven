@@ -62,7 +62,15 @@ function handle(socket, io) {
     params.io = io;
     params.socket = socket;
 
-    forumThreadManager.getThreadsCreatedByUser(params);
+    forumThreadManager.getThreadsByUser(params);
+  });
+
+  socket.on('getThreadsByForum', (params, callback = () => {}) => {
+    params.callback = callback;
+    params.io = io;
+    params.socket = socket;
+
+    forumThreadManager.getForumThreadsByForum(params);
   });
 }
 

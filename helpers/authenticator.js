@@ -71,9 +71,7 @@ function isUserAllowed({
     callback({ error: new errorCreator.DoesNotExist({ name: commandName }) });
 
     return;
-  }
-
-  if (!token) {
+  } else if (!token) {
     if (commandUsed.accessLevel > anonUser.accessLevel) {
       callback({ error: new errorCreator.NotAllowed({ name: commandName, verbose: false }) });
 

@@ -36,6 +36,9 @@ data.create = {
       tools.createRandString({ length: appConfig.messageMaxLength / 2 }),
     ],
   },
+  missing: {
+    title: 'missing',
+  },
 };
 
 data.update = {

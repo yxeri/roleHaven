@@ -249,6 +249,61 @@ function handle(io) {
     });
   });
 
+  /**
+   * @api {put} /positions/:positionId Update a position's coordinates
+   * @apiVersion 8.0.0
+   * @apiName UpdatePositionCoordinates
+   * @apiGroup Positions
+   *
+   * @apiHeader {string} Authorization Your JSON Web Token.
+   *
+   * @apiDescription Update a position's coordinates.
+   *
+   * @apiParam {string} positionId [Url] Id of the position to update.
+   *
+   * @apiParam {Object} data Body parameters.
+   * @apiParam {Position} data.position Position parameters to update.
+   * @apiParam {Object} [data.options] Update options.
+   *
+   * @apiSuccess {Object} data
+   * @apiSuccess {Position} data.position Updated position.
+   */
+  router.put('/:positionId', (request, response) => {
+    if (!objectValidator.isValidData(request.params, { positionId: true })) {
+      restErrorChecker.checkAndSendError({ response, error: new errorCreator.InvalidData({ expected: 'params = { positionId }' }) });
+
+      return;
+    } else if (!objectValidator.isValidData(request.body, { data: { coordinates: true } })) {
+      restErrorChecker.checkAndSendError({ response, error: new errorCreator.InvalidData({ expected: 'data = { coordinates }' }), sentData: request.body.data });
+
+      return;
+    }
+
+    const {
+      coordinates,
+      options,
+    } = request.body.data;
+    const { positionId } = request.params;
+    const { authorization: token } = request.headers;
+
+    positionManager.updatePositionCoordinates({
+      coordinates,
+      options,
+      io,
+      positionId,
+      token,
+      callback: ({ error, data }) => {
+        if (error) {
+          restErrorChecker.checkAndSendError({ response, error, sentData: request.body.data });
+
+          return;
+        }
+
+        response.json({ data });
+      },
+    });
+  });
+
   return router;
 }
 

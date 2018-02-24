@@ -62,7 +62,23 @@ function handle(socket, io) {
     params.io = io;
     params.socket = socket;
 
-    forumPostManager.getPostsCreatedByUser(params);
+    forumPostManager.getPostsByUser(params);
+  });
+
+  socket.on('getPostsByThread', (params, callback = () => {}) => {
+    params.callback = callback;
+    params.io = io;
+    params.socket = socket;
+
+    forumPostManager.getPostsByThread(params);
+  });
+
+  socket.on('getPostsByForum', (params, callback = () => {}) => {
+    params.callback = callback;
+    params.io = io;
+    params.socket = socket;
+
+    forumPostManager.getPostsByForum(params);
   });
 }
 

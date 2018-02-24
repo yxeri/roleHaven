@@ -18,6 +18,7 @@ const mongoose = require('mongoose');
 const errorCreator = require('../../objects/error/errorCreator');
 const dbConnector = require('../databaseConnector');
 const dbForumPost = require('./forumPost');
+const dbForum = require('./forum');
 
 const forumThreadSchema = new mongoose.Schema(dbConnector.createSchema({
   forumId: String,
@@ -28,18 +29,12 @@ const forumThreadSchema = new mongoose.Schema(dbConnector.createSchema({
 
 const ForumThread = mongoose.model('ForumThread', forumThreadSchema);
 
-const threadFilter = {
-  ownerId: 1,
+const threadFilter = dbConnector.createFilter({
   title: 1,
   postIds: 1,
-  ownerAliasId: 1,
   forumId: 1,
   text: 1,
-  lastUpdated: 1,
-  timeCreated: 1,
-  customLastUpdated: 1,
-  customTimeCreated: 1,
-};
+});
 
 /**
  * Get forum threads
@@ -90,7 +85,7 @@ function getThread({ query, callback }) {
 
         return;
       } else if (!data.object) {
-        callback({ error: new errorCreator.DoesNotExist({ name: `forumThread ${query.toString()}` }) });
+        callback({ error: new errorCreator.DoesNotExist({ name: `forumThread ${JSON.stringify(query, null, 4)}` }) });
 
         return;
       }
@@ -228,10 +223,10 @@ function updateThread({
 /**
  * Remove forum threads.
  * Setting fullRemoval will also remove all connected forum posts.
- * @param {Object} params - Parameters
- * @param {string[]} params.threadIds - IDs of forums threads to remove
+ * @param {Object} params - Parameters.
+ * @param {string[]} params.threadIds - IDs of forums threads to remove.
  * @param {boolean} [params.fullRemoval] - Should connected forum posts be removed?
- * @param {Function} params.callback - Callback
+ * @param {Function} params.callback - Callback.
  */
 function removeThreads({ threadIds, fullRemoval, callback }) {
   dbConnector.removeObject({
@@ -261,10 +256,10 @@ function removeThreads({ threadIds, fullRemoval, callback }) {
 /**
  * Remove forum thread.
  * Setting fullRemoval will also remove all connected forum posts.
- * @param {Object} params - Parameters
- * @param {string} params.threadId - ID of forum thread to remove
+ * @param {Object} params - Parameters.
+ * @param {string} params.threadId - ID of forum thread to remove.
  * @param {boolean} [params.fullRemoval] - Should connected forum posts be removed?
- * @param {Function} params.callback - Callback
+ * @param {Function} params.callback - Callback.
  */
 function removeThread({ threadId, fullRemoval, callback }) {
   dbConnector.removeObject({
@@ -301,7 +296,7 @@ function removeThread({ threadId, fullRemoval, callback }) {
  */
 function removeThreadsByForum({ forumId, fullRemoval, callback }) {
   const removeFunc = () => {
-    dbConnector.removeObject({
+    dbConnector.removeObjects({
       callback,
       object: ForumThread,
       query: { forumId },
@@ -431,21 +426,36 @@ function getAllThreads({ callback }) {
 /**
  * Get threads created by the user.
  * @param {Object} params - Parameters.
- * @param {string} params.userId - Id of the user.
+ * @param {string} params.user - User.
  * @param {Function} params.callback - Callback.
  * @param {boolean} [params.full] - Should the complete objects be returned?
  */
-function getThreadsCreatedByUser({
-  userId,
+function getThreadsByUser({
+  user,
   callback,
   full,
 }) {
-  const filter = !full ? threadFilter : {};
+  dbForum.getForumsByUser({
+    user,
+    full,
+    callback: ({ error, data }) => {
+      if (error) {
+        callback({ error });
 
-  getThreads({
-    filter,
-    callback,
-    query: { ownerId: userId },
+        return;
+      }
+
+      const forumIds = data.forums.map(forum => forum.objectId);
+      const filter = !full ? threadFilter : {};
+      const query = dbConnector.createUserQuery({ user });
+      query.forumId = { $in: forumIds };
+
+      getThreads({
+        callback,
+        filter,
+        query,
+      });
+    },
   });
 }
 
@@ -460,4 +470,4 @@ exports.addAccess = addAccess;
 exports.removeAccess = removeAccess;
 exports.getAllThreads = getAllThreads;
 exports.removeThread = removeThread;
-exports.getThreadsCreatedByUser = getThreadsCreatedByUser;
+exports.getThreadsByUser = getThreadsByUser;

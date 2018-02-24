@@ -141,7 +141,7 @@ function getImage({ query, callback }) {
 
         return;
       } else if (!data.object) {
-        callback({ error: new errorCreator.DoesNotExist({ name: `image ${query.toString()}` }) });
+        callback({ error: new errorCreator.DoesNotExist({ name: `image ${JSON.stringify(query, null, 4)}` }) });
 
         return;
       }

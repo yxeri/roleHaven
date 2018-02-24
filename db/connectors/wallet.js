@@ -27,12 +27,9 @@ const walletSchema = new mongoose.Schema(dbConnector.createSchema({
 
 const Wallet = mongoose.model('Wallet', walletSchema);
 
-const walletFilter = {
+const walletFilter = dbConnector.createFilter({
   amount: 1,
-  lastUpdated: 1,
-  ownerId: 1,
-  ownerAliasId: 1,
-};
+});
 
 /**
  * Get wallets
@@ -179,7 +176,7 @@ function createWallet({
   const walletToSave = wallet;
 
   if (options.setId && walletToSave.objectId) {
-    walletToSave._id = walletToSave.objectId; // eslint-disable-line no-underscore-dangle
+    walletToSave._id = mongoose.Types.ObjectId(walletToSave.objectId); // eslint-disable-line no-underscore-dangle
   }
 
   dbConnector.saveObject({

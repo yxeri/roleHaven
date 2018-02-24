@@ -22,6 +22,74 @@ const errorCreator = require('../objects/error/errorCreator');
 const appConfig = require('../config/defaults/config').app;
 const dbPosition = require('../db/connectors/position');
 const aliasManager = require('./aliases');
+const mapCreator = require('../utils/mapCreator');
+
+/**
+ * Retrieve and store positions from a Google Maps collaborative map.
+ * @param {Object} params - Parameters.
+ * @param {Function} params.callback - Callback.
+ */
+function getAndStoreGooglePositions({ callback = () => {} }) {
+  // TODO Should update if the position already exist
+
+  if (appConfig.mapLayersPath) {
+    mapCreator.getGooglePositions({
+      callback: (googleData) => {
+        if (googleData.error) {
+          callback({ error: googleData.error });
+
+          return;
+        }
+
+        dbPosition.removePositionsByOrigin({
+          origin: dbConfig.PositionOrigins.GOOGLE,
+          callback: (removeData) => {
+            if (removeData.error) {
+              callback({ error: removeData.error });
+
+              return;
+            }
+
+            const { positions } = googleData.data;
+            const positionAmount = positions.length;
+            const createdPositions = [];
+            const sendCallback = ({ error, iteration }) => {
+              if (error) {
+                callback({ error });
+
+                return;
+              }
+
+              if (iteration === positionAmount) {
+                callback({ data: { positions: createdPositions } });
+              }
+            };
+            let iteration = 1;
+
+            positions.forEach((position) => {
+              dbPosition.createPosition({
+                position,
+                callback: ({ error, data }) => {
+                  if (error) {
+                    callback({ error });
+
+                    return;
+                  }
+
+                  createdPositions.push(data.position);
+                  sendCallback({
+                    error,
+                    iteration: iteration += 1,
+                  });
+                },
+              });
+            });
+          },
+        });
+      },
+    });
+  }
+}
 
 /**
  * Get position by Id and check if the user has access to it.
@@ -113,6 +181,69 @@ function getPositionById({
         callback,
         full,
         shouldBeAdmin: full && dbConfig.apiCommands.GetFull.accessLevel > user.accessLevel,
+      });
+    },
+  });
+}
+
+function updatePositionCoordinates({
+  io,
+  socket,
+  callback,
+  positionId,
+  token,
+  coordinates,
+}) {
+  authenticator.isUserAllowed({
+    token,
+    commandName: dbConfig.apiCommands.UpdatePosition.name,
+    callback: ({ error, data }) => {
+      if (error) {
+        callback({ error });
+
+        return;
+      }
+
+      const { user } = data;
+
+      getAccessiblePosition({
+        positionId,
+        user,
+        shouldBeAdmin: true,
+        callback: ({ error: positionError }) => {
+          if (positionError) {
+            callback({ error: positionError });
+
+            return;
+          }
+
+          dbPosition.updatePositionCoordinates({
+            positionId,
+            coordinates,
+            callback: (updateData) => {
+              if (updateData.error) {
+                callback({ error: updateData.error });
+
+                return;
+              }
+
+              const dataToSend = {
+                data: {
+                  position: updateData.data.position,
+                },
+                changeType: dbConfig.ChangeTypes.UPDATE,
+              };
+
+              if (socket) {
+                socket.broadcast.emit(dbConfig.EmitTypes.POSITION, dataToSend);
+              } else {
+                io.emit(dbConfig.EmitTypes.POSITION, dataToSend)
+              }
+
+              callback(dataToSend);
+            },
+          });
+        },
       });
     },
   });
@@ -322,7 +453,7 @@ function getPositions({
   callback,
   full = false,
   lite = true,
-  positionTypes = [dbConfig.PositionTypes.WORLD],
+  positionTypes = Object.values(dbConfig.PositionTypes),
 }) {
   authenticator.isUserAllowed({
     token,
@@ -423,3 +554,5 @@ exports.getPositions = getPositions;
 exports.createPosition = createPosition;
 exports.removePosition = removePosition;
 exports.getPositionById = getPositionById;
+exports.getAndStoreGooglePositions = getAndStoreGooglePositions;
+exports.updatePositionCoordinates = updatePositionCoordinates;

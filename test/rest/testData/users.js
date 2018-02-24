@@ -32,6 +32,10 @@ data.create = {
     password: tools.createRandString({ length: appConfig.passwordMaxLength }),
     registerDevice: tools.createRandString({ length: appConfig.deviceIdLength }),
   },
+  missing: {
+    username: tools.createRandString({ length: appConfig.usernameMaxLength }),
+    password: tools.createRandString({ length: appConfig.passwordMaxLength }),
+  },
 };
 
 data.update = {

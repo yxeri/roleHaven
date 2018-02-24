@@ -61,7 +61,7 @@ config.rooms = {
    * It is also reachable by anonymous users.
    */
   public: config.rooms.public || {
-    objectId: 'public789012',
+    objectId: '111111111111111111111110',
     roomName: 'public',
     visibility: config.AccessLevels.ANONYMOUS,
     accessLevel: config.AccessLevels.ANONYMOUS,
@@ -74,7 +74,7 @@ config.rooms = {
    * E.g. when a user needs verification.
    */
   admin: config.rooms.admin || {
-    objectId: 'hqroom789012',
+    objectId: '111111111111111111111111',
     roomName: 'hqroom',
     visibility: config.AccessLevels.MODERATOR,
     accessLevel: config.AccessLevels.MODERATOR,
@@ -86,7 +86,7 @@ config.rooms = {
    * Messages sent to anonymous will have their user and team name stripped.
    */
   anonymous: config.rooms.anonymous || {
-    objectId: 'anonymous012',
+    objectId: '111111111111111111111112',
     roomName: 'anonymous',
     visibility: config.AccessLevels.ANONYMOUS,
     accessLevel: config.AccessLevels.ANONYMOUS,
@@ -96,8 +96,8 @@ config.rooms = {
   },
 
   important: config.rooms.important || {
-    objectId: 'important012',
-    roomName: 'important-room',
+    objectId: '111111111111111111111113',
+    roomName: 'important',
     visibility: config.AccessLevels.SUPERUSER,
     accessLevel: config.AccessLevels.SUPERUSER,
     ownerId: config.users.systemUser.objectId,
@@ -105,8 +105,8 @@ config.rooms = {
   },
 
   news: config.rooms.news || {
-    objectId: 'news56789012',
-    roomName: 'news-room',
+    objectId: '111111111111111111111114',
+    roomName: 'news',
     visibility: config.AccessLevels.SUPERUSER,
     accessLevel: config.AccessLevels.SUPERUSER,
     ownerId: config.users.systemUser.objectId,
@@ -114,8 +114,8 @@ config.rooms = {
   },
 
   schedule: config.rooms.schedule || {
-    objectId: 'schedule9012',
-    roomName: 'schedule-room',
+    objectId: '111111111111111111111115',
+    roomName: 'schedule',
     visibility: config.AccessLevels.SUPERUSER,
     accessLevel: config.AccessLevels.SUPERUSER,
     ownerId: config.users.systemUser.objectId,
@@ -127,8 +127,8 @@ config.rooms = {
    * Not used as an ordinary chat room
    */
   bcast: config.rooms.bcast || {
-    objectId: 'broadcast012',
-    roomName: 'broadcast-room',
+    objectId: '111111111111111111111116',
+    roomName: 'broadcast',
     visibility: config.AccessLevels.SUPERUSER,
     accessLevel: config.AccessLevels.SUPERUSER,
     ownerId: config.users.systemUser.objectId,
@@ -137,37 +137,35 @@ config.rooms = {
 };
 
 config.requiredRooms = [
-  config.rooms.anonymous.roomName,
-  config.rooms.bcast.roomName,
-  config.rooms.public.roomName,
-  config.rooms.important.roomName,
-  config.rooms.news.roomName,
-  config.rooms.schedule.roomName,
+  config.rooms.anonymous.objectId,
+  config.rooms.bcast.objectId,
+  config.rooms.public.objectId,
+  config.rooms.important.objectId,
+  config.rooms.news.objectId,
+  config.rooms.schedule.objectId,
 ];
 
 config.protectedRoomNames = Object.keys(config.rooms).map(objectId => config.rooms[objectId].roomName);
 
 config.roomsToBeHidden = [
-  config.rooms.bcast.roomName,
-  config.rooms.important.roomName,
-  config.rooms.news.roomName,
-  config.rooms.schedule.roomName,
+  config.rooms.bcast.objectId,
+  config.rooms.important.objectId,
+  config.rooms.news.objectId,
+  config.rooms.schedule.objectId,
 ];
 
 config.deviceRoomPrepend = 'device#';
 
 config.anonymousUser = {
-  username: '',
+  username: 'ANONYMOUS_USER',
   accessLevel: config.AccessLevels.ANONYMOUS,
   visibility: config.AccessLevels.ANONYMOUS,
-  roomIds: [
-    config.rooms.anonymous.objectId,
-    config.rooms.bcast.objectId,
-    config.rooms.public.objectId,
-    config.rooms.important.objectId,
-    config.rooms.news.objectId,
-    config.rooms.schedule.objectId,
-  ],
+  registerDevice: 'ANONYMOUS_USER',
+  followingRooms: Object.keys(config.rooms).map(key => config.rooms[key].objectId),
+  isVerified: true,
+  defaultRoomId: config.rooms.public.objectId,
+  partOfTeams: [],
+  aliases: [],
   isAnonymous: true,
 };
 
@@ -203,13 +201,19 @@ config.MessageTypes = {
 config.PositionTypes = {
   USER: 'user',
   WORLD: 'world',
+  LOCAL: 'local',
+};
+
+config.PositionOrigins = {
+  LOCAL: 'local',
+  GOOGLE: 'google',
+  EXTERNAL: 'external',
 };
 
 config.ChangeTypes = {
   UPDATE: 'update',
   CREATE: 'create',
   REMOVE: 'remove',
-  ACCEPT: 'accept',
 };
 
 config.OriginTypes = {
@@ -240,6 +244,9 @@ config.EmitTypes = {
   BAN: 'ban',
   WALLET: 'wallet',
   TRANSACTION: 'transaction',
+  DISCONNECT: 'disconnect',
+  RECONNECT: 'reconnect',
+  STARTUP: 'startup',
 };
 
 /**
@@ -317,7 +324,7 @@ config.apiCommands = {
     accessLevel: config.AccessLevels.STANDARD,
   },
   GetMessage: config.apiCommands.GetMessage || {
-    name: 'UpdateMessage',
+    name: 'GetMessage',
     accessLevel: config.AccessLevels.ANONYMOUS,
   },
   GetAllMessages: config.apiCommands.GetAllMessages || {
@@ -412,8 +419,12 @@ config.apiCommands = {
     name: 'CreateUser',
     accessLevel: config.AccessLevels.ANONYMOUS,
   },
-  CreateUserThroughSocket: config.apiCommands.CreateUserThroughSocket || {
-    name: 'CreateUserThroughSocket',
+  CreateDisallowedUser: config.apiCommands.CreateDisallowedUser || {
+    name: 'CreateDisallowedUser',
+    accessLevel: config.AccessLevels.ADMIN,
+  },
+  CreateSockerUser: config.apiCommands.CreateSockerUser || {
+    name: 'CreateSockerUser',
     accessLevel: config.AccessLevels.ANONYMOUS,
   },
   BanUser: config.apiCommands.BanUser || {
@@ -430,7 +441,7 @@ config.apiCommands = {
   },
   UpdateId: config.apiCommands.UpdateId || {
     name: 'UpdateId',
-    accessLevel: config.AccessLevels.ANONYMOUS,
+    accessLevel: config.AccessLevels.STANDARD,
   },
   Logout: config.apiCommands.Logout || {
     name: 'Logout',
@@ -450,7 +461,7 @@ config.apiCommands = {
   },
   GetUsers: config.apiCommands.GetUsers || {
     name: 'GetUsers',
-    accessLevel: config.AccessLevels.STANDARD,
+    accessLevel: config.AccessLevels.ANONYMOUS,
   },
   GetUserDetails: config.apiCommands.GetUserDetails || {
     name: 'GetUserDetails',
@@ -510,7 +521,7 @@ config.apiCommands = {
   },
   GetTeams: config.apiCommands.GetTeams || {
     name: 'GetTeams',
-    accessLevel: config.AccessLevels.STANDARD,
+    accessLevel: config.AccessLevels.ANONYMOUS,
   },
   LeaveTeam: config.apiCommands.LeaveTeam || {
     name: 'LeaveTeam',
@@ -614,7 +625,7 @@ config.apiCommands = {
   },
   GetDevices: config.apiCommands.GetDevices || {
     name: 'GetDevices',
-    accessLevel: config.AccessLevels.STANDARD,
+    accessLevel: config.AccessLevels.ANONYMOUS,
   },
 
   /**
@@ -690,7 +701,7 @@ config.apiCommands = {
   },
   GetPositions: config.apiCommands.GetPositions || {
     name: 'GetPositions',
-    accessLevel: config.AccessLevels.STANDARD,
+    accessLevel: config.AccessLevels.ANONYMOUS,
   },
   GetUserPosition: config.apiCommands.GetUserPosition || {
     name: 'GetUserPosition',
@@ -839,6 +850,14 @@ config.apiCommands = {
   CompleteCalibrationMission: config.apiCommands.CompleteCalibrationMission || {
     name: 'CompleteCalibrationMission',
     accessLevel: config.AccessLevels.MODERATOR,
+  },
+
+  /**
+   * Other
+   */
+  AnonymousCreation: config.apiCommands.AnonymousCreation || {
+    name: 'AnonymousCreation',
+    accessLevel: config.AccessLevels.ANONYMOUS,
   },
 };
 

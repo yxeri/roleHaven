@@ -312,13 +312,13 @@ function getForumThreadsByForum({
 }
 
 /**
- * Get threads created by the user.
+ * Get threads from the forums that the user has access to.
  * @param {Object} params - Parameters.
  * @param {string} params.token - jwt.
  * @param {Function} params.callback - Callback.
  * @param {boolean} [params.full] - Should the complete objects be returned?
  */
-function getThreadsCreatedByUser({
+function getThreadsByUser({
   token,
   callback,
   full,
@@ -333,12 +333,12 @@ function getThreadsCreatedByUser({
         return;
       }
 
-      const { userId } = data.user;
+      const { user } = data;
 
-      dbThread.getThreadsCreatedByUser({
+      dbThread.getThreadsByUser({
         callback,
         full,
-        userId,
+        user,
       });
     },
   });
@@ -559,4 +559,4 @@ exports.getThreadById = getThreadById;
 exports.getAccessibleThreads = getAccessibleThreads;
 exports.getAccessibleThread = getAccessibleThread;
 exports.updateThreadTime = updateThreadTime;
-exports.getThreadsCreatedByUser = getThreadsCreatedByUser;
+exports.getThreadsByUser = getThreadsByUser;

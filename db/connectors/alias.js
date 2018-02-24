@@ -29,10 +29,9 @@ const aliasSchema = new mongoose.Schema(dbConnector.createSchema({
 
 const Alias = mongoose.model('Alias', aliasSchema);
 
-const aliasFilter = {
+const aliasFilter = dbConnector.createFilter({
   aliasName: 1,
-  lastUpdated: 1,
-};
+});
 
 /**
  * Update alias
@@ -101,7 +100,7 @@ function getAlias({ query, callback }) {
 
         return;
       } else if (!data.object) {
-        callback({ error: new errorCreator.DoesNotExist({ name: `alias ${query.toString()}` }) });
+        callback({ error: new errorCreator.DoesNotExist({ name: `alias ${JSON.stringify(query, null, 4)}` }) });
 
         return;
       }
@@ -239,7 +238,7 @@ function doesAliasExist({ aliasName, callback }) {
  */
 function createAlias({ alias, callback }) {
   dbUser.doesUserExist({
-    aliasName: alias.aliasName,
+    username: alias.aliasName,
     callback: (nameData) => {
       if (nameData.error) {
         callback({ error: nameData.error });
@@ -303,7 +302,7 @@ function updateAlias({
     update.$set.aliasName = aliasName;
 
     dbUser.doesUserExist({
-      aliasName,
+      username: aliasName,
       callback: ({ error, data }) => {
         if (error) {
           callback({ error });
@@ -315,25 +314,10 @@ function updateAlias({
           return;
         }
 
-        doesAliasExist({
-          aliasName,
-          callback: (aliasData) => {
-            if (aliasData.error) {
-              callback({ error: aliasData.error });
-
-              return;
-            } else if (aliasData.data.exists) {
-              callback({ error: new errorCreator.AlreadyExists({ name: `aliasName ${aliasName}` }) });
-
-              return;
-            }
-
-            updateObject({
-              update,
-              aliasId,
-              callback,
-            });
-          },
+        updateObject({
+          update,
+          aliasId,
+          callback,
         });
       },
     });

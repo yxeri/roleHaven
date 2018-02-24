@@ -31,18 +31,15 @@ const gameCodeSchema = new mongoose.Schema(dbConnector.createSchema({
 
 const GameCode = mongoose.model('GameCode', gameCodeSchema);
 
-const gameCodeFilter = {
+const gameCodeFilter = dbConnector.createFilter({
   code: 1,
   codeType: 1,
   codeContent: 1,
   used: 1,
-  lastUpdated: 1,
-  ownerId: 1,
-  ownerIdAlias: 1,
-};
+});
 
 /**
- * Update game code
+ * Update game code.
  * @private
  * @param {Object} params - Parameters.
  * @param {string} params.gameCodeId - Id of the game code to update.
@@ -89,7 +86,7 @@ function getGameCode({
 
         return;
       } else if (!data.object) {
-        callback({ error: new errorCreator.DoesNotExist({ name: `gameCode ${query.toString()}` }) });
+        callback({ error: new errorCreator.DoesNotExist({ name: `gameCode ${JSON.stringify(query, null, 4)}` }) });
 
         return;
       }
@@ -161,7 +158,7 @@ function createGameCode({ gameCode, callback }) {
 
         return;
       } else if (data.exists) {
-        callback({ error: new error.AlreadyExists({ name: `Game code ${gameCode.code}` }) });
+        callback({ error: new errorCreator.AlreadyExists({ name: `Game code ${gameCode.code}` }) });
 
         return;
       }

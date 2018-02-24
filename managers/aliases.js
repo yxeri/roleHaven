@@ -126,7 +126,7 @@ function createAlias({
           const createdAlias = aliasData.alias;
 
           dbRoom.createRoom({
-            options: { shouldSetId: true },
+            options: { setId: true },
             room: {
               ownerId: user.objectId,
               roomName: createdAlias.objectId,

@@ -72,7 +72,7 @@ function getInvitation({ query, callback }) {
 
         return;
       } else if (!data.object) {
-        callback({ error: new errorCreator.DoesNotExist({ name: `invitation ${query.toString()}` }) });
+        callback({ error: new errorCreator.DoesNotExist({ name: `invitation ${JSON.stringify(query, null, 4)}` }) });
 
         return;
       }

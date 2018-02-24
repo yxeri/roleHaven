@@ -51,7 +51,7 @@ function createAndFollowWhisperRoom({
 
   dbRoom.createRoom({
     room,
-    options: { shouldSetId: true },
+    options: { setId: true },
     callback: (roomData) => {
       if (roomData.error) {
         callback({ error: roomData.error });
@@ -337,7 +337,6 @@ function createRoom({
           }
 
           const createdRoom = roomData.room;
-          const { visibility } = createdRoom;
           const dataToSend = {
             data: {
               room: createdRoom,
@@ -347,13 +346,13 @@ function createRoom({
 
           if (socket) {
             socket.join(createdRoom.objectId);
-            socket.broadcast.to(visibility.toString()).emit(dbConfig.EmitTypes.ROOM, dataToSend);
+            socket.broadcast.to(dbConfig.rooms.public.objectId).emit(dbConfig.EmitTypes.ROOM, dataToSend);
           } else {
             const userSocket = socketUtils.getUserSocket({ io, socketId: user.socketId });
 
             if (userSocket) { userSocket.join(createdRoom.objectId); }
 
-            io.to(visibility.toString()).emit(dbConfig.EmitTypes.ROOM, dataToSend);
+            io.to(dbConfig.rooms.public.objectId).emit(dbConfig.EmitTypes.ROOM, dataToSend);
           }
 
           callback(dataToSend);
@@ -366,7 +365,7 @@ function createRoom({
 /**
  * Is the room protected? Protected rooms should not be unfollowed.
  * @param {Object} params - Parameters.
- * @param {string} params.roomId - ID of the room.
+ * @param {string} params.roomId - Id of the room.
  * @param {Object} [params.socket] - Socket.io.
  * @return {boolean} - Is the room protected?
  */
@@ -382,7 +381,7 @@ function isProtectedRoom({ roomId, socket }) {
  */
 function leaveSocketRooms(socket) {
   Object.keys(socket.rooms).forEach((roomId) => {
-    if (!isProtectedRoom(socket)) {
+    if (!isProtectedRoom({ roomId, socket })) {
       socket.leave(roomId);
     }
   });
@@ -950,7 +949,6 @@ function updateRoom({
               }
 
               const updatedRoom = updateData.data.room;
-              const { visibility } = updatedRoom;
               const dataToSend = {
                 data: {
                   room: updatedRoom,
@@ -959,9 +957,9 @@ function updateRoom({
               };
 
               if (socket) {
-                socket.broadcast.to(visibility.toString()).to(updatedRoom.objectId).emit(dbConfig.EmitTypes.ROOM, dataToSend);
+                socket.broadcast.to(dbConfig.rooms.public).emit(dbConfig.EmitTypes.ROOM, dataToSend);
               } else {
-                io.to(visibility.toString()).to(updatedRoom.objectId).emit(dbConfig.EmitTypes.ROOM, dataToSend);
+                io.to(dbConfig.rooms.public.objectId).emit(dbConfig.EmitTypes.ROOM, dataToSend);
               }
 
               callback(dataToSend);

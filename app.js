@@ -25,6 +25,7 @@ const compression = require('compression');
 const appConfig = require('./config/defaults/config').app;
 const dbConfig = require('./config/defaults/config').databasePopulation;
 const dbRoom = require('./db/connectors/room');
+const positionManager = require('./managers/positions');
 const { version: appVersion, name: appName } = require('./package');
 
 const app = express();
@@ -56,6 +57,20 @@ appConfig.routes.forEach((route) => {
 
 if (appConfig.mode !== appConfig.Modes.TEST) {
   dbRoom.populateDbRooms({ rooms: dbConfig.rooms });
+}
+
+if (!appConfig.bypassExternalConnections) {
+  positionManager.getAndStoreGooglePositions({
+    callback: ({ error, data }) => {
+      if (error) {
+        console.log('Failed to retrieve Google Maps positions');
+
+        return;
+      }
+
+      console.log(`Retrieved and saved ${data.positions.length + 1} positions from Google Maps`);
+    },
+  });
 }
 
 /*

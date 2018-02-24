@@ -26,6 +26,9 @@ data.create = {
     amount: 1,
     note: 'transTwo',
   },
+  missing: {
+    amount: 1,
+  },
 };
 
 data.update = {

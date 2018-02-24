@@ -64,6 +64,14 @@ function handle(socket, io) {
 
     positionManager.getPositions(params);
   });
+
+  socket.on('updatePositionCoordinates',  (params, callback = () => {}) => {
+    params.callback = callback;
+    params.io = io;
+    params.socket = socket;
+
+    positionManager.updatePositionCoordinates(params);
+  });
 }
 
 exports.handle = handle;

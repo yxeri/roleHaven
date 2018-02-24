@@ -31,12 +31,11 @@ const deviceSchema = new mongoose.Schema(dbConnector.createSchema({
 
 const Device = mongoose.model('Device', deviceSchema);
 
-const deviceFilter = {
+const deviceFilter = dbConnector.createFilter({
   deviceName: 1,
-  lastUpdated: 1,
   deviceType: 1,
   connectedToUser: 1,
-};
+});
 
 /**
  * Update device object.
@@ -119,7 +118,7 @@ function getDevice({ query, callback }) {
 
         return;
       } else if (!data.object) {
-        callback({ error: new errorCreator.DoesNotExist({ name: `device ${query.toString()}` }) });
+        callback({ error: new errorCreator.DoesNotExist({ name: `device ${JSON.stringify(query, null, 4)}` }) });
 
         return;
       }

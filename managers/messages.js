@@ -200,9 +200,7 @@ function getMessagesByRoom({
                 return;
               }
 
-              const { messages } = messageData.data;
-
-              callback({ data: { messages } });
+              callback(messageData);
             },
           });
         },
@@ -212,20 +210,20 @@ function getMessagesByRoom({
 }
 
 /**
- * Get messages created by the user or one of the aliases that the user has access to.
+ * Get messages from all the rooms that the user is following.
  * @param {Object} params - Parameters.
  * @param {string} params.token - jwt
  * @param {Function} params.callback - Callback.
  * @param {boolean} [params.full] - Full.
  */
-function getMessagesCreatedByUser({
+function getMessagesByFollowed({
   token,
   callback,
   full,
 }) {
   authenticator.isUserAllowed({
     token,
-    commandName: dbConfig.apiCommands.GetMessage.name,
+    commandName: full ? dbConfig.apiCommands.GetFull.name : dbConfig.apiCommands.GetMessage.name,
     callback: ({ error, data }) => {
       if (error) {
         callback({ error });
@@ -235,7 +233,7 @@ function getMessagesCreatedByUser({
 
       const { user } = data;
 
-      dbMessage.getMessagesCreatedByUser({
+      dbMessage.getMessagesByFollowed({
         user,
         full,
         callback,
@@ -278,7 +276,7 @@ function getFullHistory({ token, callback }) {
                 return;
               }
 
-              dbUser.getAllUserNames({
+              dbUser.getAllUsernames({
                 callback: ({ error: usersError, data: usersData }) => {
                   if (usersError) {
                     callback({ error: usersError });
@@ -846,5 +844,5 @@ exports.removeMesssage = removeMessage;
 exports.updateMsg = updateMsg;
 exports.getMessagesByRoom = getMessagesByRoom;
 exports.getMessageById = getMessageById;
-exports.getMessagesCreatedByUser = getMessagesCreatedByUser;
+exports.getMessagesByFollowed = getMessagesByFollowed;
 exports.getFullHistory = getFullHistory;

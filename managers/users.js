@@ -28,9 +28,83 @@ const deviceManager = require('../managers/devices');
 const dbRoom = require('../db/connectors/room');
 const dbDevice = require('../db/connectors/device');
 const socketUtils = require('../utils/socketIo');
+const dbForum = require('../db/connectors/forum');
+
+/**
+ * Update stored values for user, connected devices and start following the user's rooms on the socket.
+ * @param {Object} params - Parameters.
+ * @param {Object} params.user - User to update
+ * @param {Object} params.device - The device that the user is using.
+ * @param {Function} params.callback - Callback.
+ * @param {Object} params.io - Socket.io.
+ * @param {Object} params.socket - Socket.io.
+ * @param {string} params.token - jwt.
+ */
+function updateUserParams({
+  user,
+  device,
+  callback,
+  io,
+  socket,
+  token,
+}) {
+  const { userId, followingRooms } = user;
+  const socketId = socket.id;
+
+  dbUser.updateOnline({
+    userId,
+    socketId,
+    isOnline: true,
+    callback: (socketData) => {
+      if (socketData.error) {
+        callback({ error: socketData.error });
+
+        return;
+      }
+
+      const newDevice = device;
+      newDevice.lastUserId = userId;
+      newDevice.socketId = socketId;
+
+      dbDevice.updateDevice({
+        deviceId: newDevice.objectId,
+        device: newDevice,
+        callback: ({ error: deviceError }) => {
+          if (deviceError) {
+            callback({ error: deviceError });
+
+            return;
+          }
+
+          const oldSocket = io.sockets.connected[socketId];
+
+          if (oldSocket) {
+            roomManager.leaveSocketRooms(socket);
+            oldSocket.emit(dbConfig.EmitTypes.LOGOUT);
+          }
+
+          socketUtils.joinRooms({
+            io,
+            socketId,
+            roomIds: followingRooms,
+          });
+
+
+          callback({
+            data: {
+              token,
+              user,
+            },
+          });
+        },
+      });
+    },
+  });
+}
 
 /**
  * Get user by Id and check if the user has access to it.
+ * @private
  * @param {Object} params - Parameters.
  * @param {Object} params.user - User retrieving the user.
  * @param {string} params.userId - Id of the user to retrieve.
@@ -96,6 +170,7 @@ function createUser({
   callback,
   socket,
   io,
+  options,
 }) {
   let command;
 
@@ -133,9 +208,11 @@ function createUser({
 
       const newUser = user;
       newUser.isVerified = appConfig.userVerify;
-      newUser.followingRooms = Object.keys(dbConfig.rooms).map(key => dbConfig.rooms[key].objectId);
+      newUser.followingRooms = dbConfig.requiredRooms;
+      newUser.accessLevel = newUser.accessLevel || 1;
 
       dbUser.createUser({
+        options,
         user: newUser,
         callback: ({ error: userError, data: userData }) => {
           if (userError) {
@@ -155,7 +232,7 @@ function createUser({
               accessLevel: dbConfig.AccessLevels.SUPERUSER,
             },
             options: {
-              shouldSetId: true,
+              setId: true,
               isFollower: true,
             },
             callback: ({ error: roomError, data: roomData }) => {
@@ -183,29 +260,49 @@ function createUser({
                     return;
                   }
 
-
-                  const dataToSend = {
-                    data: {
-                      user: {
-                        objectId: createdUser.objectId,
-                        username: createdUser.username,
-                      },
-                      changeType: dbConfig.ChangeTypes.CREATE,
-                    },
+                  const forum = {
+                    title: newUser.fullName || newUser.username,
+                    isPersonal: true,
+                    objectId: createdUser.objectId,
+                    ownerId: createdUser.objectId,
                   };
+                  const forumOptions = { setId: true };
 
-                  if (socket) {
-                    socket.broadcast.emit(dbConfig.EmitTypes.USER, dataToSend);
-                  } else {
-                    io.emit(dbConfig.EmitTypes.USER, dataToSend);
-                  }
+                  dbForum.createForum({
+                    forum,
+                    options: forumOptions,
+                    callback: ({ error: forumError, data: forumData }) => {
+                      if (forumError) {
+                        callback({ error: forumError });
 
-                  callback({
-                    data: {
-                      user: createdUser,
-                      wallet: walletData.wallet,
-                      room: roomData.room,
-                      changeType: dbConfig.ChangeTypes.CREATE,
+                        return;
+                      }
+
+                      const dataToSend = {
+                        data: {
+                          user: {
+                            objectId: createdUser.objectId,
+                            username: createdUser.username,
+                          },
+                          changeType: dbConfig.ChangeTypes.CREATE,
+                        },
+                      };
+
+                      if (socket) {
+                        socket.broadcast.emit(dbConfig.EmitTypes.USER, dataToSend);
+                      } else {
+                        io.emit(dbConfig.EmitTypes.USER, dataToSend);
+                      }
+
+                      callback({
+                        data: {
+                          forum: forumData.forum,
+                          user: createdUser,
+                          wallet: walletData.wallet,
+                          room: roomData.room,
+                          changeType: dbConfig.ChangeTypes.CREATE,
+                        },
+                      });
                     },
                   });
                 },
@@ -430,54 +527,15 @@ function login({
             return;
           }
 
-          dbUser.updateOnline({
-            userId: authUser.objectId,
-            socketId: socket.id,
-            isOnline: true,
-            callback: (socketData) => {
-              if (socketData.error) {
-                callback({ error: socketData.error });
+          const { token } = tokenData;
 
-                return;
-              }
-
-              const newDevice = device;
-              newDevice.lastUserId = authUser.objectId;
-              newDevice.socketId = socket.id;
-
-              dbDevice.updateDevice({
-                deviceId: newDevice.objectId,
-                device: newDevice,
-                callback: ({ error: deviceError }) => {
-                  if (deviceError) {
-                    callback({ error: deviceError });
-
-                    return;
-                  }
-
-                  const oldSocket = io.sockets.connected[authUser.socketId];
-
-                  if (oldSocket) {
-                    roomManager.leaveSocketRooms(socket);
-                    oldSocket.emit(dbConfig.EmitTypes.LOGOUT);
-                  }
-
-                  socketUtils.joinRooms({
-                    io,
-                    roomIds: authUser.followingRooms,
-                    socketId: socket.id,
-                  });
-
-
-                  callback({
-                    data: {
-                      token: tokenData.token,
-                      user: authUser,
-                    },
-                  });
-                },
-              });
-            },
+          updateUserParams({
+            device,
+            io,
+            socket,
+            token,
+            callback,
+            user: authUser,
           });
         },
       });
@@ -509,10 +567,10 @@ function logout({
         return;
       }
 
-      const authUser = data.user;
+      const { objectId: userId } = data.user;
 
       dbUser.updateOnline({
-        userId: authUser.objectId,
+        userId,
         isOnline: false,
         callback: ({ error: socketError }) => {
           if (socketError) {
@@ -522,7 +580,7 @@ function logout({
           }
 
           const deviceToUpdate = device;
-          deviceToUpdate.lastUserId = authUser.objectId;
+          deviceToUpdate.lastUserId = userId;
           deviceToUpdate.socketId = '';
 
           deviceManager.updateDevice({
@@ -858,6 +916,46 @@ function removeUser({
   });
 }
 
+/**
+ * Update user. It will be called on reconnects from the client.
+ * @param {Object} params - Parameters.
+ * @param {string} params.token - jwt
+ * @param {Object} params.device - The device that the user is using.
+ * @param {Object} params.io - Socket.io
+ * @param {Object} params.socket - Socket.io
+ * @param {Function} params.callback - Callback
+ */
+function updateId({
+  token,
+  device,
+  io,
+  socket,
+  callback,
+}) {
+  authenticator.isUserAllowed({
+    token,
+    commandName: dbConfig.apiCommands.UpdateId.name,
+    callback: ({ error, data }) => {
+      if (error) {
+        callback({ error });
+
+        return;
+      }
+
+      const { user } = data;
+
+      updateUserParams({
+        user,
+        device,
+        io,
+        socket,
+        token,
+        callback,
+      });
+    },
+  });
+}
+
 exports.createUser = createUser;
 exports.getUserByName = getUserByName;
 exports.getUserById = getUserById;
@@ -870,3 +968,4 @@ exports.verifyUser = verifyUser;
 exports.updateUser = updateUser;
 exports.removeUser = removeUser;
 exports.getUsersByUser = getUsersByUser;
+exports.updateId = updateId;

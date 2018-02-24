@@ -30,6 +30,10 @@ data.create = {
     teamName: tools.createRandString({ length: appConfig.teamNameMaxLength }),
     shortName: tools.createRandString({ length: appConfig.shortTeamMaxLength }),
   },
+  missing: {
+    teamName: tools.createRandString({ length: appConfig.teamNameMaxLength }),
+    shortName: tools.createRandString({ length: appConfig.shortTeamMaxLength }),
+  },
 };
 
 data.update = {

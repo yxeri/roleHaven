@@ -39,6 +39,7 @@ describe('Teams', () => {
     objectType,
     apiPath,
     objectIdType,
+    checkDuplicate: true,
     testData: testData.create,
     schema: teamSchemas.team,
   });

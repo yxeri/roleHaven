@@ -27,7 +27,9 @@ data.create = {
   },
   second: {
     aliasName: tools.createRandString({ length: appConfig.usernameMaxLength }),
-    isIdentity: true,
+  },
+  missing: {
+    aliasName: tools.createRandString({ length: appConfig.usernameMaxLength }),
   },
 };
 

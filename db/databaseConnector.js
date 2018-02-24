@@ -26,6 +26,7 @@ const dbPath = `mongodb://${appConfig.dbHost}:${appConfig.dbPort}/${appConfig.db
 const baseSchema = {
   ownerId: String,
   ownerAliasId: String,
+  teamId: String,
   lastUpdated: Date,
   timeCreated: Date,
   customLastUpdated: Date,
@@ -37,7 +38,7 @@ const baseSchema = {
   userIds: { type: [String], default: [] },
   teamIds: { type: [String], default: [] },
   bannedIds: { type: [String], default: [] },
-  isPublic: { type: Boolean, default: true },
+  isPublic: { type: Boolean, default: false },
 };
 
 const coordinatesSchema = {
@@ -46,6 +47,20 @@ const coordinatesSchema = {
   speed: Number,
   accuracy: Number,
   heading: Number,
+  timeCreated: Date,
+  customTimeCreated: Date,
+};
+
+const baseFilter = {
+  isPublic: 1,
+  ownerId: 1,
+  ownerAliasId: 1,
+  teamId: 1,
+  lastUpdated: 1,
+  timeCreated: 1,
+  customLastUpdated: 1,
+  customTimeCreated: 1,
+  visibility: 1,
 };
 
 mongoose.connect(dbPath, {}, (err) => {
@@ -57,6 +72,21 @@ mongoose.connect(dbPath, {}, (err) => {
 
   console.info('Connection established to database');
 });
+
+/**
+ * Create database result filter.
+ * @param {Object} filter - Parameters to filter.
+ * @return {Object} Filter.
+ */
+function createFilter(filter) {
+  const fullFilter = filter;
+
+  Object.keys(baseFilter).forEach((filterKey) => {
+    fullFilter[filterKey] = baseFilter[filterKey];
+  });
+
+  return fullFilter;
+}
 
 /**
  * Create and return full schema.
@@ -337,7 +367,7 @@ function updateObject({
 
       return;
     } else if (!foundObject) {
-      callback({ error: new errorCreator.DoesNotExist({ name: `${object.toString()} update` }) });
+      callback({ error: new errorCreator.DoesNotExist({ name: `update ${JSON.stringify(query, null, 4)}` }) });
 
       return;
     }
@@ -436,14 +466,14 @@ function removeObjects({
   query,
   callback,
 }) {
-  object.deleteMany(query).lean().exec((err) => {
+  object.deleteMany(query).lean().exec((err, data) => {
     if (err) {
       callback({ error: new errorCreator.Database({ errorObject: err, name: 'removeObjects' }) });
 
       return;
     }
 
-    callback({ data: { success: true } });
+    callback({ data: { success: true, amount: data.n } });
   });
 }
 
@@ -583,3 +613,4 @@ exports.addObjectAccess = addObjectAccess;
 exports.doesObjectExist = doesObjectExist;
 exports.updateObjects = updateObjects;
 exports.createUserQuery = createUserQuery;
+exports.createFilter = createFilter;

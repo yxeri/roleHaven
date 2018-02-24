@@ -34,14 +34,13 @@ const roomSchema = new mongoose.Schema(dbConnector.createSchema({
 
 const Room = mongoose.model('Room', roomSchema);
 
-const roomFilter = {
+const roomFilter = dbConnector.createFilter({
   roomName: 1,
-  lastUpdated: 1,
   isAnonymous: 1,
   followers: 1,
   isWhisper: 1,
   participantIds: 1,
-};
+});
 
 /**
  * Remove private parameters from room.
@@ -99,7 +98,7 @@ function getRoom({ query, callback }) {
 
         return;
       } else if (!data.object) {
-        callback({ error: new errorCreator.DoesNotExist({ name: `room ${query.toString()}` }) });
+        callback({ error: new errorCreator.DoesNotExist({ name: `room ${JSON.stringify(query, null, 4)}` }) });
 
         return;
       }
@@ -203,7 +202,7 @@ function createRoom({
   callback,
   options = {},
 }) {
-  const { shouldSetId, isFollower } = options;
+  const { setId, isFollower } = options;
 
   doesRoomExist({
     roomName: room.roomName,
@@ -224,7 +223,9 @@ function createRoom({
 
       const roomToSave = room;
 
-      if (shouldSetId) { roomToSave._id = mongoose.Types.ObjectId(roomToSave.objectId); } // eslint-disable-line no-underscore-dangle
+      if (setId && roomToSave.objectId) {
+        roomToSave._id = mongoose.Types.ObjectId(roomToSave.objectId); // eslint-disable-line no-underscore-dangle
+      }
 
       dbConnector.saveObject({
         object: new Room(roomToSave),
@@ -538,7 +539,7 @@ function getRoomsByIds({ roomIds, callback }) {
 }
 
 /**
- * Get rooms that the user has access to
+ * Get rooms that the user has access to.
  * @param {Object} params - Parameters.
  * @param {Object} params.user - User retrieving the rooms.
  * @param {Function} params.callback - Callback.
@@ -613,7 +614,7 @@ function populateDbRooms({ rooms, callback = () => {} }) {
       createRoom({
         room: rooms[roomName],
         silentExistsError: true,
-        options: { shouldSetId: true },
+        options: { setId: true },
         callback: ({ error }) => {
           if (error) {
             callback({ error });

@@ -45,6 +45,7 @@ function createTestCreate({
   apiPath,
   schema,
   createByAdmin,
+  checkDuplicate = false,
 }) {
   describe(`Create ${objectType}`, () => {
     it(`Should NOT create a ${objectType} with incorrect token on ${apiPath} POST`, (done) => {
@@ -75,6 +76,8 @@ function createTestCreate({
         .set('Authorization', createByAdmin ? tokens.adminUserOne : tokens.basicUserOne)
         .send(dataToSend)
         .end((error, response) => {
+          console.log('created', response.body.data);
+
           response.should.have.status(200);
           response.should.be.json;
           response.body.should.be.jsonSchema(baseObjectSchemas.returnData);
@@ -84,6 +87,49 @@ function createTestCreate({
           done();
         });
     });
+
+    if (checkDuplicate) {
+      it(`Should NOT create a ${objectType} that already exists on ${apiPath} POST`, (done) => {
+        const dataToSend = { data: {} };
+        dataToSend.data[objectType] = testData.first;
+
+        chai
+          .request(app)
+          .post(testData.apiCreatePath || apiPath)
+          .set('Authorization', createByAdmin ? tokens.adminUserOne : tokens.basicUserOne)
+          .send(dataToSend)
+          .end((error, response) => {
+            response.should.have.status(403);
+            response.should.be.json;
+            response.body.should.be.jsonSchema(baseObjectSchemas.returnData);
+
+            done();
+          });
+      });
+    }
+
+    if (testData.missing) {
+      Object.keys(testData.missing).forEach((param) => {
+        it(`Should NOT create a ${objectType} with missing parameter ${param} on ${apiPath} POST`, (done) => {
+          const dataToSend = { data: {} };
+          dataToSend.data[objectType] = Object.assign({}, testData.missing);
+          dataToSend.data[objectType][param] = undefined;
+
+          chai
+            .request(app)
+            .post(testData.apiCreatePath || apiPath)
+            .set('Authorization', createByAdmin ? tokens.adminUserOne : tokens.basicUserOne)
+            .send(dataToSend)
+            .end((error, response) => {
+              response.should.have.status(400);
+              response.should.be.json;
+              response.body.should.be.jsonSchema(baseObjectSchemas.returnData);
+
+              done();
+            });
+        });
+      });
+    }
   });
 }
 
@@ -107,7 +153,7 @@ function createTestUpdate({
   skipCreation = false,
 }) {
   describe(`Update a ${objectType}`, () => {
-    let updateObjectId;
+    let updateObjectId = testData.customObjectId;
 
     if (!skipCreation) {
       before(`Create a ${objectType} on ${apiPath} POST`, (done) => {
@@ -312,7 +358,7 @@ function createTestGet({
   skipCreation = false,
 }) {
   describe(`Get one or more ${objectsType}`, () => {
-    let idOfObject = '';
+    let idOfObject = testData.customObjectId;
 
     if (!skipCreation) {
       before(`Create a ${objectType} on ${apiPath}`, (done) => {

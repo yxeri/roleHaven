@@ -38,6 +38,14 @@ data.create = {
       tools.createRandString({ length: appConfig.docFileMaxLength / 2 }),
     ],
   },
+  missing: {
+    code: 'missing',
+    title: tools.createRandString({ length: appConfig.docFileTitleMaxLength }),
+    text: [
+      tools.createRandString({ length: appConfig.docFileMaxLength / 2 }),
+      tools.createRandString({ length: appConfig.docFileMaxLength / 2 }),
+    ],
+  },
 };
 
 data.update = {

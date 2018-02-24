@@ -28,6 +28,9 @@ data.create = {
   second: {
     deviceName: tools.createRandString({ length: appConfig.deviceAliasMaxLength }),
   },
+  missing: {
+    deviceName: tools.createRandString({ length: appConfig.deviceAliasMaxLength }),
+  },
 };
 
 data.update = {

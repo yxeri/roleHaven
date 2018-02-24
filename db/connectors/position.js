@@ -38,11 +38,12 @@ const mapPositionSchema = new mongoose.Schema(dbConnector.createSchema({
   description: { type: [String], default: [] },
   radius: { type: Number, default: 0 },
   isStationary: { type: Boolean, default: false },
+  origin: { type: String, default: dbConfig.PositionOrigins.LOCAL },
 }), { collection: 'mapPositions' });
 
 const MapPosition = mongoose.model('MapPosition', mapPositionSchema);
 
-const positionFilter = {
+const positionFilter = dbConnector.createFilter({
   connectedToUser: 1,
   deviceId: 1,
   coordinatesHistory: 1,
@@ -50,19 +51,15 @@ const positionFilter = {
   positionType: 1,
   radius: 1,
   isStationary: 1,
-  lastUpdated: 1,
-  customLastUpdated: 1,
-  timeCreated: 1,
-  customTimeCreated: 1,
-};
+});
 
 /**
- * Update position
+ * Update position.
  * @private
- * @param {Object} params - Parameters
- * @param {string} params.positionId - ID of the position to update
- * @param {Object} params.update - Update
- * @param {Function} params.callback Callback
+ * @param {Object} params - Parameter.
+ * @param {string} params.positionId - Id of the position to update.
+ * @param {Object} params.update - Update.
+ * @param {Function} params.callback Callback.
  */
 function updateObject({ positionId, update, callback }) {
   dbConnector.updateObject({
@@ -83,7 +80,7 @@ function updateObject({ positionId, update, callback }) {
 }
 
 /**
- * Get positions
+ * Get positions.
  * @private
  * @param {Object} params - Parameters.
  * @param {Object} [params.query] - Query to get positions.
@@ -132,7 +129,7 @@ function getPosition({ filter, query, callback }) {
 
         return;
       } else if (!data.object) {
-        callback({ error: new errorCreator.DoesNotExist({ name: `position ${query.toString()}` }) });
+        callback({ error: new errorCreator.DoesNotExist({ name: `position ${JSON.stringify(query, null, 4)}` }) });
 
         return;
       }
@@ -218,6 +215,10 @@ function createPosition({ position, callback }) {
   };
 
   const saveCallback = () => {
+    const positionToSave = position;
+    positionToSave.coordinatesHistory = [positionToSave.coordinates];
+
+
     dbConnector.saveObject({
       object: new MapPosition(position),
       objectType: 'mapPosition',
@@ -241,16 +242,11 @@ function createPosition({ position, callback }) {
 }
 
 /**
- * Update position coordinates
- * @param {Object} params - Parameters
- * @param {string} params.positionId - ID of the position
- * @param {Function} params.callback - Callback
- * @param {Object} params.coordinates - GPS coordinates
- * @param {number} params.coordinates.longitude - Longitude
- * @param {number} params.coordinates.latitude - Latitude
- * @param {number} params.coordinates.accuracy - Accuracy in meters
- * @param {number} [params.coordinates.heading] - Heading (0 - 359)
- * @param {number} [params.coordinates.speed] - Speed
+ * Update position coordinates.
+ * @param {Object} params - Parameters.
+ * @param {string} params.positionId - Id of the position.
+ * @param {Function} params.callback - Callback.
+ * @param {Object} params.coordinates - GPS coordinates.
  */
 function updateCoordinates({ positionId, coordinates, callback }) {
   const update = { $push: { coordinatesHistory: coordinates } };
@@ -287,6 +283,7 @@ function updatePosition({
     text,
     isPublic,
     connectedToUser,
+    description,
   } = position;
   const { resetOwnerAliasId, resetConnectedToUser } = options;
 
@@ -335,6 +332,7 @@ function updatePosition({
   if (positionType) { update.$set.positionType = positionType; }
   if (deviceId) { update.$set.deviceId = deviceId; }
   if (connectedToUser) { update.$set.connectedToUser = connectedToUser; }
+  if (description) { update.$set.description = description; }
 
   if (typeof isPublic !== 'undefined') { update.$set.isPublic = isPublic; }
   if (typeof isStationary !== 'undefined') { update.$set.isStationary = isStationary; }
@@ -401,7 +399,7 @@ function removePosition({ positionId, callback }) {
 }
 
 /**
- * Remove positions based on marker type
+ * Remove positions based on position type.
  * @param {Object} params - Parameters
  * @param {string} params.positionType - Position type
  * @param {Function} params.callback - Callback
@@ -411,6 +409,20 @@ function removePositionsByType({ positionType, callback }) {
     callback,
     object: MapPosition,
     query: { positionType },
+  });
+}
+
+/**
+ * Remove positions based on its origin.
+ * @param {Object} params - Parameters.
+ * @param {string} params.origin - The creation origin of the positions.
+ * @param {Function} params.callback - Callback.
+ */
+function removePositionsByOrigin({ origin, callback }) {
+  dbConnector.removeObjects({
+    callback,
+    object: MapPosition,
+    query: { origin },
   });
 }
 
@@ -520,14 +532,16 @@ function removeAccess({
   });
 }
 
-exports.updateCoordinates = updateCoordinates;
+exports.updatePositionCoordinates = updateCoordinates;
 exports.removePosition = removePosition;
 exports.createPosition = createPosition;
 exports.getPositionsByUser = getPositionsByUser;
 exports.updatePosition = updatePosition;
+exports.removePositionsByOrigin = removePositionsByOrigin;
 exports.getPositionById = getPositionById;
 exports.getUserPosition = getUserPosition;
 exports.getPositionByDevice = getPositionByDevice;
 exports.addAccess = addAccess;
 exports.removeAccess = removeAccess;
 exports.removePositionsByType = removePositionsByType;
+exports.removePositionsByOrigin = removePositionsByOrigin;

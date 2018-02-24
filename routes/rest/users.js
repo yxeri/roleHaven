@@ -170,6 +170,7 @@ function handle(io) {
    *
    * @apiParam {Object} data
    * @apiParam {Object} data.user User to create.
+   * @apiParam {string} [data.options] Update options.
    *
    * @apiSuccess {Object} data
    * @apiSuccess {Object} data.user Created user.
@@ -186,13 +187,14 @@ function handle(io) {
     }
 
     const { authorization: token } = request.headers;
-    const { user } = request.body.data;
+    const { user, options } = request.body.data;
     user.registerDevice = dbConfig.DeviceTypes.RESTAPI;
 
     userManager.createUser({
       user,
       token,
       io,
+      options,
       callback: ({ error, data }) => {
         if (error) {
           sentData.user.password = typeof sentData.user.password !== 'undefined';

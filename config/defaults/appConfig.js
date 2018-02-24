@@ -216,7 +216,7 @@ config.eventName = process.env.EVENTNAME || config.eventName || 'roleHaven larp'
  * Valid options: se.
  * @type {string}
  */
-config.defaultLanguage = process.env.DEFAULTLANGUAGE || config.defaultLanguage || '';
+config.defaultLanguage = process.env.DEFAULTLANGUAGE || config.defaultLanguage || 'en';
 
 /**
  * Name of the system. Human-readable name that will be sent to clients, such as in the subject field of mail or page title.
@@ -404,7 +404,7 @@ config.passwordMaxLength = process.env.PASSWORDMAXLENGTH || config.passwordMaxLe
  * Should users be able to register? Does not block register through rest api.
  * @type {boolean}
  */
-config.disallowSocketUserRegister = typeof disallowRegisterEnv !== 'undefined' ? disallowRegisterEnv : config.disallowSocketUserRegister || false;
+config.disallowUserRegister = typeof disallowRegisterEnv !== 'undefined' ? disallowRegisterEnv : config.disallowUserRegister || false;
 
 /**
  * ********

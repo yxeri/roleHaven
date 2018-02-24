@@ -364,7 +364,7 @@ function updatePost({
  * @param {Function} params.callback - Callback.
  * @param {boolean} [params.full] - Should the complete objects be returned?
  */
-function getPostsCreatedByUser({
+function getPostsByUser({
   token,
   callback,
   full,
@@ -379,12 +379,12 @@ function getPostsCreatedByUser({
         return;
       }
 
-      const { userId } = data.user;
+      const { user } = data;
 
-      dbPost.getPostsCreatedByUser({
+      dbPost.getPostsByUser({
         callback,
         full,
-        userId,
+        user,
       });
     },
   });
@@ -626,4 +626,4 @@ exports.removePost = removePost;
 exports.getPostsByForum = getPostsByForum;
 exports.getPostsByThread = getPostsByThread;
 exports.getPostById = getPostById;
-exports.getPostsCreatedByUser = getPostsCreatedByUser;
+exports.getPostsByUser = getPostsByUser;

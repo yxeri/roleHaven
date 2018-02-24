@@ -28,6 +28,9 @@ data.create = {
   second: {
     roomName: tools.createRandString({ length: appConfig.roomNameMaxLength }),
   },
+  missing: {
+    roomName: tools.createRandString({ length: appConfig.roomNameMaxLength }),
+  },
 };
 
 data.update = {

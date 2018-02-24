@@ -78,6 +78,18 @@ function handle(socket, io) {
     params.io = io;
     params.socket = socket;
 
+    if (params.fullHistory) {
+      messageManager.getFullHistory(params);
+    } else {
+      messageManager.getMessagesByFollowed(params);
+    }
+  });
+
+  socket.on('getMessagesByRoom', (params, callback = () => {}) => {
+    params.callback = callback;
+    params.io = io;
+    params.socket = socket;
+
     messageManager.getMessagesByRoom(params);
   });
 }

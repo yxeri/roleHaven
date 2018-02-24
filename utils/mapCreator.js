@@ -17,6 +17,7 @@
 'use strict';
 
 const appConfig = require('../config/defaults/config').app;
+const dbConfig = require('../config/defaults/config').databasePopulation;
 const request = require('request');
 const xml2json = require('xml2json');
 
@@ -61,8 +62,10 @@ function createCoordsCollection(coords) {
     }
 
     coordsCollection.push({
-      lat: parseFloat(latitude),
-      lng: parseFloat(longitude),
+      radius: 0,
+      accuracy: appConfig.minimumPositionAccuracy,
+      latitude: parseFloat(latitude),
+      longitude: parseFloat(longitude),
     });
   }
 
@@ -99,12 +102,13 @@ function createPosition({ position, layerName }) {
   }
 
   return {
-    positionName: position.name,
-    isStationary: true,
-    markerType: layerName.toLowerCase(),
-    description: position.description ? position.description.replace(/<img .+?\/>/, '').split(/<br>/) : ['No information'],
     coordinates,
     geometry,
+    origin: dbConfig.PositionOrigins.GOOGLE,
+    positionName: typeof position.name === 'string' ? position.name : 'Unnamed position',
+    isStationary: true,
+    positionType: layerName.toLowerCase(),
+    description: position.description ? position.description.replace(/<img .+?\/>/, '').split(/<br>/) : ['No information'],
   };
 }
 
@@ -129,7 +133,7 @@ function getGooglePositions({ callback }) {
 
     const positions = [];
     /**
-     * @type {{ kml: Object, Document: Object, Folder: Object }}
+     * @type {[{ kml: Object, Document: Object, Folder: Object }]}
      */
     const layers = convertToJson(body).kml.Document.Folder;
 

@@ -74,7 +74,7 @@ function updateWallet({
   token,
   callback,
   io,
-  options,
+  options = {},
 }) {
   const { amount } = wallet;
   const { resetAmount } = options;

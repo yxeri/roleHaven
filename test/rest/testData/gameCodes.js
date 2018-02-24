@@ -33,11 +33,11 @@ const data = {};
 
 data.create = {
   first: {
-    codeType: dbConfig.GameCodeTypes.TEXT,
-    codeContent: ['Two lines', 'of text'],
+    code: tools.createRandString({ length: appConfig.gameCodeLength }),
   },
   second: {
-    code: tools.createRandString({ length: appConfig.gameCodeLength }),
+    codeType: dbConfig.GameCodeTypes.TEXT,
+    codeContent: ['Two lines', 'of text'],
   },
 };
 

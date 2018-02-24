@@ -178,7 +178,7 @@ function createTeamAndDependencies({
           }
 
           dbRoom.createRoom({
-            options: { shouldSetId: true },
+            options: { setId: true },
             room: roomToCreate,
             callback: ({ error: roomError, data: roomData }) => {
               if (roomError) {

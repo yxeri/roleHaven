@@ -31,12 +31,11 @@ const teamSchema = new mongoose.Schema(dbConnector.createSchema({
 
 const Team = mongoose.model('Team', teamSchema);
 
-const teamFilter = {
+const teamFilter = dbConnector.createFilter({
   teamName: 1,
   shortName: 1,
-  lastUpdated: 1,
   members: 1,
-};
+});
 
 /**
  * Update team
@@ -113,7 +112,7 @@ function getTeam({ query, callback }) {
 
         return;
       } else if (!data.object) {
-        callback({ error: new errorCreator.DoesNotExist({ name: `team ${query.toString()}` }) });
+        callback({ error: new errorCreator.DoesNotExist({ name: `team ${JSON.stringify(query, null, 4)}` }) });
 
         return;
       }

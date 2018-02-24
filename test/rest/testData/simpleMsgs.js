@@ -28,6 +28,9 @@ data.create = {
   second: {
     text: tools.createRandString({ length: appConfig.messageMaxLength }),
   },
+  missing: {
+    text: tools.createRandString({ length: appConfig.messageMaxLength }),
+  },
 };
 
 data.update = {

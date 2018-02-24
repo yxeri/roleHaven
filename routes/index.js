@@ -47,44 +47,39 @@ const router = new express.Router();
  * @returns {Object} Router
  */
 function handle(io) {
-  router.get('/control', (req, res) => {
-    res.render('control', {
-      title: appConfig.title,
-      gMapsKey: appConfig.gMapsKey,
-      socketPath: appConfig.socketPath,
-      mainJs: 'scripts/control.js',
-      mainCss: !Number.isNaN(req.query.style) ? `styles/${req.query.style}.css` : 'styles/control.css',
-    });
-  });
-
   router.get('/', (req, res) => {
     res.render('index', {
       title: appConfig.title,
       gMapsKey: appConfig.gMapsKey,
       socketPath: appConfig.socketPath,
       mainJs: 'scripts/main.js',
-      mainCss: !Number.isNaN(req.query.style) ? `styles/${req.query.style}.css` : 'styles/main.css',
-      dyslexic: req.query.dyslexic,
+      mainCss: req.query.style && !Number.isNaN(req.query.style) ? `styles/${req.query.style}.css` : 'styles/main.css',
     });
   });
 
   io.on('connection', (socket) => {
-    dbConfig.rooms.forEach((room) => {
-      socket.join(room.objectId);
+    dbConfig.requiredRooms.forEach((roomId) => {
+      socket.join(roomId);
     });
 
-    socket.emit('startup', {
+    socket.emit(dbConfig.EmitTypes.STARTUP, {
       data: {
         defaultLanguage: appConfig.defaultLanguage,
         forceFullscreen: appConfig.forceFullscreen,
         gpsTracking: appConfig.gpsTracking,
         customFlags: appConfig.customFlags,
-        centerLat: appConfig.centerLat,
-        centerLong: appConfig.centerLong,
-        cornerOneLat: appConfig.cornerOneLat,
-        cornerOneLong: appConfig.cornerOneLong,
-        cornerTwoLat: appConfig.cornerTwoLat,
-        cornerTwoLong: appConfig.cornerTwoLong,
+        centerCoordinates: {
+          latitude: appConfig.centerLat,
+          longitude: appConfig.centerLong,
+        },
+        cornerOneCoordinates: {
+          latitude: appConfig.cornerOneLat,
+          longitude: appConfig.cornerOneLong,
+        },
+        cornerTwoCoordinates: {
+          latitude: appConfig.cornerTwoLat,
+          longitude: appConfig.cornerTwoLong,
+        },
         defaultZoomLevel: appConfig.defaultZoomLevel,
         yearModification: appConfig.yearModification,
         mode: appConfig.mode,
@@ -109,7 +104,6 @@ function handle(io) {
 
           dbUser.updateOnline({
             isOnline: false,
-            userSocketId: socket.id,
             callback: ({ error: userError }) => {
               if (userError) {
                 callback({ error: userError });

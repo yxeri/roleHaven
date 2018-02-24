@@ -39,6 +39,7 @@ describe('DocFiles', () => {
     objectType,
     apiPath,
     objectIdType,
+    checkDuplicate: true,
     testData: testData.create,
     schema: docFileSchemas.docFile,
   });

@@ -25,7 +25,7 @@ const simpleMsgManager = require('../../managers/simpleMsgs');
  * @param {object} io - Socket.Io.
  */
 function handle(socket, io) {
-  socket.on('createSimpleMsg', (params, callback = () => {}) => {
+  socket.on('sendSimpleMsg', (params, callback = () => {}) => {
     params.callback = callback;
     params.io = io;
     params.socket = socket;

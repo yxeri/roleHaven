@@ -44,9 +44,18 @@ const userSchema = new mongoose.Schema(dbConnector.createSchema({
   partOfTeams: { type: [String], default: [] },
   followingRooms: { type: [String], default: [] },
   aliases: { type: [String], default: [] },
+  pictureId: {},
 }), { collection: 'users' });
 
 const User = mongoose.model('User', userSchema);
+
+// const userFilter = dbConnector.createFilter({
+//   username: 1,
+//   lastOnline: 1,
+//   isOnline: 1,
+//   partOfTeams: 1,
+//   pictureId: 1,
+// });
 
 /**
  * Remove private parameters
@@ -179,7 +188,7 @@ function getUser({ filter, query, callback }) {
 
         return;
       } else if (!data.object) {
-        callback({ error: new errorCreator.DoesNotExist({ name: `user ${query.toString()}` }) });
+        callback({ error: new errorCreator.DoesNotExist({ name: `user ${JSON.stringify(query, null, 4)}` }) });
 
         return;
       }
@@ -255,13 +264,19 @@ function authUser({
  * @param {Function} params.callback - Callback
  */
 function doesUserExist({ username, mailAddress, callback }) {
+  if (!username && !mailAddress) {
+    callback({ error: new errorCreator.InvalidData({ expected: 'username || mailAddress' }) });
+
+    return;
+  }
+
   const query = { $or: [] };
 
   if (username) { query.$or.push({ username }); }
   if (mailAddress) { query.$or.push({ mailAddress }); }
 
   dbConnector.doesObjectExist({
-    query: { username },
+    query,
     object: User,
     callback: ({ error, data }) => {
       if (error) {
@@ -269,7 +284,7 @@ function doesUserExist({ username, mailAddress, callback }) {
 
         return;
       } else if (data.exists) {
-        callback({ data: { exists: true } });
+        callback({ data });
 
         return;
       }
@@ -288,9 +303,13 @@ function doesUserExist({ username, mailAddress, callback }) {
  * @param {Object} params.user - New user
  * @param {Function} params.callback - Callback
  */
-function createUser({ user, callback }) {
+function createUser({
+  user,
+  callback,
+  options = {},
+}) {
   doesUserExist({
-    name: user.username,
+    username: user.username,
     mailAddress: user.mailAddress,
     callback: (nameData) => {
       if (nameData.error) {
@@ -299,12 +318,19 @@ function createUser({ user, callback }) {
         return;
       } else if (nameData.data.exists) {
         callback({ error: new errorCreator.AlreadyExists({ name: `username: ${user.username}` }) });
+
+        return;
       }
 
-      const userId = mongoose.Types.ObjectId();
       const userToSave = user;
-      userToSave._id = userId;
-      userToSave.ownerId = userId.toString();
+
+      if (options.setId && userToSave.objectId) {
+        userToSave._id = mongoose.Types.ObjectId(userToSave.objectId); // eslint-disable-line no-underscore-dangle
+      } else {
+        userToSave._id = mongoose.Types.ObjectId(); // eslint-disable-line no-underscore-dangle
+      }
+
+      userToSave.ownerId = userToSave._id.toString();
 
       dbConnector.saveObject({
         object: new User(userToSave),
@@ -372,8 +398,8 @@ function updateOnline({
 function updateUser({
   userSocketId,
   userId,
-  user,
   callback,
+  user = {},
   options = {},
 }) {
   const {
@@ -875,7 +901,7 @@ function unfollowRoom({
  * @param {Object} params - Parameters.
  * @param {Function} params.callback - Callback
  */
-function getAllUserNames({ callback }) {
+function getAllUsernames({ callback }) {
   getUsers({
     callback,
     filter: {
@@ -908,4 +934,4 @@ exports.getUsersByUser = getUsersByUser;
 exports.addAlias = addAlias;
 exports.removeAlias = removeAlias;
 exports.removeAliasFromAllUsers = removeAliasFromAllUsers;
-exports.getAllUserNames = getAllUserNames;
+exports.getAllUsernames = getAllUsernames;
