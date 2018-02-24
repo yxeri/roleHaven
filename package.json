@@ -6,7 +6,8 @@
   "private": true,
   "scripts": {
     "start": "node bin/www",
-    "test": "DEBUG=socket.io:server MODE=test ./node_modules/nyc/bin/nyc.js ./node_modules/mocha/bin/mocha --recursive --timeout 5000 --exit && eslint ./",
+    "test": "DEBUG=socket.io:server MODE=test ./node_modules/mocha/bin/mocha --recursive --timeout 5000 --exit && eslint ./",
+    "coverage": "DEBUG=socket.io:server MODE=test ./node_modules/nyc/bin/nyc.js ./node_modules/mocha/bin/mocha --recursive --timeout 5000",
     "nsp": "nsp check"
   },
   "repository": {
