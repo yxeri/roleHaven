@@ -98,6 +98,22 @@ function handle() {
     });
   });
 
+  router.get('/gameUsers', (request, response) => {
+    gameItemManager.getGameUsers({
+      stationId: 1,
+      token: request.headers.authorization,
+      callback: ({ error, data }) => {
+        if (error) {
+          restErrorChecker.checkAndSendError({ response, error });
+
+          return;
+        }
+
+        response.json({ data });
+      },
+    });
+  });
+
   /**
    * @api {post} /gameItems/fakePasswords Create fake passwords
    * @apiVersion 6.0.0
