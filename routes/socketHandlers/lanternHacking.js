@@ -21,9 +21,11 @@ const lanternHackManager = require('../../managers/lanternHacking');
 /**
  * @param {Object} socket - Socket.IO socket
  */
-function handle(socket) {
+function handle(socket, io) {
   socket.on('manipulateStation', ({ password, boostingSignal, token }, callback = () => {}) => {
     lanternHackManager.manipulateStation({
+      socket,
+      io,
       password,
       boostingSignal,
       token,

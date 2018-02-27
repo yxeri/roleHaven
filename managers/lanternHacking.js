@@ -27,6 +27,7 @@ const lanternRoundManager = require('../managers/lanternRounds');
 const lanternStationManager = require('../managers/lanternStations');
 const lanternTeamManager = require('../managers/lanternTeams');
 const poster = require('../helpers/poster');
+const messenger = require('../helpers/messenger');
 
 /**
  * Lower/increase signal value on all stations towards default value
@@ -291,7 +292,7 @@ function createLanternHack({ stationId, owner, triesLeft, callback }) {
  * @param {Object} params.token jwt
  * @param {Function} params.callback Callback
  */
-function manipulateStation({ password, boostingSignal, token, callback }) {
+function manipulateStation({ socket, io, password, boostingSignal, token, callback }) {
   if (!objectValidator.isValidData({ password, boostingSignal }, { password: true, boostingSignal: true })) {
     callback({ error: new errorCreator.InvalidData({ expected: '{ password, boostingSignal }' }) });
 
@@ -342,7 +343,32 @@ function manipulateStation({ password, boostingSignal, token, callback }) {
                       return;
                     }
 
-                    callback({ data: { success: true, boostingSignal } });
+                    const { stationId } = lanternHack;
+
+                    dbLanternHack.getStation({
+                      stationId,
+                      callback: (stationData) => {
+                        if (stationData.error) {
+                          callback({ error });
+
+                          return;
+                        }
+
+                        const { stationName } = stationData.data.station;
+
+                        messenger.sendMsg({
+                          socket,
+                          io,
+                          message: {
+                            lanternHack: true,
+                            roomName: 'public',
+                            text: [`ACTIVITY DETECTED: user ${user.userName} has ${boostingSignal ? 'blocked' : 'amplified'} the signal to station ${stationName}`],
+                          },
+                        });
+
+                        callback({ data: { success: true, boostingSignal } });
+                      },
+                    });
                   },
                 });
               },
