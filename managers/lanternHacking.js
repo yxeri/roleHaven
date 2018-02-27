@@ -385,10 +385,12 @@ function manipulateStation({ password, boostingSignal, token, callback }) {
               }
 
               const sentPassword = Array.from(password.toLowerCase());
-              const matches = sentPassword.filter(char => correctUser.password.indexOf(char) === sentPassword.indexOf(char));
+              const matches = sentPassword.filter(char => correctUser.password.includes(char));
+              const correctPlacement = sentPassword.filter(char => correctUser.password.indexOf(char) === sentPassword.includes(char));
 
               callback({
                 data: {
+                  correctPlacement,
                   success: false,
                   triesLeft: loweredHack.triesLeft,
                   matches: { amount: matches.length },
