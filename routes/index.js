@@ -53,6 +53,15 @@ function handle(io) {
     });
   });
 
+  router.get('/showfloor', (req, res) => {
+    res.render('showfloor', {
+      title: appConfig.title,
+      socketPath: appConfig.socketPath,
+      mainJs: 'scripts/showfloor.js',
+      mainCss: 'styles/showfloor.css',
+    });
+  });
+
   router.get('/', (req, res) => {
     res.render('index', {
       title: appConfig.title,
