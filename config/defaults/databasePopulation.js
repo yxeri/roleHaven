@@ -202,6 +202,7 @@ config.PositionTypes = {
   USER: 'user',
   WORLD: 'world',
   LOCAL: 'local',
+  DEVICE: 'device',
 };
 
 config.PositionOrigins = {
