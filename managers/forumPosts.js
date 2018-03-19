@@ -17,7 +17,7 @@
 'use strict';
 
 const dbPost = require('../db/connectors/forumPost');
-const dbConfig = require('../config/defaults/config').databasePopulation;
+const dbConfig = require('../config/defaults/config').dbConfig;
 const errorCreator = require('../error/errorCreator');
 const authenticator = require('../helpers/authenticator');
 const aliasManager = require('./aliases');

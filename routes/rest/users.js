@@ -24,7 +24,7 @@ const aliasManager = require('../../managers/aliases');
 const restErrorChecker = require('../../helpers/restErrorChecker');
 const errorCreator = require('../../error/errorCreator');
 const gameCodeManager = require('../../managers/gameCodes');
-const dbConfig = require('../../config/defaults/config').databasePopulation;
+const dbConfig = require('../../config/defaults/config').dbConfig;
 
 const router = new express.Router();
 

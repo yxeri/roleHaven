@@ -18,7 +18,7 @@
 
 const tools = require('../helper/tools');
 const appConfig = require('../../../config/defaults/config').app;
-const dbConfig = require('../../../config/defaults/config').databasePopulation;
+const dbConfig = require('../../../config/defaults/config').dbConfig;
 
 /**
  * code: { type: String, unique: true },

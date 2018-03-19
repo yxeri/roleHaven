@@ -16,7 +16,7 @@
 
 'use strict';
 
-const dbConfig = require('../../../config/defaults/config').databasePopulation;
+const dbConfig = require('../../../config/defaults/config').dbConfig;
 const appConfig = require('../../../config/defaults/config').app;
 const tools = require('../helper/tools');
 

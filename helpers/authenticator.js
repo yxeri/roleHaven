@@ -2,7 +2,7 @@ const dbUser = require('../db/connectors/user');
 const jwt = require('jsonwebtoken');
 const appConfig = require('../config/defaults/config').app;
 const errorCreator = require('../error/errorCreator');
-const dbConfig = require('../config/defaults/config').databasePopulation;
+const dbConfig = require('../config/defaults/config').dbConfig;
 
 /**
  * Create json web token. The user can be found by either the username or userId.

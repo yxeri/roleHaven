@@ -17,7 +17,7 @@
 'use strict';
 
 const tools = require('../helper/tools');
-const dbConfig = require('../../../config/defaults/config').databasePopulation;
+const dbConfig = require('../../../config/defaults/config').dbConfig;
 
 const schemas = {};
 

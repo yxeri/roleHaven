@@ -18,7 +18,7 @@
 
 const mongoose = require('mongoose');
 const appConfig = require('../config/defaults/config').app;
-const dbConfig = require('../config/defaults/config').databasePopulation;
+const dbConfig = require('../config/defaults/config').dbConfig;
 const errorCreator = require('../error/errorCreator');
 
 const dbPath = `mongodb://${appConfig.dbHost}:${appConfig.dbPort}/${appConfig.dbName}`;

@@ -16,7 +16,7 @@
 
 'use strict';
 
-const dbConfig = require('../config/defaults/config').databasePopulation;
+const dbConfig = require('../config/defaults/config').dbConfig;
 const errorCreator = require('../error/errorCreator');
 const dbDevice = require('../db/connectors/device');
 const authenticator = require('../helpers/authenticator');

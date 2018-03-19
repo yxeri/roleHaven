@@ -17,7 +17,7 @@
 'use strict';
 
 const appConfig = require('../config/defaults/config').app;
-const dbConfig = require('../config/defaults/config').databasePopulation;
+const dbConfig = require('../config/defaults/config').dbConfig;
 const request = require('request');
 const xml2json = require('xml2json');
 
