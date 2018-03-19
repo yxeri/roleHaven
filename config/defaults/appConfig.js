@@ -383,6 +383,12 @@ config.broadcastMaxLength = process.env.BROADCASTMAXLENGTH || config.broadcastMa
 config.userVerify = typeof userVerifyEnv !== 'undefined' ? userVerifyEnv : config.userVerify || true;
 
 /**
+ * Minimum amount of characters in a user name
+ * @type {number}
+ */
+config.usernameMinLength = process.env.USERNAMEMINLENGTH || config.usernameMinLength || 3;
+
+/**
  * Maximum amount of characters in a user name
  * @type {number}
  */
@@ -395,6 +401,12 @@ config.usernameMaxLength = process.env.USERNAMEMAXLENGTH || config.usernameMaxLe
 config.maxUserWarnings = process.env.MAXUSERWARNINGS || config.maxUserWarnings || 2;
 
 /**
+ * Minimum amount of characters in a password
+ * @type {number}
+ */
+config.passwordMinLength = process.env.PASSWORDMINLENGTH || config.passwordMinLength || 4;
+
+/**
  * Maximum amount of characters in a password
  * @type {number}
  */
@@ -405,6 +417,18 @@ config.passwordMaxLength = process.env.PASSWORDMAXLENGTH || config.passwordMaxLe
  * @type {boolean}
  */
 config.disallowUserRegister = typeof disallowRegisterEnv !== 'undefined' ? disallowRegisterEnv : config.disallowUserRegister || false;
+
+/**
+ * Minimum amount of characters in a user's full name.
+ * @type {number}
+ */
+config.fullNameMinLength = process.env.FULLNAMEMINLENGTH || config.fullNameMaxLength || 3;
+
+/**
+ * Maximum amount of characters in a user's full name.
+ * @type {number}
+ */
+config.fullNameMaxLength = process.env.FULLNAMEMAXLENGTH || config.fullNameMaxLength || 40;
 
 /**
  * ********
