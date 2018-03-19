@@ -1,7 +1,7 @@
 const dbUser = require('../db/connectors/user');
 const jwt = require('jsonwebtoken');
 const appConfig = require('../config/defaults/config').app;
-const errorCreator = require('../objects/error/errorCreator');
+const errorCreator = require('../error/errorCreator');
 const dbConfig = require('../config/defaults/config').databasePopulation;
 
 /**

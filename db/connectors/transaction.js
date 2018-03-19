@@ -19,7 +19,7 @@
 const mongoose = require('mongoose');
 const dbConnector = require('../databaseConnector');
 const dbWallet = require('./wallet');
-const errorCreator = require('../../objects/error/errorCreator');
+const errorCreator = require('../../error/errorCreator');
 
 const transactionSchema = new mongoose.Schema(dbConnector.createSchema({
   amount: Number,

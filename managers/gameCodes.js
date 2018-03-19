@@ -18,7 +18,7 @@
 
 const authenticator = require('../helpers/authenticator');
 const dbGameCode = require('../db/connectors/gameCode');
-const errorCreator = require('../objects/error/errorCreator');
+const errorCreator = require('../error/errorCreator');
 const dbConfig = require('../config/defaults/config').databasePopulation;
 const appConfig = require('../config/defaults/config').app;
 const transactionManager = require('../managers/transactions');

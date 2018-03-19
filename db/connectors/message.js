@@ -19,7 +19,7 @@
 const mongoose = require('mongoose');
 const dbConnector = require('../databaseConnector');
 const dbConfig = require('../../config/defaults/config').databasePopulation;
-const errorCreator = require('../../objects/error/errorCreator');
+const errorCreator = require('../../error/errorCreator');
 const dbRoom = require('./room');
 const appConfig = require('../../config/defaults/config').app;
 

@@ -20,7 +20,7 @@ const dbUser = require('../db/connectors/user');
 const dbWallet = require('../db/connectors/wallet');
 const appConfig = require('../config/defaults/config').app;
 const dbConfig = require('../config/defaults/config').databasePopulation;
-const errorCreator = require('../objects/error/errorCreator');
+const errorCreator = require('../error/errorCreator');
 const textTools = require('../utils/textTools');
 const authenticator = require('../helpers/authenticator');
 const roomManager = require('./rooms');
@@ -38,7 +38,6 @@ const dbForum = require('../db/connectors/forum');
  * @param {Function} params.callback - Callback.
  * @param {Object} params.io - Socket.io.
  * @param {Object} params.socket - Socket.io.
- * @param {string} params.token - jwt.
  */
 function updateUserParams({
   user,
@@ -46,9 +45,8 @@ function updateUserParams({
   callback,
   io,
   socket,
-  token,
 }) {
-  const { userId, followingRooms } = user;
+  const { objectId: userId, followingRooms } = user;
   const socketId = socket.id;
 
   dbUser.updateOnline({
@@ -62,42 +60,26 @@ function updateUserParams({
         return;
       }
 
-      const newDevice = device;
-      newDevice.lastUserId = userId;
-      newDevice.socketId = socketId;
+      // const newDevice = device;
+      // newDevice.lastUserId = userId;
+      // newDevice.socketId = socketId;
+      // Update device
 
-      dbDevice.updateDevice({
-        deviceId: newDevice.objectId,
-        device: newDevice,
-        callback: ({ error: deviceError }) => {
-          if (deviceError) {
-            callback({ error: deviceError });
+      const oldSocket = io.sockets.connected[socketId];
 
-            return;
-          }
+      if (oldSocket) {
+        roomManager.leaveSocketRooms(socket);
+        oldSocket.emit(dbConfig.EmitTypes.LOGOUT);
+      }
 
-          const oldSocket = io.sockets.connected[socketId];
-
-          if (oldSocket) {
-            roomManager.leaveSocketRooms(socket);
-            oldSocket.emit(dbConfig.EmitTypes.LOGOUT);
-          }
-
-          socketUtils.joinRooms({
-            io,
-            socketId,
-            roomIds: followingRooms,
-          });
-
-
-          callback({
-            data: {
-              token,
-              user,
-            },
-          });
-        },
+      socketUtils.joinRooms({
+        io,
+        socketId,
+        roomIds: followingRooms,
       });
+
+
+      callback({ data: { user } });
     },
   });
 }
@@ -159,7 +141,6 @@ function getAccessibleUser({
  * Create a user.
  * @param {Object} params - Parameters.
  * @param {Object} params.user - User to create.
- * @param {string} params.origin - Name of the caller origin.
  * @param {Function} params.callback - Callback.
  * @param {Object} params.io - Socket.io. Used if socket is not set.
  * @param {Object} [params.socket] - Socket.io.
@@ -193,15 +174,54 @@ function createUser({
 
         return;
       } else if (!textTools.isAllowedFull(user.username)) {
-        callback({ error: new errorCreator.InvalidCharacters({ name: `User name: ${user.username}` }) });
+        callback({
+          error: new errorCreator.InvalidCharacters({ name: `User name: ${user.username}` }),
+        });
 
         return;
-      } else if (user.username.length > appConfig.usernameMaxLength || user.password.length > appConfig.passwordMaxLength || user.registerDevice.length > appConfig.deviceIdLength) {
-        callback({ error: new errorCreator.InvalidCharacters({ name: `User name length: ${appConfig.usernameMaxLength} Password length: ${appConfig.usernameMaxLength} Device length: ${appConfig.deviceIdLength}` }) });
+      } else if (user.username.length < appConfig.usernameMinLength || user.username.length > appConfig.usernameMaxLength) {
+        callback({
+          error: new errorCreator.InvalidLength({
+            name: `User name length: ${appConfig.usernameMinLength}-${appConfig.usernameMaxLength}`,
+            extraData: { param: 'username' },
+          }),
+        });
+
+        return;
+      } else if (user.fullName && (user.fullName.length < appConfig.fullNameMinLength || user.fullName.length > appConfig.fullNameMaxLength)) {
+        callback({
+          error: new errorCreator.InvalidLength({
+            name: `Full name length: ${appConfig.fullNameMinLength}-${appConfig.fullNameMaxLength}`,
+            extraData: { param: 'fullName' },
+          }),
+        });
+
+        return;
+      } else if (user.password.length < appConfig.passwordMinLength || user.password.length > appConfig.passwordMaxLength) {
+        callback({
+          error: new errorCreator.InvalidLength({
+            name: `Password length: ${appConfig.passwordMinLength}-${appConfig.passwordMaxLength}`,
+            extraData: { param: 'password' },
+          }),
+        });
+
+        return;
+      } else if (user.registerDevice.length > appConfig.deviceIdLength) {
+        callback({
+          error: new errorCreator.InvalidLength({
+            name: `Device length: ${appConfig.deviceIdLength}`,
+            extraData: { param: 'device' },
+          }),
+        });
 
         return;
       } else if (dbConfig.protectedNames.includes(user.username.toLowerCase())) {
-        callback({ error: new errorCreator.InvalidCharacters({ name: `protected name ${user.username}` }) });
+        callback({
+          error: new errorCreator.InvalidCharacters({
+            name: `protected name ${user.username}`,
+            extraData: { param: 'username' },
+          }),
+        });
 
         return;
       }
@@ -497,46 +517,31 @@ function login({
   io,
   callback,
 }) {
-  dbUser.getUserByName({
+  authenticator.createToken({
     username: user.username,
-    includeInactive: true,
-    callback: ({ error: userError, data: userData }) => {
-      if (userError) {
-        callback({ error: userError });
-
-        return;
-      } else if (userData.user.isBanned) {
-        callback({ error: new errorCreator.Banned({}) });
-
-        return;
-      } else if (!userData.user.isVerified) {
-        callback({ error: new errorCreator.NeedsVerification({}) });
+    password: user.password,
+    callback: ({ error, data }) => {
+      if (error) {
+        callback({ error });
 
         return;
       }
 
-      const authUser = userData.user;
+      const { token, user: authUser } = data;
 
-      authenticator.createToken({
-        userId: authUser.objectId,
-        password: user.password,
-        callback: ({ error, data: tokenData }) => {
-          if (error) {
-            callback({ error });
+      updateUserParams({
+        device,
+        io,
+        socket,
+        user: authUser,
+        callback: ({ error: updateError }) => {
+          if (updateError) {
+            callback({ error: updateError });
 
             return;
           }
 
-          const { token } = tokenData;
-
-          updateUserParams({
-            device,
-            io,
-            socket,
-            token,
-            callback,
-            user: authUser,
-          });
+          callback({ data: { token, user: authUser } });
         },
       });
     },
@@ -579,24 +584,14 @@ function logout({
             return;
           }
 
-          const deviceToUpdate = device;
-          deviceToUpdate.lastUserId = userId;
-          deviceToUpdate.socketId = '';
+          // const deviceToUpdate = device;
+          // deviceToUpdate.lastUserId = userId;
+          // deviceToUpdate.socketId = '';
+          // Update device
 
-          deviceManager.updateDevice({
-            device: deviceToUpdate,
-            callback: ({ error: deviceError }) => {
-              if (deviceError) {
-                callback({ error: deviceError });
+          roomManager.leaveSocketRooms(socket);
 
-                return;
-              }
-
-              roomManager.leaveSocketRooms({ socket });
-
-              callback({ data: { success: true } });
-            },
-          });
+          callback({ data: { success: true } });
         },
       });
     },
@@ -714,7 +709,7 @@ function banUser({
           };
 
           if (bannedSocket) {
-            roomManager.leaveSocketRooms({ socket: bannedSocket });
+            roomManager.leaveSocketRooms(bannedSocket);
           }
 
           io.to(banUserId).emit(dbConfig.EmitTypes.BAN, banDataToSend);
@@ -949,7 +944,6 @@ function updateId({
         device,
         io,
         socket,
-        token,
         callback,
       });
     },

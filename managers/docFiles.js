@@ -18,7 +18,7 @@
 
 const appConfig = require('../config/defaults/config').app;
 const dbConfig = require('../config/defaults/config').databasePopulation;
-const errorCreator = require('../objects/error/errorCreator');
+const errorCreator = require('../error/errorCreator');
 const textTools = require('../utils/textTools');
 const dbDocFile = require('../db/connectors/docFile');
 const authenticator = require('../helpers/authenticator');

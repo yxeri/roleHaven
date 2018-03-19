@@ -18,7 +18,7 @@
 
 const mongoose = require('mongoose');
 const dbConnector = require('../databaseConnector');
-const errorCreator = require('../../objects/error/errorCreator');
+const errorCreator = require('../../error/errorCreator');
 const dbUser = require('./user');
 
 const roomSchema = new mongoose.Schema(dbConnector.createSchema({

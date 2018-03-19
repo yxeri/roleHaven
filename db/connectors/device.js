@@ -17,7 +17,7 @@
 'use strict';
 
 const mongoose = require('mongoose');
-const errorCreator = require('../../objects/error/errorCreator');
+const errorCreator = require('../../error/errorCreator');
 const dbConfig = require('../../config/defaults/config').databasePopulation;
 const dbConnector = require('../databaseConnector');
 

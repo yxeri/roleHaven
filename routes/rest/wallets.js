@@ -21,7 +21,7 @@ const objectValidator = require('../../utils/objectValidator');
 const walletManager = require('../../managers/wallets');
 const transactionManager = require('../../managers/transactions');
 const restErrorChecker = require('../../helpers/restErrorChecker');
-const errorCreator = require('../../objects/error/errorCreator');
+const errorCreator = require('../../error/errorCreator');
 
 const router = new express.Router();
 

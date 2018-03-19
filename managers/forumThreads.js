@@ -18,7 +18,7 @@
 
 const dbThread = require('../db/connectors/forumThread');
 const dbConfig = require('../config/defaults/config').databasePopulation;
-const errorCreator = require('../objects/error/errorCreator');
+const errorCreator = require('../error/errorCreator');
 const authenticator = require('../helpers/authenticator');
 const aliasManager = require('./aliases');
 const forumManager = require('./forums');

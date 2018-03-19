@@ -19,7 +19,7 @@
 const express = require('express');
 const objectValidator = require('../../utils/objectValidator');
 const restErrorChecker = require('../../helpers/restErrorChecker');
-const errorCreator = require('../../objects/error/errorCreator');
+const errorCreator = require('../../error/errorCreator');
 const forumThreadManager = require('../../managers/forumThreads');
 const helper = require('./helper');
 

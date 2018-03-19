@@ -18,7 +18,7 @@
 
 const mongoose = require('mongoose');
 const dbConnector = require('../databaseConnector');
-const errorCreator = require('../../objects/error/errorCreator');
+const errorCreator = require('../../error/errorCreator');
 const dbConfig = require('../../config/defaults/config').databasePopulation;
 
 const gameCodeSchema = new mongoose.Schema(dbConnector.createSchema({

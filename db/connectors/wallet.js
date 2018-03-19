@@ -18,7 +18,7 @@
 
 const mongoose = require('mongoose');
 const dbConnector = require('../databaseConnector');
-const errorCreator = require('../../objects/error/errorCreator');
+const errorCreator = require('../../error/errorCreator');
 
 const walletSchema = new mongoose.Schema(dbConnector.createSchema({
   amount: { type: Number, default: 0 },

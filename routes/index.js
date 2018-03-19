@@ -64,6 +64,7 @@ function handle(io) {
 
     socket.emit(dbConfig.EmitTypes.STARTUP, {
       data: {
+        publicRoomId: dbConfig.rooms.public.objectId,
         defaultLanguage: appConfig.defaultLanguage,
         forceFullscreen: appConfig.forceFullscreen,
         gpsTracking: appConfig.gpsTracking,

@@ -20,7 +20,7 @@ const express = require('express');
 const objectValidator = require('../../utils/objectValidator');
 const positionManager = require('../../managers/positions');
 const restErrorChecker = require('../../helpers/restErrorChecker');
-const errorCreator = require('../../objects/error/errorCreator');
+const errorCreator = require('../../error/errorCreator');
 
 const router = new express.Router();
 

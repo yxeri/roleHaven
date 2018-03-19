@@ -18,7 +18,7 @@
 
 const dbConfig = require('../config/defaults/config').databasePopulation;
 const authenticator = require('../helpers/authenticator');
-const errorCreator = require('../objects/error/errorCreator');
+const errorCreator = require('../error/errorCreator');
 const appConfig = require('../config/defaults/config').app;
 const dbPosition = require('../db/connectors/position');
 const aliasManager = require('./aliases');
@@ -129,7 +129,6 @@ function getAccessiblePosition({
       const filteredPosition = {
         objectId: foundPosition.objectId,
         connectedUser: foundPosition.connectedToUser,
-        deviceId: foundPosition.deviceId,
         coordinatesHistory: foundPosition.coordinatesHistory,
         positionName: foundPosition.positionName,
         positionType: foundPosition.positionType,
@@ -186,6 +185,16 @@ function getPositionById({
   });
 }
 
+/**
+ * Update the position's coordinates.
+ * @param {Object} params - Parameters.
+ * @param {Object} params.io - Socket.io. Will be used if socket is not set.
+ * @param {Object} params.socket - Socket.io.
+ * @param {Object} params.callback - Callback.
+ * @param {string} params.positionId - Id of the position to update.
+ * @param {string} params.token - jwt.
+ * @param {Object} params.coordinates - New coordinates.
+ */
 function updatePositionCoordinates({
   io,
   socket,
@@ -237,7 +246,7 @@ function updatePositionCoordinates({
               if (socket) {
                 socket.broadcast.emit(dbConfig.EmitTypes.POSITION, dataToSend);
               } else {
-                io.emit(dbConfig.EmitTypes.POSITION, dataToSend)
+                io.emit(dbConfig.EmitTypes.POSITION, dataToSend);
               }
 
               callback(dataToSend);
@@ -350,6 +359,10 @@ function createPosition({
         callback({ error });
 
         return;
+      } else if (!position.coordinates || !position.coordinates.latitude || !position.coordinates.longitude) {
+        callback({ error: new errorCreator.InvalidData({ name: 'latitude && longitude' }) });
+
+        return;
       } else if ((position.positionName && position.positionName.length > appConfig.positionNameMaxLength) || (position.description && position.description.join('').length > appConfig.docFileMaxLength)) {
         callback({ error: new errorCreator.InvalidCharacters({ expected: `text length: ${appConfig.docFileMaxLength}, title length: ${appConfig.positionNameMaxLength}` }) });
 
@@ -363,17 +376,7 @@ function createPosition({
       const { user } = data;
       const newPosition = position;
       newPosition.ownerId = user.objectId;
-
-      if (!newPosition.coordinates) {
-        newPosition.coordinates = {
-          latitude: 0,
-          longitude: 0,
-          speed: 0,
-          heading: 0,
-          radius: 0,
-          accuracy: appConfig.minimumPositionAccuracy,
-        };
-      }
+      newPosition.coordinates.accuracy = newPosition.coordinates.accuracy || appConfig.minimumPositionAccuracy;
 
       const savePosition = () => {
         dbPosition.createPosition({
@@ -408,9 +411,9 @@ function createPosition({
             }
 
             if (socket) {
-              socket.broadcast.emit('position', dataToSend);
+              socket.broadcast.emit(dbConfig.EmitTypes.POSITION, dataToSend);
             } else {
-              io.emit('position', dataToSend);
+              io.emit(dbConfig.EmitTypes.POSITION, dataToSend);
             }
 
             callback(dataToReturn);

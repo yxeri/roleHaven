@@ -1,4 +1,4 @@
-const errorCreator = require('../objects/error/errorCreator');
+const errorCreator = require('../error/errorCreator');
 const appConfig = require('../config/defaults/config').app;
 
 /**

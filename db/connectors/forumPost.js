@@ -15,7 +15,7 @@
  */
 
 const mongoose = require('mongoose');
-const errorCreator = require('../../objects/error/errorCreator');
+const errorCreator = require('../../error/errorCreator');
 const dbConnector = require('../databaseConnector');
 const dbForumThread = require('./forumThread');
 const dbForum = require('./forum');
