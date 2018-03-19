@@ -10,7 +10,7 @@ const dbConfig = require('../config/defaults/config').databasePopulation;
  * @param {string} params.password - Password of user to auth.
  * @param {Function} params.callback - Callback.
  * @param {string} [params.userId] - Id of user to auth.
- * @param {string} params.username] - Name of user to auth.
+ * @param {string} [params.username] - Name of user to auth.
  */
 function createToken({
   username,
