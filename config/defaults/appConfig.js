@@ -398,7 +398,7 @@ config.maxUserWarnings = process.env.MAXUSERWARNINGS || config.maxUserWarnings |
  * Maximum amount of characters in a password
  * @type {number}
  */
-config.passwordMaxLength = process.env.PASSWORDMAXLENGTH || config.passwordMaxLength || 80;
+config.passwordMaxLength = process.env.PASSWORDMAXLENGTH || config.passwordMaxLength || 40;
 
 /**
  * Should users be able to register? Does not block register through rest api.
