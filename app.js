@@ -55,6 +55,10 @@ appConfig.routes.forEach((route) => {
   app.use(route.sitePath, require(path.resolve(route.filePath))(app.io));
 });
 
+if (!appConfig.jsonKey) {
+  console.log('WARNING! JSONKEY is not set in the config. User authentication will not work.');
+}
+
 if (appConfig.mode !== appConfig.Modes.TEST) {
   dbRoom.populateDbRooms({ rooms: dbConfig.rooms });
 }

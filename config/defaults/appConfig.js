@@ -183,7 +183,7 @@ config.country = process.env.COUNTRY || config.country || 'Sweden';
 /**
  * Secret key used with JSON Web Token.
  */
-config.jsonKey = process.env.JSONKEY || (config.mode !== config.Modes.PROD ? 'TESTKEY' : undefined);
+config.jsonKey = process.env.JSONKEY || (config.mode === config.Modes.TEST ? 'TESTKEY' : undefined);
 
 /**
  * Should errors be printed to log?
