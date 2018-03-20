@@ -22,18 +22,13 @@ const dbConnector = require('../databaseConnector');
 const { dbConfig } = require('../../config/defaults/config');
 
 const mapPositionSchema = new mongoose.Schema(dbConnector.createSchema({
-  deviceId: {
-    type: String,
-    unique: true,
-    sparse: true,
-  },
   connectedToUser: {
     type: String,
     unique: true,
     sparse: true,
   },
   coordinatesHistory: [dbConnector.coordinatesSchema],
-  positionName: String,
+  positionName: { type: String, unique: true },
   positionType: { type: String, default: dbConfig.PositionTypes.WORLD },
   description: { type: [String], default: [] },
   radius: { type: Number, default: 0 },
@@ -45,7 +40,6 @@ const MapPosition = mongoose.model('MapPosition', mapPositionSchema);
 
 const positionFilter = dbConnector.createFilter({
   connectedToUser: 1,
-  deviceId: 1,
   coordinatesHistory: 1,
   positionName: 1,
   positionType: 1,
@@ -140,44 +134,30 @@ function getPosition({ filter, query, callback }) {
 }
 
 /**
- * Get position by device
- * @param {Object} params - Parameters
- * @param {string} params.deviceId - ID of the device
- * @param {Function} params.callback - Callback
- */
-function getPositionByDevice({ deviceId, callback }) {
-  getPosition({
-    callback,
-    object: MapPosition,
-    query: { deviceId },
-  });
-}
-
-/**
  * Does the position exist?
- * @param {Object} params - Parameters
- * @param {string} [params.deviceId] - ID of the device
- * @param {string} [params.connectedToUser] - ID of the user or alias
- * @param {Function} params.callback - Callback
+ * @param {Object} params - Parameters.
+ * @param {string} [params.connectedToUser] - Id of the user or alias.
+ * @param {Function} params.callback - Callback.
  */
-function doesPositionExist({ deviceId, connectedToUser, callback }) {
-  if (!deviceId && !connectedToUser) {
+function doesPositionExist({
+  positionName,
+  connectedToUser,
+  callback,
+}) {
+  if (!connectedToUser && !positionName) {
     callback({ data: { exists: false } });
 
     return;
   }
 
-  const query = {};
+  const query = { $or: [] };
 
-  if (deviceId && connectedToUser) {
-    query.$or = [
-      { deviceId },
-      { connectedToUser },
-    ];
-  } else if (deviceId) {
-    query.deviceId = deviceId;
-  } else if (connectedToUser) {
-    query.connectedToUser = connectedToUser;
+  if (connectedToUser) {
+    query.$or.push({ connectedToUser: { $exists: true } });
+  }
+
+  if (positionName) {
+    query.$or.push({ positionName });
   }
 
   dbConnector.doesObjectExist({
@@ -194,51 +174,38 @@ function doesPositionExist({ deviceId, connectedToUser, callback }) {
  * @param {Function} params.callback - Callback
  */
 function createPosition({ position, callback }) {
-  const existCallback = ({ saveCallback }) => {
-    doesPositionExist({
-      deviceId: position.deviceId,
-      connectedToUser: position.connectedToUser,
-      callback: (deviceData) => {
-        if (deviceData.error) {
-          callback({ error: deviceData.error });
+  doesPositionExist({
+    positionName: position.positionName,
+    connectedToUser: position.connectedToUser,
+    callback: (positionData) => {
+      if (positionData.error) {
+        callback({ error: positionData.error });
 
-          return;
-        } else if (deviceData.data.exists) {
-          callback({ error: new errorCreator.AlreadyExists({ name: `device ${position.deviceId} || connectedToUser ${position.connectedToUser} in position` }) });
+        return;
+      } else if (positionData.data.exists) {
+        callback({ error: new errorCreator.AlreadyExists({ name: `positionName ${position.positionName} || connectedToUser ${position.connectedToUser} in position` }) });
 
-          return;
-        }
+        return;
+      }
 
-        saveCallback();
-      },
-    });
-  };
+      const positionToSave = position;
+      positionToSave.coordinatesHistory = [positionToSave.coordinates];
 
-  const saveCallback = () => {
-    const positionToSave = position;
-    positionToSave.coordinatesHistory = [positionToSave.coordinates];
+      dbConnector.saveObject({
+        object: new MapPosition(position),
+        objectType: 'mapPosition',
+        callback: ({ error, data }) => {
+          if (error) {
+            callback({ error });
 
+            return;
+          }
 
-    dbConnector.saveObject({
-      object: new MapPosition(position),
-      objectType: 'mapPosition',
-      callback: ({ error, data }) => {
-        if (error) {
-          callback({ error });
-
-          return;
-        }
-
-        callback({ data: { position: data.savedObject } });
-      },
-    });
-  };
-
-  if (position.connectedToUser || position.deviceId) {
-    existCallback({ saveCallback });
-  } else {
-    saveCallback();
-  }
+          callback({ data: { position: data.savedObject } });
+        },
+      });
+    },
+  });
 }
 
 /**
@@ -275,7 +242,6 @@ function updatePosition({
   options = {},
 }) {
   const {
-    deviceId,
     positionName,
     ownerAliasId,
     isStationary,
@@ -309,7 +275,7 @@ function updatePosition({
   };
   const existCallback = () => {
     doesPositionExist({
-      deviceId,
+      positionName,
       connectedToUser,
       callback: (deviceData) => {
         if (deviceData.error) {
@@ -317,7 +283,7 @@ function updatePosition({
 
           return;
         } else if (deviceData.data.exists) {
-          callback({ error: new errorCreator.AlreadyExists({ name: `position with device ${position.deviceId} || ${position.connectedToUser}` }) });
+          callback({ error: new errorCreator.AlreadyExists({ name: `position with connected user ${position.connectedToUser}` }) });
 
           return;
         }
@@ -330,8 +296,6 @@ function updatePosition({
   if (text) { update.$set.description = text; }
   if (positionName) { update.$set.positionName = positionName; }
   if (positionType) { update.$set.positionType = positionType; }
-  if (deviceId) { update.$set.deviceId = deviceId; }
-  if (connectedToUser) { update.$set.connectedToUser = connectedToUser; }
   if (description) { update.$set.description = description; }
 
   if (typeof isPublic !== 'undefined') { update.$set.isPublic = isPublic; }
@@ -339,8 +303,10 @@ function updatePosition({
 
   if (resetConnectedToUser) {
     update.$unset.connectedToUser = '';
+    update.$set.positionType = dbConfig.PositionTypes.DEVICE;
   } else if (connectedToUser) {
     update.$set.connectedToUser = connectedToUser;
+    update.$set.positionType = dbConfig.PositionTypes.USER;
   }
 
   if (resetOwnerAliasId) {
@@ -349,7 +315,7 @@ function updatePosition({
     update.$set.ownerAliasId = ownerAliasId;
   }
 
-  if ((!resetConnectedToUser && connectedToUser) || deviceId) {
+  if (!resetConnectedToUser && connectedToUser) {
     existCallback();
   } else {
     updateCallback();
@@ -540,7 +506,6 @@ exports.updatePosition = updatePosition;
 exports.removePositionsByOrigin = removePositionsByOrigin;
 exports.getPositionById = getPositionById;
 exports.getUserPosition = getUserPosition;
-exports.getPositionByDevice = getPositionByDevice;
 exports.addAccess = addAccess;
 exports.removeAccess = removeAccess;
 exports.removePositionsByType = removePositionsByType;

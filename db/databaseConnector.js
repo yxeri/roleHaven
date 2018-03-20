@@ -60,6 +60,7 @@ const baseFilter = {
   customLastUpdated: 1,
   customTimeCreated: 1,
   visibility: 1,
+  accessLevel: 1,
 };
 
 mongoose.connect(dbPath, {}, (err) => {
