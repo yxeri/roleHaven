@@ -18,8 +18,7 @@
 
 const express = require('express');
 const dbUser = require('../db/connectors/user');
-const appConfig = require('../config/defaults/config').app;
-const dbConfig = require('../config/defaults/config').dbConfig;
+const { appConfig, dbConfig } = require('../config/defaults/config');
 const dbDevice = require('../db/connectors/device');
 
 const aliasHandler = require('./socketHandlers/aliases');

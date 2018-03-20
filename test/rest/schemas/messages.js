@@ -18,7 +18,7 @@
 
 const tools = require('../helper/tools');
 const baseObjects = require('./baseObjects');
-const dbConfig = require('../../../config/defaults/config').dbConfig;
+const { dbConfig } = require('../../../config/defaults/config');
 
 const schemas = {};
 

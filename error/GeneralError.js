@@ -14,7 +14,7 @@
  limitations under the License.
  */
 
-const appConfig = require('../config/defaults/config').app;
+const { appConfig } = require('../config/defaults/config');
 
 const ErrorTypes = {
   GENERAL: 'general error',

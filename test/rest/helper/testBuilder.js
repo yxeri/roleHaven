@@ -25,7 +25,7 @@ const app = require('../../../app');
 const tokens = require('../testData/tokens');
 const baseObjectSchemas = require('../schemas/baseObjects');
 const starterData = require('../testData/starter');
-const dbConfig = require('../../../config/defaults/config').dbConfig;
+const { dbConfig } = require('../../../config/defaults/config');
 
 chai.should();
 chai.use(chaiHttp);

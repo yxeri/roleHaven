@@ -17,8 +17,7 @@
 'use strict';
 
 const dbAlias = require('../db/connectors/alias');
-const appConfig = require('../config/defaults/config').app;
-const dbConfig = require('../config/defaults/config').dbConfig;
+const { appConfig, dbConfig } = require('../config/defaults/config');
 const errorCreator = require('../error/errorCreator');
 const textTools = require('../utils/textTools');
 const authenticator = require('../helpers/authenticator');

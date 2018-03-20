@@ -16,7 +16,7 @@
 
 'use strict';
 
-const appConfig = require('../../../config/defaults/config').app;
+const { appConfig } = require('../../../config/defaults/config');
 const tools = require('../helper/tools');
 
 const data = {};

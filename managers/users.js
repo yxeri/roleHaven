@@ -18,15 +18,14 @@
 
 const dbUser = require('../db/connectors/user');
 const dbWallet = require('../db/connectors/wallet');
-const appConfig = require('../config/defaults/config').app;
-const dbConfig = require('../config/defaults/config').dbConfig;
+const { dbConfig, appConfig } = require('../config/defaults/config');
 const errorCreator = require('../error/errorCreator');
 const textTools = require('../utils/textTools');
 const authenticator = require('../helpers/authenticator');
 const roomManager = require('./rooms');
-const deviceManager = require('../managers/devices');
+// const deviceManager = require('../managers/devices');
 const dbRoom = require('../db/connectors/room');
-const dbDevice = require('../db/connectors/device');
+// const dbDevice = require('../db/connectors/device');
 const socketUtils = require('../utils/socketIo');
 const dbForum = require('../db/connectors/forum');
 
@@ -34,14 +33,13 @@ const dbForum = require('../db/connectors/forum');
  * Update stored values for user, connected devices and start following the user's rooms on the socket.
  * @param {Object} params - Parameters.
  * @param {Object} params.user - User to update
- * @param {Object} params.device - The device that the user is using.
  * @param {Function} params.callback - Callback.
  * @param {Object} params.io - Socket.io.
  * @param {Object} params.socket - Socket.io.
  */
 function updateUserParams({
   user,
-  device,
+  // device,
   callback,
   io,
   socket,
@@ -551,13 +549,12 @@ function login({
 /**
  * Logout user.
  * @param {Object} params - Parameters.
- * @param {Object} params.device - The device of the user that is logging out.
  * @param {string} params.token jwt.
  * @param {Object} params.socket - Socket.io.
  * @param {Function} params.callback - Callback.
  */
 function logout({
-  device,
+  // device,
   token,
   socket,
   callback,

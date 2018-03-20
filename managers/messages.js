@@ -16,11 +16,10 @@
 
 'use strict';
 
-const dbConfig = require('../config/defaults/config').dbConfig;
+const { appConfig, dbConfig } = require('../config/defaults/config');
 const authenticator = require('../helpers/authenticator');
 const dbMessage = require('../db/connectors/message');
 const errorCreator = require('../error/errorCreator');
-const appConfig = require('../config/defaults/config').app;
 const objectValidator = require('../utils/objectValidator');
 const aliasManager = require('./aliases');
 const roomManager = require('./rooms');

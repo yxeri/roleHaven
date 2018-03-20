@@ -18,7 +18,7 @@
 
 const mongoose = require('mongoose');
 const errorCreator = require('../../error/errorCreator');
-const dbConfig = require('../../config/defaults/config').dbConfig;
+const { dbConfig } = require('../../config/defaults/config');
 const dbConnector = require('../databaseConnector');
 
 const deviceSchema = new mongoose.Schema(dbConnector.createSchema({
@@ -178,6 +178,10 @@ function createDevice({ device, callback }) {
     },
   });
 }
+
+// function updateUserDevice({ deviceId, device, callback }) {
+//
+// }
 
 /**
  * Update device properties. Creates a new device if one doesn't exist with sent deviceId.

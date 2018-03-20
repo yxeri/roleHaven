@@ -19,8 +19,7 @@
 const authenticator = require('../helpers/authenticator');
 const dbGameCode = require('../db/connectors/gameCode');
 const errorCreator = require('../error/errorCreator');
-const dbConfig = require('../config/defaults/config').dbConfig;
-const appConfig = require('../config/defaults/config').app;
+const { appConfig, dbConfig } = require('../config/defaults/config');
 const transactionManager = require('../managers/transactions');
 const aliasManager = require('./aliases');
 const textTools = require('../utils/textTools');

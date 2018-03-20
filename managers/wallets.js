@@ -17,7 +17,7 @@
 'use strict';
 
 const dbWallet = require('../db/connectors/wallet');
-const dbConfig = require('../config/defaults/config').dbConfig;
+const { dbConfig } = require('../config/defaults/config');
 const errorCreator = require('../error/errorCreator');
 const authenticator = require('../helpers/authenticator');
 

@@ -19,7 +19,7 @@
 const mongoose = require('mongoose');
 const errorCreator = require('../../error/errorCreator');
 const dbConnector = require('../databaseConnector');
-const dbConfig = require('../../config/defaults/config').dbConfig;
+const { dbConfig } = require('../../config/defaults/config');
 
 const mapPositionSchema = new mongoose.Schema(dbConnector.createSchema({
   deviceId: {

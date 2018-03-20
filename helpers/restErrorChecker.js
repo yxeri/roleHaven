@@ -1,5 +1,5 @@
 const errorCreator = require('../error/errorCreator');
-const appConfig = require('../config/defaults/config').app;
+const { appConfig } = require('../config/defaults/config');
 
 /**
  * Checks the type of error and sends it in response.

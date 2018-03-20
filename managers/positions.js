@@ -16,10 +16,9 @@
 
 'use strict';
 
-const dbConfig = require('../config/defaults/config').dbConfig;
+const { appConfig, dbConfig } = require('../config/defaults/config');
 const authenticator = require('../helpers/authenticator');
 const errorCreator = require('../error/errorCreator');
-const appConfig = require('../config/defaults/config').app;
 const dbPosition = require('../db/connectors/position');
 const aliasManager = require('./aliases');
 const mapCreator = require('../utils/mapCreator');

@@ -18,10 +18,9 @@
 
 const mongoose = require('mongoose');
 const dbConnector = require('../databaseConnector');
-const dbConfig = require('../../config/defaults/config').dbConfig;
+const { appConfig, dbConfig } = require('../../config/defaults/config');
 const errorCreator = require('../../error/errorCreator');
 const dbRoom = require('./room');
-const appConfig = require('../../config/defaults/config').app;
 
 const messageSchema = new mongoose.Schema(dbConnector.createSchema({
   messageType: { type: String, default: dbConfig.MessageTypes.CHAT },

@@ -19,7 +19,7 @@
 const mongoose = require('mongoose');
 const dbConnector = require('../databaseConnector');
 const errorCreator = require('../../error/errorCreator');
-const dbConfig = require('../../config/defaults/config').dbConfig;
+const { dbConfig } = require('../../config/defaults/config');
 
 const gameCodeSchema = new mongoose.Schema(dbConnector.createSchema({
   code: { type: String, unique: true },

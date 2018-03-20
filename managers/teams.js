@@ -18,8 +18,7 @@
 
 const dbUser = require('../db/connectors/user');
 const dbWallet = require('../db/connectors/wallet');
-const appConfig = require('../config/defaults/config').app;
-const dbConfig = require('../config/defaults/config').dbConfig;
+const { appConfig, dbConfig } = require('../config/defaults/config');
 const errorCreator = require('../error/errorCreator');
 const dbInvitation = require('../db/connectors/invitation');
 const dbTeam = require('../db/connectors/team');
