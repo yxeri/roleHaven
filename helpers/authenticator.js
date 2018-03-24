@@ -45,7 +45,7 @@ function createToken({
           return;
         }
 
-        callback({ data: { token } });
+        callback({ data: { token, user } });
       });
     },
   });
