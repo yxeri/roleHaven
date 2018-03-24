@@ -393,7 +393,7 @@ function removeAlias({
                   socketUtils.getSocketsByRoom({ io, roomId: removedAliasId }).forEach(roomSocket => roomSocket.leave(removedAliasId));
 
                   if (socket) {
-                    socket.to(removedAliasId).broadcast.emit(dbConfig.EmitTypes.ALIAS, creatorDataToSend);
+                    socket.broadcast.to(removedAliasId).emit(dbConfig.EmitTypes.ALIAS, creatorDataToSend);
                     socket.broadcast.emit(dbConfig.EmitTypes.USER, dataToSend);
                   } else {
                     io.to(removedAliasId).emit(dbConfig.EmitTypes.ALIAS, creatorDataToSend);
