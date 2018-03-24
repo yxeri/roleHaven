@@ -392,14 +392,14 @@ function useGameCode({
                         dataToOwner.data.newGameCode = createData.data.gameCode;
 
                         if (socket) {
-                          socket.to(usedGameCode.ownerId).emit(dbConfig.EmitTypes.GAMECODE, dataToOwner);
+                          socket.broadcast.to(usedGameCode.ownerId).emit(dbConfig.EmitTypes.GAMECODE, dataToOwner);
                         } else {
                           io.to(usedGameCode.ownerId).emit(dbConfig.EmitTypes.GAMECODE, dataToOwner);
                         }
                       },
                     });
                   } else if (socket) {
-                    socket.to(usedGameCode.ownerId).emit(dbConfig.EmitTypes.GAMECODE, dataToOwner);
+                    socket.broadcast.to(usedGameCode.ownerId).emit(dbConfig.EmitTypes.GAMECODE, dataToOwner);
                   } else {
                     io.to(usedGameCode.ownerId).emit(dbConfig.EmitTypes.GAMECODE, dataToOwner);
                   }
