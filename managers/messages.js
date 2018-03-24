@@ -110,7 +110,7 @@ function getAccessibleMessage({
  * @param {Object} [params.socket] - Socket.io.
  * @param {Object} [params.image] - Image attached to the message.
  */
-function sendMessage({
+function sendAndStoreMessage({
   message,
   callback,
   socket,
@@ -396,7 +396,7 @@ function sendBroadcastMsg({
               return;
             }
 
-            sendMessage({
+            sendAndStoreMessage({
               socket,
               io,
               callback,
@@ -410,7 +410,7 @@ function sendBroadcastMsg({
         return;
       }
 
-      sendMessage({
+      sendAndStoreMessage({
         socket,
         io,
         callback,
@@ -482,7 +482,7 @@ function sendChatMsg({
                   return;
                 }
 
-                sendMessage({
+                sendAndStoreMessage({
                   socket,
                   io,
                   callback,
@@ -496,7 +496,7 @@ function sendChatMsg({
             return;
           }
 
-          sendMessage({
+          sendAndStoreMessage({
             socket,
             io,
             callback,
@@ -579,7 +579,7 @@ function sendWhisperMsg({
                   const newRoom = newWhisperData.data.room;
                   newMessage.roomId = newRoom.objectId;
 
-                  sendMessage({
+                  sendAndStoreMessage({
                     socket,
                     io,
                     callback,
@@ -595,7 +595,7 @@ function sendWhisperMsg({
 
             newMessage.roomId = foundRoom.objectId;
 
-            sendMessage({
+            sendAndStoreMessage({
               socket,
               io,
               callback,
