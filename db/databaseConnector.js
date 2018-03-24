@@ -350,24 +350,27 @@ function getObjects({
  * @param {Object} params.object - Object to call and get.
  * @param {string} params.query - Database query.
  * @param {string} [params.errorNameContent] - Content that will be sent with error.
+ * @param {Object} [params.options] - Database call options.
  */
 function updateObject({
   object,
   update,
   callback,
   query,
+  options = {},
   errorNameContent = 'updateObject',
 }) {
-  const options = { new: true };
   const toUpdate = {
     $set: update.$set || {},
   };
+  const updateOptions = options;
 
   toUpdate.$set.lastUpdated = new Date();
+  updateOptions.new = true;
 
   if (update.$unset && Object.keys(update.$unset).length > 0) { toUpdate.$unset = update.$unset; }
 
-  object.findOneAndUpdate(query, toUpdate, options).lean().exec((err, foundObject) => {
+  object.findOneAndUpdate(query, toUpdate, updateOptions).lean().exec((err, foundObject) => {
     if (err) {
       callback({ error: new errorCreator.Database({ errorObject: err, name: errorNameContent }) });
 
