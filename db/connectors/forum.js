@@ -32,6 +32,7 @@ const forumFilter = dbConnector.createFilter({
   title: 1,
   threadIds: 1,
   text: 1,
+  picture: 1,
 });
 
 /**
