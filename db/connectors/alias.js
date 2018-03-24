@@ -25,12 +25,15 @@ const aliasSchema = new mongoose.Schema(dbConnector.createSchema({
   aliasName: { type: String, unique: true },
   isIdentity: { type: Boolean, default: false },
   fullName: { type: String },
+  picture: dbConnector.pictureSchema,
 }), { collection: 'aliases' });
 
 const Alias = mongoose.model('Alias', aliasSchema);
 
 const aliasFilter = dbConnector.createFilter({
   aliasName: 1,
+  picture: 1,
+  fullName: 1,
 });
 
 /**

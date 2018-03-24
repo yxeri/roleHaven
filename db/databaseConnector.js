@@ -40,6 +40,12 @@ const baseSchema = {
   isPublic: { type: Boolean, default: false },
 };
 
+const pictureSchema = {
+  url: String,
+  height: Number,
+  width: Number,
+};
+
 const coordinatesSchema = {
   longitude: Number,
   latitude: Number,
@@ -597,6 +603,7 @@ function createUserQuery({ user }) {
 }
 
 exports.coordinatesSchema = coordinatesSchema;
+exports.pictureSchema = pictureSchema;
 
 exports.saveObject = saveObject;
 exports.verifyObject = verifyObject;

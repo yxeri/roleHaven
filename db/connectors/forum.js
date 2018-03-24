@@ -23,6 +23,7 @@ const forumSchema = new mongoose.Schema(dbConnector.createSchema({
   title: { type: String, unique: true },
   text: { type: [String], default: [] },
   isPersonal: { type: Boolean, default: false },
+  picture: dbConnector.pictureSchema,
 }), { collection: 'forums' });
 
 const Forum = mongoose.model('Forum', forumSchema);

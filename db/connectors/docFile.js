@@ -24,6 +24,7 @@ const docFileSchema = new mongoose.Schema(dbConnector.createSchema({
   code: { type: String, unique: true },
   title: { type: String, unique: true },
   text: [String],
+  pictures: [dbConnector.pictureSchema],
 }), { collection: 'docFiles' });
 
 const DocFile = mongoose.model('DocFile', docFileSchema);
@@ -32,6 +33,7 @@ const docFileFilter = dbConnector.createFilter({
   title: 1,
   text: 1,
   code: 1,
+  pictures: 1,
 });
 
 /**

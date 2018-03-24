@@ -27,6 +27,7 @@ const teamSchema = new mongoose.Schema(dbConnector.createSchema({
   isVerified: { type: Boolean, default: false },
   isProtected: { type: Boolean, default: false },
   members: { type: [String], default: [] },
+  picture: dbConnector.pictureSchema,
 }), { collection: 'teams' });
 
 const Team = mongoose.model('Team', teamSchema);
@@ -35,6 +36,7 @@ const teamFilter = dbConnector.createFilter({
   teamName: 1,
   shortName: 1,
   members: 1,
+  picture: 1,
 });
 
 /**

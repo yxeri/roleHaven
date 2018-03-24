@@ -25,6 +25,8 @@ const forumThreadSchema = new mongoose.Schema(dbConnector.createSchema({
   title: String,
   text: { type: [String], default: [] },
   postIds: { type: [String], default: [] },
+  likes: { type: Number, default: 0 },
+  pictures: [dbConnector.pictureSchema],
 }), { collection: 'forumThreads' });
 
 const ForumThread = mongoose.model('ForumThread', forumThreadSchema);
@@ -34,6 +36,8 @@ const threadFilter = dbConnector.createFilter({
   postIds: 1,
   forumId: 1,
   text: 1,
+  likes: 1,
+  pictures: 1,
 });
 
 /**

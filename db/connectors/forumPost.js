@@ -25,6 +25,8 @@ const forumPostSchema = new mongoose.Schema(dbConnector.createSchema({
   parentPostId: String,
   text: { type: [String], default: [] },
   depth: { type: Number, default: 0 },
+  likes: { type: Number, default: 0 },
+  pictures: [dbConnector.pictureSchema],
 }), { collection: 'forumPosts' });
 
 const ForumPost = mongoose.model('ForumPost', forumPostSchema);
@@ -34,6 +36,8 @@ const postFilter = dbConnector.createFilter({
   parentPostId: 1,
   text: 1,
   depth: 1,
+  likes: 1,
+  pictures: 1,
 });
 
 /**
