@@ -17,6 +17,8 @@
 'use strict';
 
 const messageManager = require('../../managers/messages');
+const { dbConfig } = require('../../config/defaults/config');
+const errorCreator = require('../../error/errorCreator');
 
 /* eslint-disable no-param-reassign */
 
@@ -25,28 +27,35 @@ const messageManager = require('../../managers/messages');
  * @param {object} io - Socket.Io.
  */
 function handle(socket, io) {
-  socket.on('sendChatMsg', (params, callback = () => {}) => {
+  socket.on('sendMessage', (params, callback = () => {}) => {
+    const { messageType } = params;
+
     params.callback = callback;
     params.io = io;
     params.socket = socket;
 
-    messageManager.sendChatMsg(params);
-  });
+    switch (messageType) {
+      case dbConfig.MessageTypes.BROADCAST: {
+        messageManager.sendBroadcastMsg(params);
 
-  socket.on('sendWhisperMsg', (params, callback = () => {}) => {
-    params.callback = callback;
-    params.io = io;
-    params.socket = socket;
+        break;
+      }
+      case dbConfig.MessageTypes.WHISPER: {
+        messageManager.sendWhisperMsg(params);
 
-    messageManager.sendWhisperMsg(params);
-  });
+        break;
+      }
+      case dbConfig.MessageTypes.CHAT: {
+        messageManager.sendChatMsg(params);
 
-  socket.on('sendBroadcastMsg', (params, callback = () => {}) => {
-    params.callback = callback;
-    params.io = io;
-    params.socket = socket;
+        break;
+      }
+      default: {
+        callback({ error: new errorCreator.Incorrect({ name: 'messageType' }) });
 
-    messageManager.sendBroadcastMsg(params);
+        break;
+      }
+    }
   });
 
   socket.on('updateMessage', (params, callback = () => {}) => {
