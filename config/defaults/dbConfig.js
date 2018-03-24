@@ -43,12 +43,12 @@ config.AccessLevels = config.AccessLevels || {
 
 config.users = {
   systemUser: {
-    objectId: 'config-user-system',
+    objectId: '222222222222222222222220',
     username: 'system',
   },
   anonymous: {
     username: 'anonymous',
-    objectId: 'config-user-anonymous',
+    objectId: '222222222222222222222221',
   },
 };
 
@@ -196,6 +196,7 @@ config.MessageTypes = {
   CHAT: 'chat',
   WHISPER: 'whisper',
   BROADCAST: 'broadcast',
+  MESSAGE: 'message',
 };
 
 config.PositionTypes = {
