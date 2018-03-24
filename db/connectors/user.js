@@ -352,9 +352,9 @@ function createUser({
 /**
  * Set user as being online/offline.
  * @param {Object} params - Paramters.
- * @param {string} params.userId - ID of the user to update.
- * @param {boolean} params.isOnline - Is the user online?
+ * @param {string} params.userId - Id of the user to update.
  * @param {Function} params.callback - Callback.
+ * @param {boolean} [params.isOnline] - Is the user online?
  * @param {string} [params.socketId] - Socket ID of the user.
  */
 function updateOnline({
