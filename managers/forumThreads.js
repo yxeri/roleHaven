@@ -114,6 +114,7 @@ function getAccessibleThreads({
       });
       const filteredThreads = accessibleThreads.map((thread) => {
         return {
+          title: thread.title,
           objectId: thread.objectId,
           forumId: thread.forumId,
           text: thread.text,
