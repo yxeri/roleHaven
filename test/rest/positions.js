@@ -35,10 +35,13 @@ describe('Positions', () => {
   const objectType = 'position';
   const objectsType = 'positions';
 
+  // TODO Test that connectedToUser sets position type to user and to device when removed.
+
   testBuilder.createTestCreate({
     objectType,
     apiPath,
     objectIdType,
+    checkDuplicate: true,
     testData: testData.create,
     schema: positionSchemas.position,
   });

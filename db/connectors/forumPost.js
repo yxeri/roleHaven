@@ -164,6 +164,8 @@ function createPost({ post, callback }) {
         forumPostToSave.userIds = post.userIds ? post.userIds : foundThread.userIds;
         forumPostToSave.teamIds = post.teamIds ? post.teamIds : foundThread.teamIds;
 
+        console.log(forumPostToSave);
+
         dbConnector.saveObject({
           object: new ForumPost(forumPostToSave),
           objectType: ForumPost,

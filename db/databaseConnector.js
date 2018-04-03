@@ -54,6 +54,8 @@ const coordinatesSchema = {
   heading: Number,
   timeCreated: Date,
   customTimeCreated: Date,
+  altitude: Number,
+  altitudeAccuracy: Number,
 };
 
 const baseFilter = {

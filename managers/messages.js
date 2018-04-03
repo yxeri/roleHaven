@@ -16,7 +16,8 @@
 
 'use strict';
 
-const { appConfig, dbConfig } = require('../config/defaults/config');
+const appConfig  = require('../config/defaults/appConfig');
+const dbConfig = require('../config/defaults/dbConfig');
 const authenticator = require('../helpers/authenticator');
 const dbMessage = require('../db/connectors/message');
 const errorCreator = require('../error/errorCreator');
@@ -98,6 +99,33 @@ function getAccessibleMessage({
       });
     },
   });
+}
+
+function sendMessage({
+  message,
+  callback,
+  socket,
+  io,
+}) {
+  const newMessage = message;
+  newMessage.messageType = dbConfig.MessageTypes.MESSAGE;
+  newMessage.ownerId = '';
+  newMessage.ownerAliasId = '';
+
+  const dataToSend = {
+    data: {
+      message,
+      changeType: dbConfig.ChangeTypes.CREATE,
+    },
+  };
+
+  if (socket) {
+    socket.broadcast.to(message.roomId).emit(dbConfig.EmitTypes.MSG, dataToSend);
+  } else {
+    io.to(message.roomId).emit(dbConfig.EmitTypes.MSG, dataToSend);
+  }
+
+  callback(dataToSend);
 }
 
 /**

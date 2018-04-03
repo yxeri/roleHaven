@@ -39,6 +39,7 @@ describe('Forums', () => {
     objectType,
     apiPath,
     objectIdType,
+    checkDuplicate: true,
     createByAdmin: true,
     testData: testData.create,
     schema: forumSchemas.forum,
