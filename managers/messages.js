@@ -101,32 +101,6 @@ function getAccessibleMessage({
   });
 }
 
-function sendMessage({
-  message,
-  callback,
-  socket,
-  io,
-}) {
-  const newMessage = message;
-  newMessage.messageType = dbConfig.MessageTypes.MESSAGE;
-  newMessage.ownerId = '';
-  newMessage.ownerAliasId = '';
-
-  const dataToSend = {
-    data: {
-      message,
-      changeType: dbConfig.ChangeTypes.CREATE,
-    },
-  };
-
-  if (socket) {
-    socket.broadcast.to(message.roomId).emit(dbConfig.EmitTypes.MSG, dataToSend);
-  } else {
-    io.to(message.roomId).emit(dbConfig.EmitTypes.MSG, dataToSend);
-  }
-
-  callback(dataToSend);
-}
 
 /**
  * Store and send a message.
