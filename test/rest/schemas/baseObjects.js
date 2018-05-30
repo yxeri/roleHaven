@@ -136,6 +136,16 @@ schemas.coordinates = {
     accuracy: { type: 'number' },
     heading: { type: 'number' },
     speed: { type: 'number' },
+    extraCoordinates: {
+      type: 'array',
+      items: {
+        type: 'object',
+        properties: {
+          longitude: { type: 'number' },
+          latitude: { type: 'number' },
+        },
+      },
+    },
   },
 };
 
