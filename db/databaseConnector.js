@@ -56,6 +56,13 @@ const coordinatesSchema = {
   customTimeCreated: Date,
   altitude: Number,
   altitudeAccuracy: Number,
+  extraCoordinates: {
+    type: [{
+      longitude: Number,
+      latitude: Number,
+    }],
+    default: undefined,
+  },
 };
 
 const baseFilter = {
