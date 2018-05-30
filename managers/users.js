@@ -225,7 +225,7 @@ function createUser({
       }
 
       const newUser = user;
-      newUser.isVerified = appConfig.userVerify;
+      newUser.isVerified = !appConfig.userVerify;
       newUser.followingRooms = dbConfig.requiredRooms;
       newUser.accessLevel = newUser.accessLevel || 1;
 
