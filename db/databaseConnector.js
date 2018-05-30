@@ -378,6 +378,8 @@ function updateObject({
   updateOptions.new = true;
 
   if (update.$unset && Object.keys(update.$unset).length > 0) { toUpdate.$unset = update.$unset; }
+  if (update.$push) { toUpdate.$push = update.$push; }
+  if (update.$pull) { toUpdate.$pull = update.$pull; }
 
   object.findOneAndUpdate(query, toUpdate, updateOptions).lean().exec((err, foundObject) => {
     if (err) {
