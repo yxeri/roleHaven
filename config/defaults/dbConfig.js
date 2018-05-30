@@ -215,6 +215,13 @@ config.OriginTypes = {
   NONE: 'none',
 };
 
+config.PositionStructures = {
+  MARKER: 'marker',
+  CIRCLE: 'circle',
+  POLYGON: 'polygon',
+  LINE: 'line',
+};
+
 config.EmitTypes = {
   FORUM: 'forum',
   FORUMTHREAD: 'forumThread',

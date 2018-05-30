@@ -34,6 +34,7 @@ const mapPositionSchema = new mongoose.Schema(dbConnector.createSchema({
   radius: { type: Number, default: 0 },
   isStationary: { type: Boolean, default: false },
   origin: { type: String, default: dbConfig.PositionOrigins.LOCAL },
+  positionStructure: { type: String, default: dbConfig.PositionStructures.MARKER },
 }), { collection: 'mapPositions' });
 
 const MapPosition = mongoose.model('MapPosition', mapPositionSchema);
@@ -43,8 +44,10 @@ const positionFilter = dbConnector.createFilter({
   coordinatesHistory: 1,
   positionName: 1,
   positionType: 1,
+  positionStructure: 1,
   radius: 1,
   isStationary: 1,
+  description: 1,
 });
 
 /**
@@ -242,6 +245,7 @@ function updatePosition({
   options = {},
 }) {
   const {
+    positionStructure,
     positionName,
     ownerAliasId,
     isStationary,
@@ -297,6 +301,7 @@ function updatePosition({
   if (positionName) { update.$set.positionName = positionName; }
   if (positionType) { update.$set.positionType = positionType; }
   if (description) { update.$set.description = description; }
+  if (positionStructure) { update.$set.positionStructure = positionStructure; }
 
   if (typeof isPublic !== 'undefined') { update.$set.isPublic = isPublic; }
   if (typeof isStationary !== 'undefined') { update.$set.isStationary = isStationary; }
@@ -341,6 +346,34 @@ function getPositionsByUser({
 
   if (positionTypes) {
     query.positionType = { $in: positionTypes };
+  }
+
+  getPositions({
+    filter,
+    query,
+    callback,
+  });
+}
+
+/**
+ * Get positions by their structure.
+ * @param {Object} params - Parameters.
+ * @param {string} params.user - User retrieving the positions.
+ * @param {string} params.positionStructure - Type of position structure.
+ * @param {Function} params.callback - Callback.
+ * @param {boolean} [params.full] - Should access information be retrieved?
+ */
+function getPositionsByStructure({
+  user,
+  callback,
+  positionTypes: positionStructure,
+  full = false,
+}) {
+  const query = dbConnector.createUserQuery({ user });
+  const filter = !full ? positionFilter : {};
+
+  if (positionStructure) {
+    query.positionStructure = { $in: positionStructure };
   }
 
   getPositions({
@@ -510,3 +543,4 @@ exports.addAccess = addAccess;
 exports.removeAccess = removeAccess;
 exports.removePositionsByType = removePositionsByType;
 exports.removePositionsByOrigin = removePositionsByOrigin;
+exports.getPositionsByStructure = getPositionsByStructure;
