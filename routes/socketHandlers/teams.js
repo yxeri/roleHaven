@@ -28,7 +28,7 @@ function handle(socket, io) {
   socket.on('createTeam', (params, callback = () => {}) => {
     params.callback = callback;
     params.io = io;
-    params.socket = socket;
+
 
     teamManager.createTeam(params);
   });
@@ -36,7 +36,7 @@ function handle(socket, io) {
   socket.on('updateTeam', (params, callback = () => {}) => {
     params.callback = callback;
     params.io = io;
-    params.socket = socket;
+
 
     teamManager.updateTeam(params);
   });
@@ -44,7 +44,7 @@ function handle(socket, io) {
   socket.on('removeTeam', (params, callback = () => {}) => {
     params.callback = callback;
     params.io = io;
-    params.socket = socket;
+
 
     teamManager.removeTeam(params);
   });
@@ -52,7 +52,7 @@ function handle(socket, io) {
   socket.on('getTeam', (params, callback = () => {}) => {
     params.callback = callback;
     params.io = io;
-    params.socket = socket;
+
 
     teamManager.getTeamById(params);
   });
@@ -60,7 +60,7 @@ function handle(socket, io) {
   socket.on('getTeams', (params, callback = () => {}) => {
     params.callback = callback;
     params.io = io;
-    params.socket = socket;
+
 
     teamManager.getTeamsByUser(params);
   });

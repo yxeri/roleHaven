@@ -312,10 +312,8 @@ function getGameCodesByOwner({ token, callback }) {
  * @param {string} params.code - Code for a game code.
  * @param {string} params.token - jwt.
  * @param {Function} params.callback - Callback.
- * @param {Object} [params.socket] - Socket io.
  */
 function useGameCode({
-  socket,
   io,
   code,
   token,
@@ -391,15 +389,9 @@ function useGameCode({
 
                         dataToOwner.data.newGameCode = createData.data.gameCode;
 
-                        if (socket) {
-                          socket.broadcast.to(usedGameCode.ownerId).emit(dbConfig.EmitTypes.GAMECODE, dataToOwner);
-                        } else {
-                          io.to(usedGameCode.ownerId).emit(dbConfig.EmitTypes.GAMECODE, dataToOwner);
-                        }
+                        io.to(usedGameCode.ownerId).emit(dbConfig.EmitTypes.GAMECODE, dataToOwner);
                       },
                     });
-                  } else if (socket) {
-                    socket.broadcast.to(usedGameCode.ownerId).emit(dbConfig.EmitTypes.GAMECODE, dataToOwner);
                   } else {
                     io.to(usedGameCode.ownerId).emit(dbConfig.EmitTypes.GAMECODE, dataToOwner);
                   }

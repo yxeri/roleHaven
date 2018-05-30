@@ -77,13 +77,12 @@ function getAccessibleMessage({
  * Send simple message.
  * @param {Object} params - Parameters.
  * @param {string} params.text - Text to add to message.
- * @param {Object} params.io - Socket io. Used if socket is not set.
+ * @param {Object} params.io - Socket io.
  * @param {string} params.token - jwt.
  * @param {Function} params.callback - Callback.
  */
 function sendSimpleMsg({
   text,
-  socket,
   io,
   token,
   callback,
@@ -129,11 +128,7 @@ function sendSimpleMsg({
             },
           };
 
-          if (socket) {
-            socket.broadcast.emit('simpleMsg', dataToSend);
-          } else {
-            io.emit('simpleMsg', dataToSend);
-          }
+          io.emit('simpleMsg', dataToSend);
 
           callback(dataToSend);
         },

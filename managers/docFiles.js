@@ -87,13 +87,11 @@ function getAccessibleDocFile({
  * @param {Object} params - Parameters.
  * @param {Object} params.docFile - Doc file to save.
  * @param {Function} params.callback - Callback.
- * @param {Object} [params.socket] - Socket.io.
- * @param {Object} params.io - Socket.io. Used if socket is not set.
+ * @param {Object} params.io - Socket.io.
  */
 function saveAndTransmitDocFile({
   docFile,
   callback,
-  socket,
   io,
 }) {
   dbDocFile.createDocFile({
@@ -112,11 +110,7 @@ function saveAndTransmitDocFile({
         },
       };
 
-      if (socket) {
-        socket.broadcast.emit(dbConfig.EmitTypes.DOCFILE, dataToSend);
-      } else {
-        io.emit(dbConfig.EmitTypes.DOCFILE, dataToSend);
-      }
+      io.emit(dbConfig.EmitTypes.DOCFILE, dataToSend);
 
       callback(dataToSend);
     },
@@ -210,14 +204,12 @@ function createDocFile({
  * @param {tring} params.docFileId - Doc file.
  * @param {Object} params.io - Socket io. Will be used if socket is undefined.
  * @param {Function} params.callback - Callback.
- * @param {Object} params.io - Socket io. Will be used if socket is not set.
- * @param {Object} [params.socket] - Socket io.
+ * @param {Object} params.io - Socket io.
  * @param {Object} [params.options] - Update options.
  */
 function updateDocFile({
   docFile,
   docFileId,
-  socket,
   io,
   token,
   callback,
@@ -292,11 +284,7 @@ function updateDocFile({
                 },
               };
 
-              if (socket) {
-                socket.broadcast.emit(dbConfig.EmitTypes.DOCFILE, dataToSend);
-              } else {
-                io.emit(dbConfig.EmitTypes.DOCFILE, dataToSend);
-              }
+              io.emit(dbConfig.EmitTypes.DOCFILE, dataToSend);
 
               callback(dataToReturn);
             },
@@ -458,14 +446,12 @@ function getDocFileById({
  * @param {string} params.docFileId - ID of the file to remove.
  * @param {string} params.token - jwt.
  * @param {Function} params.callback - Callback
- * @param {Object} params.io - Socket io. Will be used if socket is not set.
- * @param {Object} [params.socket] - Socket io.
+ * @param {Object} params.io - Socket io.
  */
 function removeDocFile({
   docFileId,
   token,
   callback,
-  socket,
   io,
 }) {
   authenticator.isUserAllowed({
@@ -506,11 +492,7 @@ function removeDocFile({
                 },
               };
 
-              if (socket) {
-                socket.broadcast.emit(dbConfig.EmitTypes.DOCFILE, dataToSend);
-              } else {
-                io.emit(dbConfig.EmitTypes.DOCFILE, dataToSend);
-              }
+              io.emit(dbConfig.EmitTypes.DOCFILE, dataToSend);
 
               callback(dataToSend);
             },

@@ -397,6 +397,8 @@ function updateTransaction({
                 io.emit(dbConfig.EmitTypes.TRANSACTION, dataToSend);
               }
 
+              io.emit(dbConfig.EmitTypes.TRANSACTION, dataToSend);
+
               callback(dataToSend);
             },
           });

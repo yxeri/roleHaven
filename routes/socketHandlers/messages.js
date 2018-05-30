@@ -33,7 +33,7 @@ function handle(socket, io) {
 
     params.callback = callback;
     params.io = io;
-    params.socket = socket;
+
 
     switch (messageType) {
       case dbConfig.MessageTypes.BROADCAST: {
@@ -62,7 +62,7 @@ function handle(socket, io) {
   socket.on('updateMessage', (params, callback = () => {}) => {
     params.callback = callback;
     params.io = io;
-    params.socket = socket;
+
 
     messageManager.updateMsg(params);
   });
@@ -70,7 +70,7 @@ function handle(socket, io) {
   socket.on('removeMessage', (params, callback = () => {}) => {
     params.callback = callback;
     params.io = io;
-    params.socket = socket;
+
 
     messageManager.removeMesssage(params);
   });
@@ -78,7 +78,7 @@ function handle(socket, io) {
   socket.on('getMessage', (params, callback = () => {}) => {
     params.callback = callback;
     params.io = io;
-    params.socket = socket;
+
 
     messageManager.getMessageById(params);
   });
@@ -86,7 +86,7 @@ function handle(socket, io) {
   socket.on('getMessages', (params, callback = () => {}) => {
     params.callback = callback;
     params.io = io;
-    params.socket = socket;
+
 
     if (params.fullHistory) {
       messageManager.getFullHistory(params);
@@ -98,7 +98,7 @@ function handle(socket, io) {
   socket.on('getMessagesByRoom', (params, callback = () => {}) => {
     params.callback = callback;
     params.io = io;
-    params.socket = socket;
+
 
     messageManager.getMessagesByRoom(params);
   });

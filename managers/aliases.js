@@ -180,16 +180,15 @@ function createAlias({
                     },
                   };
 
-                  if (socket) {
-                    socket.broadcast.emit(dbConfig.EmitTypes.USER, dataToSend);
-                  } else {
+                  if (!socket) {
                     const userSocket = socketUtils.getUserSocket({ io, socketId: user.socketId });
 
                     if (userSocket) { userSocket.join(newRoom.objectId); }
 
                     io.to(user.objectId).emit(dbConfig.EmitTypes.ALIAS, creatorDataToSend);
-                    io.emit(dbConfig.EmitTypes.USER, dataToSend);
                   }
+
+                  io.emit(dbConfig.EmitTypes.USER, dataToSend);
 
                   callback(creatorDataToSend);
                 },
@@ -322,13 +321,11 @@ function getAliasesByUser({
  * @param {Object} params.token - jwt.
  * @param {Function} params.callback - Callback.
  * @param {Object} params.io - Socket io. Will be used if socket is not set.
- * @param {Object} [params.socket] - Socket io.
  */
 function removeAlias({
   token,
   callback,
   aliasId,
-  socket,
   io,
 }) {
   authenticator.isUserAllowed({
@@ -392,13 +389,8 @@ function removeAlias({
 
                   socketUtils.getSocketsByRoom({ io, roomId: removedAliasId }).forEach(roomSocket => roomSocket.leave(removedAliasId));
 
-                  if (socket) {
-                    socket.broadcast.to(removedAliasId).emit(dbConfig.EmitTypes.ALIAS, creatorDataToSend);
-                    socket.broadcast.emit(dbConfig.EmitTypes.USER, dataToSend);
-                  } else {
-                    io.to(removedAliasId).emit(dbConfig.EmitTypes.ALIAS, creatorDataToSend);
-                    io.emit(dbConfig.EmitTypes.USER, dataToSend);
-                  }
+                  io.to(removedAliasId).emit(dbConfig.EmitTypes.ALIAS, creatorDataToSend);
+                  io.emit(dbConfig.EmitTypes.USER, dataToSend);
 
                   callback(creatorDataToSend);
                 },
@@ -420,7 +412,6 @@ function removeAlias({
  * @param {Object} params.alias - Alias parameters to update.
  * @param {Object} params.io - Socket io. Will be used if socket is not set.
  * @param {Object} [params.options] - Alias update options.
- * @param {Object} [params.socket] - Socket io.
  */
 function updateAlias({
   token,
@@ -428,7 +419,6 @@ function updateAlias({
   alias,
   options,
   aliasId,
-  socket,
   io,
 }) {
   authenticator.isUserAllowed({
@@ -483,13 +473,8 @@ function updateAlias({
                 },
               };
 
-              if (socket) {
-                socket.broadcast.emit(dbConfig.EmitTypes.USER, dataToSend);
-                socket.broadcast.to(updatedAlias.objectId).emit(dbConfig.EmitTypes.ALIAS, aliasDataToSend);
-              } else {
-                io.emit(dbConfig.EmitTypes.USER, dataToSend);
-                io.to(updatedAlias.objectId).emit(dbConfig.EmitTypes.ALIAS, aliasDataToSend);
-              }
+              io.emit(dbConfig.EmitTypes.USER, dataToSend);
+              io.to(updatedAlias.objectId).emit(dbConfig.EmitTypes.ALIAS, aliasDataToSend);
 
               callback(aliasDataToSend);
             },

@@ -157,15 +157,13 @@ function updateThreadTime({ threadId, callback }) {
  * @param {Object} params.thread - Forum thread to create
  * @param {Function} params.callback - Callback
  * @param {string} params.token - jwt
- * @param {Object} params.io - Socket.io. Will be used if socket is not set
- * @param {Object} [params.socket] - Socket.io
+ * @param {Object} params.io - Socket.io.
  */
 function createThread({
   thread,
   callback,
   token,
   io,
-  socket,
 }) {
   authenticator.isUserAllowed({
     token,
@@ -218,11 +216,7 @@ function createThread({
                       },
                     };
 
-                    if (socket) {
-                      socket.broadcast.emit(dbConfig.EmitTypes.FORUMTHREAD, dataToSend);
-                    } else {
-                      io.emit(dbConfig.EmitTypes.FORUMTHREAD, dataToSend);
-                    }
+                    io.emit(dbConfig.EmitTypes.FORUMTHREAD, dataToSend);
 
                     callback(dataToSend);
                   },
@@ -352,8 +346,7 @@ function getThreadsByUser({
  * @param {string} params.threadId - Id of the thread to update.
  * @param {Object} params.options - Options.
  * @param {Function} params.callback - Callback.
- * @param {Object} params.io - Socket.io. Will be used if socket is not set.
- * @param {Object} [params.socket] - Socket.io.
+ * @param {Object} params.io - Socket.io.
  */
 function updateThread({
   token,
@@ -361,7 +354,6 @@ function updateThread({
   threadId,
   options,
   callback,
-  socket,
   io,
 }) {
   authenticator.isUserAllowed({
@@ -406,11 +398,7 @@ function updateThread({
                 },
               };
 
-              if (socket) {
-                socket.broadcast.emit(dbConfig.EmitTypes.FORUMTHREAD, dataToSend);
-              } else {
-                io.emit(dbConfig.EmitTypes.FORUMTHREAD, dataToSend);
-              }
+              io.emit(dbConfig.EmitTypes.FORUMTHREAD, dataToSend);
 
               callback(dataToSend);
             },
@@ -426,15 +414,13 @@ function updateThread({
  * @param {Object} params - Parameters.
  * @param {string} params.token - jwt.
  * @param {string} params.threadId - ID of the forum thread.
- * @param {Object} params.io - Socket io. Will be used if socket is not set.
+ * @param {Object} params.io - Socket io.
  * @param {Function} params.callback - Callback.
- * @param {Object} [params.socket] - Socket io.
  */
 function removeThread({
   token,
   threadId,
   callback,
-  socket,
   io,
 }) {
   authenticator.isUserAllowed({
@@ -478,11 +464,7 @@ function removeThread({
                 },
               };
 
-              if (socket) {
-                socket.broadcast.emit(dbConfig.EmitTypes.FORUMTHREAD, dataToSend);
-              } else {
-                io.emit(dbConfig.EmitTypes.FORUMTHREAD, dataToSend);
-              }
+              io.emit(dbConfig.EmitTypes.FORUMTHREAD, dataToSend);
 
               callback(dataToSend);
             },

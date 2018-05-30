@@ -85,16 +85,14 @@ function createAndFollowWhisperRoom({
 
           if (socket) {
             socket.join(newRoomId);
-            socket.broadcast.to(senderId).emit(dbConfig.EmitTypes.ROOM, dataToSend, callback);
-            socket.broadcast.to(receiverId).emit(dbConfig.EmitTypes.ROOM, dataToSend, callback);
           } else {
             const userSocket = socketUtils.getUserSocket({ io, socketId: user.socketId });
 
             if (userSocket) { userSocket.join(newRoomId); }
-
-            io.to(senderId).emit(dbConfig.EmitTypes.ROOM, dataToSend, callback);
-            io.to(receiverId).emit(dbConfig.EmitTypes.ROOM, dataToSend, callback);
           }
+
+          io.to(senderId).emit(dbConfig.EmitTypes.ROOM, dataToSend, callback);
+          io.to(receiverId).emit(dbConfig.EmitTypes.ROOM, dataToSend, callback);
         },
       });
     },

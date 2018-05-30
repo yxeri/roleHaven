@@ -190,8 +190,7 @@ function getPositionById({
 /**
  * Update the position's coordinates.
  * @param {Object} params - Parameters.
- * @param {Object} params.io - Socket.io. Will be used if socket is not set.
- * @param {Object} params.socket - Socket.io.
+ * @param {Object} params.io - Socket.io.
  * @param {Object} params.callback - Callback.
  * @param {string} params.positionId - Id of the position to update.
  * @param {string} params.token - jwt.
@@ -199,7 +198,6 @@ function getPositionById({
  */
 function updatePositionCoordinates({
   io,
-  socket,
   callback,
   positionId,
   token,
@@ -245,11 +243,7 @@ function updatePositionCoordinates({
                 changeType: dbConfig.ChangeTypes.UPDATE,
               };
 
-              if (socket) {
-                socket.broadcast.emit(dbConfig.EmitTypes.POSITION, dataToSend);
-              } else {
-                io.emit(dbConfig.EmitTypes.POSITION, dataToSend);
-              }
+              io.emit(dbConfig.EmitTypes.POSITION, dataToSend);
 
               callback(dataToSend);
             },
@@ -266,16 +260,14 @@ function updatePositionCoordinates({
  * @param {string} params.positionId - Id of the position to update.
  * @param {Object} params.position - User position to update or create.
  * @param {string} params.token - jwt.
- * @param {Object} params.io - Socket io. Will be used if socket is not set.
+ * @param {Object} params.io - Socket io.
  * @param {Function} params.callback - Callback.
  * @param {Object} [params.options] - Update options.
- * @param {Object} [params.socket] - Socket io.
  */
 function updatePosition({
   positionId,
   position,
   token,
-  socket,
   io,
   callback,
   options,
@@ -322,11 +314,7 @@ function updatePosition({
                 },
               };
 
-              if (socket) {
-                socket.broadcast.emit(dbConfig.EmitTypes.POSITION, dataToSend);
-              } else {
-                io.emit(dbConfig.EmitTypes.POSITION, dataToSend);
-              }
+              io.emit(dbConfig.EmitTypes.POSITION, dataToSend);
 
               callback(dataToSend);
             },
@@ -342,14 +330,12 @@ function updatePosition({
  * @param {Object} params - Parameters.
  * @param {Object} params.position - Position to create.
  * @param {string} params.token - jwt.
- * @param {Object} params.io - Socket.io. Will be used if socket is not set.
+ * @param {Object} params.io - Socket.io.
  * @param {Function} params.callback - Callback.
- * @param {Object} [params.socket] - Socket.io.
  */
 function createPosition({
   position,
   token,
-  socket,
   io,
   callback,
 }) {
@@ -412,11 +398,7 @@ function createPosition({
               dataToSend.data.position.ownerAliasId = undefined;
             }
 
-            if (socket) {
-              socket.broadcast.emit(dbConfig.EmitTypes.POSITION, dataToSend);
-            } else {
-              io.emit(dbConfig.EmitTypes.POSITION, dataToSend);
-            }
+            io.emit(dbConfig.EmitTypes.POSITION, dataToSend);
 
             callback(dataToReturn);
           },
@@ -488,16 +470,13 @@ function getPositions({
  * @param {Object} params - Parameters.
  * @param {string} params.positionId - ID of the position to remove.
  * @param {string} params.token - jwt.
- * @param {string} params.userId - ID of the user removing the file
  * @param {Function} params.callback - Callback
- * @param {Object} params.io - Socket io. Will be used if socket is not set.
- * @param {Object} [params.socket] - Socket io.
+ * @param {Object} params.io - Socket io.
  */
 function removePosition({
   positionId,
   token,
   callback,
-  socket,
   io,
 }) {
   authenticator.isUserAllowed({
@@ -538,11 +517,7 @@ function removePosition({
                 },
               };
 
-              if (socket) {
-                socket.broadcast.emit(dbConfig.EmitTypes.POSITION, dataToSend);
-              } else {
-                io.emit(dbConfig.EmitTypes.POSITION, dataToSend);
-              }
+              io.emit(dbConfig.EmitTypes.POSITION, dataToSend);
 
               callback(dataToSend);
             },

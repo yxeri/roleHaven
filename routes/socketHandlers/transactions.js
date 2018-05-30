@@ -28,7 +28,7 @@ function handle(socket, io) {
   socket.on('createTransaction', (params, callback = () => {}) => {
     params.callback = callback;
     params.io = io;
-    params.socket = socket;
+
 
     transactionManager.createTransaction(params);
   });
@@ -36,7 +36,7 @@ function handle(socket, io) {
   socket.on('updateTransaction', (params, callback = () => {}) => {
     params.callback = callback;
     params.io = io;
-    params.socket = socket;
+
 
     transactionManager.updateTransaction(params);
   });
@@ -44,7 +44,7 @@ function handle(socket, io) {
   socket.on('removeTransaction', (params, callback = () => {}) => {
     params.callback = callback;
     params.io = io;
-    params.socket = socket;
+
 
     transactionManager.removeTransaction(params);
   });
@@ -52,7 +52,7 @@ function handle(socket, io) {
   socket.on('getTransaction', (params, callback = () => {}) => {
     params.callback = callback;
     params.io = io;
-    params.socket = socket;
+
 
     transactionManager.getTransactionById(params);
   });
@@ -60,7 +60,7 @@ function handle(socket, io) {
   socket.on('getTransactions', (params, callback = () => {}) => {
     params.callback = callback;
     params.io = io;
-    params.socket = socket;
+
 
     transactionManager.getTransactionsCreatedByUser(params);
   });
@@ -68,7 +68,7 @@ function handle(socket, io) {
   socket.on('getTransactionsByWallet', (params, callback = () => {}) => {
     params.callback = callback;
     params.io = io;
-    params.socket = socket;
+
 
     transactionManager.getTransactionsByWallet(params);
   });

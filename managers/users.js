@@ -140,14 +140,12 @@ function getAccessibleUser({
  * @param {Object} params - Parameters.
  * @param {Object} params.user - User to create.
  * @param {Function} params.callback - Callback.
- * @param {Object} params.io - Socket.io. Used if socket is not set.
- * @param {Object} [params.socket] - Socket.io.
+ * @param {Object} params.io - Socket.io.
  */
 function createUser({
   token,
   user,
   callback,
-  socket,
   io,
   options,
 }) {
@@ -306,11 +304,7 @@ function createUser({
                         },
                       };
 
-                      if (socket) {
-                        socket.broadcast.emit(dbConfig.EmitTypes.USER, dataToSend);
-                      } else {
-                        io.emit(dbConfig.EmitTypes.USER, dataToSend);
-                      }
+                      io.emit(dbConfig.EmitTypes.USER, dataToSend);
 
                       callback({
                         data: {

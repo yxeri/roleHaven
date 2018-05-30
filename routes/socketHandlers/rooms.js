@@ -28,7 +28,7 @@ function handle(socket, io) {
   socket.on('createRoom', (params, callback = () => {}) => {
     params.callback = callback;
     params.io = io;
-    params.socket = socket;
+
 
     roomManager.createRoom(params);
   });
@@ -36,7 +36,7 @@ function handle(socket, io) {
   socket.on('removeRoom', (params, callback = () => {}) => {
     params.callback = callback;
     params.io = io;
-    params.socket = socket;
+
 
     roomManager.removeRoom(params);
   });
@@ -44,7 +44,7 @@ function handle(socket, io) {
   socket.on('updateRoom', (params, callback = () => {}) => {
     params.callback = callback;
     params.io = io;
-    params.socket = socket;
+
 
     roomManager.updateRoom(params);
   });
@@ -52,7 +52,7 @@ function handle(socket, io) {
   socket.on('followRoom', (params, callback = () => {}) => {
     params.callback = callback;
     params.io = io;
-    params.socket = socket;
+
 
     roomManager.followRoom(params);
   });
@@ -60,7 +60,7 @@ function handle(socket, io) {
   socket.on('unfollowRoom', (params, callback = () => {}) => {
     params.callback = callback;
     params.io = io;
-    params.socket = socket;
+
 
     roomManager.unfollowRoom(params);
   });
@@ -68,7 +68,7 @@ function handle(socket, io) {
   socket.on('getRoom', (params, callback = () => {}) => {
     params.callback = callback;
     params.io = io;
-    params.socket = socket;
+
 
     roomManager.getRoom(params);
   });
@@ -76,7 +76,7 @@ function handle(socket, io) {
   socket.on('getRooms', (params, callback = () => {}) => {
     params.callback = callback;
     params.io = io;
-    params.socket = socket;
+
 
     roomManager.getRoomsByUser(params);
   });

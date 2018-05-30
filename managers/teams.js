@@ -110,7 +110,6 @@ function emitTeam({
   if (team.isVerified) {
     if (socket) {
       socket.join(room.objectId);
-      socket.broadcast.to(team.accessLevel).emit(dbConfig.EmitTypes.TEAM, dataToSend);
     } else {
       const userSocket = socketUtils.getUserSocket({
         io,
@@ -118,9 +117,9 @@ function emitTeam({
       });
 
       if (userSocket) { userSocket.join(room.objectId); }
-
-      io.to(team.accessLevel).emit(dbConfig.EmitTypes.TEAM, dataToSend);
     }
+
+    io.emit(dbConfig.EmitTypes.TEAM, dataToSend);
   }
 
   callback(dataToSend);
@@ -313,14 +312,12 @@ function createTeam({
  * @param {string} params.token - jwt.
  * @param {string} params.teamId - ID of the team to verify.
  * @param {Function} params.callback - Callback.
- * @param {Object} params.io - Socket.io. Will be used if socket is not set.
- * @param {Object} params.socket - Socket.io.
+ * @param {Object} params.io - Socket.io.
  */
 function verifyTeam({
   token,
   teamId,
   callback,
-  socket,
   io,
 }) {
   authenticator.isUserAllowed({
@@ -352,11 +349,7 @@ function verifyTeam({
 
           // TODO Join all members to team, set team to all members.
 
-          if (socket) {
-            socket.broadcast.to(team.visibility).emit(dbConfig.EmitTypes.TEAM, dataToSend);
-          } else {
-            io.to(team.visibility).emit(dbConfig.EmitTypes.TEAM, dataToSend);
-          }
+          io.emit(dbConfig.EmitTypes.TEAM, dataToSend);
 
           callback(dataToSend);
         },
@@ -370,11 +363,9 @@ function verifyTeam({
  * @param {Object} params - Parameters.
  * @param {Object} params.invitation - The invitation to create.
  * @param {Function} params.callback - Callback.
- * @param {Object} params.io - Socket io. Will be used if socket is not set.
- * @param {Object} [params.socket] - Socket io.
+ * @param {Object} params.io - Socket io.
  */
 function inviteToTeam({
-  socket,
   invitation,
   io,
   callback,
@@ -398,11 +389,7 @@ function inviteToTeam({
           },
         };
 
-        if (socket) {
-          socket.broadcast.to(newInvitation.receiverId).emit(dbConfig.EmitTypes.INVITATION, dataToSend);
-        } else {
-          io.to(newInvitation.receiverId).emit(dbConfig.EmitTypes.INVITATION, dataToSend);
-        }
+        io.to(newInvitation.receiverId).emit(dbConfig.EmitTypes.INVITATION, dataToSend);
 
         callback(dataToSend);
       },

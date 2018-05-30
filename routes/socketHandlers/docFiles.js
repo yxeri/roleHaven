@@ -28,7 +28,6 @@ function handle(socket, io) {
   socket.on('createDocFile', (params, callback = () => {}) => {
     params.callback = callback;
     params.io = io;
-    params.socket = socket;
 
     docFileManager.createDocFile(params);
   });
@@ -36,7 +35,6 @@ function handle(socket, io) {
   socket.on('updateDocFile', (params, callback = () => {}) => {
     params.callback = callback;
     params.io = io;
-    params.socket = socket;
 
     docFileManager.updateDocFile(params);
   });
@@ -44,7 +42,6 @@ function handle(socket, io) {
   socket.on('removeDocFile', (params, callback = () => {}) => {
     params.callback = callback;
     params.io = io;
-    params.socket = socket;
 
     docFileManager.removeDocFile(params);
   });
@@ -52,7 +49,6 @@ function handle(socket, io) {
   socket.on('getDocFile', (params, callback = () => {}) => {
     params.callback = callback;
     params.io = io;
-    params.socket = socket;
 
     docFileManager.getDocFileById(params);
   });
@@ -60,7 +56,6 @@ function handle(socket, io) {
   socket.on('getDocFiles', (params, callback = () => {}) => {
     params.callback = callback;
     params.io = io;
-    params.socket = socket;
 
     docFileManager.getDocFilesByUser(params);
   });
@@ -68,7 +63,6 @@ function handle(socket, io) {
   socket.on('getDocFilesList', (params, callback = () => {}) => {
     params.callback = callback;
     params.io = io;
-    params.socket = socket;
 
     docFileManager.getDocFilesList(params);
   });

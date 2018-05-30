@@ -133,15 +133,13 @@ function sendMessage({
  * @param {Object} params - Parameters.
  * @param {Object} params.message - Message to store and send.
  * @param {Function} params.callback - Callback.
- * @param {Object} params.io - Socket.io. Will be used if socket is not set.
+ * @param {Object} params.io - Socket.io.
  * @param {string} params.emitType - Type of emit event.
- * @param {Object} [params.socket] - Socket.io.
  * @param {Object} [params.image] - Image attached to the message.
  */
 function sendAndStoreMessage({
   message,
   callback,
-  socket,
   io,
   emitType,
   image,
@@ -166,11 +164,7 @@ function sendAndStoreMessage({
         },
       };
 
-      if (socket) {
-        socket.broadcast.to(message.roomId).emit(emitType, dataToSend);
-      } else {
-        io.to(message.roomId).emit(emitType, dataToSend);
-      }
+      io.to(message.roomId).emit(emitType, dataToSend);
 
       callback(dataToSend);
     },
@@ -720,7 +714,7 @@ function removeMessage({
               };
 
               if (socket) {
-                socket.broadcast.to(roomId).emit(emitType, dataToSend);
+                socket.to(roomId).emit(emitType, dataToSend);
               } else {
                 io.to(roomId).emit(emitType, dataToSend);
               }
@@ -802,7 +796,7 @@ function updateMsg({
               };
 
               if (socket) {
-                socket.broadcast.to(sendTo).emit(emitType, dataToSend);
+                socket.to(sendTo).emit(emitType, dataToSend);
               } else {
                 io.to(sendTo).emit(emitType, dataToSend);
               }

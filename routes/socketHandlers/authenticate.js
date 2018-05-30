@@ -28,7 +28,7 @@ function handle(socket, io) {
   socket.on('login', (params, callback = () => {}) => {
     params.callback = callback;
     params.io = io;
-    params.socket = socket;
+
 
     userManager.login(params);
   });
@@ -36,7 +36,7 @@ function handle(socket, io) {
   socket.on('logout', (params, callback = () => {}) => {
     params.callback = callback;
     params.io = io;
-    params.socket = socket;
+
 
     userManager.logout(params);
   });
