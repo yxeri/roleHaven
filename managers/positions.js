@@ -23,71 +23,74 @@ const dbPosition = require('../db/connectors/position');
 const aliasManager = require('./aliases');
 const mapCreator = require('../utils/mapCreator');
 
+// TODO Should update if the position already exist
 /**
  * Retrieve and store positions from a Google Maps collaborative map.
  * @param {Object} params - Parameters.
  * @param {Function} params.callback - Callback.
  */
 function getAndStoreGooglePositions({ callback = () => {} }) {
-  // TODO Should update if the position already exist
+  if (!appConfig.mapLayersPath) {
+    callback({ error: new errorCreator.InvalidData({ name: 'Map layer is not set' }) });
 
-  if (appConfig.mapLayersPath) {
-    mapCreator.getGooglePositions({
-      callback: (googleData) => {
-        if (googleData.error) {
-          callback({ error: googleData.error });
+    return;
+  }
 
-          return;
-        }
+  mapCreator.getGooglePositions({
+    callback: (googleData) => {
+      if (googleData.error) {
+        callback({ error: googleData.error });
 
-        dbPosition.removePositionsByOrigin({
-          origin: dbConfig.PositionOrigins.GOOGLE,
-          callback: (removeData) => {
-            if (removeData.error) {
-              callback({ error: removeData.error });
+        return;
+      }
+
+      dbPosition.removePositionsByOrigin({
+        origin: dbConfig.PositionOrigins.GOOGLE,
+        callback: (removeData) => {
+          if (removeData.error) {
+            callback({ error: removeData.error });
+
+            return;
+          }
+
+          const { positions } = googleData.data;
+          const positionAmount = positions.length;
+          const createdPositions = [];
+          const sendCallback = ({ error, iteration }) => {
+            if (error) {
+              callback({ error });
 
               return;
             }
 
-            const { positions } = googleData.data;
-            const positionAmount = positions.length;
-            const createdPositions = [];
-            const sendCallback = ({ error, iteration }) => {
-              if (error) {
-                callback({ error });
+            if (iteration === positionAmount) {
+              callback({ data: { positions: createdPositions } });
+            }
+          };
+          let iteration = 1;
 
-                return;
-              }
+          positions.forEach((position) => {
+            dbPosition.createPosition({
+              position,
+              callback: ({ error, data }) => {
+                if (error) {
+                  callback({ error });
 
-              if (iteration === positionAmount) {
-                callback({ data: { positions: createdPositions } });
-              }
-            };
-            let iteration = 1;
+                  return;
+                }
 
-            positions.forEach((position) => {
-              dbPosition.createPosition({
-                position,
-                callback: ({ error, data }) => {
-                  if (error) {
-                    callback({ error });
-
-                    return;
-                  }
-
-                  createdPositions.push(data.position);
-                  sendCallback({
-                    error,
-                    iteration: iteration += 1,
-                  });
-                },
-              });
+                createdPositions.push(data.position);
+                sendCallback({
+                  error,
+                  iteration: iteration += 1,
+                });
+              },
             });
-          },
-        });
-      },
-    });
-  }
+          });
+        },
+      });
+    },
+  });
 }
 
 /**
@@ -453,9 +456,9 @@ function createPosition({
 function getPositions({
   token,
   callback,
+  positionTypes,
   full = false,
   lite = true,
-  positionTypes = Object.values(dbConfig.PositionTypes),
 }) {
   authenticator.isUserAllowed({
     token,
