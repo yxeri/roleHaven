@@ -28,7 +28,8 @@ const errorCreator = require('../../error/errorCreator');
  */
 function handle(socket, io) {
   socket.on('sendMessage', (params, callback = () => {}) => {
-    const { messageType } = params;
+    const { message } = params;
+    const { messageType = '' } = message;
 
     params.callback = callback;
     params.io = io;
