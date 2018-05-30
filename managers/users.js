@@ -39,7 +39,6 @@ const dbForum = require('../db/connectors/forum');
  */
 function updateUserParams({
   user,
-  // device,
   callback,
   io,
   socket,
@@ -56,18 +55,6 @@ function updateUserParams({
         callback({ error: socketData.error });
 
         return;
-      }
-
-      // const newDevice = device;
-      // newDevice.lastUserId = userId;
-      // newDevice.socketId = socketId;
-      // Update device
-
-      const oldSocket = io.sockets.connected[socketId];
-
-      if (oldSocket) {
-        roomManager.leaveSocketRooms(socket);
-        oldSocket.emit(dbConfig.EmitTypes.LOGOUT);
       }
 
       socketUtils.joinRooms({
