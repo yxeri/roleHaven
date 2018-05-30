@@ -248,7 +248,7 @@ config.EmitTypes = {
   DISCONNECT: 'disconnect',
   RECONNECT: 'reconnect',
   STARTUP: 'startup',
-  MSG: 'msg',
+  SENDMSG: 'sendMessage',
 };
 
 /**
