@@ -351,7 +351,7 @@ function createPosition({
         callback({ error: new errorCreator.InvalidData({ name: 'latitude && longitude' }) });
 
         return;
-      } else if ((position.positionName && position.positionName.length > appConfig.positionNameMaxLength) || (position.description && position.description.join('').length > appConfig.docFileMaxLength)) {
+      } else if ((position.positionName && (position.positionName.length > appConfig.positionNameMaxLength || position.positionName.length <= 0)) || (position.description && position.description.join('').length > appConfig.docFileMaxLength)) {
         callback({ error: new errorCreator.InvalidCharacters({ expected: `text length: ${appConfig.docFileMaxLength}, title length: ${appConfig.positionNameMaxLength}` }) });
 
         return;
