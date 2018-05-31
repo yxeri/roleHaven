@@ -16,7 +16,7 @@
 
 'use strict';
 
-const appConfig = require('../../../config/defaults/config').app;
+const { appConfig } = require('../../../config/defaults/config');
 const tools = require('../helper/tools');
 
 const data = {};
@@ -26,6 +26,9 @@ data.create = {
     roomName: tools.createRandString({ length: appConfig.roomNameMaxLength }),
   },
   second: {
+    roomName: tools.createRandString({ length: appConfig.roomNameMaxLength }),
+  },
+  missing: {
     roomName: tools.createRandString({ length: appConfig.roomNameMaxLength }),
   },
 };

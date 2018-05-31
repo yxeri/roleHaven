@@ -28,7 +28,6 @@ function handle(socket, io) {
   socket.on('createDevice', (params, callback = () => {}) => {
     params.callback = callback;
     params.io = io;
-    params.socket = socket;
 
     deviceManager.createDevice(params);
   });
@@ -36,7 +35,6 @@ function handle(socket, io) {
   socket.on('updateDevice', (params, callback = () => {}) => {
     params.callback = callback;
     params.io = io;
-    params.socket = socket;
 
     deviceManager.updateDevice(params);
   });
@@ -44,7 +42,6 @@ function handle(socket, io) {
   socket.on('removeDevice', (params, callback = () => {}) => {
     params.callback = callback;
     params.io = io;
-    params.socket = socket;
 
     deviceManager.removeDevice(params);
   });
@@ -52,7 +49,6 @@ function handle(socket, io) {
   socket.on('getDevice', (params, callback = () => {}) => {
     params.callback = callback;
     params.io = io;
-    params.socket = socket;
 
     deviceManager.getDeviceById(params);
   });
@@ -60,7 +56,6 @@ function handle(socket, io) {
   socket.on('getDevices', (params, callback = () => {}) => {
     params.callback = callback;
     params.io = io;
-    params.socket = socket;
 
     deviceManager.getDevicesByUser(params);
   });

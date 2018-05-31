@@ -17,8 +17,7 @@
 'use strict';
 
 const tools = require('../helper/tools');
-const appConfig = require('../../../config/defaults/config').app;
-const dbConfig = require('../../../config/defaults/config').databasePopulation;
+const { appConfig, dbConfig } = require('../../../config/defaults/config');
 
 /**
  * code: { type: String, unique: true },
@@ -33,11 +32,11 @@ const data = {};
 
 data.create = {
   first: {
-    codeType: dbConfig.GameCodeTypes.TEXT,
-    codeContent: ['Two lines', 'of text'],
+    code: tools.createRandString({ length: appConfig.gameCodeLength }),
   },
   second: {
-    code: tools.createRandString({ length: appConfig.gameCodeLength }),
+    codeType: dbConfig.GameCodeTypes.TEXT,
+    codeContent: ['Two lines', 'of text'],
   },
 };
 

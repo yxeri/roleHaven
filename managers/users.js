@@ -18,19 +18,58 @@
 
 const dbUser = require('../db/connectors/user');
 const dbWallet = require('../db/connectors/wallet');
-const appConfig = require('../config/defaults/config').app;
-const dbConfig = require('../config/defaults/config').databasePopulation;
-const errorCreator = require('../objects/error/errorCreator');
+const { dbConfig, appConfig } = require('../config/defaults/config');
+const errorCreator = require('../error/errorCreator');
 const textTools = require('../utils/textTools');
 const authenticator = require('../helpers/authenticator');
 const roomManager = require('./rooms');
-const deviceManager = require('../managers/devices');
 const dbRoom = require('../db/connectors/room');
-const dbDevice = require('../db/connectors/device');
 const socketUtils = require('../utils/socketIo');
+const dbForum = require('../db/connectors/forum');
+
+/**
+ * Update stored values for user, connected devices and start following the user's rooms on the socket.
+ * @param {Object} params - Parameters.
+ * @param {Object} params.user - User to update
+ * @param {Function} params.callback - Callback.
+ * @param {Object} params.io - Socket.io.
+ * @param {Object} params.socket - Socket.io.
+ */
+function updateUserParams({
+  user,
+  callback,
+  io,
+  socket,
+}) {
+  const { objectId: userId, followingRooms } = user;
+  const socketId = socket.id;
+
+  dbUser.updateOnline({
+    userId,
+    socketId,
+    isOnline: true,
+    callback: (socketData) => {
+      if (socketData.error) {
+        callback({ error: socketData.error });
+
+        return;
+      }
+
+      socketUtils.joinRooms({
+        io,
+        socketId,
+        roomIds: followingRooms,
+      });
+
+
+      callback({ data: { user } });
+    },
+  });
+}
 
 /**
  * Get user by Id and check if the user has access to it.
+ * @private
  * @param {Object} params - Parameters.
  * @param {Object} params.user - User retrieving the user.
  * @param {string} params.userId - Id of the user to retrieve.
@@ -85,46 +124,96 @@ function getAccessibleUser({
  * Create a user.
  * @param {Object} params - Parameters.
  * @param {Object} params.user - User to create.
- * @param {string} params.origin - Name of the caller origin.
  * @param {Function} params.callback - Callback.
- * @param {Object} params.io - Socket.io. Used if socket is not set.
- * @param {Object} [params.socket] - Socket.io.
+ * @param {Object} params.io - Socket.io.
  */
 function createUser({
   token,
   user,
   callback,
-  socket,
   io,
-  origin = dbConfig.OriginTypes.NONE,
+  options,
 }) {
+  let command;
+
+  if (appConfig.mode === appConfig.Modes.TEST) {
+    command = dbConfig.apiCommands.AnonymousCreation;
+  } else if (appConfig.disallowUserRegister) {
+    command = dbConfig.apiCommands.CreateDisallowedUser;
+  } else if (user.accessLevel) {
+    command = dbConfig.apiCommands.ChangeUserLevels;
+  } else {
+    command = dbConfig.apiCommands.CreateUser;
+  }
+
   authenticator.isUserAllowed({
     token,
-    commandName: origin === dbConfig.OriginTypes.SOCKET && !appConfig.disallowSocketUserRegister ? dbConfig.apiCommands.CreateUserThroughSocket.name : dbConfig.apiCommands.CreateUser.name,
+    commandName: command.name,
     callback: ({ error }) => {
       if (error) {
         callback({ error });
 
         return;
       } else if (!textTools.isAllowedFull(user.username)) {
-        callback({ error: new errorCreator.InvalidCharacters({ name: `User name: ${user.username}` }) });
+        callback({
+          error: new errorCreator.InvalidCharacters({ name: `User name: ${user.username}` }),
+        });
 
         return;
-      } else if (user.username.length > appConfig.usernameMaxLength || user.password.length > appConfig.passwordMaxLength || user.registerDevice.length > appConfig.deviceIdLength) {
-        callback({ error: new errorCreator.InvalidCharacters({ name: `User name length: ${appConfig.usernameMaxLength} Password length: ${appConfig.usernameMaxLength} Device length: ${appConfig.deviceIdLength}` }) });
+      } else if (user.username.length < appConfig.usernameMinLength || user.username.length > appConfig.usernameMaxLength) {
+        callback({
+          error: new errorCreator.InvalidLength({
+            name: `User name length: ${appConfig.usernameMinLength}-${appConfig.usernameMaxLength}`,
+            extraData: { param: 'username' },
+          }),
+        });
+
+        return;
+      } else if (user.fullName && (user.fullName.length < appConfig.fullNameMinLength || user.fullName.length > appConfig.fullNameMaxLength)) {
+        callback({
+          error: new errorCreator.InvalidLength({
+            name: `Full name length: ${appConfig.fullNameMinLength}-${appConfig.fullNameMaxLength}`,
+            extraData: { param: 'fullName' },
+          }),
+        });
+
+        return;
+      } else if (user.password.length < appConfig.passwordMinLength || user.password.length > appConfig.passwordMaxLength) {
+        callback({
+          error: new errorCreator.InvalidLength({
+            name: `Password length: ${appConfig.passwordMinLength}-${appConfig.passwordMaxLength}`,
+            extraData: { param: 'password' },
+          }),
+        });
+
+        return;
+      } else if (user.registerDevice.length > appConfig.deviceIdLength) {
+        callback({
+          error: new errorCreator.InvalidLength({
+            name: `Device length: ${appConfig.deviceIdLength}`,
+            extraData: { param: 'device' },
+          }),
+        });
 
         return;
       } else if (dbConfig.protectedNames.includes(user.username.toLowerCase())) {
-        callback({ error: new errorCreator.InvalidCharacters({ name: `protected name ${user.username}` }) });
+        callback({
+          error: new errorCreator.InvalidCharacters({
+            name: `protected name ${user.username}`,
+            extraData: { param: 'username' },
+          }),
+        });
 
         return;
       }
 
       const newUser = user;
-      newUser.isVerified = appConfig.userVerify;
-      newUser.followingRooms = Object.keys(dbConfig.rooms).map(key => dbConfig.rooms[key].objectId);
+      newUser.isVerified = !appConfig.userVerify;
+      newUser.followingRooms = dbConfig.requiredRooms;
+      newUser.accessLevel = newUser.accessLevel || 1;
 
       dbUser.createUser({
+        options,
         user: newUser,
         callback: ({ error: userError, data: userData }) => {
           if (userError) {
@@ -138,13 +227,14 @@ function createUser({
           dbRoom.createRoom({
             room: {
               ownerId: createdUser.objectId,
-              roomName: createdUser.objectId,
+              roomName: createdUser.username,
               objectId: createdUser.objectId,
-              visibility: dbConfig.AccessLevels.SUPERUSER,
+              visibility: dbConfig.AccessLevels.STANDARD,
               accessLevel: dbConfig.AccessLevels.SUPERUSER,
+              isUser: true,
             },
             options: {
-              shouldSetId: true,
+              setId: true,
               isFollower: true,
             },
             callback: ({ error: roomError, data: roomData }) => {
@@ -172,29 +262,52 @@ function createUser({
                     return;
                   }
 
-
-                  const dataToSend = {
-                    data: {
-                      user: {
-                        objectId: createdUser.objectId,
-                        username: createdUser.username,
-                      },
-                      changeType: dbConfig.ChangeTypes.CREATE,
-                    },
+                  const forum = {
+                    title: newUser.fullName || newUser.username,
+                    isPersonal: true,
+                    objectId: createdUser.objectId,
+                    ownerId: createdUser.objectId,
                   };
+                  const forumOptions = { setId: true };
 
-                  if (socket) {
-                    socket.broadcast.emit(dbConfig.EmitTypes.USER, dataToSend);
-                  } else {
-                    io.emit(dbConfig.EmitTypes.USER, dataToSend);
-                  }
+                  dbForum.createForum({
+                    forum,
+                    options: forumOptions,
+                    callback: ({ error: forumError, data: forumData }) => {
+                      if (forumError) {
+                        callback({ error: forumError });
 
-                  callback({
-                    data: {
-                      user: createdUser,
-                      wallet: walletData.wallet,
-                      room: roomData.room,
-                      changeType: dbConfig.ChangeTypes.CREATE,
+                        return;
+                      }
+
+                      const dataToSend = {
+                        data: {
+                          user: {
+                            objectId: createdUser.objectId,
+                            username: createdUser.username,
+                          },
+                          changeType: dbConfig.ChangeTypes.CREATE,
+                        },
+                      };
+                      const roomDataToSend = {
+                        data: {
+                          room: roomData.room,
+                          changeType: dbConfig.ChangeTypes.CREATE,
+                        },
+                      };
+
+                      io.emit(dbConfig.EmitTypes.USER, dataToSend);
+                      io.emit(dbConfig.EmitTypes.ROOM, roomDataToSend);
+
+                      callback({
+                        data: {
+                          forum: forumData.forum,
+                          user: createdUser,
+                          wallet: walletData.wallet,
+                          room: roomData.room,
+                          changeType: dbConfig.ChangeTypes.CREATE,
+                        },
+                      });
                     },
                   });
                 },
@@ -389,85 +502,31 @@ function login({
   io,
   callback,
 }) {
-  dbUser.getUserByName({
+  authenticator.createToken({
     username: user.username,
-    includeInactive: true,
-    callback: ({ error: userError, data: userData }) => {
-      if (userError) {
-        callback({ error: userError });
-
-        return;
-      } else if (userData.user.isBanned) {
-        callback({ error: new errorCreator.Banned({}) });
-
-        return;
-      } else if (!userData.user.isVerified) {
-        callback({ error: new errorCreator.NeedsVerification({}) });
+    password: user.password,
+    callback: ({ error, data }) => {
+      if (error) {
+        callback({ error });
 
         return;
       }
 
-      const authUser = userData.user;
+      const { token, user: authUser } = data;
 
-      authenticator.createToken({
-        userId: authUser.objectId,
-        password: user.password,
-        callback: ({ error, data: tokenData }) => {
-          if (error) {
-            callback({ error });
+      updateUserParams({
+        device,
+        io,
+        socket,
+        user: authUser,
+        callback: ({ error: updateError }) => {
+          if (updateError) {
+            callback({ error: updateError });
 
             return;
           }
 
-          dbUser.updateOnline({
-            userId: authUser.objectId,
-            socketId: socket.id,
-            isOnline: true,
-            callback: (socketData) => {
-              if (socketData.error) {
-                callback({ error: socketData.error });
-
-                return;
-              }
-
-              const newDevice = device;
-              newDevice.lastUserId = authUser.objectId;
-              newDevice.socketId = socket.id;
-
-              dbDevice.updateDevice({
-                deviceId: newDevice.objectId,
-                device: newDevice,
-                callback: ({ error: deviceError }) => {
-                  if (deviceError) {
-                    callback({ error: deviceError });
-
-                    return;
-                  }
-
-                  const oldSocket = io.sockets.connected[authUser.socketId];
-
-                  if (oldSocket) {
-                    roomManager.leaveSocketRooms(socket);
-                    oldSocket.emit(dbConfig.EmitTypes.LOGOUT);
-                  }
-
-                  socketUtils.joinRooms({
-                    io,
-                    roomIds: authUser.followingRooms,
-                    socketId: socket.id,
-                  });
-
-
-                  callback({
-                    data: {
-                      token: tokenData.token,
-                      user: authUser,
-                    },
-                  });
-                },
-              });
-            },
-          });
+          callback({ data: { token, user: authUser } });
         },
       });
     },
@@ -477,13 +536,11 @@ function login({
 /**
  * Logout user.
  * @param {Object} params - Parameters.
- * @param {Object} params.device - The device of the user that is logging out.
  * @param {string} params.token jwt.
  * @param {Object} params.socket - Socket.io.
  * @param {Function} params.callback - Callback.
  */
 function logout({
-  device,
   token,
   socket,
   callback,
@@ -498,10 +555,10 @@ function logout({
         return;
       }
 
-      const authUser = data.user;
+      const { objectId: userId } = data.user;
 
       dbUser.updateOnline({
-        userId: authUser.objectId,
+        userId,
         isOnline: false,
         callback: ({ error: socketError }) => {
           if (socketError) {
@@ -510,24 +567,9 @@ function logout({
             return;
           }
 
-          const deviceToUpdate = device;
-          deviceToUpdate.lastUserId = authUser.objectId;
-          deviceToUpdate.socketId = '';
+          roomManager.leaveSocketRooms(socket);
 
-          deviceManager.updateDevice({
-            device: deviceToUpdate,
-            callback: ({ error: deviceError }) => {
-              if (deviceError) {
-                callback({ error: deviceError });
-
-                return;
-              }
-
-              roomManager.leaveSocketRooms({ socket });
-
-              callback({ data: { success: true } });
-            },
-          });
+          callback({ data: { success: true } });
         },
       });
     },
@@ -645,7 +687,7 @@ function banUser({
           };
 
           if (bannedSocket) {
-            roomManager.leaveSocketRooms({ socket: bannedSocket });
+            roomManager.leaveSocketRooms(bannedSocket);
           }
 
           io.to(banUserId).emit(dbConfig.EmitTypes.BAN, banDataToSend);
@@ -755,6 +797,8 @@ function updateUser({
             return;
           }
 
+          // TODO Update whisper room with new user name (if updated)
+
           dbUser.updateUser({
             user,
             options,
@@ -847,6 +891,45 @@ function removeUser({
   });
 }
 
+/**
+ * Update user. It will be called on reconnects from the client.
+ * @param {Object} params - Parameters.
+ * @param {string} params.token - jwt
+ * @param {Object} params.device - The device that the user is using.
+ * @param {Object} params.io - Socket.io
+ * @param {Object} params.socket - Socket.io
+ * @param {Function} params.callback - Callback
+ */
+function updateId({
+  token,
+  device,
+  io,
+  socket,
+  callback,
+}) {
+  authenticator.isUserAllowed({
+    token,
+    commandName: dbConfig.apiCommands.UpdateId.name,
+    callback: ({ error, data }) => {
+      if (error) {
+        callback({ error });
+
+        return;
+      }
+
+      const { user } = data;
+
+      updateUserParams({
+        user,
+        device,
+        io,
+        socket,
+        callback,
+      });
+    },
+  });
+}
+
 exports.createUser = createUser;
 exports.getUserByName = getUserByName;
 exports.getUserById = getUserById;
@@ -859,3 +942,4 @@ exports.verifyUser = verifyUser;
 exports.updateUser = updateUser;
 exports.removeUser = removeUser;
 exports.getUsersByUser = getUsersByUser;
+exports.updateId = updateId;

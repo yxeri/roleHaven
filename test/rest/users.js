@@ -38,7 +38,7 @@ describe('Users', () => {
   testBuilder.createTestCreate({
     objectType,
     apiPath,
-    objectIdType,
+    checkDuplicate: true,
     testData: testData.create,
     schema: userSchemas.liteUser,
   });

@@ -28,7 +28,7 @@ function handle(socket, io) {
   socket.on('createPosition', (params, callback = () => {}) => {
     params.callback = callback;
     params.io = io;
-    params.socket = socket;
+
 
     positionManager.createPosition(params);
   });
@@ -36,7 +36,7 @@ function handle(socket, io) {
   socket.on('updatePosition', (params, callback = () => {}) => {
     params.callback = callback;
     params.io = io;
-    params.socket = socket;
+
 
     positionManager.updatePosition(params);
   });
@@ -44,7 +44,7 @@ function handle(socket, io) {
   socket.on('removePosition', (params, callback = () => {}) => {
     params.callback = callback;
     params.io = io;
-    params.socket = socket;
+
 
     positionManager.removePosition(params);
   });
@@ -52,7 +52,7 @@ function handle(socket, io) {
   socket.on('getPosition', (params, callback = () => {}) => {
     params.callback = callback;
     params.io = io;
-    params.socket = socket;
+
 
     positionManager.getPositionById(params);
   });
@@ -60,9 +60,17 @@ function handle(socket, io) {
   socket.on('getPositions', (params, callback = () => {}) => {
     params.callback = callback;
     params.io = io;
-    params.socket = socket;
+
 
     positionManager.getPositions(params);
+  });
+
+  socket.on('updatePositionCoordinates', (params, callback = () => {}) => {
+    params.callback = callback;
+    params.io = io;
+
+
+    positionManager.updatePositionCoordinates(params);
   });
 }
 

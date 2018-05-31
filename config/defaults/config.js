@@ -17,7 +17,7 @@
 'use strict';
 
 const appConfig = require('./appConfig');
-const databasePop = require('./databasePopulation');
+const dbConfig = require('./dbConfig');
 
-exports.app = appConfig;
-exports.databasePopulation = databasePop;
+exports.appConfig = appConfig;
+exports.dbConfig = dbConfig;

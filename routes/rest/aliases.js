@@ -20,7 +20,7 @@ const express = require('express');
 const objectValidator = require('../../utils/objectValidator');
 const aliasManager = require('../../managers/aliases');
 const restErrorChecker = require('../../helpers/restErrorChecker');
-const errorCreator = require('../../objects/error/errorCreator');
+const errorCreator = require('../../error/errorCreator');
 
 const router = new express.Router();
 
@@ -46,8 +46,8 @@ function handle(io) {
    * @apiSuccess {Alias} data.alias Created alias.
    */
   router.post('/', (request, response) => {
-    if (!objectValidator.isValidData(request.body, { data: { alias: true } })) {
-      restErrorChecker.checkAndSendError({ response, error: new errorCreator.InvalidData({ expected: '{ data: { alias } }' }), sentData: request.body.data });
+    if (!objectValidator.isValidData(request.body, { data: { alias: { aliasName: true } } })) {
+      restErrorChecker.checkAndSendError({ response, error: new errorCreator.InvalidData({ expected: '{ data: { alias: { aliasName }s } }' }), sentData: request.body.data });
 
       return;
     }

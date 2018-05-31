@@ -19,8 +19,8 @@
 const objectValidator = require('../../utils/objectValidator');
 const messageManager = require('../../managers/messages');
 const restErrorChecker = require('../../helpers/restErrorChecker');
-const errorCreator = require('../../objects/error/errorCreator');
-const dbConfig = require('../../config/defaults/config').databasePopulation;
+const errorCreator = require('../../error/errorCreator');
+const { dbConfig } = require('../../config/defaults/config');
 const forumPostManager = require('../../managers/forumPosts');
 const forumThreadManager = require('../../managers/forumThreads');
 const transactionManager = require('../../managers/transactions');
@@ -130,7 +130,7 @@ function getMessages({ request, response }) {
       callback,
     });
   } else {
-    messageManager.getMessagesCreatedByUser({
+    messageManager.getMessagesByFollowed({
       token,
       full,
       callback,
@@ -174,7 +174,7 @@ function getForumPosts({ request, response }) {
       callback,
     });
   } else {
-    forumPostManager.getPostsCreatedByUser({
+    forumPostManager.getPostsByUser({
       token,
       full,
       callback,
@@ -211,7 +211,7 @@ function getForumThreads({ request, response }) {
       callback,
     });
   } else {
-    forumThreadManager.getThreadsCreatedByUser({
+    forumThreadManager.getThreadsByUser({
       token,
       callback,
       full,

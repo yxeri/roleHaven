@@ -15,37 +15,33 @@
  */
 
 const mongoose = require('mongoose');
-const errorCreator = require('../../objects/error/errorCreator');
+const errorCreator = require('../../error/errorCreator');
 const dbConnector = require('../databaseConnector');
 const dbForumThread = require('./forumThread');
 
 const forumSchema = new mongoose.Schema(dbConnector.createSchema({
   title: { type: String, unique: true },
-  threadIds: { type: [String], default: [] },
   text: { type: [String], default: [] },
+  isPersonal: { type: Boolean, default: false },
+  picture: dbConnector.pictureSchema,
 }), { collection: 'forums' });
 
 const Forum = mongoose.model('Forum', forumSchema);
 
-const forumFilter = {
-  ownerId: 1,
+const forumFilter = dbConnector.createFilter({
   title: 1,
   threadIds: 1,
-  ownerAliasId: 1,
   text: 1,
-  lastUpdated: 1,
-  timeCreated: 1,
-  customLastUpdated: 1,
-  customTimeCreated: 1,
-};
+  picture: 1,
+});
 
 /**
- * Update forum object fields
+ * Update forum object fields.
  * @private
- * @param {Object} params - Parameters
- * @param {string} params.forumId - ID of forum to update
- * @param {Object} params.update - Update
- * @param {Function} params.callback Callback
+ * @param {Object} params - Parameters.
+ * @param {string} params.forumId - Id of forum to update.
+ * @param {Object} params.update - Update.
+ * @param {Function} params.callback Callback.
  */
 function updateObject({
   forumId,
@@ -118,7 +114,7 @@ function getForum({ query, callback }) {
 
         return;
       } else if (!data.object) {
-        callback({ error: new errorCreator.DoesNotExist({ name: `forum ${query.toString()}` }) });
+        callback({ error: new errorCreator.DoesNotExist({ name: `forum ${JSON.stringify(query, null, 4)}` }) });
 
         return;
       }
@@ -143,12 +139,19 @@ function doesForumExist({ title, callback }) {
 }
 
 /**
- * Create forum.
- * @param {Object} params - Parameters
- * @param {Object} params.forum - Forum to save
- * @param {Function} params.callback - Callback
+ * Create a forum.
+ * @param {Object} params - Parameters.
+ * @param {Object} params.forum - Forum to save.
+ * @param {Function} params.callback - Callback.
+ * @param {Object} [params.options] - Creation options.
  */
-function createForum({ forum, callback }) {
+function createForum({
+  forum,
+  callback,
+  options = {},
+}) {
+  const { setId } = options;
+
   doesForumExist({
     title: forum.title,
     callback: ({ error, data }) => {
@@ -160,6 +163,12 @@ function createForum({ forum, callback }) {
         callback({ error: new errorCreator.AlreadyExists({ name: `createForum ${forum.title}` }) });
 
         return;
+      }
+
+      const forumToSave = forum;
+
+      if (setId) {
+        forumToSave._id = forumToSave.objectId; // eslint-disable-line no-underscore-dangle
       }
 
       dbConnector.saveObject({

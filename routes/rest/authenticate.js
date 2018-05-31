@@ -20,7 +20,7 @@ const express = require('express');
 const objectValidator = require('../../utils/objectValidator');
 const authenticator = require('../../helpers/authenticator');
 const restErrorChecker = require('../../helpers/restErrorChecker');
-const errorCreator = require('../../objects/error/errorCreator');
+const errorCreator = require('../../error/errorCreator');
 
 const router = new express.Router();
 
@@ -47,13 +47,14 @@ function handle() {
    */
   router.post('/', (request, response) => {
     const sentData = request.body.data;
-    sentData.password = typeof sentData.password !== 'undefined';
 
     if (!objectValidator.isValidData(request.body, { data: { user: { password: true } } })) {
       restErrorChecker.checkAndSendError({ response, error: new errorCreator.InvalidData({ expected: 'data = { user: { password } }' }), sentData });
 
       return;
     } else if (!request.body.data.user.username && !request.body.data.user.userId) {
+      sentData.user.password = typeof sentData.user.password !== 'undefined';
+
       restErrorChecker.checkAndSendError({ response, error: new errorCreator.InvalidData({ expected: 'userId or username has to be set' }), sentData });
 
       return;
@@ -71,6 +72,8 @@ function handle() {
       password,
       callback: ({ error, data }) => {
         if (error) {
+          sentData.user.password = typeof sentData.user.password !== 'undefined';
+
           restErrorChecker.checkAndSendError({ response, error, sentData });
 
           return;

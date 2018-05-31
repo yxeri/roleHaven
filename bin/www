@@ -3,7 +3,7 @@
 'use strict';
 
 const app = require('./../app');
-const appConfig = require('../config/defaults/config').app;
+const { appConfig } = require('../config/defaults/config');
 
 /**
  * Start server

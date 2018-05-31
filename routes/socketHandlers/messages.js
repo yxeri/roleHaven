@@ -17,6 +17,8 @@
 'use strict';
 
 const messageManager = require('../../managers/messages');
+const { dbConfig } = require('../../config/defaults/config');
+const errorCreator = require('../../error/errorCreator');
 
 /* eslint-disable no-param-reassign */
 
@@ -25,34 +27,42 @@ const messageManager = require('../../managers/messages');
  * @param {object} io - Socket.Io.
  */
 function handle(socket, io) {
-  socket.on('sendChatMsg', (params, callback = () => {}) => {
+  socket.on('sendMessage', (params, callback = () => {}) => {
+    const { message } = params;
+    const { messageType = '' } = message;
+
     params.callback = callback;
     params.io = io;
-    params.socket = socket;
 
-    messageManager.sendChatMsg(params);
-  });
 
-  socket.on('sendWhisperMsg', (params, callback = () => {}) => {
-    params.callback = callback;
-    params.io = io;
-    params.socket = socket;
+    switch (messageType) {
+      case dbConfig.MessageTypes.BROADCAST: {
+        messageManager.sendBroadcastMsg(params);
 
-    messageManager.sendWhisperMsg(params);
-  });
+        break;
+      }
+      case dbConfig.MessageTypes.WHISPER: {
+        messageManager.sendWhisperMsg(params);
 
-  socket.on('sendBroadcastMsg', (params, callback = () => {}) => {
-    params.callback = callback;
-    params.io = io;
-    params.socket = socket;
+        break;
+      }
+      case dbConfig.MessageTypes.CHAT: {
+        messageManager.sendChatMsg(params);
 
-    messageManager.sendBroadcastMsg(params);
+        break;
+      }
+      default: {
+        callback({ error: new errorCreator.Incorrect({ name: 'messageType' }) });
+
+        break;
+      }
+    }
   });
 
   socket.on('updateMessage', (params, callback = () => {}) => {
     params.callback = callback;
     params.io = io;
-    params.socket = socket;
+
 
     messageManager.updateMsg(params);
   });
@@ -60,7 +70,7 @@ function handle(socket, io) {
   socket.on('removeMessage', (params, callback = () => {}) => {
     params.callback = callback;
     params.io = io;
-    params.socket = socket;
+
 
     messageManager.removeMesssage(params);
   });
@@ -68,7 +78,7 @@ function handle(socket, io) {
   socket.on('getMessage', (params, callback = () => {}) => {
     params.callback = callback;
     params.io = io;
-    params.socket = socket;
+
 
     messageManager.getMessageById(params);
   });
@@ -76,7 +86,19 @@ function handle(socket, io) {
   socket.on('getMessages', (params, callback = () => {}) => {
     params.callback = callback;
     params.io = io;
-    params.socket = socket;
+
+
+    if (params.fullHistory) {
+      messageManager.getFullHistory(params);
+    } else {
+      messageManager.getMessagesByFollowed(params);
+    }
+  });
+
+  socket.on('getMessagesByRoom', (params, callback = () => {}) => {
+    params.callback = callback;
+    params.io = io;
+
 
     messageManager.getMessagesByRoom(params);
   });

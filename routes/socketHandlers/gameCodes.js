@@ -28,7 +28,7 @@ function handle(socket, io) {
   socket.on('createGameCode', (params, callback = () => {}) => {
     params.callback = callback;
     params.io = io;
-    params.socket = socket;
+
 
     gameCodeManager.createGameCode(params);
   });
@@ -36,7 +36,7 @@ function handle(socket, io) {
   socket.on('updateGameCode', (params, callback = () => {}) => {
     params.callback = callback;
     params.io = io;
-    params.socket = socket;
+
 
     gameCodeManager.updateGameCode(params);
   });
@@ -44,7 +44,7 @@ function handle(socket, io) {
   socket.on('removeGameCode', (params, callback = () => {}) => {
     params.callback = callback;
     params.io = io;
-    params.socket = socket;
+
 
     gameCodeManager.removeGameCode(params);
   });
@@ -52,7 +52,7 @@ function handle(socket, io) {
   socket.on('getGameCode', (params, callback = () => {}) => {
     params.callback = callback;
     params.io = io;
-    params.socket = socket;
+
 
     gameCodeManager.getGameCodeById(params);
   });
@@ -60,7 +60,7 @@ function handle(socket, io) {
   socket.on('getGameCodes', (params, callback = () => {}) => {
     params.callback = callback;
     params.io = io;
-    params.socket = socket;
+
 
     gameCodeManager.getGameCodesByOwner(params);
   });
@@ -68,7 +68,7 @@ function handle(socket, io) {
   socket.on('useGameCode', (params, callback = () => {}) => {
     params.callback = callback;
     params.io = io;
-    params.socket = socket;
+
 
     gameCodeManager.useGameCode(params);
   });

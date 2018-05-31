@@ -39,6 +39,7 @@ describe('Rooms', () => {
     objectType,
     apiPath,
     objectIdType,
+    checkDuplicate: true,
     testData: testData.create,
     schema: roomSchemas.createdRoom,
   });

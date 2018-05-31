@@ -16,7 +16,7 @@
 
 'use strict';
 
-const appConfig = require('../../../config/defaults/config').app;
+const { appConfig } = require('../../../config/defaults/config');
 const tools = require('../helper/tools');
 
 const data = {};
@@ -31,6 +31,10 @@ data.create = {
     username: tools.createRandString({ length: appConfig.usernameMaxLength }),
     password: tools.createRandString({ length: appConfig.passwordMaxLength }),
     registerDevice: tools.createRandString({ length: appConfig.deviceIdLength }),
+  },
+  missing: {
+    username: tools.createRandString({ length: appConfig.usernameMaxLength }),
+    password: tools.createRandString({ length: appConfig.passwordMaxLength }),
   },
 };
 

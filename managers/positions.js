@@ -16,12 +16,82 @@
 
 'use strict';
 
-const dbConfig = require('../config/defaults/config').databasePopulation;
+const { appConfig, dbConfig } = require('../config/defaults/config');
 const authenticator = require('../helpers/authenticator');
-const errorCreator = require('../objects/error/errorCreator');
-const appConfig = require('../config/defaults/config').app;
+const errorCreator = require('../error/errorCreator');
 const dbPosition = require('../db/connectors/position');
 const aliasManager = require('./aliases');
+const mapCreator = require('../utils/mapCreator');
+
+// TODO Should update if the position already exist
+/**
+ * Retrieve and store positions from a Google Maps collaborative map.
+ * @param {Object} params - Parameters.
+ * @param {Function} params.callback - Callback.
+ */
+function getAndStoreGooglePositions({ callback = () => {} }) {
+  if (!appConfig.mapLayersPath) {
+    callback({ error: new errorCreator.InvalidData({ name: 'Map layer is not set' }) });
+
+    return;
+  }
+
+  mapCreator.getGooglePositions({
+    callback: (googleData) => {
+      if (googleData.error) {
+        callback({ error: googleData.error });
+
+        return;
+      }
+
+      dbPosition.removePositionsByOrigin({
+        origin: dbConfig.PositionOrigins.GOOGLE,
+        callback: (removeData) => {
+          if (removeData.error) {
+            callback({ error: removeData.error });
+
+            return;
+          }
+
+          const { positions } = googleData.data;
+          const positionAmount = positions.length;
+          const createdPositions = [];
+          const sendCallback = ({ error, iteration }) => {
+            if (error) {
+              callback({ error });
+
+              return;
+            }
+
+            if (iteration === positionAmount) {
+              callback({ data: { positions: createdPositions } });
+            }
+          };
+          let iteration = 1;
+
+          positions.forEach((position) => {
+            dbPosition.createPosition({
+              position,
+              callback: ({ error, data }) => {
+                if (error) {
+                  callback({ error });
+
+                  return;
+                }
+
+                createdPositions.push(data.position);
+                sendCallback({
+                  error,
+                  iteration: iteration += 1,
+                });
+              },
+            });
+          });
+        },
+      });
+    },
+  });
+}
 
 /**
  * Get position by Id and check if the user has access to it.
@@ -61,7 +131,6 @@ function getAccessiblePosition({
       const filteredPosition = {
         objectId: foundPosition.objectId,
         connectedUser: foundPosition.connectedToUser,
-        deviceId: foundPosition.deviceId,
         coordinatesHistory: foundPosition.coordinatesHistory,
         positionName: foundPosition.positionName,
         positionType: foundPosition.positionType,
@@ -119,21 +188,86 @@ function getPositionById({
 }
 
 /**
+ * Update the position's coordinates.
+ * @param {Object} params - Parameters.
+ * @param {Object} params.io - Socket.io.
+ * @param {Object} params.callback - Callback.
+ * @param {string} params.positionId - Id of the position to update.
+ * @param {string} params.token - jwt.
+ * @param {Object} params.coordinates - New coordinates.
+ */
+function updatePositionCoordinates({
+  io,
+  callback,
+  positionId,
+  token,
+  coordinates,
+}) {
+  authenticator.isUserAllowed({
+    token,
+    commandName: dbConfig.apiCommands.UpdatePosition.name,
+    callback: ({ error, data }) => {
+      if (error) {
+        callback({ error });
+
+        return;
+      }
+
+      const { user } = data;
+
+      getAccessiblePosition({
+        positionId,
+        user,
+        shouldBeAdmin: true,
+        callback: ({ error: positionError }) => {
+          if (positionError) {
+            callback({ error: positionError });
+
+            return;
+          }
+
+          dbPosition.updatePositionCoordinates({
+            positionId,
+            coordinates,
+            callback: (updateData) => {
+              if (updateData.error) {
+                callback({ error: updateData.error });
+
+                return;
+              }
+
+              const dataToSend = {
+                data: {
+                  position: updateData.data.position,
+                },
+                changeType: dbConfig.ChangeTypes.UPDATE,
+              };
+
+              io.emit(dbConfig.EmitTypes.POSITION, dataToSend);
+
+              callback(dataToSend);
+            },
+          });
+        },
+      });
+    },
+  });
+}
+
+/**
  * Update user position. Will create a new one if it doesn't exist.
  * @param {Object} params - Parameters.
  * @param {string} params.positionId - Id of the position to update.
  * @param {Object} params.position - User position to update or create.
  * @param {string} params.token - jwt.
- * @param {Object} params.io - Socket io. Will be used if socket is not set.
+ * @param {Object} params.io - Socket io.
  * @param {Function} params.callback - Callback.
  * @param {Object} [params.options] - Update options.
- * @param {Object} [params.socket] - Socket io.
  */
 function updatePosition({
   positionId,
   position,
   token,
-  socket,
   io,
   callback,
   options,
@@ -180,11 +314,7 @@ function updatePosition({
                 },
               };
 
-              if (socket) {
-                socket.broadcast.emit(dbConfig.EmitTypes.POSITION, dataToSend);
-              } else {
-                io.emit(dbConfig.EmitTypes.POSITION, dataToSend);
-              }
+              io.emit(dbConfig.EmitTypes.POSITION, dataToSend);
 
               callback(dataToSend);
             },
@@ -200,14 +330,12 @@ function updatePosition({
  * @param {Object} params - Parameters.
  * @param {Object} params.position - Position to create.
  * @param {string} params.token - jwt.
- * @param {Object} params.io - Socket.io. Will be used if socket is not set.
+ * @param {Object} params.io - Socket.io.
  * @param {Function} params.callback - Callback.
- * @param {Object} [params.socket] - Socket.io.
  */
 function createPosition({
   position,
   token,
-  socket,
   io,
   callback,
 }) {
@@ -219,7 +347,11 @@ function createPosition({
         callback({ error });
 
         return;
-      } else if ((position.positionName && position.positionName.length > appConfig.positionNameMaxLength) || (position.description && position.description.join('').length > appConfig.docFileMaxLength)) {
+      } else if (!position.coordinates || !position.coordinates.latitude || !position.coordinates.longitude) {
+        callback({ error: new errorCreator.InvalidData({ name: 'latitude && longitude' }) });
+
+        return;
+      } else if ((position.positionName && (position.positionName.length > appConfig.positionNameMaxLength || position.positionName.length <= 0)) || (position.description && position.description.join('').length > appConfig.docFileMaxLength)) {
         callback({ error: new errorCreator.InvalidCharacters({ expected: `text length: ${appConfig.docFileMaxLength}, title length: ${appConfig.positionNameMaxLength}` }) });
 
         return;
@@ -232,17 +364,7 @@ function createPosition({
       const { user } = data;
       const newPosition = position;
       newPosition.ownerId = user.objectId;
-
-      if (!newPosition.coordinates) {
-        newPosition.coordinates = {
-          latitude: 0,
-          longitude: 0,
-          speed: 0,
-          heading: 0,
-          radius: 0,
-          accuracy: appConfig.minimumPositionAccuracy,
-        };
-      }
+      newPosition.coordinates.accuracy = newPosition.coordinates.accuracy || appConfig.minimumPositionAccuracy;
 
       const savePosition = () => {
         dbPosition.createPosition({
@@ -276,11 +398,7 @@ function createPosition({
               dataToSend.data.position.ownerAliasId = undefined;
             }
 
-            if (socket) {
-              socket.broadcast.emit('position', dataToSend);
-            } else {
-              io.emit('position', dataToSend);
-            }
+            io.emit(dbConfig.EmitTypes.POSITION, dataToSend);
 
             callback(dataToReturn);
           },
@@ -320,9 +438,9 @@ function createPosition({
 function getPositions({
   token,
   callback,
+  positionTypes,
   full = false,
   lite = true,
-  positionTypes = [dbConfig.PositionTypes.WORLD],
 }) {
   authenticator.isUserAllowed({
     token,
@@ -352,16 +470,13 @@ function getPositions({
  * @param {Object} params - Parameters.
  * @param {string} params.positionId - ID of the position to remove.
  * @param {string} params.token - jwt.
- * @param {string} params.userId - ID of the user removing the file
  * @param {Function} params.callback - Callback
- * @param {Object} params.io - Socket io. Will be used if socket is not set.
- * @param {Object} [params.socket] - Socket io.
+ * @param {Object} params.io - Socket io.
  */
 function removePosition({
   positionId,
   token,
   callback,
-  socket,
   io,
 }) {
   authenticator.isUserAllowed({
@@ -402,11 +517,7 @@ function removePosition({
                 },
               };
 
-              if (socket) {
-                socket.broadcast.emit(dbConfig.EmitTypes.POSITION, dataToSend);
-              } else {
-                io.emit(dbConfig.EmitTypes.POSITION, dataToSend);
-              }
+              io.emit(dbConfig.EmitTypes.POSITION, dataToSend);
 
               callback(dataToSend);
             },
@@ -423,3 +534,5 @@ exports.getPositions = getPositions;
 exports.createPosition = createPosition;
 exports.removePosition = removePosition;
 exports.getPositionById = getPositionById;
+exports.getAndStoreGooglePositions = getAndStoreGooglePositions;
+exports.updatePositionCoordinates = updatePositionCoordinates;

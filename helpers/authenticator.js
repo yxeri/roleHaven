@@ -1,8 +1,7 @@
 const dbUser = require('../db/connectors/user');
 const jwt = require('jsonwebtoken');
-const appConfig = require('../config/defaults/config').app;
-const errorCreator = require('../objects/error/errorCreator');
-const dbConfig = require('../config/defaults/config').databasePopulation;
+const errorCreator = require('../error/errorCreator');
+const { appConfig, dbConfig } = require('../config/defaults/config');
 
 /**
  * Create json web token. The user can be found by either the username or userId.
@@ -10,7 +9,7 @@ const dbConfig = require('../config/defaults/config').databasePopulation;
  * @param {string} params.password - Password of user to auth.
  * @param {Function} params.callback - Callback.
  * @param {string} [params.userId] - Id of user to auth.
- * @param {string} params.username] - Name of user to auth.
+ * @param {string} [params.username] - Name of user to auth.
  */
 function createToken({
   username,
@@ -24,11 +23,15 @@ function createToken({
     return;
   }
 
+  console.log(username, password);
+
   dbUser.authUser({
     userId,
     username,
     password,
     callback: ({ error, data }) => {
+      console.log('auth', error, data);
+
       if (error) {
         callback({ error });
 
@@ -40,13 +43,14 @@ function createToken({
       const jwtUser = { userId: user.objectId };
 
       jwt.sign({ data: jwtUser }, appConfig.jsonKey, (err, token) => {
+        console.log('token', err, token);
         if (err) {
           callback({ error: new errorCreator.Internal({ name: 'jwt', errorObject: err }) });
 
           return;
         }
 
-        callback({ data: { token } });
+        callback({ data: { token, user } });
       });
     },
   });
@@ -71,9 +75,7 @@ function isUserAllowed({
     callback({ error: new errorCreator.DoesNotExist({ name: commandName }) });
 
     return;
-  }
-
-  if (!token) {
+  } else if (!token) {
     if (commandUsed.accessLevel > anonUser.accessLevel) {
       callback({ error: new errorCreator.NotAllowed({ name: commandName, verbose: false }) });
 
@@ -150,6 +152,7 @@ function hasAccessTo({
     teamAdminIds,
     ownerId,
     isPublic,
+    visibility,
   } = objectToAccess;
   const {
     hasFullAccess,
@@ -165,8 +168,9 @@ function hasAccessTo({
 
   const userHasAccess = userIds.concat([ownerId]).includes(authUserId);
   const teamHasAccess = teamIds.find(teamId => authTeamIds.includes(teamId));
+  const canSee = accessLevel >= visibility;
 
-  return isPublic || userHasAccess || teamHasAccess;
+  return isPublic || canSee || userHasAccess || teamHasAccess;
 }
 
 exports.isUserAllowed = isUserAllowed;

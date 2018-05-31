@@ -17,7 +17,7 @@
 'use strict';
 
 const mongoose = require('mongoose');
-const errorCreator = require('../../objects/error/errorCreator');
+const errorCreator = require('../../error/errorCreator');
 const dbConnector = require('../databaseConnector');
 const dbUser = require('./user');
 
@@ -27,16 +27,17 @@ const teamSchema = new mongoose.Schema(dbConnector.createSchema({
   isVerified: { type: Boolean, default: false },
   isProtected: { type: Boolean, default: false },
   members: { type: [String], default: [] },
+  picture: dbConnector.pictureSchema,
 }), { collection: 'teams' });
 
 const Team = mongoose.model('Team', teamSchema);
 
-const teamFilter = {
+const teamFilter = dbConnector.createFilter({
   teamName: 1,
   shortName: 1,
-  lastUpdated: 1,
   members: 1,
-};
+  picture: 1,
+});
 
 /**
  * Update team
@@ -113,7 +114,7 @@ function getTeam({ query, callback }) {
 
         return;
       } else if (!data.object) {
-        callback({ error: new errorCreator.DoesNotExist({ name: `team ${query.toString()}` }) });
+        callback({ error: new errorCreator.DoesNotExist({ name: `team ${JSON.stringify(query, null, 4)}` }) });
 
         return;
       }

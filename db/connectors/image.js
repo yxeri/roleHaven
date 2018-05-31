@@ -17,7 +17,7 @@
 'use strict';
 
 const mongoose = require('mongoose');
-const errorCreator = require('../../objects/error/errorCreator');
+const errorCreator = require('../../error/errorCreator');
 const dbConnector = require('../databaseConnector');
 
 const imageSchema = new mongoose.Schema(dbConnector.createSchema({
@@ -141,7 +141,7 @@ function getImage({ query, callback }) {
 
         return;
       } else if (!data.object) {
-        callback({ error: new errorCreator.DoesNotExist({ name: `image ${query.toString()}` }) });
+        callback({ error: new errorCreator.DoesNotExist({ name: `image ${JSON.stringify(query, null, 4)}` }) });
 
         return;
       }

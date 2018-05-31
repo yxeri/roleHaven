@@ -20,7 +20,7 @@ const express = require('express');
 const roomManager = require('../../managers/rooms');
 const objectValidator = require('../../utils/objectValidator');
 const restErrorChecker = require('../../helpers/restErrorChecker');
-const errorCreator = require('../../objects/error/errorCreator');
+const errorCreator = require('../../error/errorCreator');
 const helper = require('./helper');
 
 const router = new express.Router();
@@ -148,8 +148,10 @@ function handle(io) {
    * @apiSuccess {Room} data.room Created room.
    */
   router.post('/', (request, response) => {
+    const sentData = request.body.data;
+
     if (!objectValidator.isValidData(request.body, { data: { room: true } })) {
-      restErrorChecker.checkAndSendError({ response, error: new errorCreator.InvalidData({ expected: 'data = { room }' }), sentData: request.body.data });
+      restErrorChecker.checkAndSendError({ response, error: new errorCreator.InvalidData({ expected: 'data = { room }' }), sentData });
 
       return;
     }
@@ -165,7 +167,9 @@ function handle(io) {
       options,
       callback: ({ error, data }) => {
         if (error) {
-          restErrorChecker.checkAndSendError({ response, error, sentData: request.body.data });
+          sentData.room.password = typeof sentData.password !== 'undefined';
+
+          restErrorChecker.checkAndSendError({ response, error, sentData });
 
           return;
         }

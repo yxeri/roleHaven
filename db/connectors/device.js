@@ -17,8 +17,8 @@
 'use strict';
 
 const mongoose = require('mongoose');
-const errorCreator = require('../../objects/error/errorCreator');
-const dbConfig = require('../../config/defaults/config').databasePopulation;
+const errorCreator = require('../../error/errorCreator');
+const { dbConfig } = require('../../config/defaults/config');
 const dbConnector = require('../databaseConnector');
 
 const deviceSchema = new mongoose.Schema(dbConnector.createSchema({
@@ -31,12 +31,11 @@ const deviceSchema = new mongoose.Schema(dbConnector.createSchema({
 
 const Device = mongoose.model('Device', deviceSchema);
 
-const deviceFilter = {
+const deviceFilter = dbConnector.createFilter({
   deviceName: 1,
-  lastUpdated: 1,
   deviceType: 1,
   connectedToUser: 1,
-};
+});
 
 /**
  * Update device object.
@@ -119,7 +118,7 @@ function getDevice({ query, callback }) {
 
         return;
       } else if (!data.object) {
-        callback({ error: new errorCreator.DoesNotExist({ name: `device ${query.toString()}` }) });
+        callback({ error: new errorCreator.DoesNotExist({ name: `device ${JSON.stringify(query, null, 4)}` }) });
 
         return;
       }
@@ -179,6 +178,10 @@ function createDevice({ device, callback }) {
     },
   });
 }
+
+// function updateUserDevice({ deviceId, device, callback }) {
+//
+// }
 
 /**
  * Update device properties. Creates a new device if one doesn't exist with sent deviceId.

@@ -16,7 +16,7 @@
 
 'use strict';
 
-const { defaultLanguage } = require('./../config/defaults/config').app;
+const { defaultLanguage } = require('./../config/defaults/config').appConfig;
 
 /**
  * Appends property name with the set default language in the configuration

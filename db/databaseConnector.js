@@ -17,15 +17,15 @@
 'use strict';
 
 const mongoose = require('mongoose');
-const appConfig = require('../config/defaults/config').app;
-const dbConfig = require('../config/defaults/config').databasePopulation;
-const errorCreator = require('../objects/error/errorCreator');
+const { appConfig, dbConfig } = require('../config/defaults/config');
+const errorCreator = require('../error/errorCreator');
 
 const dbPath = `mongodb://${appConfig.dbHost}:${appConfig.dbPort}/${appConfig.dbName}`;
 
 const baseSchema = {
   ownerId: String,
   ownerAliasId: String,
+  teamId: String,
   lastUpdated: Date,
   timeCreated: Date,
   customLastUpdated: Date,
@@ -37,7 +37,13 @@ const baseSchema = {
   userIds: { type: [String], default: [] },
   teamIds: { type: [String], default: [] },
   bannedIds: { type: [String], default: [] },
-  isPublic: { type: Boolean, default: true },
+  isPublic: { type: Boolean, default: false },
+};
+
+const pictureSchema = {
+  url: String,
+  height: Number,
+  width: Number,
 };
 
 const coordinatesSchema = {
@@ -46,6 +52,30 @@ const coordinatesSchema = {
   speed: Number,
   accuracy: Number,
   heading: Number,
+  timeCreated: Date,
+  customTimeCreated: Date,
+  altitude: Number,
+  altitudeAccuracy: Number,
+  extraCoordinates: {
+    type: [{
+      longitude: Number,
+      latitude: Number,
+    }],
+    default: undefined,
+  },
+};
+
+const baseFilter = {
+  isPublic: 1,
+  ownerId: 1,
+  ownerAliasId: 1,
+  teamId: 1,
+  lastUpdated: 1,
+  timeCreated: 1,
+  customLastUpdated: 1,
+  customTimeCreated: 1,
+  visibility: 1,
+  accessLevel: 1,
 };
 
 mongoose.connect(dbPath, {}, (err) => {
@@ -57,6 +87,21 @@ mongoose.connect(dbPath, {}, (err) => {
 
   console.info('Connection established to database');
 });
+
+/**
+ * Create database result filter.
+ * @param {Object} filter - Parameters to filter.
+ * @return {Object} Filter.
+ */
+function createFilter(filter) {
+  const fullFilter = filter;
+
+  Object.keys(baseFilter).forEach((filterKey) => {
+    fullFilter[filterKey] = baseFilter[filterKey];
+  });
+
+  return fullFilter;
+}
 
 /**
  * Create and return full schema.
@@ -314,30 +359,35 @@ function getObjects({
  * @param {Object} params.object - Object to call and get.
  * @param {string} params.query - Database query.
  * @param {string} [params.errorNameContent] - Content that will be sent with error.
+ * @param {Object} [params.options] - Database call options.
  */
 function updateObject({
   object,
   update,
   callback,
   query,
+  options = {},
   errorNameContent = 'updateObject',
 }) {
-  const options = { new: true };
   const toUpdate = {
     $set: update.$set || {},
   };
+  const updateOptions = options;
 
   toUpdate.$set.lastUpdated = new Date();
+  updateOptions.new = true;
 
   if (update.$unset && Object.keys(update.$unset).length > 0) { toUpdate.$unset = update.$unset; }
+  if (update.$push) { toUpdate.$push = update.$push; }
+  if (update.$pull) { toUpdate.$pull = update.$pull; }
 
-  object.findOneAndUpdate(query, toUpdate, options).lean().exec((err, foundObject) => {
+  object.findOneAndUpdate(query, toUpdate, updateOptions).lean().exec((err, foundObject) => {
     if (err) {
       callback({ error: new errorCreator.Database({ errorObject: err, name: errorNameContent }) });
 
       return;
     } else if (!foundObject) {
-      callback({ error: new errorCreator.DoesNotExist({ name: `${object.toString()} update` }) });
+      callback({ error: new errorCreator.DoesNotExist({ name: `update ${JSON.stringify(query, null, 4)}` }) });
 
       return;
     }
@@ -436,14 +486,14 @@ function removeObjects({
   query,
   callback,
 }) {
-  object.deleteMany(query).lean().exec((err) => {
+  object.deleteMany(query).lean().exec((err, data) => {
     if (err) {
       callback({ error: new errorCreator.Database({ errorObject: err, name: 'removeObjects' }) });
 
       return;
     }
 
-    callback({ data: { success: true } });
+    callback({ data: { success: true, amount: data.n } });
   });
 }
 
@@ -567,6 +617,7 @@ function createUserQuery({ user }) {
 }
 
 exports.coordinatesSchema = coordinatesSchema;
+exports.pictureSchema = pictureSchema;
 
 exports.saveObject = saveObject;
 exports.verifyObject = verifyObject;
@@ -583,3 +634,4 @@ exports.addObjectAccess = addObjectAccess;
 exports.doesObjectExist = doesObjectExist;
 exports.updateObjects = updateObjects;
 exports.createUserQuery = createUserQuery;
+exports.createFilter = createFilter;

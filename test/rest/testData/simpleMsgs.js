@@ -17,7 +17,7 @@
 'use strict';
 
 const tools = require('../helper/tools');
-const appConfig = require('../../../config/defaults/config').app;
+const { appConfig } = require('../../../config/defaults/config');
 
 const data = {};
 
@@ -26,6 +26,9 @@ data.create = {
     text: tools.createRandString({ length: appConfig.messageMaxLength }),
   },
   second: {
+    text: tools.createRandString({ length: appConfig.messageMaxLength }),
+  },
+  missing: {
     text: tools.createRandString({ length: appConfig.messageMaxLength }),
   },
 };

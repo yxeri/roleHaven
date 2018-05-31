@@ -22,14 +22,17 @@ const path = require('path');
 const bodyParser = require('body-parser');
 const morgan = require('morgan');
 const compression = require('compression');
-const appConfig = require('./config/defaults/config').app;
-const dbConfig = require('./config/defaults/config').databasePopulation;
+const { dbConfig, appConfig } = require('./config/defaults/config');
 const dbRoom = require('./db/connectors/room');
+const positionManager = require('./managers/positions');
+const { version: appVersion, name: appName } = require('./package');
 
 const app = express();
+const io = socketIo();
 
-// noinspection JSCheckFunctionSignatures
-app.io = socketIo();
+console.log(`Running version ${appVersion} of ${appName}.`);
+
+app.io = io;
 
 app.disable('x-powered-by');
 
@@ -39,7 +42,6 @@ app.set('view engine', 'html');
 // eslint-disable-next-line no-underscore-dangle, import/newline-after-import
 app.engine('html', require('hbs').__express);
 app.use(bodyParser.json());
-// noinspection JSCheckFunctionSignatures
 app.use(compression());
 // Logging
 app.use(morgan(appConfig.logLevel));
@@ -52,12 +54,30 @@ appConfig.routes.forEach((route) => {
   app.use(route.sitePath, require(path.resolve(route.filePath))(app.io));
 });
 
+if (!appConfig.jsonKey) {
+  console.log('WARNING! JSONKEY is not set in the config. User authentication will not work.');
+}
+
 if (appConfig.mode !== appConfig.Modes.TEST) {
   dbRoom.populateDbRooms({ rooms: dbConfig.rooms });
 }
 
+if (!appConfig.bypassExternalConnections) {
+  positionManager.getAndStoreGooglePositions({
+    callback: ({ error, data }) => {
+      if (error) {
+        console.log('Failed to retrieve Google Maps positions');
+
+        return;
+      }
+
+      console.log(`Retrieved and saved ${data.positions.length + 1} positions from Google Maps`);
+    },
+  });
+}
+
 /*
- * Catches all exceptions and keeps the server running
+ * Catches all exceptions.
  */
 process.on('uncaughtException', (err) => {
   console.error('Caught exception', err);

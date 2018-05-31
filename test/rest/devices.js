@@ -39,6 +39,7 @@ describe('Devices', () => {
     objectType,
     objectIdType,
     apiPath,
+    checkDuplicate: true,
     testData: testData.create,
     schema: deviceSchemas.device,
   });

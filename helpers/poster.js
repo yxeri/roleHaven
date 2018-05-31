@@ -16,9 +16,9 @@
 
 'use strict';
 
-const appConfig = require('../config/defaults/config').app;
+const { appConfig } = require('../config/defaults/config');
 const http = require('http');
-const errorCreator = require('../objects/error/errorCreator');
+const errorCreator = require('../error/errorCreator');
 
 /**
  * Post request to external server

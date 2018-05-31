@@ -16,7 +16,7 @@
 
 'use strict';
 
-const appConfig = require('../config/defaults/config').app;
+const { appConfig } = require('../config/defaults/config');
 
 /**
  * Checks if the sent object has the expected structure. It will returns false if it doesn't

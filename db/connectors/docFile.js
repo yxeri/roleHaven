@@ -17,26 +17,24 @@
 'use strict';
 
 const mongoose = require('mongoose');
-const errorCreator = require('../../objects/error/errorCreator');
+const errorCreator = require('../../error/errorCreator');
 const dbConnector = require('../databaseConnector');
 
 const docFileSchema = new mongoose.Schema(dbConnector.createSchema({
   code: { type: String, unique: true },
   title: { type: String, unique: true },
   text: [String],
+  pictures: [dbConnector.pictureSchema],
 }), { collection: 'docFiles' });
 
 const DocFile = mongoose.model('DocFile', docFileSchema);
 
-const docFileFilter = {
+const docFileFilter = dbConnector.createFilter({
   title: 1,
-  lastUpdated: 1,
-  ownerId: 1,
-  ownerAliasId: 1,
   text: 1,
-  customTimeCreated: 1,
-  customLastUpdated: 1,
-};
+  code: 1,
+  pictures: 1,
+});
 
 /**
  * Update doc file.
@@ -70,10 +68,13 @@ function updateObject({ docFileId, update, callback }) {
  * @param {Object} params - Parameters.
  * @param {Function} params.callback - Callback.
  * @param {Object} [params.query] - Query to get doc files.
+ * @param {Object} [params.filter] - Result filter.
  */
-function getDocFiles({ query, callback }) {
-  const filter = {};
-
+function getDocFiles({
+  query,
+  callback,
+  filter,
+}) {
   dbConnector.getObjects({
     query,
     filter,
@@ -113,7 +114,7 @@ function getDocFile({
 
         return;
       } else if (!data.object) {
-        callback({ error: new errorCreator.DoesNotExist({ name: `docFile ${query.toString()}` }) });
+        callback({ error: new errorCreator.DoesNotExist({ name: `docFile ${JSON.stringify(query, null, 4)}` }) });
 
         return;
       }

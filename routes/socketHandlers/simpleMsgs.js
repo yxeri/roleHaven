@@ -25,10 +25,10 @@ const simpleMsgManager = require('../../managers/simpleMsgs');
  * @param {object} io - Socket.Io.
  */
 function handle(socket, io) {
-  socket.on('createSimpleMsg', (params, callback = () => {}) => {
+  socket.on('sendSimpleMsg', (params, callback = () => {}) => {
     params.callback = callback;
     params.io = io;
-    params.socket = socket;
+
 
     simpleMsgManager.sendSimpleMsg(params);
   });
@@ -36,7 +36,7 @@ function handle(socket, io) {
   socket.on('updateSimpleMsg', (params, callback = () => {}) => {
     params.callback = callback;
     params.io = io;
-    params.socket = socket;
+
 
     simpleMsgManager.updateSimpleMsg(params);
   });
@@ -44,7 +44,7 @@ function handle(socket, io) {
   socket.on('removeSimpleMsg', (params, callback = () => {}) => {
     params.callback = callback;
     params.io = io;
-    params.socket = socket;
+
 
     simpleMsgManager.removeSimpleMsg(params);
   });
@@ -52,7 +52,7 @@ function handle(socket, io) {
   socket.on('getSimpleMsg', (params, callback = () => {}) => {
     params.callback = callback;
     params.io = io;
-    params.socket = socket;
+
 
     simpleMsgManager.getSimpleMsgById(params);
   });
@@ -60,7 +60,7 @@ function handle(socket, io) {
   socket.on('getSimpleMsgs', (params, callback = () => {}) => {
     params.callback = callback;
     params.io = io;
-    params.socket = socket;
+
 
     simpleMsgManager.getSimpleMsgsByUser(params);
   });

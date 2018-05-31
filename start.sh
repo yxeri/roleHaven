@@ -20,7 +20,7 @@ for file in ./private/scripts/*
 do
   ./node_modules/browserify/bin/cmd.js "$file" -t [ babelify --presets [ es2015 ] --compact='false' ] -o ./public/scripts/$(basename "$file")
 
-    if (($serverMode != "dev")); then
+    if [ "$serverMode" == "dev" ]; then
       # Minifies transpiled code
       ./node_modules/uglify-js/bin/uglifyjs --compress --mangle --output ./public/scripts/$(basename "$file") -- ./public/scripts/$(basename "$file")
     fi

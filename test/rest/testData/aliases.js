@@ -17,7 +17,7 @@
 'use strict';
 
 const tools = require('../helper/tools');
-const appConfig = require('../../../config/defaults/config').app;
+const { appConfig } = require('../../../config/defaults/config');
 
 const data = {};
 
@@ -27,7 +27,9 @@ data.create = {
   },
   second: {
     aliasName: tools.createRandString({ length: appConfig.usernameMaxLength }),
-    isIdentity: true,
+  },
+  missing: {
+    aliasName: tools.createRandString({ length: appConfig.usernameMaxLength }),
   },
 };
 

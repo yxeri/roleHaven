@@ -39,6 +39,7 @@ describe('GameCodes', () => {
     objectType,
     apiPath,
     objectIdType,
+    checkDuplicate: true,
     testData: testData.create,
     schema: gameCodeSchemas.gameCode,
   });

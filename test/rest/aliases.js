@@ -38,6 +38,7 @@ describe('Aliases', () => {
   testBuilder.createTestCreate({
     objectType,
     apiPath,
+    checkDuplicate: true,
     testData: testData.create,
     schema: aliasSchemas.alias,
   });

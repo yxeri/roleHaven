@@ -17,8 +17,8 @@
 'use strict';
 
 const dbForum = require('../db/connectors/forum');
-const dbConfig = require('../config/defaults/config').databasePopulation;
-const errorCreator = require('../objects/error/errorCreator');
+const { dbConfig } = require('../config/defaults/config');
+const errorCreator = require('../error/errorCreator');
 const authenticator = require('../helpers/authenticator');
 const aliasManager = require('./aliases');
 
@@ -86,15 +86,13 @@ function getAccessibleForum({
  * @param {Object} params.forum - Forum to create.
  * @param {Object} params.callback - Callback.
  * @param {Object} params.token - jwt.
- * @param {Object} params.io - Socket.io. Will be used if socket is not set.
- * @param {Object} [params.socket] - Socket.io.
+ * @param {Object} params.io - Socket.io.
  */
 function createForum({
   forum,
   callback,
   token,
   io,
-  socket,
 }) {
   authenticator.isUserAllowed({
     token,
@@ -129,11 +127,7 @@ function createForum({
               },
             };
 
-            if (socket) {
-              socket.broadcast.emit(dbConfig.EmitTypes.FORUM, dataToSend);
-            } else {
-              io.emit(dbConfig.EmitTypes.FORUM, dataToSend);
-            }
+            io.emit(dbConfig.EmitTypes.FORUM, dataToSend);
 
             callback(dataToSend);
           },
@@ -191,8 +185,7 @@ function getAllForums({ callback, token }) {
  * @param {Object} params.forum - Forum.
  * @parm {Object} params.options - Options.
  * @param {Function} params.callback - Callback.
- * @param {Object} params.io - Socket io. Will be used if socket is not set.
- * @param {Object} [params.socket] - Socket.io.
+ * @param {Object} params.io - Socket io.
  */
 function updateForum({
   token,
@@ -200,7 +193,6 @@ function updateForum({
   forumId,
   options,
   callback,
-  socket,
   io,
 }) {
   authenticator.isUserAllowed({
@@ -243,11 +235,7 @@ function updateForum({
                 },
               };
 
-              if (socket) {
-                socket.broadcast.emit(dbConfig.EmitTypes.FORUM, dataToSend);
-              } else {
-                io.emit(dbConfig.EmitTypes.FORUM, dataToSend);
-              }
+              io.emit(dbConfig.EmitTypes.FORUM, dataToSend);
 
               callback(dataToSend);
             },
@@ -263,15 +251,13 @@ function updateForum({
  * @param {Object} params - Parameters.
  * @param {string} params.token - jwt.
  * @param {string} params.forumId - Id of the forum.
- * @param {Object} params.io - Socket io. Will be used if socket is not set.
+ * @param {Object} params.io - Socket io.
  * @param {Function} params.callback - Callback.
- * @param {Object} [params.socket] - Socket.io.
  */
 function removeForum({
   token,
   forumId,
   callback,
-  socket,
   io,
 }) {
   authenticator.isUserAllowed({
@@ -315,11 +301,7 @@ function removeForum({
                 },
               };
 
-              if (socket) {
-                socket.broadcast.emit(dbConfig.EmitTypes.FORUM, dataToSend);
-              } else {
-                io.emit(dbConfig.EmitTypes.FORUM, dataToSend);
-              }
+              io.emit(dbConfig.EmitTypes.FORUM, dataToSend);
 
               callback(dataToSend);
             },
