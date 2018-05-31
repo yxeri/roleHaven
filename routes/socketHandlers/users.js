@@ -29,14 +29,12 @@ function handle(socket, io) {
     params.callback = callback;
     params.io = io;
 
-
     userManager.createUser(params);
   });
 
   socket.on('updateUser', (params, callback = () => {}) => {
     params.callback = callback;
     params.io = io;
-
 
     userManager.updateUser(params);
   });
@@ -45,14 +43,12 @@ function handle(socket, io) {
     params.callback = callback;
     params.io = io;
 
-
     userManager.removeUser(params);
   });
 
   socket.on('getUser', (params, callback = () => {}) => {
     params.callback = callback;
     params.io = io;
-
 
     userManager.getUserById(params);
   });
@@ -61,14 +57,13 @@ function handle(socket, io) {
     params.callback = callback;
     params.io = io;
 
-
     userManager.getUsersByUser(params);
   });
 
   socket.on('updateId', (params, callback = () => {}) => {
     params.callback = callback;
     params.io = io;
-
+    params.socket = socket;
 
     userManager.updateId(params);
   });

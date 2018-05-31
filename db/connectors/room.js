@@ -30,6 +30,7 @@ const roomSchema = new mongoose.Schema(dbConnector.createSchema({
   isWhisper: { type: Boolean, default: false },
   followers: { type: [String], default: [] },
   isSystemRoom: { type: Boolean, default: false },
+  isUser: { type: Boolean, default: false },
 }), { collection: 'rooms' });
 
 const Room = mongoose.model('Room', roomSchema);
@@ -40,6 +41,7 @@ const roomFilter = dbConnector.createFilter({
   followers: 1,
   isWhisper: 1,
   participantIds: 1,
+  isUser: 1,
 });
 
 /**

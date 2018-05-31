@@ -23,9 +23,7 @@ const errorCreator = require('../error/errorCreator');
 const textTools = require('../utils/textTools');
 const authenticator = require('../helpers/authenticator');
 const roomManager = require('./rooms');
-// const deviceManager = require('../managers/devices');
 const dbRoom = require('../db/connectors/room');
-// const dbDevice = require('../db/connectors/device');
 const socketUtils = require('../utils/socketIo');
 const dbForum = require('../db/connectors/forum');
 
@@ -229,10 +227,11 @@ function createUser({
           dbRoom.createRoom({
             room: {
               ownerId: createdUser.objectId,
-              roomName: createdUser.objectId,
+              roomName: createdUser.username,
               objectId: createdUser.objectId,
-              visibility: dbConfig.AccessLevels.SUPERUSER,
+              visibility: dbConfig.AccessLevels.STANDARD,
               accessLevel: dbConfig.AccessLevels.SUPERUSER,
+              isUser: true,
             },
             options: {
               setId: true,
@@ -290,8 +289,15 @@ function createUser({
                           changeType: dbConfig.ChangeTypes.CREATE,
                         },
                       };
+                      const roomDataToSend = {
+                        data: {
+                          room: roomData.room,
+                          changeType: dbConfig.ChangeTypes.CREATE,
+                        },
+                      };
 
                       io.emit(dbConfig.EmitTypes.USER, dataToSend);
+                      io.emit(dbConfig.EmitTypes.ROOM, roomDataToSend);
 
                       callback({
                         data: {
@@ -535,7 +541,6 @@ function login({
  * @param {Function} params.callback - Callback.
  */
 function logout({
-  // device,
   token,
   socket,
   callback,
@@ -561,11 +566,6 @@ function logout({
 
             return;
           }
-
-          // const deviceToUpdate = device;
-          // deviceToUpdate.lastUserId = userId;
-          // deviceToUpdate.socketId = '';
-          // Update device
 
           roomManager.leaveSocketRooms(socket);
 
@@ -796,6 +796,8 @@ function updateUser({
 
             return;
           }
+
+          // TODO Update whisper room with new user name (if updated)
 
           dbUser.updateUser({
             user,
