@@ -46,7 +46,8 @@ function getAccessedFile({ user, docFile }) {
 }
 
 /**
- *
+ * Returns either filtered or complete files, depending if the user or the user's teams has access to it.
+ * @return {{Object, Object}} docFiles and isLocked.
  */
 function separateLockedFiles({ user, docFiles }) {
   const lockedDocFiles = [];
@@ -61,8 +62,6 @@ function separateLockedFiles({ user, docFiles }) {
 
     return false;
   });
-
-  console.log('locked', lockedDocFiles, 'unlocked', unlockedDocFiles);
 
   return { unlockedDocFiles, lockedDocFiles };
 }
@@ -81,7 +80,6 @@ function getAccessibleDocFile({
   docFileId,
   callback,
   shouldBeAdmin,
-  full,
   errorContentText = `docFileId ${docFileId}`,
 }) {
   dbDocFile.getDocFileById({
@@ -102,22 +100,9 @@ function getAccessibleDocFile({
         return;
       }
 
-      const foundDocFile = docFileData.data.docFile;
-      const filteredDocFile = {
-        objectId: foundDocFile.objectId,
-        title: foundDocFile.title,
-        ownerId: foundDocFile.ownerId,
-        ownerAliasId: foundDocFile.ownerAliasId,
-        lastUpdated: foundDocFile.lastUpdated,
-        timeCreated: foundDocFile.timeCreated,
-        customLastUpdated: foundDocFile.customLastUpdated,
-        customTimeCreated: foundDocFile.customTimeCreated,
-        text: foundDocFile.text,
-      };
-
       callback({
         data: {
-          docFile: full ? foundDocFile : filteredDocFile,
+          docFile: docFileData.data.docFile,
         },
       });
     },
@@ -494,7 +479,13 @@ function getDocFileById({
             return;
           }
 
-          callback({ data: { docFile: getAccessedFile({ user, docFile: docFileData.docFile }) } });
+          const { docFile } = docFileData;
+
+          if (!full) {
+            callback({ data: { docFile: getAccessedFile({ user, docFile }).docFile } });
+          } else {
+            callback({ data: { docFile } });
+          }
         },
       });
     },
@@ -597,9 +588,15 @@ function getDocFilesByUser({
             return;
           }
 
-          const { lockedDocFiles, unlockedDocFiles } = separateLockedFiles({ user, docFiles: docFilesData.docFiles });
+          const { docFiles } = docFilesData;
 
-          callback({ data: { docFiles: lockedDocFiles.concat(unlockedDocFiles) } });
+          if (!full) {
+            const { lockedDocFiles, unlockedDocFiles } = separateLockedFiles({ user, docFiles });
+
+            callback({ data: { docFiles: lockedDocFiles.concat(unlockedDocFiles) } });
+          } else {
+            callback({ data: { docFiles } });
+          }
         },
       });
     },
