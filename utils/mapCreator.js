@@ -117,6 +117,7 @@ function createPosition({ position, layerName }) {
     coordinates,
     geometry,
     positionStructure,
+    accessLevel: appConfig.importedPositionMinAccessLevel,
     origin: dbConfig.PositionOrigins.GOOGLE,
     positionName: typeof position.name === 'string' ? position.name : 'Unnamed position',
     isStationary: true,
