@@ -447,7 +447,7 @@ function sendChatMsg({
         callback({ error: new errorCreator.InvalidData({ expected: '{ message: { text }, io }' }) });
 
         return;
-      } else if (message.text.join('').length > appConfig.messageMaxLength) {
+      } else if (message.text.join('').length > appConfig.messageMaxLength || message.text.join('').length === 0) {
         callback({ error: new errorCreator.InvalidCharacters({ expected: `text length ${appConfig.messageMaxLength}` }) });
 
         return;
@@ -537,7 +537,7 @@ function sendWhisperMsg({
         callback({ error: new errorCreator.InvalidData({ expected: '{ message: { text }, io }' }) });
 
         return;
-      } else if (message.text.join('').length > appConfig.messageMaxLength) {
+      } else if (message.text.join('').length > appConfig.messageMaxLength || message.text.join('').length === 0) {
         callback({ error: new errorCreator.InvalidCharacters({ expected: `text length ${appConfig.messageMaxLength}` }) });
 
         return;

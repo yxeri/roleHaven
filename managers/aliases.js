@@ -98,12 +98,12 @@ function createAlias({
         callback({ error });
 
         return;
-      } else if (alias.aliasName.length > appConfig.usernameMaxLength) {
-        callback({ error: new errorCreator.InvalidCharacters({ name: `Username length: ${appConfig.usernameMaxLength}` }) });
+      } else if (alias.aliasName.length > appConfig.usernameMaxLength || alias.aliasName.length < appConfig.usernameMinLength) {
+        callback({ error: new errorCreator.InvalidCharacters({ name: `Alias length: ${appConfig.usernameMinLength}-${appConfig.usernameMaxLength}` }) });
 
         return;
       } else if (!textTools.hasAllowedText(alias.aliasName)) {
-        callback({ error: new errorCreator.InvalidCharacters({ name: 'alias name', expected: 'a-z 0-9' }) });
+        callback({ error: new errorCreator.InvalidCharacters({ name: 'Alias', expected: 'a-z 0-9' }) });
 
         return;
       }
