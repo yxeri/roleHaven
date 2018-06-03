@@ -470,6 +470,7 @@ function sendChatMsg({
 
           if (newMessage.ownerAliasId) {
             aliasManager.getAccessibleAlias({
+              user,
               aliasId: newMessage.ownerAliasId,
               callback: (aliasData) => {
                 if (aliasData.error) {
