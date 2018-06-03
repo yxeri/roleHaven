@@ -40,16 +40,23 @@ function getSocketsByRoom({ io, roomId }) {
 /**
  * Join socket rooms.
  * @param {Object} params - Parameters.
- * @param {string[]} params.roomIds - ID of the rooms to join.
+ * @param {string[]} params.roomIds - Id of the rooms to join.
  * @param {Object} params.io - Socket.io.
- * @param {string} params.socketId - ID of the socket.
+ * @param {string} params.socketId - Id of the socket.
+ * @param {string} params.userId - Id of the user. The user will follow a room with its Id.
  * @return {Object} Socket.
  */
-function joinRooms({ roomIds, io, socketId }) {
+function joinRooms({
+  roomIds,
+  io,
+  socketId,
+  userId,
+}) {
   const userSocket = getUserSocket({ io, socketId });
 
   if (userSocket) {
     roomIds.forEach(roomId => userSocket.join(roomId));
+    userSocket.join(userId);
   }
 
   return userSocket;
