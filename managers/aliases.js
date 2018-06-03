@@ -184,10 +184,9 @@ function createAlias({
                     const userSocket = socketUtils.getUserSocket({ io, socketId: user.socketId });
 
                     if (userSocket) { userSocket.join(newRoom.objectId); }
-
-                    io.to(user.objectId).emit(dbConfig.EmitTypes.ALIAS, creatorDataToSend);
                   }
 
+                  io.to(user.objectId).emit(dbConfig.EmitTypes.ALIAS, creatorDataToSend);
                   io.emit(dbConfig.EmitTypes.USER, dataToSend);
 
                   callback(creatorDataToSend);
