@@ -25,6 +25,49 @@ const objectValidator = require('../utils/objectValidator');
 const aliasManager = require('./aliases');
 
 /**
+ * Returns either a filtered or complete file, depending if the user or the user's teams has access to it.
+ * @return {{Object, boolean}} docFile and isLocked.
+ */
+function getAccessedFile({ user, docFile }) {
+  if (docFile.ownerId === user.objectId
+    || docFile.isPublic
+    || docFile.userIds.includes(user.objectId)
+    || user.partOfTeams.some(teamId => docFile.teamIds.includes(teamId))) {
+    return { docFile, isLocked: false };
+  }
+
+  const lockedDocFile = docFile;
+
+  lockedDocFile.text = undefined;
+  lockedDocFile.code = undefined;
+  lockedDocFile.pictures = undefined;
+
+  return { docFile: lockedDocFile, isLocked: true };
+}
+
+/**
+ *
+ */
+function separateLockedFiles({ user, docFiles }) {
+  const lockedDocFiles = [];
+  const unlockedDocFiles = docFiles.filter((docFile) => {
+    const { docFile: accessedDocFile, isLocked } = getAccessedFile({ docFile, user });
+
+    if (!isLocked) {
+      return true;
+    }
+
+    lockedDocFiles.push(accessedDocFile);
+
+    return false;
+  });
+
+  console.log('locked', lockedDocFiles, 'unlocked', unlockedDocFiles);
+
+  return { unlockedDocFiles, lockedDocFiles };
+}
+
+/**
  * Get doc file by ID and check if the user has access to it.
  * @param {Object} params - Parameters.
  * @param {Object} params.user - User retrieving the alias.
@@ -314,7 +357,7 @@ function getDocFilesList({ token, callback }) {
 
       const { user } = data;
 
-      dbDocFile.getAllDocFiles({
+      dbDocFile.getDocFilesList({
         callback: ({ error: docFilesError, data: docFilesData }) => {
           if (docFilesError) {
             callback({ error: docFilesError });
@@ -324,18 +367,13 @@ function getDocFilesList({ token, callback }) {
 
           const { docFiles } = docFilesData;
           const modifiedFiles = docFiles.map((docFile) => {
-            const newDocFile = {
-              objectId: docFile.objectId,
-              isPublic: docFile.isPublic,
-              ownerId: docFile.ownerAliasId || docFile.ownerId,
-              title: docFile.title,
-            };
+            const newDocFile = docFile;
 
-            if (docFile.isPublic || authenticator.hasAccessTo({
+            if (!docFile.isPublic && !authenticator.hasAccessTo({
               objectToAccess: docFile,
               toAuth: user,
             })) {
-              newDocFile.code = docFile.code;
+              newDocFile.code = undefined;
             }
 
             return newDocFile;
@@ -353,9 +391,15 @@ function getDocFilesList({ token, callback }) {
  * @param {Object} params - Parameters.
  * @param {string} params.code - Doc file Code.
  * @param {string} params.token - jwt.
+ * @param {Object} params.io - Socket.io;
  * @param {Function} params.callback - Callback.
  */
-function unlockDocFile({ code, token, callback }) {
+function unlockDocFile({
+  io,
+  code,
+  token,
+  callback,
+}) {
   authenticator.isUserAllowed({
     token,
     commandName: dbConfig.apiCommands.GetDocFile.name,
@@ -395,7 +439,16 @@ function unlockDocFile({ code, token, callback }) {
                 return;
               }
 
-              callback({ data: { docFile: foundDocFile } });
+              const dataToSend = {
+                data: {
+                  docFile: foundDocFile,
+                  changeType: dbConfig.ChangeTypes.UPDATE,
+                },
+              };
+
+              io.to(user.objectId).emit(dbConfig.EmitTypes.DOCFILE, dataToSend);
+
+              callback(dataToSend);
             },
           });
         },
@@ -431,10 +484,18 @@ function getDocFileById({
 
       getAccessibleDocFile({
         docFileId,
-        callback,
         user,
         full,
         shouldBeAdmin: full && dbConfig.apiCommands.GetFull.accessLevel > user.accessLevel,
+        callback: ({ error: docFileError, data: docFileData }) => {
+          if (docFileError) {
+            callback({ error: docFileError });
+
+            return;
+          }
+
+          callback({ data: { docFile: getAccessedFile({ user, docFile: docFileData.docFile }) } });
+        },
       });
     },
   });
@@ -529,7 +590,17 @@ function getDocFilesByUser({
       dbDocFile.getDocFilesByUser({
         user,
         full,
-        callback,
+        callback: ({ error: docFilesError, data: docFilesData }) => {
+          if (docFilesError) {
+            callback({ error: docFilesError });
+
+            return;
+          }
+
+          const { lockedDocFiles, unlockedDocFiles } = separateLockedFiles({ user, docFiles: docFilesData.docFiles });
+
+          callback({ data: { docFiles: lockedDocFiles.concat(unlockedDocFiles) } });
+        },
       });
     },
   });
