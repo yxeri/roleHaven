@@ -66,6 +66,13 @@ function handle(socket, io) {
 
     docFileManager.getDocFilesList(params);
   });
+
+  socket.on('unlockDocFile', (params, callback = () => {}) => {
+    params.callback = callback;
+    params.io = io;
+
+    docFileManager.unlockDocFile(params);
+  });
 }
 
 exports.handle = handle;

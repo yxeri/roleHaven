@@ -58,6 +58,7 @@ function updateUserParams({
       socketUtils.joinRooms({
         io,
         socketId,
+        userId,
         roomIds: followingRooms,
       });
 

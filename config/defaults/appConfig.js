@@ -386,7 +386,7 @@ config.userVerify = typeof userVerifyEnv !== 'undefined' ? userVerifyEnv : confi
  * Minimum amount of characters in a user name
  * @type {number}
  */
-config.usernameMinLength = process.env.USERNAMEMINLENGTH || config.usernameMinLength || 3;
+config.usernameMinLength = process.env.USERNAMEMINLENGTH || config.usernameMinLength || 2;
 
 /**
  * Maximum amount of characters in a user name
@@ -422,7 +422,7 @@ config.disallowUserRegister = typeof disallowRegisterEnv !== 'undefined' ? disal
  * Minimum amount of characters in a user's full name.
  * @type {number}
  */
-config.fullNameMinLength = process.env.FULLNAMEMINLENGTH || config.fullNameMaxLength || 3;
+config.fullNameMinLength = process.env.FULLNAMEMINLENGTH || config.fullNameMinLength || 3;
 
 /**
  * Maximum amount of characters in a user's full name.
@@ -461,6 +461,12 @@ config.shortTeamMaxLength = process.env.SHORTEAMMAXLENGTH || config.shortTeamMax
  */
 
 /**
+ * Minimum amount of characters in a document
+ * @type {number}
+ */
+config.docFileMinLength = process.env.DOCFILEMINLENGTH || config.docFileMinLength || 3;
+
+/**
  * Maximum amount of characters in a document
  * @type {number}
  */
@@ -473,10 +479,22 @@ config.docFileMaxLength = process.env.DOCFILEMAXLENGTH || config.docFileMaxLengt
 config.docFileTitleMaxLength = process.env.DOCFILETITLEMAXLENGTH || config.docFileTitleMaxLength || 40;
 
 /**
+ * Minimum amount of characters in a document title
+ * @type {number}
+ */
+config.docFileTitleMinLength = process.env.DOCFILETITLEMINLENGTH || config.docFileTitleMinLength || 3;
+
+/**
  * Maximum amount of alphanumeric in a document id
  * @type {number}
  */
 config.docFileCodeMaxLength = process.env.DOCFILECODEMAXLENGTH || config.docFileCodeMaxLength || 10;
+
+/**
+ * Minimum amount of alphanumeric in a document id
+ * @type {number}
+ */
+config.docFileCodeMinLength = process.env.DOCFILECODEMINLENGTH || config.docFileCodeMinLength || 3;
 
 /**
  * ********
@@ -489,6 +507,12 @@ config.docFileCodeMaxLength = process.env.DOCFILECODEMAXLENGTH || config.docFile
  * @type {number}
  */
 config.roomNameMaxLength = process.env.ROOMNAMEMAXLENGTH || config.roomNameMaxLength || 20;
+
+/**
+ * Maximum amount of characters in a room name
+ * @type {number}
+ */
+config.roomNameMinLength = process.env.ROOMNAMEMINLENGTH || config.roomNameMinLength || 3;
 
 /**
  * **********
@@ -543,6 +567,12 @@ config.minimumPositionAccuracy = process.env.MINIMUMPOSITIONACCURACY || config.m
  * @type {number}
  */
 config.maxPositionAge = process.env.MAXPOSITIONAGE || config.maxPositionAge || 10;
+
+/**
+ * Access level that will be set on positions that are imported from external source (Google)
+ * @type {number}
+ */
+config.importedPositionMinAccessLevel = process.env.IMPORTEDPOSITIONMINACCESSLEVEL || config.importedPositionMinAccessLevel || 2;
 
 /**
  * Maximum amount of old coordinates stored in a position.

@@ -31,9 +31,13 @@ const DocFile = mongoose.model('DocFile', docFileSchema);
 
 const docFileFilter = dbConnector.createFilter({
   title: 1,
-  text: 1,
   code: 1,
+  text: 1,
   pictures: 1,
+});
+const docFileListFilter = dbConnector.createFilter({
+  title: 1,
+  code: 1,
 });
 
 /**
@@ -187,7 +191,6 @@ function createDocFile({ docFile, callback }) {
  * @param {Object} params - Parameters.
  * @param {string} params.docFile - Doc file info to update.
  * @param {string} params.docFileId - ID of the doc file to update.
- * @param {string} [params.docFile.code] - DocFile code.
  * @param {string[]} [params.docFile.text] - Array with text.
  * @param {string} [params.docFile.title] - Title.
  * @param {number} [params.docFile.visibility] - Minimum access level required to see document.
@@ -204,7 +207,6 @@ function updateDocFile({
 }) {
   const { resetOwnerAliasId } = options;
   const {
-    code,
     text,
     title,
     visibility,
@@ -214,7 +216,6 @@ function updateDocFile({
 
   const update = { $set: {} };
 
-  if (code) { update.$set.code = code; }
   if (text) { update.$set.text = text; }
   if (title) { update.$set.title = title; }
   if (visibility) { update.$set.visibility = visibility; }
@@ -398,6 +399,19 @@ function getDocFilesByUser({
   });
 }
 
+/**
+ * Get list of doc files.
+ * @param {Object} params - Parameters.
+ * @param {Function} params.callback - Callback.
+ */
+function getDocFilesList({ callback }) {
+  getDocFiles({
+    callback,
+    filter: docFileListFilter,
+    errorNameContent: 'getDocFilesList',
+  });
+}
+
 exports.createDocFile = createDocFile;
 exports.updateDocFile = updateDocFile;
 exports.addAccess = addAccess;
@@ -407,4 +421,4 @@ exports.removeDocFile = removeDocFile;
 exports.getAllDocFiles = getAllDocFiles;
 exports.getDocFileByCode = getDocFileByCode;
 exports.getDocFilesByUser = getDocFilesByUser;
-exports.getAllDocFiles = getAllDocFiles;
+exports.getDocFilesList = getDocFilesList;

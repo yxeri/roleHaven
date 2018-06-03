@@ -76,6 +76,8 @@ const baseFilter = {
   customTimeCreated: 1,
   visibility: 1,
   accessLevel: 1,
+  teamIds: 1,
+  userIds: 1,
 };
 
 mongoose.connect(dbPath, {}, (err) => {
@@ -601,19 +603,25 @@ function removeObjectAccess({
  * Create base query to check if the user has access to the object
  * @param {Object} params - Parameters.
  * @param {Object} params.user - User running a query.
+ * @param {boolean} [params.noVisibility] - Should visibility be removed of the query?
  * @return {Object} Query.
  */
-function createUserQuery({ user }) {
-  return {
+function createUserQuery({ user, noVisibility }) {
+  const query = {
     bannedIds: { $nin: [user.objectId] },
     $or: [
       { isPublic: true },
       { ownerId: user.objectId },
       { userIds: { $in: [user.objectId] } },
-      { visibility: { $lte: user.accessLevel } },
       { teamIds: { $in: user.partOfTeams } },
     ],
   };
+
+  if (!noVisibility) {
+    query.$or.push({ visibility: { $lte: user.accessLevel } });
+  }
+
+  return query;
 }
 
 exports.coordinatesSchema = coordinatesSchema;

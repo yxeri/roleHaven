@@ -23,15 +23,11 @@ function createToken({
     return;
   }
 
-  console.log(username, password);
-
   dbUser.authUser({
     userId,
     username,
     password,
     callback: ({ error, data }) => {
-      console.log('auth', error, data);
-
       if (error) {
         callback({ error });
 
@@ -43,7 +39,6 @@ function createToken({
       const jwtUser = { userId: user.objectId };
 
       jwt.sign({ data: jwtUser }, appConfig.jsonKey, (err, token) => {
-        console.log('token', err, token);
         if (err) {
           callback({ error: new errorCreator.Internal({ name: 'jwt', errorObject: err }) });
 
