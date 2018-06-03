@@ -72,7 +72,7 @@ function handle(socket, io) {
     params.io = io;
 
     docFileManager.unlockDocFile(params);
-  })
+  });
 }
 
 exports.handle = handle;
