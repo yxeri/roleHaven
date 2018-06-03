@@ -20,7 +20,7 @@ const express = require('express');
 const objectValidator = require('../../utils/objectValidator');
 const docFileManager = require('../../managers/docFiles');
 const restErrorChecker = require('../../helpers/restErrorChecker');
-const errorCreator = require('../../objects/error/errorCreator');
+const errorCreator = require('../../error/errorCreator');
 
 const router = new express.Router();
 
@@ -137,8 +137,12 @@ function handle(io) {
    * @apiSuccess {DocFile[]} data.docFile Created document.
    */
   router.post('/', (request, response) => {
+    const sentData = request.body.data;
+
     if (!objectValidator.isValidData(request.body, { data: { docFile: { code: true, text: true, title: true } } })) {
-      restErrorChecker.checkAndSendError({ response, error: new errorCreator.InvalidData({ expected: 'data = { docFile: { text, title } }' }), sentData: request.body.data });
+      sentData.docFile.code = typeof sentData.docFile.code !== 'undefined';
+
+      restErrorChecker.checkAndSendError({ response, error: new errorCreator.InvalidData({ expected: 'data = { docFile: { text, title } }' }), sentData });
 
       return;
     }
@@ -152,7 +156,9 @@ function handle(io) {
       docFile,
       callback: ({ error, data }) => {
         if (error) {
-          restErrorChecker.checkAndSendError({ response, error, sentData: request.body.data });
+          sentData.docFile.code = typeof sentData.docFile.code !== 'undefined';
+
+          restErrorChecker.checkAndSendError({ response, error, sentData });
 
           return;
         }

@@ -17,9 +17,8 @@
 'use strict';
 
 const dbAlias = require('../db/connectors/alias');
-const appConfig = require('../config/defaults/config').app;
-const dbConfig = require('../config/defaults/config').databasePopulation;
-const errorCreator = require('../objects/error/errorCreator');
+const { appConfig, dbConfig } = require('../config/defaults/config');
+const errorCreator = require('../error/errorCreator');
 const textTools = require('../utils/textTools');
 const authenticator = require('../helpers/authenticator');
 const dbRoom = require('../db/connectors/room');
@@ -99,12 +98,12 @@ function createAlias({
         callback({ error });
 
         return;
-      } else if (alias.aliasName.length > appConfig.usernameMaxLength) {
-        callback({ error: new errorCreator.InvalidCharacters({ name: `Username length: ${appConfig.usernameMaxLength}` }) });
+      } else if (alias.aliasName.length > appConfig.usernameMaxLength || alias.aliasName.length < appConfig.usernameMinLength) {
+        callback({ error: new errorCreator.InvalidCharacters({ name: `Alias length: ${appConfig.usernameMinLength}-${appConfig.usernameMaxLength}` }) });
 
         return;
       } else if (!textTools.hasAllowedText(alias.aliasName)) {
-        callback({ error: new errorCreator.InvalidCharacters({ name: 'alias name', expected: 'a-z 0-9' }) });
+        callback({ error: new errorCreator.InvalidCharacters({ name: 'Alias', expected: 'a-z 0-9' }) });
 
         return;
       }
@@ -126,7 +125,7 @@ function createAlias({
           const createdAlias = aliasData.alias;
 
           dbRoom.createRoom({
-            options: { shouldSetId: true },
+            options: { setId: true },
             room: {
               ownerId: user.objectId,
               roomName: createdAlias.objectId,
@@ -181,16 +180,14 @@ function createAlias({
                     },
                   };
 
-                  if (socket) {
-                    socket.broadcast.emit(dbConfig.EmitTypes.USER, dataToSend);
-                  } else {
+                  if (!socket) {
                     const userSocket = socketUtils.getUserSocket({ io, socketId: user.socketId });
 
                     if (userSocket) { userSocket.join(newRoom.objectId); }
-
-                    io.to(user.objectId).emit(dbConfig.EmitTypes.ALIAS, creatorDataToSend);
-                    io.emit(dbConfig.EmitTypes.USER, dataToSend);
                   }
+
+                  io.to(user.objectId).emit(dbConfig.EmitTypes.ALIAS, creatorDataToSend);
+                  io.emit(dbConfig.EmitTypes.USER, dataToSend);
 
                   callback(creatorDataToSend);
                 },
@@ -323,13 +320,11 @@ function getAliasesByUser({
  * @param {Object} params.token - jwt.
  * @param {Function} params.callback - Callback.
  * @param {Object} params.io - Socket io. Will be used if socket is not set.
- * @param {Object} [params.socket] - Socket io.
  */
 function removeAlias({
   token,
   callback,
   aliasId,
-  socket,
   io,
 }) {
   authenticator.isUserAllowed({
@@ -393,13 +388,8 @@ function removeAlias({
 
                   socketUtils.getSocketsByRoom({ io, roomId: removedAliasId }).forEach(roomSocket => roomSocket.leave(removedAliasId));
 
-                  if (socket) {
-                    socket.to(removedAliasId).broadcast.emit(dbConfig.EmitTypes.ALIAS, creatorDataToSend);
-                    socket.broadcast.emit(dbConfig.EmitTypes.USER, dataToSend);
-                  } else {
-                    io.to(removedAliasId).emit(dbConfig.EmitTypes.ALIAS, creatorDataToSend);
-                    io.emit(dbConfig.EmitTypes.USER, dataToSend);
-                  }
+                  io.to(removedAliasId).emit(dbConfig.EmitTypes.ALIAS, creatorDataToSend);
+                  io.emit(dbConfig.EmitTypes.USER, dataToSend);
 
                   callback(creatorDataToSend);
                 },
@@ -421,7 +411,6 @@ function removeAlias({
  * @param {Object} params.alias - Alias parameters to update.
  * @param {Object} params.io - Socket io. Will be used if socket is not set.
  * @param {Object} [params.options] - Alias update options.
- * @param {Object} [params.socket] - Socket io.
  */
 function updateAlias({
   token,
@@ -429,7 +418,6 @@ function updateAlias({
   alias,
   options,
   aliasId,
-  socket,
   io,
 }) {
   authenticator.isUserAllowed({
@@ -484,13 +472,8 @@ function updateAlias({
                 },
               };
 
-              if (socket) {
-                socket.broadcast.emit(dbConfig.EmitTypes.USER, dataToSend);
-                socket.broadcast.to(updatedAlias.objectId).emit(dbConfig.EmitTypes.ALIAS, aliasDataToSend);
-              } else {
-                io.emit(dbConfig.EmitTypes.USER, dataToSend);
-                io.to(updatedAlias.objectId).emit(dbConfig.EmitTypes.ALIAS, aliasDataToSend);
-              }
+              io.emit(dbConfig.EmitTypes.USER, dataToSend);
+              io.to(updatedAlias.objectId).emit(dbConfig.EmitTypes.ALIAS, aliasDataToSend);
 
               callback(aliasDataToSend);
             },

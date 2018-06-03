@@ -15,31 +15,30 @@
  */
 
 const mongoose = require('mongoose');
-const errorCreator = require('../../objects/error/errorCreator');
+const errorCreator = require('../../error/errorCreator');
 const dbConnector = require('../databaseConnector');
 const dbForumThread = require('./forumThread');
+const dbForum = require('./forum');
 
 const forumPostSchema = new mongoose.Schema(dbConnector.createSchema({
   threadId: String,
   parentPostId: String,
   text: { type: [String], default: [] },
   depth: { type: Number, default: 0 },
+  likes: { type: Number, default: 0 },
+  pictures: [dbConnector.pictureSchema],
 }), { collection: 'forumPosts' });
 
 const ForumPost = mongoose.model('ForumPost', forumPostSchema);
 
-const postFilter = {
-  ownerId: 1,
-  ownerAliasId: 1,
+const postFilter = dbConnector.createFilter({
   threadId: 1,
   parentPostId: 1,
   text: 1,
   depth: 1,
-  lastUpdated: 1,
-  timeCreated: 1,
-  customLastUpdated: 1,
-  customTimeCreated: 1,
-};
+  likes: 1,
+  pictures: 1,
+});
 
 /**
  * Get forum posts
@@ -95,7 +94,7 @@ function getPost({
 
         return;
       } else if (!data.object) {
-        callback({ error: new errorCreator.DoesNotExist({ name: `forumPost ${query.toString()}` }) });
+        callback({ error: new errorCreator.DoesNotExist({ name: `forumPost ${JSON.stringify(query, null, 4)}` }) });
 
         return;
       }
@@ -164,6 +163,8 @@ function createPost({ post, callback }) {
         forumPostToSave.adminIds = post.adminIds ? post.adminIds : foundThread.adminIds;
         forumPostToSave.userIds = post.userIds ? post.userIds : foundThread.userIds;
         forumPostToSave.teamIds = post.teamIds ? post.teamIds : foundThread.teamIds;
+
+        console.log(forumPostToSave);
 
         dbConnector.saveObject({
           object: new ForumPost(forumPostToSave),
@@ -279,23 +280,51 @@ function getPostsByThread({
 }
 
 /**
- * Get posts created by the user.
+ * Get posts by the user.
  * @param {Object} params - Parameters.
- * @param {string} params.userId - Id of the user.
+ * @param {string} params.user - User.
  * @param {Function} params.callback - Callback.
  * @param {boolean} [params.full] - Should the complete objects be returned?
  */
-function getPostsCreatedByUser({
-  userId,
+function getPostsByUser({
+  user,
   callback,
   full,
 }) {
-  const filter = !full ? postFilter : {};
+  dbForum.getForumsByUser({
+    user,
+    full,
+    callback: ({ error: forumError, data: forumData }) => {
+      if (forumError) {
+        callback({ error: forumError });
 
-  getPosts({
-    filter,
-    callback,
-    query: { ownerId: userId },
+        return;
+      }
+
+      const forumIds = forumData.forums.map(forum => forum.objectId);
+
+      dbForumThread.getThreadsByForums({
+        forumIds,
+        callback: ({ error: threadError, data: threadData }) => {
+          if (threadError) {
+            callback({ error: threadError });
+
+            return;
+          }
+
+          const threadIds = threadData.threads.map(thread => thread.objectId);
+          const filter = !full ? postFilter : {};
+          const query = dbConnector.createUserQuery({ user });
+          query.threadId = { $in: threadIds };
+
+          getPosts({
+            filter,
+            callback,
+            query,
+          });
+        },
+      });
+    },
   });
 }
 
@@ -479,4 +508,4 @@ exports.removeAccess = removeAccess;
 exports.removePostById = removePostById;
 exports.getPostsByThread = getPostsByThread;
 exports.removePostsByThreadId = removePostsByThreadId;
-exports.getPostsCreatedByUser = getPostsCreatedByUser;
+exports.getPostsByUser = getPostsByUser;

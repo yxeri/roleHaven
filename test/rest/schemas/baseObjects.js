@@ -37,18 +37,17 @@ schemas.liteBaseObject = {
     timeCreated: { type: 'string' },
     isPublic: { type: 'boolean' },
     objectId: { type: 'string' },
+    accessLevel: { type: 'number' },
+    visibility: { type: 'number' },
   },
   not: {
     required: [
-      'objectId',
       'ownerAliasId',
       'customLastUpdated',
       'customTimeCreated',
       'teamAdminIds',
       'userAdminIds',
       'bannedIds',
-      'visibility',
-      'accessLevel',
     ],
   },
 };
@@ -137,6 +136,16 @@ schemas.coordinates = {
     accuracy: { type: 'number' },
     heading: { type: 'number' },
     speed: { type: 'number' },
+    extraCoordinates: {
+      type: 'array',
+      items: {
+        type: 'object',
+        properties: {
+          longitude: { type: 'number' },
+          latitude: { type: 'number' },
+        },
+      },
+    },
   },
 };
 

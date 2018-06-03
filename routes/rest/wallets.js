@@ -21,7 +21,7 @@ const objectValidator = require('../../utils/objectValidator');
 const walletManager = require('../../managers/wallets');
 const transactionManager = require('../../managers/transactions');
 const restErrorChecker = require('../../helpers/restErrorChecker');
-const errorCreator = require('../../objects/error/errorCreator');
+const errorCreator = require('../../error/errorCreator');
 
 const router = new express.Router();
 
@@ -40,25 +40,60 @@ function handle(io) {
    *
    * @apiDescription Get wallets by user.
    *
-   * @apiParam {Object} data
-   * @apiParam {string} data.userId Id of the user retrieving the wallets.
+   * @apiParam {boolean} [full] [Query] Should the returned wallet contain all information? Default is that only some content is returned.
    *
    * @apiSuccess {Object} data
    * @apiSuccess {Object[]} data.wallets Found wallets.
    */
   router.get('/', (request, response) => {
-    if (!objectValidator.isValidData(request.body, { data: { userId: true } })) {
-      restErrorChecker.checkAndSendError({ response, error: new errorCreator.InvalidData({ expected: 'params = { userId }' }) });
+    const { authorization: token } = request.headers;
+    const { full } = request.query;
+
+    walletManager.getWalletsByUser({
+      token,
+      full,
+      callback: ({ error, data }) => {
+        if (error) {
+          restErrorChecker.checkAndSendError({ response, error, sentData: request.body.data });
+
+          return;
+        }
+
+        response.json({ data });
+      },
+    });
+  });
+
+  /**
+   * @api {get} /wallets/:walletId Get wallet
+   * @apiVersion 8.0.0
+   * @apiName GetWallet
+   * @apiGroup Wallets
+   *
+   * @apiHeader {string} Authorization Your JSON Web Token.
+   *
+   * @apiDescription Get wallet by Id.
+   *
+   * @apiParam {boolean} [full] [Query] Should the returned wallet contain all information? Default is that only some content is returned.
+   *
+   * @apiSuccess {Object} data
+   * @apiSuccess {Object} data.wallet Found wallet.
+   */
+  router.get('/:walletId', (request, response) => {
+    if (!objectValidator.isValidData(request.params, { walletId: true })) {
+      restErrorChecker.checkAndSendError({ response, error: new errorCreator.InvalidData({ expected: 'params = { walletId }' }) });
 
       return;
     }
 
-    const { authorization: token } = request.params;
-    const userId = request.body.data;
+    const { walletId } = request.params;
+    const { authorization: token } = request.headers;
+    const { full } = request.query;
 
-    walletManager.getWalletsByUser({
-      userId,
+    walletManager.getWalletById({
       token,
+      full,
+      walletId,
       callback: ({ error, data }) => {
         if (error) {
           restErrorChecker.checkAndSendError({ response, error, sentData: request.body.data });
@@ -84,7 +119,7 @@ function handle(io) {
    * @apiParam {string} walletId Id of the wallet to update.
    *
    * @apiParam {Object} data
-   * @apiParam {number} data.amount Amount to increase or decrease with.
+   * @apiParam {number} data.wallet Wallet to update with.
    * @apiParam {Object} data.options Update options.
    * @apiParam {boolean} data.options.shouldDecreaseAmount Should the wallet be decreased by the amount sent.
    * @apiParam {boolean} data.options.resetAmount Should the wallet amount be set to 0?
@@ -93,9 +128,13 @@ function handle(io) {
    * @apiSuccess {Object} data
    * @apiSuccess {Object} data.wallet Updated wallet.
    */
-  router.post('/:walletId', (request, response) => {
+  router.put('/:walletId', (request, response) => {
     if (!objectValidator.isValidData(request.params, { walletId: true })) {
       restErrorChecker.checkAndSendError({ response, error: new errorCreator.InvalidData({ expected: 'params = { walletId }' }) });
+
+      return;
+    } else if (!objectValidator.isValidData(request.body, { data: { wallet: true } })) {
+      restErrorChecker.checkAndSendError({ response, error: new errorCreator.InvalidData({ expected: '{ data: { wallet } }' }), sentData: request.body.data });
 
       return;
     }
@@ -103,6 +142,8 @@ function handle(io) {
     const { walletId } = request.params;
     const { wallet } = request.body.data;
     const { authorization: token } = request.headers;
+
+    console.log(walletId, wallet, token);
 
     walletManager.updateWallet({
       wallet,
@@ -145,13 +186,11 @@ function handle(io) {
     }
 
     const { walletId } = request.params;
-    const { userId } = request.body.data;
     const { authorization: token } = request.headers;
 
     transactionManager.getTransactionsByWallet({
       walletId,
       token,
-      userId,
       callback: ({ error, data }) => {
         if (error) {
           restErrorChecker.checkAndSendError({ response, error, sentData: request.body.data });

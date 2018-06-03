@@ -17,7 +17,7 @@
 'use strict';
 
 const mongoose = require('mongoose');
-const errorCreator = require('../../objects/error/errorCreator');
+const errorCreator = require('../../error/errorCreator');
 const dbConnector = require('../databaseConnector');
 
 const invitationSchema = new mongoose.Schema(dbConnector.createSchema({
@@ -72,7 +72,7 @@ function getInvitation({ query, callback }) {
 
         return;
       } else if (!data.object) {
-        callback({ error: new errorCreator.DoesNotExist({ name: `invitation ${query.toString()}` }) });
+        callback({ error: new errorCreator.DoesNotExist({ name: `invitation ${JSON.stringify(query, null, 4)}` }) });
 
         return;
       }

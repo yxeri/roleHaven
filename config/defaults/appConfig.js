@@ -183,7 +183,7 @@ config.country = process.env.COUNTRY || config.country || 'Sweden';
 /**
  * Secret key used with JSON Web Token.
  */
-config.jsonKey = process.env.JSONKEY || (config.mode !== config.Modes.PROD ? 'TESTKEY' : undefined);
+config.jsonKey = process.env.JSONKEY || (config.mode === config.Modes.TEST ? 'TESTKEY' : undefined);
 
 /**
  * Should errors be printed to log?
@@ -216,7 +216,7 @@ config.eventName = process.env.EVENTNAME || config.eventName || 'roleHaven larp'
  * Valid options: se.
  * @type {string}
  */
-config.defaultLanguage = process.env.DEFAULTLANGUAGE || config.defaultLanguage || '';
+config.defaultLanguage = process.env.DEFAULTLANGUAGE || config.defaultLanguage || 'en';
 
 /**
  * Name of the system. Human-readable name that will be sent to clients, such as in the subject field of mail or page title.
@@ -383,6 +383,12 @@ config.broadcastMaxLength = process.env.BROADCASTMAXLENGTH || config.broadcastMa
 config.userVerify = typeof userVerifyEnv !== 'undefined' ? userVerifyEnv : config.userVerify || true;
 
 /**
+ * Minimum amount of characters in a user name
+ * @type {number}
+ */
+config.usernameMinLength = process.env.USERNAMEMINLENGTH || config.usernameMinLength || 2;
+
+/**
  * Maximum amount of characters in a user name
  * @type {number}
  */
@@ -395,16 +401,34 @@ config.usernameMaxLength = process.env.USERNAMEMAXLENGTH || config.usernameMaxLe
 config.maxUserWarnings = process.env.MAXUSERWARNINGS || config.maxUserWarnings || 2;
 
 /**
+ * Minimum amount of characters in a password
+ * @type {number}
+ */
+config.passwordMinLength = process.env.PASSWORDMINLENGTH || config.passwordMinLength || 4;
+
+/**
  * Maximum amount of characters in a password
  * @type {number}
  */
-config.passwordMaxLength = process.env.PASSWORDMAXLENGTH || config.passwordMaxLength || 80;
+config.passwordMaxLength = process.env.PASSWORDMAXLENGTH || config.passwordMaxLength || 40;
 
 /**
  * Should users be able to register? Does not block register through rest api.
  * @type {boolean}
  */
-config.disallowSocketUserRegister = typeof disallowRegisterEnv !== 'undefined' ? disallowRegisterEnv : config.disallowSocketUserRegister || false;
+config.disallowUserRegister = typeof disallowRegisterEnv !== 'undefined' ? disallowRegisterEnv : config.disallowUserRegister || false;
+
+/**
+ * Minimum amount of characters in a user's full name.
+ * @type {number}
+ */
+config.fullNameMinLength = process.env.FULLNAMEMINLENGTH || config.fullNameMinLength || 3;
+
+/**
+ * Maximum amount of characters in a user's full name.
+ * @type {number}
+ */
+config.fullNameMaxLength = process.env.FULLNAMEMAXLENGTH || config.fullNameMaxLength || 40;
 
 /**
  * ********
@@ -437,6 +461,12 @@ config.shortTeamMaxLength = process.env.SHORTEAMMAXLENGTH || config.shortTeamMax
  */
 
 /**
+ * Minimum amount of characters in a document
+ * @type {number}
+ */
+config.docFileMinLength = process.env.DOCFILEMINLENGTH || config.docFileMinLength || 3;
+
+/**
  * Maximum amount of characters in a document
  * @type {number}
  */
@@ -449,10 +479,22 @@ config.docFileMaxLength = process.env.DOCFILEMAXLENGTH || config.docFileMaxLengt
 config.docFileTitleMaxLength = process.env.DOCFILETITLEMAXLENGTH || config.docFileTitleMaxLength || 40;
 
 /**
+ * Minimum amount of characters in a document title
+ * @type {number}
+ */
+config.docFileTitleMinLength = process.env.DOCFILETITLEMINLENGTH || config.docFileTitleMinLength || 3;
+
+/**
  * Maximum amount of alphanumeric in a document id
  * @type {number}
  */
 config.docFileCodeMaxLength = process.env.DOCFILECODEMAXLENGTH || config.docFileCodeMaxLength || 10;
+
+/**
+ * Minimum amount of alphanumeric in a document id
+ * @type {number}
+ */
+config.docFileCodeMinLength = process.env.DOCFILECODEMINLENGTH || config.docFileCodeMinLength || 3;
 
 /**
  * ********
@@ -465,6 +507,12 @@ config.docFileCodeMaxLength = process.env.DOCFILECODEMAXLENGTH || config.docFile
  * @type {number}
  */
 config.roomNameMaxLength = process.env.ROOMNAMEMAXLENGTH || config.roomNameMaxLength || 20;
+
+/**
+ * Maximum amount of characters in a room name
+ * @type {number}
+ */
+config.roomNameMinLength = process.env.ROOMNAMEMINLENGTH || config.roomNameMinLength || 3;
 
 /**
  * **********
@@ -512,13 +560,19 @@ config.positionNameMaxLength = process.env.POSITIONNAMEMAXLENGTH || config.posit
  * Minimum position accuracy. Positions with worse accuracy will not be stored nor sent to clients
  * @type {number}
  */
-config.minimumPositionAccuracy = process.env.MINIMUMPOSITIONACCURACY || config.minimumPositionAccuracy || 70;
+config.minimumPositionAccuracy = process.env.MINIMUMPOSITIONACCURACY || config.minimumPositionAccuracy || 50;
 
 /**
  * Maximum amount of time before a position is no longer valid. Used on clients.
  * @type {number}
  */
 config.maxPositionAge = process.env.MAXPOSITIONAGE || config.maxPositionAge || 10;
+
+/**
+ * Access level that will be set on positions that are imported from external source (Google)
+ * @type {number}
+ */
+config.importedPositionMinAccessLevel = process.env.IMPORTEDPOSITIONMINACCESSLEVEL || config.importedPositionMinAccessLevel || 2;
 
 /**
  * Maximum amount of old coordinates stored in a position.

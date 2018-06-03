@@ -21,6 +21,7 @@ exports.General = GeneralError;
 exports.InvalidData = require('./InvalidData');
 exports.NotAllowed = require('./NotAllowed');
 exports.InvalidCharacters = require('./InvalidCharacters');
+exports.InvalidLength = require('./InvalidLength');
 exports.Database = require('./Database');
 exports.AlreadyExists = require('./AlreadyExists');
 exports.External = require('./External');

@@ -17,8 +17,8 @@
 'use strict';
 
 const dbThread = require('../db/connectors/forumThread');
-const dbConfig = require('../config/defaults/config').databasePopulation;
-const errorCreator = require('../objects/error/errorCreator');
+const { dbConfig } = require('../config/defaults/config');
+const errorCreator = require('../error/errorCreator');
 const authenticator = require('../helpers/authenticator');
 const aliasManager = require('./aliases');
 const forumManager = require('./forums');
@@ -114,6 +114,7 @@ function getAccessibleThreads({
       });
       const filteredThreads = accessibleThreads.map((thread) => {
         return {
+          title: thread.title,
           objectId: thread.objectId,
           forumId: thread.forumId,
           text: thread.text,
@@ -156,15 +157,13 @@ function updateThreadTime({ threadId, callback }) {
  * @param {Object} params.thread - Forum thread to create
  * @param {Function} params.callback - Callback
  * @param {string} params.token - jwt
- * @param {Object} params.io - Socket.io. Will be used if socket is not set
- * @param {Object} [params.socket] - Socket.io
+ * @param {Object} params.io - Socket.io.
  */
 function createThread({
   thread,
   callback,
   token,
   io,
-  socket,
 }) {
   authenticator.isUserAllowed({
     token,
@@ -217,11 +216,7 @@ function createThread({
                       },
                     };
 
-                    if (socket) {
-                      socket.broadcast.emit(dbConfig.EmitTypes.FORUMTHREAD, dataToSend);
-                    } else {
-                      io.emit(dbConfig.EmitTypes.FORUMTHREAD, dataToSend);
-                    }
+                    io.emit(dbConfig.EmitTypes.FORUMTHREAD, dataToSend);
 
                     callback(dataToSend);
                   },
@@ -312,13 +307,13 @@ function getForumThreadsByForum({
 }
 
 /**
- * Get threads created by the user.
+ * Get threads from the forums that the user has access to.
  * @param {Object} params - Parameters.
  * @param {string} params.token - jwt.
  * @param {Function} params.callback - Callback.
  * @param {boolean} [params.full] - Should the complete objects be returned?
  */
-function getThreadsCreatedByUser({
+function getThreadsByUser({
   token,
   callback,
   full,
@@ -333,12 +328,12 @@ function getThreadsCreatedByUser({
         return;
       }
 
-      const { userId } = data.user;
+      const { user } = data;
 
-      dbThread.getThreadsCreatedByUser({
+      dbThread.getThreadsByUser({
         callback,
         full,
-        userId,
+        user,
       });
     },
   });
@@ -351,8 +346,7 @@ function getThreadsCreatedByUser({
  * @param {string} params.threadId - Id of the thread to update.
  * @param {Object} params.options - Options.
  * @param {Function} params.callback - Callback.
- * @param {Object} params.io - Socket.io. Will be used if socket is not set.
- * @param {Object} [params.socket] - Socket.io.
+ * @param {Object} params.io - Socket.io.
  */
 function updateThread({
   token,
@@ -360,7 +354,6 @@ function updateThread({
   threadId,
   options,
   callback,
-  socket,
   io,
 }) {
   authenticator.isUserAllowed({
@@ -405,11 +398,7 @@ function updateThread({
                 },
               };
 
-              if (socket) {
-                socket.broadcast.emit(dbConfig.EmitTypes.FORUMTHREAD, dataToSend);
-              } else {
-                io.emit(dbConfig.EmitTypes.FORUMTHREAD, dataToSend);
-              }
+              io.emit(dbConfig.EmitTypes.FORUMTHREAD, dataToSend);
 
               callback(dataToSend);
             },
@@ -425,15 +414,13 @@ function updateThread({
  * @param {Object} params - Parameters.
  * @param {string} params.token - jwt.
  * @param {string} params.threadId - ID of the forum thread.
- * @param {Object} params.io - Socket io. Will be used if socket is not set.
+ * @param {Object} params.io - Socket io.
  * @param {Function} params.callback - Callback.
- * @param {Object} [params.socket] - Socket io.
  */
 function removeThread({
   token,
   threadId,
   callback,
-  socket,
   io,
 }) {
   authenticator.isUserAllowed({
@@ -477,11 +464,7 @@ function removeThread({
                 },
               };
 
-              if (socket) {
-                socket.broadcast.emit(dbConfig.EmitTypes.FORUMTHREAD, dataToSend);
-              } else {
-                io.emit(dbConfig.EmitTypes.FORUMTHREAD, dataToSend);
-              }
+              io.emit(dbConfig.EmitTypes.FORUMTHREAD, dataToSend);
 
               callback(dataToSend);
             },
@@ -559,4 +542,4 @@ exports.getThreadById = getThreadById;
 exports.getAccessibleThreads = getAccessibleThreads;
 exports.getAccessibleThread = getAccessibleThread;
 exports.updateThreadTime = updateThreadTime;
-exports.getThreadsCreatedByUser = getThreadsCreatedByUser;
+exports.getThreadsByUser = getThreadsByUser;

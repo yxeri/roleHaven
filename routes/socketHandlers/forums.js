@@ -28,7 +28,7 @@ function handle(socket, io) {
   socket.on('createForum', (params, callback = () => {}) => {
     params.callback = callback;
     params.io = io;
-    params.socket = socket;
+
 
     forumManager.createForum(params);
   });
@@ -36,7 +36,7 @@ function handle(socket, io) {
   socket.on('updateForum', (params, callback = () => {}) => {
     params.callback = callback;
     params.io = io;
-    params.socket = socket;
+
 
     forumManager.updateForum(params);
   });
@@ -44,7 +44,7 @@ function handle(socket, io) {
   socket.on('removeForum', (params, callback = () => {}) => {
     params.callback = callback;
     params.io = io;
-    params.socket = socket;
+
 
     forumManager.removeForum(params);
   });
@@ -52,7 +52,7 @@ function handle(socket, io) {
   socket.on('getForum', (params, callback = () => {}) => {
     params.callback = callback;
     params.io = io;
-    params.socket = socket;
+
 
     forumManager.getForumById(params);
   });
@@ -60,7 +60,7 @@ function handle(socket, io) {
   socket.on('getForums', (params, callback = () => {}) => {
     params.callback = callback;
     params.io = io;
-    params.socket = socket;
+
 
     forumManager.getForumsByUser(params);
   });

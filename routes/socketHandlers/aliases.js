@@ -28,7 +28,6 @@ function handle(socket, io) {
   socket.on('createAlias', (params, callback = () => {}) => {
     params.callback = callback;
     params.io = io;
-    params.socket = socket;
 
     aliasManager.createAlias(params);
   });
@@ -36,7 +35,6 @@ function handle(socket, io) {
   socket.on('updateAlias', (params, callback = () => {}) => {
     params.callback = callback;
     params.io = io;
-    params.socket = socket;
 
     aliasManager.updateAlias(params);
   });
@@ -44,7 +42,6 @@ function handle(socket, io) {
   socket.on('removeAlias', (params, callback = () => {}) => {
     params.callback = callback;
     params.io = io;
-    params.socket = socket;
 
     aliasManager.removeAlias(params);
   });
@@ -52,7 +49,6 @@ function handle(socket, io) {
   socket.on('getAlias', (params, callback = () => {}) => {
     params.callback = callback;
     params.io = io;
-    params.socket = socket;
 
     if (params.aliasName) {
       aliasManager.getAliasByName(params);
@@ -64,7 +60,6 @@ function handle(socket, io) {
   socket.on('getAliases', (params, callback = () => {}) => {
     params.callback = callback;
     params.io = io;
-    params.socket = socket;
 
     aliasManager.getAliasesByUser(params);
   });

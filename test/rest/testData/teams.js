@@ -17,7 +17,7 @@
 'use strict';
 
 const tools = require('../helper/tools');
-const appConfig = require('../../../config/defaults/config').app;
+const { appConfig } = require('../../../config/defaults/config');
 
 const data = {};
 
@@ -27,6 +27,10 @@ data.create = {
     shortName: tools.createRandString({ length: appConfig.shortTeamMaxLength }),
   },
   second: {
+    teamName: tools.createRandString({ length: appConfig.teamNameMaxLength }),
+    shortName: tools.createRandString({ length: appConfig.shortTeamMaxLength }),
+  },
+  missing: {
     teamName: tools.createRandString({ length: appConfig.teamNameMaxLength }),
     shortName: tools.createRandString({ length: appConfig.shortTeamMaxLength }),
   },

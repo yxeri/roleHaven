@@ -14,7 +14,7 @@
  limitations under the License.
  */
 
-const appConfig = require('../../config/defaults/config').app;
+const { appConfig } = require('../config/defaults/config');
 
 const ErrorTypes = {
   GENERAL: 'general error',
@@ -25,6 +25,7 @@ const ErrorTypes = {
   INCORRECT: 'incorrect',
   INVALIDCHARACTERS: 'invalid characters',
   INVALIDDATA: 'invalid data',
+  INVALIDLENGTH: 'invalid length',
   NOTALLOWED: 'not allowed',
   NEEDSVERIFICATION: 'needs verification',
   BANNED: 'banned',

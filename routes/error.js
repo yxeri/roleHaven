@@ -17,7 +17,7 @@
 'use strict';
 
 const express = require('express');
-const appConfig = require('../config/defaults/config').app;
+const { appConfig } = require('../config/defaults/config');
 
 const router = new express.Router();
 

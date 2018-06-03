@@ -18,10 +18,9 @@
 
 const mongoose = require('mongoose');
 const dbConnector = require('../databaseConnector');
-const dbConfig = require('../../config/defaults/config').databasePopulation;
-const errorCreator = require('../../objects/error/errorCreator');
+const { appConfig, dbConfig } = require('../../config/defaults/config');
+const errorCreator = require('../../error/errorCreator');
 const dbRoom = require('./room');
-const appConfig = require('../../config/defaults/config').app;
 
 const messageSchema = new mongoose.Schema(dbConnector.createSchema({
   messageType: { type: String, default: dbConfig.MessageTypes.CHAT },
@@ -41,20 +40,16 @@ const messageSchema = new mongoose.Schema(dbConnector.createSchema({
 
 const Message = mongoose.model('Message', messageSchema);
 
-const messageFilter = {
+const messageFilter = dbConnector.createFilter({
   messageType: 1,
   roomId: 1,
-  lastUpdated: 1,
-  timeCreated: 1,
   image: 1,
   coordinates: 1,
   intro: 1,
   extro: 1,
   text: 1,
   altText: 1,
-  customTimeCreated: 1,
-  customLastUpdated: 1,
-};
+});
 
 /**
  * Update message.
@@ -97,30 +92,33 @@ function getMessages({
   callback,
   errorNameContent,
   filter,
-  startDate = new Date(),
+  startDate,
   shouldGetFuture = false,
   limit = appConfig.maxHistoryAmount,
 }) {
   const fullQuery = query;
-  const customTimeQuery = {
-    customTimeCreated: {
-      $exists: true,
-    },
-  };
-  const timeQuery = {};
 
-  if (!shouldGetFuture) {
-    customTimeQuery.customTimeCreated.$lte = startDate;
-    timeQuery.timeCreated = { $lte: startDate };
-  } else {
-    customTimeQuery.customTimeCreated = { $gte: startDate };
-    timeQuery.timeCreated = { $gte: startDate };
+  if (startDate) {
+    const customTimeQuery = {
+      customTimeCreated: {
+        $exists: true,
+      },
+    };
+    const timeQuery = {};
+
+    if (!shouldGetFuture) {
+      customTimeQuery.customTimeCreated.$lte = startDate;
+      timeQuery.timeCreated = { $lte: startDate };
+    } else {
+      customTimeQuery.customTimeCreated = { $gte: startDate };
+      timeQuery.timeCreated = { $gte: startDate };
+    }
+
+    fullQuery.$or = [
+      customTimeQuery,
+      timeQuery,
+    ];
   }
-
-  fullQuery.$or = [
-    customTimeQuery,
-    timeQuery,
-  ];
 
   dbConnector.getObjects({
     filter,
@@ -167,7 +165,7 @@ function getMessage({
 
         return;
       } else if (!data.object) {
-        callback({ error: new errorCreator.DoesNotExist({ name: `alias ${query.toString()}` }) });
+        callback({ error: new errorCreator.DoesNotExist({ name: `alias ${JSON.stringify(query, null, 4)}` }) });
 
         return;
       }
@@ -320,17 +318,18 @@ function getMessagesByRoom({
 }
 
 /**
+ * Get messages from all the rooms the user is following.
  * @param {Object} params - Parameters.
- * @param {string} params.userId - Id of the user.
+ * @param {Object} params.user - User.
  * @param {Function} params.callback - Callback.
  * @param {boolean} [params.full] - Should the full object be returned?
  */
-function getMessagesCreatedByUser({
-  userId,
+function getMessagesByFollowed({
+  user,
   callback,
   full,
 }) {
-  const query = { ownerId: userId };
+  const query = { roomId: { $in: user.followingRooms } };
   const filter = !full ? messageFilter : {};
 
   getMessages({
@@ -457,5 +456,5 @@ exports.removeMessagesByUser = removeMessagesByUser;
 exports.removeMessage = removeMessage;
 exports.getMessageById = getMessageById;
 exports.removeMessagesByAlias = removeMessagesByAlias;
-exports.getMessagesCreatedByUser = getMessagesCreatedByUser;
+exports.getMessagesByFollowed = getMessagesByFollowed;
 exports.getAllMessages = getAllMessages;

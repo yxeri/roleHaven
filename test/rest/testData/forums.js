@@ -17,7 +17,7 @@
 'use strict';
 
 const tools = require('../helper/tools');
-const appConfig = require('../../../config/defaults/config').app;
+const { appConfig } = require('../../../config/defaults/config');
 
 const data = {};
 
@@ -35,6 +35,9 @@ data.create = {
       tools.createRandString({ length: appConfig.messageMaxLength / 2 }),
       tools.createRandString({ length: appConfig.messageMaxLength / 2 }),
     ],
+  },
+  missing: {
+    title: 'missing',
   },
 };
 

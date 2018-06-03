@@ -27,7 +27,7 @@ const testBuilder = require('./helper/testBuilder');
 const tokens = require('./testData/tokens');
 const baseObjectSchemas = require('./schemas/baseObjects');
 const userSchemas = require('./schemas/users');
-const appConfig = require('../../config/defaults/config').app;
+const { appConfig } = require('../../config/defaults/config');
 const tools = require('./helper/tools');
 const app = require('../../app');
 

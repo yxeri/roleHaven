@@ -17,8 +17,8 @@
 'use strict';
 
 const dbWallet = require('../db/connectors/wallet');
-const dbConfig = require('../config/defaults/config').databasePopulation;
-const errorCreator = require('../objects/error/errorCreator');
+const { dbConfig } = require('../config/defaults/config');
+const errorCreator = require('../error/errorCreator');
 const authenticator = require('../helpers/authenticator');
 
 /**
@@ -74,7 +74,7 @@ function updateWallet({
   token,
   callback,
   io,
-  options,
+  options = {},
 }) {
   const { amount } = wallet;
   const { resetAmount } = options;

@@ -22,9 +22,9 @@ const userManager = require('../../managers/users');
 const roomManager = require('../../managers/rooms');
 const aliasManager = require('../../managers/aliases');
 const restErrorChecker = require('../../helpers/restErrorChecker');
-const errorCreator = require('../../objects/error/errorCreator');
+const errorCreator = require('../../error/errorCreator');
 const gameCodeManager = require('../../managers/gameCodes');
-const dbConfig = require('../../config/defaults/config').databasePopulation;
+const { dbConfig } = require('../../config/defaults/config');
 
 const router = new express.Router();
 
@@ -126,12 +126,14 @@ function handle(io) {
    * @apiSuccess {Object[]} data.success Was the password properly changed?
    */
   router.post('/:username/password', (request, response) => {
+    const sentData = request.body.data;
+
     if (!objectValidator.isValidData(request.params, { userId: true })) {
-      restErrorChecker.checkAndSendError({ response, error: new errorCreator.InvalidData({ expected: '{ userId }' }), sentData: request.body.data });
+      restErrorChecker.checkAndSendError({ response, error: new errorCreator.InvalidData({ expected: '{ userId }' }) });
 
       return;
     } else if (!objectValidator.isValidData(request.body.data, { password: true })) {
-      restErrorChecker.checkAndSendError({ response, error: new errorCreator.InvalidData({ expected: '{ password }' }), sentData: request.body.data });
+      restErrorChecker.checkAndSendError({ response, error: new errorCreator.InvalidData({ expected: '{ password }' }), sentData });
 
       return;
     }
@@ -144,7 +146,9 @@ function handle(io) {
       userId,
       callback: ({ error, data }) => {
         if (error) {
-          restErrorChecker.checkAndSendError({ response, error, sentData: request.body.data });
+          sentData.password = typeof sentData.password !== 'undefined';
+
+          restErrorChecker.checkAndSendError({ response, error, sentData });
 
           return;
         }
@@ -166,31 +170,36 @@ function handle(io) {
    *
    * @apiParam {Object} data
    * @apiParam {Object} data.user User to create.
+   * @apiParam {string} [data.options] Update options.
    *
    * @apiSuccess {Object} data
    * @apiSuccess {Object} data.user Created user.
    */
   router.post('/', (request, response) => {
-    if (!objectValidator.isValidData(request.body, { data: { user: { username: true } } })) {
-      restErrorChecker.checkAndSendError({ response, error: new errorCreator.InvalidData({ expected: '{ data: { user: { username } } }' }), sentData: request.body.data });
+    const sentData = request.body.data;
+
+    if (!objectValidator.isValidData(request.body, { data: { user: { username: true, password: true } } })) {
+      sentData.user.password = typeof sentData.user.password !== 'undefined';
+
+      restErrorChecker.checkAndSendError({ response, error: new errorCreator.InvalidData({ expected: '{ data: { user: { username, password } } }' }), sentData });
 
       return;
     }
 
     const { authorization: token } = request.headers;
-    const { user } = request.body.data;
+    const { user, options } = request.body.data;
     user.registerDevice = dbConfig.DeviceTypes.RESTAPI;
 
     userManager.createUser({
       user,
       token,
       io,
+      options,
       callback: ({ error, data }) => {
         if (error) {
-          const filteredData = request.body.data;
-          filteredData.user.password = typeof filteredData.user.password === 'string';
+          sentData.user.password = typeof sentData.user.password !== 'undefined';
 
-          restErrorChecker.checkAndSendError({ response, error, sentData: filteredData });
+          restErrorChecker.checkAndSendError({ response, error, sentData });
 
           return;
         }
@@ -358,8 +367,12 @@ function handle(io) {
    * @apiSuccess {Object} data.room Followed room.
    */
   router.put('/:userId/rooms/:roomId/follow', (request, response) => {
+    const sentData = request.body.data;
+
     if (!objectValidator.isValidData(request.params, { userId: true, roomId: true })) {
-      restErrorChecker.checkAndSendError({ response, error: new errorCreator.InvalidData({ expected: '{ userId, roomId }' }), sentData: request.body.data });
+      sentData.password = typeof sentData.password !== 'undefined';
+
+      restErrorChecker.checkAndSendError({ response, error: new errorCreator.InvalidData({ expected: '{ userId, roomId }' }), sentData });
 
       return;
     }
@@ -377,7 +390,9 @@ function handle(io) {
       aliasId,
       callback: ({ error, data }) => {
         if (error) {
-          restErrorChecker.checkAndSendError({ response, error, sentData: request.body.data });
+          sentData.password = typeof sentData.password !== 'undefined';
+
+          restErrorChecker.checkAndSendError({ response, error, sentData });
 
           return;
         }

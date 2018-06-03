@@ -16,8 +16,8 @@
 
 'use strict';
 
-const dbConfig = require('../config/defaults/config').databasePopulation;
-const errorCreator = require('../objects/error/errorCreator');
+const { dbConfig } = require('../config/defaults/config');
+const errorCreator = require('../error/errorCreator');
 const dbTransaction = require('../db/connectors/transaction');
 const authenticator = require('../helpers/authenticator');
 const walletManager = require('./wallets');
@@ -396,6 +396,8 @@ function updateTransaction({
               } else {
                 io.emit(dbConfig.EmitTypes.TRANSACTION, dataToSend);
               }
+
+              io.emit(dbConfig.EmitTypes.TRANSACTION, dataToSend);
 
               callback(dataToSend);
             },

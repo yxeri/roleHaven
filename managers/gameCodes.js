@@ -18,9 +18,8 @@
 
 const authenticator = require('../helpers/authenticator');
 const dbGameCode = require('../db/connectors/gameCode');
-const errorCreator = require('../objects/error/errorCreator');
-const dbConfig = require('../config/defaults/config').databasePopulation;
-const appConfig = require('../config/defaults/config').app;
+const errorCreator = require('../error/errorCreator');
+const { appConfig, dbConfig } = require('../config/defaults/config');
 const transactionManager = require('../managers/transactions');
 const aliasManager = require('./aliases');
 const textTools = require('../utils/textTools');
@@ -313,10 +312,8 @@ function getGameCodesByOwner({ token, callback }) {
  * @param {string} params.code - Code for a game code.
  * @param {string} params.token - jwt.
  * @param {Function} params.callback - Callback.
- * @param {Object} [params.socket] - Socket io.
  */
 function useGameCode({
-  socket,
   io,
   code,
   token,
@@ -392,15 +389,9 @@ function useGameCode({
 
                         dataToOwner.data.newGameCode = createData.data.gameCode;
 
-                        if (socket) {
-                          socket.to(usedGameCode.ownerId).emit(dbConfig.EmitTypes.GAMECODE, dataToOwner);
-                        } else {
-                          io.to(usedGameCode.ownerId).emit(dbConfig.EmitTypes.GAMECODE, dataToOwner);
-                        }
+                        io.to(usedGameCode.ownerId).emit(dbConfig.EmitTypes.GAMECODE, dataToOwner);
                       },
                     });
-                  } else if (socket) {
-                    socket.to(usedGameCode.ownerId).emit(dbConfig.EmitTypes.GAMECODE, dataToOwner);
                   } else {
                     io.to(usedGameCode.ownerId).emit(dbConfig.EmitTypes.GAMECODE, dataToOwner);
                   }

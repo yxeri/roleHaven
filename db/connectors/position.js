@@ -17,52 +17,46 @@
 'use strict';
 
 const mongoose = require('mongoose');
-const errorCreator = require('../../objects/error/errorCreator');
+const errorCreator = require('../../error/errorCreator');
 const dbConnector = require('../databaseConnector');
-const dbConfig = require('../../config/defaults/config').databasePopulation;
+const { dbConfig } = require('../../config/defaults/config');
 
 const mapPositionSchema = new mongoose.Schema(dbConnector.createSchema({
-  deviceId: {
-    type: String,
-    unique: true,
-    sparse: true,
-  },
   connectedToUser: {
     type: String,
     unique: true,
     sparse: true,
   },
   coordinatesHistory: [dbConnector.coordinatesSchema],
-  positionName: String,
+  positionName: { type: String, unique: true },
   positionType: { type: String, default: dbConfig.PositionTypes.WORLD },
   description: { type: [String], default: [] },
   radius: { type: Number, default: 0 },
   isStationary: { type: Boolean, default: false },
+  origin: { type: String, default: dbConfig.PositionOrigins.LOCAL },
+  positionStructure: { type: String, default: dbConfig.PositionStructures.MARKER },
 }), { collection: 'mapPositions' });
 
 const MapPosition = mongoose.model('MapPosition', mapPositionSchema);
 
-const positionFilter = {
+const positionFilter = dbConnector.createFilter({
   connectedToUser: 1,
-  deviceId: 1,
   coordinatesHistory: 1,
   positionName: 1,
   positionType: 1,
+  positionStructure: 1,
   radius: 1,
   isStationary: 1,
-  lastUpdated: 1,
-  customLastUpdated: 1,
-  timeCreated: 1,
-  customTimeCreated: 1,
-};
+  description: 1,
+});
 
 /**
- * Update position
+ * Update position.
  * @private
- * @param {Object} params - Parameters
- * @param {string} params.positionId - ID of the position to update
- * @param {Object} params.update - Update
- * @param {Function} params.callback Callback
+ * @param {Object} params - Parameter.
+ * @param {string} params.positionId - Id of the position to update.
+ * @param {Object} params.update - Update.
+ * @param {Function} params.callback Callback.
  */
 function updateObject({ positionId, update, callback }) {
   dbConnector.updateObject({
@@ -83,7 +77,7 @@ function updateObject({ positionId, update, callback }) {
 }
 
 /**
- * Get positions
+ * Get positions.
  * @private
  * @param {Object} params - Parameters.
  * @param {Object} [params.query] - Query to get positions.
@@ -132,7 +126,7 @@ function getPosition({ filter, query, callback }) {
 
         return;
       } else if (!data.object) {
-        callback({ error: new errorCreator.DoesNotExist({ name: `position ${query.toString()}` }) });
+        callback({ error: new errorCreator.DoesNotExist({ name: `position ${JSON.stringify(query, null, 4)}` }) });
 
         return;
       }
@@ -143,44 +137,30 @@ function getPosition({ filter, query, callback }) {
 }
 
 /**
- * Get position by device
- * @param {Object} params - Parameters
- * @param {string} params.deviceId - ID of the device
- * @param {Function} params.callback - Callback
- */
-function getPositionByDevice({ deviceId, callback }) {
-  getPosition({
-    callback,
-    object: MapPosition,
-    query: { deviceId },
-  });
-}
-
-/**
  * Does the position exist?
- * @param {Object} params - Parameters
- * @param {string} [params.deviceId] - ID of the device
- * @param {string} [params.connectedToUser] - ID of the user or alias
- * @param {Function} params.callback - Callback
+ * @param {Object} params - Parameters.
+ * @param {string} [params.connectedToUser] - Id of the user or alias.
+ * @param {Function} params.callback - Callback.
  */
-function doesPositionExist({ deviceId, connectedToUser, callback }) {
-  if (!deviceId && !connectedToUser) {
+function doesPositionExist({
+  positionName,
+  connectedToUser,
+  callback,
+}) {
+  if (!connectedToUser && !positionName) {
     callback({ data: { exists: false } });
 
     return;
   }
 
-  const query = {};
+  const query = { $or: [] };
 
-  if (deviceId && connectedToUser) {
-    query.$or = [
-      { deviceId },
-      { connectedToUser },
-    ];
-  } else if (deviceId) {
-    query.deviceId = deviceId;
-  } else if (connectedToUser) {
-    query.connectedToUser = connectedToUser;
+  if (connectedToUser) {
+    query.$or.push({ connectedToUser: { $exists: true } });
+  }
+
+  if (positionName) {
+    query.$or.push({ positionName });
   }
 
   dbConnector.doesObjectExist({
@@ -197,60 +177,46 @@ function doesPositionExist({ deviceId, connectedToUser, callback }) {
  * @param {Function} params.callback - Callback
  */
 function createPosition({ position, callback }) {
-  const existCallback = ({ saveCallback }) => {
-    doesPositionExist({
-      deviceId: position.deviceId,
-      connectedToUser: position.connectedToUser,
-      callback: (deviceData) => {
-        if (deviceData.error) {
-          callback({ error: deviceData.error });
+  doesPositionExist({
+    positionName: position.positionName,
+    connectedToUser: position.connectedToUser,
+    callback: (positionData) => {
+      if (positionData.error) {
+        callback({ error: positionData.error });
 
-          return;
-        } else if (deviceData.data.exists) {
-          callback({ error: new errorCreator.AlreadyExists({ name: `device ${position.deviceId} || connectedToUser ${position.connectedToUser} in position` }) });
+        return;
+      } else if (positionData.data.exists) {
+        callback({ error: new errorCreator.AlreadyExists({ name: `positionName ${position.positionName} || connectedToUser ${position.connectedToUser} in position` }) });
 
-          return;
-        }
+        return;
+      }
 
-        saveCallback();
-      },
-    });
-  };
+      const positionToSave = position;
+      positionToSave.coordinatesHistory = [positionToSave.coordinates];
 
-  const saveCallback = () => {
-    dbConnector.saveObject({
-      object: new MapPosition(position),
-      objectType: 'mapPosition',
-      callback: ({ error, data }) => {
-        if (error) {
-          callback({ error });
+      dbConnector.saveObject({
+        object: new MapPosition(position),
+        objectType: 'mapPosition',
+        callback: ({ error, data }) => {
+          if (error) {
+            callback({ error });
 
-          return;
-        }
+            return;
+          }
 
-        callback({ data: { position: data.savedObject } });
-      },
-    });
-  };
-
-  if (position.connectedToUser || position.deviceId) {
-    existCallback({ saveCallback });
-  } else {
-    saveCallback();
-  }
+          callback({ data: { position: data.savedObject } });
+        },
+      });
+    },
+  });
 }
 
 /**
- * Update position coordinates
- * @param {Object} params - Parameters
- * @param {string} params.positionId - ID of the position
- * @param {Function} params.callback - Callback
- * @param {Object} params.coordinates - GPS coordinates
- * @param {number} params.coordinates.longitude - Longitude
- * @param {number} params.coordinates.latitude - Latitude
- * @param {number} params.coordinates.accuracy - Accuracy in meters
- * @param {number} [params.coordinates.heading] - Heading (0 - 359)
- * @param {number} [params.coordinates.speed] - Speed
+ * Update position coordinates.
+ * @param {Object} params - Parameters.
+ * @param {string} params.positionId - Id of the position.
+ * @param {Function} params.callback - Callback.
+ * @param {Object} params.coordinates - GPS coordinates.
  */
 function updateCoordinates({ positionId, coordinates, callback }) {
   const update = { $push: { coordinatesHistory: coordinates } };
@@ -279,7 +245,7 @@ function updatePosition({
   options = {},
 }) {
   const {
-    deviceId,
+    positionStructure,
     positionName,
     ownerAliasId,
     isStationary,
@@ -287,6 +253,7 @@ function updatePosition({
     text,
     isPublic,
     connectedToUser,
+    description,
   } = position;
   const { resetOwnerAliasId, resetConnectedToUser } = options;
 
@@ -312,7 +279,7 @@ function updatePosition({
   };
   const existCallback = () => {
     doesPositionExist({
-      deviceId,
+      positionName,
       connectedToUser,
       callback: (deviceData) => {
         if (deviceData.error) {
@@ -320,7 +287,7 @@ function updatePosition({
 
           return;
         } else if (deviceData.data.exists) {
-          callback({ error: new errorCreator.AlreadyExists({ name: `position with device ${position.deviceId} || ${position.connectedToUser}` }) });
+          callback({ error: new errorCreator.AlreadyExists({ name: `position with connected user ${position.connectedToUser}` }) });
 
           return;
         }
@@ -333,16 +300,18 @@ function updatePosition({
   if (text) { update.$set.description = text; }
   if (positionName) { update.$set.positionName = positionName; }
   if (positionType) { update.$set.positionType = positionType; }
-  if (deviceId) { update.$set.deviceId = deviceId; }
-  if (connectedToUser) { update.$set.connectedToUser = connectedToUser; }
+  if (description) { update.$set.description = description; }
+  if (positionStructure) { update.$set.positionStructure = positionStructure; }
 
   if (typeof isPublic !== 'undefined') { update.$set.isPublic = isPublic; }
   if (typeof isStationary !== 'undefined') { update.$set.isStationary = isStationary; }
 
   if (resetConnectedToUser) {
     update.$unset.connectedToUser = '';
+    update.$set.positionType = dbConfig.PositionTypes.DEVICE;
   } else if (connectedToUser) {
     update.$set.connectedToUser = connectedToUser;
+    update.$set.positionType = dbConfig.PositionTypes.USER;
   }
 
   if (resetOwnerAliasId) {
@@ -351,7 +320,7 @@ function updatePosition({
     update.$set.ownerAliasId = ownerAliasId;
   }
 
-  if ((!resetConnectedToUser && connectedToUser) || deviceId) {
+  if (!resetConnectedToUser && connectedToUser) {
     existCallback();
   } else {
     updateCallback();
@@ -387,6 +356,34 @@ function getPositionsByUser({
 }
 
 /**
+ * Get positions by their structure.
+ * @param {Object} params - Parameters.
+ * @param {string} params.user - User retrieving the positions.
+ * @param {string} params.positionStructure - Type of position structure.
+ * @param {Function} params.callback - Callback.
+ * @param {boolean} [params.full] - Should access information be retrieved?
+ */
+function getPositionsByStructure({
+  user,
+  callback,
+  positionTypes: positionStructure,
+  full = false,
+}) {
+  const query = dbConnector.createUserQuery({ user });
+  const filter = !full ? positionFilter : {};
+
+  if (positionStructure) {
+    query.positionStructure = { $in: positionStructure };
+  }
+
+  getPositions({
+    filter,
+    query,
+    callback,
+  });
+}
+
+/**
  * Remove position
  * @param {Object} params - Parameters
  * @param {string} params.positionId - ID of the position
@@ -401,7 +398,7 @@ function removePosition({ positionId, callback }) {
 }
 
 /**
- * Remove positions based on marker type
+ * Remove positions based on position type.
  * @param {Object} params - Parameters
  * @param {string} params.positionType - Position type
  * @param {Function} params.callback - Callback
@@ -411,6 +408,20 @@ function removePositionsByType({ positionType, callback }) {
     callback,
     object: MapPosition,
     query: { positionType },
+  });
+}
+
+/**
+ * Remove positions based on its origin.
+ * @param {Object} params - Parameters.
+ * @param {string} params.origin - The creation origin of the positions.
+ * @param {Function} params.callback - Callback.
+ */
+function removePositionsByOrigin({ origin, callback }) {
+  dbConnector.removeObjects({
+    callback,
+    object: MapPosition,
+    query: { origin },
   });
 }
 
@@ -520,14 +531,16 @@ function removeAccess({
   });
 }
 
-exports.updateCoordinates = updateCoordinates;
+exports.updatePositionCoordinates = updateCoordinates;
 exports.removePosition = removePosition;
 exports.createPosition = createPosition;
 exports.getPositionsByUser = getPositionsByUser;
 exports.updatePosition = updatePosition;
+exports.removePositionsByOrigin = removePositionsByOrigin;
 exports.getPositionById = getPositionById;
 exports.getUserPosition = getUserPosition;
-exports.getPositionByDevice = getPositionByDevice;
 exports.addAccess = addAccess;
 exports.removeAccess = removeAccess;
 exports.removePositionsByType = removePositionsByType;
+exports.removePositionsByOrigin = removePositionsByOrigin;
+exports.getPositionsByStructure = getPositionsByStructure;

@@ -16,7 +16,7 @@
 
 'use strict';
 
-const appConfig = require('../config/defaults/config').app;
+const { appConfig, dbConfig } = require('../config/defaults/config');
 const request = require('request');
 const xml2json = require('xml2json');
 
@@ -35,7 +35,7 @@ function convertToJson(xml) {
  * @returns {string[]} Coordinates
  */
 function parseGoogleCoords(string) {
-  return string.replace(/0\.0 |0\.0/g, '').replace(/,$/g, '').split(',');
+  return string.replace(/,0/g, '').split(/[,|\n]/);
 }
 
 /**
@@ -47,22 +47,23 @@ function createCoordsCollection(coords) {
   const coordsCollection = [];
 
   for (let i = 0; i < coords.length; i += 2) {
-    let latitude = coords[i + 1];
-    let longitude = coords[i];
+    const latitude = coords[i + 1];
+    const longitude = coords[i];
 
-    /**
-     * Google Maps bugs out and will sometimes send large integer instead of double (64.5565 becomes 645565)
-     * This adds a dot where needed
-     */
-    if (!Number.isNaN(parseInt(longitude.substr(0, 2), 10)) && coords[i].charAt(2) !== '.') {
-      longitude = `${coords[i].substr(0, 2)}.${coords[i].substr(2)}`;
-    } else if (!Number.isNaN(parseInt(latitude.substr(0, 2), 10)) && coords[i + 1].charAt(2) !== '.') {
-      latitude = `${coords[i + 1].substr(0, 2)}.${coords[i + 1].substr(2)}`;
-    }
+    // /**
+    //  * Google Maps bugs out and will sometimes send large integer instead of double (64.5565 becomes 645565)
+    //  * This adds a dot where needed
+    //  */
+    // if (!Number.isNaN(parseInt(longitude.substr(0, 2), 10)) && coords[i].charAt(2) !== '.') {
+    //   longitude = `${coords[i].substr(0, 2)}.${coords[i].substr(2)}`;
+    // } else if (!Number.isNaN(parseInt(latitude.substr(0, 2), 10)) && coords[i + 1].charAt(2) !== '.') {
+    //   latitude = `${coords[i + 1].substr(0, 2)}.${coords[i + 1].substr(2)}`;
+    // }
 
     coordsCollection.push({
-      lat: parseFloat(latitude),
-      lng: parseFloat(longitude),
+      accuracy: appConfig.minimumPositionAccuracy,
+      latitude: parseFloat(latitude),
+      longitude: parseFloat(longitude),
     });
   }
 
@@ -86,25 +87,42 @@ function createCoordsCollection(coords) {
 function createPosition({ position, layerName }) {
   const coordinates = {};
   let geometry = '';
+  let positionStructure;
 
-  if (position.Polygon) {
-    coordinates.coordsCollection = createCoordsCollection(parseGoogleCoords(position.Polygon.outerBoundaryIs.LinearRing.coordinates));
-    geometry = 'polygon';
-  } else if (position.LineString) {
-    coordinates.coordsCollection = createCoordsCollection(parseGoogleCoords(position.LineString.coordinates));
-    geometry = 'line';
+  if (position.Polygon || position.LineString) {
+    let coordsCollection;
+
+    if (position.Polygon) {
+      coordsCollection = createCoordsCollection(parseGoogleCoords(position.Polygon.outerBoundaryIs.LinearRing.coordinates));
+      geometry = 'polygon';
+      positionStructure = dbConfig.PositionStructures.POLYGON;
+    } else {
+      coordsCollection = createCoordsCollection(parseGoogleCoords(position.LineString.coordinates));
+      geometry = 'line';
+      positionStructure = dbConfig.PositionStructures.LINE;
+    }
+
+    const firstCoordinates = coordsCollection.shift();
+
+    coordinates.longitude = firstCoordinates.longitude;
+    coordinates.latitude = firstCoordinates.latitude;
+    coordinates.extraCoordinates = coordsCollection;
   } else if (position.Point) {
     [coordinates.longitude, coordinates.latitude] = position.Point.coordinates.split(',');
     geometry = 'point';
+    positionStructure = dbConfig.PositionStructures.MARKER;
   }
 
   return {
-    positionName: position.name,
-    isStationary: true,
-    markerType: layerName.toLowerCase(),
-    description: position.description ? position.description.replace(/<img .+?\/>/, '').split(/<br>/) : ['No information'],
     coordinates,
     geometry,
+    positionStructure,
+    accessLevel: appConfig.importedPositionMinAccessLevel,
+    origin: dbConfig.PositionOrigins.GOOGLE,
+    positionName: typeof position.name === 'string' ? position.name : 'Unnamed position',
+    isStationary: true,
+    positionType: layerName.toLowerCase(),
+    description: position.description ? position.description.replace(/<img .+?\/>/, '').split(/<br>/) : ['No information'],
   };
 }
 
@@ -115,21 +133,21 @@ function createPosition({ position, layerName }) {
  */
 function getGooglePositions({ callback }) {
   if (!appConfig.mapLayersPath) {
-    callback({ data: { note: 'Map layers path is not set', positions: [] } });
+    callback({ error: { note: 'Map layers path is not set', positions: [] } });
 
     return;
   }
 
   request.get(appConfig.mapLayersPath, (err, response, body) => {
     if (err || response.statusCode !== 200) {
-      callback({ data: { note: 'Unable to get positions from Google', positions: [] } });
+      callback({ error: { note: 'Unable to get positions from Google', positions: [] } });
 
       return;
     }
 
     const positions = [];
     /**
-     * @type {{ kml: Object, Document: Object, Folder: Object }}
+     * @type {[{ kml: Object, Document: Object, Folder: Object }]}
      */
     const layers = convertToJson(body).kml.Document.Folder;
 

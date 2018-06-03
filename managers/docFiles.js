@@ -16,14 +16,55 @@
 
 'use strict';
 
-const appConfig = require('../config/defaults/config').app;
-const dbConfig = require('../config/defaults/config').databasePopulation;
-const errorCreator = require('../objects/error/errorCreator');
+const { appConfig, dbConfig } = require('../config/defaults/config');
+const errorCreator = require('../error/errorCreator');
 const textTools = require('../utils/textTools');
 const dbDocFile = require('../db/connectors/docFile');
 const authenticator = require('../helpers/authenticator');
 const objectValidator = require('../utils/objectValidator');
 const aliasManager = require('./aliases');
+
+/**
+ * Returns either a filtered or complete file, depending if the user or the user's teams has access to it.
+ * @return {{Object, boolean}} docFile and isLocked.
+ */
+function getAccessedFile({ user, docFile }) {
+  if (docFile.ownerId === user.objectId
+    || docFile.isPublic
+    || docFile.userIds.includes(user.objectId)
+    || user.partOfTeams.some(teamId => docFile.teamIds.includes(teamId))) {
+    return { docFile, isLocked: false };
+  }
+
+  const lockedDocFile = docFile;
+
+  lockedDocFile.text = undefined;
+  lockedDocFile.code = undefined;
+  lockedDocFile.pictures = undefined;
+
+  return { docFile: lockedDocFile, isLocked: true };
+}
+
+/**
+ * Returns either filtered or complete files, depending if the user or the user's teams has access to it.
+ * @return {{Object, Object}} docFiles and isLocked.
+ */
+function separateLockedFiles({ user, docFiles }) {
+  const lockedDocFiles = [];
+  const unlockedDocFiles = docFiles.filter((docFile) => {
+    const { docFile: accessedDocFile, isLocked } = getAccessedFile({ docFile, user });
+
+    if (!isLocked) {
+      return true;
+    }
+
+    lockedDocFiles.push(accessedDocFile);
+
+    return false;
+  });
+
+  return { unlockedDocFiles, lockedDocFiles };
+}
 
 /**
  * Get doc file by ID and check if the user has access to it.
@@ -39,7 +80,6 @@ function getAccessibleDocFile({
   docFileId,
   callback,
   shouldBeAdmin,
-  full,
   errorContentText = `docFileId ${docFileId}`,
 }) {
   dbDocFile.getDocFileById({
@@ -60,22 +100,9 @@ function getAccessibleDocFile({
         return;
       }
 
-      const foundDocFile = docFileData.data.docFile;
-      const filteredDocFile = {
-        objectId: foundDocFile.objectId,
-        title: foundDocFile.title,
-        ownerId: foundDocFile.ownerId,
-        ownerAliasId: foundDocFile.ownerAliasId,
-        lastUpdated: foundDocFile.lastUpdated,
-        timeCreated: foundDocFile.timeCreated,
-        customLastUpdated: foundDocFile.customLastUpdated,
-        customTimeCreated: foundDocFile.customTimeCreated,
-        text: foundDocFile.text,
-      };
-
       callback({
         data: {
-          docFile: full ? foundDocFile : filteredDocFile,
+          docFile: docFileData.data.docFile,
         },
       });
     },
@@ -88,13 +115,11 @@ function getAccessibleDocFile({
  * @param {Object} params - Parameters.
  * @param {Object} params.docFile - Doc file to save.
  * @param {Function} params.callback - Callback.
- * @param {Object} [params.socket] - Socket.io.
- * @param {Object} params.io - Socket.io. Used if socket is not set.
+ * @param {Object} params.io - Socket.io.
  */
 function saveAndTransmitDocFile({
   docFile,
   callback,
-  socket,
   io,
 }) {
   dbDocFile.createDocFile({
@@ -113,11 +138,7 @@ function saveAndTransmitDocFile({
         },
       };
 
-      if (socket) {
-        socket.broadcast.emit(dbConfig.EmitTypes.DOCFILE, dataToSend);
-      } else {
-        io.emit(dbConfig.EmitTypes.DOCFILE, dataToSend);
-      }
+      io.emit(dbConfig.EmitTypes.DOCFILE, dataToSend);
 
       callback(dataToSend);
     },
@@ -151,16 +172,16 @@ function createDocFile({
         callback({ error: new errorCreator.InvalidData({ expected: '{ docFile: { code, text, title } }' }) });
 
         return;
-      } else if (docFile.code && (!textTools.hasAllowedText(docFile.code) || docFile.code.length > appConfig.docFileCodeMaxLength || docFile.code === '')) {
-        callback({ error: new errorCreator.InvalidCharacters({ expected: `Alphanumeric ${docFile.code}. Code length: ${appConfig.docFileCodeMaxLength}` }) });
+      } else if (docFile.code && (!textTools.hasAllowedText(docFile.code) || docFile.code.length > appConfig.docFileCodeMaxLength || docFile.code < appConfig.docFileCodeMinLength)) {
+        callback({ error: new errorCreator.InvalidCharacters({ expected: `Alphanumeric ${docFile.code}. Code length: ${appConfig.docFileCodeMinLength} - ${appConfig.docFileCodeMaxLength}` }) });
 
         return;
-      } else if (docFile.text.join('').length > appConfig.docFileMaxLength || docFile.text.join('') === '') {
-        callback({ error: new errorCreator.InvalidCharacters({ expected: `Text length: ${appConfig.docFileMaxLength}.` }) });
+      } else if (docFile.text.join('').length > appConfig.docFileMaxLength || docFile.text.join('') < appConfig.docFileMinLength) {
+        callback({ error: new errorCreator.InvalidCharacters({ expected: `Text length: ${appConfig.docFileMinLength} - ${appConfig.docFileMaxLength}` }) });
 
         return;
-      } else if (docFile.title.length > appConfig.docFileTitleMaxLength || docFile.title === '') {
-        callback({ error: new errorCreator.InvalidCharacters({ expected: `Title length: ${appConfig.docFileTitleMaxLength}` }) });
+      } else if (docFile.title.length > appConfig.docFileTitleMaxLength || docFile.title < appConfig.docFileTitleMinLength) {
+        callback({ error: new errorCreator.InvalidCharacters({ expected: `Title length: ${appConfig.docFileTitleMinLength} - ${appConfig.docFileTitleMaxLength}` }) });
 
         return;
       }
@@ -211,14 +232,12 @@ function createDocFile({
  * @param {tring} params.docFileId - Doc file.
  * @param {Object} params.io - Socket io. Will be used if socket is undefined.
  * @param {Function} params.callback - Callback.
- * @param {Object} params.io - Socket io. Will be used if socket is not set.
- * @param {Object} [params.socket] - Socket io.
+ * @param {Object} params.io - Socket io.
  * @param {Object} [params.options] - Update options.
  */
 function updateDocFile({
   docFile,
   docFileId,
-  socket,
   io,
   token,
   callback,
@@ -293,11 +312,7 @@ function updateDocFile({
                 },
               };
 
-              if (socket) {
-                socket.broadcast.emit(dbConfig.EmitTypes.DOCFILE, dataToSend);
-              } else {
-                io.emit(dbConfig.EmitTypes.DOCFILE, dataToSend);
-              }
+              io.emit(dbConfig.EmitTypes.DOCFILE, dataToSend);
 
               callback(dataToReturn);
             },
@@ -327,7 +342,7 @@ function getDocFilesList({ token, callback }) {
 
       const { user } = data;
 
-      dbDocFile.getAllDocFiles({
+      dbDocFile.getDocFilesList({
         callback: ({ error: docFilesError, data: docFilesData }) => {
           if (docFilesError) {
             callback({ error: docFilesError });
@@ -337,18 +352,13 @@ function getDocFilesList({ token, callback }) {
 
           const { docFiles } = docFilesData;
           const modifiedFiles = docFiles.map((docFile) => {
-            const newDocFile = {
-              objectId: docFile.objectId,
-              isPublic: docFile.isPublic,
-              ownerId: docFile.ownerAliasId || docFile.ownerId,
-              title: docFile.title,
-            };
+            const newDocFile = docFile;
 
-            if (docFile.isPublic || authenticator.hasAccessTo({
+            if (!docFile.isPublic && !authenticator.hasAccessTo({
               objectToAccess: docFile,
               toAuth: user,
             })) {
-              newDocFile.code = docFile.code;
+              newDocFile.code = undefined;
             }
 
             return newDocFile;
@@ -366,9 +376,15 @@ function getDocFilesList({ token, callback }) {
  * @param {Object} params - Parameters.
  * @param {string} params.code - Doc file Code.
  * @param {string} params.token - jwt.
+ * @param {Object} params.io - Socket.io;
  * @param {Function} params.callback - Callback.
  */
-function unlockDocFile({ code, token, callback }) {
+function unlockDocFile({
+  io,
+  code,
+  token,
+  callback,
+}) {
   authenticator.isUserAllowed({
     token,
     commandName: dbConfig.apiCommands.GetDocFile.name,
@@ -408,7 +424,16 @@ function unlockDocFile({ code, token, callback }) {
                 return;
               }
 
-              callback({ data: { docFile: foundDocFile } });
+              const dataToSend = {
+                data: {
+                  docFile: foundDocFile,
+                  changeType: dbConfig.ChangeTypes.UPDATE,
+                },
+              };
+
+              io.to(user.objectId).emit(dbConfig.EmitTypes.DOCFILE, dataToSend);
+
+              callback(dataToSend);
             },
           });
         },
@@ -444,10 +469,24 @@ function getDocFileById({
 
       getAccessibleDocFile({
         docFileId,
-        callback,
         user,
         full,
         shouldBeAdmin: full && dbConfig.apiCommands.GetFull.accessLevel > user.accessLevel,
+        callback: ({ error: docFileError, data: docFileData }) => {
+          if (docFileError) {
+            callback({ error: docFileError });
+
+            return;
+          }
+
+          const { docFile } = docFileData;
+
+          if (!full) {
+            callback({ data: { docFile: getAccessedFile({ user, docFile }).docFile } });
+          } else {
+            callback({ data: { docFile } });
+          }
+        },
       });
     },
   });
@@ -459,14 +498,12 @@ function getDocFileById({
  * @param {string} params.docFileId - ID of the file to remove.
  * @param {string} params.token - jwt.
  * @param {Function} params.callback - Callback
- * @param {Object} params.io - Socket io. Will be used if socket is not set.
- * @param {Object} [params.socket] - Socket io.
+ * @param {Object} params.io - Socket io.
  */
 function removeDocFile({
   docFileId,
   token,
   callback,
-  socket,
   io,
 }) {
   authenticator.isUserAllowed({
@@ -507,11 +544,7 @@ function removeDocFile({
                 },
               };
 
-              if (socket) {
-                socket.broadcast.emit(dbConfig.EmitTypes.DOCFILE, dataToSend);
-              } else {
-                io.emit(dbConfig.EmitTypes.DOCFILE, dataToSend);
-              }
+              io.emit(dbConfig.EmitTypes.DOCFILE, dataToSend);
 
               callback(dataToSend);
             },
@@ -548,7 +581,23 @@ function getDocFilesByUser({
       dbDocFile.getDocFilesByUser({
         user,
         full,
-        callback,
+        callback: ({ error: docFilesError, data: docFilesData }) => {
+          if (docFilesError) {
+            callback({ error: docFilesError });
+
+            return;
+          }
+
+          const { docFiles } = docFilesData;
+
+          if (!full) {
+            const { lockedDocFiles, unlockedDocFiles } = separateLockedFiles({ user, docFiles });
+
+            callback({ data: { docFiles: lockedDocFiles.concat(unlockedDocFiles) } });
+          } else {
+            callback({ data: { docFiles } });
+          }
+        },
       });
     },
   });

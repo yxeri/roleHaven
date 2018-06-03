@@ -32,142 +32,132 @@ config.commands = config.commands || {};
 config.apiCommands = config.apiCommands || {};
 
 config.AccessLevels = config.AccessLevels || {
-  GOD: 6,
-  SUPERUSER: 5,
-  ADMIN: 4,
-  MODERATOR: 3,
-  PRIVILEGED: 2,
-  STANDARD: 1,
   ANONYMOUS: 0,
+  STANDARD: 1,
+  PRIVILEGED: 2,
+  MODERATOR: 3,
+  ADMIN: 4,
+  SUPERUSER: 5,
+  GOD: 6,
 };
 
-config.users = {
-  systemUser: {
-    objectId: 'config-user-system',
-    username: 'system',
-  },
-  anonymous: {
-    username: 'anonymous',
-    objectId: 'config-user-anonymous',
-  },
+config.users.systemUser = config.users.systemUser || {
+  objectId: '222222222222222222222220',
+  username: 'system',
+};
+
+config.users.anonymous = config.users.anonymous || {
+  username: 'anonymous',
+  objectId: '222222222222222222222221',
 };
 
 /**
  * Default rooms
  */
-config.rooms = {
-  /**
-   * Public is followed by all users.
-   * It is also reachable by anonymous users.
-   */
-  public: config.rooms.public || {
-    objectId: 'public789012',
-    roomName: 'public',
-    visibility: config.AccessLevels.ANONYMOUS,
-    accessLevel: config.AccessLevels.ANONYMOUS,
-    ownerId: config.users.systemUser.objectId,
-    isSystemRoom: true,
-  },
 
-  /**
-   * Admin related messages will be sent here.
-   * E.g. when a user needs verification.
-   */
-  admin: config.rooms.admin || {
-    objectId: 'hqroom789012',
-    roomName: 'hqroom',
-    visibility: config.AccessLevels.MODERATOR,
-    accessLevel: config.AccessLevels.MODERATOR,
-    ownerId: config.users.systemUser.objectId,
-    isSystemRoom: true,
-  },
-
-  /**
-   * Messages sent to anonymous will have their user and team name stripped.
-   */
-  anonymous: config.rooms.anonymous || {
-    objectId: 'anonymous012',
-    roomName: 'anonymous',
-    visibility: config.AccessLevels.ANONYMOUS,
-    accessLevel: config.AccessLevels.ANONYMOUS,
-    isAnonymous: true,
-    ownerId: config.users.systemUser.objectId,
-    isSystemRoom: true,
-  },
-
-  important: config.rooms.important || {
-    objectId: 'important012',
-    roomName: 'important-room',
-    visibility: config.AccessLevels.SUPERUSER,
-    accessLevel: config.AccessLevels.SUPERUSER,
-    ownerId: config.users.systemUser.objectId,
-    isSystemRoom: true,
-  },
-
-  news: config.rooms.news || {
-    objectId: 'news56789012',
-    roomName: 'news-room',
-    visibility: config.AccessLevels.SUPERUSER,
-    accessLevel: config.AccessLevels.SUPERUSER,
-    ownerId: config.users.systemUser.objectId,
-    isSystemRoom: true,
-  },
-
-  schedule: config.rooms.schedule || {
-    objectId: 'schedule9012',
-    roomName: 'schedule-room',
-    visibility: config.AccessLevels.SUPERUSER,
-    accessLevel: config.AccessLevels.SUPERUSER,
-    ownerId: config.users.systemUser.objectId,
-    isSystemRoom: true,
-  },
-
-  /**
-   * Used to store messages labeled as broadcast.
-   * Not used as an ordinary chat room
-   */
-  bcast: config.rooms.bcast || {
-    objectId: 'broadcast012',
-    roomName: 'broadcast-room',
-    visibility: config.AccessLevels.SUPERUSER,
-    accessLevel: config.AccessLevels.SUPERUSER,
-    ownerId: config.users.systemUser.objectId,
-    isSystemRoom: true,
-  },
+/**
+ * Public is followed by all users.
+ * It is also reachable by anonymous users.
+ */
+config.rooms.public = config.rooms.public || {
+  objectId: '111111111111111111111110',
+  roomName: 'public',
+  visibility: config.AccessLevels.ANONYMOUS,
+  accessLevel: config.AccessLevels.ANONYMOUS,
+  ownerId: config.users.systemUser.objectId,
+  isSystemRoom: true,
+};
+/**
+ * Admin related messages will be sent here.
+ * E.g. when a user needs verification.
+ */
+config.rooms.admin = config.rooms.admin || {
+  objectId: '111111111111111111111111',
+  roomName: 'hqroom',
+  visibility: config.AccessLevels.MODERATOR,
+  accessLevel: config.AccessLevels.MODERATOR,
+  ownerId: config.users.systemUser.objectId,
+  isSystemRoom: true,
+};
+/**
+ * Messages sent to anonymous will have their user and team name stripped.
+ */
+config.rooms.anonymous = config.rooms.anonymous || {
+  objectId: '111111111111111111111112',
+  roomName: 'anonymous',
+  visibility: config.AccessLevels.ANONYMOUS,
+  accessLevel: config.AccessLevels.ANONYMOUS,
+  isAnonymous: true,
+  ownerId: config.users.systemUser.objectId,
+  isSystemRoom: true,
+};
+config.rooms.important = config.rooms.important || {
+  objectId: '111111111111111111111113',
+  roomName: 'important',
+  visibility: config.AccessLevels.SUPERUSER,
+  accessLevel: config.AccessLevels.SUPERUSER,
+  ownerId: config.users.systemUser.objectId,
+  isSystemRoom: true,
+};
+config.rooms.news = config.rooms.news || {
+  objectId: '111111111111111111111114',
+  roomName: 'news',
+  visibility: config.AccessLevels.SUPERUSER,
+  accessLevel: config.AccessLevels.SUPERUSER,
+  ownerId: config.users.systemUser.objectId,
+  isSystemRoom: true,
+};
+config.rooms.schedule = config.rooms.schedule || {
+  objectId: '111111111111111111111115',
+  roomName: 'schedule',
+  visibility: config.AccessLevels.SUPERUSER,
+  accessLevel: config.AccessLevels.SUPERUSER,
+  ownerId: config.users.systemUser.objectId,
+  isSystemRoom: true,
+};
+/**
+ * Used to store messages labeled as broadcast.
+ * Not used as an ordinary chat room
+ */
+config.rooms.bcast = config.rooms.bcast || {
+  objectId: '111111111111111111111116',
+  roomName: 'broadcast',
+  visibility: config.AccessLevels.SUPERUSER,
+  accessLevel: config.AccessLevels.SUPERUSER,
+  ownerId: config.users.systemUser.objectId,
+  isSystemRoom: true,
 };
 
 config.requiredRooms = [
-  config.rooms.anonymous.roomName,
-  config.rooms.bcast.roomName,
-  config.rooms.public.roomName,
-  config.rooms.important.roomName,
-  config.rooms.news.roomName,
-  config.rooms.schedule.roomName,
+  config.rooms.anonymous.objectId,
+  config.rooms.bcast.objectId,
+  config.rooms.public.objectId,
+  config.rooms.important.objectId,
+  config.rooms.news.objectId,
+  config.rooms.schedule.objectId,
 ];
 
 config.protectedRoomNames = Object.keys(config.rooms).map(objectId => config.rooms[objectId].roomName);
 
 config.roomsToBeHidden = [
-  config.rooms.bcast.roomName,
-  config.rooms.important.roomName,
-  config.rooms.news.roomName,
-  config.rooms.schedule.roomName,
+  config.rooms.bcast.objectId,
+  config.rooms.important.objectId,
+  config.rooms.news.objectId,
+  config.rooms.schedule.objectId,
 ];
 
 config.deviceRoomPrepend = 'device#';
 
 config.anonymousUser = {
-  username: '',
+  username: 'ANONYMOUS_USER',
   accessLevel: config.AccessLevels.ANONYMOUS,
   visibility: config.AccessLevels.ANONYMOUS,
-  roomIds: [
-    config.rooms.anonymous.objectId,
-    config.rooms.bcast.objectId,
-    config.rooms.public.objectId,
-    config.rooms.important.objectId,
-    config.rooms.news.objectId,
-    config.rooms.schedule.objectId,
-  ],
+  registerDevice: 'ANONYMOUS_USER',
+  followingRooms: Object.keys(config.rooms).map(key => config.rooms[key].objectId),
+  isVerified: true,
+  defaultRoomId: config.rooms.public.objectId,
+  partOfTeams: [],
+  aliases: [],
   isAnonymous: true,
 };
 
@@ -198,23 +188,38 @@ config.MessageTypes = {
   CHAT: 'chat',
   WHISPER: 'whisper',
   BROADCAST: 'broadcast',
+  MESSAGE: 'message',
 };
 
 config.PositionTypes = {
   USER: 'user',
   WORLD: 'world',
+  LOCAL: 'local',
+  DEVICE: 'device',
+};
+
+config.PositionOrigins = {
+  LOCAL: 'local',
+  GOOGLE: 'google',
+  EXTERNAL: 'external',
 };
 
 config.ChangeTypes = {
   UPDATE: 'update',
   CREATE: 'create',
   REMOVE: 'remove',
-  ACCEPT: 'accept',
 };
 
 config.OriginTypes = {
   SOCKET: 'socket',
   NONE: 'none',
+};
+
+config.PositionStructures = {
+  MARKER: 'marker',
+  CIRCLE: 'circle',
+  POLYGON: 'polygon',
+  LINE: 'line',
 };
 
 config.EmitTypes = {
@@ -240,6 +245,10 @@ config.EmitTypes = {
   BAN: 'ban',
   WALLET: 'wallet',
   TRANSACTION: 'transaction',
+  DISCONNECT: 'disconnect',
+  RECONNECT: 'reconnect',
+  STARTUP: 'startup',
+  SENDMSG: 'sendMessage',
 };
 
 /**
@@ -296,6 +305,10 @@ config.apiCommands = {
   /**
    * Message
    */
+  SendOneTimeMessage: config.apiCommands.SendOneTimeMessage || {
+    name: 'SendOneTimeMessage',
+    accessLevel: config.AccessLevels.PRIVILEGED,
+  },
   SendMessage: config.apiCommands.SendMessage || {
     name: 'SendMessage',
     accessLevel: config.AccessLevels.STANDARD,
@@ -317,7 +330,7 @@ config.apiCommands = {
     accessLevel: config.AccessLevels.STANDARD,
   },
   GetMessage: config.apiCommands.GetMessage || {
-    name: 'UpdateMessage',
+    name: 'GetMessage',
     accessLevel: config.AccessLevels.ANONYMOUS,
   },
   GetAllMessages: config.apiCommands.GetAllMessages || {
@@ -412,8 +425,12 @@ config.apiCommands = {
     name: 'CreateUser',
     accessLevel: config.AccessLevels.ANONYMOUS,
   },
-  CreateUserThroughSocket: config.apiCommands.CreateUserThroughSocket || {
-    name: 'CreateUserThroughSocket',
+  CreateDisallowedUser: config.apiCommands.CreateDisallowedUser || {
+    name: 'CreateDisallowedUser',
+    accessLevel: config.AccessLevels.ADMIN,
+  },
+  CreateSockerUser: config.apiCommands.CreateSockerUser || {
+    name: 'CreateSockerUser',
     accessLevel: config.AccessLevels.ANONYMOUS,
   },
   BanUser: config.apiCommands.BanUser || {
@@ -430,7 +447,7 @@ config.apiCommands = {
   },
   UpdateId: config.apiCommands.UpdateId || {
     name: 'UpdateId',
-    accessLevel: config.AccessLevels.ANONYMOUS,
+    accessLevel: config.AccessLevels.STANDARD,
   },
   Logout: config.apiCommands.Logout || {
     name: 'Logout',
@@ -450,7 +467,7 @@ config.apiCommands = {
   },
   GetUsers: config.apiCommands.GetUsers || {
     name: 'GetUsers',
-    accessLevel: config.AccessLevels.STANDARD,
+    accessLevel: config.AccessLevels.ANONYMOUS,
   },
   GetUserDetails: config.apiCommands.GetUserDetails || {
     name: 'GetUserDetails',
@@ -471,18 +488,6 @@ config.apiCommands = {
   RemoveUser: config.apiCommands.RemoveUser || {
     name: 'RemoveUser',
     accessLevel: config.AccessLevels.ADMIN,
-  },
-
-  /**
-   * Mail
-   */
-  AddBlockedMail: config.apiCommands.AddBlockedMail || {
-    name: 'AddBlockedMail',
-    accessLevel: config.AccessLevels.MODERATOR,
-  },
-  RequestPasswordReset: config.apiCommands.RequestPasswordReset || {
-    name: 'RequestPasswordReset',
-    accessLevel: config.AccessLevels.STANDARD,
   },
 
   /**
@@ -510,7 +515,7 @@ config.apiCommands = {
   },
   GetTeams: config.apiCommands.GetTeams || {
     name: 'GetTeams',
-    accessLevel: config.AccessLevels.STANDARD,
+    accessLevel: config.AccessLevels.ANONYMOUS,
   },
   LeaveTeam: config.apiCommands.LeaveTeam || {
     name: 'LeaveTeam',
@@ -614,7 +619,7 @@ config.apiCommands = {
   },
   GetDevices: config.apiCommands.GetDevices || {
     name: 'GetDevices',
-    accessLevel: config.AccessLevels.STANDARD,
+    accessLevel: config.AccessLevels.ANONYMOUS,
   },
 
   /**
@@ -690,7 +695,7 @@ config.apiCommands = {
   },
   GetPositions: config.apiCommands.GetPositions || {
     name: 'GetPositions',
-    accessLevel: config.AccessLevels.STANDARD,
+    accessLevel: config.AccessLevels.ANONYMOUS,
   },
   GetUserPosition: config.apiCommands.GetUserPosition || {
     name: 'GetUserPosition',
@@ -750,95 +755,11 @@ config.apiCommands = {
   },
 
   /**
-   * Lantern Station
+   * Other
    */
-  CreateLanternStation: config.apiCommands.CreateLanternStation || {
-    name: 'CreateLanternStation',
-    accessLevel: config.AccessLevels.MODERATOR,
-  },
-  UpdateLanternStation: config.apiCommands.UpdateLanternStation || {
-    name: 'UpdateLanternStation',
-    accessLevel: config.AccessLevels.MODERATOR,
-  },
-  GetLanternStations: config.apiCommands.GetLanternStations || {
-    name: 'GetLanternStations',
+  AnonymousCreation: config.apiCommands.AnonymousCreation || {
+    name: 'AnonymousCreation',
     accessLevel: config.AccessLevels.ANONYMOUS,
-  },
-  DeleteLanternStation: config.apiCommands.DeleteLanternStation || {
-    name: 'DeleteLanternStation',
-    accessLevel: config.AccessLevels.MODERATOR,
-  },
-
-  /**
-   * Lantern Team
-   */
-  CreateLanternTeam: config.apiCommands.CreateLanternTeam || {
-    name: 'CreateLanternTeam',
-    accessLevel: config.AccessLevels.MODERATOR,
-  },
-  GetLanternTeam: config.apiCommands.GetLanternTeam || {
-    name: 'GetLanternTeam',
-    accessLevel: config.AccessLevels.STANDARD,
-  },
-  DeleteLanternTeam: config.apiCommands.DeleteLanternTeam || {
-    name: 'DeleteLanternTeam',
-    accessLevel: config.AccessLevels.MODERATOR,
-  },
-
-  /**
-   * Hack Lantern
-   */
-  HackLantern: config.apiCommands.HackLantern || {
-    name: 'HackLantern',
-    accessLevel: config.AccessLevels.STANDARD,
-  },
-
-  /**
-   * Lantern Round
-   */
-  CreateLanternRound: config.apiCommands.CreateLanternRound || {
-    name: 'CreateLanternRound',
-    accessLevel: config.AccessLevels.MODERATOR,
-  },
-  UpdateLanternRound: config.apiCommands.UpdateLanternRound || {
-    name: 'UpdateLanternRound',
-    accessLevel: config.AccessLevels.MODERATOR,
-  },
-  GetLanternRound: config.apiCommands.GetLanternRound || {
-    name: 'GetLanternRound',
-    accessLevel: config.AccessLevels.ANONYMOUS,
-  },
-  GetActiveLanternRound: config.apiCommands.GetActiveLanternRound || {
-    name: 'GetActiveLanternRound',
-    accessLevel: config.AccessLevels.ANONYMOUS,
-  },
-  StartLanternRound: config.apiCommands.StartLanternRound || {
-    name: 'StartLanternRound',
-    accessLevel: config.AccessLevels.MODERATOR,
-  },
-  EndLanternRound: config.apiCommands.EndLanternRound || {
-    name: 'EndLanternRound',
-    accessLevel: config.AccessLevels.MODERATOR,
-  },
-
-  /**
-   * Calibration Mission
-   */
-  GetCalibrationMission: config.apiCommands.GetCalibrationMission || {
-    name: 'GetCalibrationMission',
-    accessLevel: config.AccessLevels.STANDARD,
-  },
-  GetCalibrationMissions: config.apiCommands.GetCalibrationMissions || {
-    name: 'GetCalibrationMissions',
-    accessLevel: config.AccessLevels.STANDARD,
-  },
-  CancelCalibrationMission: config.apiCommands.CancelCalibrationMission || {
-    name: 'CancelCalibrationMission',
-    accessLevel: config.AccessLevels.STANDARD,
-  },
-  CompleteCalibrationMission: config.apiCommands.CompleteCalibrationMission || {
-    name: 'CompleteCalibrationMission',
-    accessLevel: config.AccessLevels.MODERATOR,
   },
 };
 

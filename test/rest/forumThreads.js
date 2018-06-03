@@ -34,10 +34,10 @@ chai.use(chaiHttp);
 chai.use(chaiJson);
 
 describe('Forum threads', () => {
-  const apiPath = '/api/forumThreads/';
   const objectIdType = 'threadId';
   const objectType = 'thread';
   const objectsType = 'threads';
+  const apiPath = '/api/forumThreads/';
 
   before('Create a forum on /api/forums POST', (done) => {
     const dataToSend = {
@@ -58,13 +58,9 @@ describe('Forum threads', () => {
         response.body.data.forum.should.be.jsonSchema(forumSchemas.forum);
 
         const forumId = response.body.data.forum.objectId;
-
-        testData.create.first.forumId = forumId;
-        testData.create.second.forumId = forumId;
-        testData.update.toUpdate.forumId = forumId;
-        testData.update.updateWith.forumId = forumId;
-        testData.remove.toRemove.forumId = forumId;
-        testData.remove.secondToRemove.forumId = forumId;
+        testData.create.apiCreatePath = `/api/forums/${forumId}/threads`;
+        testData.update.apiCreatePath = `/api/forums/${forumId}/threads`;
+        testData.remove.apiCreatePath = `/api/forums/${forumId}/threads`;
 
         done();
       });

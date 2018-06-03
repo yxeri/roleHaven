@@ -18,7 +18,7 @@
 
 const mongoose = require('mongoose');
 const dbConnector = require('../databaseConnector');
-const errorCreator = require('../../objects/error/errorCreator');
+const errorCreator = require('../../error/errorCreator');
 
 const simpleMsgSchema = new mongoose.Schema(dbConnector.createSchema({
   text: String,
@@ -26,15 +26,9 @@ const simpleMsgSchema = new mongoose.Schema(dbConnector.createSchema({
 
 const SimpleMsg = mongoose.model('SimpleMsg', simpleMsgSchema);
 
-const simpleMsgFilter = {
-  lastUpdated: 1,
-  customLastUpdated: 1,
-  timeCreated: 1,
-  customTimeCreated: 1,
-  ownerId: 1,
-  ownerAliasId: 1,
+const simpleMsgFilter = dbConnector.createFilter({
   text: 1,
-};
+});
 
 /**
  * Update simple msg
@@ -130,7 +124,7 @@ function getSimpleMsg({ query, callback }) {
 
         return;
       } else if (!data.object) {
-        callback({ error: new errorCreator.DoesNotExist({ name: `simpleMsg ${query.toString()}` }) });
+        callback({ error: new errorCreator.DoesNotExist({ name: `simpleMsg ${JSON.stringify(query, null, 4)}` }) });
 
         return;
       }

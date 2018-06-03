@@ -70,7 +70,6 @@ describe('Forum posts', () => {
     const dataToSend = {
       data: {
         thread: {
-          forumId,
           title: 'Forum posts',
           text: ['text'],
         },
@@ -79,7 +78,7 @@ describe('Forum posts', () => {
 
     chai
       .request(app)
-      .post('/api/forumThreads')
+      .post(`/api/forums/${forumId}/threads`)
       .set('Authorization', tokens.adminUserOne)
       .send(dataToSend)
       .end((error, response) => {
@@ -89,12 +88,9 @@ describe('Forum posts', () => {
         response.body.data.thread.should.be.jsonSchema(forumThreadSchemas.forumThread);
 
         const threadId = response.body.data.thread.objectId;
-
-        testData.create.first.threadId = threadId;
-        testData.create.second.threadId = threadId;
-        testData.update.toUpdate.threadId = threadId;
-        testData.remove.toRemove.threadId = threadId;
-        testData.remove.secondToRemove.threadId = threadId;
+        testData.create.apiCreatePath = `/api/forumThreads/${threadId}/posts`;
+        testData.update.apiCreatePath = `/api/forumThreads/${threadId}/posts`;
+        testData.remove.apiCreatePath = `/api/forumThreads/${threadId}/posts`;
 
         done();
       });

@@ -16,11 +16,11 @@
 
 'use strict';
 
-const dbConfig = require('../config/defaults/config').databasePopulation;
+const appConfig = require('../config/defaults/appConfig');
+const dbConfig = require('../config/defaults/dbConfig');
 const authenticator = require('../helpers/authenticator');
 const dbMessage = require('../db/connectors/message');
-const errorCreator = require('../objects/error/errorCreator');
-const appConfig = require('../config/defaults/config').app;
+const errorCreator = require('../error/errorCreator');
 const objectValidator = require('../utils/objectValidator');
 const aliasManager = require('./aliases');
 const roomManager = require('./rooms');
@@ -101,20 +101,19 @@ function getAccessibleMessage({
   });
 }
 
+
 /**
  * Store and send a message.
  * @param {Object} params - Parameters.
  * @param {Object} params.message - Message to store and send.
  * @param {Function} params.callback - Callback.
- * @param {Object} params.io - Socket.io. Will be used if socket is not set.
+ * @param {Object} params.io - Socket.io.
  * @param {string} params.emitType - Type of emit event.
- * @param {Object} [params.socket] - Socket.io.
  * @param {Object} [params.image] - Image attached to the message.
  */
-function sendMessage({
+function sendAndStoreMessage({
   message,
   callback,
-  socket,
   io,
   emitType,
   image,
@@ -139,11 +138,7 @@ function sendMessage({
         },
       };
 
-      if (socket) {
-        socket.broadcast.to(message.roomId).emit(emitType, dataToSend);
-      } else {
-        io.to(message.roomId).emit(emitType, dataToSend);
-      }
+      io.to(message.roomId).emit(emitType, dataToSend);
 
       callback(dataToSend);
     },
@@ -200,9 +195,7 @@ function getMessagesByRoom({
                 return;
               }
 
-              const { messages } = messageData.data;
-
-              callback({ data: { messages } });
+              callback(messageData);
             },
           });
         },
@@ -212,20 +205,20 @@ function getMessagesByRoom({
 }
 
 /**
- * Get messages created by the user or one of the aliases that the user has access to.
+ * Get messages from all the rooms that the user is following.
  * @param {Object} params - Parameters.
  * @param {string} params.token - jwt
  * @param {Function} params.callback - Callback.
  * @param {boolean} [params.full] - Full.
  */
-function getMessagesCreatedByUser({
+function getMessagesByFollowed({
   token,
   callback,
   full,
 }) {
   authenticator.isUserAllowed({
     token,
-    commandName: dbConfig.apiCommands.GetMessage.name,
+    commandName: full ? dbConfig.apiCommands.GetFull.name : dbConfig.apiCommands.GetMessage.name,
     callback: ({ error, data }) => {
       if (error) {
         callback({ error });
@@ -235,7 +228,7 @@ function getMessagesCreatedByUser({
 
       const { user } = data;
 
-      dbMessage.getMessagesCreatedByUser({
+      dbMessage.getMessagesByFollowed({
         user,
         full,
         callback,
@@ -278,7 +271,7 @@ function getFullHistory({ token, callback }) {
                 return;
               }
 
-              dbUser.getAllUserNames({
+              dbUser.getAllUsernames({
                 callback: ({ error: usersError, data: usersData }) => {
                   if (usersError) {
                     callback({ error: usersError });
@@ -399,7 +392,7 @@ function sendBroadcastMsg({
               return;
             }
 
-            sendMessage({
+            sendAndStoreMessage({
               socket,
               io,
               callback,
@@ -413,7 +406,7 @@ function sendBroadcastMsg({
         return;
       }
 
-      sendMessage({
+      sendAndStoreMessage({
         socket,
         io,
         callback,
@@ -454,7 +447,7 @@ function sendChatMsg({
         callback({ error: new errorCreator.InvalidData({ expected: '{ message: { text }, io }' }) });
 
         return;
-      } else if (message.text.join('').length > appConfig.messageMaxLength) {
+      } else if (message.text.join('').length > appConfig.messageMaxLength || message.text.join('').length === 0) {
         callback({ error: new errorCreator.InvalidCharacters({ expected: `text length ${appConfig.messageMaxLength}` }) });
 
         return;
@@ -477,6 +470,7 @@ function sendChatMsg({
 
           if (newMessage.ownerAliasId) {
             aliasManager.getAccessibleAlias({
+              user,
               aliasId: newMessage.ownerAliasId,
               callback: (aliasData) => {
                 if (aliasData.error) {
@@ -485,7 +479,7 @@ function sendChatMsg({
                   return;
                 }
 
-                sendMessage({
+                sendAndStoreMessage({
                   socket,
                   io,
                   callback,
@@ -499,7 +493,7 @@ function sendChatMsg({
             return;
           }
 
-          sendMessage({
+          sendAndStoreMessage({
             socket,
             io,
             callback,
@@ -544,7 +538,7 @@ function sendWhisperMsg({
         callback({ error: new errorCreator.InvalidData({ expected: '{ message: { text }, io }' }) });
 
         return;
-      } else if (message.text.join('').length > appConfig.messageMaxLength) {
+      } else if (message.text.join('').length > appConfig.messageMaxLength || message.text.join('').length === 0) {
         callback({ error: new errorCreator.InvalidCharacters({ expected: `text length ${appConfig.messageMaxLength}` }) });
 
         return;
@@ -582,7 +576,7 @@ function sendWhisperMsg({
                   const newRoom = newWhisperData.data.room;
                   newMessage.roomId = newRoom.objectId;
 
-                  sendMessage({
+                  sendAndStoreMessage({
                     socket,
                     io,
                     callback,
@@ -598,7 +592,7 @@ function sendWhisperMsg({
 
             newMessage.roomId = foundRoom.objectId;
 
-            sendMessage({
+            sendAndStoreMessage({
               socket,
               io,
               callback,
@@ -695,7 +689,7 @@ function removeMessage({
               };
 
               if (socket) {
-                socket.broadcast.to(roomId).emit(emitType, dataToSend);
+                socket.to(roomId).emit(emitType, dataToSend);
               } else {
                 io.to(roomId).emit(emitType, dataToSend);
               }
@@ -777,7 +771,7 @@ function updateMsg({
               };
 
               if (socket) {
-                socket.broadcast.to(sendTo).emit(emitType, dataToSend);
+                socket.to(sendTo).emit(emitType, dataToSend);
               } else {
                 io.to(sendTo).emit(emitType, dataToSend);
               }
@@ -846,5 +840,5 @@ exports.removeMesssage = removeMessage;
 exports.updateMsg = updateMsg;
 exports.getMessagesByRoom = getMessagesByRoom;
 exports.getMessageById = getMessageById;
-exports.getMessagesCreatedByUser = getMessagesCreatedByUser;
+exports.getMessagesByFollowed = getMessagesByFollowed;
 exports.getFullHistory = getFullHistory;
