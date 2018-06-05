@@ -66,6 +66,7 @@ config.rooms.public = config.rooms.public || {
   accessLevel: config.AccessLevels.ANONYMOUS,
   ownerId: config.users.systemUser.objectId,
   isSystemRoom: true,
+  isPublic: true,
 };
 /**
  * Admin related messages will be sent here.
@@ -76,18 +77,6 @@ config.rooms.admin = config.rooms.admin || {
   roomName: 'hqroom',
   visibility: config.AccessLevels.MODERATOR,
   accessLevel: config.AccessLevels.MODERATOR,
-  ownerId: config.users.systemUser.objectId,
-  isSystemRoom: true,
-};
-/**
- * Messages sent to anonymous will have their user and team name stripped.
- */
-config.rooms.anonymous = config.rooms.anonymous || {
-  objectId: '111111111111111111111112',
-  roomName: 'anonymous',
-  visibility: config.AccessLevels.ANONYMOUS,
-  accessLevel: config.AccessLevels.ANONYMOUS,
-  isAnonymous: true,
   ownerId: config.users.systemUser.objectId,
   isSystemRoom: true,
 };
@@ -129,7 +118,6 @@ config.rooms.bcast = config.rooms.bcast || {
 };
 
 config.requiredRooms = [
-  config.rooms.anonymous.objectId,
   config.rooms.bcast.objectId,
   config.rooms.public.objectId,
   config.rooms.important.objectId,
@@ -279,7 +267,7 @@ config.apiCommands = {
   },
   GetAliases: config.apiCommands.GetAliases || {
     name: 'GetAliases',
-    accessLevel: config.AccessLevels.STANDARD,
+    accessLevel: config.AccessLevels.ANONYMOUS,
   },
   UpdateAlias: config.apiCommands.UpdateAlias || {
     name: 'UpdateAlias',
@@ -351,7 +339,7 @@ config.apiCommands = {
   },
   GetRoomsList: config.apiCommands.GetRoomsList || {
     name: 'GetRoomsList',
-    accessLevel: config.AccessLevels.STANDARD,
+    accessLevel: config.AccessLevels.ANONYMOUS,
   },
   RemoveRoom: config.apiCommands.RemoveRoom || {
     name: 'RemoveRoom',
@@ -634,6 +622,10 @@ config.apiCommands = {
     accessLevel: config.AccessLevels.STANDARD,
   },
   GetDocFile: config.apiCommands.GetDocFile || {
+    name: 'GetDocFile',
+    accessLevel: config.AccessLevels.ANONYMOUS,
+  },
+  UnlockDocFile: config.apiCommands.GetDocFile || {
     name: 'GetDocFile',
     accessLevel: config.AccessLevels.ANONYMOUS,
   },

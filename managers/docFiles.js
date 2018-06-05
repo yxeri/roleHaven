@@ -381,6 +381,7 @@ function getDocFilesList({ token, callback }) {
  */
 function unlockDocFile({
   io,
+  docFileId,
   code,
   token,
   callback,
@@ -397,8 +398,8 @@ function unlockDocFile({
 
       const { user } = data;
 
-      dbDocFile.getDocFileByCode({
-        code,
+      dbDocFile.getDocFileById({
+        docFileId,
         callback: (docFileData) => {
           if (docFileData.error) {
             callback({ error: docFileData.error });
@@ -407,12 +408,27 @@ function unlockDocFile({
           }
 
           const foundDocFile = docFileData.data.docFile;
+          const dataToSend = {
+            data: {
+              docFile: foundDocFile,
+              changeType: dbConfig.ChangeTypes.UPDATE,
+            },
+          };
 
-          if (foundDocFile.accessLevel > user.accessLevel) {
+          if (foundDocFile.code !== code || foundDocFile.accessLevel > user.accessLevel) {
             callback({ error: new errorCreator.NotAllowed({ name: `docFile ${code}` }) });
 
             return;
           }
+
+          if (user.isAnonymous) {
+            io.to(user.objectId).emit(dbConfig.EmitTypes.DOCFILE, dataToSend);
+
+            callback(dataToSend);
+
+            return;
+          }
+
 
           dbDocFile.addAccess({
             docFileId: foundDocFile.objectId,
@@ -423,13 +439,6 @@ function unlockDocFile({
 
                 return;
               }
-
-              const dataToSend = {
-                data: {
-                  docFile: foundDocFile,
-                  changeType: dbConfig.ChangeTypes.UPDATE,
-                },
-              };
 
               io.to(user.objectId).emit(dbConfig.EmitTypes.DOCFILE, dataToSend);
 
