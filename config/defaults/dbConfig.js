@@ -79,18 +79,6 @@ config.rooms.admin = config.rooms.admin || {
   ownerId: config.users.systemUser.objectId,
   isSystemRoom: true,
 };
-/**
- * Messages sent to anonymous will have their user and team name stripped.
- */
-config.rooms.anonymous = config.rooms.anonymous || {
-  objectId: '111111111111111111111112',
-  roomName: 'anonymous',
-  visibility: config.AccessLevels.ANONYMOUS,
-  accessLevel: config.AccessLevels.ANONYMOUS,
-  isAnonymous: true,
-  ownerId: config.users.systemUser.objectId,
-  isSystemRoom: true,
-};
 config.rooms.important = config.rooms.important || {
   objectId: '111111111111111111111113',
   roomName: 'important',
@@ -129,7 +117,6 @@ config.rooms.bcast = config.rooms.bcast || {
 };
 
 config.requiredRooms = [
-  config.rooms.anonymous.objectId,
   config.rooms.bcast.objectId,
   config.rooms.public.objectId,
   config.rooms.important.objectId,
