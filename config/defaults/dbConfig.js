@@ -66,6 +66,7 @@ config.rooms.public = config.rooms.public || {
   accessLevel: config.AccessLevels.ANONYMOUS,
   ownerId: config.users.systemUser.objectId,
   isSystemRoom: true,
+  isPublic: true,
 };
 /**
  * Admin related messages will be sent here.
