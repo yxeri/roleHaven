@@ -267,7 +267,7 @@ config.apiCommands = {
   },
   GetAliases: config.apiCommands.GetAliases || {
     name: 'GetAliases',
-    accessLevel: config.AccessLevels.STANDARD,
+    accessLevel: config.AccessLevels.ANONYMOUS,
   },
   UpdateAlias: config.apiCommands.UpdateAlias || {
     name: 'UpdateAlias',
@@ -339,7 +339,7 @@ config.apiCommands = {
   },
   GetRoomsList: config.apiCommands.GetRoomsList || {
     name: 'GetRoomsList',
-    accessLevel: config.AccessLevels.STANDARD,
+    accessLevel: config.AccessLevels.ANONYMOUS,
   },
   RemoveRoom: config.apiCommands.RemoveRoom || {
     name: 'RemoveRoom',
@@ -622,6 +622,10 @@ config.apiCommands = {
     accessLevel: config.AccessLevels.STANDARD,
   },
   GetDocFile: config.apiCommands.GetDocFile || {
+    name: 'GetDocFile',
+    accessLevel: config.AccessLevels.ANONYMOUS,
+  },
+  UnlockDocFile: config.apiCommands.GetDocFile || {
     name: 'GetDocFile',
     accessLevel: config.AccessLevels.ANONYMOUS,
   },
