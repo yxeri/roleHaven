@@ -35,6 +35,7 @@ const mapPositionSchema = new mongoose.Schema(dbConnector.createSchema({
   isStationary: { type: Boolean, default: false },
   origin: { type: String, default: dbConfig.PositionOrigins.LOCAL },
   positionStructure: { type: String, default: dbConfig.PositionStructures.MARKER },
+  styleName: String,
 }), { collection: 'mapPositions' });
 
 const MapPosition = mongoose.model('MapPosition', mapPositionSchema);
@@ -48,6 +49,7 @@ const positionFilter = dbConnector.createFilter({
   radius: 1,
   isStationary: 1,
   description: 1,
+  styleName: 1,
 });
 
 /**
@@ -254,6 +256,7 @@ function updatePosition({
     isPublic,
     connectedToUser,
     description,
+    styleName,
   } = position;
   const { resetOwnerAliasId, resetConnectedToUser } = options;
 
@@ -302,6 +305,7 @@ function updatePosition({
   if (positionType) { update.$set.positionType = positionType; }
   if (description) { update.$set.description = description; }
   if (positionStructure) { update.$set.positionStructure = positionStructure; }
+  if (styleName) { update.$set.styleName = styleName; }
 
   if (typeof isPublic !== 'undefined') { update.$set.isPublic = isPublic; }
   if (typeof isStationary !== 'undefined') { update.$set.isStationary = isStationary; }
