@@ -615,6 +615,12 @@ function getUsersByUser({
               }
 
               return 0;
+            }).map((item) => {
+              const changedItem = item;
+
+              changedItem.username = changedItem.username || changedItem.aliasName;
+
+              return changedItem;
             });
 
             callback({
