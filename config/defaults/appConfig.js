@@ -18,6 +18,8 @@
 
 const path = require('path');
 const textTools = require('../../utils/textTools');
+const { version } = require('../../package');
+const clientConfig = require(path.normalize(`${__dirname}/../../../../private/config/config`));
 
 let config = {};
 
@@ -124,6 +126,8 @@ config.scriptsPath = 'scripts';
  * @type {string}
  */
 config.requiredPath = 'required';
+
+config.jsVersion = clientConfig.version ? `${version}-${clientConfig.version}` : version;
 
 /**
  * Path to favicon.
