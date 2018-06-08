@@ -263,7 +263,21 @@ function createAlias({ alias, callback }) {
             return;
           }
 
-          callback({ data: { alias: saveData.data.savedObject } });
+          const createdAlias = saveData.data.savedObject;
+
+          dbUser.updateUser({
+            userId: createdAlias.ownerId,
+            user: { aliases: [createdAlias.objectId] },
+            callback: (updateData) => {
+              if (updateData.error) {
+                callback({ error: updateData.error });
+
+                return;
+              }
+
+              callback({ data: { alias: createdAlias } });
+            },
+          });
         },
       });
     },
