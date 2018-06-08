@@ -24,25 +24,26 @@ const authenticator = require('../helpers/authenticator');
 const dbRoom = require('../db/connectors/room');
 const aliasManager = require('./aliases');
 const socketUtils = require('../utils/socketIo');
+const dbUser = require('../db/connectors/user');
 
 /**
  * Create a whisper room and give access to the participants.
  * @param {Object} params - Parameters.
- * @param {string[]} params.participantIds - User IDs of the users send private messages to each other.
- * @param {string} params.user - The user creating the room.
+ * @param {string[]} params.participantIds - User Ids of the users send private messages to each other.
  * @param {Function} params.callback - Callback.
  * @param {Object} params.socket - Socket.io.
  * @param {Object} params.io - Socket.io. Used if socket is not set.
  */
 function createAndFollowWhisperRoom({
   participantIds,
-  user,
   callback,
   socket,
   io,
+  user,
 }) {
   const room = {
     participantIds,
+    roomName: participantIds.join(''),
     isWhisper: true,
     accessLevel: dbConfig.AccessLevels.SUPERUSER,
     visibility: dbConfig.AccessLevels.SUPERUSER,
@@ -50,16 +51,17 @@ function createAndFollowWhisperRoom({
 
   dbRoom.createRoom({
     room,
-    options: { setId: true },
+    skipExistsCheck: true,
     callback: (roomData) => {
       if (roomData.error) {
         callback({ error: roomData.error });
 
         return;
       }
+      const { objectId: roomId } = roomData.data.room;
 
       dbRoom.addAccess({
-        roomId: roomData.data.room.objectId,
+        roomId,
         userIds: participantIds,
         callback: (accessdata) => {
           if (accessdata.error) {
@@ -68,31 +70,68 @@ function createAndFollowWhisperRoom({
             return;
           }
 
-          const newRoom = accessdata.data.room;
-          const newRoomId = newRoom.objectId;
-          const senderId = newRoom.participantIds[0];
-          const receiverId = newRoom.participantIds[1];
-          const dataToSend = {
-            data: {
-              room: {
-                objectId: newRoomId,
-                isWhisper: true,
-                participantIds: newRoom.participantIds,
-              },
-              changeType: dbConfig.ChangeTypes.CREATE,
+          dbUser.followRoom({
+            roomId,
+            userId: user.objectId,
+            callback: (senderFollowData) => {
+              if (senderFollowData.error) {
+                callback({ error: senderFollowData.error });
+
+                return;
+              }
+
+              dbUser.getUserById({
+                userId: participantIds[1],
+                aliasId: participantIds[1],
+                callback: (identityData) => {
+                  if (identityData.error) {
+                    callback({ error: identityData.error });
+
+                    return;
+                  }
+
+                  const { alias: identityAlias, user: identityUser } = identityData.data;
+                  const identityId = identityUser ? identityUser.objectId : identityAlias.ownerId;
+
+                  dbUser.followRoom({
+                    roomId,
+                    userId: identityId,
+                    callback: () => {
+                      const newRoom = accessdata.data.room;
+                      const newRoomId = newRoom.objectId;
+                      const senderId = user.objectId;
+                      const receiverId = identityId;
+                      const dataToSend = {
+                        data: {
+                          room: {
+                            objectId: newRoomId,
+                            isWhisper: true,
+                            participantIds: newRoom.participantIds,
+                          },
+                          changeType: dbConfig.ChangeTypes.CREATE,
+                        },
+                      };
+
+                      const receiverSocket = socketUtils.getUserSocket({ io, socketId: receiverId });
+
+                      if (receiverSocket) { receiverSocket.join(newRoomId); }
+
+                      if (socket) {
+                        socket.join(newRoomId);
+                      } else {
+                        const senderSocket = socketUtils.getUserSocket({ io, socketId: senderId });
+
+                        if (senderSocket) { senderSocket.join(newRoomId); }
+                      }
+
+                      io.to(senderId).emit(dbConfig.EmitTypes.ROOM, dataToSend);
+                      io.to(receiverId).emit(dbConfig.EmitTypes.ROOM, dataToSend);
+                    },
+                  });
+                },
+              });
             },
-          };
-
-          if (socket) {
-            socket.join(newRoomId);
-          } else {
-            const userSocket = socketUtils.getUserSocket({ io, socketId: user.socketId });
-
-            if (userSocket) { userSocket.join(newRoomId); }
-          }
-
-          io.to(senderId).emit(dbConfig.EmitTypes.ROOM, dataToSend, callback);
-          io.to(receiverId).emit(dbConfig.EmitTypes.ROOM, dataToSend, callback);
+          });
         },
       });
     },
@@ -144,13 +183,26 @@ function getAccessibleRoom({
 }
 
 /**
- * Checks if a room exists with the sent participants.
+ * Retrieve whisper room.
  * @param {Object} params - Parameters.
- * @param {string[]} params.participantIds - IDs of the users.
+ * @param {string[]} params.participantIds - Ids of the users.
  * @param {Function} params.callback - Callback.
  */
 function getWhisperRoom({ participantIds, callback }) {
   dbRoom.getWhisperRoom({
+    participantIds,
+    callback,
+  });
+}
+
+/**
+ * Does the whisper room exist?
+ * @param {Object} params - Parameters.
+ * @param {string[]} participantIds - Ids of the users.
+ * @param {Function} callback - Callback.
+ */
+function doesWhisperRoomExist({ participantIds, callback }) {
+  dbRoom.doesWhisperRoomExist({
     participantIds,
     callback,
   });
@@ -343,14 +395,13 @@ function createRoom({
 
           if (socket) {
             socket.join(createdRoom.objectId);
-            socket.broadcast.to(dbConfig.rooms.public.objectId).emit(dbConfig.EmitTypes.ROOM, dataToSend);
           } else {
             const userSocket = socketUtils.getUserSocket({ io, socketId: user.socketId });
 
             if (userSocket) { userSocket.join(createdRoom.objectId); }
-
-            io.to(dbConfig.rooms.public.objectId).emit(dbConfig.EmitTypes.ROOM, dataToSend);
           }
+
+          io.to(dbConfig.rooms.public.objectId).emit(dbConfig.EmitTypes.ROOM, dataToSend);
 
           callback(dataToSend);
         },
@@ -412,34 +463,61 @@ function follow({
         return;
       }
 
-      const toReturn = {
-        data: {
-          user: { objectId: userId },
-          room: data.room,
-          changeType: dbConfig.ChangeTypes.CREATE,
+      dbRoom.addFollowers({
+        roomId,
+        userIds: [userId],
+        callback: (followerData) => {
+          if (followerData.error) {
+            callback({ error: followerData.error });
+
+            return;
+          }
+
+          console.log('follower func done', userId, roomId);
+
+          dbUser.followRoom({
+            roomId,
+            userId,
+            callback: (followData) => {
+              if (followData.error) {
+                callback({ error: followData.error });
+
+                return;
+              }
+
+              console.log('follow room func done', userId, roomId);
+
+              const toReturn = {
+                data: {
+                  user: { objectId: userId },
+                  room: data.room,
+                  changeType: dbConfig.ChangeTypes.CREATE,
+                },
+              };
+              const toSend = {
+                data: {
+                  user: { objectId: userId },
+                  room: { objectId: roomId },
+                  changeType: dbConfig.ChangeTypes.CREATE,
+                },
+              };
+
+              if (socket) {
+                socket.join(roomId);
+              } else {
+                const userSocket = socketUtils.getUserSocket({ io, socketId: user.socketId });
+
+                if (userSocket) { userSocket.join(roomId); }
+              }
+
+              io.to(userId).emit(dbConfig.EmitTypes.FOLLOW, toReturn);
+              io.to(roomId).emit(dbConfig.EmitTypes.FOLLOWER, toSend);
+
+              callback(toReturn);
+            },
+          });
         },
-      };
-      const toSend = {
-        data: {
-          user: { objectId: userId },
-          room: { objectId: roomId },
-          changeType: dbConfig.ChangeTypes.CREATE,
-        },
-      };
-
-      if (socket) {
-        socket.join(roomId);
-        socket.broadcast.to(roomId).emit(dbConfig.EmitTypes.FOLLOWER, toSend);
-      } else {
-        const userSocket = socketUtils.getUserSocket({ io, socketId: user.socketId });
-
-        if (userSocket) { userSocket.join(roomId); }
-
-        io.to(userId).emit(dbConfig.EmitTypes.FOLLOW, toReturn);
-        io.to(roomId).emit(dbConfig.EmitTypes.FOLLOWER, toSend);
-      }
-
-      callback(toReturn);
+      });
     },
   });
 }
@@ -536,7 +614,7 @@ function followRoom({
               io,
               callback,
               user,
-              userId: aliasId || user.userId,
+              userId: aliasId || user.objectId,
             });
           },
         });
@@ -984,3 +1062,4 @@ exports.getAllRooms = getAllRooms;
 exports.getRoomsByUser = getRoomsByUser;
 exports.getFollowedRooms = getFollowedRooms;
 exports.getRoomsList = getRoomsList;
+exports.doesWhisperRoomExist = doesWhisperRoomExist;

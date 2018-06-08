@@ -25,31 +25,35 @@ const aliasManager = require('../../managers/aliases');
  * @param {object} io - Socket.Io.
  */
 function handle(socket, io) {
-  socket.on('createAlias', (params, callback = () => {}) => {
+  socket.on('createAlias', (params, callback = () => {
+  }) => {
     params.callback = callback;
     params.io = io;
-
+    params.socket = socket;
     aliasManager.createAlias(params);
   });
 
-  socket.on('updateAlias', (params, callback = () => {}) => {
+  socket.on('updateAlias', (params, callback = () => {
+  }) => {
     params.callback = callback;
     params.io = io;
-
+    params.socket = socket;
     aliasManager.updateAlias(params);
   });
 
-  socket.on('removeAlias', (params, callback = () => {}) => {
+  socket.on('removeAlias', (params, callback = () => {
+  }) => {
     params.callback = callback;
     params.io = io;
-
+    params.socket = socket;
     aliasManager.removeAlias(params);
   });
 
-  socket.on('getAlias', (params, callback = () => {}) => {
+  socket.on('getAlias', (params, callback = () => {
+  }) => {
     params.callback = callback;
     params.io = io;
-
+    params.socket = socket;
     if (params.aliasName) {
       aliasManager.getAliasByName(params);
     } else {
@@ -57,10 +61,11 @@ function handle(socket, io) {
     }
   });
 
-  socket.on('getAliases', (params, callback = () => {}) => {
+  socket.on('getAliases', (params, callback = () => {
+  }) => {
     params.callback = callback;
     params.io = io;
-
+    params.socket = socket;
     aliasManager.getAliasesByUser(params);
   });
 }

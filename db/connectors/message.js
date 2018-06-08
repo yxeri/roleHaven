@@ -231,27 +231,28 @@ function updateMessage({
     customlastUpdated,
   } = message;
 
-  const update = {
-    $set: {},
-    $unset: {},
-  };
+  const update = {};
+  const set = {};
+  const unset = {};
 
   if (resetOwnerAliasId) {
-    update.$unset.ownerAliasId = '';
+    unset.ownerAliasId = '';
   } else if (ownerAliasId) {
-    update.$set.ownerAliasId = ownerAliasId;
+    set.ownerAliasId = ownerAliasId;
   }
 
-  if (coordinates) { update.$set.coordinates = coordinates; }
-  if (text) { update.$set.text = text; }
-  if (intro) { update.$set.intro = intro; }
-  if (extro) { update.$set.extro = extro; }
-  if (customTimeCreated) { update.$set.customTimeCreated = customTimeCreated; }
-  if (customlastUpdated) { update.$set.customlastUpdated = customlastUpdated; }
+  if (coordinates) { set.coordinates = coordinates; }
+  if (text) { set.text = text; }
+  if (intro) { set.intro = intro; }
+  if (extro) { set.extro = extro; }
+  if (customTimeCreated) { set.customTimeCreated = customTimeCreated; }
+  if (customlastUpdated) { set.customlastUpdated = customlastUpdated; }
+  if (roomId) { set.roomId = roomId; }
+
+  if (Object.keys(set).length > 0) { update.$set = set; }
+  if (Object.keys(unset).length > 0) { update.$unset = unset; }
 
   if (roomId) {
-    update.$set.roomId = roomId;
-
     dbRoom.doesRoomExist({
       roomId,
       callback: ({ error, data }) => {

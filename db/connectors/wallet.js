@@ -224,10 +224,12 @@ function updateWallet({
     resetAmount,
     resetOwnerAliasId,
   } = options;
-  const update = { $set: {} };
+  const update = {};
+  const set = {};
+  const unset = {};
 
   if (typeof resetAmount === 'boolean' && resetAmount) {
-    update.$set.amount = 0;
+    set.amount = 0;
   } else if (amount) {
     update.$inc = {};
 
@@ -239,14 +241,17 @@ function updateWallet({
   }
 
   if (resetOwnerAliasId) {
-    update.$unset = { ownerAliasId: '' };
+    unset.ownerAliasId = '';
   } else if (ownerAliasId) {
-    update.$set.ownerAliasId = ownerAliasId;
+    set.ownerAliasId = ownerAliasId;
   }
 
-  if (typeof isProtected === 'boolean') { update.$set.isProtected = isProtected; }
-  if (visibility) { update.$set.visibility = visibility; }
-  if (accessLevel) { update.$set.accessLevel = accessLevel; }
+  if (typeof isProtected === 'boolean') { set.isProtected = isProtected; }
+  if (visibility) { set.visibility = visibility; }
+  if (accessLevel) { set.accessLevel = accessLevel; }
+
+  if (Object.keys(set).length > 0) { update.$set = set; }
+  if (Object.keys(unset).length > 0) { update.$unset = unset; }
 
   updateObject({
     update,

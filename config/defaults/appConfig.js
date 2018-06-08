@@ -36,6 +36,7 @@ const allowMessageImageEnv = textTools.convertToBoolean(process.env.ALLOWMESSAGE
 const bypassExternalConnectionEnv = textTools.convertToBoolean(process.env.BYPASSEXTERNALCONNECTIONS);
 const userVerifyEnv = textTools.convertToBoolean(process.env.USERVERIFY);
 const showDevInfoEnv = textTools.convertToBoolean(process.env.SHOWDEVINFO);
+const disablePositionImportEnv = textTools.convertToBoolean(process.env.DISABLEPOSITIONIMPORT);
 
 /**
  * **********
@@ -321,6 +322,8 @@ config.mapLayersPath = process.env.MAPLAYERSPATH || config.mapLayersPath;
  * @type {boolean}
  */
 config.gpsTracking = typeof gpsTrackingEnv !== 'undefined' ? gpsTrackingEnv : config.gpsTracking || true;
+
+config.disablePositionImport = typeof disablePositionImportEnv !== 'undefined' ? disablePositionImportEnv : config.disablePositionImport || true;
 
 /**
  * *************

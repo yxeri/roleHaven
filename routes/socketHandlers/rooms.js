@@ -25,58 +25,65 @@ const roomManager = require('../../managers/rooms');
  * @param {object} io - Socket.Io.
  */
 function handle(socket, io) {
-  socket.on('createRoom', (params, callback = () => {}) => {
+  socket.on('createRoom', (params, callback = () => {
+  }) => {
     params.callback = callback;
     params.io = io;
-
+    params.socket = socket;
 
     roomManager.createRoom(params);
   });
 
-  socket.on('removeRoom', (params, callback = () => {}) => {
+  socket.on('removeRoom', (params, callback = () => {
+  }) => {
     params.callback = callback;
     params.io = io;
-
+    params.socket = socket;
 
     roomManager.removeRoom(params);
   });
 
-  socket.on('updateRoom', (params, callback = () => {}) => {
+  socket.on('updateRoom', (params, callback = () => {
+  }) => {
     params.callback = callback;
     params.io = io;
-
+    params.socket = socket;
 
     roomManager.updateRoom(params);
   });
 
-  socket.on('followRoom', (params, callback = () => {}) => {
+  socket.on('followRoom', (params, callback = () => {
+  }) => {
     params.callback = callback;
     params.io = io;
-
+    params.socket = socket;
 
     roomManager.followRoom(params);
   });
 
-  socket.on('unfollowRoom', (params, callback = () => {}) => {
+  socket.on('unfollowRoom', (params, callback = () => {
+  }) => {
     params.callback = callback;
     params.io = io;
-
+    params.socket = socket;
 
     roomManager.unfollowRoom(params);
   });
 
-  socket.on('getRoom', (params, callback = () => {}) => {
+  socket.on('getRoom', (params, callback = () => {
+  }) => {
     params.callback = callback;
     params.io = io;
-
+    params.socket = socket;
 
     roomManager.getRoom(params);
   });
 
-  socket.on('getRooms', (params, callback = () => {}) => {
+  socket.on('getRooms', (params, callback = () => {
+  }) => {
     params.callback = callback;
     params.io = io;
-
+    params.socket = socket;
 
     roomManager.getRoomsByUser(params);
   });

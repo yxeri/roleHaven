@@ -127,12 +127,13 @@ function createAlias({
           dbRoom.createRoom({
             options: { setId: true },
             room: {
+              objectId: createdAlias.objectId,
               ownerId: user.objectId,
               roomName: createdAlias.objectId,
               roomId: createdAlias.objectId,
               accessLevel: dbConfig.AccessLevels.SUPERUSER,
               visibility: dbConfig.AccessLevels.SUPERUSER,
-              isWhisper: true,
+              isUser: true,
               nameIsLocked: true,
             },
             callback: ({ error: roomError, data: roomData }) => {
@@ -143,7 +144,7 @@ function createAlias({
               }
 
               const wallet = {
-                walletId: createdAlias.objectId,
+                objectId: createdAlias.objectId,
                 ownerId: user.objectId,
                 ownerAliasId: createdAlias.objectId,
                 amount: appConfig.defaultWalletAmount,
@@ -179,6 +180,12 @@ function createAlias({
                       changeType: dbConfig.ChangeTypes.CREATE,
                     },
                   };
+                  const roomDataToSend = {
+                    data: {
+                      room: newRoom,
+                      changeType: dbConfig.ChangeTypes.CREATE,
+                    },
+                  };
 
                   if (!socket) {
                     const userSocket = socketUtils.getUserSocket({ io, socketId: user.socketId });
@@ -187,7 +194,8 @@ function createAlias({
                   }
 
                   io.to(user.objectId).emit(dbConfig.EmitTypes.ALIAS, creatorDataToSend);
-                  io.emit(dbConfig.EmitTypes.USER, dataToSend);
+                  io.to(dbConfig.rooms.public.objectId).emit(dbConfig.EmitTypes.USER, dataToSend);
+                  io.to(dbConfig.rooms.public.objectId).emit(dbConfig.EmitTypes.ROOM, roomDataToSend);
 
                   callback(creatorDataToSend);
                 },

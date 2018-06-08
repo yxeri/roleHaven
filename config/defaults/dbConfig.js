@@ -214,7 +214,7 @@ config.EmitTypes = {
   FORUM: 'forum',
   FORUMTHREAD: 'forumThread',
   FORUMPOST: 'forumPost',
-  FOLLOW: 'follow',
+  FOLLOW: 'followRoom',
   USER: 'user',
   CHATMSG: 'chatMsg',
   DEVICE: 'device',

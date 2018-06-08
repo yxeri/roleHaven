@@ -146,12 +146,22 @@ function getRooms({
 /**
  * Does the room exist?
  * @param {Object} params - Parameters.
+ * @param {boolean} [params.skipExistsCheck] - Should the exist check be skipped?
  * @param {string} [params.roomName] - Name of the room.
  * @param {string} [params.roomId] - Id of the room.
  * @param {Function} params.callback - Callback.
  */
-function doesRoomExist({ roomName, roomId, callback }) {
-  if (!roomName && !roomId) {
+function doesRoomExist({
+  skipExistsCheck,
+  roomName,
+  roomId,
+  callback,
+}) {
+  if (skipExistsCheck) {
+    callback({ data: { exists: false } });
+
+    return;
+  } else if (!roomName && !roomId) {
     callback({ error: new errorCreator.InvalidData({ expected: 'roomName || roomId' }) });
 
     return;
@@ -202,12 +212,15 @@ function createRoom({
   room,
   silentExistsError,
   callback,
+  skipExistsCheck = false,
   options = {},
 }) {
   const { setId, isFollower } = options;
+  const { roomName, objectId: roomId } = room;
 
   doesRoomExist({
-    roomName: room.roomName,
+    roomName,
+    skipExistsCheck,
     callback: (existsData) => {
       if (existsData.error) {
         callback({ error: existsData.error });
@@ -217,7 +230,7 @@ function createRoom({
         if (silentExistsError) {
           callback({ data: { exists: true } });
         } else {
-          callback({ error: new errorCreator.AlreadyExists({ name: `room name ${room.roomName}` }) });
+          callback({ error: new errorCreator.AlreadyExists({ name: `room name ${roomName}` }) });
         }
 
         return;
@@ -225,8 +238,8 @@ function createRoom({
 
       const roomToSave = room;
 
-      if (setId && roomToSave.objectId) {
-        roomToSave._id = mongoose.Types.ObjectId(roomToSave.objectId); // eslint-disable-line no-underscore-dangle
+      if (setId && roomId) {
+        roomToSave._id = mongoose.Types.ObjectId(roomId); // eslint-disable-line no-underscore-dangle
       }
 
       dbConnector.saveObject({
@@ -376,14 +389,14 @@ function addAccess({
               return;
             }
 
-            callback({ room: cleanParameters(roomData.data.object) });
+            callback({ data: { room: cleanParameters(roomData.data.object) } });
           },
         });
 
         return;
       }
 
-      callback({ room: cleanParameters(data.object) });
+      callback({ data: { room: cleanParameters(data.object) } });
     },
   });
 }
@@ -467,22 +480,26 @@ function updateRoom({
     nameIsLocked,
     isAnonymous,
   } = room;
-  const update = { $set: {} };
+  const update = {};
+  const set = {};
+  const unset = {};
 
   if (resetOwnerAliasId) {
-    update.$unset = { ownerAliasId: '' };
+    unset.ownerAliasId = '';
   } else if (ownerAliasId) {
-    update.$set.ownerAliasId = ownerAliasId;
+    set.ownerAliasId = ownerAliasId;
   }
 
-  if (typeof nameIsLocked === 'boolean') { update.$set.nameIsLocked = nameIsLocked; }
-  if (typeof isAnonymous === 'boolean') { update.$set.isAnonymous = isAnonymous; }
-  if (accessLevel) { update.$set.accessLevel = accessLevel; }
-  if (visibility) { update.$set.visibility = visibility; }
+  if (typeof nameIsLocked === 'boolean') { set.nameIsLocked = nameIsLocked; }
+  if (typeof isAnonymous === 'boolean') { set.isAnonymous = isAnonymous; }
+  if (accessLevel) { set.accessLevel = accessLevel; }
+  if (visibility) { set.visibility = visibility; }
+  if (roomName) { set.roomName = roomName; }
+
+  if (Object.keys(set).length > 0) { update.$set = set; }
+  if (Object.keys(unset).length > 0) { update.$unset = set; }
 
   if (roomName) {
-    update.$set.roomName = roomName;
-
     doesRoomExist({
       roomName,
       callback: ({ error, data }) => {
@@ -555,6 +572,8 @@ function getRoomsByUser({
   const query = dbConnector.createUserQuery({ user });
   const filter = !full ? roomFilter : {};
 
+  query.$or.push({ participantIds: { $in: [user.objectId].concat(user.aliases) } });
+
   getRooms({
     filter,
     callback,
@@ -577,6 +596,33 @@ function getWhisperRoom({ participantIds, callback }) {
   getRoom({
     query,
     callback,
+  });
+}
+
+/**
+ * Does the whisper room exist?
+ * @param {Object} params - Parameters.
+ * @param {string[]} [params.participantIds] - Participants in the room.
+ * @param {Function} params.callback - Callback.
+ */
+function doesWhisperRoomExist({ participantIds, callback }) {
+  const query = {
+    isWhisper: true,
+    participantIds: { $all: participantIds },
+  };
+
+  dbConnector.doesObjectExist({
+    query,
+    object: Room,
+    callback: ({ error, data }) => {
+      if (error) {
+        callback({ error: new errorCreator.Database({ errorObject: error }) });
+
+        return;
+      }
+
+      callback({ data });
+    },
   });
 }
 
@@ -651,3 +697,4 @@ exports.removeFollowers = removeFollowers;
 exports.getRoomsByUser = getRoomsByUser;
 exports.getRoomsByIds = getRoomsByIds;
 exports.getAllRooms = getAllRooms;
+exports.doesWhisperRoomExist = doesWhisperRoomExist;

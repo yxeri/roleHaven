@@ -214,18 +214,23 @@ function updateDocFile({
     ownerAliasId,
   } = docFile;
 
-  const update = { $set: {} };
+  const update = {};
+  const set = {};
+  const unset = {};
 
-  if (text) { update.$set.text = text; }
-  if (title) { update.$set.title = title; }
-  if (visibility) { update.$set.visibility = visibility; }
-  if (typeof isPublic === 'boolean') { update.$set.isPublic = isPublic; }
+  if (text) { set.text = text; }
+  if (title) { set.title = title; }
+  if (visibility) { set.visibility = visibility; }
+  if (typeof isPublic === 'boolean') { set.isPublic = isPublic; }
 
   if (resetOwnerAliasId) {
-    update.$unset = { ownerAliasId: '' };
+    unset.ownerAliasId = '';
   } else if (ownerAliasId) {
-    update.set.ownerAliasId = ownerAliasId;
+    set.ownerAliasId = ownerAliasId;
   }
+
+  if (Object.keys(set).length > 0) { update.$set = set; }
+  if (Object.keys(unset).length > 0) { update.$unset = unset; }
 
   updateObject({
     docFileId,

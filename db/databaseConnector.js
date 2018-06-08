@@ -315,7 +315,12 @@ function doesObjectExist({
       return;
     }
 
-    callback({ data: { exists: typeof foundObject !== 'undefined' && foundObject !== null } });
+    callback({
+      data: {
+        exists: typeof foundObject !== 'undefined' && foundObject !== null,
+        object: foundObject,
+      },
+    });
   });
 }
 
@@ -371,18 +376,13 @@ function updateObject({
   options = {},
   errorNameContent = 'updateObject',
 }) {
-  const toUpdate = {
-    $set: update.$set || {},
-  };
+  const toUpdate = update;
   const updateOptions = options;
-
-  toUpdate.$set.lastUpdated = new Date();
   updateOptions.new = true;
 
-  if (update.$unset && Object.keys(update.$unset).length > 0) { toUpdate.$unset = update.$unset; }
-  if (update.$push) { toUpdate.$push = update.$push; }
-  if (update.$pull) { toUpdate.$pull = update.$pull; }
-  if (update.$addToSet) { toUpdate.$addToSet = update.$addToSet; }
+  if (!toUpdate.$set) { toUpdate.$set = {}; }
+
+  toUpdate.$set.lastUpdated = new Date();
 
   object.findOneAndUpdate(query, toUpdate, updateOptions).lean().exec((err, foundObject) => {
     if (err) {
@@ -546,8 +546,6 @@ function addObjectAccess({
 
   if (Object.keys(pull).length > 0) { update.$pull = pull; }
   if (Object.keys(addToSet).length > 0) { update.$addToSet = addToSet; }
-
-  console.log(update, pull, addToSet, Object.keys(addToSet).length);
 
   updateObject({
     update,
