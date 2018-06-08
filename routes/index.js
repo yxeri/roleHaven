@@ -51,7 +51,7 @@ function handle(io) {
       title: appConfig.title,
       gMapsKey: appConfig.gMapsKey,
       socketPath: appConfig.socketPath,
-      mainJs: 'scripts/main.js',
+      mainJs: `scripts/main.js?time=${Date.now()}`,
       mainCss: req.query.style && !Number.isNaN(req.query.style) ? `styles/${req.query.style}.css` : 'styles/main.css',
     });
   });
