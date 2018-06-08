@@ -220,7 +220,7 @@ function updateDevice({
   }
 
   if (deviceType) { set.deviceType = deviceType; }
-  if (deviceName) { set.deviceName = deviceName }
+  if (deviceName) { set.deviceName = deviceName; }
 
   if (resetOwnerAliasId) {
     unset.ownerAliasId = '';

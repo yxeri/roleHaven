@@ -612,29 +612,6 @@ function removeAccess({
   });
 }
 
-function doesAliasExist({
-  aliasId,
-  token,
-  callback,
-}) {
-  authenticator.isUserAllowed({
-    token,
-    commandName: dbConfig.apiCommands.GetAliases.name,
-    callback: ({ error }) => {
-      if (error) {
-        callback({ error });
-
-        return;
-      }
-
-      dbAlias.doesAliasExistById({
-        aliasId,
-        callback,
-      });
-    },
-  });
-}
-
 exports.createAlias = createAlias;
 exports.updateAlias = updateAlias;
 exports.removeAlias = removeAlias;
@@ -644,4 +621,3 @@ exports.getAliasByName = getAliasByName;
 exports.getAliasById = getAliasById;
 exports.getAliasesByUser = getAliasesByUser;
 exports.getAccessibleAlias = getAccessibleAlias;
-exports.doesAliasExist = doesAliasExist;

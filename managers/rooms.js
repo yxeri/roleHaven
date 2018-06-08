@@ -128,7 +128,7 @@ function createAndFollowWhisperRoom({
                       io.to(receiverId).emit(dbConfig.EmitTypes.ROOM, dataToSend);
                     },
                   });
-                }
+                },
               });
             },
           });
