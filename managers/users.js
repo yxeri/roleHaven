@@ -297,8 +297,8 @@ function createUser({
                         },
                       };
 
-                      io.emit(dbConfig.EmitTypes.USER, dataToSend);
-                      io.emit(dbConfig.EmitTypes.ROOM, roomDataToSend);
+                      io.to(dbConfig.rooms.public.objectId).emit(dbConfig.EmitTypes.USER, dataToSend);
+                      io.to(dbConfig.rooms.public.objectId).emit(dbConfig.EmitTypes.ROOM, roomDataToSend);
 
                       callback({
                         data: {

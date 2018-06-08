@@ -305,19 +305,23 @@ function updateAlias({
     ownerAliasId,
     isPublic,
   } = alias;
-  const update = { $set: {} };
+  const update = {};
+  const set = {};
+  const unset = {};
 
   if (resetOwnerAliasId) {
-    update.$unset = { ownerAliasId: '' };
+    unset.ownerAliasId = '';
   } else if (ownerAliasId) {
-    update.$set.ownerAliasId = ownerAliasId;
+    set.ownerAliasId = ownerAliasId;
   }
 
-  if (typeof isPublic === 'boolean') { update.$set.isPublic = isPublic; }
+  if (typeof isPublic === 'boolean') { set.isPublic = isPublic; }
+  if (aliasName) { set.aliasName = aliasName; }
+
+  if (Object.keys(set).length > 0) { update.$set = set; }
+  if (Object.keys(unset).length > 0) { update.$unset = set; }
 
   if (aliasName) {
-    update.$set.aliasName = aliasName;
-
     dbUser.doesUserExist({
       username: aliasName,
       callback: ({ error, data }) => {

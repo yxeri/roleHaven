@@ -25,42 +25,47 @@ const teamManager = require('../../managers/teams');
  * @param {object} io - Socket.Io.
  */
 function handle(socket, io) {
-  socket.on('createTeam', (params, callback = () => {}) => {
+  socket.on('createTeam', (params, callback = () => {
+  }) => {
     params.callback = callback;
     params.io = io;
-
+    params.socket = socket;
 
     teamManager.createTeam(params);
   });
 
-  socket.on('updateTeam', (params, callback = () => {}) => {
+  socket.on('updateTeam', (params, callback = () => {
+  }) => {
     params.callback = callback;
     params.io = io;
-
+    params.socket = socket;
 
     teamManager.updateTeam(params);
   });
 
-  socket.on('removeTeam', (params, callback = () => {}) => {
+  socket.on('removeTeam', (params, callback = () => {
+  }) => {
     params.callback = callback;
     params.io = io;
-
+    params.socket = socket;
 
     teamManager.removeTeam(params);
   });
 
-  socket.on('getTeam', (params, callback = () => {}) => {
+  socket.on('getTeam', (params, callback = () => {
+  }) => {
     params.callback = callback;
     params.io = io;
-
+    params.socket = socket;
 
     teamManager.getTeamById(params);
   });
 
-  socket.on('getTeams', (params, callback = () => {}) => {
+  socket.on('getTeams', (params, callback = () => {
+  }) => {
     params.callback = callback;
     params.io = io;
-
+    params.socket = socket;
 
     teamManager.getTeamsByUser(params);
   });

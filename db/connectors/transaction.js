@@ -256,20 +256,22 @@ function updateTransaction({
     resetCoordinates = false,
     resetOwnerAliasId = false,
   } = options;
-  const update = {
-    $set: {},
-    $unset: {},
-  };
+  const update = {};
+  const set = {};
+  const unset = {};
 
   if (resetOwnerAliasId) {
-    update.$unset.ownerAliasId = '';
+    unset.ownerAliasId = '';
   } else if (ownerAliasId) {
-    update.$set.ownerAliasId = ownerAliasId;
+    set.ownerAliasId = ownerAliasId;
   }
 
-  if (resetCoordinates) { update.$unset.coordinates = ''; }
+  if (resetCoordinates) { unset.coordinates = ''; }
 
-  if (note) { update.$set.note = note; }
+  if (note) { set.note = note; }
+
+  if (Object.keys(set).length > 0) { update.$set = set; }
+  if (Object.keys(unset).length > 0) { update.$unset = unset; }
 
   updateObject({
     transactionId,

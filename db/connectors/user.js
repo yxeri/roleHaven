@@ -217,10 +217,31 @@ function getUserByName({ username, callback }) {
  * @param {string} params.userId - Id of the user.
  * @param {Function} params.callback - Callback.
  */
-function getUserById({ userId, callback }) {
+function getUserById({
+  userId,
+  aliasId,
+  callback,
+}) {
   getUser({
-    callback,
     query: { _id: userId },
+    callback: ({ error, data }) => {
+      if (error) {
+        console.log(error);
+
+        if (aliasId) {
+          dbAlias.getAliasById({
+            aliasId,
+            callback,
+          });
+        }
+
+        callback({ error });
+
+        return;
+      }
+
+      callback({ data });
+    },
   });
 }
 
@@ -364,20 +385,25 @@ function updateOnline({
   socketId,
   callback,
 }) {
-  const update = { $set: {}, $unset: {} };
+  const update = {};
+  const set = {};
+  const unset = {};
 
   if (isOnline) {
-    update.$set.isOnline = true;
+    set.isOnline = true;
 
     if (socketId) {
-      update.$set.socketId = socketId;
+      set.socketId = socketId;
     }
   } else {
-    update.$set.isOnline = false;
-    update.$unset.socketId = '';
+    set.isOnline = false;
+    unset.socketId = '';
   }
 
-  update.$set.lastOnline = new Date();
+  set.lastOnline = new Date();
+
+  if (Object.keys(set).length > 0) { update.$set = set; }
+  if (Object.keys(unset).length > 0) { update.$unset = unset; }
 
   updateObject({
     userId,
@@ -412,26 +438,35 @@ function updateUser({
     isLootable,
     hasFullAccess,
     socketId,
+    aliases,
   } = user;
   const {
     resetSocket,
   } = options;
-  const update = { $set: {}, $unset: {} };
+  const update = {};
+  const set = {};
+  const unset = {};
+  const addToSet = {};
 
   if (resetSocket) {
-    update.$unset.socketId = '';
+    set.socketId = '';
   } else if (socketId) {
-    update.$set.socketId = socketId;
+    set.socketId = socketId;
   }
 
-  if (mailAddress) { update.$set.mailAddress = mailAddress; }
-  if (username) { update.$set.username = username; }
-  if (fullName) { update.$set.fullName = fullName; }
-  if (visibility) { update.$set.visibility = visibility; }
-  if (accessLevel) { update.$set.accessLevel = accessLevel; }
-  if (defaultRoomId) { update.$set.defaultRoomId = defaultRoomId; }
-  if (typeof isLootable === 'boolean') { update.$set.isLootable = isLootable; }
-  if (typeof hasFullAccess === 'boolean') { update.$set.hasFullAccess = hasFullAccess; }
+  if (mailAddress) { set.mailAddress = mailAddress; }
+  if (username) { set.username = username; }
+  if (fullName) { set.fullName = fullName; }
+  if (visibility) { set.visibility = visibility; }
+  if (accessLevel) { set.accessLevel = accessLevel; }
+  if (defaultRoomId) { set.defaultRoomId = defaultRoomId; }
+  if (typeof isLootable === 'boolean') { set.isLootable = isLootable; }
+  if (typeof hasFullAccess === 'boolean') { set.hasFullAccess = hasFullAccess; }
+  if (aliases) { addToSet.aliases = { $each: aliases }; }
+
+  if (Object.keys(set).length > 0) { update.$set = set; }
+  if (Object.keys(unset).length > 0) { update.$unset = unset; }
+  if (Object.keys(addToSet).length > 0) { update.$addToSet = addToSet; }
 
   if (username || mailAddress) {
     doesUserExist({
@@ -580,12 +615,6 @@ function getUsersByUser({
               }
 
               return 0;
-            }).map((item) => {
-              return {
-                username: item.username || item.aliasName,
-                objectId: item.objectId,
-                lastUpdated: item.lastUpdated,
-              };
             });
 
             callback({
@@ -638,7 +667,7 @@ function addToTeam({
 }) {
   updateObject({
     userId,
-    update: { partOfTeams: { $addToSet: teamId } },
+    update: { $addToSet: { partOfTeams: teamId } },
     callback: ({ error, data }) => {
       if (error) {
         callback({ error });
@@ -683,7 +712,7 @@ function addAlias({
 }) {
   updateObject({
     userId,
-    update: { aliases: { $addToSet: aliasId } },
+    update: { $addToSet: { aliases: aliasId } },
     callback: ({ error, data }) => {
       if (error) {
         callback({ error });
@@ -852,9 +881,7 @@ function followRoom({
 }) {
   updateObject({
     userId,
-    update: {
-      followingRooms: { $addToSet: roomId },
-    },
+    update: { $addToSet: { followingRooms: roomId } },
     callback: ({ error, data }) => {
       if (error) {
         callback({ error });

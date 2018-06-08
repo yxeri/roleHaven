@@ -27,13 +27,14 @@ const errorCreator = require('../../error/errorCreator');
  * @param {object} io - Socket.Io.
  */
 function handle(socket, io) {
-  socket.on('sendMessage', (params, callback = () => {}) => {
+  socket.on('sendMessage', (params, callback = () => {
+  }) => {
     const { message } = params;
     const { messageType = '' } = message;
 
     params.callback = callback;
     params.io = io;
-
+    params.socket = socket;
 
     switch (messageType) {
       case dbConfig.MessageTypes.BROADCAST: {
@@ -59,34 +60,38 @@ function handle(socket, io) {
     }
   });
 
-  socket.on('updateMessage', (params, callback = () => {}) => {
+  socket.on('updateMessage', (params, callback = () => {
+  }) => {
     params.callback = callback;
     params.io = io;
-
+    params.socket = socket;
 
     messageManager.updateMsg(params);
   });
 
-  socket.on('removeMessage', (params, callback = () => {}) => {
+  socket.on('removeMessage', (params, callback = () => {
+  }) => {
     params.callback = callback;
     params.io = io;
-
+    params.socket = socket;
 
     messageManager.removeMesssage(params);
   });
 
-  socket.on('getMessage', (params, callback = () => {}) => {
+  socket.on('getMessage', (params, callback = () => {
+  }) => {
     params.callback = callback;
     params.io = io;
-
+    params.socket = socket;
 
     messageManager.getMessageById(params);
   });
 
-  socket.on('getMessages', (params, callback = () => {}) => {
+  socket.on('getMessages', (params, callback = () => {
+  }) => {
     params.callback = callback;
     params.io = io;
-
+    params.socket = socket;
 
     if (params.fullHistory) {
       messageManager.getFullHistory(params);
@@ -95,10 +100,11 @@ function handle(socket, io) {
     }
   });
 
-  socket.on('getMessagesByRoom', (params, callback = () => {}) => {
+  socket.on('getMessagesByRoom', (params, callback = () => {
+  }) => {
     params.callback = callback;
     params.io = io;
-
+    params.socket = socket;
 
     messageManager.getMessagesByRoom(params);
   });

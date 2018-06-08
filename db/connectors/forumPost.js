@@ -343,15 +343,20 @@ function updatePost({
   callback,
   options = {},
 }) {
-  const update = { $set: {} };
+  const update = {};
+  const set = {};
+  const unset = {};
 
   if (options.resetOwnerAliasId) {
-    update.$unset = { ownerAliasId: '' };
+    unset.ownerAliasId = '';
   } else if (post.ownerAliasId) {
-    update.$set.ownerAliasId = post.ownerAliasId;
+    set.ownerAliasId = post.ownerAliasId;
   }
 
-  if (post.text) { update.$set.text = post.text; }
+  if (post.text) { set.text = post.text; }
+
+  if (Object.keys(set).length > 0) { update.$set = set; }
+  if (Object.keys(unset).length > 0) { update.$unset = set; }
 
   updateObject({
     update,

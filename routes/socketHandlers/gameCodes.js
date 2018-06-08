@@ -25,50 +25,56 @@ const gameCodeManager = require('../../managers/gameCodes');
  * @param {object} io - Socket.Io.
  */
 function handle(socket, io) {
-  socket.on('createGameCode', (params, callback = () => {}) => {
+  socket.on('createGameCode', (params, callback = () => {
+  }) => {
     params.callback = callback;
     params.io = io;
-
+    params.socket = socket;
 
     gameCodeManager.createGameCode(params);
   });
 
-  socket.on('updateGameCode', (params, callback = () => {}) => {
+  socket.on('updateGameCode', (params, callback = () => {
+  }) => {
     params.callback = callback;
     params.io = io;
-
+    params.socket = socket;
 
     gameCodeManager.updateGameCode(params);
   });
 
-  socket.on('removeGameCode', (params, callback = () => {}) => {
+  socket.on('removeGameCode', (params, callback = () => {
+  }) => {
     params.callback = callback;
     params.io = io;
-
+    params.socket = socket;
 
     gameCodeManager.removeGameCode(params);
   });
 
-  socket.on('getGameCode', (params, callback = () => {}) => {
+  socket.on('getGameCode', (params, callback = () => {
+  }) => {
     params.callback = callback;
     params.io = io;
-
+    params.socket = socket;
 
     gameCodeManager.getGameCodeById(params);
   });
 
-  socket.on('getGameCodes', (params, callback = () => {}) => {
+  socket.on('getGameCodes', (params, callback = () => {
+  }) => {
     params.callback = callback;
     params.io = io;
-
+    params.socket = socket;
 
     gameCodeManager.getGameCodesByOwner(params);
   });
 
-  socket.on('useGameCode', (params, callback = () => {}) => {
+  socket.on('useGameCode', (params, callback = () => {
+  }) => {
     params.callback = callback;
     params.io = io;
-
+    params.socket = socket;
 
     gameCodeManager.useGameCode(params);
   });

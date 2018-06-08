@@ -25,42 +25,48 @@ const userManager = require('../../managers/users');
  * @param {object} io - Socket.Io.
  */
 function handle(socket, io) {
-  socket.on('createUser', (params, callback = () => {}) => {
+  socket.on('createUser', (params, callback = () => {
+  }) => {
     params.callback = callback;
     params.io = io;
-
+    params.socket = socket;
     userManager.createUser(params);
   });
 
-  socket.on('updateUser', (params, callback = () => {}) => {
+  socket.on('updateUser', (params, callback = () => {
+  }) => {
     params.callback = callback;
     params.io = io;
-
+    params.socket = socket;
     userManager.updateUser(params);
   });
 
-  socket.on('removeUser', (params, callback = () => {}) => {
+  socket.on('removeUser', (params, callback = () => {
+  }) => {
     params.callback = callback;
     params.io = io;
-
+    params.socket = socket;
     userManager.removeUser(params);
   });
 
-  socket.on('getUser', (params, callback = () => {}) => {
+  socket.on('getUser', (params, callback = () => {
+  }) => {
     params.callback = callback;
     params.io = io;
-
+    params.socket = socket;
     userManager.getUserById(params);
   });
 
-  socket.on('getUsers', (params, callback = () => {}) => {
+  socket.on('getUsers', (params, callback = () => {
+  }) => {
     params.callback = callback;
     params.io = io;
-
+    params.socket = socket;
     userManager.getUsersByUser(params);
   });
 
-  socket.on('updateId', (params, callback = () => {}) => {
+  socket.on('updateId', (params, callback = () => {
+  }) => {
     params.callback = callback;
     params.io = io;
     params.socket = socket;

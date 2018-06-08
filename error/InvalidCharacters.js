@@ -21,22 +21,19 @@ class InvalidCharacters extends GeneralError.create {
    * Create invalid length error.
    * @param {Object} params - Parameters.
    * @param {string} [params.name] - Name of the string being checked.
-   * @param {string} [params.expected] - Expected valid length.
    * @param {Object} [params.errorObject] - Error object.
    */
   constructor({
     errorObject,
     extraData,
     name = '-',
-    expected = '-',
   }) {
     super({
       errorObject,
       extraData,
-      type: GeneralError.ErrorTypes.INVALIDLENGTH,
+      type: GeneralError.ErrorTypes.INVALIDCHARACTERS,
       text: [
-        `Property ${name} is too short or long`,
-        `Valid length: ${expected}`,
+        `Property ${name} contains invalid characters`,
       ],
     });
   }

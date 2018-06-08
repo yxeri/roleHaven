@@ -205,17 +205,22 @@ function updateThread({
   callback,
   options = {},
 }) {
-  const update = { $set: {} };
+  const update = {};
+  const set = {};
+  const unset = {};
 
-  if (thread.forumId) { update.$set.forumId = thread.forumId; }
-  if (thread.title) { update.$set.title = thread.title; }
-  if (thread.text) { update.$set.text = thread.text; }
+  if (thread.forumId) { set.forumId = thread.forumId; }
+  if (thread.title) { set.title = thread.title; }
+  if (thread.text) { set.text = thread.text; }
 
   if (options.resetOwnerAliasId) {
-    update.$unset = { ownerAliasId: '' };
+    unset.ownerAliasId = '';
   } else if (thread.ownerAliasId) {
-    update.$set.ownerAliasId = thread.ownerAliasId;
+    set.ownerAliasId = thread.ownerAliasId;
   }
+
+  if (Object.keys(set).length > 0) { update.$set = set; }
+  if (Object.keys(unset).length > 0) { update.$unset = set; }
 
   updateObject({
     update,

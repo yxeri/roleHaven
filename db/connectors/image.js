@@ -83,14 +83,17 @@ function updateImage({
       height,
     },
   };
+  const unset = {};
 
   if (resetOwnerAliasId) {
-    update.$unset = { ownerAliasId: '' };
+    unset.ownerAliasId = '';
   } else if (ownerAliasId) {
     update.$set.ownerAliasId = ownerAliasId;
   }
 
   if (typeof isPublic === 'boolean') { update.$set.isPublic = isPublic; }
+
+  if (Object.keys(unset).length > 0) { update.$unset = unset; }
 
   updateObject({
     update,

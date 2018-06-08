@@ -209,28 +209,29 @@ function updateDevice({
     resetSocket = false,
     resetOwnerAliasId = false,
   } = options;
-  const update = {
-    $set: {},
-    $unset: {},
-  };
+  const update = {};
+  const set = {};
+  const unset = {};
 
   if (resetSocket) {
-    update.$unset.socketId = '';
+    unset.socketId = '';
   } else if (socketId) {
-    update.$set.socketId = socketId;
+    set.socketId = socketId;
   }
 
-  if (deviceType) { update.$set.deviceType = deviceType; }
+  if (deviceType) { set.deviceType = deviceType; }
+  if (deviceName) { set.deviceName = deviceName }
 
   if (resetOwnerAliasId) {
-    update.$unset.ownerAliasId = '';
+    unset.ownerAliasId = '';
   } else if (ownerAliasId) {
-    update.$set.ownerAliasId = ownerAliasId;
+    set.ownerAliasId = ownerAliasId;
   }
 
-  if (deviceName) {
-    update.$set.deviceName = deviceName;
+  if (Object.keys(set).length > 0) { update.$set = set; }
+  if (Object.keys(unset).length > 0) { update.$unset = unset; }
 
+  if (deviceName) {
     doesDeviceExist({
       deviceName,
       callback: (nameData) => {

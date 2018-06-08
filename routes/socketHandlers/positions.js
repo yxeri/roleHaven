@@ -25,50 +25,56 @@ const positionManager = require('../../managers/positions');
  * @param {object} io - Socket.Io.
  */
 function handle(socket, io) {
-  socket.on('createPosition', (params, callback = () => {}) => {
+  socket.on('createPosition', (params, callback = () => {
+  }) => {
     params.callback = callback;
     params.io = io;
-
+    params.socket = socket;
 
     positionManager.createPosition(params);
   });
 
-  socket.on('updatePosition', (params, callback = () => {}) => {
+  socket.on('updatePosition', (params, callback = () => {
+  }) => {
     params.callback = callback;
     params.io = io;
-
+    params.socket = socket;
 
     positionManager.updatePosition(params);
   });
 
-  socket.on('removePosition', (params, callback = () => {}) => {
+  socket.on('removePosition', (params, callback = () => {
+  }) => {
     params.callback = callback;
     params.io = io;
-
+    params.socket = socket;
 
     positionManager.removePosition(params);
   });
 
-  socket.on('getPosition', (params, callback = () => {}) => {
+  socket.on('getPosition', (params, callback = () => {
+  }) => {
     params.callback = callback;
     params.io = io;
-
+    params.socket = socket;
 
     positionManager.getPositionById(params);
   });
 
-  socket.on('getPositions', (params, callback = () => {}) => {
+  socket.on('getPositions', (params, callback = () => {
+  }) => {
     params.callback = callback;
     params.io = io;
-
+    params.socket = socket;
 
     positionManager.getPositions(params);
   });
 
-  socket.on('updatePositionCoordinates', (params, callback = () => {}) => {
+  socket.on('updatePositionCoordinates', (params, callback = () => {
+  }) => {
     params.callback = callback;
     params.io = io;
-
+    params.socket = socket;
 
     positionManager.updatePositionCoordinates(params);
   });

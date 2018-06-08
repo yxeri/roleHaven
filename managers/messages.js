@@ -549,7 +549,7 @@ function sendWhisperMsg({
       newMessage.messageType = dbConfig.MessageTypes.WHISPER;
 
       const send = () => {
-        roomManager.getWhisperRoom({
+        roomManager.doesWhisperRoomExist({
           participantIds,
           callback: (whisperData) => {
             if (whisperData.error) {
@@ -558,13 +558,14 @@ function sendWhisperMsg({
               return;
             }
 
-            const foundRoom = whisperData.data.room;
+            const { exists, object: foundRoom } = whisperData.data;
 
-            if (!foundRoom) {
+            if (!exists) {
               roomManager.createAndFollowWhisperRoom({
                 participantIds,
                 socket,
                 io,
+                token,
                 user: authUser,
                 callback: (newWhisperData) => {
                   if (newWhisperData.error) {
@@ -573,7 +574,7 @@ function sendWhisperMsg({
                     return;
                   }
 
-                  const newRoom = newWhisperData.data.room;
+                  const { room: newRoom } = newWhisperData.data;
                   newMessage.roomId = newRoom.objectId;
 
                   sendAndStoreMessage({

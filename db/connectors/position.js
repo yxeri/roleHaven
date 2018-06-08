@@ -260,10 +260,9 @@ function updatePosition({
   } = position;
   const { resetOwnerAliasId, resetConnectedToUser } = options;
 
-  const update = {
-    $set: {},
-    $unset: {},
-  };
+  const update = {};
+  const set = {};
+  const unset = {};
 
   const updateCallback = () => {
     updateObject({
@@ -300,29 +299,32 @@ function updatePosition({
     });
   };
 
-  if (text) { update.$set.description = text; }
-  if (positionName) { update.$set.positionName = positionName; }
-  if (positionType) { update.$set.positionType = positionType; }
-  if (description) { update.$set.description = description; }
-  if (positionStructure) { update.$set.positionStructure = positionStructure; }
-  if (styleName) { update.$set.styleName = styleName; }
+  if (text) { set.description = text; }
+  if (positionName) { set.positionName = positionName; }
+  if (positionType) { set.positionType = positionType; }
+  if (description) { set.description = description; }
+  if (positionStructure) { set.positionStructure = positionStructure; }
+  if (styleName) { set.styleName = styleName; }
 
-  if (typeof isPublic !== 'undefined') { update.$set.isPublic = isPublic; }
-  if (typeof isStationary !== 'undefined') { update.$set.isStationary = isStationary; }
+  if (typeof isPublic !== 'undefined') { set.isPublic = isPublic; }
+  if (typeof isStationary !== 'undefined') { set.isStationary = isStationary; }
 
   if (resetConnectedToUser) {
-    update.$unset.connectedToUser = '';
-    update.$set.positionType = dbConfig.PositionTypes.DEVICE;
+    unset.connectedToUser = '';
+    set.positionType = dbConfig.PositionTypes.DEVICE;
   } else if (connectedToUser) {
-    update.$set.connectedToUser = connectedToUser;
-    update.$set.positionType = dbConfig.PositionTypes.USER;
+    set.connectedToUser = connectedToUser;
+    set.positionType = dbConfig.PositionTypes.USER;
   }
 
   if (resetOwnerAliasId) {
-    update.$unset.ownerAliasId = '';
+    unset.ownerAliasId = '';
   } else if (ownerAliasId) {
-    update.$set.ownerAliasId = ownerAliasId;
+    set.ownerAliasId = ownerAliasId;
   }
+
+  if (Object.keys(set).length > 0) { update.$set = set; }
+  if (Object.keys(unset).length > 0) { update.$unset = unset; }
 
   if (!resetConnectedToUser && connectedToUser) {
     existCallback();
