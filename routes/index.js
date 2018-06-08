@@ -38,7 +38,6 @@ const transactionHandler = require('./socketHandlers/transactions');
 const userHandler = require('./socketHandlers/users');
 const walletHandler = require('./socketHandlers/wallets');
 
-
 const router = new express.Router();
 
 /**
@@ -51,7 +50,7 @@ function handle(io) {
       title: appConfig.title,
       gMapsKey: appConfig.gMapsKey,
       socketPath: appConfig.socketPath,
-      mainJs: `scripts/main.js?time=${Date.now()}`,
+      mainJs: `scripts/main.js?version=${appConfig.jsVersion}`,
       mainCss: req.query.style && !Number.isNaN(req.query.style) ? `styles/${req.query.style}.css` : 'styles/main.css',
     });
   });

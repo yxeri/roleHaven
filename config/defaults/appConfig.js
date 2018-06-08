@@ -18,8 +18,16 @@
 
 const path = require('path');
 const textTools = require('../../utils/textTools');
+const { version } = require('../../package');
 
+let clientConfig = {};
 let config = {};
+
+try {
+  clientConfig = require(path.normalize(`${__dirname}/../../../../private/config/config`)); // eslint-disable-line
+} catch (err) {
+  console.log('Did not find client config');
+}
 
 try {
   config = require(path.normalize(`${__dirname}/../../../../config/appConfig`)).config; // eslint-disable-line
@@ -124,6 +132,8 @@ config.scriptsPath = 'scripts';
  * @type {string}
  */
 config.requiredPath = 'required';
+
+config.jsVersion = clientConfig && clientConfig.version ? `${version}-${clientConfig.version}` : version;
 
 /**
  * Path to favicon.
