@@ -37,7 +37,7 @@ const baseSchema = {
   userIds: { type: [String], default: [] },
   teamIds: { type: [String], default: [] },
   bannedIds: { type: [String], default: [] },
-  isPublic: { type: Boolean, default: false },
+  isPublic: { type: Boolean, default: true },
 };
 
 const pictureSchema = {
