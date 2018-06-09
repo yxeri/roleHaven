@@ -136,6 +136,7 @@ function saveAndTransmitDocFile({
       }
 
       const { docFile: newDocFile } = createData.data;
+      const fullDocFile = Object.assign({}, newDocFile);
 
       if (!newDocFile.isPublic) {
         newDocFile.isLocked = true;
@@ -153,7 +154,12 @@ function saveAndTransmitDocFile({
 
       io.emit(dbConfig.EmitTypes.DOCFILE, dataToSend);
 
-      callback(dataToSend);
+      callback({
+        data: {
+          docFile: fullDocFile,
+          changeType: dbConfig.ChangeTypes.CREATE,
+        },
+      });
     },
   });
 }
