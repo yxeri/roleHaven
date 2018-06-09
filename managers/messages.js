@@ -547,6 +547,8 @@ function sendWhisperMsg({
       const authUser = data.user;
       const newMessage = message;
       newMessage.messageType = dbConfig.MessageTypes.WHISPER;
+      newMessage.ownerId = authUser.objectId;
+      newMessage.ownerAliasId = participantIds.find(participant => authUser.aliases.includes(participant));
 
       const send = () => {
         roomManager.doesWhisperRoomExist({
@@ -558,7 +560,7 @@ function sendWhisperMsg({
               return;
             }
 
-            const { exists, object: foundRoom } = whisperData.data;
+            const { exists } = whisperData.data;
 
             if (!exists) {
               roomManager.createAndFollowWhisperRoom({
@@ -577,13 +579,25 @@ function sendWhisperMsg({
                   const { room: newRoom } = newWhisperData.data;
                   newMessage.roomId = newRoom.objectId;
 
-                  sendAndStoreMessage({
-                    socket,
-                    io,
-                    callback,
-                    image,
-                    emitType: dbConfig.EmitTypes.WHISPER,
-                    message: newMessage,
+                  roomManager.getAccessibleRoom({
+                    roomId: newMessage.roomId,
+                    user: authUser,
+                    callback: (roomData) => {
+                      if (roomData.error) {
+                        callback({ error: roomData.error });
+
+                        return;
+                      }
+
+                      sendAndStoreMessage({
+                        socket,
+                        io,
+                        callback,
+                        image,
+                        emitType: dbConfig.EmitTypes.WHISPER,
+                        message: newMessage,
+                      });
+                    },
                   });
                 },
               });
@@ -591,15 +605,25 @@ function sendWhisperMsg({
               return;
             }
 
-            newMessage.roomId = foundRoom.objectId;
+            roomManager.getAccessibleRoom({
+              roomId: newMessage.roomId,
+              user: authUser,
+              callback: (roomData) => {
+                if (roomData.error) {
+                  callback({ error: roomData.error });
 
-            sendAndStoreMessage({
-              socket,
-              io,
-              callback,
-              image,
-              emitType: dbConfig.EmitTypes.WHISPER,
-              message: newMessage,
+                  return;
+                }
+
+                sendAndStoreMessage({
+                  socket,
+                  io,
+                  callback,
+                  image,
+                  emitType: dbConfig.EmitTypes.WHISPER,
+                  message: newMessage,
+                });
+              },
             });
           },
         });

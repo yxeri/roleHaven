@@ -233,6 +233,8 @@ function getUserById({
             aliasId,
             callback,
           });
+
+          return;
         }
 
         callback({ error });
