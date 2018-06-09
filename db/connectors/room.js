@@ -573,7 +573,7 @@ function getRoomsByUser({
   const filter = !full ? roomFilter : {};
 
   query.$or.push({ participantIds: { $in: [user.objectId].concat(user.aliases) } });
-  query.$or.push({ isUser: true })
+  query.$or.push({ isUser: true });
 
   getRooms({
     filter,
