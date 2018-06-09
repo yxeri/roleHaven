@@ -33,6 +33,9 @@ function getAccessedFile({ user, docFile }) {
     || docFile.isPublic
     || docFile.userIds.includes(user.objectId)
     || user.partOfTeams.some(teamId => docFile.teamIds.includes(teamId))) {
+    const unlockedDocFile = docFile;
+    unlockedDocFile.isLocked = false;
+
     return { docFile, isLocked: false };
   }
 
@@ -41,6 +44,7 @@ function getAccessedFile({ user, docFile }) {
   lockedDocFile.text = undefined;
   lockedDocFile.code = undefined;
   lockedDocFile.pictures = undefined;
+  lockedDocFile.isLocked = true;
 
   return { docFile: lockedDocFile, isLocked: true };
 }
@@ -131,16 +135,31 @@ function saveAndTransmitDocFile({
         return;
       }
 
+      const { docFile: newDocFile } = createData.data;
+      const fullDocFile = Object.assign({}, newDocFile);
+
+      if (!newDocFile.isPublic) {
+        newDocFile.isLocked = true;
+        newDocFile.code = undefined;
+        newDocFile.text = undefined;
+        newDocFile.pictures = undefined;
+      }
+
       const dataToSend = {
         data: {
-          docFile: createData.data.docFile,
+          docFile: newDocFile,
           changeType: dbConfig.ChangeTypes.CREATE,
         },
       };
 
       io.emit(dbConfig.EmitTypes.DOCFILE, dataToSend);
 
-      callback(dataToSend);
+      callback({
+        data: {
+          docFile: fullDocFile,
+          changeType: dbConfig.ChangeTypes.CREATE,
+        },
+      });
     },
   });
 }

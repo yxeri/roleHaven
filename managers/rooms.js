@@ -96,18 +96,20 @@ function createAndFollowWhisperRoom({
                   dbUser.followRoom({
                     roomId,
                     userId: identityId,
-                    callback: () => {
+                    callback: (receiverFollowData) => {
+                      if (receiverFollowData.error) {
+                        callback({ error: receiverFollowData.error });
+
+                        return;
+                      }
+
                       const newRoom = accessdata.data.room;
                       const newRoomId = newRoom.objectId;
                       const senderId = user.objectId;
                       const receiverId = identityId;
                       const dataToSend = {
                         data: {
-                          room: {
-                            objectId: newRoomId,
-                            isWhisper: true,
-                            participantIds: newRoom.participantIds,
-                          },
+                          room: newRoom,
                           changeType: dbConfig.ChangeTypes.CREATE,
                         },
                       };
@@ -126,6 +128,8 @@ function createAndFollowWhisperRoom({
 
                       io.to(senderId).emit(dbConfig.EmitTypes.ROOM, dataToSend);
                       io.to(receiverId).emit(dbConfig.EmitTypes.ROOM, dataToSend);
+
+                      callback(roomData);
                     },
                   });
                 },
@@ -167,11 +171,7 @@ function getAccessibleRoom({
 
       const { room } = data;
 
-      if (!room.isSystemRoom && !authenticator.hasAccessTo({
-        shouldBeAdmin,
-        toAuth: user,
-        objectToAccess: room,
-      }) && (!room.password || !password || room.password !== password)) {
+      if (!room.isSystemRoom && (!authenticator.hasAccessTo({ shouldBeAdmin, toAuth: user, objectToAccess: room }) || (room.password && (!password || room.password !== password)))) {
         callback({ error: new errorCreator.NotAllowed({ name: errorContentText }) });
 
         return;
