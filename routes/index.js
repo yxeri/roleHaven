@@ -46,12 +46,22 @@ const router = new express.Router();
  */
 function handle(io) {
   router.get('/', (req, res) => {
-    res.render('index', {
+    res.render(appConfig.indexName, {
       title: appConfig.title,
       gMapsKey: appConfig.gMapsKey,
       socketPath: appConfig.socketPath,
-      mainJs: `scripts/main.js?version=${appConfig.jsVersion}`,
-      mainCss: req.query.style && !Number.isNaN(req.query.style) ? `styles/${req.query.style}.css` : 'styles/main.css',
+      mainJs: `scripts/${appConfig.mainJsName}.js?version=${appConfig.jsVersion}`,
+      mainCss: req.query.style && !Number.isNaN(req.query.style) ? `styles/${req.query.style}.css` : `styles/${appConfig.mainCssName}.css`,
+    });
+  });
+
+  router.get('/admin', (req, res) => {
+    res.render(appConfig.adminIndexName, {
+      title: appConfig.title,
+      gMapsKey: appConfig.gMapsKey,
+      socketPath: appConfig.socketPath,
+      adminJs: `scripts/${appConfig.adminIndexName}.js?version=${appConfig.jsVersion}`,
+      adminCss: req.query.style && !Number.isNaN(req.query.style) ? `styles/admin${req.query.style}.css` : `styles/${appConfig.adminCssName}.css`,
     });
   });
 

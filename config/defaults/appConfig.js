@@ -70,6 +70,42 @@ config.publicBase = path.normalize(`${__dirname}/../../../../public`);
  */
 config.privateBase = path.normalize(`${__dirname}/../../../../private`);
 
+/**
+ * Default index name that will be served to public view.
+ * @type {string}
+ */
+config.indexName = process.env.INDEXNAME || config.indexName || 'default';
+
+/**
+ * Default main Javascript file that will be served to public view.
+ * @type {string}
+ */
+config.mainJsName = process.env.MAINJSNAME || config.mainJsName || 'default';
+
+/**
+ * Default main Javascript file that will be served to public view.
+ * @type {string}
+ */
+config.mainCssName = process.env.MAINCSSNAME || config.mainCssName || 'default';
+
+/**
+ * Admin interface index name that will be served to public view.
+ * @type {string}
+ */
+config.adminIndexName = process.env.ADMININDEXNAME || config.adminIndexName || 'admin';
+
+/**
+ * Admin interface Javascript file that will be served to public view.
+ * @type {string}
+ */
+config.adminJsName = process.env.ADMINJSNAME || config.adminJsName || 'admin';
+
+/**
+ * Admin interface Javascript file that will be served to public view.
+ * @type {string}
+ */
+config.adminCssName = process.env.ADMINCSSNAME || config.adminCssName || 'admin';
+
 // TODO Routes should be empty by defaults. Move all routes to app-specific instances
 /**
  * Array of route paths.
