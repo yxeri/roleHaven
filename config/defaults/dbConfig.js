@@ -275,7 +275,7 @@ config.apiCommands = {
   },
   RemoveAlias: config.apiCommands.RemoveAlias || {
     name: 'RemoveAlias',
-    accessLevel: config.AccessLevels.STANDARD,
+    accessLevel: config.AccessLevels.ADMIN,
   },
 
   /**
@@ -477,6 +477,10 @@ config.apiCommands = {
     name: 'RemoveUser',
     accessLevel: config.AccessLevels.ADMIN,
   },
+  UpdateSelf: config.apiCommands.UpdateSelf || {
+    name: 'UpdateSelf',
+    accesslevel: config.AccessLevels.ADMIN,
+  },
 
   /**
    * Misc.
@@ -632,6 +636,10 @@ config.apiCommands = {
   GetDocFilesList: config.apiCommands.GetDocFilesList || {
     name: 'GetDocFilesList',
     accessLevel: config.AccessLevels.ANONYMOUS,
+  },
+  UpdateDocFile: config.apiCommands.UpdateDocFile || {
+    name: 'UpdateDocFile',
+    accessLevel: config.AccessLevels.STANDARD,
   },
 
   /**
