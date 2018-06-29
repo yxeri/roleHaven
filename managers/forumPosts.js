@@ -20,163 +20,34 @@ const dbPost = require('../db/connectors/forumPost');
 const { dbConfig } = require('../config/defaults/config');
 const errorCreator = require('../error/errorCreator');
 const authenticator = require('../helpers/authenticator');
-const aliasManager = require('./aliases');
 const forumManager = require('./forums');
 const threadManager = require('./forumThreads');
+const managerHelper = require('../helpers/manager');
 
 /**
- * Get forum post by ID and check if the user has access to it.
+ * Get a forum post.
  * @param {Object} params - Parameters.
- * @param {Object} params.user - User retrieving the forum post.
- * @param {string} params.postId - ID of the forum post to retrieve.
+ * @param {string} params.postId - Id of the post.
  * @param {Function} params.callback - Callback.
- * @param {string} [params.errorContentText] - Text to be printed on error.
- * @param {boolean} [params.shouldBeAdmin] - Does the user have to be an admin?
+ * @param {string} params.token - jwt.
  */
-function getAccessiblePost({
-  user,
+function getPostById({
   postId,
   callback,
-  shouldBeAdmin,
-  full,
-  errorContentText = `postId ${postId}`,
+  token,
+  internalCallUser,
+  needsAccess,
 }) {
-  dbPost.getPostById({
-    postId,
-    callback: (postData) => {
-      if (postData.error) {
-        callback({ error: postData.error });
-
-        return;
-      } else if (!authenticator.hasAccessTo({
-        shouldBeAdmin,
-        toAuth: user,
-        objectToAccess: postData.data.post,
-      })) {
-        callback({ error: new errorCreator.NotAllowed({ name: errorContentText }) });
-
-        return;
-      }
-
-      const foundPost = postData.data.post;
-      const filteredPost = {
-        objectId: foundPost.objectId,
-        text: foundPost.text,
-        depth: foundPost.depth,
-        lastUpdated: foundPost.lastUpdated,
-        timeCreated: foundPost.timeCreated,
-        customLastUpdated: foundPost.customLastUpdated,
-        customTimeCreated: foundPost.customTimeCreated,
-        ownerId: foundPost.ownerId,
-        ownerAliasId: foundPost.ownerAliasId,
-        threadId: foundPost.threadId,
-        parentPostId: foundPost.parentPostId,
-      };
-
-      callback({
-        data: {
-          post: full ? foundPost : filteredPost,
-        },
-      });
-    },
-  });
-}
-
-/**
- * Get forum post by thread that the user has access to.
- * @param {Object} params - Parameters.
- * @param {Object} params.user - User retrieving the forum post.
- * @param {string} params.threadId - ID of the forum thread to get posts for.
- * @param {Function} params.callback - Callback.
- * @param {string} [params.errorContentText] - Text to be printed on error.
- * @param {boolean} [params.shouldBeAdmin] - Does the user have to be an admin?
- */
-function getAccessibleThreadPosts({
-  user,
-  threadId,
-  callback,
-  shouldBeAdmin,
-  full,
-}) {
-  dbPost.getPostsByThread({
-    threadId,
-    full,
-    callback: (postsData) => {
-      if (postsData.error) {
-        callback({ error: postsData.error });
-
-        return;
-      }
-
-      const posts = postsData.data.posts.map((post) => {
-        return !authenticator.hasAccessTo({
-          shouldBeAdmin,
-          toAuth: user,
-          objectToAccess: post,
-        });
-      });
-      const filteredPosts = posts.map((post) => {
-        return {
-          objectId: post.objectId,
-          ownerId: post.ownerId,
-          ownerAliasId: post.ownerAliasId,
-          threadId: post.threadId,
-          parentPostId: post.parentPostId,
-          text: post.text,
-          depth: post.depth,
-          lastUpdated: post.lastUpdated,
-          timeCreated: post.timeCreated,
-          customTimeCreated: post.customTimeCreated,
-          customLastUpdated: post.customLastUpdated,
-        };
-      });
-
-      callback({
-        data: {
-          posts: full ? posts : filteredPosts,
-        },
-      });
-    },
-  });
-}
-
-/**
- * Get forum post by threads that the user has access to.
- * @param {Object} params - Parameters.
- * @param {Object} params.user - User retrieving the forum post.
- * @param {string[]} params.threadIds - ID of the forum threads to get posts for.
- * @param {Function} params.callback - Callback.
- * @param {boolean} [params.shouldBeAdmin] - Does the user have to be an admin?
- */
-function getAccessibleThreadsPosts({
-  user,
-  threadIds,
-  callback,
-  shouldBeAdmin,
-}) {
-  dbPost.getPostsByThreads({
-    threadIds,
-    callback: (forumData) => {
-      if (forumData.error) {
-        callback({ error: forumData.error });
-
-        return;
-      }
-
-      const posts = forumData.data.posts.map((post) => {
-        return !authenticator.hasAccessTo({
-          shouldBeAdmin,
-          toAuth: user,
-          objectToAccess: post,
-        });
-      });
-
-      callback({
-        data: {
-          posts,
-        },
-      });
-    },
+  managerHelper.getObjectById({
+    token,
+    internalCallUser,
+    callback,
+    needsAccess,
+    objectId: postId,
+    objectType: 'post',
+    objectIdType: 'postId',
+    dbCallFunc: dbPost.getPostById,
+    commandName: dbConfig.apiCommands.GetForumPost.name,
   });
 }
 
@@ -186,15 +57,13 @@ function getAccessibleThreadsPosts({
  * @param {Object} params.post - Forum post to create.
  * @param {Object} params.callback - Callback.
  * @param {Object} params.token - jwt.
- * @param {Object} params.io - Socket.io. Will be used if socket is not set.
- * @param {Object} [params.socket] - Socket.io.
+ * @param {Object} params.io - Socket.io.
  */
 function createPost({
   post,
   callback,
   token,
   io,
-  socket,
 }) {
   authenticator.isUserAllowed({
     token,
@@ -206,93 +75,78 @@ function createPost({
         return;
       }
 
-      const { user } = data;
+      const { user: authUser } = data;
 
       const postToCreate = post;
-      postToCreate.ownerId = user.objectId;
+      postToCreate.ownerId = authUser.objectId;
 
-      const saveCallback = () => {
-        threadManager.getAccessibleThread({
-          user,
-          threadId: postToCreate.threadId,
-          callback: (threadData) => {
-            if (threadData.error) {
-              callback({ error: threadData.error });
-
-              return;
-            }
-
-            dbPost.createPost({
-              post: postToCreate,
-              callback: (postData) => {
-                if (postData.error) {
-                  callback({ error: postData.error });
-
-                  return;
-                }
-
-                threadManager.updateThreadTime({
-                  threadId: postToCreate.threadId,
-                  callback: (updateData) => {
-                    if (updateData.error) {
-                      callback({ error: updateData.error });
-
-                      return;
-                    }
-
-                    const dataToSend = {
-                      data: {
-                        post: postData.data.post,
-                        changeType: dbConfig.ChangeTypes.CREATE,
-                      },
-                    };
-
-                    if (socket) {
-                      socket.broadcast.emit(dbConfig.EmitTypes.FORUMPOST, dataToSend);
-                    } else {
-                      io.emit(dbConfig.EmitTypes.FORUMPOST, dataToSend);
-                    }
-
-                    callback(dataToSend);
-                  },
-                });
-              },
-            });
-          },
-        });
-      };
-
-      if (postToCreate.ownerAliasId) {
-        aliasManager.getAccessibleAlias({
-          user,
-          aliasId: postToCreate.ownerAliasId,
-          callback: (aliasData) => {
-            if (aliasData.error) {
-              callback({ error: aliasData.error });
-
-              return;
-            }
-
-            saveCallback();
-          },
-        });
+      if (postToCreate.ownerAliasId && !authUser.aliases.includes(postToCreate.ownerAliasId)) {
+        callback({ error: new errorCreator.NotAllowed({ name: `create forum post with alias ${postToCreate.ownerAliasId}` }) });
 
         return;
       }
 
-      saveCallback();
+      threadManager.getThreadById({
+        token,
+        needsAccess: true,
+        threadId: postToCreate.threadId,
+        internalCallUser: authUser,
+        callback: ({ error: threadError, data: threadData }) => {
+          if (threadError) {
+            callback({ error: threadError });
+
+            return;
+          }
+
+          const { thread } = threadData;
+
+          dbPost.createPost({
+            post: postToCreate,
+            callback: (postData) => {
+              if (postData.error) {
+                callback({ error: postData.error });
+
+                return;
+              }
+
+              threadManager.updateThreadTime({
+                forumId: thread.forumId,
+                threadId: postToCreate.threadId,
+                callback: ({ error: updateError }) => {
+                  if (updateError) {
+                    callback({ error: updateError });
+
+                    return;
+                  }
+
+                  const dataToSend = {
+                    data: {
+                      post: postData.data.post,
+                      changeType: dbConfig.ChangeTypes.CREATE,
+                    },
+                  };
+
+
+                  io.emit(dbConfig.EmitTypes.FORUMPOST, dataToSend);
+
+                  callback(dataToSend);
+                },
+              });
+            },
+          });
+        },
+      });
     },
   });
 }
 
 /**
- * Update an existing forum post
- * @param {Object} params - Parameters
- * @param {Object} params.post - Forum post to update
- * @param {Object} params.callback - Callback
- * @param {Object} params.token - jwt
- * @param {Object} params.io - Socket.io. Will be used if socket is not set
- * @param {Object} [params.socket] - Socket.io
+ * Update an existing forum post.
+ * @param {Object} params - Parameters.
+ * @param {Object} params.post - Forum post to update.
+ * @param {Object} params.callback - Callback.
+ * @param {Object} params.token - jwt.
+ * @param {Object} params.io - Socket.io.
  */
 function updatePost({
   post,
@@ -300,56 +154,54 @@ function updatePost({
   callback,
   token,
   io,
-  socket,
+  options,
+  internalCallUser,
 }) {
-  authenticator.isUserAllowed({
+  managerHelper.getObjectById({
     token,
+    internalCallUser,
+    needsAccess: true,
+    objectId: postId,
+    objectType: 'post',
+    objectIdType: 'postId',
+    dbCallFunc: dbPost.getPostById,
     commandName: dbConfig.apiCommands.UpdateForumPost.name,
-    callback: ({ error, data }) => {
-      if (error) {
-        callback({ error });
+    callback: ({ error: getError, data: getData }) => {
+      if (getError) {
+        callback({ error: getError });
 
         return;
       }
 
-      const { user } = data;
+      const { authUser } = getData;
 
-      getAccessiblePost({
-        postId,
-        user,
-        shouldBeAdmin: true,
-        callback: (accessData) => {
-          if (accessData.error) {
-            callback({ error: accessData.error });
+      threadManager.getThreadById({
+        token,
+        needsAccess: true,
+        internalCallUser: authUser,
+        threadId: post.threadId,
+        callback: ({ error: threadError }) => {
+          if (threadError) {
+            callback({ error: threadError });
 
             return;
           }
 
-          dbPost.updatePost({
-            post,
-            postId,
-            callback: (updateData) => {
-              if (updateData.error) {
-                callback({ error: updateData.error });
-
-                return;
-              }
-
-              const dataToSend = {
-                data: {
-                  post: updateData.data.post,
-                  changeType: dbConfig.ChangeTypes.UPDATE,
-                },
-              };
-
-              if (socket) {
-                socket.broadcast.emit(dbConfig.EmitTypes.FORUMPOST, dataToSend);
-              } else {
-                io.emit(dbConfig.EmitTypes.FORUMPOST, dataToSend);
-              }
-
-              callback(dataToSend);
-            },
+          managerHelper.updateObject({
+            callback,
+            options,
+            token,
+            io,
+            internalCallUser: authUser,
+            objectId: postId,
+            object: post,
+            commandName: dbConfig.apiCommands.UpdateForumPost.name,
+            objectType: 'post',
+            dbCallFunc: dbPost.updatePost,
+            emitType: dbConfig.EmitTypes.FORUMPOST,
+            objectIdType: 'postId',
+            getDbCallFunc: dbPost.getPostById,
+            getCommandName: dbConfig.apiCommands.GetForumPost.name,
           });
         },
       });
@@ -362,31 +214,20 @@ function updatePost({
  * @param {Object} params - Parameters.
  * @param {string} params.token - jwt.
  * @param {Function} params.callback - Callback.
- * @param {boolean} [params.full] - Should the complete objects be returned?
  */
 function getPostsByUser({
   token,
   callback,
-  full,
 }) {
-  authenticator.isUserAllowed({
+  managerHelper.getObjects({
+    callback,
     token,
-    commandName: full ? dbConfig.apiCommands.GetFull.name : dbConfig.apiCommands.GetForumPost.name,
-    callback: ({ error, data }) => {
-      if (error) {
-        callback({ error });
-
-        return;
-      }
-
-      const { user } = data;
-
-      dbPost.getPostsByUser({
-        callback,
-        full,
-        user,
-      });
-    },
+    shouldSort: true,
+    sortName: 'customLastUpdated',
+    fallbackSortName: 'lastUpdated',
+    commandName: dbConfig.apiCommands.GetPositions.name,
+    objectsType: 'posts',
+    dbCallFunc: dbPost.getPostsByUser,
   });
 }
 
@@ -579,42 +420,6 @@ function getPostsByThread({
             },
           });
         },
-      });
-    },
-  });
-}
-
-/**
- * Get a forum post.
- * @param {Object} params - Parameters.
- * @param {string} params.postId - Id of the post.
- * @param {Function} params.callback - Callback.
- * @param {string} params.token - jwt.
- */
-function getPostById({
-  postId,
-  callback,
-  token,
-  full,
-}) {
-  authenticator.isUserAllowed({
-    token,
-    commandName: dbConfig.apiCommands.GetForumPost.name,
-    callback: ({ error, data }) => {
-      if (error) {
-        callback({ error });
-
-        return;
-      }
-
-      const { user } = data;
-
-      getAccessiblePost({
-        full,
-        user,
-        postId,
-        callback,
-        shouldBeAdmin: full && dbConfig.apiCommands.GetFull.accessLevel > user.accessLevel,
       });
     },
   });

@@ -70,7 +70,7 @@ class GeneralError {
     this.extraData = extraData;
 
     if (appConfig.verboseError || verbose) {
-      console.error(`Error Type: ${type}. `, text.join(' '));
+      console.error(`Error Type: ${type}. `, text.join(' ').replace(/"password": ".*"/g, '"password": true'));
       printError(errorObject);
     }
   }

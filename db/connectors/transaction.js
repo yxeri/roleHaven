@@ -18,7 +18,6 @@
 
 const mongoose = require('mongoose');
 const dbConnector = require('../databaseConnector');
-const dbWallet = require('./wallet');
 const errorCreator = require('../../error/errorCreator');
 
 const transactionSchema = new mongoose.Schema(dbConnector.createSchema({
@@ -30,14 +29,6 @@ const transactionSchema = new mongoose.Schema(dbConnector.createSchema({
 }), { collection: 'transactions' });
 
 const Transaction = mongoose.model('transaction', transactionSchema);
-
-const transactionFilter = dbConnector.createFilter({
-  amount: 1,
-  toWalletId: 1,
-  fromWalletId: 1,
-  note: 1,
-  coordinates: 1,
-});
 
 /**
  * Update transaction properties.
@@ -140,14 +131,16 @@ function getTransactionsByWallet({ walletId, callback }) {
 }
 
 /**
- * Get transactions by user
- * @param {Object} params - Parameters
- * @param {string} params.userId - Id of the user
- * @param {Function} params.callback - Callback
+ * Get transactions by user.
+ * @param {Object} params - Parameters.
+ * @param {string} params.user - User retrieving the transactions.
+ * @param {Function} params.callback - Callback.
  */
-function getTransactionsByUser({ userId, callback }) {
-  dbWallet.getWalletsByUser({
-    userId,
+function getTransactionsByUser({ user, callback }) {
+  const query = dbConnector.createUserQuery({ user });
+
+  getTransactions({
+    query,
     callback: ({ error, data }) => {
       if (error) {
         callback({ error });
@@ -155,18 +148,9 @@ function getTransactionsByUser({ userId, callback }) {
         return;
       }
 
-      const walletIds = data.wallets.map(wallet => wallet.walletId);
-      const query = {
-        $or: [
-          { fromWalletId: { $in: walletIds } },
-          { toWalletId: { $in: walletIds } },
-        ],
-      };
+      const { transactions } = data;
 
-      getTransactions({
-        callback,
-        query,
-      });
+      callback({ data: { transactions } });
     },
   });
 }
@@ -207,15 +191,6 @@ function removeTransaction({ transactionId, callback }) {
     object: Transaction,
     query: { _id: transactionId },
   });
-}
-
-/**
- * Get all transactions
- * @param {Object} params - Parameters
- * @param {Function} params.callback - Callback
- */
-function getAllTransactions({ callback }) {
-  getTransactions({ callback });
 }
 
 /**
@@ -280,33 +255,9 @@ function updateTransaction({
   });
 }
 
-/**
- * Get transactions created by the user.
- * @param {Object} params - Parameters.
- * @param {string} params.userId - Id of the user.
- * @param {Function} params.callback - Callback.
- * @param {boolean} [params.full] - Should the complete objects be returned?
- */
-function getTransactionsCreatedByUser({
-  userId,
-  callback,
-  full,
-}) {
-  const filter = !full ? transactionFilter : {};
-
-  getTransactions({
-    filter,
-    callback,
-    query: { ownerId: userId },
-  });
-}
-
 exports.createTransaction = createTransaction;
 exports.getTransactionsByWallet = getTransactionsByWallet;
 exports.getTransactionsByUser = getTransactionsByUser;
 exports.removeTransaction = removeTransaction;
-exports.getAllTransactions = getAllTransactions;
 exports.getTransactionById = getTransactionById;
 exports.updateTransaction = updateTransaction;
-exports.getTransactionsCreatedByUser = getTransactionsCreatedByUser;
-

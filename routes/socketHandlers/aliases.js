@@ -41,24 +41,13 @@ function handle(socket, io) {
     aliasManager.updateAlias(params);
   });
 
-  socket.on('removeAlias', (params, callback = () => {
-  }) => {
-    params.callback = callback;
-    params.io = io;
-    params.socket = socket;
-    aliasManager.removeAlias(params);
-  });
-
   socket.on('getAlias', (params, callback = () => {
   }) => {
     params.callback = callback;
     params.io = io;
     params.socket = socket;
-    if (params.aliasName) {
-      aliasManager.getAliasByName(params);
-    } else {
-      aliasManager.getAliasById(params);
-    }
+
+    aliasManager.getAliasById(params);
   });
 
   socket.on('getAliases', (params, callback = () => {

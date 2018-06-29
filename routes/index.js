@@ -96,6 +96,13 @@ function handle(io) {
         userVerify: appConfig.userVerify,
         showDevInfo: appConfig.showDevInfo,
         dayModification: appConfig.dayModification,
+        permissions: {
+          CreatePosition: dbConfig.apiCommands.CreatePosition,
+          UpdatePosition: dbConfig.apiCommands.UpdatePosition,
+          UpdatePositionCoordinates: dbConfig.apiCommands.UpdatePositionCoordinates,
+          SendMessage: dbConfig.apiCommands.SendMessage,
+          SendWhisper: dbConfig.apiCommands.SendWhisper,
+        },
       },
     });
 

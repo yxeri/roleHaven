@@ -21,52 +21,65 @@ const errorCreator = require('../error/errorCreator');
 const objectValidator = require('../utils/objectValidator');
 const authenticator = require('../helpers/authenticator');
 const dbSimpleMsg = require('../db/connectors/simpleMsg');
+const managerHelper = require('../helpers/manager');
 
 /**
- * Get simple message by Id and check if the user has access to it.
+ * Get a simple msg.
  * @param {Object} params - Parameters.
- * @param {Object} params.user - User retrieving the message.
- * @param {string} params.simpleMsgId - Id of the message to retrieve.
+ * @param {string} params.token - jwt.
  * @param {Function} params.callback - Callback.
- * @param {string} [params.errorContentText] - Text to be printed on error.
- * @param {boolean} [params.shouldBeAdmin] - Does the user have to be an admin?
+ * @param {string} params.simpleMsgId - Id of the message.
  */
-function getAccessibleMessage({
-  user,
-  simpleMsgId,
+function getSimpleMsgById({
+  token,
   callback,
-  shouldBeAdmin,
-  full,
-  errorContentText = `simpleMsgId ${simpleMsgId}`,
+  simpleMsgId,
+  internalCallUser,
 }) {
-  dbSimpleMsg.getSimpleMsgById({
-    simpleMsgId,
-    callback: (messageData) => {
-      if (messageData.error) {
-        callback({ error: messageData.error });
-
-        return;
-      } else if (!authenticator.hasAccessTo({
-        shouldBeAdmin,
-        toAuth: user,
-        objectToAccess: messageData.data.simpleMsg,
-      })) {
-        callback({ error: new errorCreator.NotAllowed({ name: errorContentText }) });
+  authenticator.isUserAllowed({
+    commandName: dbConfig.apiCommands.GetSimpleMsgs.name,
+    token,
+    internalCallUser,
+    callback: ({ error, data }) => {
+      if (error) {
+        callback({ error });
 
         return;
       }
 
-      const foundMsg = messageData.data.simpleMsg;
-      const filteredMsg = {
-        text: foundMsg.text,
-        lastUpdated: foundMsg.lastUpdated,
-        ownerId: foundMsg.ownerId,
-        ownerAliasId: foundMsg.ownerAliasId,
-      };
+      const { user: authUser } = data;
 
-      callback({
-        data: {
-          simpleMsg: full ? foundMsg : filteredMsg,
+      dbSimpleMsg.getSimpleMsgById({
+        simpleMsgId,
+        callback: ({ error: msgError, data: msgData }) => {
+          if (msgError) {
+            callback({ error: msgError });
+
+            return;
+          }
+
+          console.log('found simple', msgData);
+
+          const { simpleMsg: foundSimpleMsg } = msgData;
+          const {
+            hasAccess,
+            canSee,
+          } = authenticator.hasAccessTo({
+            objectToAccess: foundSimpleMsg,
+            toAuth: authUser,
+          });
+
+          if (!canSee) {
+            callback({ error: new errorCreator.NotAllowed({ name: `get simplemsg ${simpleMsgId}` }) });
+
+            return;
+          } else if (!hasAccess) {
+            callback({ data: { simpleMsg: managerHelper.stripObject({ object: foundSimpleMsg }) } });
+
+            return;
+          }
+
+          callback({ data: msgData });
         },
       });
     },
@@ -99,8 +112,8 @@ function sendSimpleMsg({
         callback({ error: new errorCreator.InvalidData({ expected: '{ text }' }) });
 
         return;
-      } else if (text.length > appConfig.messageMaxLength) {
-        callback({ error: new errorCreator.InvalidCharacters({ expected: `text length ${appConfig.messageMaxLength}` }) });
+      } else if (text.length === 0 || text.length > appConfig.messageMaxLength) {
+        callback({ error: new errorCreator.InvalidCharacters({ expected: `text length 1-${appConfig.messageMaxLength}` }) });
 
         return;
       }
@@ -138,41 +151,6 @@ function sendSimpleMsg({
 }
 
 /**
- * Get a simple msg.
- * @param {Object} params - Parameters.
- * @param {string} params.token - jwt.
- * @param {Function} params.callback - Callback.
- * @param {string} params.simpleMsgId - Id of the message.
- */
-function getSimpleMsgById({
-  token,
-  callback,
-  full,
-  simpleMsgId,
-}) {
-  authenticator.isUserAllowed({
-    token,
-    commandName: full ? dbConfig.apiCommands.GetFull.name : dbConfig.apiCommands.GetSimpleMsgs.name,
-    callback: ({ error, data }) => {
-      if (error) {
-        callback({ error });
-
-        return;
-      }
-
-      const { user } = data;
-
-      getAccessibleMessage({
-        user,
-        full,
-        simpleMsgId,
-        callback,
-      });
-    },
-  });
-}
-
-/**
  * Update a simple msg.
  * @param {Object} params - Parameters.
  * @param {string} params.token - jwt.
@@ -198,15 +176,28 @@ function updateSimpleMsg({
         return;
       }
 
-      const { user } = data;
+      const { user: authUser } = data;
 
-      getAccessibleMessage({
-        user,
+      getSimpleMsgById({
         simpleMsgId,
-        shouldBeAdmin: true,
-        callback: ({ error: accessError }) => {
-          if (accessError) {
-            callback({ error: accessError });
+        internalCallUser: authUser,
+        callback: ({ error: getError, data: getData }) => {
+          if (getError) {
+            callback({ error: getError });
+
+            return;
+          }
+
+          const { simpleMsg: foundSimpleMsg } = getData;
+          const {
+            hasFullAccess,
+          } = authenticator.hasAccessTo({
+            objectToAccess: foundSimpleMsg,
+            toAuth: authUser,
+          });
+
+          if (!hasFullAccess) {
+            callback({ error: new errorCreator.NotAllowed({ name: `update simpleMsg ${simpleMsgId}` }) });
 
             return;
           }
@@ -222,7 +213,7 @@ function updateSimpleMsg({
                 return;
               }
 
-              const updatedMessage = updateData.simpleMsg;
+              const { simpleMsg: updatedMessage } = updateData;
               const dataToSend = {
                 data: {
                   simpleMsg: updatedMessage,
@@ -230,7 +221,7 @@ function updateSimpleMsg({
                 },
               };
 
-              io.emit(dataToSend);
+              io.emit(dbConfig.EmitTypes.SIMPLEMSG, dataToSend);
 
               callback(dataToSend);
             },
@@ -263,15 +254,29 @@ function removeSimpleMsg({
         return;
       }
 
-      const { user } = data;
+      const { user: authUser } = data;
 
-      getAccessibleMessage({
-        user,
+      getSimpleMsgById({
         simpleMsgId,
-        shouldBeAdmin: true,
-        callback: ({ error: accessError }) => {
+        internalCallUser: authUser,
+        callback: ({ error: accessError, data: msgData }) => {
           if (accessError) {
             callback({ error: accessError });
+
+            return;
+          }
+
+          const { simpleMsg } = msgData;
+
+          const {
+            hasFullAccess,
+          } = authenticator.hasAccessTo({
+            objectToAccess: simpleMsg,
+            toAuth: authUser,
+          });
+
+          if (!hasFullAccess) {
+            callback({ error: new errorCreator.NotAllowed({ name: `remove simpleMsg ${simpleMsgId}` }) });
 
             return;
           }
@@ -310,21 +315,43 @@ function removeSimpleMsg({
 function getSimpleMsgsByUser({
   token,
   callback,
-  full,
 }) {
   authenticator.isUserAllowed({
     token,
-    commandName: full ? dbConfig.apiCommands.GetFull.name : dbConfig.apiCommands.GetSimpleMsgs.name,
-    callback: ({ error }) => {
+    commandName: dbConfig.apiCommands.GetSimpleMsgs.name,
+    callback: ({ error, data }) => {
       if (error) {
         callback({ error });
 
         return;
       }
 
+      const { user: authUser } = data;
+
       dbSimpleMsg.getAllSimpleMsgs({
-        full,
-        callback,
+        callback: ({ error: getError, data: getData }) => {
+          if (getError) {
+            callback({ error: getError });
+
+            return;
+          }
+
+          const { simpleMsgs } = getData;
+          const allSimpleMsgs = simpleMsgs.map((simpleMsg) => {
+            const { hasFullAccess } = authenticator.hasAccessTo({
+              toAuth: authUser,
+              objectToAccess: simpleMsg,
+            });
+
+            if (!hasFullAccess) {
+              return managerHelper.stripObject({ object: simpleMsg });
+            }
+
+            return simpleMsg;
+          });
+
+          callback({ data: { simpleMsgs: allSimpleMsgs } });
+        },
       });
     },
   });

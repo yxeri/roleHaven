@@ -123,16 +123,26 @@ function handle(io) {
    *
    * @apiHeader {string} Authorization Your JSON Web Token.
    *
-   * @apiDescription Get transactions. The default is to return all transactions made by the user. Setting walletId will instead retrieve all transactions connected to the wallet.
-   *
-   * @apiParam {boolean} [full] [Query] Should the complete object be retrieved?
-   * @apiParam {string} [walletId] [Query] Id of the wallet to retrieve transactions from.
+   * @apiDescription Get transactions.
    *
    * @apiSuccess {Object} data
    * @apiSuccess {Transaction[]} data.transactions Found transactions.
    */
   router.get('/', (request, response) => {
-    helper.getTransactions({ request, response });
+    const { authorization: token } = request.headers;
+
+    transactionManager.getTransactionsByUser({
+      token,
+      callback: ({ error, data }) => {
+        if (error) {
+          restErrorChecker.checkAndSendError({ response, error, sentData: request.body.data });
+
+          return;
+        }
+
+        response.json({ data });
+      },
+    });
   });
 
   /**

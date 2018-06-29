@@ -80,19 +80,14 @@ function handle(io) {
    *
    * @apiDescription Gets positions.
    *
-   * @apiParam {boolean} [full] [Query]
-   * @apiParam {string} [type] [Query] Type of positions to retrieve. Default is WORLD.
-   *
    * @apiSuccess {Object} data
    * @apiSuccess {Position[]} data.positions Found positions.
    */
   router.get('/', (request, response) => {
-    const { type, full } = request.query;
     const { authorization: token } = request.headers;
 
-    const params = {
+    positionManager.getPositionsByUser({
       token,
-      full,
       callback: ({ error, data }) => {
         if (error) {
           restErrorChecker.checkAndSendError({ response, error });
@@ -102,11 +97,7 @@ function handle(io) {
 
         response.json({ data });
       },
-    };
-
-    if (type) { params.positionTypes = [type]; }
-
-    positionManager.getPositions(params);
+    });
   });
 
   /**

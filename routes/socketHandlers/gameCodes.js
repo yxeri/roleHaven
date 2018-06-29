@@ -67,7 +67,7 @@ function handle(socket, io) {
     params.io = io;
     params.socket = socket;
 
-    gameCodeManager.getGameCodesByOwner(params);
+    gameCodeManager.getGameCodesByUser(params);
   });
 
   socket.on('useGameCode', (params, callback = () => {

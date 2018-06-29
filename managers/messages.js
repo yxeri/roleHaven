@@ -22,85 +22,24 @@ const authenticator = require('../helpers/authenticator');
 const dbMessage = require('../db/connectors/message');
 const errorCreator = require('../error/errorCreator');
 const objectValidator = require('../utils/objectValidator');
-const aliasManager = require('./aliases');
 const roomManager = require('./rooms');
-const dbRoom = require('../db/connectors/room');
-const dbUser = require('../db/connectors/user');
-const dbAlias = require('../db/connectors/alias');
+const textTools = require('../utils/textTools');
+const managerHelper = require('../helpers/manager');
+const userManager = require('./users');
+const aliasManager = require('./aliases');
 
 /**
  * Get an emit type based on the message type
- * @param {string} messageType - Type of message
+ * @param {Object} message - The message to generate an emit type from.
  * @return {string} - Emit type
  */
-function generateEmitType(messageType) {
-  switch (messageType) {
+function generateEmitType(message) {
+  switch (message.messageType) {
     case dbConfig.MessageTypes.WHISPER: { return dbConfig.EmitTypes.WHISPER; }
     case dbConfig.MessageTypes.BROADCAST: { return dbConfig.EmitTypes.BROADCAST; }
     default: { return dbConfig.EmitTypes.CHATMSG; }
   }
 }
-
-/**
- * Get message by Id and check if the user has access to it.
- * @param {Object} params - Parameters.
- * @param {Object} params.user - User retrieving the message.
- * @param {string} params.messageId - Id of the message to retrieve.
- * @param {Function} params.callback - Callback.
- * @param {string} [params.errorContentText] - Text to be printed on error.
- * @param {boolean} [params.shouldBeAdmin] - Does the user have to be an admin?
- */
-function getAccessibleMessage({
-  user,
-  messageId,
-  callback,
-  shouldBeAdmin,
-  full,
-  errorContentText = `messageId ${messageId}`,
-}) {
-  dbMessage.getMessageById({
-    messageId,
-    callback: (messageData) => {
-      if (messageData.error) {
-        callback({ error: messageData.error });
-
-        return;
-      } else if (!authenticator.hasAccessTo({
-        shouldBeAdmin,
-        toAuth: user,
-        objectToAccess: messageData.data.message,
-      })) {
-        callback({ error: new errorCreator.NotAllowed({ name: errorContentText }) });
-
-        return;
-      }
-
-      const foundMessage = messageData.data.message;
-      const filteredMessage = {
-        objectId: foundMessage.objectId,
-        text: foundMessage.text,
-        altText: foundMessage.altText,
-        messageType: foundMessage.messageType,
-        roomId: foundMessage.roomId,
-        lastUpdated: foundMessage.lastUpdated,
-        timeCreated: foundMessage.timeCreated,
-        customLastUpdated: foundMessage.customLastUpdated,
-        customTimeCreated: foundMessage.customTimeCreated,
-        coordinates: foundMessage.coordinates,
-        image: foundMessage.image,
-        intro: foundMessage.intro,
-        extro: foundMessage.extro,
-      };
-
-      callback({
-        data: {
-          message: full ? foundMessage : filteredMessage,
-        },
-      });
-    },
-  });
-}
-
 
 /**
  * Store and send a message.
@@ -146,6 +85,31 @@ function sendAndStoreMessage({
 }
 
 /**
+ * Get a message by Id.
+ * @param {Object} params - Parameters.
+ * @param {string} params.token - jwt.
+ * @param {Function} params.callback - Callback.
+ * @param {string} params.messageId - Id of the message to retrieve.
+ */
+function getMessageById({
+  token,
+  callback,
+  messageId,
+  internalCallUser,
+}) {
+  managerHelper.getObjectById({
+    token,
+    internalCallUser,
+    callback,
+    objectId: messageId,
+    objectType: 'message',
+    objectIdType: 'messageId',
+    dbCallFunc: dbMessage.getMessageById,
+    commandName: dbConfig.apiCommands.GetMessage.name,
+  });
+}
+
+/**
  * Get messages by room
  * @param {Object} params - Parameters.
  * @param {string} params.token - jwt.
@@ -171,14 +135,19 @@ function getMessagesByRoom({
         return;
       }
 
-      const { user } = data;
+      const { user: authUser } = data;
 
-      roomManager.getAccessibleRoom({
+      if (!authUser.accessLevel < dbConfig.AccessLevels.ADMIN && !authUser.followingRooms(roomId)) {
+        callback({ error: new errorCreator.NotAllowed({ name: `${dbConfig.apiCommands.GetHistory.name}. User: ${authUser.objectId}. Access: messages rom room ${roomId}` }) });
+
+        return;
+      }
+
+      roomManager.getRoomById({
         roomId,
-        user,
-        callback: (roomData) => {
-          if (roomData.error) {
-            callback({ error: roomData.error });
+        callback: ({ error: roomError }) => {
+          if (roomError) {
+            callback({ error: roomError });
 
             return;
           }
@@ -187,16 +156,8 @@ function getMessagesByRoom({
             startDate,
             shouldGetFuture,
             roomId,
-            user,
-            callback: (messageData) => {
-              if (messageData.error) {
-                callback({ error: messageData.error });
-
-                return;
-              }
-
-              callback(messageData);
-            },
+            callback,
+            user: authUser,
           });
         },
       });
@@ -209,31 +170,20 @@ function getMessagesByRoom({
  * @param {Object} params - Parameters.
  * @param {string} params.token - jwt
  * @param {Function} params.callback - Callback.
- * @param {boolean} [params.full] - Full.
  */
-function getMessagesByFollowed({
+function getMessagesByUser({
   token,
   callback,
-  full,
 }) {
-  authenticator.isUserAllowed({
+  managerHelper.getObjects({
     token,
-    commandName: full ? dbConfig.apiCommands.GetFull.name : dbConfig.apiCommands.GetMessage.name,
-    callback: ({ error, data }) => {
-      if (error) {
-        callback({ error });
-
-        return;
-      }
-
-      const { user } = data;
-
-      dbMessage.getMessagesByFollowed({
-        user,
-        full,
-        callback,
-      });
-    },
+    callback,
+    shouldSort: true,
+    sortName: 'customTimeCreated',
+    fallbackSortName: 'timeCreated',
+    commandName: dbConfig.apiCommands.GetMessage.name,
+    objectsType: 'messages',
+    dbCallFunc: dbMessage.getMessagesByUser,
   });
 }
 
@@ -248,12 +198,14 @@ function getFullHistory({ token, callback }) {
   authenticator.isUserAllowed({
     token,
     commandName: dbConfig.apiCommands.GetAllMessages.name,
-    callback: ({ error }) => {
+    callback: ({ error, data }) => {
       if (error) {
         callback({ error });
 
         return;
       }
+
+      const { user: authUser } = data;
 
       dbMessage.getAllMessages({
         callback: ({ error: messagesError, data: messagesData }) => {
@@ -263,7 +215,8 @@ function getFullHistory({ token, callback }) {
             return;
           }
 
-          dbRoom.getAllRooms({
+          roomManager.getAllRooms({
+            internalCallUser: authUser,
             callback: ({ error: roomsError, data: roomsData }) => {
               if (roomsError) {
                 callback({ error: roomsError });
@@ -271,7 +224,8 @@ function getFullHistory({ token, callback }) {
                 return;
               }
 
-              dbUser.getAllUsernames({
+              userManager.getAllUsers({
+                internalCallUser: authUser,
                 callback: ({ error: usersError, data: usersData }) => {
                   if (usersError) {
                     callback({ error: usersError });
@@ -279,7 +233,8 @@ function getFullHistory({ token, callback }) {
                     return;
                   }
 
-                  dbAlias.getAllAliasNames({
+                  aliasManager.getAllAliases({
+                    internalCallUser: authUser,
                     callback: ({ error: aliasesError, data: aliasesData }) => {
                       if (aliasesError) {
                         callback({ error: aliasesError });
@@ -287,41 +242,39 @@ function getFullHistory({ token, callback }) {
                         return;
                       }
 
-                      const aliasesCollection = {};
-                      const usersCollection = {};
-                      const roomsCollection = {};
-
-                      usersData.users.forEach((user) => {
-                        usersCollection[user.objectId] = {
-                          username: user.username,
-                        };
-                      });
-
-                      aliasesData.aliases.forEach((alias) => {
-                        aliasesCollection[alias.objectId] = {
-                          aliasName: alias.aliasName,
-                        };
-                      });
-
-                      roomsData.rooms.forEach((room) => {
+                      const { aliases } = aliasesData;
+                      const { users } = usersData;
+                      const { rooms } = roomsData;
+                      const roomsCollection = rooms.map((room) => {
                         const roomToSave = room;
 
                         if (room.isWhisper) {
-                          roomToSave.roomName = `Whisper: ${usersCollection[room.participantIds[0]].username} <-> ${usersCollection[roomToSave.participantIds[1]].username}`;
+                          const firstParticipant = users[room.participantIds[0]] || aliases[room.participantIds[0]];
+                          const secondParticipant = users[room.participantIds[1]] || aliases[room.participantIds[1]];
+
+                          roomToSave.roomName = `Whisper: ${firstParticipant.username || firstParticipant.aliasName} <-> ${secondParticipant.username || secondParticipant.aliasName}`;
                         }
 
-                        roomsCollection[room.objectId] = roomToSave;
-                        roomsCollection[room.objectId].messages = [];
+                        return roomToSave;
                       });
 
-                      messagesData.messages.forEach((message) => {
-                        const messageToSave = message;
-                        messageToSave.username = usersCollection[messageToSave.ownerId];
-                        messageToSave.roomName = roomsCollection[messageToSave.roomId].roomName;
+                      messagesData.messages.sort((a, b) => {
+                        const aTime = a.customTimeCreated || a.timeCreated;
+                        const bTime = b.customTimeCreated || b.timeCreated;
 
-                        if (messageToSave.ownerAliasId) {
-                          messageToSave.aliasName = aliasesCollection[messageToSave.ownerAliasId];
+                        if (aTime < bTime) {
+                          return -1;
+                        } else if (aTime > bTime) {
+                          return 1;
                         }
+
+                        return 0;
+                      }).forEach((message) => {
+                        const messageToSave = {
+                          username: message.ownerAliasId ? aliases[message.ownerAliasId].aliasName : users[message.ownerId].username,
+                          roomName: roomsCollection[message.roomId].roomName,
+                          time: message.customTimeCreated || message.timeCreated,
+                        };
 
                         roomsCollection[messageToSave.roomId].messages.push(messageToSave);
                       });
@@ -363,7 +316,7 @@ function sendBroadcastMsg({
   authenticator.isUserAllowed({
     token,
     commandName: dbConfig.apiCommands.SendBroadcast.name,
-    callback: ({ error }) => {
+    callback: ({ error, data }) => {
       if (error) {
         callback({ error });
 
@@ -372,36 +325,23 @@ function sendBroadcastMsg({
         callback({ error: new errorCreator.InvalidData({ expected: '{ message: { text }, io }' }) });
 
         return;
-      } else if (message.text.join('').length > appConfig.broadcastMaxLength) {
+      }
+
+      const text = textTools.cleanText(message.text.join(''));
+
+      if (text.length > appConfig.broadcastMaxLength || text.length <= 0) {
         callback({ error: new errorCreator.InvalidCharacters({ expected: `text length ${appConfig.broadcastMaxLength}` }) });
 
         return;
       }
 
+      const { user: authUser } = data;
       const newMessage = message;
       newMessage.messageType = dbConfig.MessageTypes.BROADCAST;
       newMessage.roomId = dbConfig.rooms.bcast.objectId;
 
-      if (newMessage.ownerAliasId) {
-        aliasManager.getAccessibleAlias({
-          aliasId: newMessage.ownerAliasId,
-          callback: (aliasData) => {
-            if (aliasData.error) {
-              callback({ error: aliasData.error });
-
-              return;
-            }
-
-            sendAndStoreMessage({
-              socket,
-              io,
-              callback,
-              image,
-              emitType: dbConfig.EmitTypes.BROADCAST,
-              message: newMessage,
-            });
-          },
-        });
+      if (message.ownerAliasId && !authUser.aliases.includes(message.ownerAliasId)) {
+        callback({ error: new errorCreator.NotAllowed({ name: `${dbConfig.apiCommands.SendBroadcast.name}. User: ${authUser.objectId}. Access alias ${message.ownerAliasId}` }) });
 
         return;
       }
@@ -447,48 +387,34 @@ function sendChatMsg({
         callback({ error: new errorCreator.InvalidData({ expected: '{ message: { text }, io }' }) });
 
         return;
-      } else if (message.text.join('').length > appConfig.messageMaxLength || message.text.join('').length === 0) {
+      }
+
+      const text = textTools.cleanText(message.text.join(''));
+
+      if (text.length > appConfig.messageMaxLength || text.length <= 0) {
         callback({ error: new errorCreator.InvalidCharacters({ expected: `text length ${appConfig.messageMaxLength}` }) });
 
         return;
       }
 
-      const { user } = data;
+      const { user: authUser } = data;
       const newMessage = message;
       newMessage.messageType = dbConfig.MessageTypes.CHAT;
-      newMessage.ownerId = user.objectId;
+      newMessage.ownerId = authUser.objectId;
 
-      roomManager.getAccessibleRoom({
-        user,
+      if (message.ownerAliasId && !authUser.aliases.includes(message.ownerAliasId)) {
+        callback({ error: new errorCreator.NotAllowed({ name: `${dbConfig.apiCommands.SendMessage.name}. User: ${authUser.objectId}. Access alias ${message.ownerAliasId}` }) });
+
+        return;
+      }
+
+      roomManager.getRoomById({
+        needsAccess: true,
+        internalCallUser: authUser,
         roomId: newMessage.roomId,
         callback: ({ error: roomError }) => {
           if (roomError) {
             callback({ error: roomError });
-
-            return;
-          }
-
-          if (newMessage.ownerAliasId) {
-            aliasManager.getAccessibleAlias({
-              user,
-              aliasId: newMessage.ownerAliasId,
-              callback: (aliasData) => {
-                if (aliasData.error) {
-                  callback({ error: aliasData.error });
-
-                  return;
-                }
-
-                sendAndStoreMessage({
-                  socket,
-                  io,
-                  callback,
-                  image,
-                  emitType: dbConfig.EmitTypes.CHATMSG,
-                  message: newMessage,
-                });
-              },
-            });
 
             return;
           }
@@ -538,116 +464,105 @@ function sendWhisperMsg({
         callback({ error: new errorCreator.InvalidData({ expected: '{ message: { text }, io }' }) });
 
         return;
-      } else if (message.text.join('').length > appConfig.messageMaxLength || message.text.join('').length === 0) {
+      }
+
+      const text = textTools.cleanText(message.text.join(''));
+
+      if (text.length > appConfig.messageMaxLength || text.length <= 0) {
         callback({ error: new errorCreator.InvalidCharacters({ expected: `text length ${appConfig.messageMaxLength}` }) });
 
         return;
       }
 
-      const authUser = data.user;
+      const { user: authUser } = data;
       const newMessage = message;
       newMessage.messageType = dbConfig.MessageTypes.WHISPER;
       newMessage.ownerId = authUser.objectId;
       newMessage.ownerAliasId = participantIds.find(participant => authUser.aliases.includes(participant));
 
-      const send = () => {
-        roomManager.doesWhisperRoomExist({
-          participantIds,
-          callback: (whisperData) => {
-            if (whisperData.error) {
-              callback({ error: whisperData.error });
-
-              return;
-            }
-
-            const { exists } = whisperData.data;
-
-            if (!exists) {
-              roomManager.createAndFollowWhisperRoom({
-                participantIds,
-                socket,
-                io,
-                token,
-                user: authUser,
-                callback: (newWhisperData) => {
-                  if (newWhisperData.error) {
-                    callback({ error: newWhisperData.error });
-
-                    return;
-                  }
-
-                  const { room: newRoom } = newWhisperData.data;
-                  newMessage.roomId = newRoom.objectId;
-
-                  roomManager.getAccessibleRoom({
-                    roomId: newMessage.roomId,
-                    user: authUser,
-                    callback: (roomData) => {
-                      if (roomData.error) {
-                        callback({ error: roomData.error });
-
-                        return;
-                      }
-
-                      sendAndStoreMessage({
-                        socket,
-                        io,
-                        callback,
-                        image,
-                        emitType: dbConfig.EmitTypes.WHISPER,
-                        message: newMessage,
-                      });
-                    },
-                  });
-                },
-              });
-
-              return;
-            }
-
-            roomManager.getAccessibleRoom({
-              roomId: newMessage.roomId,
-              user: authUser,
-              callback: (roomData) => {
-                if (roomData.error) {
-                  callback({ error: roomData.error });
-
-                  return;
-                }
-
-                sendAndStoreMessage({
-                  socket,
-                  io,
-                  callback,
-                  image,
-                  emitType: dbConfig.EmitTypes.WHISPER,
-                  message: newMessage,
-                });
-              },
-            });
-          },
-        });
-      };
-
-      if (message.ownerAliasId) {
-        aliasManager.getAccessibleAlias({
-          aliasId: message.ownerAliasId,
-          user: authUser,
-          callback: (aliasData) => {
-            if (aliasData.error) {
-              callback({ error: aliasData.error });
-
-              return;
-            }
-
-            send();
-          },
-        });
+      if (message.ownerAliasId && !authUser.aliases.includes(message.ownerAliasId)) {
+        callback({ error: new errorCreator.NotAllowed({ name: `${dbConfig.apiCommands.SendWhisper.name}. User: ${authUser.objectId}. Access alias ${message.ownerAliasId}` }) });
 
         return;
       }
 
-      send();
+      roomManager.doesWhisperRoomExist({
+        participantIds,
+        callback: ({ error: existsError, data: existsData }) => {
+          if (existsError) {
+            callback({ error: existsError });
+
+            return;
+          }
+
+          const { exists } = existsData;
+
+          if (!exists) {
+            roomManager.createAndFollowWhisperRoom({
+              participantIds,
+              socket,
+              io,
+              token,
+              user: authUser,
+              callback: (newWhisperData) => {
+                if (newWhisperData.error) {
+                  callback({ error: newWhisperData.error });
+
+                  return;
+                }
+
+                const { room: newRoom } = newWhisperData.data;
+                newMessage.roomId = newRoom.objectId;
+
+                roomManager.getRoomById({
+                  roomId: newMessage.roomId,
+                  internalCallUser: authUser,
+                  callback: (roomData) => {
+                    if (roomData.error) {
+                      callback({ error: roomData.error });
+
+                      return;
+                    }
+
+                    sendAndStoreMessage({
+                      socket,
+                      io,
+                      callback,
+                      image,
+                      emitType: dbConfig.EmitTypes.WHISPER,
+                      message: newMessage,
+                    });
+                  },
+                });
+              },
+            });
+
+            return;
+          }
+
+          roomManager.getRoomById({
+            needsAccess: true,
+            roomId: newMessage.roomId,
+            internalCallUser: authUser,
+            callback: (roomData) => {
+              if (roomData.error) {
+                callback({ error: roomData.error });
+
+                return;
+              }
+
+              sendAndStoreMessage({
+                socket,
+                io,
+                callback,
+                image,
+                emitType: dbConfig.EmitTypes.WHISPER,
+                message: newMessage,
+              });
+            },
+          });
+        },
+      });
     },
   });
 }
@@ -658,73 +573,26 @@ function sendWhisperMsg({
  * @param {string} params.messageId - Id of the message.
  * @param {Function} params.callback - Callback.
  * @param {string} params.token - jwt.
- * @param {Object} params.socket - Socket.io.
- * @param {Object} params.io - Socket.io. Will be used if socket is not set.
+ * @param {Object} params.io - Socket.io.
  */
 function removeMessage({
   messageId,
   callback,
   token,
-  socket,
   io,
 }) {
-  authenticator.isUserAllowed({
+  managerHelper.removeObject({
+    callback,
     token,
+    io,
+    getDbCallFunc: dbMessage.getMessageById,
+    getCommandName: dbConfig.apiCommands.GetMessage.name,
+    objectId: messageId,
     commandName: dbConfig.apiCommands.RemoveMessage.name,
-    callback: ({ error, data }) => {
-      if (error) {
-        callback({ error });
-
-        return;
-      }
-
-      const { user } = data;
-
-      getAccessibleMessage({
-        messageId,
-        user,
-        shouldBeAdmin: true,
-        callback: (roomData) => {
-          if (roomData.error) {
-            callback({ error: roomData.error });
-
-            return;
-          }
-
-          const { messageType, roomId } = roomData.data.message;
-
-          dbMessage.removeMessage({
-            messageId,
-            callback: (removeData) => {
-              if (removeData.error) {
-                callback({ error: removeData.error });
-
-                return;
-              }
-
-              const emitType = generateEmitType(messageType);
-              const dataToSend = {
-                data: {
-                  message: {
-                    roomId,
-                    objectId: messageId,
-                  },
-                  changeType: dbConfig.ChangeTypes.REMOVE,
-                },
-              };
-
-              if (socket) {
-                socket.to(roomId).emit(emitType, dataToSend);
-              } else {
-                io.to(roomId).emit(emitType, dataToSend);
-              }
-
-              callback(dataToSend);
-            },
-          });
-        },
-      });
-    },
+    objectType: 'message',
+    dbCallFunc: dbMessage.removeMessage,
+    emitTypeGenerator: generateEmitType,
+    objectIdType: 'messageId',
   });
 }
 
@@ -735,16 +603,14 @@ function removeMessage({
  * @param {string} params.messageId - Id of the message.
  * @param {Function} params.callback - Callback.
  * @param {string} params.token - jwt.
- * @param {Object} params.socket - Socket.io.
- * @param {Object} params.io - Socket.io. Will be used if socket is not set.
+ * @param {Object} params.io - Socket.io.
  * @param {Object} params.options - Update options.
  */
-function updateMsg({
+function updateMessage({
   messageId,
   message,
   callback,
   token,
-  socket,
   io,
   options,
 }) {
@@ -758,15 +624,28 @@ function updateMsg({
         return;
       }
 
-      const { user } = data;
+      const { user: authUser } = data;
 
-      getAccessibleMessage({
+      getMessageById({
         messageId,
-        user,
-        shouldBeAdmin: true,
-        callback: ({ error: accessError, data: accessData }) => {
-          if (accessError) {
-            callback({ error: accessError });
+        internCallUser: authUser,
+        callback: ({ error: getError, data: getData }) => {
+          if (getError) {
+            callback({ error: getError });
+
+            return;
+          }
+
+          const { message: oldMessage } = getData;
+          const {
+            hasFullAccess,
+          } = authenticator.hasAccessTo({
+            objectToAccess: oldMessage,
+            toAuth: authUser,
+          });
+
+          if (!hasFullAccess) {
+            callback({ error: new errorCreator.NotAllowed({ name: `${dbConfig.apiCommands.UpdateMessage.name}. User: ${authUser.objectId}. Access message ${messageId}` }) });
 
             return;
           }
@@ -782,12 +661,11 @@ function updateMsg({
                 return;
               }
 
-              const oldMessage = accessData.message;
-              const updatedMessage = updateData.message;
+              const { message: updatedMessage } = updateData;
 
-              const emitType = generateEmitType(updatedMessage.messageType);
-              const oldRoom = oldMessage.roomId;
-              const sendTo = updatedMessage.roomId;
+              const emitType = generateEmitType(updatedMessage);
+              const oldRoomId = oldMessage.roomId;
+              const sendToId = updatedMessage.roomId;
               const dataToSend = {
                 data: {
                   message: updatedMessage,
@@ -795,13 +673,7 @@ function updateMsg({
                 },
               };
 
-              if (socket) {
-                socket.to(sendTo).emit(emitType, dataToSend);
-              } else {
-                io.to(sendTo).emit(emitType, dataToSend);
-              }
-
-              if (oldRoom !== sendTo) {
+              if (oldRoomId !== sendToId) {
                 const oldDataToSend = {
                   data: {
                     message: { objectId: oldMessage.objectId },
@@ -809,8 +681,10 @@ function updateMsg({
                   },
                 };
 
-                io.to(oldRoom).emit(emitType, oldDataToSend);
+                io.to(oldRoomId).emit(emitType, oldDataToSend);
               }
+
+              io.to(sendToId).emit(emitType, dataToSend);
 
               callback(dataToSend);
             },
@@ -821,49 +695,12 @@ function updateMsg({
   });
 }
 
-/**
- * Get a message by Id.
- * @param {Object} params - Parameters.
- * @param {string} params.token - jwt.
- * @param {Function} params.callback - Callback.
- * @param {string} params.messageId - Id of the message to retrieve.
- * @param {boolean} [params.full] - Should access data be returned?
- */
-function getMessageById({
-  token,
-  callback,
-  messageId,
-  full,
-}) {
-  authenticator.isUserAllowed({
-    token,
-    commandName: dbConfig.apiCommands.GetMessage.name,
-    callback: ({ error, data }) => {
-      if (error) {
-        callback({ error });
-
-        return;
-      }
-
-      const { user } = data;
-
-      getAccessibleMessage({
-        user,
-        messageId,
-        full,
-        callback,
-        shouldBeAdmin: full && dbConfig.apiCommands.GetFull.accessLevel > user.accessLevel,
-      });
-    },
-  });
-}
-
 exports.sendBroadcastMsg = sendBroadcastMsg;
 exports.sendChatMsg = sendChatMsg;
 exports.sendWhisperMsg = sendWhisperMsg;
 exports.removeMesssage = removeMessage;
-exports.updateMsg = updateMsg;
+exports.updateMessage = updateMessage;
 exports.getMessagesByRoom = getMessagesByRoom;
 exports.getMessageById = getMessageById;
-exports.getMessagesByFollowed = getMessagesByFollowed;
+exports.getMessagesByUser = getMessagesByUser;
 exports.getFullHistory = getFullHistory;

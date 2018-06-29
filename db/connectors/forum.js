@@ -28,13 +28,6 @@ const forumSchema = new mongoose.Schema(dbConnector.createSchema({
 
 const Forum = mongoose.model('Forum', forumSchema);
 
-const forumFilter = dbConnector.createFilter({
-  title: 1,
-  threadIds: 1,
-  text: 1,
-  picture: 1,
-});
-
 /**
  * Update forum object fields.
  * @private
@@ -313,83 +306,35 @@ function removeForum({ forumId, fullRemoval, callback }) {
 }
 
 /**
- * Add access to forum
- * @param {Object} params - Parameters
- * @param {string} params.forumId - ID of the team
- * @param {string[]} [params.userIds] - ID of the users
- * @param {string[]} [params.teamIds] - ID of the teams
- * @param {string[]} [params.bannedIds] - Blocked ids
- * @param {string[]} [params.teamAdminIds] - Id of the teams to give admin access to. They will also be added to teamIds.
- * @param {string[]} [params.userAdminIds] - Id of the users to give admin access to. They will also be added to userIds.
- * @param {Function} params.callback - Callback
+ * Update access to the forum.
+ * @param {Object} params - Parameters.
+ * @param {Function} params.callback - Callback.
+ * @param {boolean} [params.shouldRemove] - Should access be removed?
+ * @param {string[]} [params.userIds] - Id of the users to update.
+ * @param {string[]} [params.teamIds] - Id of the teams to update.
+ * @param {string[]} [params.bannedIds] - Id of the blocked Ids to update.
+ * @param {string[]} [params.teamAdminIds] - Id of the teams to update admin access for.
+ * @param {string[]} [params.userAdminIds] - Id of the users to update admin access for.
  */
-function addAccess({
-  forumId,
-  userIds,
-  teamIds,
-  bannedIds,
-  teamAdminIds,
-  userAdminIds,
-  callback,
-}) {
-  dbConnector.addObjectAccess({
-    userIds,
-    teamIds,
-    bannedIds,
-    teamAdminIds,
-    userAdminIds,
-    objectId: forumId,
-    object: Forum,
-    callback: ({ error, data }) => {
-      if (error) {
-        callback({ error });
+function updateAccess(params) {
+  const accessParams = params;
+  accessParams.objectId = params.forumId;
+  accessParams.object = Forum;
+  accessParams.callback = ({ error, data }) => {
+    if (error) {
+      accessParams.callback({ error });
 
-        return;
-      }
+      return;
+    }
 
-      callback({ data: { forum: data.object } });
-    },
-  });
-}
+    accessParams.callback({ data: { forum: data.object } });
+  };
 
-/**
- * Remove access to forum
- * @param {Object} params - Parameters
- * @param {string} params.forumId - ID of the team
- * @param {string[]} params.teamIds - ID of the teams
- * @param {string[]} [params.userIds] - ID of the user
- * @param {string[]} [params.bannedIds] - Blocked ids
- * @param {string[]} [params.teamAdminIds] - Id of the teams to remove admin access from. They will not be removed from teamIds.
- * @param {string[]} [params.userAdminIds] - Id of the users to remove admin access from. They will not be removed from userIds.
- * @param {Function} params.callback - Callback
- */
-function removeAccess({
-  forumId,
-  userIds,
-  teamIds,
-  bannedIds,
-  teamAdminIds,
-  userAdminIds,
-  callback,
-}) {
-  dbConnector.removeObjectAccess({
-    userIds,
-    teamIds,
-    bannedIds,
-    teamAdminIds,
-    userAdminIds,
-    objectId: forumId,
-    object: Forum,
-    callback: ({ error, data }) => {
-      if (error) {
-        callback({ error });
-
-        return;
-      }
-
-      callback({ data: { forum: data.object } });
-    },
-  });
+  if (params.shouldRemove) {
+    dbConnector.removeObjectAccess(params);
+  } else {
+    dbConnector.addObjectAccess(params);
+  }
 }
 
 /**
@@ -400,14 +345,11 @@ function removeAccess({
  */
 function getForumsByUser({
   user,
-  full,
   callback,
 }) {
   const query = dbConnector.createUserQuery({ user });
-  const filter = !full ? forumFilter : {};
 
   getForums({
-    filter,
     query,
     callback,
   });
@@ -420,6 +362,5 @@ exports.updateForum = updateForum;
 exports.getAllForums = getAllForums;
 exports.getForumsByIds = getForumsByIds;
 exports.removeForum = removeForum;
-exports.addAccess = addAccess;
-exports.removeAccess = removeAccess;
+exports.updateAccess = updateAccess;
 exports.getForumsByUser = getForumsByUser;

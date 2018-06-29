@@ -20,8 +20,36 @@ const { appConfig, dbConfig } = require('../config/defaults/config');
 const authenticator = require('../helpers/authenticator');
 const errorCreator = require('../error/errorCreator');
 const dbPosition = require('../db/connectors/position');
-const aliasManager = require('./aliases');
 const mapCreator = require('../utils/mapCreator');
+const managerHelper = require('../helpers/manager');
+
+/**
+ * Get position.
+ * @param {Object} params - Parameter.
+ * @param {string} params.token - jwt.
+ * @param {Function} params.callback - Callback.
+ * @param {string} [params.positionId] - Id of the position.
+ * @param {Object} [params.internalCallUser] - User to use on authentication. It will bypass token authentication.
+ */
+function getPositionById({
+  token,
+  positionId,
+  callback,
+  needsAccess,
+  internalCallUser,
+}) {
+  managerHelper.getObjectById({
+    token,
+    internalCallUser,
+    callback,
+    needsAccess,
+    objectId: positionId,
+    objectType: 'position',
+    objectIdType: 'positionId',
+    dbCallFunc: dbPosition.getPositionById,
+    commandName: dbConfig.apiCommands.GetPositions.name,
+  });
+}
 
 // TODO Should update if the position already exist
 /**
@@ -94,167 +122,6 @@ function getAndStoreGooglePositions({ callback = () => {} }) {
 }
 
 /**
- * Get position by Id and check if the user has access to it.
- * @param {Object} params - Parameters.
- * @param {Object} params.user - User retrieving the position.
- * @param {string} params.positionId - Id of the alias to retrieve.
- * @param {Function} params.callback - Callback.
- * @param {string} [params.errorContentText] - Text to be printed on error.
- * @param {boolean} [params.shouldBeAdmin] - Does the user have to be an admin?
- */
-function getAccessiblePosition({
-  user,
-  positionId,
-  callback,
-  shouldBeAdmin,
-  full,
-  errorContentText = `positionId ${positionId}`,
-}) {
-  dbPosition.getPositionById({
-    positionId,
-    callback: (positionData) => {
-      if (positionData.error) {
-        callback({ error: positionData.error });
-
-        return;
-      } else if (!authenticator.hasAccessTo({
-        shouldBeAdmin,
-        toAuth: user,
-        objectToAccess: positionData.data.position,
-      })) {
-        callback({ error: new errorCreator.NotAllowed({ name: errorContentText }) });
-
-        return;
-      }
-
-      const foundPosition = positionData.data.position;
-      const filteredPosition = {
-        objectId: foundPosition.objectId,
-        connectedUser: foundPosition.connectedToUser,
-        coordinatesHistory: foundPosition.coordinatesHistory,
-        positionName: foundPosition.positionName,
-        positionType: foundPosition.positionType,
-        radius: foundPosition.radius,
-        isStationary: foundPosition.isStationary,
-        lastUpdated: foundPosition.lastUpdated,
-        customLastUpdated: foundPosition.customLastUpdated,
-        timeCreated: foundPosition.timeCreated,
-        customTimeCreated: foundPosition.customTimeCreated,
-      };
-
-      callback({
-        data: {
-          position: full ? foundPosition : filteredPosition,
-        },
-      });
-    },
-  });
-}
-
-/**
- * Get position.
- * @param {Object} params - Parameters.
- * @param {string} params.token - jwt.
- * @param {Function} params.callback - Callback.
- * @param {string} params.positionId - Id of the position that will be retrieved.
- */
-function getPositionById({
-  positionId,
-  token,
-  callback,
-  full,
-}) {
-  authenticator.isUserAllowed({
-    token,
-    commandName: dbConfig.apiCommands.GetPositions.name,
-    callback: ({ error, data }) => {
-      if (error) {
-        callback({ error });
-
-        return;
-      }
-
-      const { user } = data;
-
-      getAccessiblePosition({
-        user,
-        positionId,
-        callback,
-        full,
-        shouldBeAdmin: full && dbConfig.apiCommands.GetFull.accessLevel > user.accessLevel,
-      });
-    },
-  });
-}
-
-/**
- * Update the position's coordinates.
- * @param {Object} params - Parameters.
- * @param {Object} params.io - Socket.io.
- * @param {Object} params.callback - Callback.
- * @param {string} params.positionId - Id of the position to update.
- * @param {string} params.token - jwt.
- * @param {Object} params.coordinates - New coordinates.
- */
-function updatePositionCoordinates({
-  io,
-  callback,
-  positionId,
-  token,
-  coordinates,
-}) {
-  authenticator.isUserAllowed({
-    token,
-    commandName: dbConfig.apiCommands.UpdatePosition.name,
-    callback: ({ error, data }) => {
-      if (error) {
-        callback({ error });
-
-        return;
-      }
-
-      const { user } = data;
-
-      getAccessiblePosition({
-        positionId,
-        user,
-        shouldBeAdmin: true,
-        callback: ({ error: positionError }) => {
-          if (positionError) {
-            callback({ error: positionError });
-
-            return;
-          }
-
-          dbPosition.updatePositionCoordinates({
-            positionId,
-            coordinates,
-            callback: (updateData) => {
-              if (updateData.error) {
-                callback({ error: updateData.error });
-
-                return;
-              }
-
-              const dataToSend = {
-                data: {
-                  position: updateData.data.position,
-                },
-                changeType: dbConfig.ChangeTypes.UPDATE,
-              };
-
-              io.emit(dbConfig.EmitTypes.POSITION, dataToSend);
-
-              callback(dataToSend);
-            },
-          });
-        },
-      });
-    },
-  });
-}
-
-/**
  * Update user position. Will create a new one if it doesn't exist.
  * @param {Object} params - Parameters.
  * @param {string} params.positionId - Id of the position to update.
@@ -272,56 +139,20 @@ function updatePosition({
   callback,
   options,
 }) {
-  authenticator.isUserAllowed({
+  managerHelper.updateObject({
+    callback,
+    options,
     token,
+    io,
+    objectId: positionId,
+    object: position,
     commandName: dbConfig.apiCommands.UpdatePosition.name,
-    callback: ({ error, data }) => {
-      if (error) {
-        callback({ error });
-
-        return;
-      }
-
-      const { user } = data;
-
-      getAccessiblePosition({
-        positionId,
-        user,
-        shouldBeAdmin: true,
-        callback: ({ error: trackError }) => {
-          if (trackError) {
-            callback({ error: trackError });
-
-            return;
-          }
-
-          dbPosition.updatePosition({
-            positionId,
-            position,
-            options,
-            callback: ({ error: updateError, data: positionData }) => {
-              if (updateError) {
-                callback({ error: updateError });
-
-                return;
-              }
-
-              const dataToSend = {
-                data: {
-                  position: positionData.position,
-                  changeType: dbConfig.ChangeTypes.UPDATE,
-                  currentTime: (new Date()),
-                },
-              };
-
-              io.emit(dbConfig.EmitTypes.POSITION, dataToSend);
-
-              callback(dataToSend);
-            },
-          });
-        },
-      });
-    },
+    objectType: 'position',
+    dbCallFunc: dbPosition.updatePosition,
+    emitType: dbConfig.EmitTypes.POSITION,
+    objectIdType: 'positionId',
+    getDbCallFunc: dbPosition.getPositionById,
+    getCommandName: dbConfig.apiCommands.GetPositions.name,
   });
 }
 
@@ -351,7 +182,8 @@ function createPosition({
         callback({ error: new errorCreator.InvalidData({ name: 'latitude && longitude' }) });
 
         return;
-      } else if ((position.positionName && (position.positionName.length > appConfig.positionNameMaxLength || position.positionName.length <= 0)) || (position.description && position.description.join('').length > appConfig.docFileMaxLength)) {
+      } else if ((position.positionName && (position.positionName.length > appConfig.positionNameMaxLength || position.positionName.length <= 0))
+        || (position.description && position.description.join('').length > appConfig.docFileMaxLength)) {
         callback({ error: new errorCreator.InvalidCharacters({ expected: `text length: ${appConfig.docFileMaxLength}, title length: ${appConfig.positionNameMaxLength}` }) });
 
         return;
@@ -361,69 +193,45 @@ function createPosition({
         return;
       }
 
-      const { user } = data;
+      const { user: authUser } = data;
       const newPosition = position;
-      newPosition.ownerId = user.objectId;
+      newPosition.ownerId = authUser.objectId;
       newPosition.coordinates.accuracy = newPosition.coordinates.accuracy || appConfig.minimumPositionAccuracy;
 
-      const savePosition = () => {
-        dbPosition.createPosition({
-          position: newPosition,
-          callback: ({ error: updateError, data: positionData }) => {
-            if (updateError) {
-              callback({ error: updateError });
-
-              return;
-            }
-
-            const updatedPosition = positionData.position;
-            const { ownerAliasId } = updatedPosition;
-            const dataToReturn = {
-              data: {
-                position: updatedPosition,
-                currentTime: new Date(),
-                changeType: dbConfig.ChangeTypes.CREATE,
-              },
-            };
-            const dataToSend = {
-              data: {
-                position: updatedPosition,
-                currentTime: new Date(),
-                changeType: dbConfig.ChangeTypes.CREATE,
-              },
-            };
-
-            if (ownerAliasId) {
-              dataToSend.data.position.ownerId = ownerAliasId;
-              dataToSend.data.position.ownerAliasId = undefined;
-            }
-
-            io.emit(dbConfig.EmitTypes.POSITION, dataToSend);
-
-            callback(dataToReturn);
-          },
-        });
-      };
-
-      if (newPosition.ownerAliasId) {
-        aliasManager.getAccessibleAlias({
-          user,
-          aliasId: newPosition.ownerAliasId,
-          callback: ({ error: aliasError }) => {
-            if (aliasError) {
-              callback({ error: aliasError });
-
-              return;
-            }
-
-            savePosition();
-          },
-        });
+      if (newPosition.ownerAliasId && !authUser.aliases.includes(newPosition.ownerAliasId)) {
+        callback({ error: new errorCreator.NotAllowed({ name: `create position with alias ${newPosition.ownerAliasId}` }) });
 
         return;
       }
 
-      savePosition();
+      dbPosition.createPosition({
+        position: newPosition,
+        callback: ({ error: updateError, data: positionData }) => {
+          if (updateError) {
+            callback({ error: updateError });
+
+            return;
+          }
+
+          const { position: updatedPosition } = positionData;
+          const dataToReturn = {
+            data: {
+              position: updatedPosition,
+              changeType: dbConfig.ChangeTypes.CREATE,
+            },
+          };
+          const dataToSend = {
+            data: {
+              position: managerHelper.stripObject({ object: Object.assign({}, updatedPosition) }),
+              changeType: dbConfig.ChangeTypes.CREATE,
+            },
+          };
+
+          io.emit(dbConfig.EmitTypes.POSITION, dataToSend);
+
+          callback(dataToReturn);
+        },
+      });
     },
   });
 }
@@ -433,35 +241,19 @@ function createPosition({
  * @param {Object} params - Parameters.
  * @param {string} params.token - jwt.
  * @param {Function} params.callback - Callback.
- * @param {string[]} [params.positionTypes] - Types of positions to retrieve.
  */
-function getPositions({
+function getPositionsByUser({
   token,
   callback,
-  positionTypes,
-  full = false,
-  lite = true,
 }) {
-  authenticator.isUserAllowed({
+  managerHelper.getObjects({
+    callback,
     token,
-    commandName: full ? dbConfig.apiCommands.GetFull.name : dbConfig.apiCommands.GetPositions.name,
-    callback: ({ error, data }) => {
-      if (error) {
-        callback({ error });
-
-        return;
-      }
-
-      const { user } = data;
-
-      dbPosition.getPositionsByUser({
-        user,
-        callback,
-        full,
-        positionTypes,
-        lite,
-      });
-    },
+    shouldSort: true,
+    sortName: 'positionName',
+    commandName: dbConfig.apiCommands.GetPositions.name,
+    objectsType: 'positions',
+    dbCallFunc: dbPosition.getPositionsByUser,
   });
 }
 
@@ -479,60 +271,24 @@ function removePosition({
   callback,
   io,
 }) {
-  authenticator.isUserAllowed({
+  managerHelper.removeObject({
+    callback,
     token,
+    io,
+    getDbCallFunc: dbPosition.getPositionById,
+    getCommandName: dbConfig.apiCommands.GetPositions.name,
+    objectId: positionId,
     commandName: dbConfig.apiCommands.RemovePosition.name,
-    callback: ({ error, data }) => {
-      if (error) {
-        callback({ error });
-
-        return;
-      }
-
-      const { user } = data;
-
-      getAccessiblePosition({
-        positionId,
-        user,
-        shouldBeAdmin: true,
-        callback: (aliasData) => {
-          if (aliasData.error) {
-            callback({ error: aliasData.error });
-
-            return;
-          }
-          dbPosition.removePosition({
-            positionId,
-            callback: (removeData) => {
-              if (removeData.remove) {
-                callback({ error: removeData.error });
-
-                return;
-              }
-
-              const dataToSend = {
-                data: {
-                  position: { objectId: positionId },
-                  changeType: dbConfig.ChangeTypes.REMOVE,
-                },
-              };
-
-              io.emit(dbConfig.EmitTypes.POSITION, dataToSend);
-
-              callback(dataToSend);
-            },
-          });
-        },
-      });
-    },
+    objectType: 'position',
+    dbCallFunc: dbPosition.removePosition,
+    emitType: dbConfig.EmitTypes.POSITION,
+    objectIdType: 'positionId',
   });
 }
 
-exports.getAccessiblePosition = getAccessiblePosition;
 exports.updatePosition = updatePosition;
-exports.getPositions = getPositions;
+exports.getPositionsByUser = getPositionsByUser;
 exports.createPosition = createPosition;
 exports.removePosition = removePosition;
 exports.getPositionById = getPositionById;
 exports.getAndStoreGooglePositions = getAndStoreGooglePositions;
-exports.updatePositionCoordinates = updatePositionCoordinates;

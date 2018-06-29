@@ -65,21 +65,6 @@ const coordinatesSchema = {
   },
 };
 
-const baseFilter = {
-  isPublic: 1,
-  ownerId: 1,
-  ownerAliasId: 1,
-  teamId: 1,
-  lastUpdated: 1,
-  timeCreated: 1,
-  customLastUpdated: 1,
-  customTimeCreated: 1,
-  visibility: 1,
-  accessLevel: 1,
-  teamIds: 1,
-  userIds: 1,
-};
-
 mongoose.connect(dbPath, {}, (err) => {
   if (err) {
     console.error('Failed to connect to the database');
@@ -89,21 +74,6 @@ mongoose.connect(dbPath, {}, (err) => {
 
   console.info('Connection established to database');
 });
-
-/**
- * Create database result filter.
- * @param {Object} filter - Parameters to filter.
- * @return {Object} Filter.
- */
-function createFilter(filter) {
-  const fullFilter = filter;
-
-  Object.keys(baseFilter).forEach((filterKey) => {
-    fullFilter[filterKey] = baseFilter[filterKey];
-  });
-
-  return fullFilter;
-}
 
 /**
  * Create and return full schema.
@@ -121,16 +91,17 @@ function createSchema(schema) {
 }
 
 /**
- * Add object identifier.
+ * Add object identifier and hide password.
  * @private
  * @param {Object} params - Parameters.
  * @param {Object} params.object - Object to add an Id to.
  * @returns {Object} Updated object.
  */
-function addObjectId({ object }) {
+function modifyObject({ object }) {
   const modifiedObject = object;
 
   modifiedObject.objectId = object._id.toString(); // eslint-disable-line no-underscore-dangle
+  modifiedObject.password = object.password === true;
 
   return modifiedObject;
 }
@@ -165,7 +136,7 @@ function saveObject({
     callback({
       data: {
         objectType,
-        savedObject: objectToSend,
+        savedObject: modifyObject({ object: objectToSend }),
       },
     });
   });
@@ -202,7 +173,7 @@ function verifyObject({
       return;
     }
 
-    callback({ data: { verified: addObjectId({ object: verified }) } });
+    callback({ data: { verified: modifyObject({ object: verified }) } });
   });
 }
 
@@ -233,7 +204,7 @@ function verifyAllObjects({
       return;
     }
 
-    callback({ data: { verified: verified.map(verifiedObject => addObjectId({ object: verifiedObject })) } });
+    callback({ data: { verified: verified.map(verifiedObject => modifyObject({ object: verifiedObject })) } });
   });
 }
 
@@ -290,7 +261,7 @@ function getObject({
     callback({
       data: {
         exists: true,
-        object: addObjectId({ object: foundObject }),
+        object: modifyObject({ object: foundObject }),
       },
     });
   });
@@ -349,7 +320,7 @@ function getObjects({
       return;
     }
 
-    callback({ data: { objects: objects.map(foundObject => addObjectId({ object: foundObject })) } });
+    callback({ data: { objects: objects.map(foundObject => modifyObject({ object: foundObject })) } });
   };
 
   if (sort) {
@@ -395,7 +366,7 @@ function updateObject({
       return;
     }
 
-    callback({ data: { object: addObjectId({ object: foundObject }) } });
+    callback({ data: { object: modifyObject({ object: foundObject }) } });
   });
 }
 
@@ -444,7 +415,7 @@ function updateObjects({
 
         callback({
           data: {
-            objects: objects.map(foundObject => addObjectId({ object: foundObject })),
+            objects: objects.map(foundObject => modifyObject({ object: foundObject })),
           },
         });
       },
@@ -609,18 +580,26 @@ function removeObjectAccess({
  * @return {Object} Query.
  */
 function createUserQuery({ user, noVisibility }) {
+  const {
+    objectId,
+    partOfTeams,
+    accessLevel,
+    aliases,
+  } = user;
   const query = {
-    bannedIds: { $nin: [user.objectId] },
+    bannedIds: { $nin: [objectId] },
     $or: [
       { isPublic: true },
-      { ownerId: user.objectId },
-      { userIds: { $in: [user.objectId] } },
-      { teamIds: { $in: user.partOfTeams } },
+      { ownerId: objectId },
+      { ownerAliasId: objectId },
+      { userIds: { $in: [objectId] } },
+      { teamIds: { $in: partOfTeams } },
+      { aliases: { $in: aliases } },
     ],
   };
 
   if (!noVisibility) {
-    query.$or.push({ visibility: { $lte: user.accessLevel } });
+    query.$or.push({ visibility: { $lte: accessLevel } });
   }
 
   return query;
@@ -644,4 +623,3 @@ exports.addObjectAccess = addObjectAccess;
 exports.doesObjectExist = doesObjectExist;
 exports.updateObjects = updateObjects;
 exports.createUserQuery = createUserQuery;
-exports.createFilter = createFilter;

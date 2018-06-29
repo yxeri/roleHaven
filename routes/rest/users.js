@@ -81,7 +81,6 @@ function handle(io) {
    *
    * @apiDescription Get users.
    *
-   * @apiParam {boolean} [Query] [full] Should the returned user contain all user information? Default is that only some information is returned.
    * @apiParam {boolean} [Query] [includeInactive] Should banned and unverified users be in the result?
    *
    * @apiSuccess {Object} data
@@ -89,11 +88,10 @@ function handle(io) {
    */
   router.get('/', (request, response) => {
     const { authorization: token } = request.headers;
-    const { full, includeInactive } = request.query;
+    const { includeInactive } = request.query;
 
     userManager.getUsersByUser({
       token,
-      full,
       includeInactive,
       callback: ({ error, data }) => {
         if (error) {
@@ -138,12 +136,14 @@ function handle(io) {
       return;
     }
 
+    const { authorization: token } = request.headers;
     const { password } = request.body.data;
     const { userId } = request.params;
 
     userManager.changePassword({
       password,
       userId,
+      token,
       callback: ({ error, data }) => {
         if (error) {
           sentData.password = typeof sentData.password !== 'undefined';
@@ -265,47 +265,6 @@ function handle(io) {
   });
 
   /**
-   * @api {delete} /users/:userId Delete a user.
-   * @apiVersion 8.0.0
-   * @apiName DeleteUser
-   * @apiGroup Users
-   *
-   * @apiHeader {string} Authorization Your JSON Web Token.
-   *
-   * @apiDescription Delete a user.
-   *
-   * @apiParam {string} userId [Url] Id of the user to delete.
-   *
-   * @apiSuccess {Object} data
-   * @apiSuccess {Object} data.success Was it successfully deleted?
-   */
-  router.delete('/:userId', (request, response) => {
-    if (!objectValidator.isValidData(request.params, { userId: true })) {
-      restErrorChecker.checkAndSendError({ response, error: new errorCreator.InvalidData({ expected: '{ userId }' }) });
-
-      return;
-    }
-
-    const { userId } = request.params;
-    const { authorization: token } = request.headers;
-
-    userManager.removeUser({
-      userId,
-      io,
-      token,
-      callback: ({ error, data }) => {
-        if (error) {
-          restErrorChecker.checkAndSendError({ response, error, sentData: request.body.data });
-
-          return;
-        }
-
-        response.json({ data });
-      },
-    });
-  });
-
-  /**
    * @api {get} /users/:userId Get a user.
    * @apiVersion 8.0.0
    * @apiName GetUser
@@ -316,8 +275,6 @@ function handle(io) {
    * @apiDescription Get a user.
    *
    * @apiParam {string} userId [Url] Id of the user to get.
-   *
-   * @apiParam {boolean} [full] [Query] Should the returned user contain all information? Default is that only some content is returned.
    *
    * @apiSuccess {Object} data
    * @apiSuccess {Object} data.user Found user.
@@ -331,12 +288,10 @@ function handle(io) {
 
     const { authorization: token } = request.headers;
     const { userId } = request.params;
-    const { full } = request.query;
 
     userManager.getUserById({
       token,
       userId,
-      full,
       callback: ({ error, data }) => {
         if (error) {
           restErrorChecker.checkAndSendError({ response, error });

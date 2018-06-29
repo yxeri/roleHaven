@@ -101,7 +101,6 @@ function getMessages({ request, response }) {
   const {
     startDate,
     shouldGetFuture,
-    full,
     fullHistory,
   } = request.query;
 
@@ -117,7 +116,6 @@ function getMessages({ request, response }) {
 
   if (roomId) {
     messageManager.getMessagesByRoom({
-      full,
       roomId,
       token,
       startDate,
@@ -130,9 +128,8 @@ function getMessages({ request, response }) {
       callback,
     });
   } else {
-    messageManager.getMessagesByFollowed({
+    messageManager.getMessagesByUser({
       token,
-      full,
       callback,
     });
   }
@@ -287,47 +284,9 @@ function createThread({ request, response, io }) {
   });
 }
 
-/**
- * Get transactions. Called by the REST API.
- * @param {Object} params - Parameters.
- * @param {Object} params.request - Request.
- * @param {Object} params.response - Response.
- */
-function getTransactions({ request, response }) {
-  const { walletId } = request.params || request.query;
-  const { authorization: token } = request.headers;
-  const { full } = request.query;
-
-  const callback = ({ error, data }) => {
-    if (error) {
-      restErrorChecker.checkAndSendError({ response, error, sentData: request.body.data });
-
-      return;
-    }
-
-    response.json({ data });
-  };
-
-  if (walletId) {
-    transactionManager.getTransactionsByWallet({
-      walletId,
-      token,
-      full,
-      callback,
-    });
-  } else {
-    transactionManager.getTransactionsCreatedByUser({
-      token,
-      full,
-      callback,
-    });
-  }
-}
-
 exports.sendMessage = sendMessage;
 exports.createForumPost = createForumPost;
 exports.getMessages = getMessages;
 exports.getForumPosts = getForumPosts;
 exports.getForumThreads = getForumThreads;
 exports.createThread = createThread;
-exports.getTransactions = getTransactions;

@@ -32,6 +32,14 @@ function createToken({
         callback({ error });
 
         return;
+      } else if (data.user.isBanned) {
+        callback({ error: new errorCreator.Banned({ name: `user ${data.user.username}` }) });
+
+        return;
+      } else if (!data.user.isVerified) {
+        callback({ error: new errorCreator.NotAllowed({ name: `user ${data.user.username} not verified` }) });
+
+        return;
       }
 
       const { user } = data;
@@ -56,15 +64,23 @@ function createToken({
  * @param {Object} params - Parameters.
  * @param {string} params.token - Json web token.
  * @param {string} params.commandName - Name of the command.
+ * @param {Object} [params.internalCallUser] - User set in an internal system call.
  * @param {Function} params.callback - callback.
  */
 function isUserAllowed({
   commandName,
   token,
+  internalCallUser,
   callback,
 }) {
   const commandUsed = dbConfig.apiCommands[commandName];
   const anonUser = dbConfig.anonymousUser;
+
+  if (internalCallUser) {
+    callback({ data: { user: internalCallUser } });
+
+    return;
+  }
 
   if (!commandUsed) {
     callback({ error: new errorCreator.DoesNotExist({ name: commandName }) });
@@ -93,7 +109,6 @@ function isUserAllowed({
 
     dbUser.getUserById({
       userId,
-      full: true,
       callback: ({ error, data }) => {
         if (error) {
           callback({ error });
@@ -128,46 +143,45 @@ function isAllowedAccessLevel({ objectToCreate, toAuth }) {
 }
 
 /**
- * Checks if user has access, is admin or can see the object
- * @param {Object} params - Parameter
- * @param {Object} params.objectToAccess - Object to access
- * @param {Object} params.toAuth - Object to auth
- * @param {boolean} [params.shouldBeAdmin] - Should it check if the user or team are admins?
+ * Checks if user has access, is admin or can see the object.
+ * @param {Object} params - Parameter.
+ * @param {Object} params.objectToAccess - Object to access.
+ * @param {Object} params.toAuth - Object to auth.
  * @returns {boolean} - Does the user have access to the object?
  */
 function hasAccessTo({
   objectToAccess,
   toAuth,
-  shouldBeAdmin = false,
 }) {
   const {
-    teamIds,
-    userIds,
-    userAdminIds,
-    teamAdminIds,
+    teamIds = [],
+    userIds = [],
+    userAdminIds = [],
+    teamAdminIds = [],
     ownerId,
     isPublic,
     visibility,
   } = objectToAccess;
   const {
-    aliases,
     hasFullAccess,
     accessLevel,
-    teamIds: authTeamIds,
-    objectId: authUserId,
+    teamIds: authTeamIds = [],
+    objectId: authUserId = [],
+    aliases = [],
   } = toAuth;
-  if (hasFullAccess || accessLevel >= dbConfig.AccessLevels.ADMIN) {
-    return true;
-  } else if (shouldBeAdmin) {
-    return (ownerId === authUserId || userAdminIds.includes(authUserId) || teamAdminIds.find(adminId => authTeamIds.includes(adminId)));
-  }
-
   const userHasAccess = userIds.concat([ownerId]).includes(authUserId);
   const teamHasAccess = teamIds.find(teamId => authTeamIds.includes(teamId));
-  const aliasHasAccess = aliases.some(aliasId => userIds.includes(aliasId));
-  const canSee = accessLevel >= visibility;
+  const aliasHasAccess = aliases.find(aliasId => userIds.includes(aliasId));
+  const userHasAdminAccess = userAdminIds.includes(authUserId);
+  const aliasHasAdminAccess = aliases.find(aliasId => userAdminIds.includes(aliasId));
+  const teamHasAdminAccess = teamAdminIds.find(adminId => authTeamIds.includes(adminId));
+  const isAdmin = ownerId === authUserId || hasFullAccess || accessLevel >= dbConfig.AccessLevels.ADMIN;
 
-  return isPublic || canSee || userHasAccess || teamHasAccess || aliasHasAccess;
+  return {
+    canSee: isAdmin || isPublic || accessLevel >= visibility,
+    hasAccess: isAdmin || userHasAccess || teamHasAccess || aliasHasAccess,
+    hasFullAccess: isAdmin || userHasAdminAccess || teamHasAdminAccess || aliasHasAdminAccess,
+  };
 }
 
 exports.isUserAllowed = isUserAllowed;

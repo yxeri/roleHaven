@@ -31,15 +31,6 @@ const forumPostSchema = new mongoose.Schema(dbConnector.createSchema({
 
 const ForumPost = mongoose.model('ForumPost', forumPostSchema);
 
-const postFilter = dbConnector.createFilter({
-  threadId: 1,
-  parentPostId: 1,
-  text: 1,
-  depth: 1,
-  likes: 1,
-  pictures: 1,
-});
-
 /**
  * Get forum posts
  * @private
@@ -247,14 +238,10 @@ function getPostsById({ postIds, callback }) {
  */
 function getPostsByThreads({
   threadIds,
-  full,
   callback,
 }) {
-  const filter = !full ? postFilter : {};
-
   getPosts({
     callback,
-    filter,
     query: { threadId: { $in: threadIds } },
   });
 }
@@ -266,15 +253,11 @@ function getPostsByThreads({
  * @param {Function} params.callback - Callback.
  */
 function getPostsByThread({
-  full,
   threadId,
   callback,
 }) {
-  const filter = !full ? postFilter : {};
-
   getPosts({
     callback,
-    filter,
     query: { threadId },
   });
 }
@@ -284,16 +267,13 @@ function getPostsByThread({
  * @param {Object} params - Parameters.
  * @param {string} params.user - User.
  * @param {Function} params.callback - Callback.
- * @param {boolean} [params.full] - Should the complete objects be returned?
  */
 function getPostsByUser({
   user,
   callback,
-  full,
 }) {
   dbForum.getForumsByUser({
     user,
-    full,
     callback: ({ error: forumError, data: forumData }) => {
       if (forumError) {
         callback({ error: forumError });
@@ -313,12 +293,10 @@ function getPostsByUser({
           }
 
           const threadIds = threadData.threads.map(thread => thread.objectId);
-          const filter = !full ? postFilter : {};
           const query = dbConnector.createUserQuery({ user });
           query.threadId = { $in: threadIds };
 
           getPosts({
-            filter,
             callback,
             query,
           });
@@ -422,83 +400,35 @@ function removePostsByThreadId({ threadId, callback }) {
 }
 
 /**
- * Add access to post
- * @param {Object} params - Parameters
- * @param {string} params.postId - ID of the team
- * @param {string[]} [params.userIds] - ID of the users
- * @param {string[]} [params.teamIds] - ID of the teams
- * @param {string[]} [params.bannedIds] - Blocked ids
- * @param {string[]} [params.teamAdminIds] - Id of the teams to give admin access to. They will also be added to teamIds.
- * @param {string[]} [params.userAdminIds] - Id of the users to give admin access to. They will also be added to userIds.
- * @param {Function} params.callback - Callback
- */
-function addAccess({
-  postId,
-  userIds,
-  teamIds,
-  bannedIds,
-  teamAdminIds,
-  userAdminIds,
-  callback,
-}) {
-  dbConnector.addObjectAccess({
-    userIds,
-    teamIds,
-    bannedIds,
-    teamAdminIds,
-    userAdminIds,
-    objectId: postId,
-    object: ForumPost,
-    callback: ({ error, data }) => {
-      if (error) {
-        callback({ error });
-
-        return;
-      }
-
-      callback({ data: { post: data.object } });
-    },
-  });
-}
-
-/**
- * Remove access to post.
+ * Update access to the post.
  * @param {Object} params - Parameters.
- * @param {string} params.postId - Id of the post.
- * @param {string[]} params.teamIds - Id of the teams.
- * @param {string[]} [params.userIds] - Id of the user.
- * @param {string[]} [params.bannedIds] - Blocked Ids.
- * @param {string[]} [params.teamAdminIds] - Id of the teams to remove admin access from. They will not be removed from teamIds.
- * @param {string[]} [params.userAdminIds] - Id of the users to remove admin access from. They will not be removed from userIds.
- * @param {Function} params.callback - Callback
+ * @param {Function} params.callback - Callback.
+ * @param {boolean} [params.shouldRemove] - Should access be removed?
+ * @param {string[]} [params.userIds] - Id of the users to update.
+ * @param {string[]} [params.teamIds] - Id of the teams to update.
+ * @param {string[]} [params.bannedIds] - Id of the blocked Ids to update.
+ * @param {string[]} [params.teamAdminIds] - Id of the teams to update admin access for.
+ * @param {string[]} [params.userAdminIds] - Id of the users to update admin access for.
  */
-function removeAccess({
-  postId,
-  userIds,
-  teamIds,
-  bannedIds,
-  teamAdminIds,
-  userAdminIds,
-  callback,
-}) {
-  dbConnector.removeObjectAccess({
-    userIds,
-    teamIds,
-    bannedIds,
-    teamAdminIds,
-    userAdminIds,
-    objectId: postId,
-    object: ForumPost,
-    callback: ({ error, data }) => {
-      if (error) {
-        callback({ error });
+function updateAccess(params) {
+  const accessParams = params;
+  accessParams.objectId = params.postId;
+  accessParams.object = ForumPost;
+  accessParams.callback = ({ error, data }) => {
+    if (error) {
+      accessParams.callback({ error });
 
-        return;
-      }
+      return;
+    }
 
-      callback({ data: { post: data.object } });
-    },
-  });
+    accessParams.callback({ data: { forumPost: data.object } });
+  };
+
+  if (params.shouldRemove) {
+    dbConnector.removeObjectAccess(params);
+  } else {
+    dbConnector.addObjectAccess(params);
+  }
 }
 
 exports.getPostsByThreads = getPostsByThreads;
@@ -508,8 +438,7 @@ exports.removePostsByIds = removePostsByIds;
 exports.getPostsById = getPostsById;
 exports.updatePost = updatePost;
 exports.removePostsByThreadIds = removePostsByThreadIds;
-exports.addAccess = addAccess;
-exports.removeAccess = removeAccess;
+exports.updateAccess = updateAccess;
 exports.removePostById = removePostById;
 exports.getPostsByThread = getPostsByThread;
 exports.removePostsByThreadId = removePostsByThreadId;

@@ -21,59 +21,63 @@ const errorCreator = require('../error/errorCreator');
 const dbTransaction = require('../db/connectors/transaction');
 const authenticator = require('../helpers/authenticator');
 const walletManager = require('./wallets');
+const managerHelper = require('../helpers/manager');
 
 /**
- * Get transaction by Id and check if the user has access to it.
+ * Get transaction by Id.
  * @param {Object} params - Parameters.
- * @param {Object} params.user - User retrieving the wallet.
  * @param {string} params.transactionId - Id of the transaction to retrieve.
+ * @param {string} params.token - jwt.
  * @param {Function} params.callback - Callback.
- * @param {string} [params.errorContentText] - Text to be printed on error.
- * @param {boolean} [params.shouldBeAdmin] - Does the user have to be an admin?
  */
-function getAccessibleTransaction({
-  user,
+function getTransactionById({
   transactionId,
+  token,
+  internalCallUser,
   callback,
-  shouldBeAdmin,
-  full,
-  errorContentText = `transactionId ${transactionId}`,
 }) {
-  dbTransaction.getTransactionById({
-    transactionId,
-    callback: (transactionData) => {
-      if (transactionData.error) {
-        callback({ error: transactionData.error });
-
-        return;
-      } else if (!authenticator.hasAccessTo({
-        shouldBeAdmin,
-        toAuth: user,
-        objectToAccess: transactionData.data.transaction,
-      })) {
-        callback({ error: new errorCreator.NotAllowed({ name: errorContentText }) });
+  authenticator.isUserAllowed({
+    token,
+    internalCallUser,
+    commandName: dbConfig.apiCommands.GetTransaction.name,
+    callback: ({ error, data }) => {
+      if (error) {
+        callback({ error });
 
         return;
       }
 
-      const foundTransaction = transactionData.data.transaction;
-      const filteredTransaction = {
-        amount: foundTransaction.amount,
-        toWalletId: foundTransaction.toWalletId,
-        fromWalletId: foundTransaction.fromWalletId,
-        note: foundTransaction.note,
-        coordinates: foundTransaction.coordinates,
-        ownerId: foundTransaction.ownerId,
-        ownerAliasId: foundTransaction.ownerAliasId,
-        timeCreated: foundTransaction.timeCreated,
-        customTimeCreated: foundTransaction.customTimeCreated,
-        lastUpdated: foundTransaction.lastUpdated,
-        customLastUpdated: foundTransaction.customLastUpdated,
-      };
+      const { user: authUser } = data;
 
-      callback({
-        data: {
-          transaction: full ? foundTransaction : filteredTransaction,
+      dbTransaction.getTransactionById({
+        transactionId,
+        callback: ({ error: transactionError, data: transactionData }) => {
+          if (transactionError) {
+            callback({ error: transactionError });
+
+            return;
+          }
+
+          const { transaction: foundTransaction } = transactionData;
+          const {
+            hasAccess,
+            canSee,
+          } = authenticator.hasAccessTo({
+            objectToAccess: foundTransaction,
+            toAuth: authUser,
+          });
+
+          if (!canSee) {
+            callback({ error: errorCreator.NotAllowed({ name: `transaction ${transactionId}` }) });
+
+            return;
+          } else if (!hasAccess) {
+            callback({ data: { transaction: managerHelper.stripObject({ object: foundTransaction }) } });
+
+            return;
+          }
+
+          callback({ data: transactionData });
         },
       });
     },
@@ -101,14 +105,14 @@ function getTransactionsByWallet({
         return;
       }
 
-      const { user } = data;
+      const { user: authUser } = data;
 
-      walletManager.getAccessibleWallet({
+      walletManager.getWalletById({
         walletId,
-        user,
-        callback: (walletData) => {
-          if (walletData.error) {
-            callback({ error: walletData.error });
+        internalCallUser: authUser,
+        callback: ({ error: walletError }) => {
+          if (walletError) {
+            callback({ error: walletError });
 
             return;
           }
@@ -122,7 +126,9 @@ function getTransactionsByWallet({
                 return;
               }
 
-              callback({ data: transData });
+              const { transactions } = transData;
+
+              callback({ data: { transactions } });
             },
           });
         },
@@ -157,38 +163,37 @@ function createTransaction({
   newTransaction.amount = Math.abs(newTransaction.amount);
   newTransaction.ownerId = newTransaction.ownerId || dbConfig.users.systemUser.objectId;
 
-  walletManager.getWalletsAndCheckAmount({
-    fromWalletId: newTransaction.fromWalletId,
-    toWalletId: newTransaction.toWalletId,
+  walletManager.checkAmount({
+    walletId: newTransaction.fromWalletId,
     amount: newTransaction.amount,
-    callback: (walletsData) => {
-      if (walletsData.error) {
-        callback({ error: walletsData.error });
+    callback: ({ error: amountError }) => {
+      if (amountError) {
+        callback({ error: amountError });
 
         return;
       }
 
       dbTransaction.createTransaction({
         transaction: newTransaction,
-        callback: (transactionData) => {
-          if (transactionData.error) {
-            callback({ error: transactionData.error });
+        callback: ({ error: transactionError, data: transactionData }) => {
+          if (transactionError) {
+            callback({ error: transactionError });
 
             return;
           }
 
-          const createdTransaction = transactionData.data.transaction;
+          const { transaction: createdTransaction } = transactionData;
 
           walletManager.runTransaction({
             transaction: createdTransaction,
-            callback: (updatedWalletsData) => {
-              if (updatedWalletsData.error) {
-                callback({ error: updatedWalletsData.error });
+            callback: ({ error: runTransactionError, data: runTransactionData }) => {
+              if (runTransactionError) {
+                callback({ error: runTransactionError });
 
                 return;
               }
 
-              const { fromWallet, toWallet } = updatedWalletsData.data;
+              const { fromWallet, toWallet } = runTransactionData;
               const dataToSend = {
                 data: {
                   transaction: createdTransaction,
@@ -213,7 +218,7 @@ function createTransaction({
  * @param {Object} params - Parameters.
  * @param {Object} params.token - jwt.
  * @param {Object} params.transaction - New transaction.
- * @param {Object} params.io - Socket.io. Will be used if socket is not set.
+ * @param {Object} params.io - Socket.io.
  * @param {Function} params.callback - Callback.
  */
 function createTransactionBasedOnToken({
@@ -232,51 +237,31 @@ function createTransactionBasedOnToken({
         return;
       }
 
-      const { objectId: userId } = data.user;
+      const { user: authUser } = data;
 
-      const transactionToCreate = transaction;
-      transactionToCreate.ownerId = userId;
+      walletManager.getWalletById({
+        internalCallUser: authUser,
+        walletId: transaction.fromWalletId,
+        callback: ({ error: walletError, data: walletData }) => {
+          if (walletError) {
+            callback({ error: walletError });
 
-      createTransaction({
-        transaction,
-        io,
-        callback,
-      });
-    },
-  });
-}
+            return;
+          }
 
-/**
- * Get transaction by Id.
- * @param {Object} params - Parameters.
- * @param {string} params.transactionId - Id of the transaction to retrieve.
- * @param {string} params.token - jwt.
- * @param {Function} params.callback - Callback.
- */
-function getTransactionById({
-  transactionId,
-  token,
-  callback,
-  full,
-}) {
-  authenticator.isUserAllowed({
-    token,
-    commandName: dbConfig.apiCommands.GetTransaction.name,
-    callback: ({ error, data }) => {
-      if (error) {
-        callback({ error });
+          const transactionToCreate = transaction;
+          const { wallet: foundWallet } = walletData;
 
-        return;
-      }
+          transactionToCreate.teamId = foundWallet.teamId;
+          transactionToCreate.ownerId = foundWallet.ownerId;
+          transactionToCreate.ownerAliasId = foundWallet.ownerAliasId;
 
-      const { user } = data;
-
-      getAccessibleTransaction({
-        user,
-        full,
-        transactionId,
-        callback,
-        shouldBeAdmin: full && dbConfig.apiCommands.GetFull.accessLevel > user.accessLevel,
+          createTransaction({
+            io,
+            callback,
+            transaction: transactionToCreate,
+          });
+        },
       });
     },
   });
@@ -299,32 +284,106 @@ function removeTransaction({
   authenticator.isUserAllowed({
     token,
     commandName: dbConfig.apiCommands.RemoveTransaction.name,
-    callback: ({ error }) => {
+    callback: ({ error, data }) => {
       if (error) {
         callback({ error });
 
         return;
       }
 
-      dbTransaction.removeTransaction({
+      const { user: authUser } = data;
+
+      getTransactionById({
         transactionId,
-        callback: ({ error: transactionError }) => {
-          if (transactionError) {
-            callback({ error: transactionError });
+        internalCallUser: authUser,
+        callback: ({ error: getTransactionError, data: getTransactionData }) => {
+          if (getTransactionError) {
+            callback({ error: getTransactionError });
 
             return;
           }
 
-          const dataToSend = {
-            data: {
-              changeType: dbConfig.ChangeTypes.REMOVE,
-              transaction: { objectId: transactionId },
-            },
+          const { transaction: foundTransaction } = getTransactionData;
+          const {
+            hasFullAccess,
+          } = authenticator.hasAccessTo({
+            objectToAccess: foundTransaction,
+            toAuth: authUser,
+          });
+
+          console.log('found', foundTransaction, 'access', authenticator.hasAccessTo({
+            objectToAccess: foundTransaction,
+            toAuth: authUser,
+          }), 'user', authUser);
+
+          if (!hasFullAccess) {
+            callback({ error: new errorCreator.NotAllowed({ name: `remove transaction ${transactionId}` }) });
+
+            return;
+          }
+
+          const {
+            amount,
+            fromWalletId,
+            toWalletId,
+          } = foundTransaction;
+          const reversedTransaction = {
+            amount,
+            objectId: transactionId,
+            fromWalletId: toWalletId,
+            toWalletId: fromWalletId,
           };
 
-          io.emit(dbConfig.EmitTypes.TRANSACTION, dataToSend);
+          walletManager.runTransaction({
+            transaction: reversedTransaction,
+            callback: ({ error: runTransactionError, data: runTransactionData }) => {
+              if (runTransactionError) {
+                callback({ error: runTransactionError });
 
-          callback(dataToSend);
+                return;
+              }
+
+              const { fromWallet: updatedFromWallet, toWallet: updatedToWallet } = runTransactionData;
+
+              dbTransaction.removeTransaction({
+                transactionId,
+                callback: ({ error: transactionError }) => {
+                  if (transactionError) {
+                    callback({ error: transactionError });
+
+                    return;
+                  }
+
+                  const toDataToSend = {
+                    data: {
+                      wallet: updatedToWallet,
+                      changeType: dbConfig.ChangeTypes.REMOVE,
+                      transaction: { objectId: transactionId },
+                    },
+                  };
+                  const fromDataToSend = {
+                    data: {
+                      wallet: updatedFromWallet,
+                      transaction: { objectId: transactionId },
+                      changeType: dbConfig.ChangeTypes.UPDATE,
+                    },
+                  };
+
+                  io.to(updatedToWallet.objectId).emit(dbConfig.EmitTypes.TRANSACTION, toDataToSend);
+                  io.to(updatedFromWallet.objectId).emit(dbConfig.EmitTypes.TRANSACTION, fromDataToSend);
+
+                  callback({
+                    data: {
+                      fromWallet: updatedFromWallet,
+                      toWallet: updatedToWallet,
+                      transaction: reversedTransaction,
+                      changeType: dbConfig.ChangeTypes.REMOVE,
+                    },
+                  });
+                },
+              });
+            },
+          });
         },
       });
     },
@@ -337,8 +396,7 @@ function removeTransaction({
  * @param {Object} params.transaction - Transaction.
  * @parm {Object} params.options - Options.
  * @param {Function} params.callback - Callback.
- * @param {Object} params.io - Socket io. Will be used if socket is not set.
- * @param {Object} [params.socket] - Socket io.
+ * @param {Object} params.io - Socket io.
  */
 function updateTransaction({
   token,
@@ -346,7 +404,6 @@ function updateTransaction({
   transactionId,
   options,
   callback,
-  socket,
   io,
 }) {
   authenticator.isUserAllowed({
@@ -359,16 +416,28 @@ function updateTransaction({
         return;
       }
 
-      const { user } = data;
+      const { user: authUser } = data;
 
-      getAccessibleTransaction({
+      getTransactionById({
         transactionId,
-        user,
-        shouldBeAdmin: true,
-        errorContentText: `update transaction ${transactionId}`,
-        callback: (transactionData) => {
-          if (transactionData.error) {
-            callback({ error: transactionData.error });
+        internalCallUser: authUser,
+        callback: ({ error: transactionError, data: transactionData }) => {
+          if (transactionError) {
+            callback({ error: transactionError });
+
+            return;
+          }
+
+          const { transaction: foundTransaction } = transactionData;
+          const {
+            hasFullAccess,
+          } = authenticator.hasAccessTo({
+            objectToAccess: foundTransaction,
+            toAuth: authUser,
+          });
+
+          if (!hasFullAccess) {
+            callback({ error: new errorCreator.NotAllowed({ name: `update transaction ${transactionId}` }) });
 
             return;
           }
@@ -377,27 +446,23 @@ function updateTransaction({
             options,
             transaction,
             transactionId,
-            callback: (updateData) => {
-              if (updateData.error) {
-                callback({ error: updateData.error });
+            callback: ({ error: updateError, data: updateData }) => {
+              if (updateError) {
+                callback({ error: updateError });
 
                 return;
               }
 
+              const { transaction: updatedTransaction } = updateData;
               const dataToSend = {
                 data: {
-                  transaction: updateData.data.transaction,
+                  transaction: updatedTransaction,
                   changeType: dbConfig.ChangeTypes.UPDATE,
                 },
               };
 
-              if (socket) {
-                socket.broadcast.emit(dbConfig.EmitTypes.TRANSACTION, dataToSend);
-              } else {
-                io.emit(dbConfig.EmitTypes.TRANSACTION, dataToSend);
-              }
-
-              io.emit(dbConfig.EmitTypes.TRANSACTION, dataToSend);
+              io.to(updatedTransaction.fromWalletId).emit(dbConfig.EmitTypes.TRANSACTION, dataToSend);
+              io.to(updatedTransaction.toWalletId).emit(dbConfig.EmitTypes.TRANSACTION, dataToSend);
 
               callback(dataToSend);
             },
@@ -409,20 +474,18 @@ function updateTransaction({
 }
 
 /**
- * Get transactions created by the user.
+ * Get transactions that the user has access to.
  * @param {Object} params - Parameters.
- * @param {string} params.token - jwt.
+ * @param {Object} params.token - jwt.
  * @param {Function} params.callback - Callback.
- * @param {boolean} [params.full] - Should the complete objects be returned?
  */
-function getTransactionsCreatedByUser({
+function getTransactionsByUser({
   token,
   callback,
-  full,
 }) {
   authenticator.isUserAllowed({
     token,
-    commandName: full ? dbConfig.apiCommands.GetFull.name : dbConfig.apiCommands.GetTransaction.name,
+    commandName: dbConfig.apiCommands.GetTransaction.name,
     callback: ({ error, data }) => {
       if (error) {
         callback({ error });
@@ -430,19 +493,31 @@ function getTransactionsCreatedByUser({
         return;
       }
 
-      const { userId } = data.user;
+      const { user: authUser } = data;
 
-      dbTransaction.getTransactionsCreatedByUser({
-        full,
-        userId,
-        callback: ({ error: transactionsError, data: transactionsData }) => {
-          if (transactionsError) {
-            callback({ error: transactionsError });
+      dbTransaction.getTransactionsByUser({
+        user: authUser,
+        callback: ({ error: transactionError, data: transactionData }) => {
+          if (transactionError) {
+            callback({ error: transactionError });
 
             return;
           }
 
-          callback({ data: transactionsData });
+          const { transactions } = transactionData;
+          const allTransactions = transactions.map((transaction) => {
+            const { hasFullAccess } = authenticator.hasAccessTo({
+              toAuth: authUser,
+              objectToAccess: transaction,
+            });
+            if (!hasFullAccess) {
+              return managerHelper.stripObject({ object: transaction });
+            }
+
+            return transaction;
+          });
+
+          callback({ data: { transactions: allTransactions } });
         },
       });
     },
@@ -455,4 +530,4 @@ exports.createTransaction = createTransaction;
 exports.getTransactionById = getTransactionById;
 exports.removeTransaction = removeTransaction;
 exports.updateTransaction = updateTransaction;
-exports.getTransactionsCreatedByUser = getTransactionsCreatedByUser;
+exports.getTransactionsByUser = getTransactionsByUser;

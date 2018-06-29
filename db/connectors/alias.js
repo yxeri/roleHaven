@@ -30,12 +30,6 @@ const aliasSchema = new mongoose.Schema(dbConnector.createSchema({
 
 const Alias = mongoose.model('Alias', aliasSchema);
 
-const aliasFilter = dbConnector.createFilter({
-  aliasName: 1,
-  picture: 1,
-  fullName: 1,
-});
-
 /**
  * Update alias
  * @private
@@ -114,108 +108,54 @@ function getAlias({ query, callback }) {
 }
 
 /**
- * Add access to the alias for users or teams
+ * Update access to the alias
  * @param {Object} params - Parameters.
- * @param {string} params.aliasId - Id of the alias.
- * @param {string[]} [params.userIds] - Id of the users.
- * @param {string[]} [params.teamIds] - Id of the teams.
- * @param {string[]} [params.bannedIds] - Id of the blocked Ids to add.
- * @param {string[]} [params.teamAdminIds] - Id of the team admins to add.
- * @param {string[]} [params.userAdminIds] - Id of the user admins to add.
+ * @param {Function} params.callback - Callback.
+ * @param {boolean} [params.shouldRemove] - Should access be removed?
+ * @param {string[]} [params.userIds] - Id of the users to update.
+ * @param {string[]} [params.teamIds] - Id of the teams to update.
+ * @param {string[]} [params.bannedIds] - Id of the blocked Ids to update.
+ * @param {string[]} [params.teamAdminIds] - Id of the teams to update admin access for.
+ * @param {string[]} [params.userAdminIds] - Id of the users to update admin access for.
+ */
+function updateAccess(params) {
+  const accessParams = params;
+  accessParams.objectId = params.aliasId;
+  accessParams.object = Alias;
+  accessParams.callback = ({ error, data }) => {
+    if (error) {
+      accessParams.callback({ error });
+
+      return;
+    }
+
+    accessParams.callback({ data: { alias: data.object } });
+  };
+
+  if (params.shouldRemove) {
+    dbConnector.removeObjectAccess(params);
+  } else {
+    dbConnector.addObjectAccess(params);
+  }
+}
+
+/**
+ * Get alias by id or name.
+ * @param {Object} params - Parameters.
+ * @param {string} [params.aliasId] - Id of the alias.
+ * @param {string} [params.aliasName] - Name of the alias.
  * @param {Function} params.callback - Callback.
  */
-function addAccess({
-  userIds,
-  teamIds,
-  bannedIds,
+function getAliasById({
   aliasId,
-  teamAdminIds,
-  userAdminIds,
+  aliasName,
   callback,
 }) {
-  dbConnector.addObjectAccess({
-    userIds,
-    teamIds,
-    bannedIds,
-    userAdminIds,
-    teamAdminIds,
-    objectId: aliasId,
-    object: Alias,
-    callback: ({ error, data }) => {
-      if (error) {
-        callback({ error });
+  const query = aliasId ? { _id: aliasId } : { aliasName };
 
-        return;
-      }
-
-      callback({ alias: data.object });
-    },
-  });
-}
-
-/**
- * Remove access to the alias for user or team
- * @param {Object} params - Parameters.
- * @param {string} params.aliasId - Id of the alias.
- * @param {string[]} [params.userIds] - Id of the users to remove.
- * @param {string[]} [params.teamIds] - Id of the teams to remove.
- * @param {string[]} [params.bannedIds] - Blocked Ids to remove.
- * @param {string[]} [params.teamAdminIds] - Id of the teams to remove admin access from. They will not be removed from teamIds.
- * @param {string[]} [params.userAdminIds] - Id of the users to remove admin access from. They will not be removed from userIds.
- * @param {Function} params.callback - Callback.
- */
-function removeAccess({
-  userIds,
-  teamIds,
-  bannedIds,
-  aliasId,
-  teamAdminIds,
-  userAdminIds,
-  callback,
-}) {
-  dbConnector.removeObjectAccess({
-    userIds,
-    teamIds,
-    bannedIds,
-    teamAdminIds,
-    userAdminIds,
-    objectId: aliasId,
-    object: Alias,
-    callback: ({ error, data }) => {
-      if (error) {
-        callback({ error });
-
-        return;
-      }
-
-      callback({ alias: data.object });
-    },
-  });
-}
-
-/**
- * Get alias by name
- * @param {Object} params - Parameters
- * @param {string} params.aliasName - Name of the alias
- * @param {Function} params.callback - Callback
- */
-function getAliasByName({ aliasName, callback }) {
   getAlias({
     callback,
-    query: { aliasName },
-  });
-}
-
-/**
- * Get alias by id
- * @param {Object} params - Parameters
- * @param {string} params.aliasId - ID of the alias
- * @param {Function} params.callback - Callback
- */
-function getAliasById({ aliasId, callback }) {
-  getAlias({
-    callback,
-    query: { _id: aliasId },
+    query,
   });
 }
 
@@ -358,58 +298,35 @@ function updateAlias({
  * @param {Object} params - Parameters.
  * @param {string} params.user - User retrieving the aliases.
  * @param {Function} params.callback - Callback.
- * @param {boolean} [params.full] - Should access information be retrieved?
  */
 function getAliasesByUser({
   user,
   callback,
-  full = false,
 }) {
   const query = dbConnector.createUserQuery({ user });
-  const filter = !full ? aliasFilter : {};
 
   getAliases({
     query,
-    filter,
     callback,
   });
 }
 
 /**
- * Remove alias.
- * @param {Object} params - Parameters.
- * @param {string} params.aliasId - ID of the alias to remove.
- * @param {Function} params.callback - Callback.
- */
-function removeAlias({ aliasId, callback }) {
-  dbConnector.removeObject({
-    callback,
-    query: { _id: aliasId },
-    object: Alias,
-  });
-}
-
-/**
- * Get all names from aliases.
+ * Get all aliases.
  * @param {Object} params - Parameters.
  * @param {Function} params.callback - Callback
  */
-function getAllAliasNames({ callback }) {
+function getAllAliases({ callback }) {
   getAliases({
     callback,
-    filter: {
-      aliasName: 1,
-    },
+    query: {},
   });
 }
 
 exports.createAlias = createAlias;
-exports.removeAccess = removeAccess;
-exports.addAccess = addAccess;
+exports.updateAccess = updateAccess;
 exports.getAliasesByUser = getAliasesByUser;
 exports.updateAlias = updateAlias;
-exports.removeAlias = removeAlias;
-exports.getAliasByName = getAliasByName;
 exports.doesAliasExist = doesAliasExist;
 exports.getAliasById = getAliasById;
-exports.getAllAliasNames = getAllAliasNames;
+exports.getAllAliases = getAllAliases;

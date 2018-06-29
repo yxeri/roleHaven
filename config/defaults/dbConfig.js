@@ -220,6 +220,7 @@ config.EmitTypes = {
   DEVICE: 'device',
   DOCFILE: 'docFile',
   WHISPER: 'whisper',
+  SIMPLEMSG: 'simpleMsg',
   BROADCAST: 'broadcast',
   GAMECODE: 'gameCode',
   ALIAS: 'alias',
@@ -513,9 +514,9 @@ config.apiCommands = {
     name: 'LeaveTeam',
     accessLevel: config.AccessLevels.STANDARD,
   },
-  VerifyTeam: config.apiCommands.LeaveTeam || {
+  VerifyTeam: config.apiCommands.VerifyTeam || {
     name: 'VerifyTeam',
-    accessLevel: config.AccessLevels.ADMIN,
+    accessLevel: config.AccessLevels.MODERATOR,
   },
   GetTeamsList: config.apiCommands.GetTeamsList || {
     name: 'GetTeamsList',

@@ -24,13 +24,13 @@ let clientConfig = {};
 let config = {};
 
 try {
-  clientConfig = require(path.normalize(`${__dirname}/../../../../private/config/config`)); // eslint-disable-line
+  clientConfig = require('../../private/config/config'); // eslint-disable-line
 } catch (err) {
   console.log('Did not find client config');
 }
 
 try {
-  config = require(path.normalize(`${__dirname}/../../../../config/appConfig`)).config; // eslint-disable-line
+  config = require('../appConfig'); // eslint-disable-line
 } catch (err) {
   console.log('Did not find modified appConfig. Using defaults');
 }

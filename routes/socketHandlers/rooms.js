@@ -76,7 +76,7 @@ function handle(socket, io) {
     params.io = io;
     params.socket = socket;
 
-    roomManager.getRoom(params);
+    roomManager.getRoomById(params);
   });
 
   socket.on('getRooms', (params, callback = () => {

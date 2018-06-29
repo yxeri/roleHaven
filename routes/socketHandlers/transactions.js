@@ -67,7 +67,7 @@ function handle(socket, io) {
     params.io = io;
     params.socket = socket;
 
-    transactionManager.getTransactionsCreatedByUser(params);
+    transactionManager.getTransactionsByUser(params);
   });
 
   socket.on('getTransactionsByWallet', (params, callback = () => {

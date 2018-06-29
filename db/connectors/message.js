@@ -40,17 +40,6 @@ const messageSchema = new mongoose.Schema(dbConnector.createSchema({
 
 const Message = mongoose.model('Message', messageSchema);
 
-const messageFilter = dbConnector.createFilter({
-  messageType: 1,
-  roomId: 1,
-  image: 1,
-  coordinates: 1,
-  intro: 1,
-  extro: 1,
-  text: 1,
-  altText: 1,
-});
-
 /**
  * Update message.
  * @private
@@ -294,7 +283,6 @@ function updateMessage({
  * @param {Object} params.user - User retrieving the messages.
  * @param {Date} [params.startDate] - Date for when to start the span of messages.
  * @param {boolean} [params.shouldGetFuture] - Should messages from the future of the start date be retrieved?
- * @param {boolean} [params.full] - Should access information be retrieved?
  */
 function getMessagesByRoom({
   roomId,
@@ -302,10 +290,8 @@ function getMessagesByRoom({
   startDate,
   shouldGetFuture,
   user,
-  full,
 }) {
   const query = dbConnector.createUserQuery({ user });
-  const filter = !full ? messageFilter : {};
   query.roomId = roomId;
 
   getMessages({
@@ -313,7 +299,6 @@ function getMessagesByRoom({
     startDate,
     shouldGetFuture,
     query,
-    filter,
     errorNameContent: 'getMessagesByRoom',
   });
 }
@@ -323,19 +308,16 @@ function getMessagesByRoom({
  * @param {Object} params - Parameters.
  * @param {Object} params.user - User.
  * @param {Function} params.callback - Callback.
- * @param {boolean} [params.full] - Should the full object be returned?
  */
-function getMessagesByFollowed({
+function getMessagesByUser({
   user,
   callback,
-  full,
 }) {
-  const query = { roomId: { $in: user.followingRooms } };
-  const filter = !full ? messageFilter : {};
+  const query = dbConnector.createUserQuery({ user });
+  query.roomId = { $in: user.followingRooms };
 
   getMessages({
     query,
-    filter,
     callback,
   });
 }
@@ -417,35 +399,9 @@ function removeMessage({ messageId, callback }) {
  * @param {Function} params.callback - Callback
  */
 function getAllMessages({ callback }) {
-  dbConnector.getObjects({
-    object: Message,
-    filter: {
-      text: 1,
-      altText: 1,
-      intro: 1,
-      extro: 1,
-      roomId: 1,
-      coordinates: 1,
-      messageType: 1,
-      timeCreated: 1,
-      lastUpdated: 1,
-      customTimeCreated: 1,
-      customLastUpdated: 1,
-      image: 1,
-    },
-    callback: ({ error, data }) => {
-      if (error) {
-        callback({ error });
-
-        return;
-      }
-
-      callback({
-        data: {
-          messages: data.objects,
-        },
-      });
-    },
+  getMessages({
+    callback,
+    query: {},
   });
 }
 
@@ -457,5 +413,5 @@ exports.removeMessagesByUser = removeMessagesByUser;
 exports.removeMessage = removeMessage;
 exports.getMessageById = getMessageById;
 exports.removeMessagesByAlias = removeMessagesByAlias;
-exports.getMessagesByFollowed = getMessagesByFollowed;
+exports.getMessagesByUser = getMessagesByUser;
 exports.getAllMessages = getAllMessages;

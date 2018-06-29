@@ -52,18 +52,14 @@ function handle(io) {
    *
    * @apiDescription Retrieve documents.
    *
-   * @apiParam {boolean} [full] [Query] Should the complete object be retrieved?
-   *
    * @apiSuccess {Object} data
    * @apiSuccess {DocFile[]} data.docFiles Found documents.
    */
   router.get('/', (request, response) => {
-    const { full } = request.query;
     const { authorization: token } = request.headers;
 
     docFileManager.getDocFilesByUser({
       token,
-      full,
       callback: ({ error, data }) => {
         if (error) {
           restErrorChecker.checkAndSendError({ response, error });
@@ -88,8 +84,6 @@ function handle(io) {
    *
    * @apiParam {string} docFileId [Url] The Id of the document to retrieve.
    *
-   * @apiParam {boolean} [full] [Query] Should the complete object be retrieved?
-   *
    * @apiSuccess {Object} data
    * @apiSuccess {DocFile} data.docFile Found document.
    */
@@ -102,12 +96,10 @@ function handle(io) {
 
     const { docFileId } = request.params;
     const { authorization: token } = request.headers;
-    const { full } = request.query;
 
     docFileManager.getDocFileById({
       docFileId,
       token,
-      full,
       callback: ({ error, data }) => {
         if (error) {
           restErrorChecker.checkAndSendError({ response, error });

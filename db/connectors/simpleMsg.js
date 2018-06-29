@@ -26,10 +26,6 @@ const simpleMsgSchema = new mongoose.Schema(dbConnector.createSchema({
 
 const SimpleMsg = mongoose.model('SimpleMsg', simpleMsgSchema);
 
-const simpleMsgFilter = dbConnector.createFilter({
-  text: 1,
-});
-
 /**
  * Update simple msg
  * @private
@@ -166,17 +162,13 @@ function removeSimpleMsg({ simpleMsgId, callback }) {
  * Get simple messages
  * @param {Object} params - Parameters.
  * @param {Function} params.callback - Callback.
- * @param {boolean} [params.full] - Should access information be retrieved?
  */
 function getAllSimpleMsgs({
   callback,
-  full = false,
 }) {
-  const filter = !full ? simpleMsgFilter : {};
-
   getSimpleMsgs({
-    filter,
     callback,
+    query: {},
   });
 }
 

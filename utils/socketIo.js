@@ -16,6 +16,8 @@
 
 'use strict';
 
+const { dbConfig } = require('../config/defaults/config');
+
 /**
  * Get user's socket by socket ID.
  * @param {Object} params - Parameters.
@@ -63,6 +65,29 @@ function joinRooms({
 }
 
 /**
+ * Join all required system rooms.
+ * @param {Object} params - Parameters.
+ * @param {Object} params.io - Socket.io.
+ * @param {string} params.socketId - Id of the socket.
+ * @param {string} params.userId - Id of the user. The user will follow a room with its Id.
+ * @return {Object} Socket.
+ */
+function joinRequiredRooms({
+  io,
+  socketId,
+  userId,
+}) {
+  const userSocket = getUserSocket({ io, socketId });
+
+  if (userSocket) {
+    dbConfig.requiredRooms.forEach(roomId => userSocket.join(roomId));
+    userSocket.join(userId);
+  }
+
+  return userSocket;
+}
+
+/**
  * Leave socket rooms.
  * @param {Object} params - Parameters.
  * @param {string[]} params.roomIds - ID of the rooms to leave.
@@ -84,3 +109,4 @@ exports.getUserSocket = getUserSocket;
 exports.getSocketsByRoom = getSocketsByRoom;
 exports.joinRooms = joinRooms;
 exports.leaveRooms = leaveRooms;
+exports.joinRequiredRooms = joinRequiredRooms;

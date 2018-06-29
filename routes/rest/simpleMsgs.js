@@ -82,18 +82,14 @@ function handle(io) {
    *
    * @apiDescription Get simple messages.
    *
-   * @apiParam {boolean} [Query] [full] Should the returned messages contain all parameters? Default is that only some parameters are returned.
-   *
    * @apiSuccess {Object} data
    * @apiSuccess {SimpleMsg[]} data.simpleMsgs Messages found.
    */
   router.get('/', (request, response) => {
     const { authorization: token } = request.headers;
-    const { full } = request.query;
 
     simpleMsgManager.getSimpleMsgsByUser({
       token,
-      full,
       callback: ({ error, data }) => {
         if (error) {
           restErrorChecker.checkAndSendError({ response, error });
@@ -107,7 +103,7 @@ function handle(io) {
   });
 
   /**
-   * @api {post} /simpleMsg/:simpleMsgId Get a simple message
+   * @api {post} /simpleMsgs/:simpleMsgId Get a simple message
    * @apiVersion 8.0.0
    * @apiName GetSimpleMsg
    * @apiGroup SimpleMsgs
@@ -130,12 +126,10 @@ function handle(io) {
 
     const { authorization: token } = request.headers;
     const { simpleMsgId } = request.params;
-    const { full } = request.query;
 
     simpleMsgManager.getSimpleMsgById({
       simpleMsgId,
       token,
-      full,
       callback: ({ error, data }) => {
         if (error) {
           restErrorChecker.checkAndSendError({ response, error });

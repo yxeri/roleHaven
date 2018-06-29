@@ -45,7 +45,7 @@ function handle(io) {
   router.get('/', (request, response) => {
     const { authorization: token } = request.headers;
 
-    gameCodeManager.getGameCodesByOwner({
+    gameCodeManager.getGameCodesByUser({
       token,
       callback: ({ error, data }) => {
         if (error) {
@@ -83,12 +83,10 @@ function handle(io) {
 
     const { authorization: token } = request.headers;
     const { gameCodeId } = request.params;
-    const { full } = request.query;
 
     gameCodeManager.getGameCodeById({
       token,
       gameCodeId,
-      full,
       callback: ({ error, data }) => {
         if (error) {
           restErrorChecker.checkAndSendError({ response, error });
@@ -268,6 +266,7 @@ function handle(io) {
       gameCode,
       token,
       userId,
+      io,
       callback: ({ error, data }) => {
         if (error) {
           restErrorChecker.checkAndSendError({ response, error, sentData: request.body.data });

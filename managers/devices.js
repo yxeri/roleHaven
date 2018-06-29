@@ -20,54 +20,66 @@ const { dbConfig } = require('../config/defaults/config');
 const errorCreator = require('../error/errorCreator');
 const dbDevice = require('../db/connectors/device');
 const authenticator = require('../helpers/authenticator');
+const managerHelper = require('../helpers/manager');
 
 /**
- * Get device by Id and check if the user has access to it.
+ * Get a device by Id.
  * @param {Object} params - Parameters.
- * @param {Object} params.user - User retrieving the device.
- * @param {string} params.deviceId - Id of the device to retrieve.
+ * @param {string} params.token - jwt.
  * @param {Function} params.callback - Callback.
- * @param {string} [params.errorContentText] - Text to be printed on error.
- * @param {boolean} [params.shouldBeAdmin] - Does the user have to be an admin?
+ * @param {Object} [params.internalCallUser] - User to use on authentication. It will bypass token authentication.
  */
-function getAccessibleDevice({
-  user,
-  deviceId,
+function getDeviceById({
+  token,
   callback,
-  shouldBeAdmin,
-  full,
-  errorContentText = `deviceId ${deviceId}`,
+  deviceId,
+  internalCallUser,
 }) {
-  dbDevice.getDeviceById({
-    deviceId,
-    full: true,
-    callback: (deviceData) => {
-      if (deviceData.error) {
-        callback({ error: deviceData.error });
-
-        return;
-      } else if (!authenticator.hasAccessTo({
-        shouldBeAdmin,
-        toAuth: user,
-        objectToAccess: deviceData.data.device,
-      })) {
-        callback({ error: new errorCreator.NotAllowed({ name: errorContentText }) });
+  authenticator.isUserAllowed({
+    token,
+    internalCallUser,
+    commandName: dbConfig.apiCommands.GetDevices.name,
+    callback: ({ error, data }) => {
+      if (error) {
+        callback({ error });
 
         return;
       }
 
-      const foundDevice = deviceData.data.device;
-      const filteredDevice = {
-        objectId: foundDevice.objectId,
-        deviceName: foundDevice.deviceName,
-        deviceType: foundDevice.deviceType,
-        connectedToUser: foundDevice.connectedToUser,
-        lastUpdated: foundDevice.lastUpdated,
-      };
+      const { user } = data;
 
-      callback({
-        data: {
-          device: full ? foundDevice : filteredDevice,
+      dbDevice.getDeviceById({
+        deviceId,
+        callback: ({ error: getDeviceError, data: getDeviceData }) => {
+          if (getDeviceError) {
+            callback({ error: getDeviceError });
+
+            return;
+          }
+
+          const { device } = getDeviceData;
+
+          console.log('device data from id', device);
+
+          const {
+            canSee,
+            hasFullAccess,
+          } = authenticator.hasAccessTo({
+            objectToAccess: device,
+            toAuth: user,
+          });
+
+          if (!canSee) {
+            callback({ error: errorCreator.NotAllowed({ name: `device ${deviceId}` }) });
+
+            return;
+          } else if (!hasFullAccess) {
+            callback({ data: { device: managerHelper.stripObject({ object: device }) } });
+
+            return;
+          }
+
+          callback({ data: { device } });
         },
       });
     },
@@ -80,15 +92,13 @@ function getAccessibleDevice({
  * @param {string} params.token - jwt.
  * @param {Object} params.device - Device parameters to create.
  * @param {Function} params.callback - Callback.
- * @param {Object} params.io - Socket io. Will be used if socket is not set.
- * @param {Object} [params.socket] - Socket.io.
+ * @param {Object} params.io - Socket io.
  */
 function createDevice({
   token,
   device,
   callback,
   io,
-  socket,
 }) {
   authenticator.isUserAllowed({
     token,
@@ -114,18 +124,22 @@ function createDevice({
           }
 
           const createdDevice = deviceData.data.device;
-          const dataToSend = {
+          const creatorDataToSend = {
             data: {
+              isSender: true,
               device: createdDevice,
               changeType: dbConfig.ChangeTypes.CREATE,
             },
           };
+          const dataToSend = {
+            data: {
+              device: managerHelper.stripObject({ object: createdDevice }),
+              changeType: dbConfig.ChangeTypes.CREATE,
+            },
+          };
 
-          if (socket) {
-            socket.broadcast.emit(dbConfig.EmitTypes.DEVICE, dataToSend);
-          } else {
-            io.emit(dbConfig.EmitTypes.DEVICE, dataToSend);
-          }
+          io.emit(dbConfig.EmitTypes.DEVICE, dataToSend);
+          io.to(createdDevice.objectId).emit(dbConfig.EmitTypes.DEVICE, creatorDataToSend);
 
           callback(dataToSend);
         },
@@ -140,8 +154,7 @@ function createDevice({
  * @param {Object} params.device - Device.
  * @param {Object} params.options - Options.
  * @param {Function} params.callback - Callback.
- * @param {Object} params.io - Socket.io. Will be used if socket is not set.
- * @param {Object} [params.socket] - Socket io.
+ * @param {Object} params.io - Socket.io.
  */
 function updateDevice({
   token,
@@ -149,7 +162,6 @@ function updateDevice({
   deviceId,
   options,
   callback,
-  socket,
   io,
 }) {
   authenticator.isUserAllowed({
@@ -162,14 +174,28 @@ function updateDevice({
         return;
       }
 
-      getAccessibleDevice({
+      const { user } = data;
+
+      getDeviceById({
         deviceId,
-        shouldBeAdmin: true,
-        user: data.user,
-        errorContentText: `update device id ${deviceId}`,
-        callback: (deviceData) => {
-          if (deviceData.error) {
-            callback({ error: deviceData.error });
+        internalCallUser: user,
+        callback: ({ error: deviceError, data: deviceData }) => {
+          if (deviceError) {
+            callback({ error: deviceError });
+
+            return;
+          }
+
+          const { device: foundDevice } = deviceData;
+          const {
+            hasFullAccess,
+          } = authenticator.hasAccessTo({
+            objectToAccess: foundDevice,
+            toAuth: user,
+          });
+
+          if (!hasFullAccess) {
+            callback({ error: new errorCreator.NotAllowed({ name: `device ${deviceId}` }) });
 
             return;
           }
@@ -178,25 +204,30 @@ function updateDevice({
             options,
             device,
             deviceId,
-            callback: (updateData) => {
-              if (updateData.error) {
-                callback({ error: updateData.error });
+            callback: ({ error: updateError, data: updateData }) => {
+              if (updateError) {
+                callback({ error: updateError });
 
                 return;
               }
 
+              const { device: updatedDevice } = updateData;
+              const creatorData = {
+                data: {
+                  isSender: true,
+                  device: updatedDevice,
+                  changeType: dbConfig.ChangeTypes.UPDATE,
+                },
+              };
               const dataToSend = {
                 data: {
-                  device: updateData.data.device,
+                  device: managerHelper.stripObject({ object: updatedDevice }),
                   changeType: dbConfig.ChangeTypes.UPDATE,
                 },
               };
 
-              if (socket) {
-                socket.broadcast.emit(dbConfig.EmitTypes.DEVICE, dataToSend);
-              } else {
-                io.emit(dbConfig.EmitTypes.DEVICE, dataToSend);
-              }
+              io.emit(dbConfig.EmitTypes.DEVICE, dataToSend);
+              io.to(updatedDevice.objectId).emit(dbConfig.EmitTypes.DEVICE, creatorData);
 
               callback(dataToSend);
             },
@@ -215,12 +246,11 @@ function updateDevice({
  */
 function getDevicesByUser({
   token,
-  full,
   callback,
 }) {
   authenticator.isUserAllowed({
     token,
-    commandName: full ? dbConfig.apiCommands.GetFull.name : dbConfig.apiCommands.GetDevices.name,
+    commandName: dbConfig.apiCommands.GetDevices.name,
     callback: ({ error, data }) => {
       if (error) {
         callback({ error });
@@ -231,9 +261,32 @@ function getDevicesByUser({
       const { user } = data;
 
       dbDevice.getDevicesByUser({
-        callback,
-        full,
         user,
+        callback: ({ error: getDevicesError, data: getDevicesData }) => {
+          if (getDevicesError) {
+            callback({ error: getDevicesError });
+
+            return;
+          }
+
+          const { devices } = getDevicesData;
+          const allDevices = devices.map((deviceItem) => {
+            const {
+              hasFullAccess,
+            } = authenticator.hasAccessTo({
+              toAuth: user,
+              objectToAccess: deviceItem,
+            });
+
+            if (!hasFullAccess) {
+              return managerHelper.stripObject({ object: deviceItem });
+            }
+
+            return deviceItem;
+          });
+
+          callback({ data: { devices: allDevices } });
+        },
       });
     },
   });
@@ -244,15 +297,13 @@ function getDevicesByUser({
  * @param {Object} params - Parameters.
  * @param {string} params.token - jwt.
  * @param {string} params.deviceId - Id of the device.
- * @param {Object} params.io - Socket.io. Will be used if socket is not set.
+ * @param {Object} params.io - Socket.io.
  * @param {Function} params.callback - Callback.
- * @param {Object} [params.socket] - Socket.io.
  */
 function removeDevice({
   token,
   deviceId,
   callback,
-  socket,
   io,
 }) {
   authenticator.isUserAllowed({
@@ -267,23 +318,35 @@ function removeDevice({
 
       const { user } = data;
 
-      getAccessibleDevice({
+      getDeviceById({
         deviceId,
-        user,
-        shouldBeAdmin: true,
-        errorContentText: `remove device id ${deviceId}`,
-        callback: (deviceData) => {
-          if (deviceData.error) {
-            callback({ error: deviceData.error });
+        internalCallUser: user,
+        callback: ({ error: deviceError, data: deviceData }) => {
+          if (deviceError) {
+            callback({ error: deviceError });
+
+            return;
+          }
+
+          const { device } = deviceData;
+          const {
+            hasFullAccess,
+          } = authenticator.hasAccessTo({
+            objectToAccess: device,
+            toAuth: user,
+          });
+
+          if (!hasFullAccess) {
+            callback({ error: new errorCreator.NotAllowed({ name: `device ${deviceId}` }) });
 
             return;
           }
 
           dbDevice.removeDevice({
             deviceId,
-            callback: (removeData) => {
-              if (removeData.error) {
-                callback({ error: removeData.error });
+            callback: ({ error: removeDeviceError }) => {
+              if (removeDeviceError) {
+                callback({ error: removeDeviceError });
 
                 return;
               }
@@ -295,11 +358,7 @@ function removeDevice({
                 },
               };
 
-              if (socket) {
-                socket.broadcast.emit(dbConfig.EmitTypes.DEVICE, dataToSend);
-              } else {
-                io.emit(dbConfig.EmitTypes.DEVICE, dataToSend);
-              }
+              io.emit(dbConfig.EmitTypes.DEVICE, dataToSend);
 
               callback(dataToSend);
             },
@@ -311,20 +370,31 @@ function removeDevice({
 }
 
 /**
- * Get a device by Id.
+ * Update access to the device for users or teams.
  * @param {Object} params - Parameters.
- * @param {string} params.token - jwt.
+ * @param {string} params.deviceId - Id of the device.
  * @param {Function} params.callback - Callback.
+ * @param {boolean} [params.shouldRemove] - Should access be removed from the users or teams?
+ * @param {string[]} [params.userIds] - Id of the users.
+ * @param {string[]} [params.teamIds] - Id of the teams.
+ * @param {string[]} [params.bannedIds] - Id of the blocked Ids to add.
+ * @param {string[]} [params.teamAdminIds] - Id of the teams to change admin access for.
+ * @param {string[]} [params.userAdminIds] - Id of the users to change admin access for.
  */
-function getDeviceById({
+function updateAccess({
   token,
-  callback,
   deviceId,
-  full,
+  teamAdminIds,
+  userAdminIds,
+  userIds,
+  teamIds,
+  bannedIds,
+  shouldRemove,
+  callback,
 }) {
   authenticator.isUserAllowed({
     token,
-    commandName: dbConfig.apiCommands.GetDevices.name,
+    commandName: dbConfig.apiCommands.UpdateDevice.name,
     callback: ({ error, data }) => {
       if (error) {
         callback({ error });
@@ -334,12 +404,42 @@ function getDeviceById({
 
       const { user } = data;
 
-      getAccessibleDevice({
+      getDeviceById({
         deviceId,
-        callback,
-        user,
-        full,
-        shouldBeAdmin: full && dbConfig.apiCommands.GetFull.accessLevel > user.accessLevel,
+        internalCallUser: user,
+        callback: ({ error: deviceError, data: deviceData }) => {
+          if (deviceError) {
+            callback({ error: deviceError });
+
+            return;
+          }
+
+          const { device } = deviceData;
+
+          const {
+            hasFullAccess,
+          } = authenticator.hasAccessTo({
+            objectToAccess: device,
+            toAuth: user,
+          });
+
+          if (!hasFullAccess) {
+            callback({ error: errorCreator.NotAllowed({ name: `device ${deviceId}` }) });
+
+            return;
+          }
+
+          dbDevice.updateAccess({
+            shouldRemove,
+            userIds,
+            teamIds,
+            bannedIds,
+            teamAdminIds,
+            userAdminIds,
+            deviceId,
+            callback,
+          });
+        },
       });
     },
   });
@@ -350,3 +450,4 @@ exports.removeDevice = removeDevice;
 exports.updateDevice = updateDevice;
 exports.getDeviceById = getDeviceById;
 exports.getDevicesByUser = getDevicesByUser;
+exports.updateAccess = updateAccess;

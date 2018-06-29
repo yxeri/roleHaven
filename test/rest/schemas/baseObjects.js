@@ -26,10 +26,25 @@ schemas.remove = {
   },
 };
 
+/**
+ *   modifiedObject.teamAdminIds = undefined;
+ modifiedObject.userAdminIds = undefined;
+ modifiedObject.userIds = undefined;
+ modifiedObject.teamIds = undefined;
+ modifiedObject.bannedIds = undefined
+ * @type {{type: string, required: string[], properties: {ownerId: {type: string}, lastUpdated: {type: string}, timeCreated: {type: string}, isPublic: {type: string}, objectId: {type: string}, accessLevel: {type: string}, visibility: {type: string}}, not: {required: string[]}}}
+ */
+
 schemas.liteBaseObject = {
   type: 'object',
   required: [
     'lastUpdated',
+    'ownerId',
+    'timeCreated',
+    'isPublic',
+    'objectId',
+    'accessLevel',
+    'visibility',
   ],
   properties: {
     ownerId: { type: 'string' },
@@ -48,6 +63,8 @@ schemas.liteBaseObject = {
       'teamAdminIds',
       'userAdminIds',
       'bannedIds',
+      'userIds',
+      'teamIds',
     ],
   },
 };
@@ -76,11 +93,11 @@ schemas.fullBaseObject = {
     visiblity: { type: 'number' },
     userIds: {
       type: 'array',
-      items: { type: 'number' },
+      items: { type: 'string' },
     },
     teamIds: {
       type: 'array',
-      items: { type: 'number' },
+      items: { type: 'string' },
     },
     isPublic: { type: 'boolean' },
     teamAdminIds: {
