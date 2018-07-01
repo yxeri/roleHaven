@@ -67,7 +67,7 @@ function handle(io) {
     const { messageId } = request.params;
     const { authorization: token } = request.headers;
 
-    messageManager.updateMsg({
+    messageManager.updateMessage({
       message,
       options,
       io,
@@ -97,8 +97,6 @@ function handle(io) {
    *
    * @apiParam {string} messageId [Url] Id of the message to retrieve.
    *
-   * @apiParam {boolean} full [Query]
-   *
    * @apiSuccess {Object} data
    * @apiSuccess {Message} data.message Found message.
    */
@@ -111,12 +109,10 @@ function handle(io) {
 
     const { messageId } = request.params;
     const { authorization: token } = request.headers;
-    const { full } = request.query;
 
     messageManager.getMessageById({
       messageId,
       token,
-      full,
       callback: ({ error, data }) => {
         if (error) {
           restErrorChecker.checkAndSendError({ response, error });
@@ -141,7 +137,6 @@ function handle(io) {
    *
    * @apiParam {string} [roomId] [Url] Id of the room to retrieve messages from.
    *
-   * @apiParam {boolean} [full] [Query] Should the complete object be retrieved?
    * @apiParam {string} [startDate] [Query] Start date of when to retrieve messages from the past.
    * @apiParam {boolean} [fullHistory] [Query] Should all messages and rooms be returned?
    * @apiParam {boolean} [shouldGetFuture] [Query] Should messages be retrieved from the future instead of the past?

@@ -177,82 +177,35 @@ function createImage({ image, callback }) {
 }
 
 /**
- * Add access to the image.
+ * Update access to the image.
  * @param {Object} params - Parameters.
  * @param {Function} params.callback - Callback.
- * @param {string[]} [params.userIds] - Id of the users to add
- * @param {string[]} [params.teamIds] - Id of the teams to add
- * @param {string[]} [params.bannedIds] - Id of the blocked Ids to add
- * @param {string[]} [params.teamAdminIds] - Id of the teams to give admin access to. They will also be added to teamIds.
- * @param {string[]} [params.userAdminIds] - Id of the users to give admin access to. They will also be added to userIds.
+ * @param {boolean} [params.shouldRemove] - Should access be removed?
+ * @param {string[]} [params.userIds] - Id of the users to update.
+ * @param {string[]} [params.teamIds] - Id of the teams to update.
+ * @param {string[]} [params.bannedIds] - Id of the blocked Ids to update.
+ * @param {string[]} [params.teamAdminIds] - Id of the teams to update admin access for.
+ * @param {string[]} [params.userAdminIds] - Id of the users to update admin access for.
  */
-function addAccess({
-  imageId,
-  userIds,
-  teamIds,
-  teamAdminIds,
-  userAdminIds,
-  bannedIds,
-  callback,
-}) {
-  dbConnector.addObjectAccess({
-    userIds,
-    teamIds,
-    bannedIds,
-    teamAdminIds,
-    userAdminIds,
-    objectId: imageId,
-    object: Image,
-    callback: ({ error, data }) => {
-      if (error) {
-        callback({ error });
+function updateAccess(params) {
+  const accessParams = params;
+  accessParams.objectId = params.imageId;
+  accessParams.object = Image;
+  accessParams.callback = ({ error, data }) => {
+    if (error) {
+      accessParams.callback({ error });
 
-        return;
-      }
+      return;
+    }
 
-      callback({ data: { image: data.object } });
-    },
-  });
-}
+    accessParams.callback({ data: { image: data.object } });
+  };
 
-/**
- * Remove access for teams and users or unban Ids.
- * @param {Object} params - Parameters.
- * @param {string} params.imageId - Id of the device to update.
- * @param {Function} params.callback - Callback.
- * @param {string[]} [params.userIds] - Id of the users to remove.
- * @param {string[]} [params.teamIds] - Id of the teams to remove.
- * @param {string[]} [params.bannedIds] - Id of the blocked Ids to remove.
- * @param {string[]} [params.teamAdminIds] - Id of the team admins to remove. They will not be removed from teamIds.
- * @param {string[]} [params.userAdminIds] - Id of the user admins to remove. They will not be removed from userIds.
- */
-function removeAccess({
-  imageId,
-  userIds,
-  teamIds,
-  bannedIds,
-  teamAdminIds,
-  userAdminIds,
-  callback,
-}) {
-  dbConnector.removeObjectAccess({
-    userIds,
-    teamIds,
-    teamAdminIds,
-    userAdminIds,
-    bannedIds,
-    objectId: imageId,
-    object: Image,
-    callback: ({ error, data }) => {
-      if (error) {
-        callback({ error });
-
-        return;
-      }
-
-      callback({ data: { image: data.object } });
-    },
-  });
+  if (params.shouldRemove) {
+    dbConnector.removeObjectAccess(params);
+  } else {
+    dbConnector.addObjectAccess(params);
+  }
 }
 
 /**
@@ -311,8 +264,7 @@ function removeImage({ imageId, callback }) {
   });
 }
 
-exports.addAccessToDevice = addAccess;
-exports.removeAccessToDevice = removeAccess;
+exports.updateAccess = updateAccess;
 exports.updateImage = updateImage;
 exports.getAllDevices = getAllImages;
 exports.createDevice = createImage;

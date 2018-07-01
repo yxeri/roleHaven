@@ -70,13 +70,13 @@ function handle(socket, io) {
     forumPostManager.getPostsByUser(params);
   });
 
-  socket.on('getPostsByThread', (params, callback = () => {
+  socket.on('getPostsByThreads', (params, callback = () => {
   }) => {
     params.callback = callback;
     params.io = io;
     params.socket = socket;
 
-    forumPostManager.getPostsByThread(params);
+    forumPostManager.getPostsByThreads(params);
   });
 
   socket.on('getPostsByForum', (params, callback = () => {

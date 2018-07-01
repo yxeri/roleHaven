@@ -67,6 +67,8 @@ function handle(io) {
     const { postId } = request.params;
     const { authorization: token } = request.headers;
 
+    console.log('post to update', post);
+
     forumPostManager.updatePost({
       post,
       options,
@@ -138,8 +140,6 @@ function handle(io) {
    *
    * @apiParam {string} postId [Url] Id of the post to retrieve.
    *
-   * @apiParam {boolean} [full] [Query] Should the complete object be retrieved?
-   *
    * @apiSuccess {Object} data
    * @apiSuccess {ForumPost} data.post Found forum post.
    */
@@ -152,12 +152,10 @@ function handle(io) {
 
     const { postId } = request.params;
     const { authorization: token } = request.headers;
-    const { full } = request.query;
 
     forumPostManager.getPostById({
       postId,
       token,
-      full,
       callback: ({ error, data }) => {
         if (error) {
           restErrorChecker.checkAndSendError({ response, error });
@@ -180,7 +178,6 @@ function handle(io) {
    *
    * @apiDescription Get posts. The default is to return all posts made by the user. Setting threadId or forumId will instead retrieve all posts connected to the thread/forum.
    *
-   * @apiParam {boolean} [full] [Query] Should the complete object be retrieved?
    * @apiParam {string} [threadId] [Query] Id of the thread to retrieve posts from.
    * @apiParam {string} [forumId] [Query] Id of the forum to retrieve posts from.
    *

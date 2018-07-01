@@ -27,10 +27,6 @@ const walletSchema = new mongoose.Schema(dbConnector.createSchema({
 
 const Wallet = mongoose.model('Wallet', walletSchema);
 
-const walletFilter = dbConnector.createFilter({
-  amount: 1,
-});
-
 /**
  * Get wallets
  * @private
@@ -150,13 +146,14 @@ function getWalletsByTeams({ teamIds, callback }) {
  * @param {string} params.user - User retrieving wallets.
  * @param {Function} params.callback - Callback
  */
-function getWalletsByUser({ full, user, callback }) {
+function getWalletsByUser({
+  user,
+  callback,
+}) {
   const query = dbConnector.createUserQuery({ user });
-  const filter = !full ? walletFilter : {};
 
   getWallets({
     query,
-    filter,
     callback,
   });
 }
@@ -199,11 +196,11 @@ function createWallet({
  * @param {Object} params - Parameters
  * @param {string} params.walletId - Wallet ID
  * @param {Object} params.wallet - Update wallet
- * @param {number} params.wallet.amount - Amount to increase or decrease with
- * @param {Object} params.options - Options
- * @param {boolean} params.options.shouldDecreaseAmount - Should the amount in the wallet be decreased?
- * @param {boolean} params.options.resetAmount - Should the wallet amount be reset?
- * @param {boolean} params.options.resetOwnerAliasId - Should owner alias ID be removed?
+ * @param {number} [params.wallet.amount] - Amount to increase or decrease with
+ * @param {Object} [params.options] - Options
+ * @param {boolean} [params.options.shouldDecreaseAmount] - Should the amount in the wallet be decreased?
+ * @param {boolean} [params.options.resetAmount] - Should the wallet amount be reset?
+ * @param {boolean} [params.options.resetOwnerAliasId] - Should owner alias ID be removed?
  * @param {Function} params.callback - Callback
  */
 function updateWallet({
@@ -234,10 +231,12 @@ function updateWallet({
     update.$inc = {};
 
     if (shouldDecreaseAmount) {
-      update.$inc.amount = Math.abs(amount);
-    } else {
       update.$inc.amount = -Math.abs(amount);
+    } else {
+      update.$inc.amount = Math.abs(amount);
     }
+
+    console.log(-Math.abs(amount), Math.abs(amount));
   }
 
   if (resetOwnerAliasId) {
@@ -261,75 +260,35 @@ function updateWallet({
 }
 
 /**
- * Add access to the wallet for users or teams
- * @param {Object} params - Parameters
- * @param {string} params.walletId - ID of the wallet
- * @param {string[]} [params.userIds] - ID of the users
- * @param {string[]} [params.teamIds] - ID of the teams
- * @param {string[]} [params.bannedIds] - ID of the blocked Ids to add
- * @param {string[]} [params.teamAdminIds] - Id of the teams to give admin access to. They will also be added to teamIds.
- * @param {string[]} [params.userAdminIds] - Id of the users to give admin access to. They will also be added to userIds.
- * @param {Function} params.callback - Callback
+ * Update access to the wallet.
+ * @param {Object} params - Parameters.
+ * @param {Function} params.callback - Callback.
+ * @param {boolean} [params.shouldRemove] - Should access be removed?
+ * @param {string[]} [params.userIds] - Id of the users to update.
+ * @param {string[]} [params.teamIds] - Id of the teams to update.
+ * @param {string[]} [params.bannedIds] - Id of the blocked Ids to update.
+ * @param {string[]} [params.teamAdminIds] - Id of the teams to update admin access for.
+ * @param {string[]} [params.userAdminIds] - Id of the users to update admin access for.
  */
-function addAccess({
-  userIds,
-  teamIds,
-  bannedIds,
-  walletId,
-  teamAdminIds,
-  userAdminIds,
-  callback,
-}) {
-  dbConnector.addObjectAccess({
-    userIds,
-    teamIds,
-    bannedIds,
-    teamAdminIds,
-    userAdminIds,
-    objectId: walletId,
-    object: Wallet,
-    callback: ({ error, data }) => {
-      if (error) {
-        callback({ error });
+function updateAccess(params) {
+  const accessParams = params;
+  accessParams.objectId = params.walletId;
+  accessParams.object = Wallet;
+  accessParams.callback = ({ error, data }) => {
+    if (error) {
+      accessParams.callback({ error });
 
-        return;
-      }
+      return;
+    }
 
-      callback({ wallet: data.object });
-    },
-  });
-}
+    accessParams.callback({ data: { wallet: data.object } });
+  };
 
-/**
- * Remove access to the wallet for users and/or teams
- * @param {Object} params - Parameters
- * @param {string} params.walletId - ID of the wallet
- * @param {string[]} [params.userIds] - ID of the users
- * @param {string[]} [params.teamIds] - ID of the teams
- * @param {string[]} [params.bannedIds] - ID of the blocked Ids to add
- * @param {string[]} [params.teamAdminIds] - Id of the teams to remove admin access from. They will not be removed from teamIds.
- * @param {string[]} [params.userAdminIds] - Id of the users to remove admin access from. They will not be removed from userIds.
- * @param {Function} params.callback - Callback
- */
-function removeAccess({
-  userIds,
-  teamIds,
-  bannedIds,
-  teamAdminIds,
-  userAdminIds,
-  walletId,
-  callback,
-}) {
-  dbConnector.removeObjectAccess({
-    userIds,
-    teamIds,
-    bannedIds,
-    teamAdminIds,
-    userAdminIds,
-    callback,
-    objectId: walletId,
-    object: Wallet,
-  });
+  if (params.shouldRemove) {
+    dbConnector.removeObjectAccess(params);
+  } else {
+    dbConnector.addObjectAccess(params);
+  }
 }
 
 /**
@@ -375,8 +334,7 @@ function getWalletById({ walletId, callback }) {
 exports.createWallet = createWallet;
 exports.getAllWallets = getAllWallets;
 exports.getWalletsByUser = getWalletsByUser;
-exports.removeAccess = removeAccess;
-exports.addAccess = addAccess;
+exports.updateAccess = updateAccess;
 exports.removeWallet = removeWallet;
 exports.updateWallet = updateWallet;
 exports.getWalletsByTeams = getWalletsByTeams;

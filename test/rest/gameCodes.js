@@ -57,7 +57,6 @@ describe('GameCodes', () => {
     apiPath,
     objectType,
     objectsType,
-    ignoreMultiFull: true,
     testData: testData.create,
     singleLiteSchema: gameCodeSchemas.gameCode,
     multiLiteSchema: gameCodeSchemas.gameCodes,

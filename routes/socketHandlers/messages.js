@@ -66,7 +66,7 @@ function handle(socket, io) {
     params.io = io;
     params.socket = socket;
 
-    messageManager.updateMsg(params);
+    messageManager.updateMessage(params);
   });
 
   socket.on('removeMessage', (params, callback = () => {
@@ -96,7 +96,7 @@ function handle(socket, io) {
     if (params.fullHistory) {
       messageManager.getFullHistory(params);
     } else {
-      messageManager.getMessagesByFollowed(params);
+      messageManager.getMessagesByUser(params);
     }
   });
 

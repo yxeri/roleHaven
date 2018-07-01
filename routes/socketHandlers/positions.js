@@ -61,22 +61,22 @@ function handle(socket, io) {
     positionManager.getPositionById(params);
   });
 
-  socket.on('getPositions', (params, callback = () => {
+  socket.on('getPositionsByUser', (params, callback = () => {
   }) => {
     params.callback = callback;
     params.io = io;
     params.socket = socket;
 
-    positionManager.getPositions(params);
+    positionManager.getPositionsByUser(params);
   });
 
-  socket.on('updatePositionCoordinates', (params, callback = () => {
+  socket.on('getAndStoreGooglePositions', (params, callback = () => {
   }) => {
     params.callback = callback;
     params.io = io;
     params.socket = socket;
 
-    positionManager.updatePositionCoordinates(params);
+    positionManager.getPositionsByUser(params);
   });
 }
 

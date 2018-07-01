@@ -21,7 +21,6 @@ const objectValidator = require('../../utils/objectValidator');
 const transactionManager = require('../../managers/transactions');
 const restErrorChecker = require('../../helpers/restErrorChecker');
 const errorCreator = require('../../error/errorCreator');
-const helper = require('./helper');
 
 const router = new express.Router();
 
@@ -95,14 +94,12 @@ function handle(io) {
       return;
     }
 
-    const { full } = request.query;
     const { transactionId } = request.params;
     const { authorization: token } = request.headers;
 
     transactionManager.getTransactionById({
       transactionId,
       token,
-      full,
       callback: ({ error, data }) => {
         if (error) {
           restErrorChecker.checkAndSendError({ response, error, sentData: request.body.data });
@@ -123,16 +120,26 @@ function handle(io) {
    *
    * @apiHeader {string} Authorization Your JSON Web Token.
    *
-   * @apiDescription Get transactions. The default is to return all transactions made by the user. Setting walletId will instead retrieve all transactions connected to the wallet.
-   *
-   * @apiParam {boolean} [full] [Query] Should the complete object be retrieved?
-   * @apiParam {string} [walletId] [Query] Id of the wallet to retrieve transactions from.
+   * @apiDescription Get transactions.
    *
    * @apiSuccess {Object} data
    * @apiSuccess {Transaction[]} data.transactions Found transactions.
    */
   router.get('/', (request, response) => {
-    helper.getTransactions({ request, response });
+    const { authorization: token } = request.headers;
+
+    transactionManager.getTransactionsByUser({
+      token,
+      callback: ({ error, data }) => {
+        if (error) {
+          restErrorChecker.checkAndSendError({ response, error, sentData: request.body.data });
+
+          return;
+        }
+
+        response.json({ data });
+      },
+    });
   });
 
   /**

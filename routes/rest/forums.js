@@ -202,8 +202,6 @@ function handle(io) {
    *
    * @apiParam {string} forumId [Url] Id of the forum to retrieve.
    *
-   * @apiParam {boolean} [full] [Query] Should the complete object be retrieved?
-   *
    * @apiSuccess {Object} data
    * @apiSuccess {Forum} data.forum Found forum.
    */
@@ -216,12 +214,10 @@ function handle(io) {
 
     const { forumId } = request.params;
     const { authorization: token } = request.headers;
-    const { full } = request.query;
 
     forumsManager.getForumById({
       forumId,
       token,
-      full,
       callback: ({ error, data }) => {
         if (error) {
           restErrorChecker.checkAndSendError({ response, error });
@@ -234,14 +230,24 @@ function handle(io) {
     });
   });
 
-
+  /**
+   * @api {get} /forums Get forums
+   * @apiVersion 8.0.0
+   * @apiName GetForums
+   * @apiGroup Forums
+   *
+   * @apiHeader {string} Authorization Your JSON Web Token.
+   *
+   * @apiDescription Retrieve forums.
+   *
+   * @apiSuccess {Object} data
+   * @apiSuccess {Forum[]} data.forums Found forums.
+   */
   router.get('/', (request, response) => {
-    const { full } = request.query;
     const { authorization: token } = request.headers;
 
     forumsManager.getForumsByUser({
       token,
-      full,
       callback: ({ error, data }) => {
         if (error) {
           restErrorChecker.checkAndSendError({ response, error });
@@ -266,13 +272,73 @@ function handle(io) {
    *
    * @apiParam {string} forumId [Url] Id of the forum to retrieve threads from.
    *
-   * @apiParam {boolean} [full] [Query] Should the complete object be retrieved?
-   *
    * @apiSuccess {Object} data
    * @apiSuccess {ForumThread[]} data.threads Found forum threads.
    */
   router.get('/:forumId/threads', (request, response) => {
     helper.getForumThreads({ request, response });
+  });
+
+  /**
+   * @api {put} /forums/:forumId/permissions Update permissions on a forum
+   * @apiVersion 8.0.0
+   * @apiName UpdateForumPermissions
+   * @apiGroup Forums
+   *
+   * @apiHeader {string} Authorization Your JSON Web Token.
+   *
+   * @apiDescription Update permissions on a forum.
+   *
+   * @apiParam {string} forumId Id of the forum to update.
+   *
+   * @apiParam {Object} data
+   * @apiParam {boolean} [data.shouldRemove] Should the permissions be removed from the sent Ids? Default is false.
+   * @apiParam {string[]} data.userIds Users to give access to.
+   * @apiParam {string[]} data.teamIds Teams to give access to.
+   * @apiParam {string[]} data.teamAdminIds Teams to give admin access to.
+   * @apiParam {string[]} data.userAdminIds Users to give admin access to.
+   * @apiParam {string[]} data.bannedIds Ids to ban.
+   *
+   * @apiSuccess {Object} data
+   * @apiSuccess {Forum} data.forum Updated forum.
+   */
+  router.put('/:forumId/permissions', (request, response) => {
+    if (!objectValidator.isValidData(request.params, { forumId: true })) {
+      restErrorChecker.checkAndSendError({ response, error: new errorCreator.InvalidData({ expected: 'params = { forumId }' }) });
+
+      return;
+    }
+
+    const {
+      userIds,
+      teamIds,
+      teamAdminIds,
+      userAdminIds,
+      bannedIds,
+      shouldRemove,
+    } = request.body.data;
+    const { forumId } = request.params;
+    const { authorization: token } = request.headers;
+
+    forumsManager.updateAccess({
+      token,
+      forumId,
+      teamAdminIds,
+      userAdminIds,
+      userIds,
+      teamIds,
+      bannedIds,
+      shouldRemove,
+      callback: ({ error, data }) => {
+        if (error) {
+          restErrorChecker.checkAndSendError({ response, error, sentData: request.body.data });
+
+          return;
+        }
+
+        response.json({ data });
+      },
+    });
   });
 
   return router;

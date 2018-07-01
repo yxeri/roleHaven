@@ -24,13 +24,13 @@ let clientConfig = {};
 let config = {};
 
 try {
-  clientConfig = require(path.normalize(`${__dirname}/../../../../private/config/config`)); // eslint-disable-line
+  clientConfig = require('../../private/config/config'); // eslint-disable-line
 } catch (err) {
   console.log('Did not find client config');
 }
 
 try {
-  config = require(path.normalize(`${__dirname}/../../../../config/appConfig`)).config; // eslint-disable-line
+  config = require('../appConfig'); // eslint-disable-line
 } catch (err) {
   console.log('Did not find modified appConfig. Using defaults');
 }
@@ -69,6 +69,42 @@ config.publicBase = path.normalize(`${__dirname}/../../../../public`);
  * @type {string}
  */
 config.privateBase = path.normalize(`${__dirname}/../../../../private`);
+
+/**
+ * Default index name that will be served to public view.
+ * @type {string}
+ */
+config.indexName = process.env.INDEXNAME || config.indexName || 'default';
+
+/**
+ * Default main Javascript file that will be served to public view.
+ * @type {string}
+ */
+config.mainJsName = process.env.MAINJSNAME || config.mainJsName || 'default';
+
+/**
+ * Default main Javascript file that will be served to public view.
+ * @type {string}
+ */
+config.mainCssName = process.env.MAINCSSNAME || config.mainCssName || 'default';
+
+/**
+ * Admin interface index name that will be served to public view.
+ * @type {string}
+ */
+config.adminIndexName = process.env.ADMININDEXNAME || config.adminIndexName || 'admin';
+
+/**
+ * Admin interface Javascript file that will be served to public view.
+ * @type {string}
+ */
+config.adminJsName = process.env.ADMINJSNAME || config.adminJsName || 'admin';
+
+/**
+ * Admin interface Javascript file that will be served to public view.
+ * @type {string}
+ */
+config.adminCssName = process.env.ADMINCSSNAME || config.adminCssName || 'admin';
 
 // TODO Routes should be empty by defaults. Move all routes to app-specific instances
 /**
@@ -308,6 +344,18 @@ config.cornerTwoLong = textTools.convertToFloat(process.env.CORNERTWOLONG || con
  * @type {number}
  */
 config.defaultZoomLevel = textTools.convertToInt(process.env.DEFAULTZOOMLEVEL || config.defaultZoomLevel || 15);
+
+/**
+ * Minimum map zoom level
+ * @type {number}
+ */
+config.minZoomLevel = textTools.convertToInt(process.env.MINZOOMLEVEL || config.minZoomLevel || 3);
+
+/**
+ * Maximum map zoom level
+ * @type {number}
+ */
+config.maxZoomLevel = textTools.convertToInt(process.env.MAXZOOMLEVEL || config.maxZoomLevel || 19);
 
 /**
  * ********

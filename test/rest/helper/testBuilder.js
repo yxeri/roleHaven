@@ -177,7 +177,7 @@ function createTestUpdate({
       });
     }
 
-    it(`Should NOT update a ${objectType} by a non-admin user on ${apiPath}:${objectIdType} PUT`, (done) => {
+    it(`Should NOT update a ${objectType} by a user without access on ${apiPath}:${objectIdType} PUT`, (done) => {
       const dataToSend = { data: {} };
       dataToSend.data[objectType] = testData.updateWith;
 
@@ -195,7 +195,7 @@ function createTestUpdate({
         });
     });
 
-    it(`Should update a ${objectType} by the owner on ${apiPath}:${objectIdType} PUT`, (done) => {
+    it(`Should update a ${objectType} by a user with access on ${apiPath}:${objectIdType} PUT`, (done) => {
       const dataToSend = { data: {} };
       dataToSend.data[objectType] = testData.updateWith;
 
@@ -294,7 +294,7 @@ function createTestDelete({
         });
     });
 
-    it(`Should remove a ${objectType} by an system admin user on ${apiPath}:${objectIdType} DELETE`, (done) => {
+    it(`Should remove a ${objectType} by a system admin user on ${apiPath}:${objectIdType} DELETE`, (done) => {
       chai
         .request(app)
         .del(`${apiPath}${objectIdToRemove}`)
@@ -353,8 +353,7 @@ function createTestGet({
   multiLiteSchema,
   singleFullSchema,
   multiFullSchema,
-  ignoreMultiFull,
-  createByAdmin,
+  createByAdmin = false,
   skipCreation = false,
 }) {
   describe(`Get one or more ${objectsType}`, () => {
@@ -382,7 +381,7 @@ function createTestGet({
       });
     }
 
-    it(`Should get a ${objectType} on ${apiPath}:${objectIdType} GET`, (done) => {
+    it(`Should get a stripped ${objectType} by low level user on ${apiPath}:${objectIdType} GET`, (done) => {
       chai
         .request(app)
         .get(`${apiPath}${idOfObject || starterData.basicUserOne.objectId}`)
@@ -397,25 +396,11 @@ function createTestGet({
         });
     });
 
-    it(`Should NOT get a full ${objectType} by low access user on ${apiPath}:${objectIdType} GET`, (done) => {
+    it(`Should get a full ${objectType} by high level user on ${apiPath}:${objectIdType} GET`, (done) => {
       chai
         .request(app)
-        .get(`${apiPath}${idOfObject || starterData.basicUserTwo.objectId}?full=true`)
-        .set('Authorization', tokens.basicUserOne)
-        .end((error, response) => {
-          response.should.have.status(401);
-          response.should.be.json;
-          response.body.should.be.jsonSchema(baseObjectSchemas.returnData);
-
-          done();
-        });
-    });
-
-    it(`Should get a full ${objectType} on ${apiPath}:${objectIdType} GET`, (done) => {
-      chai
-        .request(app)
-        .get(`${apiPath}${idOfObject || starterData.basicUserTwo.objectId}?full=true`)
-        .set('Authorization', tokens.moderatorUserOne)
+        .get(`${apiPath}${idOfObject || starterData.basicUserTwo.objectId}`)
+        .set('Authorization', tokens.adminUserOne)
         .end((error, response) => {
           response.should.have.status(200);
           response.should.be.json;
@@ -426,7 +411,7 @@ function createTestGet({
         });
     });
 
-    it(`Should get lite ${objectsType} on ${apiPath} GET`, (done) => {
+    it(`Should get stripped ${objectsType} by low level user on ${apiPath} GET`, (done) => {
       chai
         .request(app)
         .get(apiPath)
@@ -441,27 +426,11 @@ function createTestGet({
         });
     });
 
-    if (!ignoreMultiFull) {
-      it(`Should NOT get full ${objectsType} by user with low access on ${apiPath} GET`, (done) => {
-        chai
-          .request(app)
-          .get(`${apiPath}?full=true`)
-          .set('Authorization', tokens.basicUserOne)
-          .end((error, response) => {
-            response.should.have.status(401);
-            response.should.be.json;
-            response.body.should.be.jsonSchema(baseObjectSchemas.returnData);
-
-            done();
-          });
-      });
-    }
-
-    it(`Should get full ${objectsType} on ${apiPath} GET`, (done) => {
+    it(`Should get full ${objectsType} by high level user on ${apiPath} GET`, (done) => {
       chai
         .request(app)
-        .get(`${apiPath}?full=true`)
-        .set('Authorization', tokens.moderatorUserOne)
+        .get(apiPath)
+        .set('Authorization', tokens.adminUserOne)
         .end((error, response) => {
           response.should.have.status(200);
           response.should.be.json;

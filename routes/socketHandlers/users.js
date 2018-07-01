@@ -41,14 +41,6 @@ function handle(socket, io) {
     userManager.updateUser(params);
   });
 
-  socket.on('removeUser', (params, callback = () => {
-  }) => {
-    params.callback = callback;
-    params.io = io;
-    params.socket = socket;
-    userManager.removeUser(params);
-  });
-
   socket.on('getUser', (params, callback = () => {
   }) => {
     params.callback = callback;
@@ -72,6 +64,51 @@ function handle(socket, io) {
     params.socket = socket;
 
     userManager.updateId(params);
+  });
+
+  socket.on('banUser', (params, callback = () => {
+  }) => {
+    params.callback = callback;
+    params.io = io;
+    params.socket = socket;
+
+    userManager.banUser(params);
+  });
+
+  socket.on('unbanUser', (params, callback = () => {
+  }) => {
+    params.callback = callback;
+    params.io = io;
+    params.socket = socket;
+
+    userManager.unbanUser(params);
+  });
+
+  socket.on('verifyUser', (params, callback = () => {
+  }) => {
+    params.callback = callback;
+    params.io = io;
+    params.socket = socket;
+
+    userManager.verifyUser(params);
+  });
+
+  socket.on('changePassword', (params, callback = () => {
+  }) => {
+    params.callback = callback;
+    params.io = io;
+    params.socket = socket;
+
+    userManager.changePassword(params);
+  });
+
+  socket.on('updateUser', (params, callback = () => {
+  }) => {
+    params.callback = callback;
+    params.io = io;
+    params.socket = socket;
+
+    userManager.updateUser(params);
   });
 }
 

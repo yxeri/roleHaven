@@ -220,6 +220,7 @@ config.EmitTypes = {
   DEVICE: 'device',
   DOCFILE: 'docFile',
   WHISPER: 'whisper',
+  SIMPLEMSG: 'simpleMsg',
   BROADCAST: 'broadcast',
   GAMECODE: 'gameCode',
   ALIAS: 'alias',
@@ -275,7 +276,7 @@ config.apiCommands = {
   },
   RemoveAlias: config.apiCommands.RemoveAlias || {
     name: 'RemoveAlias',
-    accessLevel: config.AccessLevels.STANDARD,
+    accessLevel: config.AccessLevels.ADMIN,
   },
 
   /**
@@ -477,6 +478,10 @@ config.apiCommands = {
     name: 'RemoveUser',
     accessLevel: config.AccessLevels.ADMIN,
   },
+  UpdateSelf: config.apiCommands.UpdateSelf || {
+    name: 'UpdateSelf',
+    accesslevel: config.AccessLevels.ADMIN,
+  },
 
   /**
    * Misc.
@@ -509,9 +514,9 @@ config.apiCommands = {
     name: 'LeaveTeam',
     accessLevel: config.AccessLevels.STANDARD,
   },
-  VerifyTeam: config.apiCommands.LeaveTeam || {
+  VerifyTeam: config.apiCommands.VerifyTeam || {
     name: 'VerifyTeam',
-    accessLevel: config.AccessLevels.ADMIN,
+    accessLevel: config.AccessLevels.MODERATOR,
   },
   GetTeamsList: config.apiCommands.GetTeamsList || {
     name: 'GetTeamsList',
@@ -632,6 +637,10 @@ config.apiCommands = {
   GetDocFilesList: config.apiCommands.GetDocFilesList || {
     name: 'GetDocFilesList',
     accessLevel: config.AccessLevels.ANONYMOUS,
+  },
+  UpdateDocFile: config.apiCommands.UpdateDocFile || {
+    name: 'UpdateDocFile',
+    accessLevel: config.AccessLevels.STANDARD,
   },
 
   /**

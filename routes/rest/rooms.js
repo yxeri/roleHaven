@@ -42,7 +42,6 @@ function handle(io) {
    *
    * @apiParam {string} roomId [Url] Id of the room.
    *
-   * @apiParam {boolean} [full] [Query] Should the complete object be retrieved?
    * @apiParam {string} [startDate] [Query] Start date of when to retrieve messages from the past.
    * @apiParam {boolean} [shouldGetFuture] [Query] Should messages be retrieved from the future instead of the past?
    *
@@ -63,18 +62,14 @@ function handle(io) {
    *
    * @apiDescription Get rooms.
    *
-   * @apiParam {boolean} [full] [Query] Should admin info be returned?
-   *
    * @apiSuccess {Object} data
    * @apiSuccess {Room[]} data.rooms Rooms found.
    */
   router.get('/', (request, response) => {
     const { authorization: token } = request.headers;
-    const { full } = request.query;
 
     roomManager.getRoomsByUser({
       token,
-      full,
       callback: ({ error, data }) => {
         if (error) {
           restErrorChecker.checkAndSendError({ response, error });
@@ -99,7 +94,8 @@ function handle(io) {
    *
    * @apiParam {string} roomId [Url] Id of the room to retrieve.
    *
-   * @apiParam {string} [full] [Query]
+   * @apiParam {Object} data Body parameters.
+   * @apiParam {string} data.password Password of the room, if required.
    *
    * @apiSuccess {Object} data
    * @apiSuccess {Room} data.room Found room.
@@ -113,12 +109,11 @@ function handle(io) {
 
     const { authorization: token } = request.headers;
     const { roomId } = request.params;
-    const { full } = request.query;
 
-    roomManager.getRoom({
+    roomManager.getRoomById({
       token,
       roomId,
-      full,
+      password: request.body.data ? request.body.data.password : undefined,
       callback: ({ error, data }) => {
         if (error) {
           restErrorChecker.checkAndSendError({ response, error });
@@ -222,6 +217,81 @@ function handle(io) {
       io,
       roomId,
       token,
+      callback: ({ error, data }) => {
+        if (error) {
+          restErrorChecker.checkAndSendError({ response, error, sentData: request.body.data });
+
+          return;
+        }
+
+        response.json({ data });
+      },
+    });
+  });
+
+  /**
+   * token,
+   roomId,
+   teamAdminIds,
+   userAdminIds,
+   userIds,
+   teamIds,
+   bannedIds,
+   shouldRemove,
+   internalCallUser,
+   callback,
+   */
+
+  /**
+   * @api {put} /rooms/:roomId/permissions Update permissions on a room
+   * @apiVersion 8.0.0
+   * @apiName UpdateRoomPermissions
+   * @apiGroup Rooms
+   *
+   * @apiHeader {string} Authorization Your JSON Web Token.
+   *
+   * @apiDescription Update permissions on a room.
+   *
+   * @apiParam {string} roomId Id of the room to update.
+   *
+   * @apiParam {Object} data
+   * @apiParam {boolean} [data.shouldRemove] Should the permissions be removed from the sent Ids? Default is false.
+   * @apiParam {string[]} data.userIds Users to give access to.
+   * @apiParam {string[]} data.teamIds Teams to give access to.
+   * @apiParam {string[]} data.teamAdminIds Teams to give admin access to.
+   * @apiParam {string[]} data.userAdminIds Users to give admin access to.
+   * @apiParam {string[]} data.bannedIds Ids to ban.
+   *
+   * @apiSuccess {Object} data
+   * @apiSuccess {Room} data.room Updated room.
+   */
+  router.put('/:roomId/permissions', (request, response) => {
+    if (!objectValidator.isValidData(request.params, { roomId: true })) {
+      restErrorChecker.checkAndSendError({ response, error: new errorCreator.InvalidData({ expected: 'params = { roomId }' }) });
+
+      return;
+    }
+
+    const {
+      userIds,
+      teamIds,
+      teamAdminIds,
+      userAdminIds,
+      bannedIds,
+      shouldRemove,
+    } = request.body.data;
+    const { roomId } = request.params;
+    const { authorization: token } = request.headers;
+
+    roomManager.updateAccess({
+      token,
+      roomId,
+      teamAdminIds,
+      userAdminIds,
+      userIds,
+      teamIds,
+      bannedIds,
+      shouldRemove,
       callback: ({ error, data }) => {
         if (error) {
           restErrorChecker.checkAndSendError({ response, error, sentData: request.body.data });
