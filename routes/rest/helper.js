@@ -23,7 +23,6 @@ const errorCreator = require('../../error/errorCreator');
 const { dbConfig } = require('../../config/defaults/config');
 const forumPostManager = require('../../managers/forumPosts');
 const forumThreadManager = require('../../managers/forumThreads');
-const transactionManager = require('../../managers/transactions');
 
 /**
  * Send message. Called by the REST API.
@@ -144,7 +143,6 @@ function getMessages({ request, response }) {
 function getForumPosts({ request, response }) {
   const { threadId, forumId } = request.params || request.query;
   const { authorization: token } = request.headers;
-  const { full } = request.query;
 
   const callback = ({ error, data }) => {
     if (error) {
@@ -157,23 +155,20 @@ function getForumPosts({ request, response }) {
   };
 
   if (threadId) {
-    forumPostManager.getPostsByThread({
-      threadId,
+    forumPostManager.getPostsByThreads({
+      threadIds: [threadId],
       token,
-      full,
       callback,
     });
   } else if (forumId) {
     forumPostManager.getPostsByForum({
       forumId,
       token,
-      full,
       callback,
     });
   } else {
     forumPostManager.getPostsByUser({
       token,
-      full,
       callback,
     });
   }
@@ -188,7 +183,6 @@ function getForumPosts({ request, response }) {
 function getForumThreads({ request, response }) {
   const { forumId } = request.params || request.query;
   const { authorization: token } = request.headers;
-  const { full } = request.query;
 
   const callback = ({ error, data }) => {
     if (error) {
@@ -204,14 +198,12 @@ function getForumThreads({ request, response }) {
     forumThreadManager.getForumThreadsByForum({
       forumId,
       token,
-      full,
       callback,
     });
   } else {
     forumThreadManager.getThreadsByUser({
       token,
       callback,
-      full,
     });
   }
 }

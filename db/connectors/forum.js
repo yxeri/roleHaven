@@ -317,17 +317,18 @@ function removeForum({ forumId, fullRemoval, callback }) {
  * @param {string[]} [params.userAdminIds] - Id of the users to update admin access for.
  */
 function updateAccess(params) {
+  const { callback } = params;
   const accessParams = params;
   accessParams.objectId = params.forumId;
   accessParams.object = Forum;
   accessParams.callback = ({ error, data }) => {
     if (error) {
-      accessParams.callback({ error });
+      callback({ error });
 
       return;
     }
 
-    accessParams.callback({ data: { forum: data.object } });
+    callback({ data: { forum: data.object } });
   };
 
   if (params.shouldRemove) {

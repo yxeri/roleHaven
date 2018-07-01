@@ -346,17 +346,18 @@ function removeThreadsByForum({ forumId, fullRemoval, callback }) {
  * @param {string[]} [params.userAdminIds] - Id of the users to update admin access for.
  */
 function updateAccess(params) {
+  const { callback } = params;
   const accessParams = params;
   accessParams.objectId = params.threadId;
   accessParams.object = ForumThread;
   accessParams.callback = ({ error, data }) => {
     if (error) {
-      accessParams.callback({ error });
+      callback({ error });
 
       return;
     }
 
-    accessParams.callback({ data: { thread: data.object } });
+    callback({ data: { thread: data.object } });
   };
 
   if (params.shouldRemove) {

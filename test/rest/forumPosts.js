@@ -29,6 +29,7 @@ const forumThreadSchemas = require('./schemas/forumThreads');
 const forumSchemas = require('./schemas/forums');
 const tokens = require('./testData/tokens');
 const app = require('../../app');
+const starterData = require('./testData/starter');
 
 chai.should();
 chai.use(chaiHttp);
@@ -41,6 +42,7 @@ describe('Forum posts', () => {
   const objectsType = 'posts';
 
   let forumId;
+  let threadId;
 
   before('Create a forum on /api/forums POST', (done) => {
     const dataToSend = {
@@ -61,6 +63,31 @@ describe('Forum posts', () => {
         response.body.data.forum.should.be.jsonSchema(forumSchemas.forum);
 
         forumId = response.body.data.forum.objectId;
+
+        done();
+      });
+  });
+
+  before('Update permissions on /api/forums/:id/permissions', (done) => {
+    const dataToSend = {
+      data: {
+        userIds: [
+          starterData.basicUserOne.objectId,
+          starterData.basicUserTwo.objectId,
+        ],
+      },
+    };
+
+    chai
+      .request(app)
+      .put(`/api/forums/${forumId}/permissions`)
+      .set('Authorization', tokens.adminUserOne)
+      .send(dataToSend)
+      .end((error, response) => {
+        response.should.have.status(200);
+        response.should.be.json;
+        response.body.should.be.jsonSchema(baseObjectSchemas.returnData);
+        response.body.data.forum.should.be.jsonSchema(forumSchemas.forum);
 
         done();
       });
@@ -87,10 +114,36 @@ describe('Forum posts', () => {
         response.body.should.be.jsonSchema(baseObjectSchemas.returnData);
         response.body.data.thread.should.be.jsonSchema(forumThreadSchemas.forumThread);
 
-        const threadId = response.body.data.thread.objectId;
+        threadId = response.body.data.thread.objectId;
+        testData.update.toUpdate.threadId = threadId;
         testData.create.apiCreatePath = `/api/forumThreads/${threadId}/posts`;
         testData.update.apiCreatePath = `/api/forumThreads/${threadId}/posts`;
         testData.remove.apiCreatePath = `/api/forumThreads/${threadId}/posts`;
+
+        done();
+      });
+  });
+
+  before('Update permissions on /api/forumThreads/:id/permissions', (done) => {
+    const dataToSend = {
+      data: {
+        userIds: [
+          starterData.basicUserOne.objectId,
+          starterData.basicUserTwo.objectId,
+        ],
+      },
+    };
+
+    chai
+      .request(app)
+      .put(`/api/forumThreads/${threadId}/permissions`)
+      .set('Authorization', tokens.adminUserOne)
+      .send(dataToSend)
+      .end((error, response) => {
+        response.should.have.status(200);
+        response.should.be.json;
+        response.body.should.be.jsonSchema(baseObjectSchemas.returnData);
+        response.body.data.thread.should.be.jsonSchema(forumThreadSchemas.forumThread);
 
         done();
       });

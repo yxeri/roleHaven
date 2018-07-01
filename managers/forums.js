@@ -241,6 +241,84 @@ function getForumsByUser({
   });
 }
 
+/**
+ * Update access to the forum for users or teams.
+ * @param {Object} params - Parameters.
+ * @param {string} params.forumId - Id of the forum.
+ * @param {Function} params.callback - Callback.
+ * @param {boolean} [params.shouldRemove] - Should access be removed from the users or teams?
+ * @param {string[]} [params.userIds] - Id of the users.
+ * @param {string[]} [params.teamIds] - Id of the teams.
+ * @param {string[]} [params.bannedIds] - Id of the blocked Ids to add.
+ * @param {string[]} [params.teamAdminIds] - Id of the teams to change admin access for.
+ * @param {string[]} [params.userAdminIds] - Id of the users to change admin access for.
+ */
+function updateAccess({
+  token,
+  forumId,
+  teamAdminIds,
+  userAdminIds,
+  userIds,
+  teamIds,
+  bannedIds,
+  shouldRemove,
+  internalCallUser,
+  callback,
+}) {
+  authenticator.isUserAllowed({
+    token,
+    internalCallUser,
+    commandName: dbConfig.apiCommands.UpdateForum.name,
+    callback: ({ error, data }) => {
+      if (error) {
+        callback({ error });
+
+        return;
+      }
+
+      const { user: authUser } = data;
+
+      getForumById({
+        forumId,
+        internalCallUser: authUser,
+        callback: ({ error: forumError, data: forumData }) => {
+          if (forumError) {
+            callback({ error: forumError });
+
+            return;
+          }
+
+          const { forum } = forumData;
+
+          const {
+            hasFullAccess,
+          } = authenticator.hasAccessTo({
+            objectToAccess: forum,
+            toAuth: authUser,
+          });
+
+          if (!hasFullAccess) {
+            callback({ error: new errorCreator.NotAllowed({ name: `${dbConfig.apiCommands.UpdateForum.name}. User: ${authUser.objectId}. Access: forum ${forumId}` }) });
+
+            return;
+          }
+
+          dbForum.updateAccess({
+            shouldRemove,
+            userIds,
+            teamIds,
+            bannedIds,
+            teamAdminIds,
+            userAdminIds,
+            forumId,
+            callback,
+          });
+        },
+      });
+    },
+  });
+}
+
 exports.createForum = createForum;
 exports.removeForum = removeForum;
 exports.updateForum = updateForum;
@@ -248,3 +326,4 @@ exports.getAllForums = getAllForums;
 exports.getForumById = getForumById;
 exports.getForumsByUser = getForumsByUser;
 exports.updateForumTime = updateForumTime;
+exports.updateAccess = updateAccess;

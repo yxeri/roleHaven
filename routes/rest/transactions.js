@@ -21,7 +21,6 @@ const objectValidator = require('../../utils/objectValidator');
 const transactionManager = require('../../managers/transactions');
 const restErrorChecker = require('../../helpers/restErrorChecker');
 const errorCreator = require('../../error/errorCreator');
-const helper = require('./helper');
 
 const router = new express.Router();
 
@@ -95,14 +94,12 @@ function handle(io) {
       return;
     }
 
-    const { full } = request.query;
     const { transactionId } = request.params;
     const { authorization: token } = request.headers;
 
     transactionManager.getTransactionById({
       transactionId,
       token,
-      full,
       callback: ({ error, data }) => {
         if (error) {
           restErrorChecker.checkAndSendError({ response, error, sentData: request.body.data });

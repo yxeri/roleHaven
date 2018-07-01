@@ -179,7 +179,7 @@ function hasAccessTo({
 
   return {
     canSee: isAdmin || isPublic || accessLevel >= visibility,
-    hasAccess: isAdmin || userHasAccess || teamHasAccess || aliasHasAccess,
+    hasAccess: isAdmin || isPublic || userHasAccess || teamHasAccess || aliasHasAccess,
     hasFullAccess: isAdmin || userHasAdminAccess || teamHasAdminAccess || aliasHasAdminAccess,
   };
 }

@@ -157,55 +157,21 @@ function updatePost({
   options,
   internalCallUser,
 }) {
-  managerHelper.getObjectById({
+  managerHelper.updateObject({
+    callback,
+    options,
     token,
+    io,
     internalCallUser,
-    needsAccess: true,
     objectId: postId,
-    objectType: 'post',
-    objectIdType: 'postId',
-    dbCallFunc: dbPost.getPostById,
+    object: post,
     commandName: dbConfig.apiCommands.UpdateForumPost.name,
-    callback: ({ error: getError, data: getData }) => {
-      if (getError) {
-        callback({ error: getError });
-
-        return;
-      }
-
-      const { authUser } = getData;
-
-      threadManager.getThreadById({
-        token,
-        needsAccess: true,
-        internalCallUser: authUser,
-        threadId: post.threadId,
-        callback: ({ error: threadError }) => {
-          if (threadError) {
-            callback({ error: threadError });
-
-            return;
-          }
-
-          managerHelper.updateObject({
-            callback,
-            options,
-            token,
-            io,
-            internalCallUser: authUser,
-            objectId: postId,
-            object: post,
-            commandName: dbConfig.apiCommands.UpdateForumPost.name,
-            objectType: 'post',
-            dbCallFunc: dbPost.updatePost,
-            emitType: dbConfig.EmitTypes.FORUMPOST,
-            objectIdType: 'postId',
-            getDbCallFunc: dbPost.getPostById,
-            getCommandName: dbConfig.apiCommands.GetForumPost.name,
-          });
-        },
-      });
-    },
+    objectType: 'post',
+    dbCallFunc: dbPost.updatePost,
+    emitType: dbConfig.EmitTypes.FORUMPOST,
+    objectIdType: 'postId',
+    getDbCallFunc: dbPost.getPostById,
+    getCommandName: dbConfig.apiCommands.GetForumPost.name,
   });
 }
 
@@ -225,9 +191,35 @@ function getPostsByUser({
     shouldSort: true,
     sortName: 'customLastUpdated',
     fallbackSortName: 'lastUpdated',
-    commandName: dbConfig.apiCommands.GetPositions.name,
+    commandName: dbConfig.apiCommands.GetForumPost.name,
     objectsType: 'posts',
     dbCallFunc: dbPost.getPostsByUser,
+  });
+}
+
+/**
+ * Get posts by thread.
+ * @param {Object} params - Parameters.
+ * @param {Function} params.callback - Callback.
+ * @param {Object} params.token - jwt.
+ */
+function getPostsByThreads({
+  token,
+  callback,
+  internalCallUser,
+  threadIds = [],
+}) {
+  managerHelper.getObjects({
+    callback,
+    token,
+    internalCallUser,
+    getParams: [threadIds],
+    shouldSort: true,
+    sortName: 'customLastUpdated',
+    fallbackSortName: 'lastUpdated',
+    commandName: dbConfig.apiCommands.GetForumPost.name,
+    objectsType: 'posts',
+    dbCallFunc: dbPost.getPostsByThreads,
   });
 }
 
@@ -249,46 +241,37 @@ function getPostsByForum({ forumId, callback, token }) {
         return;
       }
 
-      const { user } = data;
+      const { user: authUser } = data;
 
-      forumManager.getAccessibleForum({
+      forumManager.getForumById({
         forumId,
-        user,
-        callback: (forumData) => {
-          if (forumData.error) {
-            callback({ error: forumData.error });
+        needsAccess: true,
+        user: authUser,
+        callback: ({ error: forumError }) => {
+          if (forumError) {
+            callback({ error: forumError });
 
             return;
           }
 
-          threadManager.getAccessibleThreads({
+          threadManager.getForumThreadsByForum({
             forumId,
-            user,
-            callback: (threadsData) => {
-              if (threadsData.error) {
-                callback({ error: threadsData.error });
+            token,
+            internalCallUser: authUser,
+            callback: ({ error: threadsError, data: threadsData }) => {
+              if (threadsError) {
+                callback({ error: threadsError });
 
                 return;
               }
 
-              const threadIds = threadsData.data.threads.map(thread => thread.objectId);
+              const { threads } = threadsData;
+              const threadIds = threads.map(thread => thread.objectId);
 
-              getAccessibleThreadsPosts({
+              getPostsByThreads({
+                internalCallUser: authUser,
                 threadIds,
-                user,
-                callback: (postsData) => {
-                  if (postsData.error) {
-                    callback({ error: postsData.error });
-
-                    return;
-                  }
-
-                  callback({
-                    data: {
-                      posts: postsData.data.posts,
-                    },
-                  });
-                },
+                callback,
               });
             },
           });
@@ -303,125 +286,27 @@ function getPostsByForum({ forumId, callback, token }) {
  * @param {Object} params - Parameters,.
  * @param {string} params.token - jwt.
  * @param {string} params.postId - ID of the forum ppost.
- * @param {Object} params.io - Socket io. Will be used if socket is not set.
+ * @param {Object} params.io - Socket io.
  * @param {Function} params.callback - Callback.
- * @param {Object} [params.socket] - Socket io.
  */
 function removePost({
   token,
   postId,
   callback,
-  socket,
   io,
 }) {
-  authenticator.isUserAllowed({
+  managerHelper.removeObject({
+    callback,
     token,
+    io,
+    getDbCallFunc: dbPost.getPostById,
+    getCommandName: dbConfig.apiCommands.GetForumPost.name,
+    objectId: postId,
     commandName: dbConfig.apiCommands.RemoveForumPost.name,
-    callback: ({ error, data }) => {
-      if (error) {
-        callback({ error });
-
-        return;
-      }
-
-      const { user } = data;
-
-      getAccessiblePost({
-        postId,
-        user,
-        shouldBeAdmin: true,
-        errorContentText: `remove forum post ${postId}`,
-        callback: (forumData) => {
-          if (forumData.error) {
-            callback({ error: forumData.error });
-
-            return;
-          }
-
-          dbPost.removePostById({
-            postId,
-            fullRemoval: true,
-            callback: (removeData) => {
-              if (removeData.error) {
-                callback({ error: removeData.error });
-
-                return;
-              }
-
-              const dataToSend = {
-                data: {
-                  post: { objectId: postId },
-                  changeType: dbConfig.ChangeTypes.REMOVE,
-                },
-              };
-
-              if (socket) {
-                socket.broadcast.emit(dbConfig.EmitTypes.FORUMPOST, dataToSend);
-              } else {
-                io.emit(dbConfig.EmitTypes.FORUMPOST, dataToSend);
-              }
-
-              callback(dataToSend);
-            },
-          });
-        },
-      });
-    },
-  });
-}
-
-/**
- * Get posts by thread
- * @param {Object} params - Parameters
- * @param {string} params.threadId - ID of the thread
- * @param {Function} params.callback - Callback
- * @param {Object} params.token - jwt
- */
-function getPostsByThread({
-  token,
-  threadId,
-  full,
-  callback,
-}) {
-  authenticator.isUserAllowed({
-    token,
-    commandName: full ? dbConfig.apiCommands.GetFull.name : dbConfig.apiCommands.GetForumPost.name,
-    callback: ({ error, data }) => {
-      if (error) {
-        callback({ error });
-
-        return;
-      }
-
-      const { user } = data;
-
-      threadManager.getAccessibleThread({
-        threadId,
-        user,
-        callback: (threadData) => {
-          if (threadData.error) {
-            callback({ error: threadData.error });
-
-            return;
-          }
-
-          getAccessibleThreadPosts({
-            threadId,
-            user,
-            full,
-            callback: (postsData) => {
-              if (postsData.error) {
-                callback({ error: postsData.error });
-
-                return;
-              }
-
-              callback(postsData);
-            },
-          });
-        },
-      });
-    },
+    objectType: 'post',
+    dbCallFunc: dbPost.removePostById,
+    emitType: dbConfig.EmitTypes.FORUMPOST,
+    objectIdType: 'postId',
   });
 }
 
@@ -429,6 +314,6 @@ exports.createPost = createPost;
 exports.updatePost = updatePost;
 exports.removePost = removePost;
 exports.getPostsByForum = getPostsByForum;
-exports.getPostsByThread = getPostsByThread;
+exports.getPostsByThreads = getPostsByThreads;
 exports.getPostById = getPostById;
 exports.getPostsByUser = getPostsByUser;

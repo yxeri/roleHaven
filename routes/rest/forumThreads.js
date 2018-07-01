@@ -165,8 +165,6 @@ function handle(io) {
    *
    * @apiParam {Object} threadId [Url] Id of the thread to retrieve.
    *
-   * @apiParam {boolean} [full] [Query] Should the complete object be retrieved?
-   *
    * @apiSuccess {Object} data
    * @apiSuccess {ForumThread} data.thread Found thread.
    */
@@ -179,11 +177,9 @@ function handle(io) {
 
     const { threadId } = request.params;
     const { authorization: token } = request.headers;
-    const { full } = request.query;
 
     forumThreadManager.getThreadById({
       threadId,
-      full,
       token,
       callback: ({ error, data }) => {
         if (error) {
@@ -207,7 +203,6 @@ function handle(io) {
    *
    * @apiDescription Get threads. The default is to return all threads made by the user. Setting forumId will instead retrieve all threads connected to the forum.
    *
-   * @apiParam {boolean} [full] [Query] Should the complete object be retrieved?
    * @apiParam {string} [forumId] [Query] Id of the forum to retrieve posts from.
    *
    * @apiSuccess {Object} data
@@ -229,13 +224,73 @@ function handle(io) {
    *
    * @apiParam {Object} threadId [Url] Id of the thread to retrieve posts from.
    *
-   * @apiParam {boolean} [full] [Query] Should the complete object be retrieved?
-   *
    * @apiSuccess {Object} data
    * @apiSuccess {ForumPost[]} data.posts Found posts.
    */
   router.get('/:threadId/posts', (request, response) => {
     helper.getForumPosts({ request, response });
+  });
+
+  /**
+   * @api {put} /forumThreads/:threadId/permissions Update permissions on a forum thread
+   * @apiVersion 8.0.0
+   * @apiName UpdateForumThreadPermissions
+   * @apiGroup ForumsThreads
+   *
+   * @apiHeader {string} Authorization Your JSON Web Token.
+   *
+   * @apiDescription Update permissions on a forum thread.
+   *
+   * @apiParam {string} forumId Id of the forum to update.
+   *
+   * @apiParam {Object} data
+   * @apiParam {boolean} [data.shouldRemove] Should the permissions be removed from the sent Ids? Default is false.
+   * @apiParam {string[]} data.userIds Users to give access to.
+   * @apiParam {string[]} data.teamIds Teams to give access to.
+   * @apiParam {string[]} data.teamAdminIds Teams to give admin access to.
+   * @apiParam {string[]} data.userAdminIds Users to give admin access to.
+   * @apiParam {string[]} data.bannedIds Ids to ban.
+   *
+   * @apiSuccess {Object} data
+   * @apiSuccess {ForumThread} data.thread Updated forum thread.
+   */
+  router.put('/:threadId/permissions', (request, response) => {
+    if (!objectValidator.isValidData(request.params, { threadId: true })) {
+      restErrorChecker.checkAndSendError({ response, error: new errorCreator.InvalidData({ expected: 'params = { threadId }' }) });
+
+      return;
+    }
+
+    const {
+      userIds,
+      teamIds,
+      teamAdminIds,
+      userAdminIds,
+      bannedIds,
+      shouldRemove,
+    } = request.body.data;
+    const { threadId } = request.params;
+    const { authorization: token } = request.headers;
+
+    forumThreadManager.updateAccess({
+      token,
+      threadId,
+      teamAdminIds,
+      userAdminIds,
+      userIds,
+      teamIds,
+      bannedIds,
+      shouldRemove,
+      callback: ({ error, data }) => {
+        if (error) {
+          restErrorChecker.checkAndSendError({ response, error, sentData: request.body.data });
+
+          return;
+        }
+
+        response.json({ data });
+      },
+    });
   });
 
   return router;

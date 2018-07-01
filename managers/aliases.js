@@ -490,6 +490,13 @@ function updateAccess({
   });
 }
 
+/**
+ * Get all aliases.
+ * @param {Object} params - Parameters.
+ * @param {Object} params.token - Jwt.
+ * @param {Object} [params.internalCallUser] - Skip authentication and instead use this user.
+ * @param {Function} params.callback - Callback.
+ */
 function getAllAliases({
   token,
   internalCallUser,

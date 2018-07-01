@@ -81,18 +81,14 @@ function handle(io) {
    *
    * @apiDescription Get aliases.
    *
-   * @apiParam {boolean} [full] [Query] Should the complete object be retrieved?
-   *
    * @apiSuccess {Object} data
    * @apiSuccess {Alias[]} data.aliases Found aliases.
    */
   router.get('/', (request, response) => {
     const { authorization: token } = request.headers;
-    const { full } = request.query;
 
     aliasManager.getAliasesByUser({
       token,
-      full,
       callback: ({ error, data }) => {
         if (error) {
           restErrorChecker.checkAndSendError({ response, error });
@@ -115,8 +111,6 @@ function handle(io) {
    *
    * @apiDescription Get an alias.
    *
-   * @apiParam {boolean} [full] [Query] Should the complete object be retrieved?
-   *
    * @apiSuccess {Object} data
    * @apiSuccess {Alias} data.alias Found alias.
    */
@@ -128,11 +122,9 @@ function handle(io) {
     }
 
     const { authorization: token } = request.headers;
-    const { full } = request.query;
     const { aliasId } = request.params;
 
     aliasManager.getAliasById({
-      full,
       token,
       aliasId,
       callback: ({ error, data }) => {

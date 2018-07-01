@@ -112,8 +112,6 @@ function handle(io) {
    *
    * @apiParam {string} positionId [Url] Id of the position to update.
    *
-   * @apiParam {boolean} full [Query]
-   *
    * @apiSuccess {Object} data
    * @apiSuccess {Position} data.position Found position.
    */
@@ -126,11 +124,9 @@ function handle(io) {
 
     const { authorization: token } = request.headers;
     const { positionId } = request.params;
-    const { full } = request.query;
 
     positionManager.getPositionById({
       token,
-      full,
       positionId,
       callback: ({ error, data }) => {
         if (error) {

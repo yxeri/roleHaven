@@ -69,6 +69,15 @@ function handle(socket, io) {
 
     positionManager.getPositionsByUser(params);
   });
+
+  socket.on('getAndStoreGooglePositions', (params, callback = () => {
+  }) => {
+    params.callback = callback;
+    params.io = io;
+    params.socket = socket;
+
+    positionManager.getPositionsByUser(params);
+  });
 }
 
 exports.handle = handle;

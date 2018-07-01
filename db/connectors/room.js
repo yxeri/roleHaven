@@ -351,7 +351,7 @@ function updateAccess(params) {
   accessParams.object = Room;
   accessParams.callback = ({ error, data }) => {
     if (error) {
-      accessParams.callback({ error });
+      callback({ error });
 
       return;
     }

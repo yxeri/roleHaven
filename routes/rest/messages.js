@@ -137,7 +137,6 @@ function handle(io) {
    *
    * @apiParam {string} [roomId] [Url] Id of the room to retrieve messages from.
    *
-   * @apiParam {boolean} [full] [Query] Should the complete object be retrieved?
    * @apiParam {string} [startDate] [Query] Start date of when to retrieve messages from the past.
    * @apiParam {boolean} [fullHistory] [Query] Should all messages and rooms be returned?
    * @apiParam {boolean} [shouldGetFuture] [Query] Should messages be retrieved from the future instead of the past?

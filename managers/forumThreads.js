@@ -156,11 +156,13 @@ function createThread({
 function getForumThreadsByForum({
   forumId,
   callback,
+  internalCallUser,
   token,
 }) {
   managerHelper.getObjects({
     callback,
     token,
+    internalCallUser,
     getParams: [forumId],
     shouldSort: true,
     sortName: 'customLastUpdated',
@@ -310,6 +312,84 @@ function updateThreadTime({
   });
 }
 
+/**
+ * Update access to the forum thread for users or teams.
+ * @param {Object} params - Parameters.
+ * @param {string} params.threadId - Id of the forum thread.
+ * @param {Function} params.callback - Callback.
+ * @param {boolean} [params.shouldRemove] - Should access be removed from the users or teams?
+ * @param {string[]} [params.userIds] - Id of the users.
+ * @param {string[]} [params.teamIds] - Id of the teams.
+ * @param {string[]} [params.bannedIds] - Id of the blocked Ids to add.
+ * @param {string[]} [params.teamAdminIds] - Id of the teams to change admin access for.
+ * @param {string[]} [params.userAdminIds] - Id of the users to change admin access for.
+ */
+function updateAccess({
+  token,
+  threadId,
+  teamAdminIds,
+  userAdminIds,
+  userIds,
+  teamIds,
+  bannedIds,
+  shouldRemove,
+  internalCallUser,
+  callback,
+}) {
+  authenticator.isUserAllowed({
+    token,
+    internalCallUser,
+    commandName: dbConfig.apiCommands.UpdateForumThread.name,
+    callback: ({ error, data }) => {
+      if (error) {
+        callback({ error });
+
+        return;
+      }
+
+      const { user: authUser } = data;
+
+      getThreadById({
+        threadId,
+        internalCallUser: authUser,
+        callback: ({ error: threadError, data: threadData }) => {
+          if (threadError) {
+            callback({ error: threadError });
+
+            return;
+          }
+
+          const { thread } = threadData;
+
+          const {
+            hasFullAccess,
+          } = authenticator.hasAccessTo({
+            objectToAccess: thread,
+            toAuth: authUser,
+          });
+
+          if (!hasFullAccess) {
+            callback({ error: new errorCreator.NotAllowed({ name: `${dbConfig.apiCommands.UpdateForumThread.name}. User: ${authUser.objectId}. Access: forum thread ${threadId}` }) });
+
+            return;
+          }
+
+          dbThread.updateAccess({
+            shouldRemove,
+            userIds,
+            teamIds,
+            bannedIds,
+            teamAdminIds,
+            userAdminIds,
+            threadId,
+            callback,
+          });
+        },
+      });
+    },
+  });
+}
+
 exports.createThread = createThread;
 exports.updateThread = updateThread;
 exports.removeThread = removeThread;
@@ -318,3 +398,4 @@ exports.getAllThreads = getAllThreads;
 exports.getThreadById = getThreadById;
 exports.getThreadsByUser = getThreadsByUser;
 exports.updateThreadTime = updateThreadTime;
+exports.updateAccess = updateAccess;
