@@ -90,6 +90,8 @@ function handle(io) {
           longitude: appConfig.cornerTwoLong,
         },
         defaultZoomLevel: appConfig.defaultZoomLevel,
+        minZoomLevel: appConfig.minZoomLevel,
+        maxZoomLevel: appConfig.maxZoomLevel,
         yearModification: appConfig.yearModification,
         mode: appConfig.mode,
         welcomeMessage: appConfig.welcomeMessage,

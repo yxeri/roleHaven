@@ -346,6 +346,18 @@ config.cornerTwoLong = textTools.convertToFloat(process.env.CORNERTWOLONG || con
 config.defaultZoomLevel = textTools.convertToInt(process.env.DEFAULTZOOMLEVEL || config.defaultZoomLevel || 15);
 
 /**
+ * Minimum map zoom level
+ * @type {number}
+ */
+config.minZoomLevel = textTools.convertToInt(process.env.MINZOOMLEVEL || config.minZoomLevel || 3);
+
+/**
+ * Maximum map zoom level
+ * @type {number}
+ */
+config.maxZoomLevel = textTools.convertToInt(process.env.MAXZOOMLEVEL || config.maxZoomLevel || 19);
+
+/**
  * ********
  * * Maps *
  * ********
