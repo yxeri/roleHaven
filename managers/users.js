@@ -135,7 +135,7 @@ function createUser({
           dbRoom.createRoom({
             room: {
               ownerId: createdUser.objectId,
-              roomName: createdUser.username,
+              roomName: createdUser.objectId,
               objectId: createdUser.objectId,
               visibility: dbConfig.AccessLevels.STANDARD,
               accessLevel: dbConfig.AccessLevels.SUPERUSER,
