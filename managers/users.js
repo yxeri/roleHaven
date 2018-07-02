@@ -204,13 +204,13 @@ function createUser({
                       };
                       const dataToSend = {
                         data: {
-                          user: managerHelper.stripObject({ object: createdUser }),
+                          user: managerHelper.stripObject({ object: Object.assign({}, createdUser) }),
                           changeType: dbConfig.ChangeTypes.CREATE,
                         },
                       };
                       const roomDataToSend = {
                         data: {
-                          room: managerHelper.stripObject({ object: roomData.room }),
+                          room: managerHelper.stripObject({ object: Object.assign({}, createdRoom) }),
                           changeType: dbConfig.ChangeTypes.CREATE,
                         },
                       };
