@@ -61,7 +61,7 @@ function handle(socket, io) {
     positionManager.getPositionById(params);
   });
 
-  socket.on('getPositionsByUser', (params, callback = () => {
+  socket.on('getPositions', (params, callback = () => {
   }) => {
     params.callback = callback;
     params.io = io;
@@ -76,7 +76,7 @@ function handle(socket, io) {
     params.io = io;
     params.socket = socket;
 
-    positionManager.getPositionsByUser(params);
+    positionManager.getAndStoreGooglePositions(params);
   });
 }
 
