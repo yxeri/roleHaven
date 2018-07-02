@@ -216,7 +216,7 @@ function createUser({
                       };
                       const walletDataToSend = {
                         data: {
-                          room: managerHelper.stripObject({ object: walletData.wallet }),
+                          wallet: managerHelper.stripObject({ object: Object.assign({}, createdWallet) }),
                           changeType: dbConfig.ChangeTypes.CREATE,
                         },
                       };
