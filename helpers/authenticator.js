@@ -169,6 +169,7 @@ function hasAccessTo({
     objectId: authUserId = [],
     aliases = [],
   } = toAuth;
+
   const userHasAccess = userIds.concat([ownerId]).includes(authUserId);
   const teamHasAccess = teamIds.find(teamId => authTeamIds.includes(teamId));
   const aliasHasAccess = aliases.find(aliasId => userIds.includes(aliasId));
