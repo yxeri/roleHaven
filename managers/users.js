@@ -135,7 +135,7 @@ function createUser({
           dbRoom.createRoom({
             room: {
               ownerId: createdUser.objectId,
-              roomName: createdUser.username,
+              roomName: createdUser.objectId,
               objectId: createdUser.objectId,
               visibility: dbConfig.AccessLevels.STANDARD,
               accessLevel: dbConfig.AccessLevels.SUPERUSER,
@@ -204,19 +204,19 @@ function createUser({
                       };
                       const dataToSend = {
                         data: {
-                          user: managerHelper.stripObject({ object: createdUser }),
+                          user: managerHelper.stripObject({ object: Object.assign({}, createdUser) }),
                           changeType: dbConfig.ChangeTypes.CREATE,
                         },
                       };
                       const roomDataToSend = {
                         data: {
-                          room: managerHelper.stripObject({ object: roomData.room }),
+                          room: managerHelper.stripObject({ object: Object.assign({}, createdRoom) }),
                           changeType: dbConfig.ChangeTypes.CREATE,
                         },
                       };
                       const walletDataToSend = {
                         data: {
-                          room: managerHelper.stripObject({ object: walletData.wallet }),
+                          wallet: managerHelper.stripObject({ object: Object.assign({}, createdWallet) }),
                           changeType: dbConfig.ChangeTypes.CREATE,
                         },
                       };
@@ -837,7 +837,7 @@ function updateUser({
             callback({ error: new errorCreator.NotAllowed({ name: `update user ${userId}` }) });
 
             return;
-          } else if (user.accessLevel && (authUser.accessLevel < dbConfig.AccessLevels.ADMIN || authUser.accessLevel > dbConfig.AccessLevels.ADMIN)) {
+          } else if (user.accessLevel && (authUser.accessLevel < dbConfig.AccessLevels.ADMIN || user.accessLevel > dbConfig.AccessLevels.ADMIN)) {
             callback({ error: new errorCreator.NotAllowed({ name: `update access level user ${userId}` }) });
 
             return;
