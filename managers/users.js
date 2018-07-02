@@ -837,7 +837,7 @@ function updateUser({
             callback({ error: new errorCreator.NotAllowed({ name: `update user ${userId}` }) });
 
             return;
-          } else if (user.accessLevel && (authUser.accessLevel < dbConfig.AccessLevels.ADMIN || authUser.accessLevel > dbConfig.AccessLevels.ADMIN)) {
+          } else if (user.accessLevel && (authUser.accessLevel < dbConfig.AccessLevels.ADMIN || user.accessLevel > dbConfig.AccessLevels.ADMIN)) {
             callback({ error: new errorCreator.NotAllowed({ name: `update access level user ${userId}` }) });
 
             return;
