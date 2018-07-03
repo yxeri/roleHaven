@@ -151,7 +151,9 @@ function getAliasById({
   aliasName,
   callback,
 }) {
-  const query = aliasId ? { _id: aliasId } : { aliasName };
+  const query = aliasId ?
+    { _id: aliasId } :
+    { aliasName };
 
   getAlias({
     callback,

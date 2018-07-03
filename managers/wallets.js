@@ -69,13 +69,17 @@ function updateWallet({
 }) {
   const walletToUpdate = wallet;
   const { amount } = walletToUpdate;
-  walletToUpdate.amount = walletToUpdate.amount ? Number.parseInt(walletToUpdate.amount, 10) : undefined;
+  walletToUpdate.amount = walletToUpdate.amount ?
+    Number.parseInt(walletToUpdate.amount, 10) :
+    undefined;
 
   const {
     resetAmount,
     shouldDecreaseAmount,
   } = options;
-  const commandName = !amount && !resetAmount ? dbConfig.apiCommands.UpdateWallet.name : dbConfig.apiCommands.UpdateWalletAmount.name;
+  const commandName = !amount && !resetAmount ?
+    dbConfig.apiCommands.UpdateWallet.name :
+    dbConfig.apiCommands.UpdateWalletAmount.name;
 
   authenticator.isUserAllowed({
     token,

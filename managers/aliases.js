@@ -446,7 +446,9 @@ function updateAccess({
             return;
           }
 
-          const dbFunc = shouldRemove ? dbAlias.removeAccess : dbAlias.addAccess;
+          const dbFunc = shouldRemove ?
+            dbAlias.removeAccess :
+            dbAlias.addAccess;
 
           dbFunc({
             userIds,

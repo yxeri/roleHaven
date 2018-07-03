@@ -151,9 +151,15 @@ function createPost({ post, callback }) {
 
         const foundThread = threadData.data.thread;
 
-        forumPostToSave.adminIds = post.adminIds ? post.adminIds : foundThread.adminIds;
-        forumPostToSave.userIds = post.userIds ? post.userIds : foundThread.userIds;
-        forumPostToSave.teamIds = post.teamIds ? post.teamIds : foundThread.teamIds;
+        forumPostToSave.adminIds = post.adminIds ?
+          post.adminIds :
+          foundThread.adminIds;
+        forumPostToSave.userIds = post.userIds ?
+          post.userIds :
+          foundThread.userIds;
+        forumPostToSave.teamIds = post.teamIds ?
+          post.teamIds :
+          foundThread.teamIds;
 
         console.log(forumPostToSave);
 
@@ -190,9 +196,15 @@ function createPost({ post, callback }) {
           return;
         }
 
-        forumPostToSave.adminIds = post.adminIds ? post.adminIds : foundPost.adminIds;
-        forumPostToSave.userIds = post.userIds ? post.userIds : foundPost.userIds;
-        forumPostToSave.teamIds = post.teamIds ? post.teamIds : foundPost.teamIds;
+        forumPostToSave.adminIds = post.adminIds ?
+          post.adminIds :
+          foundPost.adminIds;
+        forumPostToSave.userIds = post.userIds ?
+          post.userIds :
+          foundPost.userIds;
+        forumPostToSave.teamIds = post.teamIds ?
+          post.teamIds :
+          foundPost.teamIds;
 
         savePost(callback);
       },

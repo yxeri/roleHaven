@@ -51,7 +51,9 @@ function handle(io) {
       gMapsKey: appConfig.gMapsKey,
       socketPath: appConfig.socketPath,
       mainJs: `scripts/${appConfig.mainJsName}.js?version=${appConfig.jsVersion}`,
-      mainCss: req.query.style && !Number.isNaN(req.query.style) ? `styles/${req.query.style}.css` : `styles/${appConfig.mainCssName}.css`,
+      mainCss: req.query.style && !Number.isNaN(req.query.style) ?
+        `styles/${req.query.style}.css` :
+        `styles/${appConfig.mainCssName}.css`,
     });
   });
 
@@ -61,7 +63,9 @@ function handle(io) {
       gMapsKey: appConfig.gMapsKey,
       socketPath: appConfig.socketPath,
       adminJs: `scripts/${appConfig.adminIndexName}.js?version=${appConfig.jsVersion}`,
-      adminCss: req.query.style && !Number.isNaN(req.query.style) ? `styles/admin${req.query.style}.css` : `styles/${appConfig.adminCssName}.css`,
+      adminCss: req.query.style && !Number.isNaN(req.query.style) ?
+        `styles/admin${req.query.style}.css` :
+        `styles/${appConfig.adminCssName}.css`,
     });
   });
 

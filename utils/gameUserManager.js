@@ -23,7 +23,9 @@
 function createHints(password) {
   const hints = [];
   const startAmount = Math.floor(Math.random() * 2);
-  const endAmount = startAmount === 0 ? Math.floor(Math.random() * 2) : 0;
+  const endAmount = startAmount === 0 ?
+    Math.floor(Math.random() * 2) :
+    0;
 
   /**
    * start *characters*

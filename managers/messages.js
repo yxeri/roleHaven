@@ -271,7 +271,9 @@ function getFullHistory({ token, callback }) {
                         return 0;
                       }).forEach((message) => {
                         const messageToSave = {
-                          username: message.ownerAliasId ? aliases[message.ownerAliasId].aliasName : users[message.ownerId].username,
+                          username: message.ownerAliasId ?
+                            aliases[message.ownerAliasId].aliasName :
+                            users[message.ownerId].username,
                           roomName: roomsCollection[message.roomId].roomName,
                           time: message.customTimeCreated || message.timeCreated,
                         };

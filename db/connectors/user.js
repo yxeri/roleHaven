@@ -201,7 +201,9 @@ function getUserById({
   username,
   callback,
 }) {
-  const query = userId ? { _id: userId } : { username };
+  const query = userId ?
+    { _id: userId } :
+    { username };
 
   getUser({
     query,
@@ -599,7 +601,9 @@ function addToTeam({
           dbTeam.addAccess({
             teamId,
             userIds,
-            userAdminIds: isAdmin ? userIds : undefined,
+            userAdminIds: isAdmin ?
+              userIds :
+              undefined,
             callback: ({ error: teamError, data: teamData }) => {
               if (teamError) {
                 callback({ error: teamError });

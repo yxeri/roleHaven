@@ -26,7 +26,7 @@ const { dbConfig } = require('../config/defaults/config');
  * @return {Object} - Socket.
  */
 function getUserSocket({ io, socketId }) {
-  return socketId ? io.sockets.connected[socketId] : undefined;
+  return io.sockets.connected[socketId];
 }
 
 /**
@@ -36,7 +36,9 @@ function getUserSocket({ io, socketId }) {
 function getSocketsByRoom({ io, roomId }) {
   const room = io.sockets.adapter.rooms[roomId];
 
-  return room ? room.sockets : [];
+  return room ?
+    room.sockets :
+    [];
 }
 
 /**

@@ -265,7 +265,9 @@ function getUsersByUser({
 
       dbUser.getUsersByUser({
         user,
-        includeInactive: user.accessLevel >= dbConfig.AccessLevels.MODERATOR ? true : includeInactive,
+        includeInactive: user.accessLevel >= dbConfig.AccessLevels.MODERATOR ?
+          true :
+          includeInactive,
         callback: ({ error: userError, data: userData }) => {
           if (userError) {
             callback({ error: userError });

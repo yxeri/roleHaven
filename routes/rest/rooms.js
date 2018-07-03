@@ -113,7 +113,9 @@ function handle(io) {
     roomManager.getRoomById({
       token,
       roomId,
-      password: request.body.data ? request.body.data.password : undefined,
+      password: request.body.data ?
+        request.body.data.password :
+        undefined,
       callback: ({ error, data }) => {
         if (error) {
           restErrorChecker.checkAndSendError({ response, error });

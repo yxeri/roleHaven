@@ -119,10 +119,14 @@ function createPosition({ position, layerName }) {
     positionStructure,
     accessLevel: appConfig.importedPositionMinAccessLevel,
     origin: dbConfig.PositionOrigins.GOOGLE,
-    positionName: typeof position.name === 'string' ? position.name : 'Unnamed position',
+    positionName: typeof position.name === 'string' ?
+      position.name :
+      'Unnamed position',
     isStationary: true,
     positionType: layerName.toLowerCase(),
-    description: position.description ? position.description.replace(/<img .+?\/>/, '').split(/<br>/) : ['No information'],
+    description: position.description ?
+      position.description.replace(/<img .+?\/>/, '').split(/<br>/) :
+      ['No information'],
   };
 }
 

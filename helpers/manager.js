@@ -436,7 +436,9 @@ function removeObject({
               };
               dataToSend.data[objectType] = { objectId };
 
-              io.emit(emitTypeGenerator ? emitTypeGenerator(foundObject) : emitType, dataToSend);
+              io.emit(emitTypeGenerator ?
+                emitTypeGenerator(foundObject) :
+                emitType, dataToSend);
 
               callback(dataToSend);
             },

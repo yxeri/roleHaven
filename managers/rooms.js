@@ -208,7 +208,9 @@ function createAndFollowWhisperRoom({
                   }
 
                   const { alias: identityAlias, user: identityUser } = identityData.data;
-                  const identityId = identityUser ? identityUser.objectId : identityAlias.ownerId;
+                  const identityId = identityUser ?
+                    identityUser.objectId :
+                    identityAlias.ownerId;
 
                   dbUser.followRoom({
                     roomId,
@@ -331,7 +333,9 @@ function createRoom({
       const newRoom = room;
       const { user } = data;
       newRoom.ownerId = user.objectId;
-      newRoom.password = newRoom.password && newRoom.password !== '' ? newRoom.password : undefined;
+      newRoom.password = newRoom.password && newRoom.password !== '' ?
+        newRoom.password :
+        undefined;
 
       dbRoom.createRoom({
         room,
