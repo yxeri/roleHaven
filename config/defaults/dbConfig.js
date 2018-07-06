@@ -264,7 +264,7 @@ config.apiCommands = {
    */
   CreateAlias: config.apiCommands.CreateAlias || {
     name: 'CreateAlias',
-    accessLevel: config.AccessLevels.STANDARD,
+    accessLevel: process.env.CREATEALIAS || config.AccessLevels.STANDARD,
   },
   GetAliases: config.apiCommands.GetAliases || {
     name: 'GetAliases',
@@ -332,7 +332,7 @@ config.apiCommands = {
    */
   CreateRoom: config.apiCommands.CreateRoom || {
     name: 'CreateRoom',
-    accessLevel: config.AccessLevels.STANDARD,
+    accessLevel: process.env.CREATEROOM || config.AccessLevels.STANDARD,
   },
   GetRoom: config.apiCommands.GetRoom || {
     name: 'GetRoom',
@@ -368,7 +368,7 @@ config.apiCommands = {
    */
   CreateTransaction: config.apiCommands.CreateTransaction || {
     name: 'CreateTransaction',
-    accessLevel: config.AccessLevels.STANDARD,
+    accessLevel: process.env.CREATETRANSACTION || config.AccessLevels.STANDARD,
   },
   GetTransaction: config.apiCommands.GetTransaction || {
     name: 'GetTransaction',
@@ -412,7 +412,7 @@ config.apiCommands = {
    */
   CreateUser: config.apiCommands.CreateUser || {
     name: 'CreateUser',
-    accessLevel: config.AccessLevels.ANONYMOUS,
+    accessLevel: process.env.CREATEUSER || config.AccessLevels.ANONYMOUS,
   },
   CreateDisallowedUser: config.apiCommands.CreateDisallowedUser || {
     name: 'CreateDisallowedUser',
@@ -500,7 +500,7 @@ config.apiCommands = {
    */
   CreateTeam: config.apiCommands.CreateTeam || {
     name: 'CreateTeam',
-    accessLevel: config.AccessLevels.STANDARD,
+    accessLevel: process.env.CREATETEAM || config.AccessLevels.STANDARD,
   },
   GetTeam: config.apiCommands.GetTeam || {
     name: 'GetTeam',
@@ -536,7 +536,7 @@ config.apiCommands = {
    */
   CreateForum: config.apiCommands.CreateForum || {
     name: 'CreateForum',
-    accessLevel: config.AccessLevels.MODERATOR,
+    accessLevel: process.env.CREATEFORUM || config.AccessLevels.MODERATOR,
   },
   GetForum: config.apiCommands.GetForum || {
     name: 'GetForum',
@@ -556,7 +556,7 @@ config.apiCommands = {
    */
   CreateForumPost: config.apiCommands.CreateForumPost || {
     name: 'CreateForumPost',
-    accessLevel: config.AccessLevels.STANDARD,
+    accessLevel: process.env.CREATEFORUMPOST || config.AccessLevels.STANDARD,
   },
   GetForumPost: config.apiCommands.GetForumPost || {
     name: 'GetForumPost',
@@ -576,7 +576,7 @@ config.apiCommands = {
    */
   CreateForumThread: config.apiCommands.CreateForumThread || {
     name: 'CreateForumThread',
-    accessLevel: config.AccessLevels.STANDARD,
+    accessLevel: process.env.CREATEFORUMTHREAD || config.AccessLevels.STANDARD,
   },
   GetForumThread: config.apiCommands.GetForumThread || {
     name: 'GetForumThread',
@@ -596,7 +596,7 @@ config.apiCommands = {
    */
   CreateDevice: config.apiCommands.CreateDevice || {
     name: 'CreateDevice',
-    accessLevel: config.AccessLevels.STANDARD,
+    accessLevel: process.env.CREATEDEVICE || config.AccessLevels.STANDARD,
   },
   RemoveDevice: config.apiCommands.RemoveDevice || {
     name: 'RemoveDevice',
@@ -620,7 +620,7 @@ config.apiCommands = {
    */
   CreateDocFile: config.apiCommands.CreateDocFile || {
     name: 'CreateDocFile',
-    accessLevel: config.AccessLevels.STANDARD,
+    accessLevel: process.env.CREATEDOCFILE || config.AccessLevels.STANDARD,
   },
   RemoveDocFile: config.apiCommands.RemoveDocFile || {
     name: 'RemoveDocFile',
@@ -668,7 +668,7 @@ config.apiCommands = {
    */
   CreateGameCode: config.apiCommands.CreateGameCode || {
     name: 'CreateGameCode',
-    accessLevel: config.AccessLevels.STANDARD,
+    accessLevel: process.env.CREATEGAMECODE || config.AccessLevels.STANDARD,
   },
   UseGameCode: config.apiCommands.UseGameCode || {
     name: 'UseGameCode',
@@ -692,7 +692,7 @@ config.apiCommands = {
    */
   CreatePosition: config.apiCommands.CreatePosition || {
     name: 'CreatePosition',
-    accessLevel: config.AccessLevels.STANDARD,
+    accessLevel: process.env.CREATEPOSITION || config.AccessLevels.STANDARD,
   },
   GetPositions: config.apiCommands.GetPositions || {
     name: 'GetPositions',
