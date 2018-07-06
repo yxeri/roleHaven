@@ -165,8 +165,8 @@ function hasAccessTo({
   const {
     hasFullAccess,
     accessLevel,
+    objectId: authUserId,
     teamIds: authTeamIds = [],
-    objectId: authUserId = [],
     aliases = [],
   } = toAuth;
 
@@ -179,7 +179,7 @@ function hasAccessTo({
   const isAdmin = ownerId === authUserId || hasFullAccess || accessLevel >= dbConfig.AccessLevels.ADMIN;
 
   return {
-    canSee: isAdmin || isPublic || accessLevel >= visibility,
+    canSee: isAdmin || isPublic || userHasAccess || teamHasAccess || aliasHasAccess || accessLevel >= visibility,
     hasAccess: isAdmin || isPublic || userHasAccess || teamHasAccess || aliasHasAccess,
     hasFullAccess: isAdmin || userHasAdminAccess || teamHasAdminAccess || aliasHasAdminAccess,
   };

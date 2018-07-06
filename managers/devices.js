@@ -59,8 +59,6 @@ function getDeviceById({
 
           const { device } = getDeviceData;
 
-          console.log('device data from id', device);
-
           const {
             canSee,
             hasFullAccess,

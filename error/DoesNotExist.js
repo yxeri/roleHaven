@@ -27,12 +27,14 @@ class DoesNotExist extends GeneralError.create {
     errorObject,
     verbose,
     extraData,
+    supressPrint,
     name = '-',
   }) {
     super({
       errorObject,
       verbose,
       extraData,
+      supressPrint,
       type: GeneralError.ErrorTypes.DOESNOTEXIST,
       text: [`${name} does not exist`],
     });

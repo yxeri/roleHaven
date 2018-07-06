@@ -333,13 +333,12 @@ function handle(io) {
     }
 
     const { password, aliasId } = request.body.data;
-    const { roomId, userId } = request.params;
+    const { roomId } = request.params;
     const { authorization: token } = request.headers;
 
     roomManager.followRoom({
       io,
       token,
-      userId,
       roomId,
       password,
       aliasId,

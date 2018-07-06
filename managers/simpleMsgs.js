@@ -58,8 +58,6 @@ function getSimpleMsgById({
             return;
           }
 
-          console.log('found simple', msgData);
-
           const { simpleMsg: foundSimpleMsg } = msgData;
           const {
             hasAccess,

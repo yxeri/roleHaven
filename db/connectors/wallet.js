@@ -235,8 +235,6 @@ function updateWallet({
     } else {
       update.$inc.amount = Math.abs(amount);
     }
-
-    console.log(-Math.abs(amount), Math.abs(amount));
   }
 
   if (resetOwnerAliasId) {

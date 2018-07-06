@@ -143,7 +143,9 @@ function createAlias({
 
                   const userSocket = socketUtils.getUserSocket({ io, socketId: user.socketId });
 
-                  if (userSocket) { userSocket.join(createdRoom.objectId); }
+                  if (userSocket) {
+                    userSocket.join(createdAlias.objectId);
+                  }
 
                   io.to(user.objectId).emit(dbConfig.EmitTypes.ALIAS, creatorDataToSend);
                   io.emit(dbConfig.EmitTypes.USER, dataToSend);
@@ -258,17 +260,24 @@ function getAliasesByUser({
           }
 
           const { aliases } = getAliasesData;
-          const allAliases = aliases.map((aliasItem) => {
+          const allAliases = aliases.filter((alias) => {
+            const { canSee } = authenticator.hasAccessTo({
+              toAuth: authUser,
+              objectToAccess: alias,
+            });
+
+            return canSee;
+          }).map((alias) => {
             const { hasFullAccess } = authenticator.hasAccessTo({
               toAuth: authUser,
-              objectToAccess: aliasItem,
+              objectToAccess: alias,
             });
 
             if (!hasFullAccess) {
-              return managerHelper.stripObject({ object: aliasItem });
+              return managerHelper.stripObject({ object: alias });
             }
 
-            return aliasItem;
+            return alias;
           }).sort((a, b) => {
             const aName = a.aliasName;
             const bName = b.aliasName;
@@ -480,8 +489,8 @@ function updateAccess({
                 },
               };
 
-              io.emit(dbConfig.EmitTypes.DOCFILE, dataToSend);
-              io.to(updatedAlias.ownerId).emit(dbConfig.EmitTypes.DOCFILE, creatorDataToSend);
+              io.emit(dbConfig.EmitTypes.USER, dataToSend);
+              io.to(updatedAlias.ownerId).emit(dbConfig.EmitTypes.USER, creatorDataToSend);
 
               callback(creatorDataToSend);
             },

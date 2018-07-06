@@ -169,7 +169,12 @@ function getUsers({ filter, query, callback }) {
  * @param {string} params.query - Query to get alias
  * @param {Function} params.callback - Callback
  */
-function getUser({ filter, query, callback }) {
+function getUser({
+  filter,
+  query,
+  callback,
+  supressExistError,
+}) {
   dbConnector.getObject({
     query,
     filter,
@@ -180,7 +185,12 @@ function getUser({ filter, query, callback }) {
 
         return;
       } else if (!data.object) {
-        callback({ error: new errorCreator.DoesNotExist({ name: `user ${JSON.stringify(query, null, 4)}` }) });
+        callback({
+          error: new errorCreator.DoesNotExist({
+            supressPrint: supressExistError,
+            name: `user ${JSON.stringify(query, null, 4)}`,
+          }),
+        });
 
         return;
       }
@@ -191,7 +201,7 @@ function getUser({ filter, query, callback }) {
 }
 
 /**
- * Get user or alias by Id or name.
+ * Get user by Id or name.
  * @param {Object} params - Parameters.
  * @param {string} params.userId - Id of the user.
  * @param {Function} params.callback - Callback.
@@ -200,6 +210,7 @@ function getUserById({
   userId,
   username,
   callback,
+  supressExistError,
 }) {
   const query = userId ?
     { _id: userId } :
@@ -207,6 +218,7 @@ function getUserById({
 
   getUser({
     query,
+    supressExistError,
     callback: ({ error, data }) => {
       if (error) {
         callback({ error });
@@ -598,7 +610,7 @@ function addToTeam({
             return;
           }
 
-          dbTeam.addAccess({
+          dbTeam.updateAccess({
             teamId,
             userIds,
             userAdminIds: isAdmin ?
@@ -715,9 +727,10 @@ function removeFromTeam({ userId, teamId, callback }) {
             return;
           }
 
-          dbTeam.removeAccess({
+          dbTeam.updateAccess({
             teamId,
             callback,
+            shouldRemove: true,
             userIds: [userId],
             userAdminIds: [userId],
           });
@@ -796,30 +809,25 @@ function getInactiveUsers({ callback }) {
   getUsers({
     query,
     callback,
-    filter: {
-      fullName: 1,
-      username: 1,
-      lastUpdated: 1,
-      isBanned: 1,
-      isVerified: 1,
-    },
   });
 }
 
 /**
- * Add a room to a user.
+ * Add a room to users.
  * @param {Object} params - Parameters.
  * @param {string} params.roomId - Id of the room to add.
- * @param {string} params.userId - Id of the user to update.
+ * @param {string[]} params.userIds - Id of the users to update.
  * @param {Function} params.callback - Callback
  */
 function followRoom({
   roomId,
-  userId,
   callback,
+  userIds = [],
 }) {
-  updateObject({
-    userId,
+  updateObjects({
+    query: {
+      _id: { $in: userIds },
+    },
     update: { $addToSet: { followingRooms: roomId } },
     callback: ({ error, data }) => {
       if (error) {
@@ -874,6 +882,24 @@ function getAllUsers({ callback }) {
   });
 }
 
+/**
+ * Get users that have access to alias.
+ * @param {Object} params - Parameters.
+ * @param {string} params.aliasId - Alias Id.
+ * @param {Function} params.callback - Callback.
+ */
+function getUsersByAlias({
+  aliasId,
+  callback,
+}) {
+  getUsers({
+    callback,
+    query: {
+      aliases: { $in: [aliasId] },
+    },
+  });
+}
+
 exports.authUser = authUser;
 exports.createUser = createUser;
 exports.updateUser = updateUser;
@@ -896,3 +922,4 @@ exports.addAlias = addAlias;
 exports.removeAlias = removeAlias;
 exports.removeAliasFromAllUsers = removeAliasFromAllUsers;
 exports.getAllUsers = getAllUsers;
+exports.getUsersByAlias = getUsersByAlias;

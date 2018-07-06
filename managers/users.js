@@ -220,8 +220,14 @@ function createUser({
                           changeType: dbConfig.ChangeTypes.CREATE,
                         },
                       };
+                      const forumDataToSend = {
+                        data: {
+                          forum: managerHelper.stripObject({ object: Object.assign({}, createdForum) }),
+                        },
+                      };
 
                       io.to(createdUser.objectId).emit(dbConfig.EmitTypes.USER, creatorDataToSend);
+                      io.emit(dbConfig.EmitTypes.FORUM, forumDataToSend);
                       io.emit(dbConfig.EmitTypes.USER, dataToSend);
                       io.emit(dbConfig.EmitTypes.ROOM, roomDataToSend);
                       io.emit(dbConfig.EmitTypes.WALLET, walletDataToSend);
@@ -261,11 +267,11 @@ function getUsersByUser({
         return;
       }
 
-      const { user } = data;
+      const { user: authUser } = data;
 
       dbUser.getUsersByUser({
-        user,
-        includeInactive: user.accessLevel >= dbConfig.AccessLevels.MODERATOR ?
+        user: authUser,
+        includeInactive: authUser.accessLevel >= dbConfig.AccessLevels.MODERATOR ?
           true :
           includeInactive,
         callback: ({ error: userError, data: userData }) => {
@@ -276,12 +282,19 @@ function getUsersByUser({
           }
 
           const { users } = userData;
-          const allUsers = users.map((userItem) => {
-            const { hasFullAccess } = authenticator.hasAccessTo({
-              toAuth: user,
-              objectToAccess: userItem,
+          const allUsers = users.filter((user) => {
+            const { canSee } = authenticator.hasAccessTo({
+              toAuth: authUser,
+              objectToAccess: user,
             });
-            const userObject = userItem;
+
+            return canSee;
+          }).map((user) => {
+            const { hasFullAccess } = authenticator.hasAccessTo({
+              toAuth: authUser,
+              objectToAccess: user,
+            });
+            const userObject = user;
 
             if (!hasFullAccess) {
               return managerHelper.stripObject({ object: userObject });
@@ -309,9 +322,9 @@ function getUsersByUser({
 }
 
 /**
- * Get user or alais by Id or name.
+ * Get user  Id or name.
  * @param {Object} params - Parameters.
- * @param {string} params.userId - Id of the user or alias to retrieve.
+ * @param {string} params.userId - Id of the user to retrieve.
  * @param {Object} [params.internalCallUser] - User to use on authentication. It will bypass token authentication.
  * @param {Function} params.callback - Callback.
  */

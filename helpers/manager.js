@@ -90,6 +90,7 @@ function getObjectById({
           }
 
           const foundObject = getData[objectType];
+
           const {
             canSee,
             hasAccess,
@@ -125,9 +126,11 @@ function getObjectById({
       dbCallParams[objectIdType] = objectId;
 
       searchParams.forEach((param) => {
-        const { paramName, paramValue } = param;
+        if (param.paramValue) {
+          const { paramName, paramValue } = param;
 
-        dbCallParams[paramName] = paramValue;
+          dbCallParams[paramName] = paramValue;
+        }
       });
 
       dbCallFunc(dbCallParams);
@@ -184,7 +187,14 @@ function getObjects({
           }
 
           const objects = getData[objectsType];
-          const allObjects = objects.map((object) => {
+          const allObjects = objects.filter((object) => {
+            const { canSee } = authenticator.hasAccessTo({
+              toAuth: authUser,
+              objectToAccess: object,
+            });
+
+            return canSee;
+          }).map((object) => {
             const { hasFullAccess } = authenticator.hasAccessTo({
               toAuth: authUser,
               objectToAccess: object,

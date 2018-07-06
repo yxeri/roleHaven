@@ -112,8 +112,6 @@ function updateWallet({
             return;
           }
 
-          console.log('updating with', wallet, 'existing', walletData.wallet);
-
           dbWallet.updateWallet({
             walletId,
             options,

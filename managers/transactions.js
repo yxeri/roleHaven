@@ -311,11 +311,6 @@ function removeTransaction({
             toAuth: authUser,
           });
 
-          console.log('found', foundTransaction, 'access', authenticator.hasAccessTo({
-            objectToAccess: foundTransaction,
-            toAuth: authUser,
-          }), 'user', authUser);
-
           if (!hasFullAccess) {
             callback({ error: new errorCreator.NotAllowed({ name: `remove transaction ${transactionId}` }) });
 

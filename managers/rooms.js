@@ -148,13 +148,11 @@ function updateAccess({
  * @param {Object} params - Parameters.
  * @param {string[]} params.participantIds - User Ids of the users send private messages to each other.
  * @param {Function} params.callback - Callback.
- * @param {Object} params.socket - Socket.io.
- * @param {Object} params.io - Socket.io. Used if socket is not set.
+ * @param {Object} params.io - Socket.io.
  */
 function createAndFollowWhisperRoom({
   participantIds,
   callback,
-  socket,
   io,
   user,
 }) {
@@ -166,97 +164,126 @@ function createAndFollowWhisperRoom({
     visibility: dbConfig.AccessLevels.SUPERUSER,
   };
 
-  dbRoom.createRoom({
-    room,
-    skipExistsCheck: true,
-    callback: (roomData) => {
-      if (roomData.error) {
-        callback({ error: roomData.error });
+  const followCallback = ({ users = [] }) => {
+    if (users.length === 0) {
+      callback({ error: new errorCreator.DoesNotExist({ name: `create and follow whisper room. User/Alias Id ${participantIds[1]} does not exist.` }) });
 
-        return;
-      }
-      const { objectId: roomId } = roomData.data.room;
+      return;
+    }
 
-      dbRoom.updateAccess({
-        roomId,
-        userIds: participantIds,
-        callback: (accessdata) => {
-          if (accessdata.error) {
-            callback({ error: accessdata.error });
+    dbRoom.createRoom({
+      room,
+      skipExistsCheck: true,
+      callback: (roomData) => {
+        if (roomData.error) {
+          callback({ error: roomData.error });
 
-            return;
-          }
+          return;
+        }
+        const { objectId: roomId } = roomData.data.room;
 
-          dbUser.followRoom({
-            roomId,
-            userId: user.objectId,
-            callback: (senderFollowData) => {
-              if (senderFollowData.error) {
-                callback({ error: senderFollowData.error });
+        console.log(participantIds, user.objectId, users, users.map(foundUser => foundUser.objectId));
+
+        dbRoom.updateAccess({
+          roomId,
+          userIds: participantIds,
+          callback: (accessdata) => {
+            if (accessdata.error) {
+              callback({ error: accessdata.error });
+
+              return;
+            }
+
+            dbUser.followRoom({
+              roomId,
+              userIds: [user.objectId],
+              callback: (senderFollowData) => {
+                if (senderFollowData.error) {
+                  callback({ error: senderFollowData.error });
+
+                  return;
+                }
+
+                dbUser.followRoom({
+                  roomId,
+                  userIds: users.map(foundUser => foundUser.objectId),
+                  callback: (receiverFollowData) => {
+                    if (receiverFollowData.error) {
+                      callback({ error: receiverFollowData.error });
+
+                      return;
+                    }
+
+                    const newRoom = accessdata.data.room;
+                    const newRoomId = newRoom.objectId;
+                    const dataToSend = {
+                      data: {
+                        room: newRoom,
+                        changeType: dbConfig.ChangeTypes.CREATE,
+                      },
+                    };
+
+                    users.forEach((foundUser) => {
+                      console.log('found socket user ', foundUser);
+
+                      const receiverSocket = socketUtils.getUserSocket({ io, socketId: foundUser.socketId });
+
+                      if (receiverSocket) {
+                        receiverSocket.join(newRoomId);
+                      }
+                    });
+
+                    const senderSocket = socketUtils.getUserSocket({ io, socketId: user.socketId });
+
+                    if (senderSocket) {
+                      senderSocket.join(newRoomId);
+                    }
+
+                    io.to(newRoomId).emit(dbConfig.EmitTypes.ROOM, dataToSend);
+
+                    callback(roomData);
+                  },
+                });
+              },
+            });
+          },
+        });
+      },
+    });
+  };
+
+  dbUser.getUserById({
+    userId: participantIds[1],
+    supressExistError: true,
+    callback: ({ error: userError, data: userData }) => {
+      if (userError) {
+        if (userError.type && userError.type === errorCreator.ErrorTypes.DOESNOTEXIST) {
+          dbUser.getUsersByAlias({
+            aliasId: participantIds[1],
+            callback: ({ error: aliasError, data: aliasData }) => {
+              if (aliasError) {
+                callback({ error: aliasError });
 
                 return;
               }
 
-              dbUser.getUserById({
-                userId: participantIds[1],
-                aliasId: participantIds[1],
-                callback: (identityData) => {
-                  if (identityData.error) {
-                    callback({ error: identityData.error });
+              const { users } = aliasData;
 
-                    return;
-                  }
-
-                  const { alias: identityAlias, user: identityUser } = identityData.data;
-                  const identityId = identityUser ?
-                    identityUser.objectId :
-                    identityAlias.ownerId;
-
-                  dbUser.followRoom({
-                    roomId,
-                    userId: identityId,
-                    callback: (receiverFollowData) => {
-                      if (receiverFollowData.error) {
-                        callback({ error: receiverFollowData.error });
-
-                        return;
-                      }
-
-                      const newRoom = accessdata.data.room;
-                      const newRoomId = newRoom.objectId;
-                      const senderId = user.objectId;
-                      const receiverId = identityId;
-                      const dataToSend = {
-                        data: {
-                          room: newRoom,
-                          changeType: dbConfig.ChangeTypes.CREATE,
-                        },
-                      };
-
-                      const receiverSocket = socketUtils.getUserSocket({ io, socketId: receiverId });
-
-                      if (receiverSocket) { receiverSocket.join(newRoomId); }
-
-                      if (socket) {
-                        socket.join(newRoomId);
-                      } else {
-                        const senderSocket = socketUtils.getUserSocket({ io, socketId: senderId });
-
-                        if (senderSocket) { senderSocket.join(newRoomId); }
-                      }
-
-                      io.to(senderId).emit(dbConfig.EmitTypes.ROOM, dataToSend);
-                      io.to(receiverId).emit(dbConfig.EmitTypes.ROOM, dataToSend);
-
-                      callback(roomData);
-                    },
-                  });
-                },
-              });
+              followCallback({ users });
             },
           });
-        },
-      });
+
+          return;
+        }
+
+        callback({ error: userError });
+
+        return;
+      }
+
+      const { user: foundUser } = userData;
+
+      followCallback({ users: [foundUser] });
     },
   });
 }
@@ -435,19 +462,15 @@ function follow({
             return;
           }
 
-          console.log('follower func done', userId, roomId);
-
           dbUser.followRoom({
             roomId,
-            userId,
+            userIds: [userId],
             callback: (followData) => {
               if (followData.error) {
                 callback({ error: followData.error });
 
                 return;
               }
-
-              console.log('follow room func done', userId, roomId);
 
               const toReturn = {
                 data: {
@@ -580,8 +603,8 @@ function followRoom({
             socket,
             io,
             callback,
-            authUser,
-            userId: aliasId || authUser.objectId,
+            user: authUser,
+            userIds: [aliasId || authUser.objectId],
           });
         },
       });

@@ -61,6 +61,7 @@ class GeneralError {
   constructor({
     errorObject,
     extraData,
+    supressPrint,
     text = ['Something went wrong'],
     type = ErrorTypes.GENERAL,
     verbose = true,
@@ -69,7 +70,7 @@ class GeneralError {
     this.type = type;
     this.extraData = extraData;
 
-    if (appConfig.verboseError || verbose) {
+    if ((appConfig.verboseError || verbose) && !supressPrint) {
       console.error(`Error Type: ${type}. `, text.join(' ').replace(/"password": ".*"/g, '"password": true'));
       printError(errorObject);
     }
