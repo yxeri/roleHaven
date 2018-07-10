@@ -432,19 +432,23 @@ function leaveSocketRooms(socket) {
  * @param {Function} params.callback - Callback.
  * @param {Object} params.io - Socket.io. Used if socket is not set.
  * @param {Object} params.user - User trying to follow a room.
- * @param {Object} [params.socket] - Socket.io socket.
  */
 function follow({
   userId,
+  aliasId,
   user,
   roomId,
-  socket,
   io,
   callback,
 }) {
+  const idToAdd = aliasId || userId;
+
   dbRoom.updateAccess({
     roomId,
-    userIds: [userId],
+    userIds: [
+      userId,
+      idToAdd,
+    ],
     callback: ({ error, data }) => {
       if (error) {
         callback({ error });
@@ -454,7 +458,7 @@ function follow({
 
       dbRoom.addFollowers({
         roomId,
-        userIds: [userId],
+        userIds: [idToAdd],
         callback: (followerData) => {
           if (followerData.error) {
             callback({ error: followerData.error });
@@ -474,28 +478,24 @@ function follow({
 
               const toReturn = {
                 data: {
-                  user: { objectId: userId },
+                  user: { objectId: idToAdd },
                   room: data.room,
                   changeType: dbConfig.ChangeTypes.CREATE,
                 },
               };
               const toSend = {
                 data: {
-                  user: { objectId: userId },
+                  user: { objectId: idToAdd },
                   room: { objectId: roomId },
                   changeType: dbConfig.ChangeTypes.CREATE,
                 },
               };
 
-              if (socket) {
-                socket.join(roomId);
-              } else {
-                const userSocket = socketUtils.getUserSocket({ io, socketId: user.socketId });
+              const userSocket = socketUtils.getUserSocket({ io, socketId: user.socketId });
 
-                if (userSocket) { userSocket.join(roomId); }
-              }
+              if (userSocket) { userSocket.join(roomId); }
 
-              io.to(userId).emit(dbConfig.EmitTypes.FOLLOW, toReturn);
+              io.to(idToAdd).emit(dbConfig.EmitTypes.FOLLOW, toReturn);
               io.to(roomId).emit(dbConfig.EmitTypes.FOLLOWER, toSend);
 
               callback(toReturn);
@@ -603,8 +603,9 @@ function followRoom({
             socket,
             io,
             callback,
+            aliasId,
             user: authUser,
-            userIds: [aliasId || authUser.objectId],
+            userId: authUser.objectId,
           });
         },
       });

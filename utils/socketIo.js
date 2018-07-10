@@ -90,6 +90,27 @@ function joinRequiredRooms({
 }
 
 /**
+ * Join all alias rooms.
+ * @param {Object} params - Parameters.
+ * @param {Object} params.io - Socket.io.
+ * @param {string[]} params.aliases - Alias Ids.
+ * @return {Object} Socket.
+ */
+function joinAliasRooms({
+  io,
+  socketId,
+  aliases,
+}) {
+  const userSocket = getUserSocket({ io, socketId });
+
+  if (userSocket) {
+    aliases.forEach(aliasId => userSocket.join(aliasId));
+  }
+
+  return userSocket;
+}
+
+/**
  * Leave socket rooms.
  * @param {Object} params - Parameters.
  * @param {string[]} params.roomIds - ID of the rooms to leave.
@@ -112,3 +133,4 @@ exports.getSocketsByRoom = getSocketsByRoom;
 exports.joinRooms = joinRooms;
 exports.leaveRooms = leaveRooms;
 exports.joinRequiredRooms = joinRequiredRooms;
+exports.joinAliasRooms = joinAliasRooms;

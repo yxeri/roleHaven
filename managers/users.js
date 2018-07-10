@@ -542,6 +542,11 @@ function login({
             userId,
             socketId,
           });
+          socketUtils.joinAliasRooms({
+            io,
+            socketId,
+            aliases: authUser.aliases,
+          });
 
           callback({ data: { user: authUser, token } });
         },
@@ -919,9 +924,9 @@ function updateId({
         return;
       }
 
-      const { user } = data;
+      const { user: authUser } = data;
 
-      const { objectId: userId, followingRooms: roomIds } = user;
+      const { objectId: userId, followingRooms: roomIds } = authUser;
       const socketId = socket.id;
 
       dbUser.updateOnline({
@@ -946,8 +951,13 @@ function updateId({
             userId,
             socketId,
           });
+          socketUtils.joinAliasRooms({
+            io,
+            socketId,
+            aliases: authUser.aliases,
+          });
 
-          callback({ data: { user } });
+          callback({ data: { user: authUser } });
         },
       });
     },
