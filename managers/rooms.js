@@ -650,7 +650,7 @@ function unfollowRoom({
 
       dbRoom.updateAccess({
         roomId,
-        userIds: [authUser.objectId],
+        userIds: [aliasId || authUser.objectId],
         callback: () => {
           if (error) {
             callback({ error });
@@ -663,7 +663,7 @@ function unfollowRoom({
             socket,
             io,
             callback,
-            authUser,
+            user: authUser,
             userId: aliasId || authUser.objectId,
           });
         },
