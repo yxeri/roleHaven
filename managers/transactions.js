@@ -194,17 +194,25 @@ function createTransaction({
               }
 
               const { fromWallet, toWallet } = runTransactionData;
-              const dataToSend = {
+              const fromDataToSend = {
                 data: {
+                  wallet: fromWallet,
+                  transaction: createdTransaction,
+                  changeType: dbConfig.ChangeTypes.CREATE,
+                },
+              };
+              const toDataToSend = {
+                data: {
+                  wallet: toWallet,
                   transaction: createdTransaction,
                   changeType: dbConfig.ChangeTypes.CREATE,
                 },
               };
 
-              io.to(fromWallet.objectId).emit(dbConfig.EmitTypes.TRANSACTION, dataToSend);
-              io.to(toWallet.objectId).emit(dbConfig.EmitTypes.TRANSACTION, dataToSend);
+              io.to(fromWallet.objectId).emit(dbConfig.EmitTypes.TRANSACTION, fromDataToSend);
+              io.to(toWallet.objectId).emit(dbConfig.EmitTypes.TRANSACTION, fromDataToSend);
 
-              callback(dataToSend);
+              callback(fromDataToSend);
             },
           });
         },
