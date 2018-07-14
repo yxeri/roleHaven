@@ -271,13 +271,18 @@ function updatePosition({
     doesPositionExist({
       positionName,
       connectedToUser,
-      callback: (deviceData) => {
-        if (deviceData.error) {
-          callback({ error: deviceData.error });
+      callback: (positionData) => {
+        if (positionData.error) {
+          callback({ error: positionData.error });
 
           return;
-        } else if (deviceData.data.exists) {
-          callback({ error: new errorCreator.AlreadyExists({ name: `position with connected user ${position.connectedToUser}` }) });
+        } else if (positionData.data.exists) {
+          if (connectedToUser) {
+            callback({ error: new errorCreator.AlreadyExists({ name: `position with connected user ${position.connectedToUser}` }) });
+          } else {
+            callback({ error: new errorCreator.AlreadyExists({ name: `position with name ${position.positionName}` }) });
+          }
+
 
           return;
         }
@@ -314,7 +319,7 @@ function updatePosition({
   if (Object.keys(set).length > 0) { update.$set = set; }
   if (Object.keys(unset).length > 0) { update.$unset = unset; }
 
-  if (!resetConnectedToUser && connectedToUser) {
+  if ((!resetConnectedToUser && connectedToUser) || positionName) {
     existCallback();
   } else {
     updateCallback();
