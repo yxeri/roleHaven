@@ -22,11 +22,11 @@ The documentation for the REST API can be found at https://thethirdgift.com/role
 
 ## Project owner
 
-* Aleksandar Jankovic - [Github](https://github.com/yxeri)
+* Carmilla Mina Jankovic - [Github](https://github.com/yxeri)
 
 ## Development contributors
 
-* Aleksandar Jankovic - [Github](https://github.com/yxeri)
+* Carmilla Mina Jankovic - [Github](https://github.com/yxeri)
 * Stanislav B - [Github](https://github.com/stanislavb)
 * Sebastian Streiffert
 * Johnathan Browall
