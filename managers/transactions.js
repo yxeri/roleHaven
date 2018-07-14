@@ -210,7 +210,7 @@ function createTransaction({
               };
 
               io.to(fromWallet.objectId).emit(dbConfig.EmitTypes.TRANSACTION, fromDataToSend);
-              io.to(toWallet.objectId).emit(dbConfig.EmitTypes.TRANSACTION, fromDataToSend);
+              io.to(toWallet.objectId).emit(dbConfig.EmitTypes.TRANSACTION, toDataToSend);
 
               callback(fromDataToSend);
             },
