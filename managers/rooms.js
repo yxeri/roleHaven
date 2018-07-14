@@ -182,8 +182,6 @@ function createAndFollowWhisperRoom({
         }
         const { objectId: roomId } = roomData.data.room;
 
-        console.log(participantIds, user.objectId, users, users.map(foundUser => foundUser.objectId));
-
         dbRoom.updateAccess({
           roomId,
           userIds: participantIds,
@@ -224,8 +222,6 @@ function createAndFollowWhisperRoom({
                     };
 
                     users.forEach((foundUser) => {
-                      console.log('found socket user ', foundUser);
-
                       const receiverSocket = socketUtils.getUserSocket({ io, socketId: foundUser.socketId });
 
                       if (receiverSocket) {
