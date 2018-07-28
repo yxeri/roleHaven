@@ -25,50 +25,56 @@ const transactionManager = require('../../managers/transactions');
  * @param {object} io - Socket.Io.
  */
 function handle(socket, io) {
-  socket.on('createTransaction', (params, callback = () => {}) => {
+  socket.on('createTransaction', (params, callback = () => {
+  }) => {
     params.callback = callback;
     params.io = io;
-
+    params.socket = socket;
 
     transactionManager.createTransaction(params);
   });
 
-  socket.on('updateTransaction', (params, callback = () => {}) => {
+  socket.on('updateTransaction', (params, callback = () => {
+  }) => {
     params.callback = callback;
     params.io = io;
-
+    params.socket = socket;
 
     transactionManager.updateTransaction(params);
   });
 
-  socket.on('removeTransaction', (params, callback = () => {}) => {
+  socket.on('removeTransaction', (params, callback = () => {
+  }) => {
     params.callback = callback;
     params.io = io;
-
+    params.socket = socket;
 
     transactionManager.removeTransaction(params);
   });
 
-  socket.on('getTransaction', (params, callback = () => {}) => {
+  socket.on('getTransaction', (params, callback = () => {
+  }) => {
     params.callback = callback;
     params.io = io;
-
+    params.socket = socket;
 
     transactionManager.getTransactionById(params);
   });
 
-  socket.on('getTransactions', (params, callback = () => {}) => {
+  socket.on('getTransactions', (params, callback = () => {
+  }) => {
     params.callback = callback;
     params.io = io;
+    params.socket = socket;
 
-
-    transactionManager.getTransactionsCreatedByUser(params);
+    transactionManager.getTransactionsByUser(params);
   });
 
-  socket.on('getTransactionsByWallet', (params, callback = () => {}) => {
+  socket.on('getTransactionsByWallet', (params, callback = () => {
+  }) => {
     params.callback = callback;
     params.io = io;
-
+    params.socket = socket;
 
     transactionManager.getTransactionsByWallet(params);
   });

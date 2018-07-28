@@ -52,7 +52,7 @@ describe('Authenticate', () => {
       .post('/api/authenticate')
       .send({ data: { user: starterData.unverifiedUser } })
       .end((error, response) => {
-        response.should.have.status(404);
+        response.should.have.status(401);
         response.should.be.json;
         response.body.should.be.jsonSchema(baseObjectSchemas.returnData);
 
@@ -66,7 +66,7 @@ describe('Authenticate', () => {
       .post('/api/authenticate')
       .send({ data: { user: starterData.bannedUser } })
       .end((error, response) => {
-        response.should.have.status(404);
+        response.should.have.status(401);
         response.should.be.json;
         response.body.should.be.jsonSchema(baseObjectSchemas.returnData);
 

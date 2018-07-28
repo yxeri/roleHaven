@@ -28,20 +28,6 @@ function checkAndSendError({
   }
 
   switch (error.type) {
-    case errorCreator.ErrorTypes.DOESNOTEXIST: {
-      sendError.status = 404;
-      sendError.title = title || 'Does not exist';
-      sendError.detail = detail || 'Does not exist';
-
-      break;
-    }
-    case errorCreator.ErrorTypes.NOTALLOWED: {
-      sendError.status = 401;
-      sendError.title = title || 'Unauthorized';
-      sendError.detail = detail || 'Not allowed';
-
-      break;
-    }
     case errorCreator.ErrorTypes.INVALIDCHARACTERS: {
       sendError.status = 400;
       sendError.title = title || 'Invalid characters or length';
@@ -53,13 +39,6 @@ function checkAndSendError({
       sendError.status = 400;
       sendError.title = title || 'Insufficient';
       sendError.detail = detail || 'Insufficient';
-
-      break;
-    }
-    case errorCreator.ErrorTypes.ALREADYEXISTS: {
-      sendError.status = 403;
-      sendError.title = title || 'Already exists';
-      sendError.detail = detail || 'Already exists';
 
       break;
     }
@@ -81,6 +60,34 @@ function checkAndSendError({
       sendError.status = 400;
       sendError.title = title || 'Incorrect information sent';
       sendError.detail = detail || 'Incorrect information sent';
+
+      break;
+    }
+    case errorCreator.ErrorTypes.NOTALLOWED: {
+      sendError.status = 401;
+      sendError.title = title || 'Unauthorized';
+      sendError.detail = detail || 'Not allowed';
+
+      break;
+    }
+    case errorCreator.ErrorTypes.BANNED: {
+      sendError.status = 401;
+      sendError.title = title || 'Banned';
+      sendError.detail = detail || 'Banned';
+
+      break;
+    }
+    case errorCreator.ErrorTypes.ALREADYEXISTS: {
+      sendError.status = 403;
+      sendError.title = title || 'Already exists';
+      sendError.detail = detail || 'Already exists';
+
+      break;
+    }
+    case errorCreator.ErrorTypes.DOESNOTEXIST: {
+      sendError.status = 404;
+      sendError.title = title || 'Does not exist';
+      sendError.detail = detail || 'Does not exist';
 
       break;
     }

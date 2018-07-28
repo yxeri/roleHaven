@@ -21,59 +21,30 @@ const dbGameCode = require('../db/connectors/gameCode');
 const errorCreator = require('../error/errorCreator');
 const { appConfig, dbConfig } = require('../config/defaults/config');
 const transactionManager = require('../managers/transactions');
-const aliasManager = require('./aliases');
 const textTools = require('../utils/textTools');
 const docFileManager = require('./docFiles');
+const managerHelper = require('../helpers/manager');
 
 /**
- * Get game code by code and check if the user has access to it.
+ * Get a game code by Id.
  * @param {Object} params - Parameters.
- * @param {Object} params.user - User retrieving the alias.
- * @param {string} params.gameCodeId - Id of the game code to retrieve.
+ * @param {string} params.token - jwt.
  * @param {Function} params.callback - Callback.
- * @param {string} [params.errorContentText] - Text to be printed on error.
- * @param {boolean} [params.shouldBeAdmin] - Does the user have to be an admin?
+ * @param {string} params.gameCodeId - Code of the game code.
  */
-function getAccessibleGameCode({
-  user,
-  gameCodeId,
+function getGameCodeById({
+  token,
   callback,
-  shouldBeAdmin,
-  full,
-  errorContentText = `gameCode ${gameCodeId}`,
+  gameCodeId,
 }) {
-  dbGameCode.getGameCodeById({
-    gameCodeId,
-    full: true,
-    callback: (gameCodeData) => {
-      if (gameCodeData.error) {
-        callback({ error: gameCodeData.error });
-
-        return;
-      } else if (!authenticator.hasAccessTo({
-        shouldBeAdmin,
-        toAuth: user,
-        objectToAccess: gameCodeData.data.gameCode,
-      })) {
-        callback({ error: new errorCreator.NotAllowed({ name: errorContentText }) });
-
-        return;
-      }
-
-      const foundGameCode = gameCodeData.data.gameCode;
-      const filteredGameCode = {
-        objectId: foundGameCode.objectId,
-        code: foundGameCode.code,
-        codeContent: foundGameCode.codeContent,
-        codeType: foundGameCode.codeType,
-        lastUpdated: foundGameCode.lastUpdated,
-        used: foundGameCode.used,
-        ownerId: foundGameCode.ownerId,
-        ownerAliasId: foundGameCode.ownerAliasId,
-      };
-
-      callback({ data: { gameCode: full ? foundGameCode : filteredGameCode } });
-    },
+  managerHelper.getObjectById({
+    token,
+    callback,
+    objectId: gameCodeId,
+    objectType: 'gameCode',
+    objectIdType: 'gameCodeId',
+    dbCallFunc: dbGameCode.getGameCodeById,
+    commandName: dbConfig.apiCommands.GetGameCode.name,
   });
 }
 
@@ -87,16 +58,18 @@ function getAccessibleGameCode({
  */
 function triggerUnlockedContent({
   token,
-  userId,
   gameCode,
   callback,
   io,
+  user,
 }) {
   const dataToSend = {
     data: {
-      ownerId: gameCode.ownerAliasId || gameCode.ownerId,
-      codeType: gameCode.codeType,
-      content: {},
+      gameCode: {
+        ownerId: gameCode.ownerAliasId || gameCode.ownerId,
+        codeType: gameCode.codeType,
+        content: {},
+      },
     },
   };
 
@@ -105,13 +78,12 @@ function triggerUnlockedContent({
       // TODO Fix after transaction manager
       transactionManager.createTransaction({
         io,
-        ownerId: gameCode.ownerId,
         transaction: {
-          toWalletId: userId,
+          ownerId: gameCode.ownerId,
+          toWalletId: user.objectId,
           fromWalletId: gameCode.ownerAliasId || gameCode.ownerId,
           amount: appConfig.gameCodeAmount,
         },
-        emitToSender: true,
         callback: ({ error, data }) => {
           if (error) {
             callback({ error });
@@ -130,6 +102,8 @@ function triggerUnlockedContent({
     case dbConfig.GameCodeTypes.DOCFILE: {
       docFileManager.unlockDocFile({
         token,
+        io,
+        internalCallUser: user,
         code: gameCode.codeContent[0],
         callback: ({ error, data }) => {
           if (error) {
@@ -138,7 +112,7 @@ function triggerUnlockedContent({
             return;
           }
 
-          dataToSend.data.docFile = data.docFile;
+          dataToSend.data.content.docFile = data.docFile;
 
           callback(dataToSend);
         },
@@ -154,7 +128,7 @@ function triggerUnlockedContent({
       break;
     }
     default: {
-      callback({ error: new errorCreator.InvalidData({ name: `codeType ${gameCode.codeType}` }) });
+      callback({ error: new errorCreator.InvalidData({ name: `Unlock game code content. User: ${user.obj}. Game code: ${gameCode.objectId}. CodeType: ${gameCode.codeType}` }) });
 
       break;
     }
@@ -171,6 +145,7 @@ function triggerUnlockedContent({
 function createGameCode({
   gameCode,
   token,
+  io,
   callback,
 }) {
   authenticator.isUserAllowed({
@@ -183,114 +158,19 @@ function createGameCode({
         return;
       }
 
-      const createCallback = (gameCodeToSave) => {
-        dbGameCode.createGameCode({
-          gameCode: gameCodeToSave,
-          callback: (gameCodeData) => {
-            if (gameCodeData.error) {
-              callback({ error: gameCodeData.error });
-
-              return;
-            }
-
-            const dataToSend = {
-              data: {
-                gameCode: gameCodeData.data.gameCode,
-                changeType: dbConfig.ChangeTypes.CREATE,
-              },
-            };
-
-            callback(dataToSend);
-          },
-        });
-      };
-
-      const { user } = data;
+      const { user: authUser } = data;
       const gameCodeToSave = gameCode;
-      gameCodeToSave.ownerId = user.objectId;
+      gameCodeToSave.ownerId = authUser.objectId;
       gameCodeToSave.code = (gameCodeToSave.code || textTools.generateTextCode()).toLowerCase();
 
-      if (gameCodeToSave.ownerAliasId) {
-        aliasManager.getAccessibleAlias({
-          user,
-          aliasId: gameCodeToSave.ownerAliasId,
-          callback: (aliasData) => {
-            if (aliasData.error) {
-              callback({ error: aliasData.error });
-
-              return;
-            }
-
-            createCallback(gameCodeToSave);
-          },
-        });
+      if (gameCodeToSave.ownerAliasId && !authUser.aliases.includes(gameCodeToSave.ownerAliasId)) {
+        callback({ error: new errorCreator.NotAllowed({ name: `${dbConfig.apiCommands.CreateGameCode.name}. User: ${authUser.objectId}. Access game code with alais ${gameCodeToSave.ownerAliasId}` }) });
 
         return;
       }
 
-      createCallback(gameCodeToSave);
-    },
-  });
-}
-
-/**
- * Get a game code by Id.
- * @param {Object} params - Parameters.
- * @param {string} params.token - jwt.
- * @param {Function} params.callback - Callback.
- * @param {string} params.gameCodeId - Code of the game code.
- * @param {boolean} [params.full] - Should the complete object be returned?
- */
-function getGameCodeById({
-  token,
-  callback,
-  gameCodeId,
-  full,
-}) {
-  authenticator.isUserAllowed({
-    token,
-    commandName: dbConfig.apiCommands.GetGameCode.name,
-    callback: ({ error, data }) => {
-      if (error) {
-        callback({ error });
-
-        return;
-      }
-
-      const { user } = data;
-
-      getAccessibleGameCode({
-        user,
-        gameCodeId,
-        full,
-        callback,
-        shouldBeAdmin: full && dbConfig.apiCommands.GetFull.accessLevel > user.accessLevel,
-      });
-    },
-  });
-}
-
-/**
- * Get game codes by owner.
- * @param {Object} params - Parameters.
- * @param {string} params.token - jwt.
- * @param {Function} params.callback - Callback.
- */
-function getGameCodesByOwner({ token, callback }) {
-  authenticator.isUserAllowed({
-    token,
-    commandName: dbConfig.apiCommands.GetGameCode.name,
-    callback: ({ error, data }) => {
-      if (error) {
-        callback({ error });
-
-        return;
-      }
-
-      const { user } = data;
-
-      dbGameCode.getGameCodesByOwner({
-        ownerId: user.objectId,
+      dbGameCode.createGameCode({
+        gameCode: gameCodeToSave,
         callback: (gameCodeData) => {
           if (gameCodeData.error) {
             callback({ error: gameCodeData.error });
@@ -298,7 +178,16 @@ function getGameCodesByOwner({ token, callback }) {
             return;
           }
 
-          callback(gameCodeData);
+          const dataToSend = {
+            data: {
+              gameCode: gameCodeData.data.gameCode,
+              changeType: dbConfig.ChangeTypes.CREATE,
+            },
+          };
+
+          io.to(authUser.objectId).emit(dbConfig.EmitTypes.GAMECODE, dataToSend);
+
+          callback(dataToSend);
         },
       });
     },
@@ -329,14 +218,16 @@ function useGameCode({
         return;
       }
 
+      const { user: authUser } = data;
+
       dbGameCode.getGameCodeById({
         code,
-        callback: (gameCodeData) => {
-          if (gameCodeData.error) {
-            callback({ error: gameCodeData.error });
+        callback: ({ error: getError, data: getData }) => {
+          if (getError) {
+            callback({ error: getError });
 
             return;
-          } else if (gameCodeData.data.gameCode.ownerId === data.user.objectId) {
+          } else if (getData.gameCode.ownerId === authUser.objectId) {
             callback({ error: new errorCreator.NotAllowed({ name: 'useGameCode on yourself' }) });
 
             return;
@@ -344,22 +235,22 @@ function useGameCode({
 
           dbGameCode.removeGameCode({
             code,
-            callback: (removeData) => {
-              if (removeData.error) {
-                callback({ error: removeData.error });
+            callback: ({ error: removeError }) => {
+              if (removeError) {
+                callback({ error: removeError });
 
                 return;
               }
 
-              const usedGameCode = gameCodeData.data.gameCode;
+              const { gameCode: usedGameCode } = getData;
 
               triggerUnlockedContent({
                 token,
-                userId: data.user.objectId,
+                user: authUser,
                 gameCode: usedGameCode,
-                callback: (unlockedData) => {
-                  if (unlockedData.error) {
-                    callback({ error: unlockedData.error });
+                callback: ({ error: unlockError, data: unlockData }) => {
+                  if (unlockError) {
+                    callback({ error: unlockError });
 
                     return;
                   }
@@ -380,23 +271,27 @@ function useGameCode({
                         codeContent: usedGameCode.codeContent,
                         isRenewable: true,
                       },
-                      callback: (createData) => {
-                        if (createData.error) {
-                          callback({ error: createData.error });
+                      callback: ({ error: createError, data: createData }) => {
+                        if (createError) {
+                          callback({ error: createError });
 
                           return;
                         }
 
-                        dataToOwner.data.newGameCode = createData.data.gameCode;
+                        dataToOwner.data.newGameCode = createData.gameCode;
 
                         io.to(usedGameCode.ownerId).emit(dbConfig.EmitTypes.GAMECODE, dataToOwner);
                       },
                     });
-                  } else {
-                    io.to(usedGameCode.ownerId).emit(dbConfig.EmitTypes.GAMECODE, dataToOwner);
+
+                    callback({ data: unlockData });
+
+                    return;
                   }
 
-                  callback(unlockedData.data);
+                  io.to(usedGameCode.ownerId).emit(dbConfig.EmitTypes.GAMECODE, dataToOwner);
+
+                  callback({ data: unlockData });
                 },
               });
             },
@@ -417,53 +312,21 @@ function useGameCode({
 function removeGameCode({
   gameCodeId,
   token,
+  io,
   callback,
 }) {
-  authenticator.isUserAllowed({
+  managerHelper.removeObject({
+    callback,
     token,
+    io,
+    getDbCallFunc: dbGameCode.getGameCodeById,
+    getCommandName: dbConfig.apiCommands.GetGameCode.name,
+    objectId: gameCodeId,
     commandName: dbConfig.apiCommands.RemoveGameCode.name,
-    callback: ({ error, data }) => {
-      if (error) {
-        callback({ error });
-
-        return;
-      }
-
-      const { user } = data;
-
-      getAccessibleGameCode({
-        gameCodeId,
-        user,
-        shouldBeAdmin: true,
-        callback: (gameCodeData) => {
-          if (gameCodeData.error) {
-            callback({ error: gameCodeData.error });
-
-            return;
-          }
-
-          dbGameCode.removeGameCode({
-            gameCodeId,
-            callback: ({ error: removeError }) => {
-              if (removeError) {
-                callback({ error: removeError });
-
-                return;
-              }
-
-              const dataToSend = {
-                data: {
-                  gameCode: { objectId: gameCodeId },
-                  changeType: dbConfig.ChangeTypes.REMOVE,
-                },
-              };
-
-              callback(dataToSend);
-            },
-          });
-        },
-      });
-    },
+    objectType: 'gameCode',
+    dbCallFunc: dbGameCode.removeGameCode,
+    emitType: dbConfig.EmitTypes.GAMECODE,
+    objectIdType: 'gameCodeId',
   });
 }
 
@@ -507,65 +370,57 @@ function getProfileGameCode({
  */
 function updateGameCode({
   token,
+  io,
   callback,
   gameCodeId,
   gameCode,
+  options,
 }) {
-  authenticator.isUserAllowed({
+  managerHelper.updateObject({
+    callback,
+    options,
     token,
+    io,
+    toStrip: [
+      'codeContent',
+      'code',
+    ],
+    objectId: gameCodeId,
+    object: gameCode,
     commandName: dbConfig.apiCommands.UpdateGameCode.name,
-    callback: ({ error, data }) => {
-      if (error) {
-        callback({ error });
+    objectType: 'gameCode',
+    dbCallFunc: dbGameCode.updateGameCode,
+    emitType: dbConfig.EmitTypes.GAMECODE,
+    objectIdType: 'gameCodeId',
+    getDbCallFunc: dbGameCode.getGameCodeById,
+    getCommandName: dbConfig.apiCommands.GetGameCode.name,
+  });
+}
 
-        return;
-      }
-
-      const { user } = data;
-
-      getAccessibleGameCode({
-        gameCodeId,
-        user,
-        shouldBeAdmin: true,
-        callback: ({ error: gameCodeError }) => {
-          if (gameCodeError) {
-            callback({ error: gameCodeError });
-
-            return;
-          }
-
-          dbGameCode.updateGameCode({
-            gameCodeId,
-            gameCode,
-            callback: ({ error: updateError, data: updateData }) => {
-              if (updateError) {
-                callback({ error: updateError });
-
-                return;
-              }
-
-              const updatedGameCode = updateData.gameCode;
-
-              const dataToSend = {
-                data: {
-                  gameCode: updatedGameCode,
-                  changeType: dbConfig.ChangeTypes.UPDATE,
-                },
-              };
-
-              callback(dataToSend);
-            },
-          });
-        },
-      });
-    },
+/**
+ * Get game codes.
+ * @param {Object} params - Parameters.
+ * @param {string} params.token - jwt.
+ * @param {Function} params.callback - Callback.
+ */
+function getGameCodesByUser({
+  token,
+  callback,
+}) {
+  managerHelper.getObjects({
+    callback,
+    token,
+    shouldSort: true,
+    commandName: dbConfig.apiCommands.GetGameCode.name,
+    objectsType: 'gameCodes',
+    dbCallFunc: dbGameCode.getGameCodesByUser,
   });
 }
 
 exports.createGameCode = createGameCode;
 exports.useGameCode = useGameCode;
 exports.removeGameCode = removeGameCode;
-exports.getGameCodesByOwner = getGameCodesByOwner;
 exports.getProfileGameCode = getProfileGameCode;
 exports.updateGameCode = updateGameCode;
 exports.getGameCodeById = getGameCodeById;
+exports.getGameCodesByUser = getGameCodesByUser;

@@ -81,17 +81,13 @@ function handle(io) {
    *
    * @apiDescription Get devices that the user has access to.
    *
-   * @apiParam {boolean} [full] [Query] Should the complete object be retrieved?
-   *
    * @apiSuccess {Object} data
    * @apiSuccess {Device[]} data.devices Found devices.
    */
   router.get('/', (request, response) => {
     const { authorization: token } = request.headers;
-    const { full } = request.query;
 
     deviceManager.getDevicesByUser({
-      full,
       token,
       callback: ({ error, data }) => {
         if (error) {
@@ -117,8 +113,6 @@ function handle(io) {
    *
    * @apiParam {string} deviceId [Url] Id of the device to retrieve.
    *
-   * @apiParam {boolean} [full] [Query] Should the complete object be retrieved?
-   *
    * @apiSuccess {Object} data
    * @apiSuccess {Device} data.device Found device.
    */
@@ -131,12 +125,10 @@ function handle(io) {
 
     const { deviceId } = request.params;
     const { authorization: token } = request.headers;
-    const { full } = request.query;
 
     deviceManager.getDeviceById({
       deviceId,
       token,
-      full,
       callback: ({ error, data }) => {
         if (error) {
           restErrorChecker.checkAndSendError({ response, error });

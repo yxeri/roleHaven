@@ -64,12 +64,4 @@ describe('Users', () => {
     singleFullSchema: userSchemas.fullUser,
     multiFullSchema: userSchemas.fullUsers,
   });
-
-  testBuilder.createTestDelete({
-    objectType,
-    objectIdType,
-    apiPath,
-    skipOwner: true,
-    testData: testData.remove,
-  });
 });

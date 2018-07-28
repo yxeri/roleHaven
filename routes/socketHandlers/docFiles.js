@@ -25,52 +25,59 @@ const docFileManager = require('../../managers/docFiles');
  * @param {object} io - Socket.Io.
  */
 function handle(socket, io) {
-  socket.on('createDocFile', (params, callback = () => {}) => {
+  socket.on('createDocFile', (params, callback = () => {
+  }) => {
     params.callback = callback;
     params.io = io;
-
+    params.socket = socket;
     docFileManager.createDocFile(params);
   });
 
-  socket.on('updateDocFile', (params, callback = () => {}) => {
+  socket.on('updateDocFile', (params, callback = () => {
+  }) => {
     params.callback = callback;
     params.io = io;
-
+    params.socket = socket;
     docFileManager.updateDocFile(params);
   });
 
-  socket.on('removeDocFile', (params, callback = () => {}) => {
+  socket.on('removeDocFile', (params, callback = () => {
+  }) => {
     params.callback = callback;
     params.io = io;
-
+    params.socket = socket;
     docFileManager.removeDocFile(params);
   });
 
-  socket.on('getDocFile', (params, callback = () => {}) => {
+  socket.on('getDocFile', (params, callback = () => {
+  }) => {
     params.callback = callback;
     params.io = io;
-
+    params.socket = socket;
     docFileManager.getDocFileById(params);
   });
 
-  socket.on('getDocFiles', (params, callback = () => {}) => {
+  socket.on('getDocFiles', (params, callback = () => {
+  }) => {
     params.callback = callback;
     params.io = io;
-
+    params.socket = socket;
     docFileManager.getDocFilesByUser(params);
   });
 
-  socket.on('getDocFilesList', (params, callback = () => {}) => {
+  socket.on('getDocFilesList', (params, callback = () => {
+  }) => {
     params.callback = callback;
     params.io = io;
-
+    params.socket = socket;
     docFileManager.getDocFilesList(params);
   });
 
-  socket.on('unlockDocFile', (params, callback = () => {}) => {
+  socket.on('unlockDocFile', (params, callback = () => {
+  }) => {
     params.callback = callback;
     params.io = io;
-
+    params.socket = socket;
     docFileManager.unlockDocFile(params);
   });
 }

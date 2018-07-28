@@ -40,18 +40,14 @@ function handle(io) {
    *
    * @apiDescription Get wallets by user.
    *
-   * @apiParam {boolean} [full] [Query] Should the returned wallet contain all information? Default is that only some content is returned.
-   *
    * @apiSuccess {Object} data
    * @apiSuccess {Object[]} data.wallets Found wallets.
    */
   router.get('/', (request, response) => {
     const { authorization: token } = request.headers;
-    const { full } = request.query;
 
     walletManager.getWalletsByUser({
       token,
-      full,
       callback: ({ error, data }) => {
         if (error) {
           restErrorChecker.checkAndSendError({ response, error, sentData: request.body.data });
@@ -74,8 +70,6 @@ function handle(io) {
    *
    * @apiDescription Get wallet by Id.
    *
-   * @apiParam {boolean} [full] [Query] Should the returned wallet contain all information? Default is that only some content is returned.
-   *
    * @apiSuccess {Object} data
    * @apiSuccess {Object} data.wallet Found wallet.
    */
@@ -88,11 +82,9 @@ function handle(io) {
 
     const { walletId } = request.params;
     const { authorization: token } = request.headers;
-    const { full } = request.query;
 
     walletManager.getWalletById({
       token,
-      full,
       walletId,
       callback: ({ error, data }) => {
         if (error) {
@@ -142,8 +134,6 @@ function handle(io) {
     const { walletId } = request.params;
     const { wallet } = request.body.data;
     const { authorization: token } = request.headers;
-
-    console.log(walletId, wallet, token);
 
     walletManager.updateWallet({
       wallet,

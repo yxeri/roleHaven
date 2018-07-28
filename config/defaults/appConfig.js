@@ -18,11 +18,19 @@
 
 const path = require('path');
 const textTools = require('../../utils/textTools');
+const { version } = require('../../package');
 
+let clientConfig = {};
 let config = {};
 
 try {
-  config = require(path.normalize(`${__dirname}/../../../../config/appConfig`)).config; // eslint-disable-line
+  clientConfig = require('../../private/config/config'); // eslint-disable-line
+} catch (err) {
+  console.log('Did not find client config');
+}
+
+try {
+  config = require('../appConfig'); // eslint-disable-line
 } catch (err) {
   console.log('Did not find modified appConfig. Using defaults');
 }
@@ -36,6 +44,7 @@ const allowMessageImageEnv = textTools.convertToBoolean(process.env.ALLOWMESSAGE
 const bypassExternalConnectionEnv = textTools.convertToBoolean(process.env.BYPASSEXTERNALCONNECTIONS);
 const userVerifyEnv = textTools.convertToBoolean(process.env.USERVERIFY);
 const showDevInfoEnv = textTools.convertToBoolean(process.env.SHOWDEVINFO);
+const disablePositionImportEnv = textTools.convertToBoolean(process.env.DISABLEPOSITIONIMPORT);
 
 /**
  * **********
@@ -60,6 +69,42 @@ config.publicBase = path.normalize(`${__dirname}/../../../../public`);
  * @type {string}
  */
 config.privateBase = path.normalize(`${__dirname}/../../../../private`);
+
+/**
+ * Default index name that will be served to public view.
+ * @type {string}
+ */
+config.indexName = process.env.INDEXNAME || config.indexName || 'default';
+
+/**
+ * Default main Javascript file that will be served to public view.
+ * @type {string}
+ */
+config.mainJsName = process.env.MAINJSNAME || config.mainJsName || 'default';
+
+/**
+ * Default main Javascript file that will be served to public view.
+ * @type {string}
+ */
+config.mainCssName = process.env.MAINCSSNAME || config.mainCssName || 'default';
+
+/**
+ * Admin interface index name that will be served to public view.
+ * @type {string}
+ */
+config.adminIndexName = process.env.ADMININDEXNAME || config.adminIndexName || 'admin';
+
+/**
+ * Admin interface Javascript file that will be served to public view.
+ * @type {string}
+ */
+config.adminJsName = process.env.ADMINJSNAME || config.adminJsName || 'admin';
+
+/**
+ * Admin interface Javascript file that will be served to public view.
+ * @type {string}
+ */
+config.adminCssName = process.env.ADMINCSSNAME || config.adminCssName || 'admin';
 
 // TODO Routes should be empty by defaults. Move all routes to app-specific instances
 /**
@@ -123,6 +168,8 @@ config.scriptsPath = 'scripts';
  * @type {string}
  */
 config.requiredPath = 'required';
+
+config.jsVersion = clientConfig && clientConfig.version ? `${version}-${clientConfig.version}` : version;
 
 /**
  * Path to favicon.
@@ -299,6 +346,18 @@ config.cornerTwoLong = textTools.convertToFloat(process.env.CORNERTWOLONG || con
 config.defaultZoomLevel = textTools.convertToInt(process.env.DEFAULTZOOMLEVEL || config.defaultZoomLevel || 15);
 
 /**
+ * Minimum map zoom level
+ * @type {number}
+ */
+config.minZoomLevel = textTools.convertToInt(process.env.MINZOOMLEVEL || config.minZoomLevel || 3);
+
+/**
+ * Maximum map zoom level
+ * @type {number}
+ */
+config.maxZoomLevel = textTools.convertToInt(process.env.MAXZOOMLEVEL || config.maxZoomLevel || 19);
+
+/**
  * ********
  * * Maps *
  * ********
@@ -321,6 +380,8 @@ config.mapLayersPath = process.env.MAPLAYERSPATH || config.mapLayersPath;
  * @type {boolean}
  */
 config.gpsTracking = typeof gpsTrackingEnv !== 'undefined' ? gpsTrackingEnv : config.gpsTracking || true;
+
+config.disablePositionImport = typeof disablePositionImportEnv !== 'undefined' ? disablePositionImportEnv : config.disablePositionImport || true;
 
 /**
  * *************

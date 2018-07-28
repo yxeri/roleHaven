@@ -62,12 +62,4 @@ describe('Aliases', () => {
     singleFullSchema: aliasSchemas.fullAlias,
     multiFullSchema: aliasSchemas.fullAliases,
   });
-
-  testBuilder.createTestDelete({
-    objectType,
-    objectIdType,
-    apiPath,
-    skipOwner: true,
-    testData: testData.remove,
-  });
 });

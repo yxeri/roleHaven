@@ -39,7 +39,6 @@ function handle(io) {
    *
    * @apiDescription Get teams.
    *
-   * @apiParam {boolean} [Query] [full] Should the returned team contain all content? Default is that only some content is returned.
    * @apiParam {boolean} [Query] [includeInactive] Should unverified teams be included in the results?
    *
    * @apiSuccess {Object} data
@@ -47,7 +46,7 @@ function handle(io) {
    */
   router.get('/', (request, response) => {
     const { authorization: token } = request.headers;
-    const { full, includeInactive } = request.query;
+    const { includeInactive } = request.query;
 
     const callback = ({ error, data }) => {
       if (error) {
@@ -61,7 +60,6 @@ function handle(io) {
 
     teamManager.getTeamsByUser({
       token,
-      full,
       includeInactive,
       callback,
     });
@@ -79,8 +77,6 @@ function handle(io) {
    *
    * @apiParam {string} teamId Id of the team to retrieve.
    *
-   * @apiParam {boolean} [full] [Query] Should the returned result contain all information? Default is that only some content is returned.
-   *
    * @apiSuccess {Object} data
    * @apiSuccess {Team} data.team Found team.
    */
@@ -93,12 +89,10 @@ function handle(io) {
 
     const { teamId } = request.params;
     const { authorization: token } = request.headers;
-    const { full } = request.query;
 
     teamManager.getTeamById({
       teamId,
       token,
-      full,
       callback: ({ error, data }) => {
         if (error) {
           restErrorChecker.checkAndSendError({ response, error });

@@ -25,7 +25,8 @@ const userManager = require('../../managers/users');
  * @param {object} io - Socket.Io.
  */
 function handle(socket, io) {
-  socket.on('login', (params, callback = () => {}) => {
+  socket.on('login', (params, callback = () => {
+  }) => {
     params.callback = callback;
     params.io = io;
     params.socket = socket;
@@ -33,7 +34,8 @@ function handle(socket, io) {
     userManager.login(params);
   });
 
-  socket.on('logout', (params, callback = () => {}) => {
+  socket.on('logout', (params, callback = () => {
+  }) => {
     params.callback = callback;
     params.io = io;
     params.socket = socket;

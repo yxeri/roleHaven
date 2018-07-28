@@ -49,14 +49,6 @@ const userSchema = new mongoose.Schema(dbConnector.createSchema({
 
 const User = mongoose.model('User', userSchema);
 
-// const userFilter = dbConnector.createFilter({
-//   username: 1,
-//   lastOnline: 1,
-//   isOnline: 1,
-//   partOfTeams: 1,
-//   pictureId: 1,
-// });
-
 /**
  * Remove private parameters
  * @private
@@ -199,28 +191,29 @@ function getUser({ filter, query, callback }) {
 }
 
 /**
- * Get user by name
- * @param {Object} params - Parameters
- * @param {string} params.username - Name of the user
- * @param {Function} params.callback - Callback
- */
-function getUserByName({ username, callback }) {
-  getUser({
-    callback,
-    query: { username },
-  });
-}
-
-/**
- * Get user by Id.
+ * Get user or alias by Id or name.
  * @param {Object} params - Parameters.
  * @param {string} params.userId - Id of the user.
  * @param {Function} params.callback - Callback.
  */
-function getUserById({ userId, callback }) {
+function getUserById({
+  userId,
+  username,
+  callback,
+}) {
+  const query = userId ? { _id: userId } : { username };
+
   getUser({
-    callback,
-    query: { _id: userId },
+    query,
+    callback: ({ error, data }) => {
+      if (error) {
+        callback({ error });
+
+        return;
+      }
+
+      callback({ data });
+    },
   });
 }
 
@@ -238,11 +231,7 @@ function authUser({
   password,
   callback,
 }) {
-  const query = {
-    password,
-    isBanned: false,
-    isVerified: true,
-  };
+  const query = { password };
 
   if (userId) {
     query._id = userId;
@@ -359,29 +348,33 @@ function createUser({
  */
 function updateOnline({
   userId,
-  userSocketId,
   isOnline,
   socketId,
   callback,
 }) {
-  const update = { $set: {}, $unset: {} };
+  const update = {};
+  const set = {};
+  const unset = {};
 
   if (isOnline) {
-    update.$set.isOnline = true;
+    set.isOnline = true;
 
     if (socketId) {
-      update.$set.socketId = socketId;
+      set.socketId = socketId;
     }
   } else {
-    update.$set.isOnline = false;
-    update.$unset.socketId = '';
+    set.isOnline = false;
+    unset.socketId = '';
   }
 
-  update.$set.lastOnline = new Date();
+  set.lastOnline = new Date();
+
+  if (Object.keys(set).length > 0) { update.$set = set; }
+  if (Object.keys(unset).length > 0) { update.$unset = unset; }
 
   updateObject({
     userId,
-    userSocketId,
+    socketId,
     update,
     callback,
   });
@@ -412,26 +405,35 @@ function updateUser({
     isLootable,
     hasFullAccess,
     socketId,
+    aliases,
   } = user;
   const {
     resetSocket,
   } = options;
-  const update = { $set: {}, $unset: {} };
+  const update = {};
+  const set = {};
+  const unset = {};
+  const addToSet = {};
 
   if (resetSocket) {
-    update.$unset.socketId = '';
+    set.socketId = '';
   } else if (socketId) {
-    update.$set.socketId = socketId;
+    set.socketId = socketId;
   }
 
-  if (mailAddress) { update.$set.mailAddress = mailAddress; }
-  if (username) { update.$set.username = username; }
-  if (fullName) { update.$set.fullName = fullName; }
-  if (visibility) { update.$set.visibility = visibility; }
-  if (accessLevel) { update.$set.accessLevel = accessLevel; }
-  if (defaultRoomId) { update.$set.defaultRoomId = defaultRoomId; }
-  if (typeof isLootable === 'boolean') { update.$set.isLootable = isLootable; }
-  if (typeof hasFullAccess === 'boolean') { update.$set.hasFullAccess = hasFullAccess; }
+  if (mailAddress) { set.mailAddress = mailAddress; }
+  if (username) { set.username = username; }
+  if (fullName) { set.fullName = fullName; }
+  if (visibility) { set.visibility = visibility; }
+  if (accessLevel) { set.accessLevel = accessLevel; }
+  if (defaultRoomId) { set.defaultRoomId = defaultRoomId; }
+  if (typeof isLootable === 'boolean') { set.isLootable = isLootable; }
+  if (typeof hasFullAccess === 'boolean') { set.hasFullAccess = hasFullAccess; }
+  if (aliases) { addToSet.aliases = { $each: aliases }; }
+
+  if (Object.keys(set).length > 0) { update.$set = set; }
+  if (Object.keys(unset).length > 0) { update.$unset = unset; }
+  if (Object.keys(addToSet).length > 0) { update.$addToSet = addToSet; }
 
   if (username || mailAddress) {
     doesUserExist({
@@ -531,13 +533,11 @@ function updateUserPassword({ userId, password, callback }) {
  * @param {Object} params - Parameters.
  * @param {Function} params.callback - Callback.
  * @param {boolean} [params.includeInactive] - Should banned and unverified users be retrieved?
- * @param {boolean} [params.full] - Should access information be retrieved?
  */
 function getUsersByUser({
   includeInactive,
   user,
   callback,
-  full = false,
 }) {
   const query = dbConnector.createUserQuery({ user });
 
@@ -557,88 +557,28 @@ function getUsersByUser({
 
       const { users } = data;
 
-      if (!full) {
-        dbAlias.getAliasesByUser({
-          user,
-          full,
-          callback: ({ error: aliasError, data: aliasData }) => {
-            if (aliasError) {
-              callback({ error: aliasError });
-
-              return;
-            }
-
-            const { aliases } = aliasData;
-            const allUsers = users.concat(aliases).sort((a, b) => {
-              const aName = a.username || a.aliasName;
-              const bName = b.username || b.aliasName;
-
-              if (aName < bName) {
-                return -1;
-              } else if (aName > bName) {
-                return 1;
-              }
-
-              return 0;
-            }).map((item) => {
-              return {
-                username: item.username || item.aliasName,
-                objectId: item.objectId,
-                lastUpdated: item.lastUpdated,
-              };
-            });
-
-            callback({
-              data: {
-                users: allUsers,
-              },
-            });
-          },
-        });
-
-        return;
-      }
-
       callback({ data: { users } });
     },
   });
 }
 
-// FIXME Should it remove messages, rooms, teams, forums, alias and other connected to the user?
 /**
- * Remove user
- * @param {Object} params - Parameters
- * @param {string} params.userId - ID of the user
- * @param {Function} params.callback - Callback
- */
-function removeUser({
-  userId,
-  callback,
-}) {
-  dbConnector.removeObject({
-    callback,
-    object: User,
-    query: { _id: userId },
-  });
-}
-
-/**
- * Add a team to the user.
+ * Add a team to users.
  * @param {Object} params - Parameters.
- * @param {string} params.userId - ID of the user.
- * @param {string} params.teamId - ID of the team.
+ * @param {string} params.userIds - Ids of the users.
+ * @param {string} params.teamId - Id of the team.
  * @param {Function} params.callback - Callback.
  * @param {boolean} [params.isAdmin] - Should the user be set as an admin for the team?
  */
 function addToTeam({
-  userId,
+  userIds,
   teamId,
   isAdmin,
   callback,
 }) {
-  updateObject({
-    userId,
-    update: { partOfTeams: { $addToSet: teamId } },
+  updateObjects({
+    query: { _id: { $in: userIds } },
+    update: { $addToSet: { partOfTeams: teamId } },
     callback: ({ error, data }) => {
       if (error) {
         callback({ error });
@@ -646,21 +586,33 @@ function addToTeam({
         return;
       }
 
-      dbTeam.addAccess({
+      dbTeam.addTeamMembers({
         teamId,
-        userIds: [userId],
-        userAdminIds: isAdmin ? [userId] : undefined,
-        callback: ({ error: teamError, data: teamData }) => {
-          if (teamError) {
-            callback({ error: teamError });
+        memberIds: userIds,
+        callback: ({ error: addError }) => {
+          if (addError) {
+            callback({ error: addError });
 
             return;
           }
 
-          callback({
-            data: {
-              team: teamData.team,
-              user: data.user,
+          dbTeam.addAccess({
+            teamId,
+            userIds,
+            userAdminIds: isAdmin ? userIds : undefined,
+            callback: ({ error: teamError, data: teamData }) => {
+              if (teamError) {
+                callback({ error: teamError });
+
+                return;
+              }
+
+              callback({
+                data: {
+                  team: teamData.team,
+                  user: data.user,
+                },
+              });
             },
           });
         },
@@ -683,7 +635,7 @@ function addAlias({
 }) {
   updateObject({
     userId,
-    update: { aliases: { $addToSet: aliasId } },
+    update: { $addToSet: { aliases: aliasId } },
     callback: ({ error, data }) => {
       if (error) {
         callback({ error });
@@ -749,11 +701,23 @@ function removeFromTeam({ userId, teamId, callback }) {
         return;
       }
 
-      dbTeam.removeAccess({
+      dbTeam.removeTeamMembers({
         teamId,
-        callback,
-        userIds: [userId],
-        userAdminIds: [userId],
+        memberIds: [userId],
+        callback: ({ error: removeError }) => {
+          if (removeError) {
+            callback({ error: removeError });
+
+            return;
+          }
+
+          dbTeam.removeAccess({
+            teamId,
+            callback,
+            userIds: [userId],
+            userAdminIds: [userId],
+          });
+        },
       });
     },
   });
@@ -852,9 +816,7 @@ function followRoom({
 }) {
   updateObject({
     userId,
-    update: {
-      followingRooms: { $addToSet: roomId },
-    },
+    update: { $addToSet: { followingRooms: roomId } },
     callback: ({ error, data }) => {
       if (error) {
         callback({ error });
@@ -897,21 +859,17 @@ function unfollowRoom({
 }
 
 /**
- * Get all names from the users.
+ * Get all users.
  * @param {Object} params - Parameters.
  * @param {Function} params.callback - Callback
  */
-function getAllUsernames({ callback }) {
+function getAllUsers({ callback }) {
   getUsers({
     callback,
-    filter: {
-      username: 1,
-      fullName: 1,
-    },
+    query: {},
   });
 }
 
-exports.getUserByName = getUserByName;
 exports.authUser = authUser;
 exports.createUser = createUser;
 exports.updateUser = updateUser;
@@ -919,7 +877,6 @@ exports.verifyUser = verifyUser;
 exports.updateBanUser = updateBanUser;
 exports.updateUserPassword = updateUserPassword;
 exports.getUserById = getUserById;
-exports.removeUser = removeUser;
 exports.doesUserExist = doesUserExist;
 exports.getAllSocketIds = getAllSocketIds;
 exports.addToTeam = addToTeam;
@@ -934,4 +891,4 @@ exports.getUsersByUser = getUsersByUser;
 exports.addAlias = addAlias;
 exports.removeAlias = removeAlias;
 exports.removeAliasFromAllUsers = removeAliasFromAllUsers;
-exports.getAllUsernames = getAllUsernames;
+exports.getAllUsers = getAllUsers;

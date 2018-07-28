@@ -28,6 +28,7 @@ const testBuilder = require('./helper/testBuilder');
 const tokens = require('./testData/tokens');
 const baseObjectSchemas = require('./schemas/baseObjects');
 const app = require('../../app');
+const starterData = require('./testData/starter');
 
 chai.should();
 chai.use(chaiHttp);
@@ -65,6 +66,32 @@ describe('Messages', () => {
         testData.remove.toRemove.roomId = roomId;
         testData.remove.secondToRemove.roomId = roomId;
 
+        console.log('room created for messages', response.body.data.room);
+
+        done();
+      });
+  });
+
+  before('Update room permissions on /api/rooms/:id/permissions', (done) => {
+    const dataToSend = {
+      data: {
+        userIds: [starterData.basicUserTwo.objectId],
+      },
+    };
+
+    chai
+      .request(app)
+      .put(`/api/rooms/${testData.create.first.roomId}/permissions`)
+      .set('Authorization', tokens.basicUserOne)
+      .send(dataToSend)
+      .end((error, response) => {
+        response.should.have.status(200);
+        response.should.be.json;
+        response.body.should.be.jsonSchema(baseObjectSchemas.returnData);
+        response.body.data.room.should.be.jsonSchema(roomSchemas.room);
+
+        console.log('room permissions updated for messages', response.body.data.room);
+
         done();
       });
   });
@@ -90,7 +117,6 @@ describe('Messages', () => {
     objectType,
     objectsType,
     apiPath,
-    ignoreMultiFull: true,
     testData: testData.create,
     singleLiteSchema: messageSchemas.message,
     multiLiteSchema: messageSchemas.messages,

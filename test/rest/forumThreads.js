@@ -28,6 +28,7 @@ const baseObjectSchemas = require('./schemas/baseObjects');
 const forumSchemas = require('./schemas/forums');
 const tokens = require('./testData/tokens');
 const app = require('../../app');
+const starterData = require('./testData/starter');
 
 chai.should();
 chai.use(chaiHttp);
@@ -58,9 +59,35 @@ describe('Forum threads', () => {
         response.body.data.forum.should.be.jsonSchema(forumSchemas.forum);
 
         const forumId = response.body.data.forum.objectId;
+        testData.forumId = forumId;
         testData.create.apiCreatePath = `/api/forums/${forumId}/threads`;
         testData.update.apiCreatePath = `/api/forums/${forumId}/threads`;
         testData.remove.apiCreatePath = `/api/forums/${forumId}/threads`;
+
+        done();
+      });
+  });
+
+  before('Update permissions on /api/forums/:id/permissions', (done) => {
+    const dataToSend = {
+      data: {
+        userIds: [
+          starterData.basicUserOne.objectId,
+          starterData.basicUserTwo.objectId,
+        ],
+      },
+    };
+
+    chai
+      .request(app)
+      .put(`/api/forums/${testData.forumId}/permissions`)
+      .set('Authorization', tokens.adminUserOne)
+      .send(dataToSend)
+      .end((error, response) => {
+        response.should.have.status(200);
+        response.should.be.json;
+        response.body.should.be.jsonSchema(baseObjectSchemas.returnData);
+        response.body.data.forum.should.be.jsonSchema(forumSchemas.forum);
 
         done();
       });

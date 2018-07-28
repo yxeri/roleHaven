@@ -18,7 +18,6 @@
 
 const mongoose = require('mongoose');
 const dbConnector = require('../databaseConnector');
-const dbWallet = require('./wallet');
 const errorCreator = require('../../error/errorCreator');
 
 const transactionSchema = new mongoose.Schema(dbConnector.createSchema({
@@ -30,14 +29,6 @@ const transactionSchema = new mongoose.Schema(dbConnector.createSchema({
 }), { collection: 'transactions' });
 
 const Transaction = mongoose.model('transaction', transactionSchema);
-
-const transactionFilter = dbConnector.createFilter({
-  amount: 1,
-  toWalletId: 1,
-  fromWalletId: 1,
-  note: 1,
-  coordinates: 1,
-});
 
 /**
  * Update transaction properties.
@@ -140,14 +131,16 @@ function getTransactionsByWallet({ walletId, callback }) {
 }
 
 /**
- * Get transactions by user
- * @param {Object} params - Parameters
- * @param {string} params.userId - Id of the user
- * @param {Function} params.callback - Callback
+ * Get transactions by user.
+ * @param {Object} params - Parameters.
+ * @param {string} params.user - User retrieving the transactions.
+ * @param {Function} params.callback - Callback.
  */
-function getTransactionsByUser({ userId, callback }) {
-  dbWallet.getWalletsByUser({
-    userId,
+function getTransactionsByUser({ user, callback }) {
+  const query = dbConnector.createUserQuery({ user });
+
+  getTransactions({
+    query,
     callback: ({ error, data }) => {
       if (error) {
         callback({ error });
@@ -155,18 +148,9 @@ function getTransactionsByUser({ userId, callback }) {
         return;
       }
 
-      const walletIds = data.wallets.map(wallet => wallet.walletId);
-      const query = {
-        $or: [
-          { fromWalletId: { $in: walletIds } },
-          { toWalletId: { $in: walletIds } },
-        ],
-      };
+      const { transactions } = data;
 
-      getTransactions({
-        callback,
-        query,
-      });
+      callback({ data: { transactions } });
     },
   });
 }
@@ -210,15 +194,6 @@ function removeTransaction({ transactionId, callback }) {
 }
 
 /**
- * Get all transactions
- * @param {Object} params - Parameters
- * @param {Function} params.callback - Callback
- */
-function getAllTransactions({ callback }) {
-  getTransactions({ callback });
-}
-
-/**
  * Get transaction by Id.
  * @param {Object} params - Parameters.
  * @param {string} params.transactionId - Id of the transaction.
@@ -256,20 +231,22 @@ function updateTransaction({
     resetCoordinates = false,
     resetOwnerAliasId = false,
   } = options;
-  const update = {
-    $set: {},
-    $unset: {},
-  };
+  const update = {};
+  const set = {};
+  const unset = {};
 
   if (resetOwnerAliasId) {
-    update.$unset.ownerAliasId = '';
+    unset.ownerAliasId = '';
   } else if (ownerAliasId) {
-    update.$set.ownerAliasId = ownerAliasId;
+    set.ownerAliasId = ownerAliasId;
   }
 
-  if (resetCoordinates) { update.$unset.coordinates = ''; }
+  if (resetCoordinates) { unset.coordinates = ''; }
 
-  if (note) { update.$set.note = note; }
+  if (note) { set.note = note; }
+
+  if (Object.keys(set).length > 0) { update.$set = set; }
+  if (Object.keys(unset).length > 0) { update.$unset = unset; }
 
   updateObject({
     transactionId,
@@ -278,33 +255,9 @@ function updateTransaction({
   });
 }
 
-/**
- * Get transactions created by the user.
- * @param {Object} params - Parameters.
- * @param {string} params.userId - Id of the user.
- * @param {Function} params.callback - Callback.
- * @param {boolean} [params.full] - Should the complete objects be returned?
- */
-function getTransactionsCreatedByUser({
-  userId,
-  callback,
-  full,
-}) {
-  const filter = !full ? transactionFilter : {};
-
-  getTransactions({
-    filter,
-    callback,
-    query: { ownerId: userId },
-  });
-}
-
 exports.createTransaction = createTransaction;
 exports.getTransactionsByWallet = getTransactionsByWallet;
 exports.getTransactionsByUser = getTransactionsByUser;
 exports.removeTransaction = removeTransaction;
-exports.getAllTransactions = getAllTransactions;
 exports.getTransactionById = getTransactionById;
 exports.updateTransaction = updateTransaction;
-exports.getTransactionsCreatedByUser = getTransactionsCreatedByUser;
-

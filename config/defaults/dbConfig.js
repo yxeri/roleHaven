@@ -66,6 +66,7 @@ config.rooms.public = config.rooms.public || {
   accessLevel: config.AccessLevels.ANONYMOUS,
   ownerId: config.users.systemUser.objectId,
   isSystemRoom: true,
+  isPublic: true,
 };
 /**
  * Admin related messages will be sent here.
@@ -76,18 +77,6 @@ config.rooms.admin = config.rooms.admin || {
   roomName: 'hqroom',
   visibility: config.AccessLevels.MODERATOR,
   accessLevel: config.AccessLevels.MODERATOR,
-  ownerId: config.users.systemUser.objectId,
-  isSystemRoom: true,
-};
-/**
- * Messages sent to anonymous will have their user and team name stripped.
- */
-config.rooms.anonymous = config.rooms.anonymous || {
-  objectId: '111111111111111111111112',
-  roomName: 'anonymous',
-  visibility: config.AccessLevels.ANONYMOUS,
-  accessLevel: config.AccessLevels.ANONYMOUS,
-  isAnonymous: true,
   ownerId: config.users.systemUser.objectId,
   isSystemRoom: true,
 };
@@ -129,7 +118,6 @@ config.rooms.bcast = config.rooms.bcast || {
 };
 
 config.requiredRooms = [
-  config.rooms.anonymous.objectId,
   config.rooms.bcast.objectId,
   config.rooms.public.objectId,
   config.rooms.important.objectId,
@@ -226,12 +214,13 @@ config.EmitTypes = {
   FORUM: 'forum',
   FORUMTHREAD: 'forumThread',
   FORUMPOST: 'forumPost',
-  FOLLOW: 'follow',
+  FOLLOW: 'followRoom',
   USER: 'user',
   CHATMSG: 'chatMsg',
   DEVICE: 'device',
   DOCFILE: 'docFile',
   WHISPER: 'whisper',
+  SIMPLEMSG: 'simpleMsg',
   BROADCAST: 'broadcast',
   GAMECODE: 'gameCode',
   ALIAS: 'alias',
@@ -279,7 +268,7 @@ config.apiCommands = {
   },
   GetAliases: config.apiCommands.GetAliases || {
     name: 'GetAliases',
-    accessLevel: config.AccessLevels.STANDARD,
+    accessLevel: config.AccessLevels.ANONYMOUS,
   },
   UpdateAlias: config.apiCommands.UpdateAlias || {
     name: 'UpdateAlias',
@@ -287,7 +276,7 @@ config.apiCommands = {
   },
   RemoveAlias: config.apiCommands.RemoveAlias || {
     name: 'RemoveAlias',
-    accessLevel: config.AccessLevels.STANDARD,
+    accessLevel: config.AccessLevels.ADMIN,
   },
 
   /**
@@ -351,7 +340,7 @@ config.apiCommands = {
   },
   GetRoomsList: config.apiCommands.GetRoomsList || {
     name: 'GetRoomsList',
-    accessLevel: config.AccessLevels.STANDARD,
+    accessLevel: config.AccessLevels.ANONYMOUS,
   },
   RemoveRoom: config.apiCommands.RemoveRoom || {
     name: 'RemoveRoom',
@@ -489,6 +478,10 @@ config.apiCommands = {
     name: 'RemoveUser',
     accessLevel: config.AccessLevels.ADMIN,
   },
+  UpdateSelf: config.apiCommands.UpdateSelf || {
+    name: 'UpdateSelf',
+    accesslevel: config.AccessLevels.ADMIN,
+  },
 
   /**
    * Misc.
@@ -521,9 +514,9 @@ config.apiCommands = {
     name: 'LeaveTeam',
     accessLevel: config.AccessLevels.STANDARD,
   },
-  VerifyTeam: config.apiCommands.LeaveTeam || {
+  VerifyTeam: config.apiCommands.VerifyTeam || {
     name: 'VerifyTeam',
-    accessLevel: config.AccessLevels.ADMIN,
+    accessLevel: config.AccessLevels.MODERATOR,
   },
   GetTeamsList: config.apiCommands.GetTeamsList || {
     name: 'GetTeamsList',
@@ -637,9 +630,17 @@ config.apiCommands = {
     name: 'GetDocFile',
     accessLevel: config.AccessLevels.ANONYMOUS,
   },
+  UnlockDocFile: config.apiCommands.GetDocFile || {
+    name: 'GetDocFile',
+    accessLevel: config.AccessLevels.ANONYMOUS,
+  },
   GetDocFilesList: config.apiCommands.GetDocFilesList || {
     name: 'GetDocFilesList',
     accessLevel: config.AccessLevels.ANONYMOUS,
+  },
+  UpdateDocFile: config.apiCommands.UpdateDocFile || {
+    name: 'UpdateDocFile',
+    accessLevel: config.AccessLevels.STANDARD,
   },
 
   /**

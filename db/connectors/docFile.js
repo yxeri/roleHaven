@@ -29,17 +29,6 @@ const docFileSchema = new mongoose.Schema(dbConnector.createSchema({
 
 const DocFile = mongoose.model('DocFile', docFileSchema);
 
-const docFileFilter = dbConnector.createFilter({
-  title: 1,
-  code: 1,
-  text: 1,
-  pictures: 1,
-});
-const docFileListFilter = dbConnector.createFilter({
-  title: 1,
-  code: 1,
-});
-
 /**
  * Update doc file.
  * @private
@@ -214,18 +203,23 @@ function updateDocFile({
     ownerAliasId,
   } = docFile;
 
-  const update = { $set: {} };
+  const update = {};
+  const set = {};
+  const unset = {};
 
-  if (text) { update.$set.text = text; }
-  if (title) { update.$set.title = title; }
-  if (visibility) { update.$set.visibility = visibility; }
-  if (typeof isPublic === 'boolean') { update.$set.isPublic = isPublic; }
+  if (text) { set.text = text; }
+  if (title) { set.title = title; }
+  if (visibility) { set.visibility = visibility; }
+  if (typeof isPublic === 'boolean') { set.isPublic = isPublic; }
 
   if (resetOwnerAliasId) {
-    update.$unset = { ownerAliasId: '' };
+    unset.ownerAliasId = '';
   } else if (ownerAliasId) {
-    update.set.ownerAliasId = ownerAliasId;
+    set.ownerAliasId = ownerAliasId;
   }
+
+  if (Object.keys(set).length > 0) { update.$set = set; }
+  if (Object.keys(unset).length > 0) { update.$unset = unset; }
 
   updateObject({
     docFileId,
@@ -235,83 +229,35 @@ function updateDocFile({
 }
 
 /**
- * Add users and/teams that are allowed access to a document.
+ * Update access to the file.
  * @param {Object} params - Parameters.
- * @param {string} params.docFileId - ID of the document to update.
- * @param {string[]} [params.userIds] - ID of the users.
- * @param {string[]} [params.teamIds] - ID of the teams.
- * @param {string[]} [params.bannedIds] - ID of the blocked Ids to add.
- * @param {string[]} [params.teamAdminIds] - Id of the teams to give admin access to. They will also be added to teamIds.
- * @param {string[]} [params.userAdminIds] - Id of the users to give admin access to. They will also be added to userIds.
  * @param {Function} params.callback - Callback.
+ * @param {boolean} [params.shouldRemove] - Should access be removed?
+ * @param {string[]} [params.userIds] - Id of the users to update.
+ * @param {string[]} [params.teamIds] - Id of the teams to update.
+ * @param {string[]} [params.bannedIds] - Id of the blocked Ids to update.
+ * @param {string[]} [params.teamAdminIds] - Id of the teams to update admin access for.
+ * @param {string[]} [params.userAdminIds] - Id of the users to update admin access for.
  */
-function addAccess({
-  docFileId,
-  userIds,
-  teamIds,
-  bannedIds,
-  teamAdminIds,
-  userAdminIds,
-  callback,
-}) {
-  dbConnector.addObjectAccess({
-    userIds,
-    teamIds,
-    bannedIds,
-    teamAdminIds,
-    userAdminIds,
-    objectId: docFileId,
-    object: DocFile,
-    callback: ({ error, data }) => {
-      if (error) {
-        callback({ error });
+function updateAccess(params) {
+  const accessParams = params;
+  accessParams.objectId = params.docFileId;
+  accessParams.object = DocFile;
+  accessParams.callback = ({ error, data }) => {
+    if (error) {
+      accessParams.callback({ error });
 
-        return;
-      }
+      return;
+    }
 
-      callback({ data: { docFile: data.object } });
-    },
-  });
-}
+    accessParams.callback({ data: { docFile: data.object } });
+  };
 
-/**
- * Remove access to the doc file for users and/or teams.
- * @param {Object} params - Parameters.
- * @param {string} params.docFileId - ID of the doc file.
- * @param {string[]} [params.userIds] - ID of the users.
- * @param {string[]} [params.teamIds] - ID of the teams.
- * @param {string[]} [params.bannedIds] - Blocked IDs.
- * @param {string[]} [params.teamAdminIds] - Id of the teams to remove admin access from. They will not be removed from teamIds.
- * @param {string[]} [params.userAdminIds] - Id of the users to remove admin access from. They will not be removed from userIds.
- * @param {Function} params.callback - Callback.
- */
-function removeAccess({
-  userIds,
-  teamIds,
-  bannedIds,
-  teamAdminIds,
-  userAdminIds,
-  docFileId,
-  callback,
-}) {
-  dbConnector.removeObjectAccess({
-    userIds,
-    teamIds,
-    bannedIds,
-    userAdminIds,
-    teamAdminIds,
-    objectId: docFileId,
-    object: DocFile,
-    callback: ({ error, data }) => {
-      if (error) {
-        callback({ error });
-
-        return;
-      }
-
-      callback({ data: { docFile: data.object } });
-    },
-  });
+  if (params.shouldRemove) {
+    dbConnector.removeObjectAccess(params);
+  } else {
+    dbConnector.addObjectAccess(params);
+  }
 }
 
 /**
@@ -351,13 +297,9 @@ function getAllDocFiles({ callback }) {
 function getDocFileById({
   docFileId,
   callback,
-  full,
 }) {
-  const filter = !full ? docFileFilter : {};
-
   getDocFile({
     callback,
-    filter,
     query: { _id: docFileId },
   });
 }
@@ -386,14 +328,11 @@ function getDocFileByCode({
  */
 function getDocFilesByUser({
   user,
-  full,
   callback,
 }) {
   const query = dbConnector.createUserQuery({ user });
-  const filter = !full ? docFileFilter : {};
 
   getDocFiles({
-    filter,
     query,
     callback,
   });
@@ -407,15 +346,13 @@ function getDocFilesByUser({
 function getDocFilesList({ callback }) {
   getDocFiles({
     callback,
-    filter: docFileListFilter,
     errorNameContent: 'getDocFilesList',
   });
 }
 
 exports.createDocFile = createDocFile;
 exports.updateDocFile = updateDocFile;
-exports.addAccess = addAccess;
-exports.removeAccess = removeAccess;
+exports.updateAccess = updateAccess;
 exports.getDocFileById = getDocFileById;
 exports.removeDocFile = removeDocFile;
 exports.getAllDocFiles = getAllDocFiles;

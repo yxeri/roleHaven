@@ -19,7 +19,6 @@
 const mongoose = require('mongoose');
 const errorCreator = require('../../error/errorCreator');
 const dbConnector = require('../databaseConnector');
-const dbUser = require('./user');
 
 const teamSchema = new mongoose.Schema(dbConnector.createSchema({
   teamName: { type: String, unique: true },
@@ -31,13 +30,6 @@ const teamSchema = new mongoose.Schema(dbConnector.createSchema({
 }), { collection: 'teams' });
 
 const Team = mongoose.model('Team', teamSchema);
-
-const teamFilter = dbConnector.createFilter({
-  teamName: 1,
-  shortName: 1,
-  members: 1,
-  picture: 1,
-});
 
 /**
  * Update team
@@ -218,7 +210,9 @@ function updateTeam({
     isProtected,
   } = team;
   const { resetOwnerAliasId } = options;
-  const update = { $set: {} };
+  const update = {};
+  const set = {};
+  const unset = {};
 
   const updateCallback = () => {
     updateObject({
@@ -237,18 +231,20 @@ function updateTeam({
   };
 
   if (resetOwnerAliasId) {
-    update.$unset = { ownerAliasId: '' };
+    unset.ownerAliasId = '';
   } else if (ownerAliasId) {
-    update.$set.ownerAliasId = ownerAliasId;
+    set.ownerAliasId = ownerAliasId;
   }
 
-  if (typeof isVerified === 'boolean') { update.$set.isVerified = isVerified; }
-  if (typeof isProtected === 'boolean') { update.$set.isProtected = isProtected; }
+  if (typeof isVerified === 'boolean') { set.isVerified = isVerified; }
+  if (typeof isProtected === 'boolean') { set.isProtected = isProtected; }
+  if (teamName) { set.teamName = teamName; }
+  if (shortName) { set.shortName = shortName; }
+
+  if (Object.keys(set).length > 0) { update.$set = set; }
+  if (Object.keys(unset).length > 0) { update.$unset = unset; }
 
   if (teamName || shortName) {
-    if (teamName) { update.$set.teamName = teamName; }
-    if (shortName) { update.$set.shortName = shortName; }
-
     doesTeamExist({
       shortName,
       teamName,
@@ -274,83 +270,35 @@ function updateTeam({
 }
 
 /**
- * Add users to team
- * @param {Object} params - Parameters
- * @param {string} params.teamId - ID of the team
- * @param {Function} params.callback - Callback
- * @param {string[]} [params.userIds] - ID of the users
- * @param {string[]} [params.teamIds] - ID of the teams
- * @param {string[]} [params.bannedIds] - Blocked ids
- * @param {string[]} [params.teamAdminIds] - Id of the teams to give admin access to. They will also be added to teamIds.
- * @param {string[]} [params.userAdminIds] - Id of the users to give admin access to. They will also be added to userIds.
- */
-function addAccess({
-  teamId,
-  userIds,
-  teamIds,
-  bannedIds,
-  callback,
-  teamAdminIds,
-  userAdminIds,
-}) {
-  dbConnector.addObjectAccess({
-    userIds,
-    teamIds,
-    bannedIds,
-    teamAdminIds,
-    userAdminIds,
-    objectId: teamId,
-    object: Team,
-    callback: ({ error, data }) => {
-      if (error) {
-        callback({ error });
-
-        return;
-      }
-
-      callback({ team: data.object });
-    },
-  });
-}
-
-/**
- * Remove access to team.
+ * Update access to the team.
  * @param {Object} params - Parameters.
- * @param {string} params.teamId - ID of the team.
  * @param {Function} params.callback - Callback.
- * @param {string[]} [params.teamIds] - ID of the teams.
- * @param {string[]} [params.userIds] - ID of the user.
- * @param {string[]} [params.bannedIds] - Blocked ids.
- * @param {string[]} [params.teamAdminIds] - Id of the teams to remove admin access from. They will not be removed from teamIds.
- * @param {string[]} [params.userAdminIds] - Id of the users to remove admin access from. They will not be removed from userIds.
+ * @param {boolean} [params.shouldRemove] - Should access be removed?
+ * @param {string[]} [params.userIds] - Id of the users to update.
+ * @param {string[]} [params.teamIds] - Id of the teams to update.
+ * @param {string[]} [params.bannedIds] - Id of the blocked Ids to update.
+ * @param {string[]} [params.teamAdminIds] - Id of the teams to update admin access for.
+ * @param {string[]} [params.userAdminIds] - Id of the users to update admin access for.
  */
-function removeAccess({
-  teamId,
-  userIds,
-  teamIds,
-  bannedIds,
-  teamAdminIds,
-  userAdminIds,
-  callback,
-}) {
-  dbConnector.removeObjectAccess({
-    userIds,
-    teamIds,
-    bannedIds,
-    teamAdminIds,
-    userAdminIds,
-    objectId: teamId,
-    object: Team,
-    callback: ({ error, data }) => {
-      if (error) {
-        callback({ error });
+function updateAccess(params) {
+  const accessParams = params;
+  accessParams.objectId = params.teamId;
+  accessParams.object = Team;
+  accessParams.callback = ({ error, data }) => {
+    if (error) {
+      accessParams.callback({ error });
 
-        return;
-      }
+      return;
+    }
 
-      callback({ team: data.object });
-    },
-  });
+    accessParams.callback({ data: { team: data.object } });
+  };
+
+  if (params.shouldRemove) {
+    dbConnector.removeObjectAccess(params);
+  } else {
+    dbConnector.addObjectAccess(params);
+  }
 }
 
 /**
@@ -358,23 +306,19 @@ function removeAccess({
  * @param {Object} params - Parameters.
  * @param {string} params.user - User retrieving the teams.
  * @param {Function} params.callback - Callback.
- * @param {boolean} [params.full] - Should access data be returned?
  * @param {boolean} [params.includeInactive] - Should unverified teams be returned?
  */
 function getTeamsByUser({
   user,
   callback,
   includeInactive,
-  full = false,
 }) {
   const query = dbConnector.createUserQuery({ user });
-  const filter = !full ? teamFilter : {};
 
   if (!includeInactive) { query.isVerified = true; }
 
   getTeams({
     query,
-    filter,
     callback,
   });
 }
@@ -393,31 +337,6 @@ function getTeamById({ teamId, callback }) {
 }
 
 /**
- * Remove team.
- * @param {Object} params - Parameters.
- * @param {string} params.teamId - Id of the team to remove.
- * @param {Function} params.callback Callback.
- */
-function removeTeam({ teamId, callback }) {
-  dbUser.removeTeamFromAll({
-    teamId,
-    callback: ({ error }) => {
-      if (error) {
-        callback({ error });
-
-        return;
-      }
-
-      dbConnector.removeObject({
-        callback,
-        query: { _id: teamId },
-        object: Team,
-      });
-    },
-  });
-}
-
-/**
  * Verify the team.
  * @param {Object} params - Parameters.
  * @param {string} params.teamId - Id of the team to verify.
@@ -431,11 +350,41 @@ function verifyTeam({ teamId, callback }) {
   });
 }
 
+/**
+ * Add a new member to the team.
+ * @param {Object} params - Parameters.
+ * @param {string[]} params.memberIds - Ids of the users.
+ * @param {string} params.teamId - Id of the team.
+ * @param {Function} params.callback - Callback.
+ */
+function addTeamMembers({ memberIds, teamId, callback }) {
+  updateObject({
+    callback,
+    teamId,
+    update: { $addToSet: { members: { $each: memberIds } } },
+  });
+}
+
+/**
+ * Remove a member from the team.
+ * @param {Object} params - Parameters.
+ * @param {string[]} params.memberIds - Ids of the users.
+ * @param {string} params.teamId - Id of the team.
+ * @param {Function} params.callback - Callback.
+ */
+function removeTeamMembers({ memberIds, teamId, callback }) {
+  updateObject({
+    callback,
+    teamId,
+    update: { $pull: { members: { $each: memberIds } } },
+  });
+}
+
 exports.createTeam = createTeam;
-exports.removeTeam = removeTeam;
 exports.getTeamsByUser = getTeamsByUser;
 exports.updateTeam = updateTeam;
-exports.addAccess = addAccess;
-exports.removeAccess = removeAccess;
+exports.updateAccess = updateAccess;
 exports.getTeamById = getTeamById;
 exports.verifyTeam = verifyTeam;
+exports.addTeamMembers = addTeamMembers;
+exports.removeTeamMembers = removeTeamMembers;

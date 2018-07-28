@@ -81,18 +81,14 @@ function handle(io) {
    *
    * @apiDescription Get aliases.
    *
-   * @apiParam {boolean} [full] [Query] Should the complete object be retrieved?
-   *
    * @apiSuccess {Object} data
    * @apiSuccess {Alias[]} data.aliases Found aliases.
    */
   router.get('/', (request, response) => {
     const { authorization: token } = request.headers;
-    const { full } = request.query;
 
     aliasManager.getAliasesByUser({
       token,
-      full,
       callback: ({ error, data }) => {
         if (error) {
           restErrorChecker.checkAndSendError({ response, error });
@@ -115,8 +111,6 @@ function handle(io) {
    *
    * @apiDescription Get an alias.
    *
-   * @apiParam {boolean} [full] [Query] Should the complete object be retrieved?
-   *
    * @apiSuccess {Object} data
    * @apiSuccess {Alias} data.alias Found alias.
    */
@@ -128,11 +122,9 @@ function handle(io) {
     }
 
     const { authorization: token } = request.headers;
-    const { full } = request.query;
     const { aliasId } = request.params;
 
     aliasManager.getAliasById({
-      full,
       token,
       aliasId,
       callback: ({ error, data }) => {
@@ -193,47 +185,6 @@ function handle(io) {
       callback: ({ error, data }) => {
         if (error) {
           restErrorChecker.checkAndSendError({ response, error, sentData: request.body.data });
-
-          return;
-        }
-
-        response.json({ data });
-      },
-    });
-  });
-
-  /**
-   * @api {delete} /aliases/:aliasId Delete an alias.
-   * @apiVersion 8.0.0
-   * @apiName DeleteAlias
-   * @apiGroup Aliases
-   *
-   * @apiHeader {string} Authorization Your JSON Web Token.
-   *
-   * @apiDescription Delete an alias.
-   *
-   * @apiParam {string} aliasId [Url] Id of the alias to delete.
-   *
-   * @apiSuccess {Object} data
-   * @apiSuccess {Object} data.success Was it successfully deleted?
-   */
-  router.delete('/:aliasId', (request, response) => {
-    if (!objectValidator.isValidData(request.params, { aliasId: true })) {
-      restErrorChecker.checkAndSendError({ response, error: new errorCreator.InvalidData({ expected: '{ aliasId }' }) });
-
-      return;
-    }
-
-    const { aliasId } = request.params;
-    const { authorization: token } = request.headers;
-
-    aliasManager.removeAlias({
-      aliasId,
-      io,
-      token,
-      callback: ({ error, data }) => {
-        if (error) {
-          restErrorChecker.checkAndSendError({ response, error });
 
           return;
         }

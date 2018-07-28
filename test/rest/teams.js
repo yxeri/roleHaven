@@ -63,12 +63,4 @@ describe('Teams', () => {
     singleFullSchema: teamSchemas.fullTeam,
     multiFullSchema: teamSchemas.fullTeams,
   });
-
-  testBuilder.createTestDelete({
-    objectType,
-    objectIdType,
-    apiPath,
-    skipOwner: true,
-    testData: testData.remove,
-  });
 });

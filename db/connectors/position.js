@@ -35,20 +35,10 @@ const mapPositionSchema = new mongoose.Schema(dbConnector.createSchema({
   isStationary: { type: Boolean, default: false },
   origin: { type: String, default: dbConfig.PositionOrigins.LOCAL },
   positionStructure: { type: String, default: dbConfig.PositionStructures.MARKER },
+  styleName: String,
 }), { collection: 'mapPositions' });
 
 const MapPosition = mongoose.model('MapPosition', mapPositionSchema);
-
-const positionFilter = dbConnector.createFilter({
-  connectedToUser: 1,
-  coordinatesHistory: 1,
-  positionName: 1,
-  positionType: 1,
-  positionStructure: 1,
-  radius: 1,
-  isStationary: 1,
-  description: 1,
-});
 
 /**
  * Update position.
@@ -254,13 +244,13 @@ function updatePosition({
     isPublic,
     connectedToUser,
     description,
+    styleName,
   } = position;
   const { resetOwnerAliasId, resetConnectedToUser } = options;
 
-  const update = {
-    $set: {},
-    $unset: {},
-  };
+  const update = {};
+  const set = {};
+  const unset = {};
 
   const updateCallback = () => {
     updateObject({
@@ -297,28 +287,32 @@ function updatePosition({
     });
   };
 
-  if (text) { update.$set.description = text; }
-  if (positionName) { update.$set.positionName = positionName; }
-  if (positionType) { update.$set.positionType = positionType; }
-  if (description) { update.$set.description = description; }
-  if (positionStructure) { update.$set.positionStructure = positionStructure; }
+  if (text) { set.description = text; }
+  if (positionName) { set.positionName = positionName; }
+  if (positionType) { set.positionType = positionType; }
+  if (description) { set.description = description; }
+  if (positionStructure) { set.positionStructure = positionStructure; }
+  if (styleName) { set.styleName = styleName; }
 
-  if (typeof isPublic !== 'undefined') { update.$set.isPublic = isPublic; }
-  if (typeof isStationary !== 'undefined') { update.$set.isStationary = isStationary; }
+  if (typeof isPublic !== 'undefined') { set.isPublic = isPublic; }
+  if (typeof isStationary !== 'undefined') { set.isStationary = isStationary; }
 
   if (resetConnectedToUser) {
-    update.$unset.connectedToUser = '';
-    update.$set.positionType = dbConfig.PositionTypes.DEVICE;
+    unset.connectedToUser = '';
+    set.positionType = dbConfig.PositionTypes.DEVICE;
   } else if (connectedToUser) {
-    update.$set.connectedToUser = connectedToUser;
-    update.$set.positionType = dbConfig.PositionTypes.USER;
+    set.connectedToUser = connectedToUser;
+    set.positionType = dbConfig.PositionTypes.USER;
   }
 
   if (resetOwnerAliasId) {
-    update.$unset.ownerAliasId = '';
+    unset.ownerAliasId = '';
   } else if (ownerAliasId) {
-    update.$set.ownerAliasId = ownerAliasId;
+    set.ownerAliasId = ownerAliasId;
   }
+
+  if (Object.keys(set).length > 0) { update.$set = set; }
+  if (Object.keys(unset).length > 0) { update.$unset = unset; }
 
   if (!resetConnectedToUser && connectedToUser) {
     existCallback();
@@ -332,24 +326,14 @@ function updatePosition({
  * @param {Object} params - Parameters.
  * @param {string} params.user - User retrieving the positions.
  * @param {Function} params.callback - Callback.
- * @param {boolean} [params.full] - Should access information be retrieved?
- * @param {string[]} [params.positionTypes] - Types of positions to retrieve.
  */
 function getPositionsByUser({
   user,
   callback,
-  positionTypes,
-  full = false,
 }) {
   const query = dbConnector.createUserQuery({ user });
-  const filter = !full ? positionFilter : {};
-
-  if (positionTypes) {
-    query.positionType = { $in: positionTypes };
-  }
 
   getPositions({
-    filter,
     query,
     callback,
   });
@@ -361,23 +345,16 @@ function getPositionsByUser({
  * @param {string} params.user - User retrieving the positions.
  * @param {string} params.positionStructure - Type of position structure.
  * @param {Function} params.callback - Callback.
- * @param {boolean} [params.full] - Should access information be retrieved?
  */
 function getPositionsByStructure({
   user,
   callback,
   positionTypes: positionStructure,
-  full = false,
 }) {
   const query = dbConnector.createUserQuery({ user });
-  const filter = !full ? positionFilter : {};
-
-  if (positionStructure) {
-    query.positionStructure = { $in: positionStructure };
-  }
+  query.positionStructure = { $in: positionStructure };
 
   getPositions({
-    filter,
     query,
     callback,
   });
@@ -452,83 +429,35 @@ function getUserPosition({ userId, callback }) {
 }
 
 /**
- * Add access to position
- * @param {Object} params - Parameters
- * @param {string} params.positionId - ID of the team
- * @param {string[]} [params.userIds] - ID of the users
- * @param {string[]} [params.teamIds] - ID of the teams
- * @param {string[]} [params.bannedIds] - Blocked ids
- * @param {string[]} [params.teamAdminIds] - Id of the teams to give admin access to. They will also be added to teamIds.
- * @param {string[]} [params.userAdminIds] - Id of the users to give admin access to. They will also be added to userIds.
- * @param {Function} params.callback - Callback
+ * Update access to the position.
+ * @param {Object} params - Parameters.
+ * @param {Function} params.callback - Callback.
+ * @param {boolean} [params.shouldRemove] - Should access be removed?
+ * @param {string[]} [params.userIds] - Id of the users to update.
+ * @param {string[]} [params.teamIds] - Id of the teams to update.
+ * @param {string[]} [params.bannedIds] - Id of the blocked Ids to update.
+ * @param {string[]} [params.teamAdminIds] - Id of the teams to update admin access for.
+ * @param {string[]} [params.userAdminIds] - Id of the users to update admin access for.
  */
-function addAccess({
-  positionId,
-  userIds,
-  teamIds,
-  bannedIds,
-  teamAdminIds,
-  userAdminIds,
-  callback,
-}) {
-  dbConnector.addObjectAccess({
-    userIds,
-    teamIds,
-    bannedIds,
-    teamAdminIds,
-    userAdminIds,
-    objectId: positionId,
-    object: MapPosition,
-    callback: ({ error, data }) => {
-      if (error) {
-        callback({ error });
+function updateAccess(params) {
+  const accessParams = params;
+  accessParams.objectId = params.positionId;
+  accessParams.object = MapPosition;
+  accessParams.callback = ({ error, data }) => {
+    if (error) {
+      accessParams.callback({ error });
 
-        return;
-      }
+      return;
+    }
 
-      callback({ data: { position: data.object } });
-    },
-  });
-}
+    accessParams.callback({ data: { position: data.object } });
+  };
 
-/**
- * Remove access to position
- * @param {Object} params - Parameters
- * @param {string} params.positionId - ID of the team
- * @param {string[]} params.teamIds - ID of the teams
- * @param {string[]} [params.userIds] - ID of the user
- * @param {string[]} [params.bannedIds] - Blocked ids
- * @param {string[]} [params.teamAdminIds] - Id of the teams to remove admin access from. They will not be removed from teamIds.
- * @param {string[]} [params.userAdminIds] - Id of the users to remove admin access from. They will not be removed from userIds.
- * @param {Function} params.callback - Callback
- */
-function removeAccess({
-  positionId,
-  userIds,
-  teamIds,
-  bannedIds,
-  teamAdminIds,
-  userAdminIds,
-  callback,
-}) {
-  dbConnector.removeObjectAccess({
-    userIds,
-    teamIds,
-    bannedIds,
-    teamAdminIds,
-    userAdminIds,
-    objectId: positionId,
-    object: MapPosition,
-    callback: ({ error, data }) => {
-      if (error) {
-        callback({ error });
-
-        return;
-      }
-
-      callback({ data: { position: data.object } });
-    },
-  });
+  if (params.shouldRemove) {
+    dbConnector.removeObjectAccess(params);
+  } else {
+    dbConnector.addObjectAccess(params);
+  }
 }
 
 exports.updatePositionCoordinates = updateCoordinates;
@@ -539,8 +468,7 @@ exports.updatePosition = updatePosition;
 exports.removePositionsByOrigin = removePositionsByOrigin;
 exports.getPositionById = getPositionById;
 exports.getUserPosition = getUserPosition;
-exports.addAccess = addAccess;
-exports.removeAccess = removeAccess;
+exports.updateAccess = updateAccess;
 exports.removePositionsByType = removePositionsByType;
 exports.removePositionsByOrigin = removePositionsByOrigin;
 exports.getPositionsByStructure = getPositionsByStructure;

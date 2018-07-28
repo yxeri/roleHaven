@@ -31,13 +31,6 @@ const gameCodeSchema = new mongoose.Schema(dbConnector.createSchema({
 
 const GameCode = mongoose.model('GameCode', gameCodeSchema);
 
-const gameCodeFilter = dbConnector.createFilter({
-  code: 1,
-  codeType: 1,
-  codeContent: 1,
-  used: 1,
-});
-
 /**
  * Update game code.
  * @private
@@ -217,25 +210,20 @@ function updateGameCode({
 }
 
 /**
- * Get game codes
- * @param {Object} params - Parameters
- * @param {string} params.ownerId - User or team ID of the owner of the game code
- * @param {Function} params.callback - Callback
+ * Get game codes by user.
+ * @param {Object} params - Parameters.
+ * @param {Object} params.user - User retrieving game codes.
+ * @param {Function} params.callback - Callback.
  */
-function getGameCodesByOwner({
-  ownerId,
-  full,
+function getGameCodesByUser({
+  user,
   callback,
 }) {
-  const filter = !full ? gameCodeFilter : {};
-  const query = {
-    ownerId,
-    used: false,
-  };
+  const query = dbConnector.createUserQuery({ user });
+  query.used = false;
 
   getGameCodes({
     callback,
-    filter,
     query,
   });
 }
@@ -247,16 +235,13 @@ function getGameCodesByOwner({
  * @param {Function} params.callback - Callback.
  */
 function getGameCodeById({
-  full,
   gameCodeId,
   callback,
 }) {
   const query = { _id: gameCodeId };
-  const filter = !full ? gameCodeFilter : {};
 
   getGameCode({
     query,
-    filter,
     callback,
   });
 }
@@ -297,5 +282,5 @@ exports.createGameCode = createGameCode;
 exports.updateGameCode = updateGameCode;
 exports.removeGameCode = removeGameCode;
 exports.getGameCodeById = getGameCodeById;
-exports.getGameCodesByOwner = getGameCodesByOwner;
+exports.getGameCodesByUser = getGameCodesByUser;
 exports.getProfileGameCode = getProfileGameCode;

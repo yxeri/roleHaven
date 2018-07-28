@@ -25,26 +25,29 @@ const walletManager = require('../../managers/wallets');
  * @param {object} io - Socket.Io.
  */
 function handle(socket, io) {
-  socket.on('updateWallet', (params, callback = () => {}) => {
+  socket.on('updateWallet', (params, callback = () => {
+  }) => {
     params.callback = callback;
     params.io = io;
-
+    params.socket = socket;
 
     walletManager.updateWallet(params);
   });
 
-  socket.on('getWallet', (params, callback = () => {}) => {
+  socket.on('getWallet', (params, callback = () => {
+  }) => {
     params.callback = callback;
     params.io = io;
-
+    params.socket = socket;
 
     walletManager.getWalletById(params);
   });
 
-  socket.on('getWallets', (params, callback = () => {}) => {
+  socket.on('getWallets', (params, callback = () => {
+  }) => {
     params.callback = callback;
     params.io = io;
-
+    params.socket = socket;
 
     walletManager.getWalletsByUser(params);
   });

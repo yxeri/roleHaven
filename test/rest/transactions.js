@@ -121,6 +121,7 @@ describe('Transactions', () => {
     objectType,
     objectIdType,
     apiPath,
+    createByAdmin: true,
     testData: testData.update,
     schema: transactionSchemas.transaction,
   });
@@ -141,6 +142,7 @@ describe('Transactions', () => {
     objectType,
     objectIdType,
     apiPath,
+    skipOwner: true,
     createByAdmin: true,
     testData: testData.remove,
   });

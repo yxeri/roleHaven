@@ -62,7 +62,8 @@ if (appConfig.mode !== appConfig.Modes.TEST) {
   dbRoom.populateDbRooms({ rooms: dbConfig.rooms });
 }
 
-if (!appConfig.bypassExternalConnections) {
+if (!appConfig.disablePositionImport) {
+  // TODO Send positions to clients
   positionManager.getAndStoreGooglePositions({
     callback: ({ error, data }) => {
       if (error) {

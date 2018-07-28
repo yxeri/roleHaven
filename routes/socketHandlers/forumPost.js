@@ -25,58 +25,65 @@ const forumPostManager = require('../../managers/forumPosts');
  * @param {object} io - Socket.Io.
  */
 function handle(socket, io) {
-  socket.on('createForumPost', (params, callback = () => {}) => {
+  socket.on('createForumPost', (params, callback = () => {
+  }) => {
     params.callback = callback;
     params.io = io;
-
+    params.socket = socket;
 
     forumPostManager.createPost(params);
   });
 
-  socket.on('updateForumPost', (params, callback = () => {}) => {
+  socket.on('updateForumPost', (params, callback = () => {
+  }) => {
     params.callback = callback;
     params.io = io;
-
+    params.socket = socket;
 
     forumPostManager.updatePost(params);
   });
 
-  socket.on('removeForumPost', (params, callback = () => {}) => {
+  socket.on('removeForumPost', (params, callback = () => {
+  }) => {
     params.callback = callback;
     params.io = io;
-
+    params.socket = socket;
 
     forumPostManager.removePost(params);
   });
 
-  socket.on('getForumPost', (params, callback = () => {}) => {
+  socket.on('getForumPost', (params, callback = () => {
+  }) => {
     params.callback = callback;
     params.io = io;
-
+    params.socket = socket;
 
     forumPostManager.getPostById(params);
   });
 
-  socket.on('getForumPosts', (params, callback = () => {}) => {
+  socket.on('getForumPosts', (params, callback = () => {
+  }) => {
     params.callback = callback;
     params.io = io;
-
+    params.socket = socket;
 
     forumPostManager.getPostsByUser(params);
   });
 
-  socket.on('getPostsByThread', (params, callback = () => {}) => {
+  socket.on('getPostsByThreads', (params, callback = () => {
+  }) => {
     params.callback = callback;
     params.io = io;
+    params.socket = socket;
 
-
-    forumPostManager.getPostsByThread(params);
+    forumPostManager.getPostsByThreads(params);
   });
 
-  socket.on('getPostsByForum', (params, callback = () => {}) => {
+  socket.on('getPostsByForum', (params, callback = () => {
+  }) => {
     params.callback = callback;
     params.io = io;
-
+    params.socket = socket;
 
     forumPostManager.getPostsByForum(params);
   });

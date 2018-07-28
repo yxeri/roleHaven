@@ -31,12 +31,6 @@ const deviceSchema = new mongoose.Schema(dbConnector.createSchema({
 
 const Device = mongoose.model('Device', deviceSchema);
 
-const deviceFilter = dbConnector.createFilter({
-  deviceName: 1,
-  deviceType: 1,
-  connectedToUser: 1,
-});
-
 /**
  * Update device object.
  * @param {Object} params - Parameters.
@@ -209,28 +203,29 @@ function updateDevice({
     resetSocket = false,
     resetOwnerAliasId = false,
   } = options;
-  const update = {
-    $set: {},
-    $unset: {},
-  };
+  const update = {};
+  const set = {};
+  const unset = {};
 
   if (resetSocket) {
-    update.$unset.socketId = '';
+    unset.socketId = '';
   } else if (socketId) {
-    update.$set.socketId = socketId;
+    set.socketId = socketId;
   }
 
-  if (deviceType) { update.$set.deviceType = deviceType; }
+  if (deviceType) { set.deviceType = deviceType; }
+  if (deviceName) { set.deviceName = deviceName; }
 
   if (resetOwnerAliasId) {
-    update.$unset.ownerAliasId = '';
+    unset.ownerAliasId = '';
   } else if (ownerAliasId) {
-    update.$set.ownerAliasId = ownerAliasId;
+    set.ownerAliasId = ownerAliasId;
   }
 
-  if (deviceName) {
-    update.$set.deviceName = deviceName;
+  if (Object.keys(set).length > 0) { update.$set = set; }
+  if (Object.keys(unset).length > 0) { update.$unset = unset; }
 
+  if (deviceName) {
     doesDeviceExist({
       deviceName,
       callback: (nameData) => {
@@ -264,82 +259,35 @@ function updateDevice({
 }
 
 /**
- * Add access to the device
- * @param {Object} params - Parameters
- * @param {string[]} [params.userIds] - ID of the users to add
- * @param {string[]} [params.teamIds] - ID of the teams to add
- * @param {string[]} [params.bannedIds] - ID of the blocked Ids to add
- * @param {string[]} [params.teamAdminIds] - Id of the teams to give admin access to. They will also be added to teamIds.
- * @param {string[]} [params.userAdminIds] - Id of the users to give admin access to. They will also be added to userIds.
- * @param {Function} params.callback - Callback
+ * Update access to the device
+ * @param {Object} params - Parameters.
+ * @param {Function} params.callback - Callback.
+ * @param {boolean} [params.shouldRemove] - Should access be removed?
+ * @param {string[]} [params.userIds] - Id of the users to update.
+ * @param {string[]} [params.teamIds] - Id of the teams to update.
+ * @param {string[]} [params.bannedIds] - Id of the blocked Ids to update.
+ * @param {string[]} [params.teamAdminIds] - Id of the teams to update admin access for.
+ * @param {string[]} [params.userAdminIds] - Id of the users to update admin access for.
  */
-function addAccess({
-  deviceId,
-  userIds,
-  teamIds,
-  bannedIds,
-  teamAdminIds,
-  userAdminIds,
-  callback,
-}) {
-  dbConnector.addObjectAccess({
-    userIds,
-    teamIds,
-    bannedIds,
-    teamAdminIds,
-    userAdminIds,
-    objectId: deviceId,
-    object: Device,
-    callback: ({ error, data }) => {
-      if (error) {
-        callback({ error });
+function updateAccess(params) {
+  const accessParams = params;
+  accessParams.objectId = params.deviceId;
+  accessParams.object = Device;
+  accessParams.callback = ({ error, data }) => {
+    if (error) {
+      accessParams.callback({ error });
 
-        return;
-      }
+      return;
+    }
 
-      callback({ data: { device: data.object } });
-    },
-  });
-}
+    accessParams.callback({ data: { device: data.object } });
+  };
 
-/**
- * Remove access for teams andusers or unban Ids
- * @param {Object} params - Parameters
- * @param {string} params.deviceId - ID of the device to update
- * @param {string[]} [params.userIds] - ID of the users to remove
- * @param {string[]} [params.teamIds] - ID of the teams to remove
- * @param {string[]} [params.bannedIds] - ID of the blocked Ids to remove
- * @param {string[]} [params.teamAdminIds] - Id of the teams to remove admin access from. They will not be removed from teamIds.
- * @param {string[]} [params.userAdminIds] - Id of the users to remove admin access from. They will not be removed from userIds.
- * @param {Function} params.callback - Callback
- */
-function removeAccess({
-  deviceId,
-  userIds,
-  teamIds,
-  bannedIds,
-  teamAdminIds,
-  userAdminIds,
-  callback,
-}) {
-  dbConnector.removeObjectAccess({
-    userIds,
-    teamIds,
-    bannedIds,
-    teamAdminIds,
-    userAdminIds,
-    objectId: deviceId,
-    object: Device,
-    callback: ({ error, data }) => {
-      if (error) {
-        callback({ error });
-
-        return;
-      }
-
-      callback({ data: { device: data.object } });
-    },
-  });
+  if (params.shouldRemove) {
+    dbConnector.removeObjectAccess(params);
+  } else {
+    dbConnector.addObjectAccess(params);
+  }
 }
 
 /**
@@ -349,16 +297,13 @@ function removeAccess({
  * @param {Function} params.callback - Callback.
  */
 function getDevicesByUser({
-  full,
   user,
   callback,
 }) {
   const query = dbConnector.createUserQuery({ user });
-  const filter = !full ? deviceFilter : {};
 
   getDevices({
     query,
-    filter,
     callback,
   });
 }
@@ -371,14 +316,10 @@ function getDevicesByUser({
  */
 function getDeviceById({
   deviceId,
-  full,
   callback,
 }) {
-  const filter = !full ? deviceFilter : {};
-
   getDevice({
     callback,
-    filter,
     query: { _id: deviceId },
   });
 }
@@ -410,8 +351,7 @@ function getDeviceBySocketId({ socketId, callback }) {
   });
 }
 
-exports.addAccessToDevice = addAccess;
-exports.removeAccessToDevice = removeAccess;
+exports.updateAccess = updateAccess;
 exports.updateDevice = updateDevice;
 exports.createDevice = createDevice;
 exports.getDevicesByUser = getDevicesByUser;
