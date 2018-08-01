@@ -253,6 +253,7 @@ function updateDevice({
 
   updateObject({
     deviceId,
+    deviceSocketId,
     update,
     callback,
   });
@@ -271,16 +272,17 @@ function updateDevice({
  */
 function updateAccess(params) {
   const accessParams = params;
+  const { callback } = params;
   accessParams.objectId = params.deviceId;
   accessParams.object = Device;
   accessParams.callback = ({ error, data }) => {
     if (error) {
-      accessParams.callback({ error });
+      callback({ error });
 
       return;
     }
 
-    accessParams.callback({ data: { device: data.object } });
+    callback({ data: { device: data.object } });
   };
 
   if (params.shouldRemove) {
