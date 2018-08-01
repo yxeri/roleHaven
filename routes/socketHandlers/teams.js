@@ -69,6 +69,15 @@ function handle(socket, io) {
 
     teamManager.inviteToTeam(params);
   });
+
+  socket.on('leaveTeam', (params, callback = () => {
+  }) => {
+    params.callback = callback;
+    params.io = io;
+    params.socket = socket;
+
+    teamManager.leaveTeam(params);
+  });
 }
 
 exports.handle = handle;
