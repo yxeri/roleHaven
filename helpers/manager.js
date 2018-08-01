@@ -188,6 +188,10 @@ function getObjects({
 
           const objects = getData[objectsType];
           const allObjects = objects.filter((object) => {
+            if (ignoreAuth) {
+              return true;
+            }
+
             const { canSee } = authenticator.hasAccessTo({
               toAuth: authUser,
               objectToAccess: object,
@@ -195,6 +199,10 @@ function getObjects({
 
             return canSee;
           }).map((object) => {
+            if (ignoreAuth) {
+              return object;
+            }
+
             const { hasFullAccess } = authenticator.hasAccessTo({
               toAuth: authUser,
               objectToAccess: object,
