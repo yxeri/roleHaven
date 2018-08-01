@@ -103,6 +103,7 @@ function triggerUnlockedContent({
       docFileManager.unlockDocFile({
         token,
         io,
+        aliasId: gameCode.ownerAliasId,
         internalCallUser: user,
         code: gameCode.codeContent[0],
         callback: ({ error, data }) => {

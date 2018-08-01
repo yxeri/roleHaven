@@ -105,6 +105,7 @@ function emitTeam({
   user,
   callback,
   io,
+  socket,
 }) {
   const creatorDataToSend = {
     data: {
@@ -116,23 +117,28 @@ function emitTeam({
   };
   const dataToSend = {
     data: {
-      team: managerHelper.stripObject({ object: team }),
+      team: managerHelper.stripObject({ object: Object.assign({}, team) }),
       changeType: dbConfig.ChangeTypes.CREATE,
     },
   };
 
   if (team.isVerified) {
-    const userSocket = socketUtils.getUserSocket({
-      io,
-      socketId: user.socketId,
-    });
+    if (socket) {
+      socket.join(room.objectId);
+      socket.broadcast.emit(dbConfig.EmitTypes.TEAM, dataToSend);
+    } else {
+      const userSocket = socketUtils.getUserSocket({
+        io,
+        socketId: user.socketId,
+      });
 
-    if (userSocket) {
-      userSocket.join(room.objectId);
+      if (userSocket) {
+        userSocket.join(room.objectId);
+      }
+
+      io.emit(dbConfig.EmitTypes.TEAM, dataToSend);
+      io.to(user.objectId).emit(dbConfig.EmitTypes.TEAM, creatorDataToSend);
     }
-
-    io.emit(dbConfig.EmitTypes.TEAM, dataToSend);
-    io.to(user.objectId).emit(dbConfig.EmitTypes.TEAM, creatorDataToSend);
   }
 
   callback(creatorDataToSend);
@@ -268,7 +274,6 @@ function createTeam({
       createTeamAndDependencies({
         socket,
         io,
-        user: authUser,
         team: newTeam,
         callback: ({ error: teamError, data: teamData }) => {
           if (teamError) {
@@ -311,6 +316,7 @@ function verifyTeam({
   teamId,
   callback,
   io,
+  socket,
 }) {
   authenticator.isUserAllowed({
     token,
@@ -339,7 +345,11 @@ function verifyTeam({
             },
           };
 
-          io.emit(dbConfig.EmitTypes.TEAM, dataToSend);
+          if (socket) {
+            socket.broadcast.emit(dbConfig.EmitTypes.TEAM, dataToSend);
+          } else {
+            io.emit(dbConfig.EmitTypes.TEAM, dataToSend);
+          }
 
           callback(dataToSend);
         },
@@ -360,6 +370,7 @@ function inviteToTeam({
   io,
   callback,
   token,
+  socket,
 }) {
   authenticator.isUserAllowed({
     token,
@@ -419,8 +430,11 @@ function inviteToTeam({
                 },
               };
 
+              if (!socket) {
+                io.to(newInvitation.ownerAliasId || newInvitation.ownerId).emit(dbConfig.EmitTypes.INVITATION, dataToSend);
+              }
+
               io.to(newInvitation.receiverId).emit(dbConfig.EmitTypes.INVITATION, dataToSend);
-              io.to(newInvitation.senderId).emit(dbConfig.EmitTypes.INVITATION, dataToSend);
 
               callback(dataToSend);
             },
@@ -749,6 +763,7 @@ function updateTeam({
   token,
   io,
   callback,
+  socket,
 }) {
   authenticator.isUserAllowed({
     token,
@@ -803,7 +818,11 @@ function updateTeam({
                 },
               };
 
-              io.emit(dbConfig.EmitTypes.TEAM, dataToSend);
+              if (socket) {
+                socket.broadcast.emit(dbConfig.EmitTypes.TEAM, dataToSend);
+              } else {
+                io.emit(dbConfig.EmitTypes.TEAM, dataToSend);
+              }
 
               callback(dataToSend);
             },

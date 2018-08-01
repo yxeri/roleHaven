@@ -41,6 +41,7 @@ function createUser({
   callback,
   io,
   options,
+  socket,
 }) {
   let command;
 
@@ -226,7 +227,10 @@ function createUser({
                         },
                       };
 
-                      io.to(createdUser.objectId).emit(dbConfig.EmitTypes.USER, creatorDataToSend);
+                      if (!socket) {
+                        io.to(createdUser.objectId).emit(dbConfig.EmitTypes.USER, creatorDataToSend);
+                      }
+
                       io.emit(dbConfig.EmitTypes.FORUM, forumDataToSend);
                       io.emit(dbConfig.EmitTypes.USER, dataToSend);
                       io.emit(dbConfig.EmitTypes.ROOM, roomDataToSend);
@@ -816,6 +820,7 @@ function updateUser({
   userId,
   user,
   options,
+  socket,
 }) {
   authenticator.isUserAllowed({
     token,
@@ -888,7 +893,13 @@ function updateUser({
                 },
               };
 
-              io.emit(dbConfig.EmitTypes.USER, dataToSend);
+              if (socket) {
+                socket.broadcast.emit(dbConfig.EmitTypes.USER, dataToSend);
+              } else {
+                io.emit(dbConfig.EmitTypes.USER, dataToSend);
+              }
+
+
               io.to(userId).emit(dbConfig.EmitTypes.USER, creatorDataToSend);
 
               callback(creatorDataToSend);
@@ -928,6 +939,18 @@ function updateId({
 
       const { objectId: userId, followingRooms: roomIds } = authUser;
       const socketId = socket.id;
+
+      if (authUser.isAnonymous) {
+        socketUtils.joinRequiredRooms({
+          io,
+          userId,
+          socketId,
+        });
+
+        callback({ data: { user: authUser } });
+
+        return;
+      }
 
       dbUser.updateOnline({
         userId,

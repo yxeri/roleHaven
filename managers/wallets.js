@@ -65,6 +65,7 @@ function updateWallet({
   callback,
   io,
   internalCallUser,
+  socket,
   options = {},
 }) {
   const walletToUpdate = wallet;
@@ -132,7 +133,11 @@ function updateWallet({
                 },
               };
 
-              io.emit(dbConfig.EmitTypes.WALLET, dataToSend);
+              if (socket) {
+                socket.broadcast.emit(dbConfig.EmitTypes.WALLET, dataToSend);
+              } else {
+                io.emit(dbConfig.EmitTypes.WALLET, dataToSend);
+              }
 
               callback(dataToSend);
             },

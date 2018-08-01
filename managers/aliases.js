@@ -37,6 +37,7 @@ function createAlias({
   token,
   io,
   alias,
+  socket,
   callback,
 }) {
   authenticator.isUserAllowed({
@@ -141,16 +142,23 @@ function createAlias({
                     },
                   };
 
-                  const userSocket = socketUtils.getUserSocket({ io, socketId: user.socketId });
+                  if (socket) {
+                    socket.join(createdAlias.objectId);
+                    socket.broadcast.emit(dbConfig.EmitTypes.USER, dataToSend);
+                    socket.broadcast.emit(dbConfig.EmitTypes.ROOM, roomDataToSend);
+                    socket.broadcast.emit(dbConfig.EmitTypes.WALLET, walletDataToSend);
+                  } else {
+                    const userSocket = socketUtils.getUserSocket({ io, socketId: user.socketId });
 
-                  if (userSocket) {
-                    userSocket.join(createdAlias.objectId);
+                    if (userSocket) {
+                      userSocket.join(createdAlias.objectId);
+                    }
+
+                    io.to(user.objectId).emit(dbConfig.EmitTypes.ALIAS, creatorDataToSend);
+                    io.emit(dbConfig.EmitTypes.USER, dataToSend);
+                    io.emit(dbConfig.EmitTypes.ROOM, roomDataToSend);
+                    io.emit(dbConfig.EmitTypes.WALLET, walletDataToSend);
                   }
-
-                  io.to(user.objectId).emit(dbConfig.EmitTypes.ALIAS, creatorDataToSend);
-                  io.emit(dbConfig.EmitTypes.USER, dataToSend);
-                  io.emit(dbConfig.EmitTypes.ROOM, roomDataToSend);
-                  io.emit(dbConfig.EmitTypes.WALLET, walletDataToSend);
 
                   callback(creatorDataToSend);
                 },
@@ -315,6 +323,7 @@ function updateAlias({
   options,
   aliasId,
   io,
+  socket,
 }) {
   authenticator.isUserAllowed({
     token,
@@ -382,8 +391,12 @@ function updateAlias({
                 },
               };
 
-              io.emit(dbConfig.EmitTypes.USER, dataToSend);
-              io.to(updatedAlias.objectId).emit(dbConfig.EmitTypes.ALIAS, aliasDataToSend);
+              if (socket) {
+                socket.broadcast.emit(dbConfig.EmitTypes.USER, dataToSend);
+              } else {
+                io.emit(dbConfig.EmitTypes.USER, dataToSend);
+                io.to(updatedAlias.objectId).emit(dbConfig.EmitTypes.ALIAS, aliasDataToSend);
+              }
 
               callback(aliasDataToSend);
             },

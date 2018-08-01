@@ -380,13 +380,14 @@ function createRoom({
 
           if (socket) {
             socket.join(createdRoom.objectId);
+            socket.broadcast.emit(dbConfig.EmitTypes.ROOM, dataToSend);
           } else {
             const userSocket = socketUtils.getUserSocket({ io, socketId: user.socketId });
 
             if (userSocket) { userSocket.join(createdRoom.objectId); }
-          }
 
-          io.emit(dbConfig.EmitTypes.ROOM, dataToSend);
+            io.emit(dbConfig.EmitTypes.ROOM, dataToSend);
+          }
 
           callback(dataToSend);
         },
@@ -441,10 +442,7 @@ function follow({
 
   dbRoom.updateAccess({
     roomId,
-    userIds: [
-      userId,
-      idToAdd,
-    ],
+    userIds: [idToAdd],
     callback: ({ error, data }) => {
       if (error) {
         callback({ error });
@@ -464,7 +462,7 @@ function follow({
 
           dbUser.followRoom({
             roomId,
-            userIds: [userId],
+            userIds: [idToAdd],
             callback: (followData) => {
               if (followData.error) {
                 callback({ error: followData.error });
@@ -490,6 +488,20 @@ function follow({
               const userSocket = socketUtils.getUserSocket({ io, socketId: user.socketId });
 
               if (userSocket) { userSocket.join(roomId); }
+
+              if (aliasId) {
+                io.in(aliasId).clients((ioError, clients) => {
+                  if (ioError) {
+                    console.log(`Failed to emit follow alias id to room ${roomId}`, ioError);
+
+                    return;
+                  }
+
+                  clients.map(socketId => io.sockets.connected[socketId]).forEach((socket) => {
+                    socket.join(roomId);
+                  });
+                });
+              }
 
               io.to(idToAdd).emit(dbConfig.EmitTypes.FOLLOW, toReturn);
               io.to(roomId).emit(dbConfig.EmitTypes.FOLLOWER, toSend);

@@ -57,7 +57,10 @@ function getPositionById({
  * @param {Object} params - Parameters.
  * @param {Function} params.callback - Callback.
  */
-function getAndStoreGooglePositions({ callback = () => {} }) {
+function getAndStoreGooglePositions({
+  io,
+  callback = () => {},
+}) {
   if (!appConfig.mapLayersPath) {
     callback({ error: new errorCreator.InvalidData({ name: 'Map layer is not set' }) });
 
@@ -91,8 +94,17 @@ function getAndStoreGooglePositions({ callback = () => {} }) {
               return;
             }
 
+            const dataToReturn = {
+              data: {
+                positions: createdPositions,
+                changeType: dbConfig.ChangeTypes.CREATE,
+              },
+            };
+
             if (iteration === positionAmount) {
-              callback({ data: { positions: createdPositions } });
+              io.emit(dbConfig.EmitTypes.POSITIONS, dataToReturn);
+
+              callback(dataToReturn);
             }
           };
           let iteration = 1;

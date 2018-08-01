@@ -56,6 +56,7 @@ function sendAndStoreMessage({
   io,
   emitType,
   image,
+  socket,
 }) {
   if (image) {
     // Contact file storage and create the file or retrieve and existing one.
@@ -77,7 +78,11 @@ function sendAndStoreMessage({
         },
       };
 
-      io.to(message.roomId).emit(emitType, dataToSend);
+      if (socket) {
+        socket.broadcast.to(message.roomId).emit(emitType, dataToSend);
+      } else {
+        io.to(message.roomId).emit(emitType, dataToSend);
+      }
 
       callback(dataToSend);
     },
@@ -314,9 +319,11 @@ function sendBroadcastMsg({
   callback,
   io,
   image,
+  internalCallUser,
 }) {
   authenticator.isUserAllowed({
     token,
+    internalCallUser,
     commandName: dbConfig.apiCommands.SendBroadcast.name,
     callback: ({ error, data }) => {
       if (error) {
