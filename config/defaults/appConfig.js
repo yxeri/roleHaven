@@ -30,7 +30,7 @@ try {
 }
 
 try {
-  config = require('../appConfig'); // eslint-disable-line
+  config = Object.assign({}, require('../appConfig')); // eslint-disable-line
 } catch (err) {
   console.log('Did not find modified appConfig. Using defaults');
 }
@@ -120,26 +120,54 @@ config.adminCssName = process.env.ADMINCSSNAME || config.adminCssName || 'admin'
  * }
  * @type {{sitePath:string, filePath:string}[]}
  */
-config.routes = config.routes || [
-  { sitePath: '/', filePath: `${__dirname}/../../routes/index.js` },
-  { sitePath: '/api/authenticate', filePath: `${__dirname}/../../routes/rest/authenticate.js` },
-  { sitePath: '/api/gameCodes', filePath: `${__dirname}/../../routes/rest/gameCodes.js` },
-  { sitePath: '/api/rooms', filePath: `${__dirname}/../../routes/rest/rooms.js` },
-  { sitePath: '/api/positions', filePath: `${__dirname}/../../routes/rest/positions.js` },
-  { sitePath: '/api/docFiles', filePath: `${__dirname}/../../routes/rest/docFiles.js` },
-  { sitePath: '/api/users', filePath: `${__dirname}/../../routes/rest/users.js` },
-  { sitePath: '/api/aliases', filePath: `${__dirname}/../../routes/rest/aliases.js` },
-  { sitePath: '/api/wallets', filePath: `${__dirname}/../../routes/rest/wallets` },
-  { sitePath: '/api/teams', filePath: `${__dirname}/../../routes/rest/teams` },
-  { sitePath: '/api/devices', filePath: `${__dirname}/../../routes/rest/devices` },
-  { sitePath: '/api/simpleMsgs', filePath: `${__dirname}/../../routes/rest/simpleMsgs` },
-  { sitePath: '/api/forums', filePath: `${__dirname}/../../routes/rest/forums` },
-  { sitePath: '/api/forumThreads', filePath: `${__dirname}/../../routes/rest/forumThreads` },
-  { sitePath: '/api/forumPosts', filePath: `${__dirname}/../../routes/rest/forumPosts` },
-  { sitePath: '/api/messages', filePath: `${__dirname}/../../routes/rest/messages` },
-  { sitePath: '/api/transactions', filePath: `${__dirname}/../../routes/rest/transactions` },
-  { sitePath: '*', filePath: `${__dirname}/../../routes/error.js` },
-];
+config.routes = config.ignoreDefaultRoutes ?
+  config.routes || [] :
+  [{ sitePath: '/', filePath: '/routes/index.js' }].concat([
+    { sitePath: '/api/authenticate', filePath: '/routes/rest/authenticate.js' },
+    { sitePath: '/api/gameCodes', filePath: '/routes/rest/gameCodes.js' },
+    { sitePath: '/api/rooms', filePath: '/routes/rest/rooms.js' },
+    { sitePath: '/api/positions', filePath: '/routes/rest/positions.js' },
+    { sitePath: '/api/docFiles', filePath: '/routes/rest/docFiles.js' },
+    { sitePath: '/api/users', filePath: '/routes/rest/users.js' },
+    { sitePath: '/api/aliases', filePath: '/routes/rest/aliases.js' },
+    { sitePath: '/api/wallets', filePath: '/routes/rest/wallets' },
+    { sitePath: '/api/teams', filePath: '/routes/rest/teams' },
+    { sitePath: '/api/devices', filePath: '/routes/rest/devices' },
+    { sitePath: '/api/simpleMsgs', filePath: '/routes/rest/simpleMsgs' },
+    { sitePath: '/api/forums', filePath: '/routes/rest/forums' },
+    { sitePath: '/api/forumThreads', filePath: '/routes/rest/forumThreads' },
+    { sitePath: '/api/forumPosts', filePath: '/routes/rest/forumPosts' },
+    { sitePath: '/api/messages', filePath: '/routes/rest/messages' },
+    { sitePath: '/api/transactions', filePath: '/routes/rest/transactions' },
+  ]).concat(config.routes || []).concat([{ sitePath: '*', filePath: '/routes/error.js' }]).map((route) => {
+    return {
+      sitePath: route.sitePath,
+      filePath: `${__dirname}/../..${route.filePath}`,
+    };
+  });
+
+/* eslint-disable */
+
+config.handlers = config.ignoreDefaultHandlers ? config.handlers || [] : [
+  '/routes/socketHandlers/aliases',
+  '/routes/socketHandlers/authenticate',
+  '/routes/socketHandlers/devices',
+  '/routes/socketHandlers/docFiles',
+  '/routes/socketHandlers/forumPost',
+  '/routes/socketHandlers/forums',
+  '/routes/socketHandlers/forumThreads',
+  '/routes/socketHandlers/gameCodes',
+  '/routes/socketHandlers/messages',
+  '/routes/socketHandlers/positions',
+  '/routes/socketHandlers/rooms',
+  '/routes/socketHandlers/simpleMsgs',
+  '/routes/socketHandlers/teams',
+  '/routes/socketHandlers/transactions',
+  '/routes/socketHandlers/users',
+  '/routes/socketHandlers/wallets',
+].concat(config.handlers || []).map(path => `${__dirname}/../..${path}`);
+
+/* eslint-enable */
 
 /**
  * Path to directory with views.
@@ -538,7 +566,7 @@ config.teamNameMaxLength = process.env.TEAMNAMEMAXLENGTH || config.teamNameMaxLe
  * Maximum amount of characters in a team acronym
  * @type {number}
  */
-config.shortTeamMaxLength = process.env.SHORTEAMMAXLENGTH || config.shortTeamMaxLength || 10;
+config.shortTeamMaxLength = process.env.SHORTEAMMAXLENGTH || config.shortTeamMaxLength || 5;
 
 /**
  * ************

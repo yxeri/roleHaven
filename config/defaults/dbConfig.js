@@ -21,16 +21,19 @@ const path = require('path');
 let config = {};
 
 try {
-  config = require(path.normalize(`${__dirname}/../../../../config/databasePopulation`)).config; // eslint-disable-line import/no-unresolved, global-require, import/no-dynamic-require, prefer-destructuring
+  config = Object.assign(require(path.normalize(`${__dirname}/../../../../config/dbConfig`))); // eslint-disable-line import/no-unresolved, global-require, import/no-dynamic-require, prefer-destructuring
 } catch (err) {
   console.log('Did not find modified dbConfig. Using defaults');
 }
 
 config.rooms = config.rooms || {};
 config.users = config.users || {};
-config.commands = config.commands || {};
 config.apiCommands = config.apiCommands || {};
 
+/**
+ * Access levels are used as permissions for users.
+ * A user that has an level equal to or greater than the required access level will be able to use the function.
+ */
 config.AccessLevels = config.AccessLevels || {
   ANONYMOUS: 0,
   STANDARD: 1,
@@ -46,6 +49,9 @@ config.users.systemUser = config.users.systemUser || {
   username: 'system',
 };
 
+/**
+ * Default user used when the client is not authenticated.
+ */
 config.users.anonymous = config.users.anonymous || {
   username: 'anonymous',
   objectId: '222222222222222222222221',
@@ -225,6 +231,7 @@ config.EmitTypes = {
   GAMECODE: 'gameCode',
   ALIAS: 'alias',
   POSITION: 'position',
+  POSITIONS: 'positions',
   ROOM: 'room',
   FOLLOWER: 'follower',
   TEAM: 'team',
@@ -258,7 +265,7 @@ config.defaultRoom = config.rooms.public;
  * ***************************
  */
 
-config.apiCommands = {
+config.apiCommands = Object.assign({
   /**
    * Alias
    */
@@ -694,6 +701,10 @@ config.apiCommands = {
     name: 'CreatePosition',
     accessLevel: process.env.CREATEPOSITION || config.AccessLevels.STANDARD,
   },
+  CreatePermanentPosition: config.apiCommands.CreatePermanentPosition || {
+    name: 'CreatePermanentPosition',
+    accessLevel: process.env.CREATEPERMANENTPOSITION || config.AccessLevels.PRIVILEGED,
+  },
   GetPositions: config.apiCommands.GetPositions || {
     name: 'GetPositions',
     accessLevel: config.AccessLevels.ANONYMOUS,
@@ -762,6 +773,6 @@ config.apiCommands = {
     name: 'AnonymousCreation',
     accessLevel: config.AccessLevels.ANONYMOUS,
   },
-};
+}, config.apiCommands || {});
 
 module.exports = config;
