@@ -126,7 +126,7 @@ function createPosition({ position, layerName }) {
     positionType: layerName.toLowerCase(),
     description: position.description ?
       position.description.replace(/<img .+?\/>/, '').split(/<br>/) :
-      ['No information'],
+      [''],
   };
 }
 
