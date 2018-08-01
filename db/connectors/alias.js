@@ -120,16 +120,17 @@ function getAlias({ query, callback }) {
  */
 function updateAccess(params) {
   const accessParams = params;
+  const { callback } = params;
   accessParams.objectId = params.aliasId;
   accessParams.object = Alias;
   accessParams.callback = ({ error, data }) => {
     if (error) {
-      accessParams.callback({ error });
+      callback({ error });
 
       return;
     }
 
-    accessParams.callback({ data: { alias: data.object } });
+    callback({ data: { alias: data.object } });
   };
 
   if (params.shouldRemove) {
