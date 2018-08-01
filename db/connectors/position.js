@@ -43,9 +43,9 @@ const MapPosition = mongoose.model('MapPosition', mapPositionSchema);
 /**
  * Update position.
  * @private
- * @param {Object} params - Parameter.
- * @param {string} params.positionId - Id of the position to update.
- * @param {Object} params.update - Update.
+ * @param {Object} params Parameter.
+ * @param {string} params.positionId Id of the position to update.
+ * @param {Object} params.update Update.
  * @param {Function} params.callback Callback.
  */
 function updateObject({ positionId, update, callback }) {
@@ -69,9 +69,9 @@ function updateObject({ positionId, update, callback }) {
 /**
  * Get positions.
  * @private
- * @param {Object} params - Parameters.
- * @param {Object} [params.query] - Query to get positions.
- * @param {Function} params.callback - Callback.
+ * @param {Object} params Parameters.
+ * @param {Object} [params.query] Query to get positions.
+ * @param {Function} params.callback Callback.
  */
 function getPositions({
   query,
@@ -101,9 +101,9 @@ function getPositions({
 /**
  * Get position
  * @private
- * @param {Object} params - Parameters.
- * @param {Object} [params.query] - Query to get position.
- * @param {Function} params.callback - Callback.
+ * @param {Object} params Parameters.
+ * @param {Object} [params.query] Query to get position.
+ * @param {Function} params.callback Callback.
  */
 function getPosition({ filter, query, callback }) {
   dbConnector.getObject({
@@ -128,9 +128,9 @@ function getPosition({ filter, query, callback }) {
 
 /**
  * Does the position exist?
- * @param {Object} params - Parameters.
- * @param {string} [params.connectedToUser] - Id of the user or alias.
- * @param {Function} params.callback - Callback.
+ * @param {Object} params Parameters.
+ * @param {string} [params.connectedToUser] Id of the user or alias.
+ * @param {Function} params.callback Callback.
  */
 function doesPositionExist({
   positionName,
@@ -162,9 +162,9 @@ function doesPositionExist({
 
 /**
  * Create position
- * @param {Object} params - Parameters
- * @param {Object} params.position - Position to add
- * @param {Function} params.callback - Callback
+ * @param {Object} params Parameters
+ * @param {Object} params.position Position to add
+ * @param {Function} params.callback Callback
  */
 function createPosition({ position, callback }) {
   doesPositionExist({
@@ -203,10 +203,10 @@ function createPosition({ position, callback }) {
 
 /**
  * Update position coordinates.
- * @param {Object} params - Parameters.
- * @param {string} params.positionId - Id of the position.
- * @param {Function} params.callback - Callback.
- * @param {Object} params.coordinates - GPS coordinates.
+ * @param {Object} params Parameters.
+ * @param {string} params.positionId Id of the position.
+ * @param {Function} params.callback Callback.
+ * @param {Object} params.coordinates GPS coordinates.
  */
 function updateCoordinates({ positionId, coordinates, callback }) {
   const update = { $push: { coordinatesHistory: coordinates } };
@@ -222,11 +222,11 @@ function updateCoordinates({ positionId, coordinates, callback }) {
 // TODO Position should be automatically created when a user is created. connectedToUser should not be used to identify a user's position
 /**
  * Update position.
- * @param {Object} params - Parameters.
- * @param {Object} params.position - Position object to update with.
- * @param {Object} [params.options] - Options.
- * @param {boolean} params.options.resetOwnerAliasId - Should the owner alias be reset on the position?
- * @param {Function} params.callback - Callback.
+ * @param {Object} params Parameters.
+ * @param {Object} params.position Position object to update with.
+ * @param {Object} [params.options] Options.
+ * @param {boolean} params.options.resetOwnerAliasId Should the owner alias be reset on the position?
+ * @param {Function} params.callback Callback.
  */
 function updatePosition({
   positionId,
@@ -328,9 +328,9 @@ function updatePosition({
 
 /**
  * Get positions that the user has access to.
- * @param {Object} params - Parameters.
- * @param {string} params.user - User retrieving the positions.
- * @param {Function} params.callback - Callback.
+ * @param {Object} params Parameters.
+ * @param {string} params.user User retrieving the positions.
+ * @param {Function} params.callback Callback.
  */
 function getPositionsByUser({
   user,
@@ -346,10 +346,10 @@ function getPositionsByUser({
 
 /**
  * Get positions by their structure.
- * @param {Object} params - Parameters.
- * @param {string} params.user - User retrieving the positions.
- * @param {string} params.positionStructure - Type of position structure.
- * @param {Function} params.callback - Callback.
+ * @param {Object} params Parameters.
+ * @param {string} params.user User retrieving the positions.
+ * @param {string} params.positionStructure Type of position structure.
+ * @param {Function} params.callback Callback.
  */
 function getPositionsByStructure({
   user,
@@ -367,9 +367,9 @@ function getPositionsByStructure({
 
 /**
  * Remove position
- * @param {Object} params - Parameters
- * @param {string} params.positionId - ID of the position
- * @param {Function} params.callback - Callback
+ * @param {Object} params Parameters
+ * @param {string} params.positionId ID of the position
+ * @param {Function} params.callback Callback
  */
 function removePosition({ positionId, callback }) {
   dbConnector.removeObject({
@@ -381,9 +381,9 @@ function removePosition({ positionId, callback }) {
 
 /**
  * Remove positions based on position type.
- * @param {Object} params - Parameters
- * @param {string} params.positionType - Position type
- * @param {Function} params.callback - Callback
+ * @param {Object} params Parameters
+ * @param {string} params.positionType Position type
+ * @param {Function} params.callback Callback
  */
 function removePositionsByType({ positionType, callback }) {
   dbConnector.removeObjects({
@@ -395,9 +395,9 @@ function removePositionsByType({ positionType, callback }) {
 
 /**
  * Remove positions based on its origin.
- * @param {Object} params - Parameters.
- * @param {string} params.origin - The creation origin of the positions.
- * @param {Function} params.callback - Callback.
+ * @param {Object} params Parameters.
+ * @param {string} params.origin The creation origin of the positions.
+ * @param {Function} params.callback Callback.
  */
 function removePositionsByOrigin({ origin, callback }) {
   dbConnector.removeObjects({
@@ -409,9 +409,9 @@ function removePositionsByOrigin({ origin, callback }) {
 
 /**
  * Get position by Id.
- * @param {Object} params - Parameters.
- * @param {string} params.positionId - Id of the position.
- * @param {Function} params.callback - Callback.
+ * @param {Object} params Parameters.
+ * @param {string} params.positionId Id of the position.
+ * @param {Function} params.callback Callback.
  */
 function getPositionById({ positionId, callback }) {
   getPosition({
@@ -422,9 +422,9 @@ function getPositionById({ positionId, callback }) {
 
 /**
  * Get position of user
- * @param {Object} params - Parameters
- * @param {Object} params.userId - ID of the user
- * @param {Object} params.callback - Callback
+ * @param {Object} params Parameters
+ * @param {Object} params.userId ID of the user
+ * @param {Object} params.callback Callback
  */
 function getUserPosition({ userId, callback }) {
   getPosition({

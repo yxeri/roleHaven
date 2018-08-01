@@ -52,8 +52,8 @@ const User = mongoose.model('User', userSchema);
 /**
  * Remove private parameters
  * @private
- * @param {Object} user - User
- * @param {boolean} [noClean] - Should less parameters be removed before returning object?
+ * @param {Object} user User
+ * @param {boolean} [noClean] Should less parameters be removed before returning object?
  * @returns {Object} Clean user
  */
 function modifyUserParameters(user, noClean) {
@@ -70,9 +70,9 @@ function modifyUserParameters(user, noClean) {
 
 /**
  * Update user
- * @param {Object} params - Parameters
- * @param {string} params.userId - User ID
- * @param {Object} params.update - Update
+ * @param {Object} params Parameters
+ * @param {string} params.userId User ID
+ * @param {Object} params.update Update
  * @param {Function} params.callback Callback
  */
 function updateObject({
@@ -107,10 +107,10 @@ function updateObject({
 
 /**
  * Update users
- * @param {Object} params - Parameters
- * @param {Object} params.update - Database update
+ * @param {Object} params Parameters
+ * @param {Object} params.update Database update
  * @param {Function} params.callback Callback
- * @param {string} [params.query] - Database query
+ * @param {string} [params.query] Database query
  */
 function updateObjects({ query, update, callback }) {
   dbConnector.updateObjects({
@@ -136,10 +136,10 @@ function updateObjects({ query, update, callback }) {
 /**
  * Get users.
  * @private
- * @param {Object} params - Parameters.
- * @param {Object} [params.filter] - Parameters to be filtered from the db result.
- * @param {Object} params.query - Query to get users.
- * @param {Function} params.callback - Callback.
+ * @param {Object} params Parameters.
+ * @param {Object} [params.filter] Parameters to be filtered from the db result.
+ * @param {Object} params.query Query to get users.
+ * @param {Function} params.callback Callback.
  */
 function getUsers({ filter, query, callback }) {
   dbConnector.getObjects({
@@ -165,9 +165,9 @@ function getUsers({ filter, query, callback }) {
 /**
  * Get user
  * @private
- * @param {Object} params - Parameters
- * @param {string} params.query - Query to get alias
- * @param {Function} params.callback - Callback
+ * @param {Object} params Parameters
+ * @param {string} params.query Query to get alias
+ * @param {Function} params.callback Callback
  */
 function getUser({
   filter,
@@ -202,9 +202,9 @@ function getUser({
 
 /**
  * Get user by Id or name.
- * @param {Object} params - Parameters.
- * @param {string} params.userId - Id of the user.
- * @param {Function} params.callback - Callback.
+ * @param {Object} params Parameters.
+ * @param {string} params.userId Id of the user.
+ * @param {Function} params.callback Callback.
  */
 function getUserById({
   userId,
@@ -232,12 +232,39 @@ function getUserById({
 }
 
 /**
+ * Get user by socket Id.
+ * @param {Object} params Parameters.
+ * @param {string} params.socketId Socket Id.
+ * @param {Function} params.callback Callback.
+ */
+function doesUserSocketIdExist({
+  socketId,
+  callback,
+}) {
+  const query = { socketId };
+
+  dbConnector.doesObjectExist({
+    query,
+    object: User,
+    callback: ({ error, data }) => {
+      if (error) {
+        callback({ error: new errorCreator.Database({ errorObject: error }) });
+
+        return;
+      }
+
+      callback({ data });
+    },
+  });
+}
+
+/**
  * Authorize user. The user can be found by either the username or user Id.
- * @param {Object} params - Parameters.
- * @param {string} params.password - Password of the user.
- * @param {Function} params.callback - Callback.
- * @param {string} [params.userId] - Id of the user.
- * @param {string} [params.username] - Name of the user.
+ * @param {Object} params Parameters.
+ * @param {string} params.password Password of the user.
+ * @param {Function} params.callback Callback.
+ * @param {string} [params.userId] Id of the user.
+ * @param {string} [params.username] Name of the user.
  */
 function authUser({
   username,
@@ -261,10 +288,10 @@ function authUser({
 
 /**
  * Does the user already exist?
- * @param {Object} params - Parameters
- * @param {string} [params.username] - Username to check
- * @param {string} [params.mailAddress] - Mail address connected to the user
- * @param {Function} params.callback - Callback
+ * @param {Object} params Parameters
+ * @param {string} [params.username] Username to check
+ * @param {string} [params.mailAddress] Mail address connected to the user
+ * @param {Function} params.callback Callback
  */
 function doesUserExist({ username, mailAddress, callback }) {
   if (!username && !mailAddress) {
@@ -302,9 +329,9 @@ function doesUserExist({ username, mailAddress, callback }) {
 
 /**
  * Create and save user
- * @param {Object} params - Parameters
- * @param {Object} params.user - New user
- * @param {Function} params.callback - Callback
+ * @param {Object} params Parameters
+ * @param {Object} params.user New user
+ * @param {Function} params.callback Callback
  */
 function createUser({
   user,
@@ -354,11 +381,11 @@ function createUser({
 
 /**
  * Set user as being online/offline.
- * @param {Object} params - Paramters.
- * @param {string} params.userId - Id of the user to update.
- * @param {Function} params.callback - Callback.
- * @param {boolean} [params.isOnline] - Is the user online?
- * @param {string} [params.socketId] - Socket ID of the user.
+ * @param {Object} params Paramters.
+ * @param {string} params.userId Id of the user to update.
+ * @param {Function} params.callback Callback.
+ * @param {boolean} [params.isOnline] Is the user online?
+ * @param {string} [params.socketId] Socket ID of the user.
  */
 function updateOnline({
   userId,
@@ -396,11 +423,11 @@ function updateOnline({
 
 /**
  * Update a user.
- * @param {Object} params - Parameters.
- * @param {Object} params.user - User parameters to update.
- * @param {Function} params.callback - Callback.
- * @param {string} [params.userId] - Id of the user. Will override userSocketId to get and update a device.
- * @param {string} [params.userSocketId] - Socket Id. Will be used to get and update a device. Overriden by userId.
+ * @param {Object} params Parameters.
+ * @param {Object} params.user User parameters to update.
+ * @param {Function} params.callback Callback.
+ * @param {string} [params.userId] Id of the user. Will override userSocketId to get and update a device.
+ * @param {string} [params.userSocketId] Socket Id. Will be used to get and update a device. Overriden by userId.
  */
 function updateUser({
   userSocketId,
@@ -485,9 +512,9 @@ function updateUser({
 
 /**
  * Verify user
- * @param {Object} params - Parameters
- * @param {string} params.userId - ID of the user
- * @param {Function} params.callback - Callback
+ * @param {Object} params Parameters
+ * @param {string} params.userId ID of the user
+ * @param {Function} params.callback Callback
  */
 function verifyUser({ userId, callback }) {
   updateObject({
@@ -499,9 +526,9 @@ function verifyUser({ userId, callback }) {
 
 /**
  * Ban or unban user
- * @param {Object} params - Parameters
- * @param {string} params.userId - ID of the user
- * @param {boolean} params.shouldBan - Should the user be banned?
+ * @param {Object} params Parameters
+ * @param {string} params.userId ID of the user
+ * @param {boolean} params.shouldBan Should the user be banned?
  * @param {Function} params.callback - Callback
  */
 function updateBanUser({ shouldBan, userId, callback }) {
@@ -923,3 +950,4 @@ exports.removeAlias = removeAlias;
 exports.removeAliasFromAllUsers = removeAliasFromAllUsers;
 exports.getAllUsers = getAllUsers;
 exports.getUsersByAlias = getUsersByAlias;
+exports.doesUserSocketIdExist = doesUserSocketIdExist;
