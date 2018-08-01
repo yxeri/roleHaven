@@ -63,18 +63,21 @@ if (appConfig.mode !== appConfig.Modes.TEST) {
 }
 
 if (!appConfig.disablePositionImport) {
-  // TODO Send positions to clients
-  positionManager.getAndStoreGooglePositions({
-    callback: ({ error, data }) => {
-      if (error) {
-        console.log('Failed to retrieve Google Maps positions');
+  setInterval(() => {
+    // TODO Send positions to clients
+    positionManager.getAndStoreGooglePositions({
+      io,
+      callback: ({ error, data }) => {
+        if (error) {
+          console.log('Failed to retrieve Google Maps positions');
 
-        return;
-      }
+          return;
+        }
 
-      console.log(`Retrieved and saved ${data.positions.length + 1} positions from Google Maps`);
-    },
-  });
+        console.log(`Retrieved and saved ${data.positions.length + 1} positions from Google Maps`);
+      },
+    });
+  }, 3600000);
 }
 
 /*
