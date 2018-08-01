@@ -80,6 +80,7 @@ function updateObject({
   userId,
   update,
   callback,
+  suppressError,
 }) {
   const query = {};
 
@@ -92,6 +93,7 @@ function updateObject({
   dbConnector.updateObject({
     update,
     query,
+    suppressError,
     object: User,
     callback: ({ error, data }) => {
       if (error) {
@@ -187,7 +189,7 @@ function getUser({
       } else if (!data.object) {
         callback({
           error: new errorCreator.DoesNotExist({
-            supressPrint: supressExistError,
+            suppressPrint: supressExistError,
             name: `user ${JSON.stringify(query, null, 4)}`,
           }),
         });
@@ -392,6 +394,7 @@ function updateOnline({
   isOnline,
   socketId,
   callback,
+  suppressError,
 }) {
   const update = {};
   const set = {};
@@ -418,6 +421,7 @@ function updateOnline({
     socketId,
     update,
     callback,
+    suppressError,
   });
 }
 

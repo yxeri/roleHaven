@@ -344,6 +344,7 @@ function updateObject({
   update,
   callback,
   query,
+  suppressError = false,
   options = {},
   errorNameContent = 'updateObject',
 }) {
@@ -361,7 +362,12 @@ function updateObject({
 
       return;
     } else if (!foundObject) {
-      callback({ error: new errorCreator.DoesNotExist({ name: `update ${JSON.stringify(query, null, 4)}` }) });
+      callback({
+        error: new errorCreator.DoesNotExist({
+          suppressPrint: suppressError,
+          name: `update ${JSON.stringify(query, null, 4)}`,
+        }),
+      });
 
       return;
     }

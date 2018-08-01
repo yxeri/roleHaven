@@ -109,6 +109,7 @@ function handle(io) {
 
     socket.on('disconnect', (params, callback = () => {}) => {
       dbDevice.updateDevice({
+        suppressError: true,
         device: {},
         deviceSocketId: socket.id,
         options: { resetSocket: true },
@@ -119,32 +120,18 @@ function handle(io) {
             return;
           }
 
-          dbUser.doesUserSocketIdExist({
+          dbUser.updateOnline({
+            suppressError: true,
             socketId: socket.id,
-            callback: ({ error: existsError, data: userData }) => {
-              if (existsError) {
-                callback({ error: existsError });
-
-                return;
-              } else if (!userData.exists) {
-                callback({ data: { success: true } });
+            isOnline: false,
+            callback: ({ error: userError }) => {
+              if (userError) {
+                callback({ error: userError });
 
                 return;
               }
 
-              dbUser.updateOnline({
-                socketId: socket.id,
-                isOnline: false,
-                callback: ({ error: userError }) => {
-                  if (userError) {
-                    callback({ error: userError });
-
-                    return;
-                  }
-
-                  callback({ data: { success: true } });
-                },
-              });
+              callback({ data: { success: true } });
             },
           });
         },

@@ -619,14 +619,12 @@ function getTeamsByUser({
 /**
  * Remove a user from a team.
  * @param {Object} params - Parameters.
- * @param {string} params.userId - Id of the user or alias that is leaving a team.
  * @param {string} params.token - jwt.
  * @param {Object} params.io - Socket io.
  * @param {Function} params.callback - Callback.
  */
 function leaveTeam({
   teamId,
-  userId,
   token,
   io,
   callback,

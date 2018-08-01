@@ -43,6 +43,7 @@ function updateObject({
   deviceSocketId,
   update,
   callback,
+  suppressError,
 }) {
   const query = {};
 
@@ -55,6 +56,7 @@ function updateObject({
   dbConnector.updateObject({
     update,
     query,
+    suppressError,
     object: Device,
     errorNameContent: 'updateDeviceObject',
     callback: ({ error, data }) => {
@@ -191,6 +193,7 @@ function updateDevice({
   deviceSocketId,
   device,
   callback,
+  suppressError,
   options = {},
 }) {
   const {
@@ -240,6 +243,7 @@ function updateDevice({
         }
 
         updateObject({
+          suppressError,
           deviceSocketId,
           deviceId,
           update,
@@ -256,6 +260,7 @@ function updateDevice({
     deviceSocketId,
     update,
     callback,
+    suppressError,
   });
 }
 
