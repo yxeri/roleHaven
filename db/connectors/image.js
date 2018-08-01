@@ -189,16 +189,17 @@ function createImage({ image, callback }) {
  */
 function updateAccess(params) {
   const accessParams = params;
+  const { callback } = params;
   accessParams.objectId = params.imageId;
   accessParams.object = Image;
   accessParams.callback = ({ error, data }) => {
     if (error) {
-      accessParams.callback({ error });
+      callback({ error });
 
       return;
     }
 
-    accessParams.callback({ data: { image: data.object } });
+    callback({ data: { image: data.object } });
   };
 
   if (params.shouldRemove) {

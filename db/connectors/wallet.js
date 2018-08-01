@@ -270,16 +270,17 @@ function updateWallet({
  */
 function updateAccess(params) {
   const accessParams = params;
+  const { callback } = params;
   accessParams.objectId = params.walletId;
   accessParams.object = Wallet;
   accessParams.callback = ({ error, data }) => {
     if (error) {
-      accessParams.callback({ error });
+      callback({ error });
 
       return;
     }
 
-    accessParams.callback({ data: { wallet: data.object } });
+    callback({ data: { wallet: data.object } });
   };
 
   if (params.shouldRemove) {

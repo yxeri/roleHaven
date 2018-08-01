@@ -282,16 +282,17 @@ function updateTeam({
  */
 function updateAccess(params) {
   const accessParams = params;
+  const { callback } = params;
   accessParams.objectId = params.teamId;
   accessParams.object = Team;
   accessParams.callback = ({ error, data }) => {
     if (error) {
-      accessParams.callback({ error });
+      callback({ error });
 
       return;
     }
 
-    accessParams.callback({ data: { team: data.object } });
+    callback({ data: { team: data.object } });
   };
 
   if (params.shouldRemove) {

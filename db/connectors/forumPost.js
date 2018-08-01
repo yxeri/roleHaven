@@ -424,16 +424,17 @@ function removePostsByThreadId({ threadId, callback }) {
  */
 function updateAccess(params) {
   const accessParams = params;
+  const { callback } = params;
   accessParams.objectId = params.postId;
   accessParams.object = ForumPost;
   accessParams.callback = ({ error, data }) => {
     if (error) {
-      accessParams.callback({ error });
+      callback({ error });
 
       return;
     }
 
-    accessParams.callback({ data: { forumPost: data.object } });
+    callback({ data: { forumPost: data.object } });
   };
 
   if (params.shouldRemove) {

@@ -241,16 +241,17 @@ function updateDocFile({
  */
 function updateAccess(params) {
   const accessParams = params;
+  const { callback } = params;
   accessParams.objectId = params.docFileId;
   accessParams.object = DocFile;
   accessParams.callback = ({ error, data }) => {
     if (error) {
-      accessParams.callback({ error });
+      callback({ error });
 
       return;
     }
 
-    accessParams.callback({ data: { docFile: data.object } });
+    callback({ data: { docFile: data.object } });
   };
 
   if (params.shouldRemove) {
