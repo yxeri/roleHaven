@@ -20,23 +20,7 @@ const express = require('express');
 const dbUser = require('../db/connectors/user');
 const { appConfig, dbConfig } = require('../config/defaults/config');
 const dbDevice = require('../db/connectors/device');
-
-const aliasHandler = require('./socketHandlers/aliases');
-const authenticationHandler = require('./socketHandlers/authenticate');
-const deviceHandler = require('./socketHandlers/devices');
-const docFilesHandler = require('./socketHandlers/docFiles');
-const forumPostHandler = require('./socketHandlers/forumPost');
-const forumHandler = require('./socketHandlers/forums');
-const forumThreadHandler = require('./socketHandlers/forumThreads');
-const gameCodeHandler = require('./socketHandlers/gameCodes');
-const messageHandler = require('./socketHandlers/messages');
-const positionHandler = require('./socketHandlers/positions');
-const roomHandler = require('./socketHandlers/rooms');
-const simpleMsgHandler = require('./socketHandlers/simpleMsgs');
-const teamHandler = require('./socketHandlers/teams');
-const transactionHandler = require('./socketHandlers/transactions');
-const userHandler = require('./socketHandlers/users');
-const walletHandler = require('./socketHandlers/wallets');
+const path = require('path');
 
 const router = new express.Router();
 
@@ -118,6 +102,7 @@ function handle(io) {
           CreateRoom: dbConfig.apiCommands.CreateRoom,
           CreateUser: dbConfig.apiCommands.CreateUser,
           CreateTeam: dbConfig.apiCommands.CreateTeam,
+          InviteToTeam: dbConfig.apiCommands.InviteToTeam,
         },
       },
     });
@@ -134,38 +119,39 @@ function handle(io) {
             return;
           }
 
-          dbUser.updateOnline({
-            isOnline: false,
-            callback: ({ error: userError }) => {
-              if (userError) {
-                callback({ error: userError });
+          dbUser.doesUserSocketIdExist({
+            socketId: socket.id,
+            callback: ({ error: existsError, data: userData }) => {
+              if (existsError) {
+                callback({ error: existsError });
+
+                return;
+              } else if (!userData.exists) {
+                callback({ data: { success: true } });
 
                 return;
               }
 
-              callback({ data: { success: true } });
+              dbUser.updateOnline({
+                socketId: socket.id,
+                isOnline: false,
+                callback: ({ error: userError }) => {
+                  if (userError) {
+                    callback({ error: userError });
+
+                    return;
+                  }
+
+                  callback({ data: { success: true } });
+                },
+              });
             },
           });
         },
       });
     });
 
-    aliasHandler.handle(socket, io);
-    authenticationHandler.handle(socket, io);
-    deviceHandler.handle(socket, io);
-    docFilesHandler.handle(socket, io);
-    forumPostHandler.handle(socket, io);
-    forumHandler.handle(socket, io);
-    forumThreadHandler.handle(socket, io);
-    gameCodeHandler.handle(socket, io);
-    messageHandler.handle(socket, io);
-    positionHandler.handle(socket, io);
-    roomHandler.handle(socket, io);
-    simpleMsgHandler.handle(socket, io);
-    teamHandler.handle(socket, io);
-    transactionHandler.handle(socket, io);
-    userHandler.handle(socket, io);
-    walletHandler.handle(socket, io);
+    appConfig.handlers.forEach(handlePath => require(path.resolve(handlePath)).handle(socket, io)); // eslint-disable-line global-require, import/no-dynamic-require
   });
 
   return router;
