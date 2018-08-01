@@ -159,6 +159,7 @@ function hasAccessTo({
     userAdminIds = [],
     teamAdminIds = [],
     ownerId,
+    ownerAliasId,
     isPublic,
     visibility,
   } = objectToAccess;
@@ -170,11 +171,13 @@ function hasAccessTo({
     aliases = [],
   } = toAuth;
 
+  const foundOwnerAlias = ownerAliasId && aliases.find(aliasId => aliasId === ownerAliasId);
+
   const userHasAccess = userIds.concat([ownerId]).includes(authUserId);
   const teamHasAccess = teamIds.find(teamId => authTeamIds.includes(teamId));
-  const aliasHasAccess = aliases.find(aliasId => userIds.includes(aliasId));
+  const aliasHasAccess = foundOwnerAlias || aliases.find(aliasId => userIds.includes(aliasId));
   const userHasAdminAccess = userAdminIds.includes(authUserId);
-  const aliasHasAdminAccess = aliases.find(aliasId => userAdminIds.includes(aliasId));
+  const aliasHasAdminAccess = foundOwnerAlias || aliases.find(aliasId => userAdminIds.includes(aliasId));
   const teamHasAdminAccess = teamAdminIds.find(adminId => authTeamIds.includes(adminId));
   const isAdmin = ownerId === authUserId || hasFullAccess || accessLevel >= dbConfig.AccessLevels.ADMIN;
 
