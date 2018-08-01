@@ -32,11 +32,11 @@ function stripObject({ object }) {
   modifiedObject.ownerId = modifiedObject.ownerAliasId || modifiedObject.ownerId;
   modifiedObject.lastUpdated = modifiedObject.customLastUpdated || modifiedObject.lastUpdated;
   modifiedObject.timeCreated = modifiedObject.customTimeCreated || modifiedObject.timeCreated;
-  modifiedObject.teamAdminIds = undefined;
-  modifiedObject.userAdminIds = undefined;
-  modifiedObject.userIds = undefined;
-  modifiedObject.teamIds = undefined;
-  modifiedObject.bannedIds = undefined;
+  modifiedObject.teamAdminIds = [];
+  modifiedObject.userAdminIds = [];
+  modifiedObject.userIds = [];
+  modifiedObject.teamIds = [];
+  modifiedObject.bannedIds = [];
   modifiedObject.customTimeCreated = undefined;
   modifiedObject.customLastUpdated = undefined;
   modifiedObject.hasFullAccess = false;
@@ -151,6 +151,7 @@ function getObjectById({
  * @param {string[]} [params.getParams] - Variables that be matched against when retrieving the objects.
  * @param {string} [params.sortName] - Variable name that will be used to sort objects with.
  * @param {string} [params.fallbackSortName] - Variable name that will be used if sortName isn't matched.
+ * @param {boolean} [params.ignoreAuth] - Returns all objects and does not check if the user has access to them.
  */
 function getObjects({
   token,
@@ -162,6 +163,7 @@ function getObjects({
   shouldSort,
   sortName,
   fallbackSortName,
+  ignoreAuth = false,
   getParams = [],
 }) {
   authenticator.isUserAllowed({
