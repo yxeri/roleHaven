@@ -43,15 +43,6 @@ function handle(socket, io) {
     teamManager.updateTeam(params);
   });
 
-  socket.on('removeTeam', (params, callback = () => {
-  }) => {
-    params.callback = callback;
-    params.io = io;
-    params.socket = socket;
-
-    teamManager.removeTeam(params);
-  });
-
   socket.on('getTeam', (params, callback = () => {
   }) => {
     params.callback = callback;
@@ -68,6 +59,15 @@ function handle(socket, io) {
     params.socket = socket;
 
     teamManager.getTeamsByUser(params);
+  });
+
+  socket.on('inviteToTeam', (params, callback = () => {
+  }) => {
+    params.callback = callback;
+    params.io = io;
+    params.socket = socket;
+
+    teamManager.inviteToTeam(params);
   });
 }
 

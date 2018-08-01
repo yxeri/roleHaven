@@ -101,15 +101,6 @@ function handle(socket, io) {
 
     userManager.changePassword(params);
   });
-
-  socket.on('updateUser', (params, callback = () => {
-  }) => {
-    params.callback = callback;
-    params.io = io;
-    params.socket = socket;
-
-    userManager.updateUser(params);
-  });
 }
 
 exports.handle = handle;
