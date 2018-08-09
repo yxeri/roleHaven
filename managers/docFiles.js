@@ -411,11 +411,13 @@ function removeDocFile({
   token,
   callback,
   io,
+  socket,
 }) {
   managerHelper.removeObject({
     callback,
     token,
     io,
+    socket,
     getDbCallFunc: dbDocFile.getDocFileById,
     getCommandName: dbConfig.apiCommands.GetDocFile.name,
     objectId: docFileId,

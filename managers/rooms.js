@@ -404,9 +404,7 @@ function createRoom({
  * @return {boolean} - Is the room protected?
  */
 function isProtectedRoom({ roomId, socket }) {
-  const deviceRegExp = new RegExp(`^${dbConfig.deviceRoomPrepend}`);
-
-  return !dbConfig.requiredRooms.includes(roomId) && (socket && roomId !== socket.id) && roomId.match(deviceRegExp);
+  return dbConfig.requiredRooms.includes(roomId) || (socket && roomId === socket.id);
 }
 
 /**
@@ -652,7 +650,7 @@ function unfollowRoom({
         return;
       }
 
-      const { user: authUser } = data.user;
+      const { user: authUser } = data;
 
       if (aliasId && !authUser.aliases.includes(aliasId)) {
         callback({ error: new errorCreator.NotAllowed({ name: `unfollow room ${roomId} with alias ${aliasId}` }) });

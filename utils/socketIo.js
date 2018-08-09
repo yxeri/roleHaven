@@ -78,12 +78,16 @@ function joinRequiredRooms({
   io,
   socketId,
   userId,
+  socket,
 }) {
-  const userSocket = getUserSocket({ io, socketId });
+  const userSocket = socket || getUserSocket({ io, socketId });
 
   if (userSocket) {
     dbConfig.requiredRooms.forEach(roomId => userSocket.join(roomId));
-    userSocket.join(userId);
+
+    if (userId) {
+      userSocket.join(userId);
+    }
   }
 
   return userSocket;

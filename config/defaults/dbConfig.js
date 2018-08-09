@@ -16,14 +16,12 @@
 
 'use strict';
 
-const path = require('path');
-
 let config = {};
 
 try {
-  config = Object.assign(require(path.normalize(`${__dirname}/../../../../config/dbConfig`))); // eslint-disable-line import/no-unresolved, global-require, import/no-dynamic-require, prefer-destructuring
+  config = Object.assign({}, require('../dbConfig')); // eslint-disable-line
 } catch (err) {
-  console.log('Did not find modified dbConfig. Using defaults');
+  console.log('Did not find modified dbConfig. Using defaults.');
 }
 
 config.rooms = config.rooms || {};

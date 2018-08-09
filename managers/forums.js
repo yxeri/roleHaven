@@ -172,6 +172,7 @@ function updateForum({
   callback,
   io,
   internalCallUser,
+  socket,
 }) {
   managerHelper.updateObject({
     callback,
@@ -179,6 +180,7 @@ function updateForum({
     token,
     io,
     internalCallUser,
+    socket,
     objectId: forumId,
     object: forum,
     commandName: dbConfig.apiCommands.UpdateForum.name,
@@ -204,11 +206,13 @@ function removeForum({
   forumId,
   callback,
   io,
+  socket,
 }) {
   managerHelper.removeObject({
     callback,
     token,
     io,
+    socket,
     getDbCallFunc: dbForum.getForumById,
     getCommandName: dbConfig.apiCommands.GetForum.name,
     objectId: forumId,

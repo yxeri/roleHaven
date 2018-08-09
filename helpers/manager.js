@@ -278,6 +278,7 @@ function updateObject({
   dbCallFunc,
   emitType,
   io,
+  socket,
   objectIdType,
   getDbCallFunc,
   getCommandName,
@@ -355,7 +356,11 @@ function updateObject({
               };
               creatorDataToSend.data[objectType] = foundObject;
 
-              io.emit(emitType, dataToSend);
+              if (socket) {
+                socket.broadcast.emit(emitType, dataToSend);
+              } else {
+                io.emit(emitType, dataToSend);
+              }
 
               callback(creatorDataToSend);
             },
@@ -399,6 +404,7 @@ function removeObject({
   getCommandName,
   emitTypeGenerator,
   callback,
+  socket,
 }) {
   authenticator.isUserAllowed({
     token,
@@ -456,9 +462,15 @@ function removeObject({
               };
               dataToSend.data[objectType] = { objectId };
 
-              io.emit(emitTypeGenerator ?
-                emitTypeGenerator(foundObject) :
-                emitType, dataToSend);
+              if (socket) {
+                socket.broadcast.emit(emitTypeGenerator
+                  ? emitTypeGenerator(foundObject)
+                  : emitType, dataToSend);
+              } else {
+                io.emit(emitTypeGenerator
+                  ? emitTypeGenerator(foundObject)
+                  : emitType, dataToSend);
+              }
 
               callback(dataToSend);
             },
@@ -516,6 +528,7 @@ function updateAccess({
   callback,
   internalCallUser,
   options,
+  socket,
   toStrip = [],
 }) {
   authenticator.isUserAllowed({
@@ -593,7 +606,11 @@ function updateAccess({
               };
               creatorDataToSend.data[objectType] = foundObject;
 
-              io.emit(emitType, dataToSend);
+              if (socket) {
+                socket.broadcast.emit(emitType, dataToSend);
+              } else {
+                io.emit(emitType, dataToSend);
+              }
 
               callback(creatorDataToSend);
             },

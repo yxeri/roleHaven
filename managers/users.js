@@ -27,6 +27,7 @@ const dbRoom = require('../db/connectors/room');
 const socketUtils = require('../utils/socketIo');
 const dbForum = require('../db/connectors/forum');
 const managerHelper = require('../helpers/manager');
+const positionManager = require('./positions');
 
 /**
  * Create a user.
@@ -523,38 +524,70 @@ function login({
       const { token, user: authUser } = data;
       const { objectId: userId, followingRooms: roomIds } = authUser;
       const socketId = socket.id;
+      const updateOnlineFunc = () => {
+        dbUser.updateOnline({
+          userId,
+          socketId,
+          isOnline: true,
+          callback: (socketData) => {
+            if (socketData.error) {
+              callback({ error: socketData.error });
 
-      dbUser.updateOnline({
-        userId,
-        socketId,
-        isOnline: true,
-        callback: (socketData) => {
-          if (socketData.error) {
-            callback({ error: socketData.error });
+              return;
+            }
 
-            return;
-          }
+            socketUtils.joinRooms({
+              io,
+              socketId,
+              userId,
+              roomIds,
+            });
+            socketUtils.joinRequiredRooms({
+              io,
+              userId,
+              socketId,
+              socket,
+            });
+            socketUtils.joinAliasRooms({
+              io,
+              socketId,
+              aliases: authUser.aliases,
+            });
 
-          socketUtils.joinRooms({
-            io,
-            socketId,
-            userId,
-            roomIds,
-          });
-          socketUtils.joinRequiredRooms({
-            io,
-            userId,
-            socketId,
-          });
-          socketUtils.joinAliasRooms({
-            io,
-            socketId,
-            aliases: authUser.aliases,
-          });
+            callback({ data: { user: authUser, token } });
+          },
+        });
+      };
 
-          callback({ data: { user: authUser, token } });
-        },
-      });
+      if (!authUser.lastOnline) {
+        positionManager.createPosition({
+          io,
+          position: {
+            objectId: authUser.objectId,
+            positionName: authUser.objectId,
+            connectedToUser: authUser.objectId,
+            positionType: dbConfig.PositionTypes.USER,
+            coordinates: {
+              accuracy: Number.MAX_VALUE,
+              longitude: 1,
+              latitude: 1,
+            },
+          },
+          internalCallUser: authUser,
+          isLoggedInUserPosition: true,
+          callback: ({ error: positionError }) => {
+            if (positionError) {
+              console.log(`Failed to create logged in user position for ${authUser.objectId}`, positionError);
+            }
+
+            updateOnlineFunc();
+          },
+        });
+
+        return;
+      }
+
+      updateOnlineFunc();
     },
   });
 }
@@ -568,7 +601,6 @@ function login({
  */
 function logout({
   token,
-  io,
   socket,
   callback,
 }) {
@@ -595,11 +627,6 @@ function logout({
           }
 
           roomManager.leaveSocketRooms(socket);
-          socketUtils.joinRequiredRooms({
-            userId,
-            io,
-            socketId: socket.id,
-          });
 
           callback({ data: { success: true } });
         },
@@ -945,6 +972,7 @@ function updateId({
           io,
           userId,
           socketId,
+          socket,
         });
 
         callback({ data: { user: authUser } });
@@ -973,6 +1001,7 @@ function updateId({
             io,
             userId,
             socketId,
+            socket,
           });
           socketUtils.joinAliasRooms({
             io,

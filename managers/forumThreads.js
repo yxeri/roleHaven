@@ -211,12 +211,14 @@ function updateThread({
   options,
   callback,
   io,
+  socket,
 }) {
   managerHelper.updateObject({
     callback,
     options,
     token,
     io,
+    socket,
     objectId: threadId,
     object: thread,
     commandName: dbConfig.apiCommands.UpdateForumThread.name,
@@ -242,11 +244,13 @@ function removeThread({
   threadId,
   callback,
   io,
+  socket,
 }) {
   managerHelper.removeObject({
     callback,
     token,
     io,
+    socket,
     getDbCallFunc: dbThread.getThreadById,
     getCommandName: dbConfig.apiCommands.GetForumThread.name,
     objectId: threadId,

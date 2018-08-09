@@ -26,13 +26,13 @@ let config = {};
 try {
   clientConfig = require('../../private/config/config'); // eslint-disable-line
 } catch (err) {
-  console.log('Did not find client config');
+  console.log('Did not find client config. Using defaults.');
 }
 
 try {
   config = Object.assign({}, require('../appConfig')); // eslint-disable-line
 } catch (err) {
-  console.log('Did not find modified appConfig. Using defaults');
+  console.log('Did not find modified appConfig. Using defaults.');
 }
 
 const forceFullscreenEnv = textTools.convertToBoolean(process.env.FORCEFULLSCREEN);
@@ -417,6 +417,11 @@ config.gMapsKey = process.env.GMAPSKEY || config.gMapsKey;
 config.mapLayersPath = process.env.MAPLAYERSPATH || config.mapLayersPath;
 
 /**
+ * Interval for collection of Google Maps positions.
+ */
+config.mapPositionsInterval = process.env.MAPPOSITIONSINTERVAL || config.mapPositionsInterval || 3600000;
+
+/**
  * Should the frontend ask for user tracking?
  * @type {boolean}
  */
@@ -567,6 +572,12 @@ config.teamNameMaxLength = process.env.TEAMNAMEMAXLENGTH || config.teamNameMaxLe
  * @type {number}
  */
 config.shortTeamMaxLength = process.env.SHORTEAMMAXLENGTH || config.shortTeamMaxLength || 5;
+
+/**
+ * Max amount of teams that a user can be part of.
+ * @type {number}
+ */
+config.maxUserTeam = process.env.MAXUSERTEAM || config.maxUserTeam || 1;
 
 /**
  * ************

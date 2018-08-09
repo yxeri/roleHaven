@@ -145,6 +145,62 @@ function emitTeam({
 }
 
 /**
+ * Add a user to a team.
+ * @private
+ * @param {Object} params - Parameters.
+ * @param {string} params.teamId - Id of the team.
+ * @param {string} params.memberId - Id of the user.
+ * @param {Function} params.callback - Callback
+ * @param {Object} params.io - Socket.io.
+ * @param {boolean} [params.isAdmin] - Should the user be set as an admin of the team?
+ */
+function addUserToTeam({
+  teamId,
+  memberId,
+  isAdmin,
+  callback,
+  io,
+  ignoreSocket = false,
+}) {
+  dbUser.addToTeam({
+    teamId,
+    isAdmin,
+    userIds: [memberId],
+    callback: ({ error, data }) => {
+      if (error) {
+        callback({ error });
+
+        return;
+      }
+
+      const { users } = data;
+      const updatedUser = users[0];
+
+      const dataToSend = {
+        data: {
+          team: { objectId: teamId },
+          user: {
+            objectId: memberId,
+            partOfTeams: updatedUser.partOfTeams,
+          },
+          changeType: dbConfig.ChangeTypes.UPDATE,
+        },
+      };
+
+      if (!ignoreSocket) {
+        const userSocket = socketUtils.getUserSocket({ io, socketId: updatedUser.socketId });
+
+        if (userSocket) { userSocket.join(teamId); }
+
+        io.emit(dbConfig.EmitTypes.TEAMMEMBER, dataToSend);
+      }
+
+      callback(dataToSend);
+    },
+  });
+}
+
+/**
  * Create the team, together with the team's wallet and room.
  * @private
  * @param {Object} params - Parameters.
@@ -153,6 +209,7 @@ function emitTeam({
  */
 function createTeamAndDependencies({
   team,
+  io,
   callback,
 }) {
   dbTeam.createTeam({
@@ -174,10 +231,12 @@ function createTeamAndDependencies({
       const wallet = {
         ownerId,
         ownerAliasId,
+        objectId: teamId,
       };
 
       dbWallet.createWallet({
         wallet,
+        options: { setId: true },
         callback: ({ error: walletError, data: walletData }) => {
           if (walletError) {
             callback({ error: walletError });
@@ -189,7 +248,7 @@ function createTeamAndDependencies({
             ownerId,
             ownerAliasId,
             roomName: teamId,
-            roomId: teamId,
+            objectId: teamId,
             accessLevel: dbConfig.AccessLevels.SUPERUSER,
             visibility: dbConfig.AccessLevels.SUPERUSER,
             nameIsLocked: true,
@@ -210,11 +269,25 @@ function createTeamAndDependencies({
                 return;
               }
 
-              callback({
-                data: {
-                  room: roomData.room,
-                  wallet: walletData.wallet,
-                  team: newTeam,
+              addUserToTeam({
+                teamId,
+                io,
+                isAdmin: true,
+                memberId: ownerAliasId || ownerId,
+                callback: ({ error: addError }) => {
+                  if (addError) {
+                    callback({ error: addError });
+
+                    return;
+                  }
+
+                  callback({
+                    data: {
+                      room: roomData.room,
+                      wallet: walletData.wallet,
+                      team: newTeam,
+                    },
+                  });
                 },
               });
             },
@@ -274,6 +347,7 @@ function createTeam({
       createTeamAndDependencies({
         socket,
         io,
+        user: authUser,
         team: newTeam,
         callback: ({ error: teamError, data: teamData }) => {
           if (teamError) {
@@ -446,60 +520,6 @@ function inviteToTeam({
 }
 
 /**
- * Add a user to a team.
- * @private
- * @param {Object} params - Parameters.
- * @param {string} params.teamId - ID of the team.
- * @param {string} params.memberId - ID of the user.
- * @param {Object} params.user - User being added to the team.
- * @param {Function} params.callback - Callback
- * @param {Object} params.io - Socket.io.
- * @param {boolean} [params.isAdmin] - Should the user be set as an admin of the team?
- */
-function addUserToTeam({
-  teamId,
-  memberId,
-  isAdmin,
-  user,
-  callback,
-  io,
-}) {
-  dbUser.addToTeam({
-    teamId,
-    isAdmin,
-    userIds: [memberId],
-    callback: ({ error, data }) => {
-      if (error) {
-        callback({ error });
-
-        return;
-      }
-
-      const { user: updatedUser } = data;
-
-      const dataToSend = {
-        data: {
-          team: { objectId: teamId },
-          user: {
-            objectId: memberId,
-            partOfTeams: updatedUser.partOfTeams,
-          },
-          changeType: dbConfig.ChangeTypes.UPDATE,
-        },
-      };
-
-      const userSocket = socketUtils.getUserSocket({ io, socketId: user.socketId });
-
-      if (userSocket) { userSocket.join(teamId); }
-
-      io.emit(dbConfig.EmitTypes.TEAMMEMBER, dataToSend);
-
-      callback(dataToSend);
-    },
-  });
-}
-
-/**
  * User accepts sent invitation and joins the team.
  * @param {Object} params - Parameters.
  * @param {Object} params.invitationId - ID of the invitation that will be accepted.
@@ -522,8 +542,6 @@ function acceptTeamInvitation({
         return;
       }
 
-      const { user } = data;
-
       dbInvitation.useInvitation({
         invitationId,
         callback: ({ error: invitationError, data: invitationData }) => {
@@ -538,7 +556,6 @@ function acceptTeamInvitation({
           addUserToTeam({
             io,
             callback,
-            user,
             memberId: invitation.receiverId,
             teamId: invitation.itemId,
           });
@@ -625,6 +642,7 @@ function getTeamsByUser({
  */
 function leaveTeam({
   teamId,
+  userId,
   token,
   io,
   callback,

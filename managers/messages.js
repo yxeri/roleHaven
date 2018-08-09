@@ -336,16 +336,17 @@ function sendBroadcastMsg({
         return;
       }
 
-      const text = textTools.cleanText(message.text.join(''));
+      const text = message.text.join('');
 
       if (text.length > appConfig.broadcastMaxLength || text.length <= 0) {
-        callback({ error: new errorCreator.InvalidCharacters({ expected: `text length ${appConfig.broadcastMaxLength}` }) });
+        callback({ error: new errorCreator.InvalidLength({ expected: `text length ${appConfig.broadcastMaxLength}` }) });
 
         return;
       }
 
       const { user: authUser } = data;
       const newMessage = message;
+      newMessage.text = textTools.cleanText(message.text);
       newMessage.messageType = dbConfig.MessageTypes.BROADCAST;
       newMessage.roomId = dbConfig.rooms.bcast.objectId;
 
@@ -398,7 +399,7 @@ function sendChatMsg({
         return;
       }
 
-      const text = textTools.cleanText(message.text.join(''));
+      const text = message.text.join('');
 
       if (text.length > appConfig.messageMaxLength || text.length <= 0) {
         callback({ error: new errorCreator.InvalidCharacters({ expected: `text length ${appConfig.messageMaxLength}` }) });
@@ -408,6 +409,7 @@ function sendChatMsg({
 
       const { user: authUser } = data;
       const newMessage = message;
+      newMessage.text = textTools.cleanText(message.text);
       newMessage.messageType = dbConfig.MessageTypes.CHAT;
       newMessage.ownerId = authUser.objectId;
 
@@ -475,7 +477,7 @@ function sendWhisperMsg({
         return;
       }
 
-      const text = textTools.cleanText(message.text.join(''));
+      const text = message.text.join('');
 
       if (text.length > appConfig.messageMaxLength || text.length <= 0) {
         callback({ error: new errorCreator.InvalidCharacters({ expected: `text length ${appConfig.messageMaxLength}` }) });
@@ -485,6 +487,7 @@ function sendWhisperMsg({
 
       const { user: authUser } = data;
       const newMessage = message;
+      newMessage.text = textTools.cleanText(message.text);
       newMessage.messageType = dbConfig.MessageTypes.WHISPER;
       newMessage.ownerId = authUser.objectId;
       newMessage.ownerAliasId = participantIds.find(participant => authUser.aliases.includes(participant));
@@ -589,11 +592,13 @@ function removeMessage({
   callback,
   token,
   io,
+  socket,
 }) {
   managerHelper.removeObject({
     callback,
     token,
     io,
+    socket,
     getDbCallFunc: dbMessage.getMessageById,
     getCommandName: dbConfig.apiCommands.GetMessage.name,
     objectId: messageId,

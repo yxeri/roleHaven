@@ -21,6 +21,7 @@ const dbUser = require('../db/connectors/user');
 const { appConfig, dbConfig } = require('../config/defaults/config');
 const dbDevice = require('../db/connectors/device');
 const path = require('path');
+const socketUtils = require('../utils/socketIo');
 
 const router = new express.Router();
 
@@ -54,8 +55,10 @@ function handle(io) {
   });
 
   io.on('connection', (socket) => {
-    dbConfig.requiredRooms.forEach((roomId) => {
-      socket.join(roomId);
+    socketUtils.joinRequiredRooms({
+      io,
+      socket,
+      socketId: socket.id,
     });
 
     socket.emit(dbConfig.EmitTypes.STARTUP, {

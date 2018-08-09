@@ -657,7 +657,7 @@ function addToTeam({
               callback({
                 data: {
                   team: teamData.team,
-                  user: data.user,
+                  users: data.users,
                 },
               });
             },

@@ -26,6 +26,8 @@ const aliasSchema = new mongoose.Schema(dbConnector.createSchema({
   isIdentity: { type: Boolean, default: false },
   fullName: { type: String },
   picture: dbConnector.pictureSchema,
+  partOfTeams: { type: [String], default: [] },
+  followingRooms: { type: [String], default: [] },
 }), { collection: 'aliases' });
 
 const Alias = mongoose.model('Alias', aliasSchema);

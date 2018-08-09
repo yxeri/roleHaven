@@ -315,11 +315,13 @@ function removeGameCode({
   token,
   io,
   callback,
+  socket,
 }) {
   managerHelper.removeObject({
     callback,
     token,
     io,
+    socket,
     getDbCallFunc: dbGameCode.getGameCodeById,
     getCommandName: dbConfig.apiCommands.GetGameCode.name,
     objectId: gameCodeId,
@@ -376,12 +378,14 @@ function updateGameCode({
   gameCodeId,
   gameCode,
   options,
+  socket,
 }) {
   managerHelper.updateObject({
     callback,
     options,
     token,
     io,
+    socket,
     toStrip: [
       'codeContent',
       'code',

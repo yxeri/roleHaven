@@ -36,6 +36,7 @@ const mapPositionSchema = new mongoose.Schema(dbConnector.createSchema({
   origin: { type: String, default: dbConfig.PositionOrigins.LOCAL },
   positionStructure: { type: String, default: dbConfig.PositionStructures.MARKER },
   styleName: String,
+  occupants: [String],
 }), { collection: 'mapPositions' });
 
 const MapPosition = mongoose.model('MapPosition', mapPositionSchema);
@@ -166,7 +167,12 @@ function doesPositionExist({
  * @param {Object} params.position Position to add
  * @param {Function} params.callback Callback
  */
-function createPosition({ position, callback }) {
+function createPosition({
+  position,
+  callback,
+  suppressExistsError = false,
+  options = {},
+}) {
   doesPositionExist({
     positionName: position.positionName,
     connectedToUser: position.connectedToUser,
@@ -176,13 +182,22 @@ function createPosition({ position, callback }) {
 
         return;
       } else if (positionData.data.exists) {
-        callback({ error: new errorCreator.AlreadyExists({ name: `positionName ${position.positionName} || connectedToUser ${position.connectedToUser} in position` }) });
+        callback({
+          error: new errorCreator.AlreadyExists({
+            suppressExistsError,
+            name: `positionName ${position.positionName} || connectedToUser ${position.connectedToUser} in position`,
+          }),
+        });
 
         return;
       }
 
       const positionToSave = position;
       positionToSave.coordinatesHistory = [positionToSave.coordinates];
+
+      if (options.setId && position.objectId) {
+        positionToSave._id = mongoose.Types.ObjectId(position.objectId); // eslint-disable-line no-underscore-dangle
+      }
 
       dbConnector.saveObject({
         object: new MapPosition(position),
@@ -200,24 +215,6 @@ function createPosition({ position, callback }) {
     },
   });
 }
-
-/**
- * Update position coordinates.
- * @param {Object} params Parameters.
- * @param {string} params.positionId Id of the position.
- * @param {Function} params.callback Callback.
- * @param {Object} params.coordinates GPS coordinates.
- */
-function updateCoordinates({ positionId, coordinates, callback }) {
-  const update = { $push: { coordinatesHistory: coordinates } };
-
-  updateObject({
-    positionId,
-    update,
-    callback,
-  });
-}
-
 
 // TODO Position should be automatically created when a user is created. connectedToUser should not be used to identify a user's position
 /**
@@ -245,12 +242,14 @@ function updatePosition({
     connectedToUser,
     description,
     styleName,
+    coordinates,
   } = position;
   const { resetOwnerAliasId, resetConnectedToUser } = options;
 
   const update = {};
   const set = {};
   const unset = {};
+  const push = {};
 
   const updateCallback = () => {
     updateObject({
@@ -298,6 +297,7 @@ function updatePosition({
   if (description) { set.description = description; }
   if (positionStructure) { set.positionStructure = positionStructure; }
   if (styleName) { set.styleName = styleName; }
+  if (coordinates) { push.coordinatesHistory = coordinates; }
 
   if (typeof isPublic !== 'undefined') { set.isPublic = isPublic; }
   if (typeof isStationary !== 'undefined') { set.isStationary = isStationary; }
@@ -318,6 +318,7 @@ function updatePosition({
 
   if (Object.keys(set).length > 0) { update.$set = set; }
   if (Object.keys(unset).length > 0) { update.$unset = unset; }
+  if (Object.keys(push).length > 0) { update.$push = push; }
 
   if ((!resetConnectedToUser && connectedToUser) || positionName) {
     existCallback();
@@ -466,7 +467,6 @@ function updateAccess(params) {
   }
 }
 
-exports.updatePositionCoordinates = updateCoordinates;
 exports.removePosition = removePosition;
 exports.createPosition = createPosition;
 exports.getPositionsByUser = getPositionsByUser;

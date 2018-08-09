@@ -24,6 +24,7 @@ const docFileSchema = new mongoose.Schema(dbConnector.createSchema({
   code: { type: String, unique: true },
   title: { type: String, unique: true },
   text: [String],
+  videoCodes: [String],
   pictures: [dbConnector.pictureSchema],
 }), { collection: 'docFiles' });
 
