@@ -535,7 +535,7 @@ function acceptTeamInvitation({
   authenticator.isUserAllowed({
     token,
     commandName: dbConfig.apiCommands.AcceptInvitation.name,
-    callback: ({ error, data }) => {
+    callback: ({ error }) => {
       if (error) {
         callback({ error });
 
