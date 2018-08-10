@@ -507,7 +507,7 @@ config.usernameMinLength = process.env.USERNAMEMINLENGTH || config.usernameMinLe
  * Maximum amount of characters in a user name
  * @type {number}
  */
-config.usernameMaxLength = process.env.USERNAMEMAXLENGTH || config.usernameMaxLength || 20;
+config.usernameMaxLength = process.env.USERNAMEMAXLENGTH || config.usernameMaxLength || 10;
 
 /**
  * Maximum amount warnings before a user account is banned
@@ -565,7 +565,7 @@ config.teamVerify = typeof teamVerifyEnv !== 'undefined' ?
  * Maximum amount of characters in a team name
  * @type {number}
  */
-config.teamNameMaxLength = process.env.TEAMNAMEMAXLENGTH || config.teamNameMaxLength || 20;
+config.teamNameMaxLength = process.env.TEAMNAMEMAXLENGTH || config.teamNameMaxLength || 10;
 
 /**
  * Maximum amount of characters in a team acronym
