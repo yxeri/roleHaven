@@ -323,7 +323,7 @@ function createTeam({
 
         return;
       } else if (team.teamName.length > appConfig.teamNameMaxLength || team.shortName.length > appConfig.shortTeamMaxLength) {
-        callback({ error: new errorCreator.InvalidData({ name: `Team name length: ${appConfig.teamNameMaxLength} Short name length: ${appConfig.shortTeamMaxLength}` }) });
+        callback({ error: new errorCreator.InvalidData({ name: `Team name length: ${appConfig.teamNameMaxLength}. Short name length: ${appConfig.shortTeamMaxLength}` }) });
 
         return;
       } else if (dbConfig.protectedNames.indexOf(team.teamName.toLowerCase()) > -1 || dbConfig.protectedNames.indexOf(team.shortName.toLowerCase()) > -1) {
@@ -339,7 +339,11 @@ function createTeam({
       newTeam.isVerified = !appConfig.teamVerify;
 
       if (ownerAliasId && !authUser.aliases.includes(ownerAliasId)) {
-        callback({ error: new errorCreator.NotAllowed({ name: `create team with alias ${ownerAliasId}` }) });
+        callback({ error: new errorCreator.NotAllowed({ name: `Creating team with alias ${ownerAliasId}. User ${authUser.objectId} does not have access to the alias` }) });
+
+        return;
+      } else if (authUser.partOfTeams > appConfig.maxUserTeam) {
+        callback({ error: new errorCreator.InvalidLength({ expected: `User is part of ${authUser.partOfTeams.length}. Max allowed: ${appConfig.maxUserTeam}` }) });
 
         return;
       }

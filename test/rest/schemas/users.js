@@ -27,6 +27,7 @@ schemas.liteUser = tools.buildLiteSchema({
   ],
   properties: {
     username: { type: 'string' },
+    usernameLowerCase: { type: 'string' },
     fullName: { type: 'string' },
     isVerified: { type: 'boolean' },
     isBanned: { type: 'boolean' },
@@ -64,6 +65,7 @@ schemas.fullUser = tools.buildFullSchema({
     fullName: { type: 'string' },
     socketId: { type: 'string' },
     username: { type: 'string' },
+    usernameLowerCase: { type: 'string' },
     isVerified: { type: 'boolean' },
     isBanned: { type: 'boolean' },
     isOnline: { type: 'boolean' },

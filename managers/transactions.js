@@ -147,6 +147,7 @@ function getTransactionsByWallet({
 function createTransaction({
   transaction,
   io,
+  socket,
   callback,
 }) {
   if (transaction.fromWalletId === transaction.toWalletId) {
@@ -209,8 +210,13 @@ function createTransaction({
                 },
               };
 
-              io.to(fromWallet.objectId).emit(dbConfig.EmitTypes.TRANSACTION, fromDataToSend);
-              io.to(toWallet.objectId).emit(dbConfig.EmitTypes.TRANSACTION, toDataToSend);
+              if (socket) {
+                socket.broadcast.to(fromWallet.objectId).emit(dbConfig.EmitTypes.TRANSACTION, fromDataToSend);
+                socket.broadcast.to(toWallet.objectId).emit(dbConfig.EmitTypes.TRANSACTION, toDataToSend);
+              } else {
+                io.to(fromWallet.objectId).emit(dbConfig.EmitTypes.TRANSACTION, fromDataToSend);
+                io.to(toWallet.objectId).emit(dbConfig.EmitTypes.TRANSACTION, toDataToSend);
+              }
 
               callback(fromDataToSend);
             },
@@ -233,6 +239,7 @@ function createTransactionBasedOnToken({
   transaction,
   io,
   token,
+  socket,
   callback,
 }) {
   authenticator.isUserAllowed({
@@ -267,6 +274,7 @@ function createTransactionBasedOnToken({
           createTransaction({
             io,
             callback,
+            socket,
             transaction: transactionToCreate,
           });
         },
@@ -408,6 +416,7 @@ function updateTransaction({
   options,
   callback,
   io,
+  socket,
 }) {
   authenticator.isUserAllowed({
     token,
@@ -464,8 +473,13 @@ function updateTransaction({
                 },
               };
 
-              io.to(updatedTransaction.fromWalletId).emit(dbConfig.EmitTypes.TRANSACTION, dataToSend);
-              io.to(updatedTransaction.toWalletId).emit(dbConfig.EmitTypes.TRANSACTION, dataToSend);
+              if (socket) {
+                socket.broadcast.to(updatedTransaction.fromWalletId).emit(dbConfig.EmitTypes.TRANSACTION, dataToSend);
+                socket.broadcast.to(updatedTransaction.toWalletId).emit(dbConfig.EmitTypes.TRANSACTION, dataToSend);
+              } else {
+                io.to(updatedTransaction.fromWalletId).emit(dbConfig.EmitTypes.TRANSACTION, dataToSend);
+                io.to(updatedTransaction.toWalletId).emit(dbConfig.EmitTypes.TRANSACTION, dataToSend);
+              }
 
               callback(dataToSend);
             },

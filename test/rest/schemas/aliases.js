@@ -27,6 +27,7 @@ schemas.alias = tools.buildLiteSchema({
   ],
   properties: {
     aliasName: { type: 'string' },
+    aliasNameLowerCase: { type: 'string' },
     isIdentity: { type: 'boolean' },
   },
 });
@@ -39,6 +40,7 @@ schemas.fullAlias = tools.buildFullSchema({
   ],
   properties: {
     aliasName: { type: 'string' },
+    aliasNameLowerCase: { type: 'string' },
     isIdentity: { type: 'boolean' },
   },
 });

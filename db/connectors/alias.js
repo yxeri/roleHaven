@@ -23,6 +23,7 @@ const dbUser = require('./user');
 
 const aliasSchema = new mongoose.Schema(dbConnector.createSchema({
   aliasName: { type: String, unique: true },
+  aliasNameLowerCase: { type: String, unique: true },
   isIdentity: { type: Boolean, default: false },
   fullName: { type: String },
   picture: dbConnector.pictureSchema,
@@ -173,7 +174,7 @@ function getAliasById({
 function doesAliasExist({ aliasName, callback }) {
   dbConnector.doesObjectExist({
     callback,
-    query: { aliasName },
+    query: { aliasNameLowerCase: aliasName.toLowerCase() },
     object: Alias,
   });
 }
@@ -184,7 +185,11 @@ function doesAliasExist({ aliasName, callback }) {
  * @param {Object} params.alias - Alias to add
  * @param {Function} params.callback - Callback
  */
-function createAlias({ alias, callback }) {
+function createAlias({
+  alias,
+  callback,
+  options = {},
+}) {
   dbUser.doesUserExist({
     username: alias.aliasName,
     callback: (nameData) => {
@@ -196,6 +201,15 @@ function createAlias({ alias, callback }) {
         callback({ error: new errorCreator.AlreadyExists({ name: `aliasName ${alias.aliasName}` }) });
 
         return;
+      }
+
+      const aliasToSave = alias;
+      aliasToSave.aliasNameLowerCase = aliasToSave.aliasName.toLowerCase();
+
+      if (options.setId && aliasToSave.objectId) {
+        aliasToSave._id = mongoose.Types.ObjectId(aliasToSave.objectId); // eslint-disable-line no-underscore-dangle
+      } else {
+        aliasToSave._id = mongoose.Types.ObjectId(); // eslint-disable-line no-underscore-dangle
       }
 
       dbConnector.saveObject({
@@ -261,7 +275,10 @@ function updateAlias({
   }
 
   if (typeof isPublic === 'boolean') { set.isPublic = isPublic; }
-  if (aliasName) { set.aliasName = aliasName; }
+  if (aliasName) {
+    set.aliasName = aliasName;
+    set.aliasNameLowerCase = aliasName.toLowerCase();
+  }
 
   if (Object.keys(set).length > 0) { update.$set = set; }
   if (Object.keys(unset).length > 0) { update.$unset = set; }

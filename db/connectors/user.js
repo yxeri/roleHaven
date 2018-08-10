@@ -29,6 +29,7 @@ const dbTeam = require('./team');
 
 const userSchema = new mongoose.Schema(dbConnector.createSchema({
   username: { type: String, unique: true },
+  usernameLowerCase: { type: String, unique: true },
   mailAddress: { type: String, unique: true, sparse: true },
   fullName: String,
   password: String,
@@ -304,8 +305,12 @@ function doesUserExist({ username, mailAddress, callback }) {
 
   const query = { $or: [] };
 
-  if (username) { query.$or.push({ username }); }
-  if (mailAddress) { query.$or.push({ mailAddress }); }
+  if (username) {
+    query.$or.push({ usernameLowerCase: username.toLowerCase() });
+  }
+  if (mailAddress) {
+    query.$or.push({ mailAddress });
+  }
 
   dbConnector.doesObjectExist({
     query,
@@ -355,6 +360,7 @@ function createUser({
       }
 
       const userToSave = user;
+      userToSave.usernameLowerCase = userToSave.username.toLowerCase();
 
       if (options.setId && userToSave.objectId) {
         userToSave._id = mongoose.Types.ObjectId(userToSave.objectId); // eslint-disable-line no-underscore-dangle
@@ -467,7 +473,10 @@ function updateUser({
   }
 
   if (mailAddress) { set.mailAddress = mailAddress; }
-  if (username) { set.username = username; }
+  if (username) {
+    set.username = username;
+    set.usernameLowerCase = username.toLowerCase();
+  }
   if (fullName) { set.fullName = fullName; }
   if (visibility) { set.visibility = visibility; }
   if (accessLevel) { set.accessLevel = accessLevel; }

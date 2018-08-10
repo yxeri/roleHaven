@@ -62,6 +62,7 @@ function triggerUnlockedContent({
   callback,
   io,
   user,
+  socket,
 }) {
   const dataToSend = {
     data: {
@@ -78,6 +79,7 @@ function triggerUnlockedContent({
       // TODO Fix after transaction manager
       transactionManager.createTransaction({
         io,
+        socket,
         transaction: {
           ownerId: gameCode.ownerId,
           toWalletId: user.objectId,

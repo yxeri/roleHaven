@@ -118,9 +118,13 @@ function createUser({
       }
 
       const newUser = user;
+      newUser.usernameLowerCase = newUser.username.toLowerCase();
       newUser.isVerified = !appConfig.userVerify;
       newUser.followingRooms = dbConfig.requiredRooms;
       newUser.accessLevel = newUser.accessLevel || 1;
+      newUser.mailAddress = newUser.mailAddress
+        ? newUser.mailAddress.toLowerCase()
+        : undefined;
 
       dbUser.createUser({
         options,
@@ -232,8 +236,21 @@ function createUser({
                         io.to(createdUser.objectId).emit(dbConfig.EmitTypes.USER, creatorDataToSend);
                       }
 
+                      if (socket) {
+                        socket.join(createdUser.objectId);
+                        socket.broadcast.emit(dbConfig.EmitTypes.USER, dataToSend);
+                      } else {
+                        const userSocket = socketUtils.getUserSocket({ io, socketId: user.socketId });
+
+                        if (userSocket) {
+                          userSocket.join(createdRoom.objectId);
+                        }
+
+                        io.emit(dbConfig.EmitTypes.USER, dataToSend);
+                        io.to(createdUser.objectId).emit(dbConfig.EmitTypes.USER, creatorDataToSend);
+                      }
+
                       io.emit(dbConfig.EmitTypes.FORUM, forumDataToSend);
-                      io.emit(dbConfig.EmitTypes.USER, dataToSend);
                       io.emit(dbConfig.EmitTypes.ROOM, roomDataToSend);
                       io.emit(dbConfig.EmitTypes.WALLET, walletDataToSend);
 
