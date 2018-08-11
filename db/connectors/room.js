@@ -23,6 +23,7 @@ const dbUser = require('./user');
 
 const roomSchema = new mongoose.Schema(dbConnector.createSchema({
   roomName: { type: String, unique: true },
+  roomNameLowerCase: { type: String, unique: true },
   password: String,
   participantIds: { type: [String], default: [] },
   nameIsLocked: { type: Boolean, default: false },
@@ -161,7 +162,10 @@ function doesRoomExist({
 
   const query = { $or: [] };
 
-  if (roomName) { query.$or.push({ roomName }); }
+  if (roomName) {
+    query.$or.push({ roomNameLowerCase: roomName.toLowerCase() });
+  }
+
   if (roomId) { query.$or.push({ _id: roomId }); }
 
   dbConnector.doesObjectExist({
@@ -229,6 +233,7 @@ function createRoom({
       }
 
       const roomToSave = room;
+      roomToSave.roomNameLowerCase = roomToSave.roomName.toLowerCase();
 
       if (setId && roomId) {
         roomToSave._id = mongoose.Types.ObjectId(roomId); // eslint-disable-line no-underscore-dangle
@@ -404,7 +409,10 @@ function updateRoom({
   if (typeof isAnonymous === 'boolean') { set.isAnonymous = isAnonymous; }
   if (accessLevel) { set.accessLevel = accessLevel; }
   if (visibility) { set.visibility = visibility; }
-  if (roomName) { set.roomName = roomName; }
+  if (roomName) {
+    set.roomName = roomName;
+    set.roomNameLowerCase = roomName.toLowerCase();
+  }
 
   if (Object.keys(set).length > 0) { update.$set = set; }
   if (Object.keys(unset).length > 0) { update.$unset = set; }

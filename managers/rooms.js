@@ -356,6 +356,7 @@ function createRoom({
       const newRoom = room;
       const { user } = data;
       newRoom.ownerId = user.objectId;
+      newRoom.roomNameLowerCase = newRoom.roomName.toLowerCase();
       newRoom.password = newRoom.password && newRoom.password !== '' ?
         newRoom.password :
         undefined;
@@ -902,6 +903,7 @@ function updateRoom({
   options,
   callback,
   io,
+  socket,
 }) {
   authenticator.isUserAllowed({
     token,
@@ -964,8 +966,13 @@ function updateRoom({
                 },
               };
 
-              io.emit(dbConfig.EmitTypes.ROOM, dataToSend);
-              io.to(roomId).emit(dbConfig.EmitTypes.ROOM, creatorDataToSend);
+              if (socket) {
+                socket.broadcast.emit(dbConfig.EmitTypes.ROOM, dataToSend);
+                socket.broadcast.to(roomId).emit(dbConfig.EmitTypes.ROOM, creatorDataToSend);
+              } else {
+                io.emit(dbConfig.EmitTypes.ROOM, dataToSend);
+                io.to(roomId).emit(dbConfig.EmitTypes.ROOM, creatorDataToSend);
+              }
 
               callback(creatorDataToSend);
             },
