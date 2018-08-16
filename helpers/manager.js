@@ -1,5 +1,5 @@
 /*
- Copyright 2018 Aleksandar Jankovic
+ Copyright 2018 Carmilla Mina Jankovic
 
  Licensed under the Apache License, Version 2.0 (the "License");
  you may not use this file except in compliance with the License.
@@ -32,11 +32,11 @@ function stripObject({ object }) {
   modifiedObject.ownerId = modifiedObject.ownerAliasId || modifiedObject.ownerId;
   modifiedObject.lastUpdated = modifiedObject.customLastUpdated || modifiedObject.lastUpdated;
   modifiedObject.timeCreated = modifiedObject.customTimeCreated || modifiedObject.timeCreated;
-  modifiedObject.teamAdminIds = undefined;
-  modifiedObject.userAdminIds = undefined;
-  modifiedObject.userIds = undefined;
-  modifiedObject.teamIds = undefined;
-  modifiedObject.bannedIds = undefined;
+  modifiedObject.teamAdminIds = [];
+  modifiedObject.userAdminIds = [];
+  modifiedObject.userIds = [];
+  modifiedObject.teamIds = [];
+  modifiedObject.bannedIds = [];
   modifiedObject.customTimeCreated = undefined;
   modifiedObject.customLastUpdated = undefined;
   modifiedObject.hasFullAccess = false;
@@ -90,6 +90,7 @@ function getObjectById({
           }
 
           const foundObject = getData[objectType];
+
           const {
             canSee,
             hasAccess,
@@ -125,9 +126,11 @@ function getObjectById({
       dbCallParams[objectIdType] = objectId;
 
       searchParams.forEach((param) => {
-        const { paramName, paramValue } = param;
+        if (param.paramValue) {
+          const { paramName, paramValue } = param;
 
-        dbCallParams[paramName] = paramValue;
+          dbCallParams[paramName] = paramValue;
+        }
       });
 
       dbCallFunc(dbCallParams);
@@ -148,6 +151,7 @@ function getObjectById({
  * @param {string[]} [params.getParams] - Variables that be matched against when retrieving the objects.
  * @param {string} [params.sortName] - Variable name that will be used to sort objects with.
  * @param {string} [params.fallbackSortName] - Variable name that will be used if sortName isn't matched.
+ * @param {boolean} [params.ignoreAuth] - Returns all objects and does not check if the user has access to them.
  */
 function getObjects({
   token,
@@ -159,6 +163,7 @@ function getObjects({
   shouldSort,
   sortName,
   fallbackSortName,
+  ignoreAuth = false,
   getParams = [],
 }) {
   authenticator.isUserAllowed({
@@ -184,7 +189,22 @@ function getObjects({
           }
 
           const objects = getData[objectsType];
-          const allObjects = objects.map((object) => {
+          const allObjects = objects.filter((object) => {
+            if (ignoreAuth) {
+              return true;
+            }
+
+            const { canSee } = authenticator.hasAccessTo({
+              toAuth: authUser,
+              objectToAccess: object,
+            });
+
+            return canSee;
+          }).map((object) => {
+            if (ignoreAuth) {
+              return object;
+            }
+
             const { hasFullAccess } = authenticator.hasAccessTo({
               toAuth: authUser,
               objectToAccess: object,
@@ -258,6 +278,7 @@ function updateObject({
   dbCallFunc,
   emitType,
   io,
+  socket,
   objectIdType,
   getDbCallFunc,
   getCommandName,
@@ -335,7 +356,11 @@ function updateObject({
               };
               creatorDataToSend.data[objectType] = foundObject;
 
-              io.emit(emitType, dataToSend);
+              if (socket) {
+                socket.broadcast.emit(emitType, dataToSend);
+              } else {
+                io.emit(emitType, dataToSend);
+              }
 
               callback(creatorDataToSend);
             },
@@ -379,6 +404,7 @@ function removeObject({
   getCommandName,
   emitTypeGenerator,
   callback,
+  socket,
 }) {
   authenticator.isUserAllowed({
     token,
@@ -436,7 +462,15 @@ function removeObject({
               };
               dataToSend.data[objectType] = { objectId };
 
-              io.emit(emitTypeGenerator ? emitTypeGenerator(foundObject) : emitType, dataToSend);
+              if (socket) {
+                socket.broadcast.emit(emitTypeGenerator
+                  ? emitTypeGenerator(foundObject)
+                  : emitType, dataToSend);
+              } else {
+                io.emit(emitTypeGenerator
+                  ? emitTypeGenerator(foundObject)
+                  : emitType, dataToSend);
+              }
 
               callback(dataToSend);
             },
@@ -494,6 +528,7 @@ function updateAccess({
   callback,
   internalCallUser,
   options,
+  socket,
   toStrip = [],
 }) {
   authenticator.isUserAllowed({
@@ -571,7 +606,11 @@ function updateAccess({
               };
               creatorDataToSend.data[objectType] = foundObject;
 
-              io.emit(emitType, dataToSend);
+              if (socket) {
+                socket.broadcast.emit(emitType, dataToSend);
+              } else {
+                io.emit(emitType, dataToSend);
+              }
 
               callback(creatorDataToSend);
             },

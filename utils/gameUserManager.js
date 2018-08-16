@@ -1,5 +1,5 @@
 /*
- Copyright 2017 Aleksandar Jankovic
+ Copyright 2017 Carmilla Mina Jankovic
 
  Licensed under the Apache License, Version 2.0 (the "License");
  you may not use this file except in compliance with the License.
@@ -23,7 +23,9 @@
 function createHints(password) {
   const hints = [];
   const startAmount = Math.floor(Math.random() * 2);
-  const endAmount = startAmount === 0 ? Math.floor(Math.random() * 2) : 0;
+  const endAmount = startAmount === 0 ?
+    Math.floor(Math.random() * 2) :
+    0;
 
   /**
    * start *characters*

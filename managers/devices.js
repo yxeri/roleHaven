@@ -1,5 +1,5 @@
 /*
- Copyright 2017 Aleksandar Jankovic
+ Copyright 2017 Carmilla Mina Jankovic
 
  Licensed under the Apache License, Version 2.0 (the "License");
  you may not use this file except in compliance with the License.
@@ -59,8 +59,6 @@ function getDeviceById({
 
           const { device } = getDeviceData;
 
-          console.log('device data from id', device);
-
           const {
             canSee,
             hasFullAccess,
@@ -99,6 +97,7 @@ function createDevice({
   device,
   callback,
   io,
+  socket,
 }) {
   authenticator.isUserAllowed({
     token,
@@ -138,10 +137,14 @@ function createDevice({
             },
           };
 
-          io.emit(dbConfig.EmitTypes.DEVICE, dataToSend);
-          io.to(createdDevice.objectId).emit(dbConfig.EmitTypes.DEVICE, creatorDataToSend);
+          if (socket) {
+            socket.broadcast.emit(dbConfig.EmitTypes.DEVICE, dataToSend);
+          } else {
+            io.emit(dbConfig.EmitTypes.DEVICE, dataToSend);
+            io.to(createdDevice.objectId).emit(dbConfig.EmitTypes.DEVICE, creatorDataToSend);
+          }
 
-          callback(dataToSend);
+          callback(creatorDataToSend);
         },
       });
     },
@@ -163,6 +166,7 @@ function updateDevice({
   options,
   callback,
   io,
+  socket,
 }) {
   authenticator.isUserAllowed({
     token,
@@ -174,11 +178,11 @@ function updateDevice({
         return;
       }
 
-      const { user } = data;
+      const { user: authUser } = data;
 
       getDeviceById({
         deviceId,
-        internalCallUser: user,
+        internalCallUser: authUser,
         callback: ({ error: deviceError, data: deviceData }) => {
           if (deviceError) {
             callback({ error: deviceError });
@@ -191,7 +195,7 @@ function updateDevice({
             hasFullAccess,
           } = authenticator.hasAccessTo({
             objectToAccess: foundDevice,
-            toAuth: user,
+            toAuth: authUser,
           });
 
           if (!hasFullAccess) {
@@ -226,10 +230,14 @@ function updateDevice({
                 },
               };
 
-              io.emit(dbConfig.EmitTypes.DEVICE, dataToSend);
-              io.to(updatedDevice.objectId).emit(dbConfig.EmitTypes.DEVICE, creatorData);
+              if (socket) {
+                socket.broadcast.emit(dbConfig.EmitTypes.DEVICE, dataToSend);
+              } else {
+                io.emit(dbConfig.EmitTypes.DEVICE, dataToSend);
+                io.to(updatedDevice.objectId).emit(dbConfig.EmitTypes.DEVICE, creatorData);
+              }
 
-              callback(dataToSend);
+              callback(creatorData);
             },
           });
         },

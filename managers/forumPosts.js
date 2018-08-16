@@ -1,5 +1,5 @@
 /*
- Copyright 2017 Aleksandar Jankovic
+ Copyright 2017 Carmilla Mina Jankovic
 
  Licensed under the Apache License, Version 2.0 (the "License");
  you may not use this file except in compliance with the License.
@@ -156,6 +156,7 @@ function updatePost({
   io,
   options,
   internalCallUser,
+  socket,
 }) {
   managerHelper.updateObject({
     callback,
@@ -163,6 +164,7 @@ function updatePost({
     token,
     io,
     internalCallUser,
+    socket,
     objectId: postId,
     object: post,
     commandName: dbConfig.apiCommands.UpdateForumPost.name,
@@ -294,11 +296,13 @@ function removePost({
   postId,
   callback,
   io,
+  socket,
 }) {
   managerHelper.removeObject({
     callback,
     token,
     io,
+    socket,
     getDbCallFunc: dbPost.getPostById,
     getCommandName: dbConfig.apiCommands.GetForumPost.name,
     objectId: postId,

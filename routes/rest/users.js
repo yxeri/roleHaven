@@ -1,5 +1,5 @@
 /*
- Copyright 2017 Aleksandar Jankovic
+ Copyright 2017 Carmilla Mina Jankovic
 
  Licensed under the Apache License, Version 2.0 (the "License");
  you may not use this file except in compliance with the License.
@@ -333,13 +333,12 @@ function handle(io) {
     }
 
     const { password, aliasId } = request.body.data;
-    const { roomId, userId } = request.params;
+    const { roomId } = request.params;
     const { authorization: token } = request.headers;
 
     roomManager.followRoom({
       io,
       token,
-      userId,
       roomId,
       password,
       aliasId,

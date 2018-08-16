@@ -14,7 +14,9 @@
     "curly": 2,
     "no-console": 0,
     "no-underscore-dangle": 0,
-    "arrow-body-style": 0
+    "arrow-body-style": 0,
+    "brace-style": "error",
+    "multiline-ternary": ["error", "always"]
   },
   "globals": {
     "google": false,

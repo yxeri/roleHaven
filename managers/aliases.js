@@ -1,5 +1,5 @@
 /*
- Copyright 2017 Aleksandar Jankovic
+ Copyright 2017 Carmilla Mina Jankovic
 
  Licensed under the Apache License, Version 2.0 (the "License");
  you may not use this file except in compliance with the License.
@@ -37,6 +37,7 @@ function createAlias({
   token,
   io,
   alias,
+  socket,
   callback,
 }) {
   authenticator.isUserAllowed({
@@ -61,6 +62,8 @@ function createAlias({
 
       const aliasToSave = alias;
       aliasToSave.ownerId = user.objectId;
+      aliasToSave.aliasName = textTools.trimSpace(aliasToSave.aliasName);
+      aliasToSave.aliasNameLowerCase = aliasToSave.aliasName.toLowerCase();
 
       dbAlias.createAlias({
         alias: aliasToSave,
@@ -141,14 +144,23 @@ function createAlias({
                     },
                   };
 
-                  const userSocket = socketUtils.getUserSocket({ io, socketId: user.socketId });
+                  if (socket) {
+                    socket.join(createdAlias.objectId);
+                    socket.broadcast.emit(dbConfig.EmitTypes.USER, dataToSend);
+                    socket.broadcast.emit(dbConfig.EmitTypes.ROOM, roomDataToSend);
+                    socket.broadcast.emit(dbConfig.EmitTypes.WALLET, walletDataToSend);
+                  } else {
+                    const userSocket = socketUtils.getUserSocket({ io, socketId: user.socketId });
 
-                  if (userSocket) { userSocket.join(createdRoom.objectId); }
+                    if (userSocket) {
+                      userSocket.join(createdAlias.objectId);
+                    }
 
-                  io.to(user.objectId).emit(dbConfig.EmitTypes.ALIAS, creatorDataToSend);
-                  io.emit(dbConfig.EmitTypes.USER, dataToSend);
-                  io.emit(dbConfig.EmitTypes.ROOM, roomDataToSend);
-                  io.emit(dbConfig.EmitTypes.WALLET, walletDataToSend);
+                    io.to(user.objectId).emit(dbConfig.EmitTypes.ALIAS, creatorDataToSend);
+                    io.emit(dbConfig.EmitTypes.USER, dataToSend);
+                    io.emit(dbConfig.EmitTypes.ROOM, roomDataToSend);
+                    io.emit(dbConfig.EmitTypes.WALLET, walletDataToSend);
+                  }
 
                   callback(creatorDataToSend);
                 },
@@ -258,17 +270,24 @@ function getAliasesByUser({
           }
 
           const { aliases } = getAliasesData;
-          const allAliases = aliases.map((aliasItem) => {
+          const allAliases = aliases.filter((alias) => {
+            const { canSee } = authenticator.hasAccessTo({
+              toAuth: authUser,
+              objectToAccess: alias,
+            });
+
+            return canSee;
+          }).map((alias) => {
             const { hasFullAccess } = authenticator.hasAccessTo({
               toAuth: authUser,
-              objectToAccess: aliasItem,
+              objectToAccess: alias,
             });
 
             if (!hasFullAccess) {
-              return managerHelper.stripObject({ object: aliasItem });
+              return managerHelper.stripObject({ object: alias });
             }
 
-            return aliasItem;
+            return alias;
           }).sort((a, b) => {
             const aName = a.aliasName;
             const bName = b.aliasName;
@@ -306,6 +325,7 @@ function updateAlias({
   options,
   aliasId,
   io,
+  socket,
 }) {
   authenticator.isUserAllowed({
     token,
@@ -373,8 +393,12 @@ function updateAlias({
                 },
               };
 
-              io.emit(dbConfig.EmitTypes.USER, dataToSend);
-              io.to(updatedAlias.objectId).emit(dbConfig.EmitTypes.ALIAS, aliasDataToSend);
+              if (socket) {
+                socket.broadcast.emit(dbConfig.EmitTypes.USER, dataToSend);
+              } else {
+                io.emit(dbConfig.EmitTypes.USER, dataToSend);
+                io.to(updatedAlias.objectId).emit(dbConfig.EmitTypes.ALIAS, aliasDataToSend);
+              }
 
               callback(aliasDataToSend);
             },
@@ -446,7 +470,9 @@ function updateAccess({
             return;
           }
 
-          const dbFunc = shouldRemove ? dbAlias.removeAccess : dbAlias.addAccess;
+          const dbFunc = shouldRemove ?
+            dbAlias.removeAccess :
+            dbAlias.addAccess;
 
           dbFunc({
             userIds,
@@ -478,8 +504,8 @@ function updateAccess({
                 },
               };
 
-              io.emit(dbConfig.EmitTypes.DOCFILE, dataToSend);
-              io.to(updatedAlias.ownerId).emit(dbConfig.EmitTypes.DOCFILE, creatorDataToSend);
+              io.emit(dbConfig.EmitTypes.USER, dataToSend);
+              io.to(updatedAlias.ownerId).emit(dbConfig.EmitTypes.USER, creatorDataToSend);
 
               callback(creatorDataToSend);
             },

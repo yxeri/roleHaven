@@ -1,5 +1,5 @@
 /*
- Copyright 2017 Aleksandar Jankovic
+ Copyright 2017 Carmilla Mina Jankovic
 
  Licensed under the Apache License, Version 2.0 (the "License");
  you may not use this file except in compliance with the License.
@@ -23,10 +23,13 @@ const dbConnector = require('../databaseConnector');
 const teamSchema = new mongoose.Schema(dbConnector.createSchema({
   teamName: { type: String, unique: true },
   shortName: { type: String, unique: true },
+  teamNameLowerCase: { type: String, unique: true },
+  shortNameLowerCase: { type: String, unique: true },
   isVerified: { type: Boolean, default: false },
   isProtected: { type: Boolean, default: false },
   members: { type: [String], default: [] },
   picture: dbConnector.pictureSchema,
+  locationName: String,
 }), { collection: 'teams' });
 
 const Team = mongoose.model('Team', teamSchema);
@@ -124,7 +127,11 @@ function getTeam({ query, callback }) {
  * @param {string} params.shortName - Short name of the team.
  * @param {Function} params.callback - Callback.
  */
-function doesTeamExist({ teamName, shortName, callback }) {
+function doesTeamExist({
+  teamName,
+  shortName,
+  callback,
+}) {
   if (!teamName && !shortName) {
     callback({ data: { exists: false } });
 
@@ -135,13 +142,13 @@ function doesTeamExist({ teamName, shortName, callback }) {
 
   if (teamName && shortName) {
     query.$or = [
-      { shortName },
-      { teamName },
+      { shortNameLowerCase: shortName.toLowerCase() },
+      { teamNameLowerCase: teamName.toLowerCase() },
     ];
   } else if (teamName) {
-    query.teamName = teamName;
+    query.teamNameLowerCase = teamName.toLowerCase();
   } else {
-    query.shortName = shortName;
+    query.shortNameLowerCase = shortName.toLowerCase();
   }
 
   dbConnector.doesObjectExist({
@@ -171,6 +178,10 @@ function createTeam({ team, callback }) {
 
         return;
       }
+
+      const teamToSave = team;
+      teamToSave.teamNameLowerCase = teamToSave.teamName.toLowerCase();
+      teamToSave.shortNameLowerCase = teamToSave.shortName.toLowerCase();
 
       dbConnector.saveObject({
         object: new Team(team),
@@ -238,8 +249,14 @@ function updateTeam({
 
   if (typeof isVerified === 'boolean') { set.isVerified = isVerified; }
   if (typeof isProtected === 'boolean') { set.isProtected = isProtected; }
-  if (teamName) { set.teamName = teamName; }
-  if (shortName) { set.shortName = shortName; }
+  if (teamName) {
+    set.teamName = teamName;
+    set.teamNameLowerCase = teamName.toLowerCase();
+  }
+  if (shortName) {
+    set.shortName = shortName;
+    set.shortNameLowerCase = shortName.toLowerCase();
+  }
 
   if (Object.keys(set).length > 0) { update.$set = set; }
   if (Object.keys(unset).length > 0) { update.$unset = unset; }
@@ -282,16 +299,17 @@ function updateTeam({
  */
 function updateAccess(params) {
   const accessParams = params;
+  const { callback } = params;
   accessParams.objectId = params.teamId;
   accessParams.object = Team;
   accessParams.callback = ({ error, data }) => {
     if (error) {
-      accessParams.callback({ error });
+      callback({ error });
 
       return;
     }
 
-    accessParams.callback({ data: { team: data.object } });
+    callback({ data: { team: data.object } });
   };
 
   if (params.shouldRemove) {

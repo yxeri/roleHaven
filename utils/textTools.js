@@ -1,5 +1,5 @@
 /*
- Copyright 2017 Aleksandar Jankovic
+ Copyright 2017 Carmilla Mina Jankovic
 
  Licensed under the Apache License, Version 2.0 (the "License");
  you may not use this file except in compliance with the License.
@@ -18,6 +18,17 @@
 
 const allowedRegex = /^[\w\d-_]+$/;
 const fullTextRegex = /^[\w\d\såäöÅÄÖ_-]+$/;
+
+/**
+ * Replaces part of the sent string and returns it
+ * @param {string} text - Original string
+ * @param {string} find - Substring to replace
+ * @param {string} replaceWith - String that will replace the found substring
+ * @returns {string} - Modified string
+ */
+function findOneReplace(text, find, replaceWith) {
+  return text.replace(new RegExp(find), replaceWith);
+}
 
 /**
  * Does the string contain only alphanumeric values?
@@ -79,7 +90,9 @@ function convertToBoolean(envar) {
 function convertToFloat(float) {
   const parsedFloat = parseFloat(float);
 
-  return Number.isNaN(parsedFloat) ? 0 : parsedFloat;
+  return Number.isNaN(parsedFloat) ?
+    0 :
+    parsedFloat;
 }
 
 /**
@@ -90,7 +103,9 @@ function convertToFloat(float) {
 function convertToInt(int) {
   const parsedInt = parseInt(int, 10);
 
-  return Number.isNaN(parsedInt) ? 0 : parsedInt;
+  return Number.isNaN(parsedInt) ?
+    0 :
+    parsedInt;
 }
 
 /**
@@ -158,6 +173,17 @@ function generateTextCode(amount = 8) {
   return shuffleArray(['0', '1', '2', '3', '4', '5', '6', '7', '8', '9', 'A', 'B', 'D', 'E', 'F', 'G', 'H', 'L', 'M', 'N', 'P', 'Q', 'R', 'S', 'T', 'U', 'V', 'W', 'X', 'Y', 'Z']).slice(0, amount).join('');
 }
 
+/**
+ * Trims whitespaces from beginning and end of the string
+ * Needed for Android 2.1. trim() is not supported
+ * @static
+ * @param {string} sentText - String to be trimmed
+ * @returns {string} - String with no whitespaces in the beginning and end
+ */
+function trimSpace(sentText) {
+  return findOneReplace(sentText, /^\s+|\s+$/, '');
+}
+
 exports.hasAllowedText = hasAllowedText;
 exports.isAllowedFull = isAllowedFull;
 exports.cleanText = cleanText;
@@ -169,3 +195,4 @@ exports.getDifference = getDifference;
 exports.isValidMail = isValidMail;
 exports.calculateMinutesDifference = calculateMinutesDifference;
 exports.generateTextCode = generateTextCode;
+exports.trimSpace = trimSpace;

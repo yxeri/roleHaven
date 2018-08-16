@@ -1,5 +1,5 @@
 /*
- Copyright 2017 Aleksandar Jankovic
+ Copyright 2017 Carmilla Mina Jankovic
 
  Licensed under the Apache License, Version 2.0 (the "License");
  you may not use this file except in compliance with the License.
@@ -56,6 +56,7 @@ function sendAndStoreMessage({
   io,
   emitType,
   image,
+  socket,
 }) {
   if (image) {
     // Contact file storage and create the file or retrieve and existing one.
@@ -77,7 +78,11 @@ function sendAndStoreMessage({
         },
       };
 
-      io.to(message.roomId).emit(emitType, dataToSend);
+      if (socket) {
+        socket.broadcast.to(message.roomId).emit(emitType, dataToSend);
+      } else {
+        io.to(message.roomId).emit(emitType, dataToSend);
+      }
 
       callback(dataToSend);
     },
@@ -137,7 +142,7 @@ function getMessagesByRoom({
 
       const { user: authUser } = data;
 
-      if (!authUser.accessLevel < dbConfig.AccessLevels.ADMIN && !authUser.followingRooms(roomId)) {
+      if (!authUser.accessLevel < dbConfig.AccessLevels.ADMIN && !authUser.followingRooms.includes(roomId)) {
         callback({ error: new errorCreator.NotAllowed({ name: `${dbConfig.apiCommands.GetHistory.name}. User: ${authUser.objectId}. Access: messages rom room ${roomId}` }) });
 
         return;
@@ -145,6 +150,8 @@ function getMessagesByRoom({
 
       roomManager.getRoomById({
         roomId,
+        internalCallUser: authUser,
+        needsAccess: true,
         callback: ({ error: roomError }) => {
           if (roomError) {
             callback({ error: roomError });
@@ -271,7 +278,9 @@ function getFullHistory({ token, callback }) {
                         return 0;
                       }).forEach((message) => {
                         const messageToSave = {
-                          username: message.ownerAliasId ? aliases[message.ownerAliasId].aliasName : users[message.ownerId].username,
+                          username: message.ownerAliasId ?
+                            aliases[message.ownerAliasId].aliasName :
+                            users[message.ownerId].username,
                           roomName: roomsCollection[message.roomId].roomName,
                           time: message.customTimeCreated || message.timeCreated,
                         };
@@ -312,9 +321,11 @@ function sendBroadcastMsg({
   callback,
   io,
   image,
+  internalCallUser,
 }) {
   authenticator.isUserAllowed({
     token,
+    internalCallUser,
     commandName: dbConfig.apiCommands.SendBroadcast.name,
     callback: ({ error, data }) => {
       if (error) {
@@ -327,16 +338,17 @@ function sendBroadcastMsg({
         return;
       }
 
-      const text = textTools.cleanText(message.text.join(''));
+      const text = message.text.join('');
 
       if (text.length > appConfig.broadcastMaxLength || text.length <= 0) {
-        callback({ error: new errorCreator.InvalidCharacters({ expected: `text length ${appConfig.broadcastMaxLength}` }) });
+        callback({ error: new errorCreator.InvalidLength({ expected: `text length ${appConfig.broadcastMaxLength}` }) });
 
         return;
       }
 
       const { user: authUser } = data;
       const newMessage = message;
+      newMessage.text = textTools.cleanText(message.text);
       newMessage.messageType = dbConfig.MessageTypes.BROADCAST;
       newMessage.roomId = dbConfig.rooms.bcast.objectId;
 
@@ -389,7 +401,7 @@ function sendChatMsg({
         return;
       }
 
-      const text = textTools.cleanText(message.text.join(''));
+      const text = message.text.join('');
 
       if (text.length > appConfig.messageMaxLength || text.length <= 0) {
         callback({ error: new errorCreator.InvalidCharacters({ expected: `text length ${appConfig.messageMaxLength}` }) });
@@ -399,6 +411,7 @@ function sendChatMsg({
 
       const { user: authUser } = data;
       const newMessage = message;
+      newMessage.text = textTools.cleanText(message.text);
       newMessage.messageType = dbConfig.MessageTypes.CHAT;
       newMessage.ownerId = authUser.objectId;
 
@@ -466,7 +479,7 @@ function sendWhisperMsg({
         return;
       }
 
-      const text = textTools.cleanText(message.text.join(''));
+      const text = message.text.join('');
 
       if (text.length > appConfig.messageMaxLength || text.length <= 0) {
         callback({ error: new errorCreator.InvalidCharacters({ expected: `text length ${appConfig.messageMaxLength}` }) });
@@ -476,6 +489,7 @@ function sendWhisperMsg({
 
       const { user: authUser } = data;
       const newMessage = message;
+      newMessage.text = textTools.cleanText(message.text);
       newMessage.messageType = dbConfig.MessageTypes.WHISPER;
       newMessage.ownerId = authUser.objectId;
       newMessage.ownerAliasId = participantIds.find(participant => authUser.aliases.includes(participant));
@@ -580,11 +594,13 @@ function removeMessage({
   callback,
   token,
   io,
+  socket,
 }) {
   managerHelper.removeObject({
     callback,
     token,
     io,
+    socket,
     getDbCallFunc: dbMessage.getMessageById,
     getCommandName: dbConfig.apiCommands.GetMessage.name,
     objectId: messageId,

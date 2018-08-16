@@ -1,5 +1,5 @@
 /*
- Copyright 2017 Aleksandar Jankovic
+ Copyright 2017 Carmilla Mina Jankovic
 
  Licensed under the Apache License, Version 2.0 (the "License");
  you may not use this file except in compliance with the License.
@@ -57,7 +57,10 @@ function getPositionById({
  * @param {Object} params - Parameters.
  * @param {Function} params.callback - Callback.
  */
-function getAndStoreGooglePositions({ callback = () => {} }) {
+function getAndStoreGooglePositions({
+  io,
+  callback = () => {},
+}) {
   if (!appConfig.mapLayersPath) {
     callback({ error: new errorCreator.InvalidData({ name: 'Map layer is not set' }) });
 
@@ -91,8 +94,17 @@ function getAndStoreGooglePositions({ callback = () => {} }) {
               return;
             }
 
+            const dataToReturn = {
+              data: {
+                positions: createdPositions,
+                changeType: dbConfig.ChangeTypes.CREATE,
+              },
+            };
+
             if (iteration === positionAmount) {
-              callback({ data: { positions: createdPositions } });
+              io.emit(dbConfig.EmitTypes.POSITIONS, dataToReturn);
+
+              callback(dataToReturn);
             }
           };
           let iteration = 1;
@@ -138,12 +150,14 @@ function updatePosition({
   io,
   callback,
   options,
+  socket,
 }) {
   managerHelper.updateObject({
     callback,
     options,
     token,
     io,
+    socket,
     objectId: positionId,
     object: position,
     commandName: dbConfig.apiCommands.UpdatePosition.name,
@@ -168,10 +182,14 @@ function createPosition({
   position,
   token,
   io,
+  internalCallUser,
   callback,
+  socket,
+  isLoggedInUserPosition = false,
 }) {
   authenticator.isUserAllowed({
     token,
+    internalCallUser,
     commandName: dbConfig.apiCommands.CreatePosition.name,
     callback: ({ error, data }) => {
       if (error) {
@@ -179,7 +197,9 @@ function createPosition({
 
         return;
       } else if (!position.coordinates || !position.coordinates.latitude || !position.coordinates.longitude) {
-        callback({ error: new errorCreator.InvalidData({ name: 'latitude && longitude' }) });
+        console.log('create', position.coordinates, !position.coordinates, !position.coordinates.latitude, !position.coordinates.longitude, !position.coordinates.accuracy);
+
+        callback({ error: new errorCreator.InvalidData({ expected: 'latitude && longitude && accuracy' }) });
 
         return;
       } else if ((position.positionName && (position.positionName.length > appConfig.positionNameMaxLength || position.positionName.length <= 0))
@@ -187,8 +207,8 @@ function createPosition({
         callback({ error: new errorCreator.InvalidCharacters({ expected: `text length: ${appConfig.docFileMaxLength}, title length: ${appConfig.positionNameMaxLength}` }) });
 
         return;
-      } else if (position.coordinates && position.coordinates.accuracy && position.coordinates.accuracy > appConfig.minimumPositionAccuracy) {
-        callback({ error: new errorCreator.InvalidData({ name: 'accuracy' }) });
+      } else if (!isLoggedInUserPosition && position.coordinates.accuracy && position.coordinates.accuracy > appConfig.minimumPositionAccuracy) {
+        callback({ error: new errorCreator.InvalidData({ expected: `accuracy less than ${appConfig.minimumPositionAccuracy}` }) });
 
         return;
       }
@@ -205,6 +225,10 @@ function createPosition({
       }
 
       dbPosition.createPosition({
+        suppressExistsError: isLoggedInUserPosition,
+        options: {
+          setId: isLoggedInUserPosition,
+        },
         position: newPosition,
         callback: ({ error: updateError, data: positionData }) => {
           if (updateError) {
@@ -227,7 +251,11 @@ function createPosition({
             },
           };
 
-          io.emit(dbConfig.EmitTypes.POSITION, dataToSend);
+          if (socket && !isLoggedInUserPosition) {
+            socket.broadcast.emit(dbConfig.EmitTypes.POSITION, dataToSend);
+          } else {
+            io.emit(dbConfig.EmitTypes.POSITION, dataToSend);
+          }
 
           callback(dataToReturn);
         },
@@ -270,11 +298,13 @@ function removePosition({
   token,
   callback,
   io,
+  socket,
 }) {
   managerHelper.removeObject({
     callback,
     token,
     io,
+    socket,
     getDbCallFunc: dbPosition.getPositionById,
     getCommandName: dbConfig.apiCommands.GetPositions.name,
     objectId: positionId,

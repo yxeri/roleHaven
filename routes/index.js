@@ -1,5 +1,5 @@
 /*
- Copyright 2017 Aleksandar Jankovic
+ Copyright 2017 Carmilla Mina Jankovic
 
  Licensed under the Apache License, Version 2.0 (the "License");
  you may not use this file except in compliance with the License.
@@ -20,23 +20,8 @@ const express = require('express');
 const dbUser = require('../db/connectors/user');
 const { appConfig, dbConfig } = require('../config/defaults/config');
 const dbDevice = require('../db/connectors/device');
-
-const aliasHandler = require('./socketHandlers/aliases');
-const authenticationHandler = require('./socketHandlers/authenticate');
-const deviceHandler = require('./socketHandlers/devices');
-const docFilesHandler = require('./socketHandlers/docFiles');
-const forumPostHandler = require('./socketHandlers/forumPost');
-const forumHandler = require('./socketHandlers/forums');
-const forumThreadHandler = require('./socketHandlers/forumThreads');
-const gameCodeHandler = require('./socketHandlers/gameCodes');
-const messageHandler = require('./socketHandlers/messages');
-const positionHandler = require('./socketHandlers/positions');
-const roomHandler = require('./socketHandlers/rooms');
-const simpleMsgHandler = require('./socketHandlers/simpleMsgs');
-const teamHandler = require('./socketHandlers/teams');
-const transactionHandler = require('./socketHandlers/transactions');
-const userHandler = require('./socketHandlers/users');
-const walletHandler = require('./socketHandlers/wallets');
+const path = require('path');
+const socketUtils = require('../utils/socketIo');
 
 const router = new express.Router();
 
@@ -51,7 +36,9 @@ function handle(io) {
       gMapsKey: appConfig.gMapsKey,
       socketPath: appConfig.socketPath,
       mainJs: `scripts/${appConfig.mainJsName}.js?version=${appConfig.jsVersion}`,
-      mainCss: req.query.style && !Number.isNaN(req.query.style) ? `styles/${req.query.style}.css` : `styles/${appConfig.mainCssName}.css`,
+      mainCss: req.query.style && !Number.isNaN(req.query.style) ?
+        `styles/${req.query.style}.css` :
+        `styles/${appConfig.mainCssName}.css`,
     });
   });
 
@@ -61,13 +48,17 @@ function handle(io) {
       gMapsKey: appConfig.gMapsKey,
       socketPath: appConfig.socketPath,
       adminJs: `scripts/${appConfig.adminIndexName}.js?version=${appConfig.jsVersion}`,
-      adminCss: req.query.style && !Number.isNaN(req.query.style) ? `styles/admin${req.query.style}.css` : `styles/${appConfig.adminCssName}.css`,
+      adminCss: req.query.style && !Number.isNaN(req.query.style) ?
+        `styles/admin${req.query.style}.css` :
+        `styles/${appConfig.adminCssName}.css`,
     });
   });
 
   io.on('connection', (socket) => {
-    dbConfig.requiredRooms.forEach((roomId) => {
-      socket.join(roomId);
+    socketUtils.joinRequiredRooms({
+      io,
+      socket,
+      socketId: socket.id,
     });
 
     socket.emit(dbConfig.EmitTypes.STARTUP, {
@@ -104,12 +95,24 @@ function handle(io) {
           UpdatePositionCoordinates: dbConfig.apiCommands.UpdatePositionCoordinates,
           SendMessage: dbConfig.apiCommands.SendMessage,
           SendWhisper: dbConfig.apiCommands.SendWhisper,
+          CreateDocFile: dbConfig.apiCommands.CreateDocFile,
+          CreateGameCode: dbConfig.apiCommands.CreateGameCode,
+          CreateAlias: dbConfig.apiCommands.CreateAlias,
+          CreateDevice: dbConfig.apiCommands.CreateDevice,
+          CreateForum: dbConfig.apiCommands.CreateForum,
+          CreateForumPost: dbConfig.apiCommands.CreateForumPost,
+          CreateForumThread: dbConfig.apiCommands.CreateForumThread,
+          CreateRoom: dbConfig.apiCommands.CreateRoom,
+          CreateUser: dbConfig.apiCommands.CreateUser,
+          CreateTeam: dbConfig.apiCommands.CreateTeam,
+          InviteToTeam: dbConfig.apiCommands.InviteToTeam,
         },
       },
     });
 
     socket.on('disconnect', (params, callback = () => {}) => {
       dbDevice.updateDevice({
+        suppressError: true,
         device: {},
         deviceSocketId: socket.id,
         options: { resetSocket: true },
@@ -121,6 +124,8 @@ function handle(io) {
           }
 
           dbUser.updateOnline({
+            suppressError: true,
+            socketId: socket.id,
             isOnline: false,
             callback: ({ error: userError }) => {
               if (userError) {
@@ -136,22 +141,7 @@ function handle(io) {
       });
     });
 
-    aliasHandler.handle(socket, io);
-    authenticationHandler.handle(socket, io);
-    deviceHandler.handle(socket, io);
-    docFilesHandler.handle(socket, io);
-    forumPostHandler.handle(socket, io);
-    forumHandler.handle(socket, io);
-    forumThreadHandler.handle(socket, io);
-    gameCodeHandler.handle(socket, io);
-    messageHandler.handle(socket, io);
-    positionHandler.handle(socket, io);
-    roomHandler.handle(socket, io);
-    simpleMsgHandler.handle(socket, io);
-    teamHandler.handle(socket, io);
-    transactionHandler.handle(socket, io);
-    userHandler.handle(socket, io);
-    walletHandler.handle(socket, io);
+    appConfig.handlers.forEach(handlePath => require(path.resolve(handlePath)).handle(socket, io)); // eslint-disable-line global-require, import/no-dynamic-require
   });
 
   return router;

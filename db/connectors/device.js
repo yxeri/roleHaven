@@ -1,5 +1,5 @@
 /*
- Copyright 2017 Aleksandar Jankovic
+ Copyright 2017 Carmilla Mina Jankovic
 
  Licensed under the Apache License, Version 2.0 (the "License");
  you may not use this file except in compliance with the License.
@@ -43,6 +43,7 @@ function updateObject({
   deviceSocketId,
   update,
   callback,
+  suppressError,
 }) {
   const query = {};
 
@@ -55,6 +56,7 @@ function updateObject({
   dbConnector.updateObject({
     update,
     query,
+    suppressError,
     object: Device,
     errorNameContent: 'updateDeviceObject',
     callback: ({ error, data }) => {
@@ -191,6 +193,7 @@ function updateDevice({
   deviceSocketId,
   device,
   callback,
+  suppressError,
   options = {},
 }) {
   const {
@@ -240,6 +243,7 @@ function updateDevice({
         }
 
         updateObject({
+          suppressError,
           deviceSocketId,
           deviceId,
           update,
@@ -253,8 +257,10 @@ function updateDevice({
 
   updateObject({
     deviceId,
+    deviceSocketId,
     update,
     callback,
+    suppressError,
   });
 }
 
@@ -271,16 +277,17 @@ function updateDevice({
  */
 function updateAccess(params) {
   const accessParams = params;
+  const { callback } = params;
   accessParams.objectId = params.deviceId;
   accessParams.object = Device;
   accessParams.callback = ({ error, data }) => {
     if (error) {
-      accessParams.callback({ error });
+      callback({ error });
 
       return;
     }
 
-    accessParams.callback({ data: { device: data.object } });
+    callback({ data: { device: data.object } });
   };
 
   if (params.shouldRemove) {

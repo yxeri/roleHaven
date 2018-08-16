@@ -1,5 +1,5 @@
 /*
- Copyright 2018 Aleksandar Jankovic
+ Copyright 2018 Carmilla Mina Jankovic
 
  Licensed under the Apache License, Version 2.0 (the "License");
  you may not use this file except in compliance with the License.
@@ -73,7 +73,9 @@ function createTestCreate({
       chai
         .request(app)
         .post(testData.apiCreatePath || apiPath)
-        .set('Authorization', createByAdmin ? tokens.adminUserOne : tokens.basicUserOne)
+        .set('Authorization', createByAdmin ?
+          tokens.adminUserOne :
+          tokens.basicUserOne)
         .send(dataToSend)
         .end((error, response) => {
           console.log('created', response.body.data);
@@ -96,7 +98,9 @@ function createTestCreate({
         chai
           .request(app)
           .post(testData.apiCreatePath || apiPath)
-          .set('Authorization', createByAdmin ? tokens.adminUserOne : tokens.basicUserOne)
+          .set('Authorization', createByAdmin ?
+            tokens.adminUserOne :
+            tokens.basicUserOne)
           .send(dataToSend)
           .end((error, response) => {
             response.should.have.status(403);
@@ -118,7 +122,9 @@ function createTestCreate({
           chai
             .request(app)
             .post(testData.apiCreatePath || apiPath)
-            .set('Authorization', createByAdmin ? tokens.adminUserOne : tokens.basicUserOne)
+            .set('Authorization', createByAdmin ?
+              tokens.adminUserOne :
+              tokens.basicUserOne)
             .send(dataToSend)
             .end((error, response) => {
               response.should.have.status(400);
@@ -163,7 +169,9 @@ function createTestUpdate({
         chai
           .request(app)
           .post(testData.apiCreatePath || apiPath)
-          .set('Authorization', createByAdmin ? tokens.adminUserOne : tokens.basicUserOne)
+          .set('Authorization', createByAdmin ?
+            tokens.adminUserOne :
+            tokens.basicUserOne)
           .send(dataToSend)
           .end((error, response) => {
             response.should.have.status(200);
@@ -202,7 +210,9 @@ function createTestUpdate({
       chai
         .request(app)
         .put(`${apiPath}${updateObjectId || starterData.basicUserOne.objectId}`)
-        .set('Authorization', createByAdmin ? tokens.adminUserOne : tokens.basicUserOne)
+        .set('Authorization', createByAdmin ?
+          tokens.adminUserOne :
+          tokens.basicUserOne)
         .send(dataToSend)
         .end((error, response) => {
           response.should.have.status(200);
@@ -246,7 +256,9 @@ function createTestDelete({
         chai
           .request(app)
           .post(testData.apiCreatePath || apiPath)
-          .set('Authorization', createByAdmin ? tokens.adminUserOne : tokens.basicUserOne)
+          .set('Authorization', createByAdmin ?
+            tokens.adminUserOne :
+            tokens.basicUserOne)
           .send(dataToSend)
           .end((error, response) => {
             response.should.have.status(200);
@@ -266,7 +278,9 @@ function createTestDelete({
         chai
           .request(app)
           .post(testData.apiCreatePath || apiPath)
-          .set('Authorization', createByAdmin ? tokens.adminUserOne : tokens.basicUserOne)
+          .set('Authorization', createByAdmin ?
+            tokens.adminUserOne :
+            tokens.basicUserOne)
           .send(dataToSend)
           .end((error, response) => {
             response.should.have.status(200);
@@ -315,7 +329,9 @@ function createTestDelete({
         chai
           .request(app)
           .del(`${apiPath}${secondObjectId}`)
-          .set('Authorization', createByAdmin ? tokens.adminUserOne : tokens.basicUserOne)
+          .set('Authorization', createByAdmin ?
+            tokens.adminUserOne :
+            tokens.basicUserOne)
           .end((error, response) => {
             response.should.have.status(200);
             response.should.be.json;
@@ -367,7 +383,9 @@ function createTestGet({
         chai
           .request(app)
           .post(testData.apiCreatePath || apiPath)
-          .set('Authorization', createByAdmin ? tokens.adminUserOne : tokens.basicUserTwo)
+          .set('Authorization', createByAdmin ?
+            tokens.adminUserOne :
+            tokens.basicUserTwo)
           .send(dataToSend)
           .end((error, response) => {
             response.should.have.status(200);

@@ -1,5 +1,5 @@
 /*
- Copyright 2017 Aleksandar Jankovic
+ Copyright 2017 Carmilla Mina Jankovic
 
  Licensed under the Apache License, Version 2.0 (the "License");
  you may not use this file except in compliance with the License.
@@ -23,6 +23,7 @@ const dbUser = require('./user');
 
 const roomSchema = new mongoose.Schema(dbConnector.createSchema({
   roomName: { type: String, unique: true },
+  roomNameLowerCase: { type: String, unique: true },
   password: String,
   participantIds: { type: [String], default: [] },
   nameIsLocked: { type: Boolean, default: false },
@@ -44,8 +45,6 @@ const Room = mongoose.model('Room', roomSchema);
  */
 function cleanParameters(room) {
   const modifiedRoom = room;
-
-  modifiedRoom.password = typeof room.password === 'string';
 
   return modifiedRoom;
 }
@@ -161,7 +160,10 @@ function doesRoomExist({
 
   const query = { $or: [] };
 
-  if (roomName) { query.$or.push({ roomName }); }
+  if (roomName) {
+    query.$or.push({ roomNameLowerCase: roomName.toLowerCase() });
+  }
+
   if (roomId) { query.$or.push({ _id: roomId }); }
 
   dbConnector.doesObjectExist({
@@ -229,6 +231,7 @@ function createRoom({
       }
 
       const roomToSave = room;
+      roomToSave.roomNameLowerCase = roomToSave.roomName.toLowerCase();
 
       if (setId && roomId) {
         roomToSave._id = mongoose.Types.ObjectId(roomId); // eslint-disable-line no-underscore-dangle
@@ -404,7 +407,10 @@ function updateRoom({
   if (typeof isAnonymous === 'boolean') { set.isAnonymous = isAnonymous; }
   if (accessLevel) { set.accessLevel = accessLevel; }
   if (visibility) { set.visibility = visibility; }
-  if (roomName) { set.roomName = roomName; }
+  if (roomName) {
+    set.roomName = roomName;
+    set.roomNameLowerCase = roomName.toLowerCase();
+  }
 
   if (Object.keys(set).length > 0) { update.$set = set; }
   if (Object.keys(unset).length > 0) { update.$unset = set; }
@@ -446,17 +452,13 @@ function updateRoom({
  * @param {Object} params - Parameters.
  * @param {string} params.roomId - Id of the room.
  * @param {Function} params.callback - Callback.
- * @param {string} [params.password] - Password for the room.
  */
 function getRoomById({
   roomId,
   roomName,
-  password,
   callback,
 }) {
   const query = {};
-
-  if (password) { query.password = password; }
 
   if (roomId) {
     query._id = roomId;
@@ -467,6 +469,53 @@ function getRoomById({
   getRoom({
     callback,
     query,
+  });
+}
+
+/**
+ * Get room by Id.
+ * @param {Object} params - Parameters.
+ * @param {string} params.roomId - Id of the room.
+ * @param {Function} params.callback - Callback.
+ * @param {string} params.password - Password for the room.
+ */
+function authToRoom({
+  roomId,
+  roomName,
+  password,
+  callback,
+}) {
+  const query = {
+    password,
+  };
+
+  if (roomId) {
+    query._id = roomId;
+  } else {
+    query.roomName = roomName;
+  }
+
+  getRoom({
+    query,
+    callback: ({ error }) => {
+      if (error) {
+        if (error.type === errorCreator.ErrorTypes.DOESNOTEXIST) {
+          callback({
+            data: { hasAuthed: false },
+          });
+
+          return;
+        }
+
+        callback({ error });
+
+        return;
+      }
+
+      callback({
+        data: { hasAuthed: true },
+      });
+    },
   });
 }
 
@@ -612,3 +661,4 @@ exports.getRoomsByUser = getRoomsByUser;
 exports.getRoomsByIds = getRoomsByIds;
 exports.getAllRooms = getAllRooms;
 exports.doesWhisperRoomExist = doesWhisperRoomExist;
+exports.authToRoom = authToRoom;

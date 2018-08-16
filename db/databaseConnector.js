@@ -1,5 +1,5 @@
 /*
- Copyright 2017 Aleksandar Jankovic
+ Copyright 2017 Carmilla Mina Jankovic
 
  Licensed under the Apache License, Version 2.0 (the "License");
  you may not use this file except in compliance with the License.
@@ -101,7 +101,7 @@ function modifyObject({ object }) {
   const modifiedObject = object;
 
   modifiedObject.objectId = object._id.toString(); // eslint-disable-line no-underscore-dangle
-  modifiedObject.password = object.password === true;
+  modifiedObject.password = typeof object.password === 'string';
 
   return modifiedObject;
 }
@@ -344,6 +344,7 @@ function updateObject({
   update,
   callback,
   query,
+  suppressError = false,
   options = {},
   errorNameContent = 'updateObject',
 }) {
@@ -361,7 +362,12 @@ function updateObject({
 
       return;
     } else if (!foundObject) {
-      callback({ error: new errorCreator.DoesNotExist({ name: `update ${JSON.stringify(query, null, 4)}` }) });
+      callback({
+        error: new errorCreator.DoesNotExist({
+          suppressPrint: suppressError,
+          name: `update ${JSON.stringify(query, null, 4)}`,
+        }),
+      });
 
       return;
     }

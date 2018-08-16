@@ -1,8 +1,8 @@
 {
   "name": "roleHaven",
-  "version": "1.2.0",
+  "version": "1.2.7",
   "description": "roleHaven is part of an initiative to create a platform to be used in-game during LARPs",
-  "author": "Aleksandar Jankovic <aleksonline@icloud.com>",
+  "author": "Carmilla Mina Jankovic <aleksonline@icloud.com>",
   "private": true,
   "scripts": {
     "start": "node bin/www",

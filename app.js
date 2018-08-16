@@ -1,5 +1,5 @@
 /*
- Copyright 2017 Aleksandar Jankovic
+ Copyright 2017 Carmilla Mina Jankovic
 
  Licensed under the Apache License, Version 2.0 (the "License");
  you may not use this file except in compliance with the License.
@@ -63,8 +63,8 @@ if (appConfig.mode !== appConfig.Modes.TEST) {
 }
 
 if (!appConfig.disablePositionImport) {
-  // TODO Send positions to clients
   positionManager.getAndStoreGooglePositions({
+    io,
     callback: ({ error, data }) => {
       if (error) {
         console.log('Failed to retrieve Google Maps positions');
@@ -75,6 +75,22 @@ if (!appConfig.disablePositionImport) {
       console.log(`Retrieved and saved ${data.positions.length + 1} positions from Google Maps`);
     },
   });
+
+  setInterval(() => {
+    // TODO Send positions to clients
+    positionManager.getAndStoreGooglePositions({
+      io,
+      callback: ({ error, data }) => {
+        if (error) {
+          console.log('Failed to retrieve Google Maps positions');
+
+          return;
+        }
+
+        console.log(`Retrieved and saved ${data.positions.length + 1} positions from Google Maps`);
+      },
+    });
+  }, 3600000);
 }
 
 /*

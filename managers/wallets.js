@@ -1,5 +1,5 @@
 /*
- Copyright 2017 Aleksandar Jankovic
+ Copyright 2017 Carmilla Mina Jankovic
 
  Licensed under the Apache License, Version 2.0 (the "License");
  you may not use this file except in compliance with the License.
@@ -65,17 +65,22 @@ function updateWallet({
   callback,
   io,
   internalCallUser,
+  socket,
   options = {},
 }) {
   const walletToUpdate = wallet;
   const { amount } = walletToUpdate;
-  walletToUpdate.amount = walletToUpdate.amount ? Number.parseInt(walletToUpdate.amount, 10) : undefined;
+  walletToUpdate.amount = walletToUpdate.amount ?
+    Number.parseInt(walletToUpdate.amount, 10) :
+    undefined;
 
   const {
     resetAmount,
     shouldDecreaseAmount,
   } = options;
-  const commandName = !amount && !resetAmount ? dbConfig.apiCommands.UpdateWallet.name : dbConfig.apiCommands.UpdateWalletAmount.name;
+  const commandName = !amount && !resetAmount ?
+    dbConfig.apiCommands.UpdateWallet.name :
+    dbConfig.apiCommands.UpdateWalletAmount.name;
 
   authenticator.isUserAllowed({
     token,
@@ -108,8 +113,6 @@ function updateWallet({
             return;
           }
 
-          console.log('updating with', wallet, 'existing', walletData.wallet);
-
           dbWallet.updateWallet({
             walletId,
             options,
@@ -130,7 +133,11 @@ function updateWallet({
                 },
               };
 
-              io.emit(dbConfig.EmitTypes.WALLET, dataToSend);
+              if (socket) {
+                socket.broadcast.emit(dbConfig.EmitTypes.WALLET, dataToSend);
+              } else {
+                io.emit(dbConfig.EmitTypes.WALLET, dataToSend);
+              }
 
               callback(dataToSend);
             },

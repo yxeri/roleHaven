@@ -1,5 +1,5 @@
 /*
- Copyright 2017 Aleksandar Jankovic
+ Copyright 2017 Carmilla Mina Jankovic
 
  Licensed under the Apache License, Version 2.0 (the "License");
  you may not use this file except in compliance with the License.
@@ -235,8 +235,6 @@ function updateWallet({
     } else {
       update.$inc.amount = Math.abs(amount);
     }
-
-    console.log(-Math.abs(amount), Math.abs(amount));
   }
 
   if (resetOwnerAliasId) {
@@ -272,16 +270,17 @@ function updateWallet({
  */
 function updateAccess(params) {
   const accessParams = params;
+  const { callback } = params;
   accessParams.objectId = params.walletId;
   accessParams.object = Wallet;
   accessParams.callback = ({ error, data }) => {
     if (error) {
-      accessParams.callback({ error });
+      callback({ error });
 
       return;
     }
 
-    accessParams.callback({ data: { wallet: data.object } });
+    callback({ data: { wallet: data.object } });
   };
 
   if (params.shouldRemove) {

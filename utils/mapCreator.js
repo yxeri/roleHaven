@@ -1,5 +1,5 @@
 /*
- Copyright 2017 Aleksandar Jankovic
+ Copyright 2017 Carmilla Mina Jankovic
 
  Licensed under the Apache License, Version 2.0 (the "License");
  you may not use this file except in compliance with the License.
@@ -119,10 +119,14 @@ function createPosition({ position, layerName }) {
     positionStructure,
     accessLevel: appConfig.importedPositionMinAccessLevel,
     origin: dbConfig.PositionOrigins.GOOGLE,
-    positionName: typeof position.name === 'string' ? position.name : 'Unnamed position',
+    positionName: typeof position.name === 'string'
+      ? position.name
+      : 'Unnamed position',
     isStationary: true,
     positionType: layerName.toLowerCase(),
-    description: position.description ? position.description.replace(/<img .+?\/>/, '').split(/<br>/) : ['No information'],
+    description: position.description
+      ? position.description.replace(/<img .+?\/>/, '').split(/<br>/)
+      : [],
   };
 }
 

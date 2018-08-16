@@ -1,5 +1,5 @@
 /*
- Copyright 2017 Aleksandar Jankovic
+ Copyright 2017 Carmilla Mina Jankovic
 
  Licensed under the Apache License, Version 2.0 (the "License");
  you may not use this file except in compliance with the License.
@@ -61,6 +61,7 @@ class GeneralError {
   constructor({
     errorObject,
     extraData,
+    suppressPrint,
     text = ['Something went wrong'],
     type = ErrorTypes.GENERAL,
     verbose = true,
@@ -69,7 +70,7 @@ class GeneralError {
     this.type = type;
     this.extraData = extraData;
 
-    if (appConfig.verboseError || verbose) {
+    if ((appConfig.verboseError || verbose) && !suppressPrint) {
       console.error(`Error Type: ${type}. `, text.join(' ').replace(/"password": ".*"/g, '"password": true'));
       printError(errorObject);
     }

@@ -1,5 +1,5 @@
 /*
- Copyright 2017 Aleksandar Jankovic
+ Copyright 2017 Carmilla Mina Jankovic
 
  Licensed under the Apache License, Version 2.0 (the "License");
  you may not use this file except in compliance with the License.
@@ -58,8 +58,6 @@ function getSimpleMsgById({
             return;
           }
 
-          console.log('found simple', msgData);
-
           const { simpleMsg: foundSimpleMsg } = msgData;
           const {
             hasAccess,
@@ -99,6 +97,7 @@ function sendSimpleMsg({
   io,
   token,
   callback,
+  socket,
 }) {
   authenticator.isUserAllowed({
     token,
@@ -141,7 +140,11 @@ function sendSimpleMsg({
             },
           };
 
-          io.emit('simpleMsg', dataToSend);
+          if (socket) {
+            socket.broadcast.emit(dbConfig.EmitTypes.SIMPLEMSG, dataToSend);
+          } else {
+            io.emit(dbConfig.EmitTypes.SIMPLEMSG, dataToSend);
+          }
 
           callback(dataToSend);
         },
@@ -165,6 +168,7 @@ function updateSimpleMsg({
   simpleMsg,
   io,
   options,
+  socket,
 }) {
   authenticator.isUserAllowed({
     token,
@@ -221,7 +225,11 @@ function updateSimpleMsg({
                 },
               };
 
-              io.emit(dbConfig.EmitTypes.SIMPLEMSG, dataToSend);
+              if (socket) {
+                socket.broadcast.emit(dbConfig.EmitTypes.SIMPLEMSG, dataToSend);
+              } else {
+                io.emit(dbConfig.EmitTypes.SIMPLEMSG, dataToSend);
+              }
 
               callback(dataToSend);
             },
@@ -243,6 +251,8 @@ function removeSimpleMsg({
   token,
   callback,
   simpleMsgId,
+  io,
+  socket,
 }) {
   authenticator.isUserAllowed({
     token,
@@ -296,6 +306,12 @@ function removeSimpleMsg({
                   changeType: dbConfig.ChangeTypes.REMOVE,
                 },
               };
+
+              if (socket) {
+                socket.broadcast.emit(dbConfig.EmitTypes.SIMPLEMSG, dataToSend);
+              } else {
+                io.emit(dbConfig.EmitTypes.SIMPLEMSG, dataToSend);
+              }
 
               callback(dataToSend);
             },
