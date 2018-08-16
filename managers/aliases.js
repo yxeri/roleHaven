@@ -62,6 +62,7 @@ function createAlias({
 
       const aliasToSave = alias;
       aliasToSave.ownerId = user.objectId;
+      aliasToSave.aliasName = textTools.trimSpace(aliasToSave.aliasName);
       aliasToSave.aliasNameLowerCase = aliasToSave.aliasName.toLowerCase();
 
       dbAlias.createAlias({

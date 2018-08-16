@@ -23,7 +23,6 @@ const { dbConfig } = require('../../config/defaults/config');
 const dbAlias = require('./alias');
 const dbTeam = require('./team');
 
-
 // Access levels: Lowest / Lower / Middle / Higher / Highest / God
 // 1 / 3 / 5 / 7 / 9 / 11
 
@@ -36,6 +35,7 @@ const userSchema = new mongoose.Schema(dbConnector.createSchema({
   socketId: String,
   lastOnline: Date,
   registerDevice: String,
+  description: [String],
   hasFullAccess: { type: Boolean, default: false },
   isVerified: { type: Boolean, default: false },
   isBanned: { type: Boolean, default: false },

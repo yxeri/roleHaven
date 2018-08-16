@@ -101,7 +101,7 @@ function modifyObject({ object }) {
   const modifiedObject = object;
 
   modifiedObject.objectId = object._id.toString(); // eslint-disable-line no-underscore-dangle
-  modifiedObject.password = object.password === true;
+  modifiedObject.password = typeof object.password === 'string';
 
   return modifiedObject;
 }

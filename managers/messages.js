@@ -150,6 +150,8 @@ function getMessagesByRoom({
 
       roomManager.getRoomById({
         roomId,
+        internalCallUser: authUser,
+        needsAccess: true,
         callback: ({ error: roomError }) => {
           if (roomError) {
             callback({ error: roomError });

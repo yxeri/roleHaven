@@ -27,6 +27,36 @@ const dbUser = require('../db/connectors/user');
 const managerHelper = require('../helpers/manager');
 
 /**
+ * Auth to room with password.
+ * @param {Object} params Parameters.
+ * @param {string} params.password Password for room.
+ * @param {Function} params.callback Callback.
+ * @param {string} [params.roomId] Id of the room.
+ * @param {string} [params.roomName] Name of the room.
+ */
+function authToRoom({
+  roomId,
+  roomName,
+  password,
+  callback,
+}) {
+  dbRoom.authToRoom({
+    roomId,
+    roomName,
+    password,
+    callback: ({ error, data }) => {
+      if (error) {
+        callback({ error });
+
+        return;
+      }
+
+      callback({ data });
+    },
+  });
+}
+
+/**
  * Get room by Id or name.
  * @param {Object} params - Parameter.
  * @param {string} params.token - jwt.
@@ -45,23 +75,103 @@ function getRoomById({
   internalCallUser,
   needsAccess,
 }) {
-  managerHelper.getObjectById({
-    token,
+  authenticator.isUserAllowed({
     internalCallUser,
-    callback,
-    needsAccess,
-    objectId: roomId,
-    searchParams: [{
-      paramValue: roomName,
-      paramName: 'roomName',
-    }, {
-      paramValue: password,
-      paramName: 'password',
-    }],
-    objectType: 'room',
-    objectIdType: 'roomId',
-    dbCallFunc: dbRoom.getRoomById,
+    token,
     commandName: dbConfig.apiCommands.GetRoom.name,
+    callback: ({ error: authError, data: authData }) => {
+      if (authError) {
+        callback({ error: authError });
+
+        return;
+      }
+
+      const { user: authUser } = authData;
+      const returnFunc = ({
+        callback: returnCallback,
+        room: roomToReturn,
+        hasFullAccess: accessedFullAccess,
+      }) => {
+        const dataToReturn = {
+          data: {
+            room: !accessedFullAccess
+              ? managerHelper.stripObject({ object: roomToReturn })
+              : roomToReturn,
+          },
+        };
+
+        returnCallback(dataToReturn);
+      };
+
+      dbRoom.getRoomById({
+        roomId,
+        roomName,
+        callback: ({ error, data }) => {
+          if (error) {
+            callback({ error });
+
+            return;
+          }
+
+          const { room } = data;
+
+          const {
+            canSee,
+            hasAccess,
+            hasFullAccess,
+          } = authenticator.hasAccessTo({
+            objectToAccess: room,
+            toAuth: authUser,
+          });
+
+          if (!canSee || (needsAccess && !hasAccess)) {
+            const accessError = new errorCreator.NotAllowed({ name: `${dbConfig.apiCommands.GetRoom.name}. User: ${authUser.objectId}. Access: 'Room' ${room.objectId}` });
+
+            callback({ error: accessError });
+
+            return;
+          }
+
+          if (room.password && !hasAccess) {
+            authToRoom({
+              roomId,
+              roomName,
+              password,
+              callback: ({ error: roomAuthError, data: roomAuthData }) => {
+                if (roomAuthError) {
+                  callback({ error: roomAuthError });
+
+                  return;
+                } else if (!roomAuthData.hasAuthed) {
+                  const accessError = new errorCreator.NotAllowed({
+                    name: `${dbConfig.apiCommands.GetRoom.name}. User: ${authUser.objectId}. Access: 'Room' ${room.objectId}`,
+                    extraData: { param: 'password' },
+                  });
+
+                  callback({ error: accessError });
+
+                  return;
+                }
+
+                returnFunc({
+                  callback,
+                  room,
+                  hasFullAccess,
+                });
+              },
+            });
+
+            return;
+          }
+
+          returnFunc({
+            callback,
+            room,
+            hasFullAccess,
+          });
+        },
+      });
+    },
   });
 }
 
@@ -351,6 +461,10 @@ function createRoom({
         callback({ error: new errorCreator.NotAllowed({ name: 'too high access level or visibility' }) });
 
         return;
+      } else if (room.password && room.password.length > appConfig.passwordMaxLength) {
+        callback({ error: new errorCreator.InvalidCharacters({ expected: 'password too long' }) });
+
+        return;
       }
 
       const newRoom = room;
@@ -436,6 +550,7 @@ function follow({
   roomId,
   io,
   callback,
+  socket,
 }) {
   const idToAdd = aliasId || userId;
 
@@ -469,6 +584,8 @@ function follow({
                 return;
               }
 
+              const { user: updatedUser } = followData.data;
+
               const toReturn = {
                 data: {
                   user: { objectId: idToAdd },
@@ -481,6 +598,12 @@ function follow({
                   user: { objectId: idToAdd },
                   room: { objectId: roomId },
                   changeType: dbConfig.ChangeTypes.CREATE,
+                },
+              };
+              const userToReturn = {
+                data: {
+                  user: updatedUser,
+                  changeType: dbConfig.ChangeTypes.UPDATE,
                 },
               };
 
@@ -496,14 +619,20 @@ function follow({
                     return;
                   }
 
-                  clients.map(socketId => io.sockets.connected[socketId]).forEach((socket) => {
-                    socket.join(roomId);
+                  clients.map(socketId => io.sockets.connected[socketId]).forEach((connectedSocket) => {
+                    connectedSocket.join(roomId);
                   });
                 });
               }
 
-              io.to(idToAdd).emit(dbConfig.EmitTypes.FOLLOW, toReturn);
-              io.to(roomId).emit(dbConfig.EmitTypes.FOLLOWER, toSend);
+              if (socket) {
+                socket.to(idToAdd).emit(dbConfig.EmitTypes.USER, userToReturn);
+                socket.to(roomId).emit(dbConfig.EmitTypes.FOLLOWER, toSend);
+              } else {
+                io.to(idToAdd).emit(dbConfig.EmitTypes.FOLLOW, toReturn);
+                io.to(idToAdd).emit(dbConfig.EmitTypes.USER, userToReturn);
+                io.to(roomId).emit(dbConfig.EmitTypes.FOLLOWER, toSend);
+              }
 
               callback(toReturn);
             },

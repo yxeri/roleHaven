@@ -26,6 +26,7 @@ const authenticator = require('../helpers/authenticator');
 const dbRoom = require('../db/connectors/room');
 const socketUtils = require('../utils/socketIo');
 const managerHelper = require('../helpers/manager');
+const textTools = require('../utils/textTools');
 
 /**
  * Get a team.
@@ -335,6 +336,10 @@ function createTeam({
       const { user: authUser } = data;
       const { ownerAliasId } = team;
       const newTeam = team;
+      newTeam.teamName = textTools.trimSpace(newTeam.teamName);
+      newTeam.teamNameLowerCase = newTeam.teamName;
+      newTeam.shortName = textTools.trimSpace(newTeam.shortName);
+      newTeam.shortNameLowerCase = newTeam.shortName;
       newTeam.ownerId = authUser.objectId;
       newTeam.isVerified = !appConfig.teamVerify;
 

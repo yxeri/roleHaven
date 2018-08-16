@@ -46,8 +46,6 @@ const Room = mongoose.model('Room', roomSchema);
 function cleanParameters(room) {
   const modifiedRoom = room;
 
-  modifiedRoom.password = typeof room.password === 'string';
-
   return modifiedRoom;
 }
 
@@ -454,17 +452,13 @@ function updateRoom({
  * @param {Object} params - Parameters.
  * @param {string} params.roomId - Id of the room.
  * @param {Function} params.callback - Callback.
- * @param {string} [params.password] - Password for the room.
  */
 function getRoomById({
   roomId,
   roomName,
-  password,
   callback,
 }) {
   const query = {};
-
-  if (password) { query.password = password; }
 
   if (roomId) {
     query._id = roomId;
@@ -475,6 +469,53 @@ function getRoomById({
   getRoom({
     callback,
     query,
+  });
+}
+
+/**
+ * Get room by Id.
+ * @param {Object} params - Parameters.
+ * @param {string} params.roomId - Id of the room.
+ * @param {Function} params.callback - Callback.
+ * @param {string} params.password - Password for the room.
+ */
+function authToRoom({
+  roomId,
+  roomName,
+  password,
+  callback,
+}) {
+  const query = {
+    password,
+  };
+
+  if (roomId) {
+    query._id = roomId;
+  } else {
+    query.roomName = roomName;
+  }
+
+  getRoom({
+    query,
+    callback: ({ error }) => {
+      if (error) {
+        if (error.type === errorCreator.ErrorTypes.DOESNOTEXIST) {
+          callback({
+            data: { hasAuthed: false },
+          });
+
+          return;
+        }
+
+        callback({ error });
+
+        return;
+      }
+
+      callback({
+        data: { hasAuthed: true },
+      });
+    },
   });
 }
 
@@ -620,3 +661,4 @@ exports.getRoomsByUser = getRoomsByUser;
 exports.getRoomsByIds = getRoomsByIds;
 exports.getAllRooms = getAllRooms;
 exports.doesWhisperRoomExist = doesWhisperRoomExist;
+exports.authToRoom = authToRoom;
