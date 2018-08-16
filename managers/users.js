@@ -943,9 +943,6 @@ function updateUser({
                 io.emit(dbConfig.EmitTypes.USER, dataToSend);
               }
 
-
-              io.to(userId).emit(dbConfig.EmitTypes.USER, creatorDataToSend);
-
               callback(creatorDataToSend);
             },
           });
