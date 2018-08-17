@@ -24,7 +24,7 @@ let clientConfig = {};
 let config = {};
 
 try {
-  clientConfig = require('../../private/config/config'); // eslint-disable-line
+  clientConfig = require('../../../private/config/config'); // eslint-disable-line
 } catch (err) {
   console.log('Did not find client config. Using defaults.');
 }
