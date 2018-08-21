@@ -521,6 +521,8 @@ function getTransactionsByUser({
             return;
           }
 
+          console.log(transactionData);
+
           const { transactions } = transactionData;
           const allTransactions = transactions.map((transaction) => {
             const { hasFullAccess } = authenticator.hasAccessTo({
