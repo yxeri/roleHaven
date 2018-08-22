@@ -25,6 +25,8 @@ const aliasSchema = new mongoose.Schema(dbConnector.createSchema({
   aliasName: { type: String, unique: true },
   aliasNameLowerCase: { type: String, unique: true },
   isIdentity: { type: Boolean, default: false },
+  isVerified: { type: Boolean, default: false },
+  isBanned: { type: Boolean, default: false },
   fullName: { type: String },
   picture: dbConnector.pictureSchema,
   partOfTeams: { type: [String], default: [] },

@@ -590,7 +590,7 @@ function createUserQuery({ user, noVisibility }) {
     objectId,
     partOfTeams,
     accessLevel,
-    aliases,
+    aliases = [],
   } = user;
   const query = {
     bannedIds: { $nin: [objectId] },
@@ -598,9 +598,8 @@ function createUserQuery({ user, noVisibility }) {
       { isPublic: true },
       { ownerId: objectId },
       { ownerAliasId: objectId },
-      { userIds: { $in: [objectId] } },
+      { userIds: { $in: aliases.concat([objectId]) } },
       { teamIds: { $in: partOfTeams } },
-      { aliases: { $in: aliases } },
     ],
   };
 

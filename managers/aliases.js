@@ -64,6 +64,7 @@ function createAlias({
       aliasToSave.ownerId = user.objectId;
       aliasToSave.aliasName = textTools.trimSpace(aliasToSave.aliasName);
       aliasToSave.aliasNameLowerCase = aliasToSave.aliasName.toLowerCase();
+      aliasToSave.isVerified = !appConfig.userVerify;
 
       dbAlias.createAlias({
         alias: aliasToSave,
@@ -146,9 +147,6 @@ function createAlias({
 
                   if (socket) {
                     socket.join(createdAlias.objectId);
-                    socket.broadcast.emit(dbConfig.EmitTypes.USER, dataToSend);
-                    socket.broadcast.emit(dbConfig.EmitTypes.ROOM, roomDataToSend);
-                    socket.broadcast.emit(dbConfig.EmitTypes.WALLET, walletDataToSend);
                   } else {
                     const userSocket = socketUtils.getUserSocket({ io, socketId: user.socketId });
 
@@ -157,10 +155,11 @@ function createAlias({
                     }
 
                     io.to(user.objectId).emit(dbConfig.EmitTypes.ALIAS, creatorDataToSend);
-                    io.emit(dbConfig.EmitTypes.USER, dataToSend);
-                    io.emit(dbConfig.EmitTypes.ROOM, roomDataToSend);
-                    io.emit(dbConfig.EmitTypes.WALLET, walletDataToSend);
                   }
+
+                  io.emit(dbConfig.EmitTypes.USER, dataToSend);
+                  io.emit(dbConfig.EmitTypes.ROOM, roomDataToSend);
+                  io.emit(dbConfig.EmitTypes.WALLET, walletDataToSend);
 
                   callback(creatorDataToSend);
                 },

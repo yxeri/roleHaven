@@ -149,8 +149,12 @@ function getWalletsByTeams({ teamIds, callback }) {
 function getWalletsByUser({
   user,
   callback,
+  noVisibility,
 }) {
-  const query = dbConnector.createUserQuery({ user });
+  const query = dbConnector.createUserQuery({
+    user,
+    noVisibility,
+  });
 
   getWallets({
     query,

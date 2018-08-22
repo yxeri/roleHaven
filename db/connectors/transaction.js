@@ -19,6 +19,7 @@
 const mongoose = require('mongoose');
 const dbConnector = require('../databaseConnector');
 const errorCreator = require('../../error/errorCreator');
+const dbWallet = require('./wallet');
 
 const transactionSchema = new mongoose.Schema(dbConnector.createSchema({
   amount: Number,
@@ -137,20 +138,39 @@ function getTransactionsByWallet({ walletId, callback }) {
  * @param {Function} params.callback - Callback.
  */
 function getTransactionsByUser({ user, callback }) {
-  const query = dbConnector.createUserQuery({ user });
-
-  getTransactions({
-    query,
-    callback: ({ error, data }) => {
-      if (error) {
-        callback({ error });
+  dbWallet.getWalletsByUser({
+    user,
+    noVisibility: true,
+    callback: ({ error: walletError, data: walletData }) => {
+      if (walletError) {
+        callback({ error: walletError });
 
         return;
       }
 
-      const { transactions } = data;
+      const { wallets } = walletData;
+      const walletIds = wallets.map(wallet => wallet.objectId);
+      const query = {
+        $or: [
+          { toWalletId: { $in: walletIds } },
+          { fromWalletId: { $in: walletIds } },
+        ],
+      };
 
-      callback({ data: { transactions } });
+      getTransactions({
+        query,
+        callback: ({ error, data }) => {
+          if (error) {
+            callback({ error });
+
+            return;
+          }
+
+          const { transactions } = data;
+
+          callback({ data: { transactions } });
+        },
+      });
     },
   });
 }
