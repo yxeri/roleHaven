@@ -134,7 +134,9 @@ function getGooglePositions({ callback }) {
 
     layers.forEach((layer) => {
       layer.Placemark.forEach((position) => {
-        positions.push(createPosition({ position, layerName: layer.name }));
+        if (position.name && !position.name.toLowerCase().includes('polygon')) {
+          positions.push(createPosition({ position, layerName: layer.name }));
+        }
       });
     });
 
