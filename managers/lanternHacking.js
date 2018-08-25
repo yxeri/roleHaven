@@ -27,7 +27,7 @@ const lanternRoundManager = require('../managers/lanternRounds');
 const lanternStationManager = require('../managers/lanternStations');
 const lanternTeamManager = require('../managers/lanternTeams');
 const poster = require('../helpers/poster');
-const messenger = require('../helpers/messenger');
+// const messenger = require('../helpers/messenger');
 
 /**
  * Lower/increase signal value on all stations towards default value
@@ -354,17 +354,17 @@ function manipulateStation({ socket, io, password, boostingSignal, token, callba
                           return;
                         }
 
-                        const { stationName } = stationData.data.station;
+                        // const { stationName } = stationData.data.station;
 
-                        messenger.sendMsg({
-                          socket,
-                          io,
-                          message: {
-                            lanternHack: true,
-                            roomName: 'public',
-                            text: [`ACTIVITY DETECTED: user ${user.userName} has ${boostingSignal ? 'blocked' : 'amplified'} the signal to station ${stationName}`],
-                          },
-                        });
+                        // messenger.sendMsg({
+                        //   socket,
+                        //   io,
+                        //   message: {
+                        //     lanternHack: true,
+                        //     roomName: 'wrecking',
+                        //     text: [`ACTIVITY DETECTED: user ${user.userName} has ${boostingSignal ? 'blocked' : 'amplified'} the signal to station ${stationName}`],
+                        //   },
+                        // });
 
                         callback({ data: { success: true, boostingSignal } });
                       },
