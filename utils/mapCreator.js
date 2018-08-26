@@ -123,11 +123,15 @@ function getGooglePositions({ callback }) {
     const layers = convertToJson(body).kml.Document.Folder;
 
     layers.forEach((layer) => {
-      layer.Placemark.forEach((position) => {
-        if (position.name && !position.name.toLowerCase().includes('polygon')) {
-          positions.push(createPosition({ position, layerName: layer.name }));
-        }
-      });
+      const layerName = layer.name.toLowerCase();
+
+      if (layerName === 'lantern' || layerName === 'world' || layerName === 'local') {
+        layer.Placemark.forEach((position) => {
+          if (position.name && !position.name.toLowerCase().includes('polygon')) {
+            positions.push(createPosition({ position, layerName: layer.name }));
+          }
+        });
+      }
     });
 
     callback({ data: { positions } });
