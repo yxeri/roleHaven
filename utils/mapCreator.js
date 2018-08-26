@@ -54,17 +54,18 @@ function createCoordsCollection(coords) {
      * Google Maps bugs out and will sometimes send large integer instead of double (64.5565 becomes 645565)
      * This adds a dot where needed
      */
-    if (!isNaN(parseInt(longitude.substr(0, 2), 10)) && coords[i].charAt(2) !== '.') {
-      longitude = `${coords[i].substr(0, 2)}.${coords[i].substr(2)}`;
-    } else if (!isNaN(parseInt(latitude.substr(0, 2), 10)) && coords[i + 1].charAt(2) !== '.') {
-      latitude = `${coords[i + 1].substr(0, 2)}.${coords[i + 1].substr(2)}`;
+    // if (!isNaN(parseInt(longitude.substr(0, 2), 10)) && coords[i].charAt(2) !== '.') {
+    //   longitude = `${coords[i].substr(0, 2)}.${coords[i].substr(2)}`;
+    // } else if (!isNaN(parseInt(latitude.substr(0, 2), 10)) && coords[i + 1].charAt(2) !== '.') {
+    //   latitude = `${coords[i + 1].substr(0, 2)}.${coords[i + 1].substr(2)}`;
+    // }
+
+    if (longitude && latitude && longitude !== '0' && latitude !== '0') {
+      coordsCollection.push({
+        latitude: parseFloat(latitude.replace('0\n                ', '')),
+        longitude: parseFloat(longitude.replace('0\n                ', '')),
+      });
     }
-
-
-    coordsCollection.push({
-      latitude: parseFloat(latitude),
-      longitude: parseFloat(longitude),
-    });
   }
 
   return coordsCollection;
