@@ -269,7 +269,7 @@ config.apiCommands = {
   CreateAlias: config.apiCommands.CreateAlias || {
     name: 'CreateAlias',
     accessLevel: config.AccessLevels.LOWERADMIN,
-    selfAccessLevel: config.AccessLevels.BASIC,
+    selfAccessLevel: config.AccessLevels.ADVANCED,
   },
   GetAliases: config.apiCommands.GetAliases || {
     name: 'GetAliases',
