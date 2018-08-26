@@ -67,8 +67,8 @@ function handle(io) {
       title: appConfig.title,
       gMapsKey: appConfig.gMapsKey,
       socketPath: appConfig.socketPath,
-      mainJs: 'scripts/main.js?2018=true',
-      mainCss: !isNaN(req.query.style) ? `styles/${req.query.style}.css` : 'styles/main.css?2018=true',
+      mainJs: 'scripts/main.js?20181=true',
+      mainCss: !isNaN(req.query.style) ? `styles/${req.query.style}.css` : 'styles/main.css?20181=true',
       dyslexic: req.query.dyslexic,
     });
   });
