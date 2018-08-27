@@ -65,7 +65,7 @@ const coordinatesSchema = {
   },
 };
 
-mongoose.connect(dbPath, {}, (err) => {
+mongoose.connect(dbPath, { useNewUrlParser: true }, (err) => {
   if (err) {
     console.error('Failed to connect to the database');
 
