@@ -187,7 +187,9 @@ function getUser({
         callback({ error });
 
         return;
-      } else if (!data.object) {
+      }
+
+      if (!data.object) {
         callback({
           error: new errorCreator.DoesNotExist({
             suppressPrint: supressExistError,
@@ -215,9 +217,9 @@ function getUserById({
   callback,
   supressExistError,
 }) {
-  const query = userId ?
-    { _id: userId } :
-    { username };
+  const query = userId
+    ? { _id: userId }
+    : { username };
 
   getUser({
     query,
@@ -320,7 +322,9 @@ function doesUserExist({ username, mailAddress, callback }) {
         callback({ error: new errorCreator.Database({ errorObject: error }) });
 
         return;
-      } else if (data.exists) {
+      }
+
+      if (data.exists) {
         callback({ data });
 
         return;
@@ -353,7 +357,9 @@ function createUser({
         callback({ error: nameData.error });
 
         return;
-      } else if (nameData.data.exists) {
+      }
+
+      if (nameData.data.exists) {
         callback({ error: new errorCreator.AlreadyExists({ name: `username: ${user.username}` }) });
 
         return;
@@ -498,7 +504,9 @@ function updateUser({
           callback({ error: existsData.error });
 
           return;
-        } else if (existsData.data.exists) {
+        }
+
+        if (existsData.data.exists) {
           callback({ error: new errorCreator.AlreadyExists({ name: `user mail ${mailAddress} username ${username}` }) });
 
           return;
@@ -653,9 +661,9 @@ function addToTeam({
           dbTeam.updateAccess({
             teamId,
             userIds,
-            userAdminIds: isAdmin ?
-              userIds :
-              undefined,
+            userAdminIds: isAdmin
+              ? userIds
+              : undefined,
             callback: ({ error: teamError, data: teamData }) => {
               if (teamError) {
                 callback({ error: teamError });

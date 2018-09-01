@@ -54,7 +54,9 @@ function handle(io) {
       restErrorChecker.checkAndSendError({ response, error: new errorCreator.InvalidData({ expected: 'params = { forumId }' }) });
 
       return;
-    } else if (!objectValidator.isValidData(request.body, { data: { forum: true } })) {
+    }
+
+    if (!objectValidator.isValidData(request.body, { data: { forum: true } })) {
       restErrorChecker.checkAndSendError({ response, error: new errorCreator.InvalidData({ expected: 'data = { forum: true }' }), sentData: request.body.data });
 
       return;

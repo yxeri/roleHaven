@@ -271,16 +271,18 @@ function getFullHistory({ token, callback }) {
 
                         if (aTime < bTime) {
                           return -1;
-                        } else if (aTime > bTime) {
+                        }
+
+                        if (aTime > bTime) {
                           return 1;
                         }
 
                         return 0;
                       }).forEach((message) => {
                         const messageToSave = {
-                          username: message.ownerAliasId ?
-                            aliases[message.ownerAliasId].aliasName :
-                            users[message.ownerId].username,
+                          username: message.ownerAliasId
+                            ? aliases[message.ownerAliasId].aliasName
+                            : users[message.ownerId].username,
                           roomName: roomsCollection[message.roomId].roomName,
                           time: message.customTimeCreated || message.timeCreated,
                         };
@@ -332,7 +334,9 @@ function sendBroadcastMsg({
         callback({ error });
 
         return;
-      } else if (!objectValidator.isValidData({ message, io }, { message: { text: true }, io: true })) {
+      }
+
+      if (!objectValidator.isValidData({ message, io }, { message: { text: true }, io: true })) {
         callback({ error: new errorCreator.InvalidData({ expected: '{ message: { text }, io }' }) });
 
         return;
@@ -395,7 +399,9 @@ function sendChatMsg({
         callback({ error });
 
         return;
-      } else if (!objectValidator.isValidData({ message, io }, { message: { text: true, roomId: true }, io: true })) {
+      }
+
+      if (!objectValidator.isValidData({ message, io }, { message: { text: true, roomId: true }, io: true })) {
         callback({ error: new errorCreator.InvalidData({ expected: '{ message: { text }, io }' }) });
 
         return;
@@ -473,7 +479,9 @@ function sendWhisperMsg({
         callback({ error });
 
         return;
-      } else if (!objectValidator.isValidData({ message, io }, { message: { text: true, roomId: true }, io: true })) {
+      }
+
+      if (!objectValidator.isValidData({ message, io }, { message: { text: true, roomId: true }, io: true })) {
         callback({ error: new errorCreator.InvalidData({ expected: '{ message: { text }, io }' }) });
 
         return;

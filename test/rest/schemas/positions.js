@@ -82,4 +82,3 @@ schemas.fullPositions = {
 };
 
 module.exports = schemas;
-

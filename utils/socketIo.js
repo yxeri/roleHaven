@@ -36,9 +36,9 @@ function getUserSocket({ io, socketId }) {
 function getSocketsByRoom({ io, roomId }) {
   const room = io.sockets.adapter.rooms[roomId];
 
-  return room ?
-    room.sockets :
-    [];
+  return room
+    ? room.sockets
+    : [];
 }
 
 /**

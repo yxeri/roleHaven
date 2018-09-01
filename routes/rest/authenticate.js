@@ -52,7 +52,9 @@ function handle() {
       restErrorChecker.checkAndSendError({ response, error: new errorCreator.InvalidData({ expected: 'data = { user: { password } }' }), sentData });
 
       return;
-    } else if (!request.body.data.user.username && !request.body.data.user.userId) {
+    }
+
+    if (!request.body.data.user.username && !request.body.data.user.userId) {
       sentData.user.password = typeof sentData.user.password !== 'undefined';
 
       restErrorChecker.checkAndSendError({ response, error: new errorCreator.InvalidData({ expected: 'userId or username has to be set' }), sentData });

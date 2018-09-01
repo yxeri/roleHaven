@@ -116,7 +116,9 @@ function getPosition({ filter, query, callback }) {
         callback({ error });
 
         return;
-      } else if (!data.object) {
+      }
+
+      if (!data.object) {
         callback({ error: new errorCreator.DoesNotExist({ name: `position ${JSON.stringify(query, null, 4)}` }) });
 
         return;
@@ -181,7 +183,9 @@ function createPosition({
         callback({ error: positionData.error });
 
         return;
-      } else if (positionData.data.exists) {
+      }
+
+      if (positionData.data.exists) {
         callback({
           error: new errorCreator.AlreadyExists({
             suppressExistsError,
@@ -275,7 +279,9 @@ function updatePosition({
           callback({ error: positionData.error });
 
           return;
-        } else if (positionData.data.exists) {
+        }
+
+        if (positionData.data.exists) {
           if (connectedToUser) {
             callback({ error: new errorCreator.AlreadyExists({ name: `position with connected user ${position.connectedToUser}` }) });
           } else {

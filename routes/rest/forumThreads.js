@@ -55,7 +55,9 @@ function handle(io) {
       restErrorChecker.checkAndSendError({ response, error: new errorCreator.InvalidData({ expected: '{ threadId }' }), sentData: request.params });
 
       return;
-    } else if (!objectValidator.isValidData(request.body, { data: { thread: true } })) {
+    }
+
+    if (!objectValidator.isValidData(request.body, { data: { thread: true } })) {
       restErrorChecker.checkAndSendError({ response, error: new errorCreator.InvalidData({ expected: '{ data: { thread: true } }' }), sentData: request.body.data });
 
       return;

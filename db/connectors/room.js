@@ -90,7 +90,9 @@ function getRoom({ query, callback }) {
         callback({ error });
 
         return;
-      } else if (!data.object) {
+      }
+
+      if (!data.object) {
         callback({ error: new errorCreator.DoesNotExist({ name: `room ${JSON.stringify(query, null, 4)}` }) });
 
         return;
@@ -152,7 +154,9 @@ function doesRoomExist({
     callback({ data: { exists: false } });
 
     return;
-  } else if (!roomName && !roomId) {
+  }
+
+  if (!roomName && !roomId) {
     callback({ error: new errorCreator.InvalidData({ expected: 'roomName || roomId' }) });
 
     return;
@@ -220,7 +224,9 @@ function createRoom({
         callback({ error: existsData.error });
 
         return;
-      } else if (existsData.data.exists) {
+      }
+
+      if (existsData.data.exists) {
         if (silentExistsError) {
           callback({ data: { exists: true } });
         } else {
@@ -423,7 +429,9 @@ function updateRoom({
           callback({ error });
 
           return;
-        } else if (data.exists) {
+        }
+
+        if (data.exists) {
           callback({ error: new errorCreator.AlreadyExists({ name: `roomName ${roomName}` }) });
 
           return;

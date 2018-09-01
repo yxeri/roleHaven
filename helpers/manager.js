@@ -103,7 +103,9 @@ function getObjectById({
             callback({ error: new errorCreator.NotAllowed({ name: `${commandName}. User: ${authUser.objectId}. Access: ${objectType} ${objectId}` }) });
 
             return;
-          } else if (!hasAccess) {
+          }
+
+          if (!hasAccess) {
             const dataToReturn = { data: {} };
             dataToReturn.data[objectType] = stripObject({ object: foundObject });
 
@@ -228,7 +230,9 @@ function getObjects({
 
               if (aName < bName) {
                 return -1;
-              } else if (aName > bName) {
+              }
+
+              if (aName > bName) {
                 return 1;
               }
 

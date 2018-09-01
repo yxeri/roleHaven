@@ -16,8 +16,8 @@
 
 'use strict';
 
-const { appConfig } = require('../config/defaults/config');
 const http = require('http');
+const { appConfig } = require('../config/defaults/config');
 const errorCreator = require('../error/errorCreator');
 
 /**

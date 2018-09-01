@@ -20,8 +20,8 @@
 
 const chai = require('chai');
 const chaiHttp = require('chai-http');
-const app = require('../../app');
 const chaiJson = require('chai-json-schema');
+const app = require('../../app');
 const authenticateSchemas = require('./schemas/authentications');
 const starterData = require('./testData/starter');
 const baseObjectSchemas = require('./schemas/baseObjects');

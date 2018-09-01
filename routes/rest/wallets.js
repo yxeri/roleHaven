@@ -125,7 +125,9 @@ function handle(io) {
       restErrorChecker.checkAndSendError({ response, error: new errorCreator.InvalidData({ expected: 'params = { walletId }' }) });
 
       return;
-    } else if (!objectValidator.isValidData(request.body, { data: { wallet: true } })) {
+    }
+
+    if (!objectValidator.isValidData(request.body, { data: { wallet: true } })) {
       restErrorChecker.checkAndSendError({ response, error: new errorCreator.InvalidData({ expected: '{ data: { wallet } }' }), sentData: request.body.data });
 
       return;

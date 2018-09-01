@@ -167,7 +167,9 @@ function handle(io) {
       restErrorChecker.checkAndSendError({ response, error: new errorCreator.InvalidData({ expected: 'params = { deviceId }' }) });
 
       return;
-    } else if (!objectValidator.isValidData(request.body, { data: { device: true } })) {
+    }
+
+    if (!objectValidator.isValidData(request.body, { data: { device: true } })) {
       restErrorChecker.checkAndSendError({ response, error: new errorCreator.InvalidData({ expected: 'data = { device }' }), sentData: request.body.data });
 
       return;

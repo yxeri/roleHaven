@@ -207,7 +207,9 @@ function handle(io) {
       restErrorChecker.checkAndSendError({ response, error: new errorCreator.InvalidData({ expected: 'params = { transactionId }' }) });
 
       return;
-    } else if (!objectValidator.isValidData(request.body, { data: { transaction: true } })) {
+    }
+
+    if (!objectValidator.isValidData(request.body, { data: { transaction: true } })) {
       restErrorChecker.checkAndSendError({ response, error: new errorCreator.InvalidData({ expected: 'data = { transaction }' }), sentData: request.body.data });
 
       return;
