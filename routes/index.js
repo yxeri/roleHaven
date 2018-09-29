@@ -59,7 +59,7 @@ function handle(io) {
       title: appConfig.title,
       gMapsKey: appConfig.gMapsKey,
       socketPath: appConfig.socketPath,
-      mainJs: 'scripts/main.js?new=1',
+      mainJs: 'scripts/main.js?new=2',
       mainCss: !isNaN(req.query.style) ? `styles/${req.query.style}.css` : 'styles/main.css',
       dyslexic: req.query.dyslexic,
     });
