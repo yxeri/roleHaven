@@ -71,7 +71,9 @@ function getDeviceById({
             callback({ error: errorCreator.NotAllowed({ name: `device ${deviceId}` }) });
 
             return;
-          } else if (!hasFullAccess) {
+          }
+
+          if (!hasFullAccess) {
             callback({ data: { device: managerHelper.stripObject({ object: device }) } });
 
             return;

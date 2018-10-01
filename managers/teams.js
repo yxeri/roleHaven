@@ -76,7 +76,9 @@ function getTeamById({
             callback({ error: errorCreator.NotAllowed({ name: `get team ${teamId}` }) });
 
             return;
-          } else if (!hasAccess) {
+          }
+
+          if (!hasAccess) {
             callback({ data: { team: managerHelper.stripObject({ object: foundTeam }) } });
 
             return;
@@ -323,11 +325,15 @@ function createTeam({
         callback({ error });
 
         return;
-      } else if (team.teamName.length > appConfig.teamNameMaxLength || team.shortName.length > appConfig.shortTeamMaxLength) {
+      }
+
+      if (team.teamName.length > appConfig.teamNameMaxLength || team.shortName.length > appConfig.shortTeamMaxLength) {
         callback({ error: new errorCreator.InvalidData({ name: `Team name length: ${appConfig.teamNameMaxLength}. Short name length: ${appConfig.shortTeamMaxLength}` }) });
 
         return;
-      } else if (dbConfig.protectedNames.indexOf(team.teamName.toLowerCase()) > -1 || dbConfig.protectedNames.indexOf(team.shortName.toLowerCase()) > -1) {
+      }
+
+      if (dbConfig.protectedNames.indexOf(team.teamName.toLowerCase()) > -1 || dbConfig.protectedNames.indexOf(team.shortName.toLowerCase()) > -1) {
         callback({ error: new errorCreator.AlreadyExists({ expected: 'not protected name' }) });
 
         return;
@@ -347,7 +353,9 @@ function createTeam({
         callback({ error: new errorCreator.NotAllowed({ name: `Creating team with alias ${ownerAliasId}. User ${authUser.objectId} does not have access to the alias` }) });
 
         return;
-      } else if (authUser.partOfTeams > appConfig.maxUserTeam) {
+      }
+
+      if (authUser.partOfTeams > appConfig.maxUserTeam) {
         callback({ error: new errorCreator.InvalidLength({ expected: `User is part of ${authUser.partOfTeams.length}. Max allowed: ${appConfig.maxUserTeam}` }) });
 
         return;
@@ -484,7 +492,9 @@ function inviteToTeam({
             callback({ error: new errorCreator.NotAllowed({ name: `invite to team ${invitation.itemId} with alias ${ownerAliasId}` }) });
 
             return;
-          } else if (foundTeam.members.includes(memberId)) {
+          }
+
+          if (foundTeam.members.includes(memberId)) {
             callback({ error: new errorCreator.AlreadyExists({ name: `invite to team ${invitation.itemId}. User ${invitation.receiverId} already a member` }) });
 
             return;
@@ -628,7 +638,9 @@ function getTeamsByUser({
 
             if (aName < bName) {
               return -1;
-            } else if (aName > bName) {
+            }
+
+            if (aName > bName) {
               return 1;
             }
 

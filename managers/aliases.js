@@ -48,11 +48,15 @@ function createAlias({
         callback({ error });
 
         return;
-      } else if (alias.aliasName.length > appConfig.usernameMaxLength || alias.aliasName.length < appConfig.usernameMinLength) {
+      }
+
+      if (alias.aliasName.length > appConfig.usernameMaxLength || alias.aliasName.length < appConfig.usernameMinLength) {
         callback({ error: new errorCreator.InvalidCharacters({ name: `Alias length: ${appConfig.usernameMinLength}-${appConfig.usernameMaxLength}` }) });
 
         return;
-      } else if (!textTools.hasAllowedText(alias.aliasName)) {
+      }
+
+      if (!textTools.hasAllowedText(alias.aliasName)) {
         callback({ error: new errorCreator.InvalidCharacters({ name: 'Alias', expected: 'a-z 0-9' }) });
 
         return;
@@ -224,7 +228,9 @@ function getAliasById({
             callback({ error: errorCreator.NotAllowed({ name: `alias ${aliasName || aliasId}` }) });
 
             return;
-          } else if (!hasAccess) {
+          }
+
+          if (!hasAccess) {
             callback({ data: { alias: managerHelper.stripObject({ object: alias }) } });
 
             return;
@@ -293,7 +299,9 @@ function getAliasesByUser({
 
             if (aName < bName) {
               return -1;
-            } else if (aName > bName) {
+            }
+
+            if (aName > bName) {
               return 1;
             }
 
@@ -469,9 +477,9 @@ function updateAccess({
             return;
           }
 
-          const dbFunc = shouldRemove ?
-            dbAlias.removeAccess :
-            dbAlias.addAccess;
+          const dbFunc = shouldRemove
+            ? dbAlias.removeAccess
+            : dbAlias.addAccess;
 
           dbFunc({
             userIds,

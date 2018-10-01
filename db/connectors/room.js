@@ -90,7 +90,9 @@ function getRoom({ query, callback }) {
         callback({ error });
 
         return;
-      } else if (!data.object) {
+      }
+
+      if (!data.object) {
         callback({ error: new errorCreator.DoesNotExist({ name: `room ${JSON.stringify(query, null, 4)}` }) });
 
         return;
@@ -152,7 +154,9 @@ function doesRoomExist({
     callback({ data: { exists: false } });
 
     return;
-  } else if (!roomName && !roomId) {
+  }
+
+  if (!roomName && !roomId) {
     callback({ error: new errorCreator.InvalidData({ expected: 'roomName || roomId' }) });
 
     return;
@@ -220,7 +224,9 @@ function createRoom({
         callback({ error: existsData.error });
 
         return;
-      } else if (existsData.data.exists) {
+      }
+
+      if (existsData.data.exists) {
         if (silentExistsError) {
           callback({ data: { exists: true } });
         } else {
@@ -384,7 +390,10 @@ function updateRoom({
   callback,
   options = {},
 }) {
-  const { resetOwnerAliasId } = options;
+  const {
+    resetOwnerAliasId,
+    resetPassword,
+  } = options;
   const {
     roomName,
     ownerAliasId,
@@ -392,6 +401,7 @@ function updateRoom({
     visibility,
     nameIsLocked,
     isAnonymous,
+    password,
   } = room;
   const update = {};
   const set = {};
@@ -401,6 +411,12 @@ function updateRoom({
     unset.ownerAliasId = '';
   } else if (ownerAliasId) {
     set.ownerAliasId = ownerAliasId;
+  }
+
+  if (resetPassword) {
+    unset.password = '';
+  } else if (password) {
+    set.password = password;
   }
 
   if (typeof nameIsLocked === 'boolean') { set.nameIsLocked = nameIsLocked; }
@@ -423,7 +439,9 @@ function updateRoom({
           callback({ error });
 
           return;
-        } else if (data.exists) {
+        }
+
+        if (data.exists) {
           callback({ error: new errorCreator.AlreadyExists({ name: `roomName ${roomName}` }) });
 
           return;

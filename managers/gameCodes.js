@@ -230,7 +230,9 @@ function useGameCode({
             callback({ error: getError });
 
             return;
-          } else if (getData.gameCode.ownerId === authUser.objectId) {
+          }
+
+          if (getData.gameCode.ownerId === authUser.objectId) {
             callback({ error: new errorCreator.NotAllowed({ name: 'useGameCode on yourself' }) });
 
             return;

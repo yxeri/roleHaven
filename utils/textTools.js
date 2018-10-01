@@ -73,10 +73,8 @@ function cleanText(text) {
  * @returns {boolean} Converted boolean.
  */
 function convertToBoolean(envar) {
-  if (envar === 'true') {
-    return true;
-  } else if (envar === 'false') {
-    return false;
+  if (envar) {
+    return envar === 'true';
   }
 
   return undefined;
@@ -90,9 +88,9 @@ function convertToBoolean(envar) {
 function convertToFloat(float) {
   const parsedFloat = parseFloat(float);
 
-  return Number.isNaN(parsedFloat) ?
-    0 :
-    parsedFloat;
+  return Number.isNaN(parsedFloat)
+    ? 0
+    : parsedFloat;
 }
 
 /**
@@ -103,9 +101,9 @@ function convertToFloat(float) {
 function convertToInt(int) {
   const parsedInt = parseInt(int, 10);
 
-  return Number.isNaN(parsedInt) ?
-    0 :
-    parsedInt;
+  return Number.isNaN(parsedInt)
+    ? 0
+    : parsedInt;
 }
 
 /**

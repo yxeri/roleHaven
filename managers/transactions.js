@@ -71,7 +71,9 @@ function getTransactionById({
             callback({ error: errorCreator.NotAllowed({ name: `transaction ${transactionId}` }) });
 
             return;
-          } else if (!hasAccess) {
+          }
+
+          if (!hasAccess) {
             callback({ data: { transaction: managerHelper.stripObject({ object: foundTransaction }) } });
 
             return;
@@ -154,7 +156,9 @@ function createTransaction({
     callback({ error: new errorCreator.InvalidData({ name: 'transfer to self' }) });
 
     return;
-  } else if (transaction.amount <= 0) {
+  }
+
+  if (transaction.amount <= 0) {
     callback({ error: new errorCreator.Insufficient({ name: 'amount is 0 or less' }) });
 
     return;

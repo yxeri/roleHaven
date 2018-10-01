@@ -65,7 +65,7 @@ const coordinatesSchema = {
   },
 };
 
-mongoose.connect(dbPath, {}, (err) => {
+mongoose.connect(dbPath, { useNewUrlParser: true }, (err) => {
   if (err) {
     console.error('Failed to connect to the database');
 
@@ -167,7 +167,9 @@ function verifyObject({
       callback({ error: new errorCreator.Database({ errorObject: err, name: 'verifyObject' }) });
 
       return;
-    } else if (!verified) {
+    }
+
+    if (!verified) {
       callback({ error: new errorCreator.DoesNotExist({ name: 'verify' }) });
 
       return;
@@ -252,7 +254,9 @@ function getObject({
       callback({ error: new errorCreator.Database({ errorObject: error, name: errorNameContent }) });
 
       return;
-    } else if (!foundObject) {
+    }
+
+    if (!foundObject) {
       callback({ data: { exists: false } });
 
       return;
@@ -361,7 +365,9 @@ function updateObject({
       callback({ error: new errorCreator.Database({ errorObject: err, name: errorNameContent }) });
 
       return;
-    } else if (!foundObject) {
+    }
+
+    if (!foundObject) {
       callback({
         error: new errorCreator.DoesNotExist({
           suppressPrint: suppressError,

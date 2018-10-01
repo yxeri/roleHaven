@@ -106,7 +106,9 @@ function getForum({ query, callback }) {
         callback({ error });
 
         return;
-      } else if (!data.object) {
+      }
+
+      if (!data.object) {
         callback({ error: new errorCreator.DoesNotExist({ name: `forum ${JSON.stringify(query, null, 4)}` }) });
 
         return;
@@ -152,7 +154,9 @@ function createForum({
         callback({ error });
 
         return;
-      } else if (data.exists) {
+      }
+
+      if (data.exists) {
         callback({ error: new errorCreator.AlreadyExists({ name: `createForum ${forum.title}` }) });
 
         return;
@@ -236,7 +240,9 @@ function updateForum({ forumId, forum, callback }) {
           callback({ error });
 
           return;
-        } else if (data.exists) {
+        }
+
+        if (data.exists) {
           callback({ error: new errorCreator.AlreadyExists({ name: `forum title ${forum.title}` }) });
 
           return;

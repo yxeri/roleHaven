@@ -70,17 +70,17 @@ function updateWallet({
 }) {
   const walletToUpdate = wallet;
   const { amount } = walletToUpdate;
-  walletToUpdate.amount = walletToUpdate.amount ?
-    Number.parseInt(walletToUpdate.amount, 10) :
-    undefined;
+  walletToUpdate.amount = walletToUpdate.amount
+    ? Number.parseInt(walletToUpdate.amount, 10)
+    : undefined;
 
   const {
     resetAmount,
     shouldDecreaseAmount,
   } = options;
-  const commandName = !amount && !resetAmount ?
-    dbConfig.apiCommands.UpdateWallet.name :
-    dbConfig.apiCommands.UpdateWalletAmount.name;
+  const commandName = !amount && !resetAmount
+    ? dbConfig.apiCommands.UpdateWallet.name
+    : dbConfig.apiCommands.UpdateWalletAmount.name;
 
   authenticator.isUserAllowed({
     token,
@@ -91,7 +91,9 @@ function updateWallet({
         callback({ error });
 
         return;
-      } else if (amount && amount <= 0) {
+      }
+
+      if (amount && amount <= 0) {
         callback({ error: new errorCreator.InvalidData({ name: `${commandName}. User: ${data.user.objectId}. Access wallet ${walletId} and update with negative amount.` }) });
 
         return;
@@ -107,7 +109,9 @@ function updateWallet({
             callback({ error: walletError });
 
             return;
-          } else if (shouldDecreaseAmount && amount && walletData.wallet.amount < amount) {
+          }
+
+          if (shouldDecreaseAmount && amount && walletData.wallet.amount < amount) {
             callback({ error: new errorCreator.Insufficient({ name: `${commandName}. User: ${data.user.objectId}. Access wallet ${walletId} and update amount without enough in wallet.` }) });
 
             return;

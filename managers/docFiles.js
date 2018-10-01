@@ -42,7 +42,9 @@ function getFileByAccess({ user, docFile }) {
     fullDocFile.isLocked = false;
 
     return { docFile: fullDocFile, isLocked: false };
-  } else if (hasAccess) {
+  }
+
+  if (hasAccess) {
     const strippedDocFile = managerHelper.stripObject({ object: docFile });
     strippedDocFile.isLocked = false;
 
@@ -166,19 +168,27 @@ function createDocFile({
         callback({ error });
 
         return;
-      } else if (!objectValidator.isValidData({ docFile }, { docFile: { code: true, text: true, title: true } })) {
+      }
+
+      if (!objectValidator.isValidData({ docFile }, { docFile: { code: true, text: true, title: true } })) {
         callback({ error: new errorCreator.InvalidData({ expected: '{ docFile: { code, text, title } }' }) });
 
         return;
-      } else if (docFile.code && (!textTools.hasAllowedText(docFile.code) || docFile.code.length > appConfig.docFileCodeMaxLength || docFile.code < appConfig.docFileCodeMinLength)) {
+      }
+
+      if (docFile.code && (!textTools.hasAllowedText(docFile.code) || docFile.code.length > appConfig.docFileCodeMaxLength || docFile.code < appConfig.docFileCodeMinLength)) {
         callback({ error: new errorCreator.InvalidCharacters({ expected: `Alphanumeric ${docFile.code}. Code length: ${appConfig.docFileCodeMinLength} - ${appConfig.docFileCodeMaxLength}` }) });
 
         return;
-      } else if (docFile.text.join('').length > appConfig.docFileMaxLength || docFile.text.join('') < appConfig.docFileMinLength) {
+      }
+
+      if (docFile.text.join('').length > appConfig.docFileMaxLength || docFile.text.join('') < appConfig.docFileMinLength) {
         callback({ error: new errorCreator.InvalidCharacters({ expected: `Text length: ${appConfig.docFileMinLength} - ${appConfig.docFileMaxLength}` }) });
 
         return;
-      } else if (docFile.title.length > appConfig.docFileTitleMaxLength || docFile.title < appConfig.docFileTitleMinLength) {
+      }
+
+      if (docFile.title.length > appConfig.docFileTitleMaxLength || docFile.title < appConfig.docFileTitleMinLength) {
         callback({ error: new errorCreator.InvalidCharacters({ expected: `Title length: ${appConfig.docFileTitleMinLength} - ${appConfig.docFileTitleMaxLength}` }) });
 
         return;
@@ -232,11 +242,15 @@ function updateDocFile({
         callback({ error });
 
         return;
-      } else if (docFile.text && docFile.text.join('').length > appConfig.docFileMaxLength) {
+      }
+
+      if (docFile.text && docFile.text.join('').length > appConfig.docFileMaxLength) {
         callback({ error: new errorCreator.InvalidCharacters({ expected: `Text length: ${appConfig.docFileMaxLength}.` }) });
 
         return;
-      } else if (docFile.title && docFile.title.length > appConfig.docFileTitleMaxLength) {
+      }
+
+      if (docFile.title && docFile.title.length > appConfig.docFileTitleMaxLength) {
         callback({ error: new errorCreator.InvalidCharacters({ expected: `Title length: ${appConfig.docFileTitleMaxLength}` }) });
 
         return;

@@ -101,7 +101,9 @@ function getAlias({ query, callback }) {
         callback({ error });
 
         return;
-      } else if (!data.object) {
+      }
+
+      if (!data.object) {
         callback({ error: new errorCreator.DoesNotExist({ name: `alias ${JSON.stringify(query, null, 4)}` }) });
 
         return;
@@ -157,9 +159,9 @@ function getAliasById({
   aliasName,
   callback,
 }) {
-  const query = aliasId ?
-    { _id: aliasId } :
-    { aliasName };
+  const query = aliasId
+    ? { _id: aliasId }
+    : { aliasName };
 
   getAlias({
     callback,
@@ -199,7 +201,9 @@ function createAlias({
         callback({ error: nameData.error });
 
         return;
-      } else if (nameData.data.exists) {
+      }
+
+      if (nameData.data.exists) {
         callback({ error: new errorCreator.AlreadyExists({ name: `aliasName ${alias.aliasName}` }) });
 
         return;
@@ -293,7 +297,9 @@ function updateAlias({
           callback({ error });
 
           return;
-        } else if (data.exists) {
+        }
+
+        if (data.exists) {
           callback({ error: new errorCreator.AlreadyExists({ name: `username ${aliasName}` }) });
 
           return;

@@ -71,7 +71,9 @@ function getSimpleMsgById({
             callback({ error: new errorCreator.NotAllowed({ name: `get simplemsg ${simpleMsgId}` }) });
 
             return;
-          } else if (!hasAccess) {
+          }
+
+          if (!hasAccess) {
             callback({ data: { simpleMsg: managerHelper.stripObject({ object: foundSimpleMsg }) } });
 
             return;
@@ -107,11 +109,15 @@ function sendSimpleMsg({
         callback({ error });
 
         return;
-      } else if (!objectValidator.isValidData({ text }, { text: true })) {
+      }
+
+      if (!objectValidator.isValidData({ text }, { text: true })) {
         callback({ error: new errorCreator.InvalidData({ expected: '{ text }' }) });
 
         return;
-      } else if (text.length === 0 || text.length > appConfig.messageMaxLength) {
+      }
+
+      if (text.length === 0 || text.length > appConfig.messageMaxLength) {
         callback({ error: new errorCreator.InvalidCharacters({ expected: `text length 1-${appConfig.messageMaxLength}` }) });
 
         return;

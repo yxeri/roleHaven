@@ -113,9 +113,9 @@ function handle(io) {
     roomManager.getRoomById({
       token,
       roomId,
-      password: request.body.data ?
-        request.body.data.password :
-        undefined,
+      password: request.body.data
+        ? request.body.data.password
+        : undefined,
       callback: ({ error, data }) => {
         if (error) {
           restErrorChecker.checkAndSendError({ response, error });
@@ -200,7 +200,9 @@ function handle(io) {
       restErrorChecker.checkAndSendError({ response, error: new errorCreator.InvalidData({ expected: 'params = { roomId }' }) });
 
       return;
-    } else if (!objectValidator.isValidData(request.body, { data: { room: true } })) {
+    }
+
+    if (!objectValidator.isValidData(request.body, { data: { room: true } })) {
       restErrorChecker.checkAndSendError({ response, error: new errorCreator.InvalidData({ expected: 'data = { room }' }), sentData: request.body.data });
 
       return;

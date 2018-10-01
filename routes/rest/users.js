@@ -130,7 +130,9 @@ function handle(io) {
       restErrorChecker.checkAndSendError({ response, error: new errorCreator.InvalidData({ expected: '{ userId }' }) });
 
       return;
-    } else if (!objectValidator.isValidData(request.body.data, { password: true })) {
+    }
+
+    if (!objectValidator.isValidData(request.body.data, { password: true })) {
       restErrorChecker.checkAndSendError({ response, error: new errorCreator.InvalidData({ expected: '{ password }' }), sentData });
 
       return;
@@ -233,7 +235,9 @@ function handle(io) {
       restErrorChecker.checkAndSendError({ response, error: new errorCreator.InvalidData({ expected: '{ userId }' }) });
 
       return;
-    } else if (!objectValidator.isValidData(request.body, { data: { user: true } })) {
+    }
+
+    if (!objectValidator.isValidData(request.body, { data: { user: true } })) {
       restErrorChecker.checkAndSendError({ response, error: new errorCreator.InvalidData({ expected: '{ data: { user } }' }), sentData: request.body.data });
 
       return;
