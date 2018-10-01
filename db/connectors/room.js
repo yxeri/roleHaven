@@ -390,7 +390,10 @@ function updateRoom({
   callback,
   options = {},
 }) {
-  const { resetOwnerAliasId } = options;
+  const {
+    resetOwnerAliasId,
+    resetPassword,
+  } = options;
   const {
     roomName,
     ownerAliasId,
@@ -398,6 +401,7 @@ function updateRoom({
     visibility,
     nameIsLocked,
     isAnonymous,
+    password,
   } = room;
   const update = {};
   const set = {};
@@ -407,6 +411,12 @@ function updateRoom({
     unset.ownerAliasId = '';
   } else if (ownerAliasId) {
     set.ownerAliasId = ownerAliasId;
+  }
+
+  if (resetPassword) {
+    unset.password = '';
+  } else if (password) {
+    set.password = password;
   }
 
   if (typeof nameIsLocked === 'boolean') { set.nameIsLocked = nameIsLocked; }
