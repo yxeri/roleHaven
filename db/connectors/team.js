@@ -30,6 +30,7 @@ const teamSchema = new mongoose.Schema(dbConnector.createSchema({
   members: { type: [String], default: [] },
   picture: dbConnector.pictureSchema,
   locationName: String,
+  isPermissionsOnly: { type: Boolean, default: false },
 }), { collection: 'teams' });
 
 const Team = mongoose.model('Team', teamSchema);
@@ -223,6 +224,7 @@ function updateTeam({
     ownerAliasId,
     isVerified,
     isProtected,
+    isPermissionsOnly,
   } = team;
   const { resetOwnerAliasId } = options;
   const update = {};
@@ -253,6 +255,8 @@ function updateTeam({
 
   if (typeof isVerified === 'boolean') { set.isVerified = isVerified; }
   if (typeof isProtected === 'boolean') { set.isProtected = isProtected; }
+  if (typeof isPermissionsOnly === 'boolean') { set.isPermissionsOnly = isPermissionsOnly; }
+
   if (teamName) {
     set.teamName = teamName;
     set.teamNameLowerCase = teamName.toLowerCase();
