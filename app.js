@@ -63,26 +63,12 @@ if (appConfig.mode !== appConfig.Modes.TEST) {
 }
 
 if (!appConfig.disablePositionImport) {
-  positionManager.getAndStoreGooglePositions({
-    io,
-    callback: ({ error, data }) => {
-      if (error) {
-        console.log('Failed to retrieve Google Maps positions');
-
-        return;
-      }
-
-      console.log(`Retrieved and saved ${data.positions.length + 1} positions from Google Maps`);
-    },
-  });
-
-  setInterval(() => {
-    // TODO Send positions to clients
+  const getGooglePositions = () => {
     positionManager.getAndStoreGooglePositions({
       io,
       callback: ({ error, data }) => {
         if (error) {
-          console.log('Failed to retrieve Google Maps positions');
+          console.log(error, 'Failed to retrieve Google Maps positions');
 
           return;
         }
@@ -90,6 +76,13 @@ if (!appConfig.disablePositionImport) {
         console.log(`Retrieved and saved ${data.positions.length + 1} positions from Google Maps`);
       },
     });
+  };
+
+  getGooglePositions();
+
+  setInterval(() => {
+    // TODO Send positions to clients
+    getGooglePositions();
   }, 3600000);
 }
 
