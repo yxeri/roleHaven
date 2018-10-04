@@ -62,7 +62,7 @@ function getAndStoreGooglePositions({
   callback = () => {},
 }) {
   if (!appConfig.mapLayersPath) {
-    callback({ error: new errorCreator.InvalidData({ name: 'Map layer is not set' }) });
+    callback({ error: new errorCreator.InvalidData({ expected: 'Map layer is not set' }) });
 
     return;
   }
