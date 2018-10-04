@@ -157,11 +157,7 @@ function getGooglePositions({ callback }) {
 
     layers.forEach((layer) => {
       layer.Placemark.forEach((position) => {
-        const newPosition = createPosition({ position, layerName: layer.name });
-
-        if (!/^polygon/i.test(newPosition.positionName)) {
-          positions.push();
-        }
+        positions.push(createPosition({ position, layerName: layer.name }));
       });
     });
 
