@@ -24,7 +24,7 @@ let clientConfig = {};
 let config = {};
 
 try {
-  clientConfig = require('../../../private/config/config'); // eslint-disable-line
+  clientConfig = Object.assign({},require('../../../../private/config/config')); // eslint-disable-line
 } catch (err) {
   console.log('Did not find client config. Using defaults.');
 }
@@ -200,7 +200,7 @@ config.scriptsPath = 'scripts';
 config.requiredPath = 'required';
 
 config.jsVersion = clientConfig && clientConfig.version
-  ? `${version}-${clientConfig.version}`
+  ? clientConfig.version
   : version;
 
 /**
