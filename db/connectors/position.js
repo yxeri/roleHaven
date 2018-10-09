@@ -248,7 +248,10 @@ function updatePosition({
     styleName,
     coordinates,
   } = position;
-  const { resetOwnerAliasId, resetConnectedToUser } = options;
+  const {
+    resetOwnerAliasId,
+    resetConnectedToUser,
+  } = options;
 
   const update = {};
   const set = {};
@@ -303,7 +306,12 @@ function updatePosition({
   if (description) { set.description = description; }
   if (positionStructure) { set.positionStructure = positionStructure; }
   if (styleName) { set.styleName = styleName; }
-  if (coordinates) { push.coordinatesHistory = coordinates; }
+  if (coordinates) {
+    push.coordinatesHistory = {
+      $each: [coordinates],
+      $slice: -5,
+    };
+  }
 
   if (typeof isPublic !== 'undefined') { set.isPublic = isPublic; }
   if (typeof isStationary !== 'undefined') { set.isStationary = isStationary; }
