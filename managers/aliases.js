@@ -174,15 +174,14 @@ function createAlias({
                       userSocket.join(createdAlias.objectId);
                     }
 
+                    // TODO This needs to be done in sync. Full info > stripped info
+
+                    io.emit(dbConfig.EmitTypes.ROOM, roomDataToSend);
+                    io.emit(dbConfig.EmitTypes.WALLET, walletDataToSend);
+
                     io.to(createdAlias.objectId).emit(dbConfig.EmitTypes.ALIAS, creatorDataToSend);
-
-                    io.emit(dbConfig.EmitTypes.ROOM, roomDataToSend, () => {
-                      io.to(authUser.objectId).emit(dbConfig.EmitTypes.ROOM, creatorRoomData);
-                    });
-
-                    io.emit(dbConfig.EmitTypes.WALLET, walletDataToSend, () => {
-                      io.to(authUser.objectId).emit(dbConfig.EmitTypes.WALLET, creatorWalletData);
-                    });
+                    io.to(authUser.objectId).emit(dbConfig.EmitTypes.WALLET, creatorWalletData);
+                    io.to(authUser.objectId).emit(dbConfig.EmitTypes.ROOM, creatorRoomData);
                   }
 
                   io.emit(dbConfig.EmitTypes.USER, dataToSend);
