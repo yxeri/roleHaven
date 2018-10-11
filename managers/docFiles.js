@@ -111,8 +111,9 @@ function saveAndTransmitDocFile({
       if (socket) {
         socket.broadcast.emit(dbConfig.EmitTypes.DOCFILE, dataToSend);
       } else {
-        io.emit(dbConfig.EmitTypes.DOCFILE, dataToSend);
-        io.to(docFile.ownerAliasId || docFile.ownerId).emit(dbConfig.EmitTypes.DOCFILE, creatorDataToSend);
+        io.emit(dbConfig.EmitTypes.DOCFILE, dataToSend, () => {
+          io.to(docFile.ownerAliasId || docFile.ownerId).emit(dbConfig.EmitTypes.DOCFILE, creatorDataToSend);
+        });
       }
 
       callback(creatorDataToSend);
