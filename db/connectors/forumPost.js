@@ -163,8 +163,6 @@ function createPost({ post, callback }) {
           ? post.teamIds
           : foundThread.teamIds;
 
-        console.log(forumPostToSave);
-
         dbConnector.saveObject({
           object: new ForumPost(forumPostToSave),
           objectType: ForumPost,
