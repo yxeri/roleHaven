@@ -164,6 +164,15 @@ function createAlias({
                   io.emit(dbConfig.EmitTypes.USER, dataToSend);
                   io.emit(dbConfig.EmitTypes.ROOM, roomDataToSend);
                   io.emit(dbConfig.EmitTypes.WALLET, walletDataToSend);
+                  io.to(authUser.objectId).emit(dbConfig.EmitTypes.USER, {
+                    data: {
+                      user: {
+                        objectId: authUser.objectId,
+                        aliases: authUser.aliases.concat([createdAlias.objectId]),
+                      },
+                      changeType: dbConfig.ChangeTypes.UPDATE,
+                    },
+                  });
 
                   callback(creatorDataToSend);
                 },
