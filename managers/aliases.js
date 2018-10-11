@@ -62,10 +62,10 @@ function createAlias({
         return;
       }
 
-      const { user } = data;
+      const { user: authUser } = data;
 
       const aliasToSave = alias;
-      aliasToSave.ownerId = user.objectId;
+      aliasToSave.ownerId = authUser.objectId;
       aliasToSave.aliasName = textTools.trimSpace(aliasToSave.aliasName);
       aliasToSave.aliasNameLowerCase = aliasToSave.aliasName.toLowerCase();
       aliasToSave.isVerified = !appConfig.userVerify;
@@ -79,13 +79,13 @@ function createAlias({
             return;
           }
 
-          const createdAlias = aliasData.alias;
+          const { alias: createdAlias } = aliasData;
 
           dbRoom.createRoom({
             options: { setId: true },
             room: {
               objectId: createdAlias.objectId,
-              ownerId: user.objectId,
+              ownerId: authUser.objectId,
               roomName: createdAlias.objectId,
               roomId: createdAlias.objectId,
               accessLevel: dbConfig.AccessLevels.SUPERUSER,
@@ -102,7 +102,7 @@ function createAlias({
 
               const wallet = {
                 objectId: createdAlias.objectId,
-                ownerId: user.objectId,
+                ownerId: authUser.objectId,
                 ownerAliasId: createdAlias.objectId,
                 amount: appConfig.defaultWalletAmount,
               };
@@ -141,6 +141,12 @@ function createAlias({
                       changeType: dbConfig.ChangeTypes.CREATE,
                     },
                   };
+                  const creatorRoomData = {
+                    data: {
+                      room: createdRoom,
+                      changeType: dbConfig.ChangeTypes.CREATE,
+                    },
+                  };
 
                   const walletDataToSend = {
                     data: {
@@ -148,22 +154,38 @@ function createAlias({
                       changeType: dbConfig.ChangeTypes.CREATE,
                     },
                   };
+                  const creatorWalletData = {
+                    data: {
+                      wallet: createdWallet,
+                      changeType: dbConfig.ChangeTypes.CREATE,
+                    },
+                  };
 
                   if (socket) {
                     socket.join(createdAlias.objectId);
+                    socket.to(authUser.objectId).emit(dbConfig.EmitTypes.ROOM, creatorRoomData);
+                    socket.to(authUser.objectId).emit(dbConfig.EmitTypes.WALLET, creatorWalletData);
+                    socket.broadcast.emit(dbConfig.EmitTypes.WALLET, walletDataToSend);
+                    socket.broadcast.emit(dbConfig.EmitTypes.ROOM, roomDataToSend);
                   } else {
-                    const userSocket = socketUtils.getUserSocket({ io, socketId: user.socketId });
+                    const userSocket = socketUtils.getUserSocket({ io, socketId: authUser.socketId });
 
                     if (userSocket) {
                       userSocket.join(createdAlias.objectId);
                     }
 
-                    io.to(user.objectId).emit(dbConfig.EmitTypes.ALIAS, creatorDataToSend);
+                    io.to(createdAlias.objectId).emit(dbConfig.EmitTypes.ALIAS, creatorDataToSend);
+
+                    io.emit(dbConfig.EmitTypes.ROOM, roomDataToSend, () => {
+                      io.to(authUser.objectId).emit(dbConfig.EmitTypes.ROOM, creatorRoomData);
+                    });
+
+                    io.emit(dbConfig.EmitTypes.WALLET, walletDataToSend, () => {
+                      io.to(authUser.objectId).emit(dbConfig.EmitTypes.WALLET, creatorWalletData);
+                    });
                   }
 
                   io.emit(dbConfig.EmitTypes.USER, dataToSend);
-                  io.emit(dbConfig.EmitTypes.ROOM, roomDataToSend);
-                  io.emit(dbConfig.EmitTypes.WALLET, walletDataToSend);
                   io.to(authUser.objectId).emit(dbConfig.EmitTypes.USER, {
                     data: {
                       user: {
