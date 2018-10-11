@@ -259,7 +259,6 @@ function createUser({
                         }
 
                         io.emit(dbConfig.EmitTypes.USER, dataToSend);
-                        io.to(createdUser.objectId).emit(dbConfig.EmitTypes.USER, creatorDataToSend);
                       }
 
                       io.emit(dbConfig.EmitTypes.FORUM, forumDataToSend);
