@@ -18,7 +18,7 @@ serverMode=$MODE
 # Transpiles code to es5
 for file in ./private/scripts/*
 do
-  ./node_modules/browserify/bin/cmd.js "$file" -t [ babelify --presets [ es2015 ] --compact='false' ] -o ./public/scripts/$(basename "$file")
+  ./node_modules/browserify/bin/cmd.js "$file" -t [ babelify ] -o ./public/scripts/$(basename "$file")
 
     if [ "$serverMode" == "dev" ]; then
       # Minifies transpiled code
