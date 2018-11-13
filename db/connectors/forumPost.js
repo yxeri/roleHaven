@@ -348,7 +348,7 @@ function updatePost({
   if (post.text) { set.text = post.text; }
 
   if (Object.keys(set).length > 0) { update.$set = set; }
-  if (Object.keys(unset).length > 0) { update.$unset = set; }
+  if (Object.keys(unset).length > 0) { update.$unset = unset; }
 
   updateObject({
     update,

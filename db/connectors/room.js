@@ -385,9 +385,9 @@ function updateAccess(params) {
  * @param {Function} params.callback - Callback
  */
 function updateRoom({
-  room,
   roomId,
   callback,
+  room = {},
   options = {},
 }) {
   const {
@@ -429,7 +429,7 @@ function updateRoom({
   }
 
   if (Object.keys(set).length > 0) { update.$set = set; }
-  if (Object.keys(unset).length > 0) { update.$unset = set; }
+  if (Object.keys(unset).length > 0) { update.$unset = unset; }
 
   if (roomName) {
     doesRoomExist({
