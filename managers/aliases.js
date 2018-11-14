@@ -165,8 +165,18 @@ function createAlias({
                     socket.join(createdAlias.objectId);
                     socket.to(authUser.objectId).emit(dbConfig.EmitTypes.ROOM, creatorRoomData);
                     socket.to(authUser.objectId).emit(dbConfig.EmitTypes.WALLET, creatorWalletData);
+                    socket.to(authUser.objectId).emit(dbConfig.EmitTypes.USER, {
+                      data: {
+                        user: {
+                          objectId: authUser.objectId,
+                          aliases: authUser.aliases.concat([createdAlias.objectId]),
+                        },
+                        changeType: dbConfig.ChangeTypes.UPDATE,
+                      },
+                    });
                     socket.broadcast.emit(dbConfig.EmitTypes.WALLET, walletDataToSend);
                     socket.broadcast.emit(dbConfig.EmitTypes.ROOM, roomDataToSend);
+                    socket.broadcast.emit(dbConfig.EmitTypes.USER, dataToSend);
                   } else {
                     const userSocket = socketUtils.getUserSocket({ io, socketId: authUser.socketId });
 
@@ -178,22 +188,21 @@ function createAlias({
 
                     io.emit(dbConfig.EmitTypes.ROOM, roomDataToSend);
                     io.emit(dbConfig.EmitTypes.WALLET, walletDataToSend);
+                    io.emit(dbConfig.EmitTypes.USER, dataToSend);
 
                     io.to(createdAlias.objectId).emit(dbConfig.EmitTypes.ALIAS, creatorDataToSend);
                     io.to(authUser.objectId).emit(dbConfig.EmitTypes.WALLET, creatorWalletData);
                     io.to(authUser.objectId).emit(dbConfig.EmitTypes.ROOM, creatorRoomData);
-                  }
-
-                  io.emit(dbConfig.EmitTypes.USER, dataToSend);
-                  io.to(authUser.objectId).emit(dbConfig.EmitTypes.USER, {
-                    data: {
-                      user: {
-                        objectId: authUser.objectId,
-                        aliases: authUser.aliases.concat([createdAlias.objectId]),
+                    io.to(authUser.objectId).emit(dbConfig.EmitTypes.USER, {
+                      data: {
+                        user: {
+                          objectId: authUser.objectId,
+                          aliases: authUser.aliases.concat([createdAlias.objectId]),
+                        },
+                        changeType: dbConfig.ChangeTypes.UPDATE,
                       },
-                      changeType: dbConfig.ChangeTypes.UPDATE,
-                    },
-                  });
+                    });
+                  }
 
                   callback(creatorDataToSend);
                 },
