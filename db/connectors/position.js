@@ -19,7 +19,10 @@
 const mongoose = require('mongoose');
 const errorCreator = require('../../error/errorCreator');
 const dbConnector = require('../databaseConnector');
-const { dbConfig } = require('../../config/defaults/config');
+const {
+  dbConfig,
+  appConfig,
+} = require('../../config/defaults/config');
 
 const mapPositionSchema = new mongoose.Schema(dbConnector.createSchema({
   connectedToUser: {
@@ -309,7 +312,8 @@ function updatePosition({
   if (coordinates) {
     push.coordinatesHistory = {
       $each: [coordinates],
-      $slice: -5,
+      $sort: { timeCreated: 1 },
+      $slice: -appConfig.maxPositionHistory,
     };
   }
 

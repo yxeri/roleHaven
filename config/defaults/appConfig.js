@@ -705,7 +705,7 @@ config.importedPositionMinAccessLevel = process.env.IMPORTEDPOSITIONMINACCESSLEV
  * Maximum amount of old coordinates stored in a position.
  * @type {number}
  */
-config.maxPositionHistory = process.env.MAXPOSITIONHISTORY || config.maxPositionHistory || 5;
+config.maxPositionHistory = process.env.MAXPOSITIONHISTORY || config.maxPositionHistory || 15;
 
 /**
  * *********
