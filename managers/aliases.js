@@ -50,6 +50,8 @@ function createAlias({
         return;
       }
 
+      const { user: authUser } = data;
+
       if (alias.aliasName.length > appConfig.usernameMaxLength || alias.aliasName.length < appConfig.usernameMinLength) {
         callback({ error: new errorCreator.InvalidCharacters({ name: `Alias length: ${appConfig.usernameMinLength}-${appConfig.usernameMaxLength}` }) });
 
@@ -62,13 +64,18 @@ function createAlias({
         return;
       }
 
-      const { user: authUser } = data;
+      if (alias.visibility && authUser.accessLevel < dbConfig.apiCommands.UpdateAliasVisibility.accessLevel) {
+        callback({ error: new errorCreator.NotAllowed({ name: 'Set alias visibility' }) });
+
+        return;
+      }
 
       const aliasToSave = alias;
       aliasToSave.ownerId = authUser.objectId;
       aliasToSave.aliasName = textTools.trimSpace(aliasToSave.aliasName);
       aliasToSave.aliasNameLowerCase = aliasToSave.aliasName.toLowerCase();
       aliasToSave.isVerified = !appConfig.userVerify;
+      aliasToSave.accessLevel = dbConfig.AccessLevels.STANDARD;
 
       dbAlias.createAlias({
         alias: aliasToSave,

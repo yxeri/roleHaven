@@ -269,7 +269,7 @@ config.apiCommands = Object.assign({
    */
   CreateAlias: config.apiCommands.CreateAlias || {
     name: 'CreateAlias',
-    accessLevel: process.env.CREATEALIAS || config.AccessLevels.STANDARD,
+    accessLevel: process.env.CREATEALIASLEVEL || config.AccessLevels.STANDARD,
   },
   GetAliases: config.apiCommands.GetAliases || {
     name: 'GetAliases',
@@ -282,6 +282,10 @@ config.apiCommands = Object.assign({
   RemoveAlias: config.apiCommands.RemoveAlias || {
     name: 'RemoveAlias',
     accessLevel: config.AccessLevels.ADMIN,
+  },
+  UpdateAliasVisibility: config.apiCommands.UpdateAliasVisibility || {
+    name: 'UpdateAliasVisibility',
+    accessLevel: config.AccessLevels.MODERATOR,
   },
 
   /**
@@ -451,8 +455,12 @@ config.apiCommands = Object.assign({
     name: 'SetFullAccess',
     accessLevel: config.AccessLevels.ADMIN,
   },
-  ChangeUserLevels: config.apiCommands.ChangeUserLevels || {
-    name: 'ChangeUserLevels',
+  UpdateUserAccess: config.apiCommands.UpdateUserLevel || {
+    name: 'UpdateUserLevel',
+    accessLevel: config.AccessLevels.ADMIN,
+  },
+  UpdateUserVisibility: config.apiCommands.UpdateUserVisibility || {
+    name: 'UpdateUserVisibility',
     accessLevel: config.AccessLevels.ADMIN,
   },
   GetUser: config.apiCommands.GetUser || {

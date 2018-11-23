@@ -50,8 +50,6 @@ function createUser({
     command = dbConfig.apiCommands.AnonymousCreation;
   } else if (appConfig.disallowUserRegister) {
     command = dbConfig.apiCommands.CreateDisallowedUser;
-  } else if (user.accessLevel) {
-    command = dbConfig.apiCommands.ChangeUserLevels;
   } else {
     command = dbConfig.apiCommands.CreateUser;
   }
@@ -59,12 +57,14 @@ function createUser({
   authenticator.isUserAllowed({
     token,
     commandName: command.name,
-    callback: ({ error }) => {
+    callback: ({ error, data }) => {
       if (error) {
         callback({ error });
 
         return;
       }
+
+      const { user: authUser } = data;
 
       if (!textTools.isAllowedFull(user.username)) {
         callback({
@@ -129,11 +129,23 @@ function createUser({
         return;
       }
 
+      if (user.accessLevel && (authUser.accessLevel < dbConfig.apiCommands.UpdateUserAccess.accessLevel)) {
+        callback({ error: new errorCreator.NotAllowed({ name: 'Set user access level' }) });
+
+        return;
+      }
+
+      if (user.visibility && (authUser.accessLevel < dbConfig.apiCommands.UpdateUserVisibility.accessLevel)) {
+        callback({ error: new errorCreator.NotAllowed({ name: 'Set user visibility' }) });
+
+        return;
+      }
+
       const newUser = user;
       newUser.usernameLowerCase = newUser.username.toLowerCase();
       newUser.isVerified = !appConfig.userVerify;
       newUser.followingRooms = dbConfig.requiredRooms;
-      newUser.accessLevel = newUser.accessLevel || 1;
+      newUser.accessLevel = newUser.accessLevel || dbConfig.AccessLevels.STANDARD;
       newUser.mailAddress = newUser.mailAddress
         ? newUser.mailAddress.toLowerCase()
         : undefined;
