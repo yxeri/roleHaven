@@ -26,6 +26,7 @@ const forumThreadSchema = new mongoose.Schema(dbConnector.createSchema({
   text: { type: [String], default: [] },
   postIds: { type: [String], default: [] },
   likes: { type: Number, default: 0 },
+  dislikes: { type: Number, default: 0 },
   pictures: [dbConnector.pictureSchema],
 }), { collection: 'forumThreads' });
 
