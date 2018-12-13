@@ -79,6 +79,7 @@ function createForum({
   callback,
   token,
   io,
+  socket,
 }) {
   authenticator.isUserAllowed({
     token,
@@ -111,12 +112,6 @@ function createForum({
           }
 
           const { forum: createdForum } = createData;
-          const creatorDataToSend = {
-            data: {
-              forum: createdForum,
-              changeType: dbConfig.ChangeTypes.CREATE,
-            },
-          };
           const dataToSend = {
             data: {
               forum: managerHelper.stripObject({ object: Object.assign({}, createdForum) }),
@@ -124,10 +119,24 @@ function createForum({
             },
           };
 
-          io.emit(dbConfig.EmitTypes.FORUM, dataToSend);
-          io.to(authUser.objectId).emit(dbConfig.EmitTypes.FORUM, creatorDataToSend);
+          if (socket) {
+            socket.broadcast.emit(dbConfig.EmitTypes.FORUM, dataToSend);
+          } else {
+            io.emit(dbConfig.EmitTypes.FORUM, dataToSend);
+            io.to(authUser.objectId).emit(dbConfig.EmitTypes.FORUM, {
+              data: {
+                forum: createdForum,
+                changeType: dbConfig.ChangeTypes.UPDATE,
+              },
+            });
+          }
 
-          callback(creatorDataToSend);
+          callback({
+            data: {
+              forum: createdForum,
+              changeType: dbConfig.ChangeTypes.CREATE,
+            },
+          });
         },
       });
     },
