@@ -20,6 +20,7 @@ const mongoose = require('mongoose');
 const dbConnector = require('../databaseConnector');
 const errorCreator = require('../../error/errorCreator');
 const dbUser = require('./user');
+const { dbConfig } = require('../../config/defaults/config');
 
 const roomSchema = new mongoose.Schema(dbConnector.createSchema({
   roomName: { type: String, unique: true },
@@ -627,11 +628,12 @@ function getAllRooms({ callback }) {
 /**
  * Add rooms to db.
  * @param {Object} params - Parameters.
- * @param {Object} params.rooms - Rooms to be added.
  * @param {Function} params.callback - Callback.
  */
-function populateDbRooms({ rooms, callback = () => {} }) {
+function populateDbRooms({ callback = () => {} }) {
   console.info('Creating default rooms, if needed');
+
+  const { rooms } = dbConfig;
 
   /**
    * Adds a room to database. Recursive.

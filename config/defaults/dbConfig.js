@@ -27,6 +27,7 @@ try {
 config.rooms = config.rooms || {};
 config.users = config.users || {};
 config.apiCommands = config.apiCommands || {};
+config.forums = config.forums || {};
 
 /**
  * Access levels are used as permissions for users.
@@ -137,6 +138,11 @@ config.roomsToBeHidden = [
   config.rooms.news.objectId,
   config.rooms.schedule.objectId,
 ];
+
+config.forums.public = config.forums.public || {
+  objectId: '111111111111111111111120',
+  title: 'Board',
+};
 
 config.deviceRoomPrepend = 'device#';
 

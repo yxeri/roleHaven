@@ -18,6 +18,7 @@ const mongoose = require('mongoose');
 const errorCreator = require('../../error/errorCreator');
 const dbConnector = require('../databaseConnector');
 const dbForumThread = require('./forumThread');
+const { dbConfig } = require('../../config/defaults/config');
 
 const forumSchema = new mongoose.Schema(dbConnector.createSchema({
   title: { type: String, unique: true },
@@ -143,6 +144,7 @@ function doesForumExist({ title, callback }) {
 function createForum({
   forum,
   callback,
+  silentExistsError,
   options = {},
 }) {
   const { setId } = options;
@@ -157,7 +159,11 @@ function createForum({
       }
 
       if (data.exists) {
-        callback({ error: new errorCreator.AlreadyExists({ name: `createForum ${forum.title}` }) });
+        if (silentExistsError) {
+          callback({ data: { exists: true } });
+        } else {
+          callback({ error: new errorCreator.AlreadyExists({ name: `createForum ${forum.title}` }) });
+        }
 
         return;
       }
@@ -362,6 +368,48 @@ function getForumsByUser({
   });
 }
 
+/**
+ * Add forums to db.
+ * @param {Object} params - Parameters.
+ * @param {Function} params.callback - Callback.
+ */
+function populateDbForums({ callback = () => {} }) {
+  console.info('Creating default forums, if needed');
+
+  const { forums } = dbConfig;
+
+  /**
+   * Adds a room to database. Recursive.
+   * @param {string[]} forumNames - Forum names.
+   */
+  function addForum(forumNames) {
+    const forumName = forumNames.shift();
+
+    if (forumName) {
+      createForum({
+        forum: forums[forumName],
+        silentExistsError: true,
+        options: { setId: true },
+        callback: ({ error }) => {
+          if (error) {
+            callback({ error });
+
+            return;
+          }
+
+          addForum(forumNames);
+        },
+      });
+
+      return;
+    }
+
+    callback({ data: { success: true } });
+  }
+
+  addForum(Object.keys(forums));
+}
+
 exports.createForum = createForum;
 exports.getForumById = getForumById;
 exports.getForumById = getForumById;
@@ -371,3 +419,4 @@ exports.getForumsByIds = getForumsByIds;
 exports.removeForum = removeForum;
 exports.updateAccess = updateAccess;
 exports.getForumsByUser = getForumsByUser;
+exports.populateDbForums = populateDbForums;

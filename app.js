@@ -22,8 +22,9 @@ const path = require('path');
 const bodyParser = require('body-parser');
 const morgan = require('morgan');
 const compression = require('compression');
-const { dbConfig, appConfig } = require('./config/defaults/config');
+const { appConfig } = require('./config/defaults/config');
 const dbRoom = require('./db/connectors/room');
+const dbForum = require('./db/connectors/forum');
 const positionManager = require('./managers/positions');
 const { version: appVersion, name: appName } = require('./package');
 
@@ -59,7 +60,8 @@ if (!appConfig.jsonKey) {
 }
 
 if (appConfig.mode !== appConfig.Modes.TEST) {
-  dbRoom.populateDbRooms({ rooms: dbConfig.rooms });
+  dbRoom.populateDbRooms({});
+  dbForum.populateDbForums({});
 }
 
 if (!appConfig.disablePositionImport) {
