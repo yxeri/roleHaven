@@ -26,6 +26,7 @@ const forumThreadSchema = new mongoose.Schema(dbConnector.createSchema({
   text: { type: [String], default: [] },
   postIds: { type: [String], default: [] },
   likes: { type: Number, default: 0 },
+  dislikes: { type: Number, default: 0 },
   pictures: [dbConnector.pictureSchema],
 }), { collection: 'forumThreads' });
 
@@ -213,7 +214,7 @@ function updateThread({
   }
 
   if (Object.keys(set).length > 0) { update.$set = set; }
-  if (Object.keys(unset).length > 0) { update.$unset = set; }
+  if (Object.keys(unset).length > 0) { update.$unset = unset; }
 
   updateObject({
     update,

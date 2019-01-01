@@ -24,7 +24,7 @@ let clientConfig = {};
 let config = {};
 
 try {
-  clientConfig = require('../../../private/config/config'); // eslint-disable-line
+  clientConfig = Object.assign({},require('../../../../private/config/config')); // eslint-disable-line
 } catch (err) {
   console.log('Did not find client config. Using defaults.');
 }
@@ -200,7 +200,7 @@ config.scriptsPath = 'scripts';
 config.requiredPath = 'required';
 
 config.jsVersion = clientConfig && clientConfig.version
-  ? `${version}-${clientConfig.version}`
+  ? clientConfig.version
   : version;
 
 /**
@@ -705,7 +705,7 @@ config.importedPositionMinAccessLevel = process.env.IMPORTEDPOSITIONMINACCESSLEV
  * Maximum amount of old coordinates stored in a position.
  * @type {number}
  */
-config.maxPositionHistory = process.env.MAXPOSITIONHISTORY || config.maxPositionHistory || 5;
+config.maxPositionHistory = process.env.MAXPOSITIONHISTORY || config.maxPositionHistory || 15;
 
 /**
  * *********

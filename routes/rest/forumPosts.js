@@ -69,8 +69,6 @@ function handle(io) {
     const { postId } = request.params;
     const { authorization: token } = request.headers;
 
-    console.log('post to update', post);
-
     forumPostManager.updatePost({
       post,
       options,

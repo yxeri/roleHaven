@@ -588,7 +588,7 @@ function follow({
 
           dbUser.followRoom({
             roomId,
-            userIds: [idToAdd],
+            userIds: [userId],
             callback: (followData) => {
               if (followData.error) {
                 callback({ error: followData.error });

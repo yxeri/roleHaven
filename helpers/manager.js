@@ -335,19 +335,20 @@ function updateObject({
 
           const dbCallParams = {
             options,
-            callback: ({ error: updateError }) => {
+            callback: ({ error: updateError, data: updated }) => {
               if (updateError) {
                 callback({ error: updateError });
 
                 return;
               }
 
+              const updatedObject = updated[objectType];
               const dataToSend = {
                 data: {
                   changeType: dbConfig.ChangeTypes.UPDATE,
                 },
               };
-              dataToSend.data[objectType] = stripObject({ object: Object.assign({}, foundObject) });
+              dataToSend.data[objectType] = stripObject({ object: Object.assign({}, updatedObject) });
 
               toStrip.forEach((stripVar) => {
                 dataToSend.data[objectType][stripVar] = undefined;
@@ -358,7 +359,7 @@ function updateObject({
                   changeType: dbConfig.ChangeTypes.UPDATE,
                 },
               };
-              creatorDataToSend.data[objectType] = foundObject;
+              creatorDataToSend.data[objectType] = updatedObject;
 
               if (socket) {
                 socket.broadcast.emit(emitType, dataToSend);

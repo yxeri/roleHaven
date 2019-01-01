@@ -26,6 +26,7 @@ const forumPostSchema = new mongoose.Schema(dbConnector.createSchema({
   text: { type: [String], default: [] },
   depth: { type: Number, default: 0 },
   likes: { type: Number, default: 0 },
+  dislikes: { type: Number, default: 0 },
   pictures: [dbConnector.pictureSchema],
 }), { collection: 'forumPosts' });
 
@@ -162,8 +163,6 @@ function createPost({ post, callback }) {
         forumPostToSave.teamIds = post.teamIds
           ? post.teamIds
           : foundThread.teamIds;
-
-        console.log(forumPostToSave);
 
         dbConnector.saveObject({
           object: new ForumPost(forumPostToSave),
@@ -350,7 +349,7 @@ function updatePost({
   if (post.text) { set.text = post.text; }
 
   if (Object.keys(set).length > 0) { update.$set = set; }
-  if (Object.keys(unset).length > 0) { update.$unset = set; }
+  if (Object.keys(unset).length > 0) { update.$unset = unset; }
 
   updateObject({
     update,

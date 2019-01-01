@@ -19,7 +19,10 @@
 const mongoose = require('mongoose');
 const errorCreator = require('../../error/errorCreator');
 const dbConnector = require('../databaseConnector');
-const { dbConfig } = require('../../config/defaults/config');
+const {
+  dbConfig,
+  appConfig,
+} = require('../../config/defaults/config');
 
 const mapPositionSchema = new mongoose.Schema(dbConnector.createSchema({
   connectedToUser: {
@@ -248,7 +251,10 @@ function updatePosition({
     styleName,
     coordinates,
   } = position;
-  const { resetOwnerAliasId, resetConnectedToUser } = options;
+  const {
+    resetOwnerAliasId,
+    resetConnectedToUser,
+  } = options;
 
   const update = {};
   const set = {};
@@ -303,7 +309,13 @@ function updatePosition({
   if (description) { set.description = description; }
   if (positionStructure) { set.positionStructure = positionStructure; }
   if (styleName) { set.styleName = styleName; }
-  if (coordinates) { push.coordinatesHistory = coordinates; }
+  if (coordinates) {
+    push.coordinatesHistory = {
+      $each: [coordinates],
+      $sort: { timeCreated: 1 },
+      $slice: -appConfig.maxPositionHistory,
+    };
+  }
 
   if (typeof isPublic !== 'undefined') { set.isPublic = isPublic; }
   if (typeof isStationary !== 'undefined') { set.isStationary = isStationary; }
