@@ -34,23 +34,24 @@ The documentation for the REST API can be found at https://thethirdgift.com/role
 
 ## Contributors/Supporters
 
+* tz
+* H. Merkelbach
 * Varg Johan
-* Mathias Abrahamsson
 * Jenny L.
+* Maria Rodén
 * Stefan Scott
 * Tveskägg
-* H. Merkelbach
 * Tobias W.
+* Mathias Abrahamsson
 * 55463
 * Joakim Sandström
 * William Von Hofsten
 * Kenny Svensson
-* Maria Rodén
 * Niklas Sandström
 * Joachim
 * Erik Jonsson
-* tz
 * Karl Dahlgren
+* Jimmy Bengtsson
 * [Blodsband Reloaded](https://www.bbreloaded.se)
 * [Sommarland](http://beratta.org/sommarland/)
 * [Vinterland](http://beratta.org/vinterland/)
