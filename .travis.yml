@@ -26,6 +26,8 @@ cache:
 
 before_install:
 - npm prune
+- npm install -g npm
+- npm install
 
 # # encrypted environment variables are not available for pull requests from forks
 # before_deploy:
