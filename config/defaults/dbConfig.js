@@ -263,7 +263,7 @@ config.TriggerChangeTypes = {
   UPDATE: 'update',
   CREATE: 'create',
   REMOVE: 'remove',
-}
+};
 
 /**
  * *******************
