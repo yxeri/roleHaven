@@ -361,16 +361,15 @@ function updateObject({
                 },
               };
               creatorDataToSend.data[objectType] = updatedObject;
-              if (socket) {
-                if (shouldBroadcast) {
+
+              if (shouldBroadcast) {
+                if (socket) {
                   socket.broadcast.emit(emitType, dataToSend);
-                }
-              } else {
-                if (shouldBroadcast) {
-                  io.emit(emitType, dataToSend);
                 } else {
-                  io.to(foundObject.ownerAliasId || foundObject.ownerId);
+                  io.emit(emitType, dataToSend);
                 }
+              } else if (!socket) {
+                io.to(foundObject.ownerAliasId || foundObject.ownerId).emit(emitType, dataToSend);
               }
 
               callback(creatorDataToSend);
