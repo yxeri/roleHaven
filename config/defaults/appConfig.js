@@ -24,7 +24,7 @@ let clientConfig = {};
 let config = {};
 
 try {
-  clientConfig = require('../../private/config/config'); // eslint-disable-line
+  clientConfig = Object.assign({},require('../../../../private/config/config')); // eslint-disable-line
 } catch (err) {
   console.log('Did not find client config. Using defaults.');
 }
@@ -120,9 +120,9 @@ config.adminCssName = process.env.ADMINCSSNAME || config.adminCssName || 'admin'
  * }
  * @type {{sitePath:string, filePath:string}[]}
  */
-config.routes = config.ignoreDefaultRoutes ?
-  config.routes || [] :
-  [{ sitePath: '/', filePath: '/routes/index.js' }].concat([
+config.routes = config.ignoreDefaultRoutes
+  ? config.routes || []
+  : [{ sitePath: '/', filePath: '/routes/index.js' }].concat([
     { sitePath: '/api/authenticate', filePath: '/routes/rest/authenticate.js' },
     { sitePath: '/api/gameCodes', filePath: '/routes/rest/gameCodes.js' },
     { sitePath: '/api/rooms', filePath: '/routes/rest/rooms.js' },
@@ -148,7 +148,9 @@ config.routes = config.ignoreDefaultRoutes ?
 
 /* eslint-disable */
 
-config.handlers = config.ignoreDefaultHandlers ? config.handlers || [] : [
+config.handlers = config.ignoreDefaultHandlers
+  ? config.handlers || []
+  : [
   '/routes/socketHandlers/aliases',
   '/routes/socketHandlers/authenticate',
   '/routes/socketHandlers/devices',
@@ -197,9 +199,9 @@ config.scriptsPath = 'scripts';
  */
 config.requiredPath = 'required';
 
-config.jsVersion = clientConfig && clientConfig.version ?
-  `${version}-${clientConfig.version}` :
-  version;
+config.jsVersion = clientConfig && clientConfig.version
+  ? clientConfig.version
+  : version;
 
 /**
  * Path to favicon.
@@ -252,34 +254,34 @@ config.port = process.env.PORT || config.port || 8888;
  * Note! Android 2.2 fails when using cdn.
  * @type {string}
  */
-config.socketPath = (process.env.SOCKETPATH === 'cdn' || config.socketPath === 'cdn') ?
-  'https://cdnjs.cloudflare.com/ajax/libs/socket.io/2.0.1/socket.io.slim.js' :
-  (process.env.SOCKETPATH || config.socketPath || '/scripts/socket.io.js');
+config.socketPath = (process.env.SOCKETPATH === 'cdn' || config.socketPath === 'cdn')
+  ? 'https://cdnjs.cloudflare.com/ajax/libs/socket.io/2.0.1/socket.io.slim.js'
+  : (process.env.SOCKETPATH || config.socketPath || '/scripts/socket.io.js');
 
 config.country = process.env.COUNTRY || config.country || 'Sweden';
 
 /**
  * Secret key used with JSON Web Token.
  */
-config.jsonKey = process.env.JSONKEY || (config.mode === config.Modes.TEST ?
-  'TESTKEY' :
-  undefined);
+config.jsonKey = process.env.JSONKEY || (config.mode === config.Modes.TEST
+  ? 'TESTKEY'
+  : undefined);
 
 /**
  * Should errors be printed to log?
  * @type {boolean}
  */
-config.verboseError = typeof verboseErrorEnv !== 'undefined' ?
-  verboseErrorEnv :
-  config.verboseError || false;
+config.verboseError = typeof verboseErrorEnv !== 'undefined'
+  ? verboseErrorEnv
+  : config.verboseError || false;
 
 /**
  * Should external calls to other systems be disabled?
  * @type {boolean}
  */
-config.bypassExternalConnections = typeof bypassExternalConnectionEnv !== 'undefined' ?
-  bypassExternalConnectionEnv :
-  config.bypassExternalConnections || true;
+config.bypassExternalConnections = typeof bypassExternalConnectionEnv !== 'undefined'
+  ? bypassExternalConnectionEnv
+  : config.bypassExternalConnections || true;
 
 /**
  * User-friendly name for the event using the system
@@ -312,17 +314,17 @@ config.title = process.env.TITLE || config.title || 'roleHaven';
  * Should developer items (off-game) be shown on the client?
  * @type {boolean}
  */
-config.showDevInfo = typeof showDevInfoEnv !== 'undefined' ?
-  showDevInfoEnv :
-  config.showDevInfo || false;
+config.showDevInfo = typeof showDevInfoEnv !== 'undefined'
+  ? showDevInfoEnv
+  : config.showDevInfo || false;
 
 /**
  * Should the frontend force full screen on click?
  * @type {boolean}
  */
-config.forceFullscreen = typeof forceFullscreenEnv !== 'undefined' ?
-  forceFullscreenEnv :
-  config.forceFullscreen || true;
+config.forceFullscreen = typeof forceFullscreenEnv !== 'undefined'
+  ? forceFullscreenEnv
+  : config.forceFullscreen || true;
 
 /**
  * The number of years that will be subtracted/added to the current year.
@@ -425,13 +427,13 @@ config.mapPositionsInterval = process.env.MAPPOSITIONSINTERVAL || config.mapPosi
  * Should the frontend ask for user tracking?
  * @type {boolean}
  */
-config.gpsTracking = typeof gpsTrackingEnv !== 'undefined' ?
-  gpsTrackingEnv :
-  config.gpsTracking || true;
+config.gpsTracking = typeof gpsTrackingEnv !== 'undefined'
+  ? gpsTrackingEnv
+  : config.gpsTracking || true;
 
-config.disablePositionImport = typeof disablePositionImportEnv !== 'undefined' ?
-  disablePositionImportEnv :
-  config.disablePositionImport || true;
+config.disablePositionImport = typeof disablePositionImportEnv !== 'undefined'
+  ? disablePositionImportEnv
+  : config.disablePositionImport || true;
 
 /**
  * *************
@@ -467,9 +469,9 @@ config.maxHistoryAmount = process.env.MAXHISTORYAMOUNT || config.maxHistoryAmoun
  * Should messagesbe allowed to have an attached image?
  * @type {boolean}
  */
-config.allowMessageImage = typeof allowMessageImageEnv !== 'undefined' ?
-  allowMessageImageEnv :
-  config.allowMessageImage || false;
+config.allowMessageImage = typeof allowMessageImageEnv !== 'undefined'
+  ? allowMessageImageEnv
+  : config.allowMessageImage || false;
 
 /**
  * Maximum amount of characters in a message
@@ -493,9 +495,9 @@ config.broadcastMaxLength = process.env.BROADCASTMAXLENGTH || config.broadcastMa
  * Does the user have to be verified before being used?
  * @type {boolean}
  */
-config.userVerify = typeof userVerifyEnv !== 'undefined' ?
-  userVerifyEnv :
-  config.userVerify || true;
+config.userVerify = typeof userVerifyEnv !== 'undefined'
+  ? userVerifyEnv
+  : config.userVerify || true;
 
 /**
  * Minimum amount of characters in a user name
@@ -531,9 +533,9 @@ config.passwordMaxLength = process.env.PASSWORDMAXLENGTH || config.passwordMaxLe
  * Should users be able to register? Does not block register through rest api.
  * @type {boolean}
  */
-config.disallowUserRegister = typeof disallowRegisterEnv !== 'undefined' ?
-  disallowRegisterEnv :
-  config.disallowUserRegister || false;
+config.disallowUserRegister = typeof disallowRegisterEnv !== 'undefined'
+  ? disallowRegisterEnv
+  : config.disallowUserRegister || false;
 
 /**
  * Minimum amount of characters in a user's full name.
@@ -557,9 +559,9 @@ config.fullNameMaxLength = process.env.FULLNAMEMAXLENGTH || config.fullNameMaxLe
  * Does the team have to be verified before being used?
  * @type {boolean}
  */
-config.teamVerify = typeof teamVerifyEnv !== 'undefined' ?
-  teamVerifyEnv :
-  config.teamVerify || false;
+config.teamVerify = typeof teamVerifyEnv !== 'undefined'
+  ? teamVerifyEnv
+  : config.teamVerify || false;
 
 /**
  * Maximum amount of characters in a team name
@@ -703,7 +705,7 @@ config.importedPositionMinAccessLevel = process.env.IMPORTEDPOSITIONMINACCESSLEV
  * Maximum amount of old coordinates stored in a position.
  * @type {number}
  */
-config.maxPositionHistory = process.env.MAXPOSITIONHISTORY || config.maxPositionHistory || 5;
+config.maxPositionHistory = process.env.MAXPOSITIONHISTORY || config.maxPositionHistory || 15;
 
 /**
  * *********

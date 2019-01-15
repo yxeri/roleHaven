@@ -205,7 +205,9 @@ function handle(io) {
       restErrorChecker.checkAndSendError({ response, error: new errorCreator.InvalidData({ expected: 'params = { positionId }' }) });
 
       return;
-    } else if (!objectValidator.isValidData(request.body, { data: { position: true } })) {
+    }
+
+    if (!objectValidator.isValidData(request.body, { data: { position: true } })) {
       restErrorChecker.checkAndSendError({ response, error: new errorCreator.InvalidData({ expected: 'data = { position }' }), sentData: request.body.data });
 
       return;
@@ -260,7 +262,9 @@ function handle(io) {
       restErrorChecker.checkAndSendError({ response, error: new errorCreator.InvalidData({ expected: 'params = { positionId }' }) });
 
       return;
-    } else if (!objectValidator.isValidData(request.body, { data: { coordinates: true } })) {
+    }
+
+    if (!objectValidator.isValidData(request.body, { data: { coordinates: true } })) {
       restErrorChecker.checkAndSendError({ response, error: new errorCreator.InvalidData({ expected: 'data = { coordinates }' }), sentData: request.body.data });
 
       return;

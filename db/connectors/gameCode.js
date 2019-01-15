@@ -78,7 +78,9 @@ function getGameCode({
         callback({ error });
 
         return;
-      } else if (!data.object) {
+      }
+
+      if (!data.object) {
         callback({ error: new errorCreator.DoesNotExist({ name: `gameCode ${JSON.stringify(query, null, 4)}` }) });
 
         return;
@@ -150,7 +152,9 @@ function createGameCode({ gameCode, callback }) {
         callback({ error });
 
         return;
-      } else if (data.exists) {
+      }
+
+      if (data.exists) {
         callback({ error: new errorCreator.AlreadyExists({ name: `Game code ${gameCode.code}` }) });
 
         return;

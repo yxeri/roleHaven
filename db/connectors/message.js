@@ -153,7 +153,9 @@ function getMessage({
         callback({ error });
 
         return;
-      } else if (!data.object) {
+      }
+
+      if (!data.object) {
         callback({ error: new errorCreator.DoesNotExist({ name: `alias ${JSON.stringify(query, null, 4)}` }) });
 
         return;
@@ -249,7 +251,9 @@ function updateMessage({
           callback({ error });
 
           return;
-        } else if (!data.exists) {
+        }
+
+        if (!data.exists) {
           callback({ error: new errorCreator.DoesNotExist({ name: `room ${roomId}` }) });
 
           return;

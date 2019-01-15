@@ -226,7 +226,9 @@ function handle(io) {
       restErrorChecker.checkAndSendError({ response, error: new errorCreator.InvalidData({ expected: 'params = { docFileId }' }) });
 
       return;
-    } else if (!objectValidator.isValidData(request.body, { data: { docFile: true } })) {
+    }
+
+    if (!objectValidator.isValidData(request.body, { data: { docFile: true } })) {
       restErrorChecker.checkAndSendError({ response, error: new errorCreator.InvalidData({ expected: 'data = { docFile }' }), sentData: request.body.data });
 
       return;

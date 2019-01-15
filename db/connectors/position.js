@@ -19,7 +19,10 @@
 const mongoose = require('mongoose');
 const errorCreator = require('../../error/errorCreator');
 const dbConnector = require('../databaseConnector');
-const { dbConfig } = require('../../config/defaults/config');
+const {
+  dbConfig,
+  appConfig,
+} = require('../../config/defaults/config');
 
 const mapPositionSchema = new mongoose.Schema(dbConnector.createSchema({
   connectedToUser: {
@@ -116,7 +119,9 @@ function getPosition({ filter, query, callback }) {
         callback({ error });
 
         return;
-      } else if (!data.object) {
+      }
+
+      if (!data.object) {
         callback({ error: new errorCreator.DoesNotExist({ name: `position ${JSON.stringify(query, null, 4)}` }) });
 
         return;
@@ -181,7 +186,9 @@ function createPosition({
         callback({ error: positionData.error });
 
         return;
-      } else if (positionData.data.exists) {
+      }
+
+      if (positionData.data.exists) {
         callback({
           error: new errorCreator.AlreadyExists({
             suppressExistsError,
@@ -244,7 +251,10 @@ function updatePosition({
     styleName,
     coordinates,
   } = position;
-  const { resetOwnerAliasId, resetConnectedToUser } = options;
+  const {
+    resetOwnerAliasId,
+    resetConnectedToUser,
+  } = options;
 
   const update = {};
   const set = {};
@@ -275,7 +285,9 @@ function updatePosition({
           callback({ error: positionData.error });
 
           return;
-        } else if (positionData.data.exists) {
+        }
+
+        if (positionData.data.exists) {
           if (connectedToUser) {
             callback({ error: new errorCreator.AlreadyExists({ name: `position with connected user ${position.connectedToUser}` }) });
           } else {
@@ -297,7 +309,13 @@ function updatePosition({
   if (description) { set.description = description; }
   if (positionStructure) { set.positionStructure = positionStructure; }
   if (styleName) { set.styleName = styleName; }
-  if (coordinates) { push.coordinatesHistory = coordinates; }
+  if (coordinates) {
+    push.coordinatesHistory = {
+      $each: [coordinates],
+      $sort: { timeCreated: 1 },
+      $slice: -appConfig.maxPositionHistory,
+    };
+  }
 
   if (typeof isPublic !== 'undefined') { set.isPublic = isPublic; }
   if (typeof isStationary !== 'undefined') { set.isStationary = isStationary; }

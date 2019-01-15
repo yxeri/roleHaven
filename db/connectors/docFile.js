@@ -107,7 +107,9 @@ function getDocFile({
         callback({ error });
 
         return;
-      } else if (!data.object) {
+      }
+
+      if (!data.object) {
         callback({ error: new errorCreator.DoesNotExist({ name: `docFile ${JSON.stringify(query, null, 4)}` }) });
 
         return;
@@ -153,7 +155,9 @@ function createDocFile({ docFile, callback }) {
         callback({ error });
 
         return;
-      } else if (data.exists) {
+      }
+
+      if (data.exists) {
         callback({ error: new errorCreator.AlreadyExists({ name: `Docfile ${docFile.code} ${docFile.title}` }) });
 
         return;

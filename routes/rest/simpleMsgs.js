@@ -207,7 +207,9 @@ function handle(io) {
       restErrorChecker.checkAndSendError({ response, error: new errorCreator.InvalidData({ expected: 'params = { simpleMsgId }' }) });
 
       return;
-    } else if (!objectValidator.isValidData(request.body, { data: { simpleMsg: true } })) {
+    }
+
+    if (!objectValidator.isValidData(request.body, { data: { simpleMsg: true } })) {
       restErrorChecker.checkAndSendError({ response, error: new errorCreator.InvalidData({ expected: 'data = { simpleMsg }' }), sentData: request.body.data });
 
       return;

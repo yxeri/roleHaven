@@ -25,6 +25,8 @@ const aliasSchema = new mongoose.Schema(dbConnector.createSchema({
   aliasName: { type: String, unique: true },
   aliasNameLowerCase: { type: String, unique: true },
   isIdentity: { type: Boolean, default: false },
+  isVerified: { type: Boolean, default: false },
+  isBanned: { type: Boolean, default: false },
   fullName: { type: String },
   picture: dbConnector.pictureSchema,
   partOfTeams: { type: [String], default: [] },
@@ -99,7 +101,9 @@ function getAlias({ query, callback }) {
         callback({ error });
 
         return;
-      } else if (!data.object) {
+      }
+
+      if (!data.object) {
         callback({ error: new errorCreator.DoesNotExist({ name: `alias ${JSON.stringify(query, null, 4)}` }) });
 
         return;
@@ -155,9 +159,9 @@ function getAliasById({
   aliasName,
   callback,
 }) {
-  const query = aliasId ?
-    { _id: aliasId } :
-    { aliasName };
+  const query = aliasId
+    ? { _id: aliasId }
+    : { aliasName };
 
   getAlias({
     callback,
@@ -197,7 +201,9 @@ function createAlias({
         callback({ error: nameData.error });
 
         return;
-      } else if (nameData.data.exists) {
+      }
+
+      if (nameData.data.exists) {
         callback({ error: new errorCreator.AlreadyExists({ name: `aliasName ${alias.aliasName}` }) });
 
         return;
@@ -281,7 +287,7 @@ function updateAlias({
   }
 
   if (Object.keys(set).length > 0) { update.$set = set; }
-  if (Object.keys(unset).length > 0) { update.$unset = set; }
+  if (Object.keys(unset).length > 0) { update.$unset = unset; }
 
   if (aliasName) {
     dbUser.doesUserExist({
@@ -291,7 +297,9 @@ function updateAlias({
           callback({ error });
 
           return;
-        } else if (data.exists) {
+        }
+
+        if (data.exists) {
           callback({ error: new errorCreator.AlreadyExists({ name: `username ${aliasName}` }) });
 
           return;

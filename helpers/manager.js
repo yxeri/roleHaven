@@ -103,7 +103,9 @@ function getObjectById({
             callback({ error: new errorCreator.NotAllowed({ name: `${commandName}. User: ${authUser.objectId}. Access: ${objectType} ${objectId}` }) });
 
             return;
-          } else if (!hasAccess) {
+          }
+
+          if (!hasAccess) {
             const dataToReturn = { data: {} };
             dataToReturn.data[objectType] = stripObject({ object: foundObject });
 
@@ -228,7 +230,9 @@ function getObjects({
 
               if (aName < bName) {
                 return -1;
-              } else if (aName > bName) {
+              }
+
+              if (aName > bName) {
                 return 1;
               }
 
@@ -285,6 +289,7 @@ function updateObject({
   callback,
   internalCallUser,
   options,
+  shouldBroadcast = true,
   toStrip = [],
 }) {
   authenticator.isUserAllowed({
@@ -331,19 +336,20 @@ function updateObject({
 
           const dbCallParams = {
             options,
-            callback: ({ error: updateError }) => {
+            callback: ({ error: updateError, data: updated }) => {
               if (updateError) {
                 callback({ error: updateError });
 
                 return;
               }
 
+              const updatedObject = updated[objectType];
               const dataToSend = {
                 data: {
                   changeType: dbConfig.ChangeTypes.UPDATE,
                 },
               };
-              dataToSend.data[objectType] = stripObject({ object: Object.assign({}, foundObject) });
+              dataToSend.data[objectType] = stripObject({ object: Object.assign({}, updatedObject) });
 
               toStrip.forEach((stripVar) => {
                 dataToSend.data[objectType][stripVar] = undefined;
@@ -354,12 +360,16 @@ function updateObject({
                   changeType: dbConfig.ChangeTypes.UPDATE,
                 },
               };
-              creatorDataToSend.data[objectType] = foundObject;
+              creatorDataToSend.data[objectType] = updatedObject;
 
-              if (socket) {
-                socket.broadcast.emit(emitType, dataToSend);
-              } else {
-                io.emit(emitType, dataToSend);
+              if (shouldBroadcast) {
+                if (socket) {
+                  socket.broadcast.emit(emitType, dataToSend);
+                } else {
+                  io.emit(emitType, dataToSend);
+                }
+              } else if (!socket) {
+                io.to(foundObject.ownerAliasId || foundObject.ownerId).emit(emitType, dataToSend);
               }
 
               callback(creatorDataToSend);
@@ -389,7 +399,7 @@ function updateObject({
  * @param {string} params.getCommandName - Name of the command that will be authenticated against when retrieving the object.
  * @param {Function} params.callback - Callback
  * @param {string} [params.objectType] - Type of object or remove.
- * @param {Function} [params.emitTypeGenerator] - Function to use to create the correct emit type for socket.io. It will be used instead of variable objectType, if set.
+ * @param {Function} [params.emitTypeGenerator] - Function to use to create the correct emit type for socket.io. It will be used instead of variable emitType, if set.
  */
 function removeObject({
   objectId,

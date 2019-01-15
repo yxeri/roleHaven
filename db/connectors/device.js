@@ -113,7 +113,9 @@ function getDevice({ query, callback }) {
         callback({ error });
 
         return;
-      } else if (!data.object) {
+      }
+
+      if (!data.object) {
         callback({ error: new errorCreator.DoesNotExist({ name: `device ${JSON.stringify(query, null, 4)}` }) });
 
         return;
@@ -152,7 +154,9 @@ function createDevice({ device, callback }) {
         callback({ error: nameData.error });
 
         return;
-      } else if (nameData.data.exists) {
+      }
+
+      if (nameData.data.exists) {
         callback({ error: new errorCreator.AlreadyExists({ name: `device ${device.deviceName}` }) });
 
         return;
@@ -236,7 +240,9 @@ function updateDevice({
           callback({ error: nameData.error });
 
           return;
-        } else if (nameData.data.exists) {
+        }
+
+        if (nameData.data.exists) {
           callback({ error: new errorCreator.AlreadyExists({ name: `device name ${deviceName}` }) });
 
           return;

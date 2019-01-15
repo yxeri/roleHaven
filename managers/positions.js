@@ -62,7 +62,7 @@ function getAndStoreGooglePositions({
   callback = () => {},
 }) {
   if (!appConfig.mapLayersPath) {
-    callback({ error: new errorCreator.InvalidData({ name: 'Map layer is not set' }) });
+    callback({ error: new errorCreator.InvalidData({ expected: 'Map layer is not set' }) });
 
     return;
   }
@@ -196,18 +196,24 @@ function createPosition({
         callback({ error });
 
         return;
-      } else if (!position.coordinates || !position.coordinates.latitude || !position.coordinates.longitude) {
+      }
+
+      if (!position.coordinates || !position.coordinates.latitude || !position.coordinates.longitude) {
         console.log('create', position.coordinates, !position.coordinates, !position.coordinates.latitude, !position.coordinates.longitude, !position.coordinates.accuracy);
 
         callback({ error: new errorCreator.InvalidData({ expected: 'latitude && longitude && accuracy' }) });
 
         return;
-      } else if ((position.positionName && (position.positionName.length > appConfig.positionNameMaxLength || position.positionName.length <= 0))
+      }
+
+      if ((position.positionName && (position.positionName.length > appConfig.positionNameMaxLength || position.positionName.length <= 0))
         || (position.description && position.description.join('').length > appConfig.docFileMaxLength)) {
         callback({ error: new errorCreator.InvalidCharacters({ expected: `text length: ${appConfig.docFileMaxLength}, title length: ${appConfig.positionNameMaxLength}` }) });
 
         return;
-      } else if (!isLoggedInUserPosition && position.coordinates.accuracy && position.coordinates.accuracy > appConfig.minimumPositionAccuracy) {
+      }
+
+      if (!isLoggedInUserPosition && position.coordinates.accuracy && position.coordinates.accuracy > appConfig.minimumPositionAccuracy) {
         callback({ error: new errorCreator.InvalidData({ expected: `accuracy less than ${appConfig.minimumPositionAccuracy}` }) });
 
         return;

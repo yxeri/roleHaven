@@ -64,6 +64,7 @@ function createPost({
   callback,
   token,
   io,
+  socket,
 }) {
   authenticator.isUserAllowed({
     token,
@@ -102,9 +103,9 @@ function createPost({
 
           dbPost.createPost({
             post: postToCreate,
-            callback: (postData) => {
-              if (postData.error) {
-                callback({ error: postData.error });
+            callback: ({ error: postError, data: postData }) => {
+              if (postError) {
+                callback({ error: postError });
 
                 return;
               }
@@ -119,17 +120,32 @@ function createPost({
                     return;
                   }
 
+                  const { post: createdPost } = postData;
                   const dataToSend = {
                     data: {
-                      post: postData.data.post,
+                      post: managerHelper.stripObject({ object: Object.assign({}, createdPost) }),
                       changeType: dbConfig.ChangeTypes.CREATE,
                     },
                   };
 
+                  if (socket) {
+                    socket.broadcast.emit(dbConfig.EmitTypes.FORUMPOST, dataToSend);
+                  } else {
+                    io.emit(dbConfig.EmitTypes.FORUMPOST, dataToSend);
+                    io.to(createdPost.ownerAliasId || authUser.objectId).emit(dbConfig.EmitTypes.FORUMPOST, {
+                      data: {
+                        post: createdPost,
+                        changeType: dbConfig.ChangeTypes.UPDATE,
+                      },
+                    });
+                  }
 
-                  io.emit(dbConfig.EmitTypes.FORUMPOST, dataToSend);
-
-                  callback(dataToSend);
+                  callback({
+                    data: {
+                      post: createdPost,
+                      changeType: dbConfig.ChangeTypes.CREATE,
+                    },
+                  });
                 },
               });
             },
@@ -271,9 +287,9 @@ function getPostsByForum({ forumId, callback, token }) {
               const threadIds = threads.map(thread => thread.objectId);
 
               getPostsByThreads({
-                internalCallUser: authUser,
                 threadIds,
                 callback,
+                internalCallUser: authUser,
               });
             },
           });

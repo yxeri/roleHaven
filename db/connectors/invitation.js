@@ -71,7 +71,9 @@ function getInvitation({ query, callback }) {
         callback({ error });
 
         return;
-      } else if (!data.object) {
+      }
+
+      if (!data.object) {
         callback({ error: new errorCreator.DoesNotExist({ name: `invitation ${JSON.stringify(query, null, 4)}` }) });
 
         return;
@@ -101,7 +103,9 @@ function createInvitation({ invitation, callback }) {
         callback({ error: new errorCreator.Database({ errorObject: error, name: 'createInvitation' }) });
 
         return;
-      } else if (data.invitation) {
+      }
+
+      if (data.invitation) {
         callback({ error: new errorCreator.AlreadyExists({ name: `invitation ${invitation.invitationType} ${invitation.itemId}` }) });
 
         return;

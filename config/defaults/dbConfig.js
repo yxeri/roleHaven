@@ -27,6 +27,7 @@ try {
 config.rooms = config.rooms || {};
 config.users = config.users || {};
 config.apiCommands = config.apiCommands || {};
+config.forums = config.forums || {};
 
 /**
  * Access levels are used as permissions for users.
@@ -138,6 +139,11 @@ config.roomsToBeHidden = [
   config.rooms.schedule.objectId,
 ];
 
+config.forums.public = config.forums.public || {
+  objectId: '111111111111111111111120',
+  title: 'Board',
+};
+
 config.deviceRoomPrepend = 'device#';
 
 config.anonymousUser = {
@@ -243,6 +249,20 @@ config.EmitTypes = {
   RECONNECT: 'reconnect',
   STARTUP: 'startup',
   SENDMSG: 'sendMessage',
+  TRIGGEREVENT: 'triggerEvent',
+};
+
+config.TriggerEventTypes = {
+  DOCFILE: 'docFile',
+  CHATMSG: 'chatMsg',
+  WHISPER: 'whisper',
+  POSITION: 'position',
+};
+
+config.TriggerChangeTypes = {
+  UPDATE: 'update',
+  CREATE: 'create',
+  REMOVE: 'remove',
 };
 
 /**
@@ -269,7 +289,7 @@ config.apiCommands = Object.assign({
    */
   CreateAlias: config.apiCommands.CreateAlias || {
     name: 'CreateAlias',
-    accessLevel: process.env.CREATEALIAS || config.AccessLevels.STANDARD,
+    accessLevel: process.env.CREATEALIASLEVEL || config.AccessLevels.STANDARD,
   },
   GetAliases: config.apiCommands.GetAliases || {
     name: 'GetAliases',
@@ -282,6 +302,10 @@ config.apiCommands = Object.assign({
   RemoveAlias: config.apiCommands.RemoveAlias || {
     name: 'RemoveAlias',
     accessLevel: config.AccessLevels.ADMIN,
+  },
+  UpdateAliasVisibility: config.apiCommands.UpdateAliasVisibility || {
+    name: 'UpdateAliasVisibility',
+    accessLevel: config.AccessLevels.MODERATOR,
   },
 
   /**
@@ -451,8 +475,12 @@ config.apiCommands = Object.assign({
     name: 'SetFullAccess',
     accessLevel: config.AccessLevels.ADMIN,
   },
-  ChangeUserLevels: config.apiCommands.ChangeUserLevels || {
-    name: 'ChangeUserLevels',
+  UpdateUserAccess: config.apiCommands.UpdateUserLevel || {
+    name: 'UpdateUserLevel',
+    accessLevel: config.AccessLevels.ADMIN,
+  },
+  UpdateUserVisibility: config.apiCommands.UpdateUserVisibility || {
+    name: 'UpdateUserVisibility',
     accessLevel: config.AccessLevels.ADMIN,
   },
   GetUser: config.apiCommands.GetUser || {
@@ -762,6 +790,26 @@ config.apiCommands = Object.assign({
   RemoveGameItem: config.apiCommands.RemoveGameItem || {
     name: 'RemoveGameItem',
     accessLevel: config.AccessLevels.MODERATOR,
+  },
+
+  /**
+   * Trigger events
+   */
+  CreateTriggerEvent: config.apiCommands.CreateTriggerEvent || {
+    name: 'CreateTriggerEvent',
+    accessLevel: config.AccessLevels.STANDARD,
+  },
+  RemoveTriggerEvent: config.apiCommands.RemoveTriggerEvent || {
+    name: 'RemoveTriggerEvent',
+    accessLevel: config.AccessLevels.STANDARD,
+  },
+  UpdateTriggerEvent: config.apiCommands.UpdateTriggerEvent || {
+    name: 'UpdateTriggerEvent',
+    accessLevel: config.AccessLevels.STANDARD,
+  },
+  GetTriggerEvents: config.apiCommands.GetTriggerEvents || {
+    name: 'GetTriggerEvents',
+    accessLevel: config.AccessLevels.STANDARD,
   },
 
   /**

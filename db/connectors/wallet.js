@@ -72,7 +72,9 @@ function getWallet({ query, callback }) {
         callback({ error });
 
         return;
-      } else if (!data.object) {
+      }
+
+      if (!data.object) {
         callback({ error: new errorCreator.DoesNotExist({ name: `wallet ${JSON.stringify(query, null, 4)}` }) });
 
         return;
@@ -149,8 +151,12 @@ function getWalletsByTeams({ teamIds, callback }) {
 function getWalletsByUser({
   user,
   callback,
+  noVisibility,
 }) {
-  const query = dbConnector.createUserQuery({ user });
+  const query = dbConnector.createUserQuery({
+    user,
+    noVisibility,
+  });
 
   getWallets({
     query,

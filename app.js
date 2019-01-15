@@ -22,8 +22,9 @@ const path = require('path');
 const bodyParser = require('body-parser');
 const morgan = require('morgan');
 const compression = require('compression');
-const { dbConfig, appConfig } = require('./config/defaults/config');
+const { appConfig } = require('./config/defaults/config');
 const dbRoom = require('./db/connectors/room');
+const dbForum = require('./db/connectors/forum');
 const positionManager = require('./managers/positions');
 const { version: appVersion, name: appName } = require('./package');
 
@@ -59,30 +60,17 @@ if (!appConfig.jsonKey) {
 }
 
 if (appConfig.mode !== appConfig.Modes.TEST) {
-  dbRoom.populateDbRooms({ rooms: dbConfig.rooms });
+  dbRoom.populateDbRooms({});
+  dbForum.populateDbForums({});
 }
 
 if (!appConfig.disablePositionImport) {
-  positionManager.getAndStoreGooglePositions({
-    io,
-    callback: ({ error, data }) => {
-      if (error) {
-        console.log('Failed to retrieve Google Maps positions');
-
-        return;
-      }
-
-      console.log(`Retrieved and saved ${data.positions.length + 1} positions from Google Maps`);
-    },
-  });
-
-  setInterval(() => {
-    // TODO Send positions to clients
+  const getGooglePositions = () => {
     positionManager.getAndStoreGooglePositions({
       io,
       callback: ({ error, data }) => {
         if (error) {
-          console.log('Failed to retrieve Google Maps positions');
+          console.log(error, 'Failed to retrieve Google Maps positions');
 
           return;
         }
@@ -90,6 +78,13 @@ if (!appConfig.disablePositionImport) {
         console.log(`Retrieved and saved ${data.positions.length + 1} positions from Google Maps`);
       },
     });
+  };
+
+  getGooglePositions();
+
+  setInterval(() => {
+    // TODO Send positions to clients
+    getGooglePositions();
   }, 3600000);
 }
 

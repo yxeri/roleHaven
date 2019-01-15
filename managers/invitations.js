@@ -44,7 +44,9 @@ function getAccessibleInvitation({
         callback({ error: invitationError });
 
         return;
-      } else if (!authenticator.hasAccessTo({
+      }
+
+      if (!authenticator.hasAccessTo({
         shouldBeAdmin,
         toAuth: user,
         objectToAccess: invitationData.invitation,

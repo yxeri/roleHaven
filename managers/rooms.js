@@ -142,7 +142,9 @@ function getRoomById({
                   callback({ error: roomAuthError });
 
                   return;
-                } else if (!roomAuthData.hasAuthed) {
+                }
+
+                if (!roomAuthData.hasAuthed) {
                   const accessError = new errorCreator.NotAllowed({
                     name: `${dbConfig.apiCommands.GetRoom.name}. User: ${authUser.objectId}. Access: 'Room' ${room.objectId}`,
                     extraData: { param: 'password' },
@@ -445,23 +447,33 @@ function createRoom({
         callback({ error });
 
         return;
-      } else if (!objectValidator.isValidData({ room }, { room: { roomName: true } })) {
+      }
+
+      if (!objectValidator.isValidData({ room }, { room: { roomName: true } })) {
         callback({ error: new errorCreator.InvalidData({ expected: '{ room: { roomName } }' }) });
 
         return;
-      } else if (room.roomName.length > appConfig.roomNameMaxLength || !textTools.hasAllowedText(room.roomName)) {
+      }
+
+      if (room.roomName.length > appConfig.roomNameMaxLength || !textTools.hasAllowedText(room.roomName)) {
         callback({ error: new errorCreator.InvalidCharacters({ expected: 'a-z 0-9 length: 10' }) });
 
         return;
-      } else if (dbConfig.protectedRoomNames.indexOf(room.roomName.toLowerCase()) > -1) {
+      }
+
+      if (dbConfig.protectedRoomNames.indexOf(room.roomName.toLowerCase()) > -1) {
         callback({ error: new errorCreator.InvalidCharacters({ expected: 'not protected words' }) });
 
         return;
-      } else if (!authenticator.isAllowedAccessLevel({ objectToCreate: room, toAuth: data.user })) {
+      }
+
+      if (!authenticator.isAllowedAccessLevel({ objectToCreate: room, toAuth: data.user })) {
         callback({ error: new errorCreator.NotAllowed({ name: 'too high access level or visibility' }) });
 
         return;
-      } else if (room.password && room.password.length > appConfig.passwordMaxLength) {
+      }
+
+      if (room.password && room.password.length > appConfig.passwordMaxLength) {
         callback({ error: new errorCreator.InvalidCharacters({ expected: 'password too long' }) });
 
         return;
@@ -471,9 +483,9 @@ function createRoom({
       const { user } = data;
       newRoom.ownerId = user.objectId;
       newRoom.roomNameLowerCase = newRoom.roomName.toLowerCase();
-      newRoom.password = newRoom.password && newRoom.password !== '' ?
-        newRoom.password :
-        undefined;
+      newRoom.password = newRoom.password && newRoom.password !== ''
+        ? newRoom.password
+        : undefined;
 
       dbRoom.createRoom({
         room,
@@ -576,7 +588,7 @@ function follow({
 
           dbUser.followRoom({
             roomId,
-            userIds: [idToAdd],
+            userIds: [userId],
             callback: (followData) => {
               if (followData.error) {
                 callback({ error: followData.error });
@@ -774,7 +786,9 @@ function unfollowRoom({
         callback({ error });
 
         return;
-      } else if (isProtectedRoom({ roomId, socket })) {
+      }
+
+      if (isProtectedRoom({ roomId, socket })) {
         callback({ error: new errorCreator.NotAllowed({ name: `unfollow protected room ${roomId}` }) });
 
         return;
@@ -861,7 +875,9 @@ function getRoomsByUser({
 
             if (aName < bName) {
               return -1;
-            } else if (aName > bName) {
+            }
+
+            if (aName > bName) {
               return 1;
             }
 
@@ -951,7 +967,9 @@ function removeRoom({
         callback({ error });
 
         return;
-      } else if (isProtectedRoom({ roomId, socket })) {
+      }
+
+      if (isProtectedRoom({ roomId, socket })) {
         callback({ error: new errorCreator.NotAllowed({ name: `remove protected room ${roomId}` }) });
 
         return;

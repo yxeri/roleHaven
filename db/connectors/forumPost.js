@@ -26,6 +26,7 @@ const forumPostSchema = new mongoose.Schema(dbConnector.createSchema({
   text: { type: [String], default: [] },
   depth: { type: Number, default: 0 },
   likes: { type: Number, default: 0 },
+  dislikes: { type: Number, default: 0 },
   pictures: [dbConnector.pictureSchema],
 }), { collection: 'forumPosts' });
 
@@ -84,7 +85,9 @@ function getPost({
         callback({ error });
 
         return;
-      } else if (!data.object) {
+      }
+
+      if (!data.object) {
         callback({ error: new errorCreator.DoesNotExist({ name: `forumPost ${JSON.stringify(query, null, 4)}` }) });
 
         return;
@@ -151,17 +154,15 @@ function createPost({ post, callback }) {
 
         const foundThread = threadData.data.thread;
 
-        forumPostToSave.adminIds = post.adminIds ?
-          post.adminIds :
-          foundThread.adminIds;
-        forumPostToSave.userIds = post.userIds ?
-          post.userIds :
-          foundThread.userIds;
-        forumPostToSave.teamIds = post.teamIds ?
-          post.teamIds :
-          foundThread.teamIds;
-
-        console.log(forumPostToSave);
+        forumPostToSave.adminIds = post.adminIds
+          ? post.adminIds
+          : foundThread.adminIds;
+        forumPostToSave.userIds = post.userIds
+          ? post.userIds
+          : foundThread.userIds;
+        forumPostToSave.teamIds = post.teamIds
+          ? post.teamIds
+          : foundThread.teamIds;
 
         dbConnector.saveObject({
           object: new ForumPost(forumPostToSave),
@@ -190,21 +191,23 @@ function createPost({ post, callback }) {
           callback({ error: forumData.error });
 
           return;
-        } else if (foundPost.depth > 0) {
+        }
+
+        if (foundPost.depth > 0) {
           callback({ error: new errorCreator.Incorrect({ name: `forumPost ${foundPost.objectId} depth ${foundPost.depth}` }) });
 
           return;
         }
 
-        forumPostToSave.adminIds = post.adminIds ?
-          post.adminIds :
-          foundPost.adminIds;
-        forumPostToSave.userIds = post.userIds ?
-          post.userIds :
-          foundPost.userIds;
-        forumPostToSave.teamIds = post.teamIds ?
-          post.teamIds :
-          foundPost.teamIds;
+        forumPostToSave.adminIds = post.adminIds
+          ? post.adminIds
+          : foundPost.adminIds;
+        forumPostToSave.userIds = post.userIds
+          ? post.userIds
+          : foundPost.userIds;
+        forumPostToSave.teamIds = post.teamIds
+          ? post.teamIds
+          : foundPost.teamIds;
 
         savePost(callback);
       },
@@ -346,7 +349,7 @@ function updatePost({
   if (post.text) { set.text = post.text; }
 
   if (Object.keys(set).length > 0) { update.$set = set; }
-  if (Object.keys(unset).length > 0) { update.$unset = set; }
+  if (Object.keys(unset).length > 0) { update.$unset = unset; }
 
   updateObject({
     update,

@@ -143,7 +143,9 @@ function getImage({ query, callback }) {
         callback({ error });
 
         return;
-      } else if (!data.object) {
+      }
+
+      if (!data.object) {
         callback({ error: new errorCreator.DoesNotExist({ name: `image ${JSON.stringify(query, null, 4)}` }) });
 
         return;

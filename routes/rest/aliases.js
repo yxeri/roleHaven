@@ -163,7 +163,9 @@ function handle(io) {
       restErrorChecker.checkAndSendError({ response, error: new errorCreator.InvalidData({ expected: '{ aliasId }' }) });
 
       return;
-    } else if (!objectValidator.isValidData(request.body, { data: { alias: true } })) {
+    }
+
+    if (!objectValidator.isValidData(request.body, { data: { alias: true } })) {
       restErrorChecker.checkAndSendError({ response, error: new errorCreator.InvalidData({ expected: '{ data: { alias } }' }), sentData: request.body.data });
 
       return;

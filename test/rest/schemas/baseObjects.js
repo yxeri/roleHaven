@@ -167,4 +167,3 @@ schemas.coordinates = {
 };
 
 module.exports = schemas;
-

@@ -63,6 +63,7 @@ function createThread({
   callback,
   token,
   io,
+  socket,
 }) {
   authenticator.isUserAllowed({
     token,
@@ -119,12 +120,6 @@ function createThread({
                     return;
                   }
 
-                  const creatorDataToSend = {
-                    data: {
-                      thread: createdThread,
-                      changeType: dbConfig.ChangeTypes.CREATE,
-                    },
-                  };
                   const dataToSend = {
                     data: {
                       thread: managerHelper.stripObject({ object: Object.assign({}, createdThread) }),
@@ -132,10 +127,24 @@ function createThread({
                     },
                   };
 
-                  io.emit(dbConfig.EmitTypes.FORUMTHREAD, dataToSend);
-                  io.to(authUser.objectId).emit(dbConfig.EmitTypes.FORUMTHREAD, creatorDataToSend);
+                  if (socket) {
+                    socket.broadcast.emit(dbConfig.EmitTypes.FORUMTHREAD, dataToSend);
+                  } else {
+                    io.emit(dbConfig.EmitTypes.FORUMTHREAD, dataToSend);
+                    io.to(thread.ownerAliasId || authUser.objectId).emit(dbConfig.EmitTypes.FORUMTHREAD, {
+                      data: {
+                        thread: createdThread,
+                        changeType: dbConfig.ChangeTypes.UPDATE,
+                      },
+                    });
+                  }
 
-                  callback(creatorDataToSend);
+                  callback({
+                    data: {
+                      thread: createdThread,
+                      changeType: dbConfig.ChangeTypes.CREATE,
+                    },
+                  });
                 },
               });
             },

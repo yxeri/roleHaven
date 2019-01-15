@@ -61,9 +61,9 @@ function checkKeys(data, expected, options) {
  */
 function isValidData(data, expected, options = {}) {
   const validationOptions = options;
-  validationOptions.verbose = typeof validationOptions.verbose === 'undefined' ?
-    true :
-    validationOptions.verbose;
+  validationOptions.verbose = typeof validationOptions.verbose === 'undefined'
+    ? true
+    : validationOptions.verbose;
 
   if ((!data || data === null) || (!expected || expected === null)) {
     if (validationOptions.verbose || appConfig.verboseError) { console.error('Validation error', 'Data and expected structure have to be set'); }

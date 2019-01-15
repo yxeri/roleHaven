@@ -38,6 +38,7 @@ const baseSchema = {
   teamIds: { type: [String], default: [] },
   bannedIds: { type: [String], default: [] },
   isPublic: { type: Boolean, default: false },
+  triggerEvents: { type: [String], default: [] },
 };
 
 const pictureSchema = {
@@ -65,7 +66,7 @@ const coordinatesSchema = {
   },
 };
 
-mongoose.connect(dbPath, {}, (err) => {
+mongoose.connect(dbPath, { useNewUrlParser: true }, (err) => {
   if (err) {
     console.error('Failed to connect to the database');
 
@@ -167,7 +168,9 @@ function verifyObject({
       callback({ error: new errorCreator.Database({ errorObject: err, name: 'verifyObject' }) });
 
       return;
-    } else if (!verified) {
+    }
+
+    if (!verified) {
       callback({ error: new errorCreator.DoesNotExist({ name: 'verify' }) });
 
       return;
@@ -252,7 +255,9 @@ function getObject({
       callback({ error: new errorCreator.Database({ errorObject: error, name: errorNameContent }) });
 
       return;
-    } else if (!foundObject) {
+    }
+
+    if (!foundObject) {
       callback({ data: { exists: false } });
 
       return;
@@ -361,7 +366,9 @@ function updateObject({
       callback({ error: new errorCreator.Database({ errorObject: err, name: errorNameContent }) });
 
       return;
-    } else if (!foundObject) {
+    }
+
+    if (!foundObject) {
       callback({
         error: new errorCreator.DoesNotExist({
           suppressPrint: suppressError,
@@ -590,7 +597,7 @@ function createUserQuery({ user, noVisibility }) {
     objectId,
     partOfTeams,
     accessLevel,
-    aliases,
+    aliases = [],
   } = user;
   const query = {
     bannedIds: { $nin: [objectId] },
@@ -598,9 +605,8 @@ function createUserQuery({ user, noVisibility }) {
       { isPublic: true },
       { ownerId: objectId },
       { ownerAliasId: objectId },
-      { userIds: { $in: [objectId] } },
+      { userIds: { $in: aliases.concat([objectId]) } },
       { teamIds: { $in: partOfTeams } },
-      { aliases: { $in: aliases } },
     ],
   };
 

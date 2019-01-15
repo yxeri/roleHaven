@@ -16,9 +16,9 @@
 
 'use strict';
 
-const { appConfig, dbConfig } = require('../config/defaults/config');
 const request = require('request');
 const xml2json = require('xml2json');
+const { appConfig, dbConfig } = require('../config/defaults/config');
 
 /**
  * Convert xml to json

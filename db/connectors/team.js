@@ -30,6 +30,7 @@ const teamSchema = new mongoose.Schema(dbConnector.createSchema({
   members: { type: [String], default: [] },
   picture: dbConnector.pictureSchema,
   locationName: String,
+  isPermissionsOnly: { type: Boolean, default: false },
 }), { collection: 'teams' });
 
 const Team = mongoose.model('Team', teamSchema);
@@ -108,7 +109,9 @@ function getTeam({ query, callback }) {
         callback({ error });
 
         return;
-      } else if (!data.object) {
+      }
+
+      if (!data.object) {
         callback({ error: new errorCreator.DoesNotExist({ name: `team ${JSON.stringify(query, null, 4)}` }) });
 
         return;
@@ -173,7 +176,9 @@ function createTeam({ team, callback }) {
         callback({ error: nameData.error });
 
         return;
-      } else if (nameData.data.exists) {
+      }
+
+      if (nameData.data.exists) {
         callback({ error: new errorCreator.AlreadyExists({ name: `team ${team.teamName} ${team.shortName}` }) });
 
         return;
@@ -219,6 +224,7 @@ function updateTeam({
     ownerAliasId,
     isVerified,
     isProtected,
+    isPermissionsOnly,
   } = team;
   const { resetOwnerAliasId } = options;
   const update = {};
@@ -249,6 +255,8 @@ function updateTeam({
 
   if (typeof isVerified === 'boolean') { set.isVerified = isVerified; }
   if (typeof isProtected === 'boolean') { set.isProtected = isProtected; }
+  if (typeof isPermissionsOnly === 'boolean') { set.isPermissionsOnly = isPermissionsOnly; }
+
   if (teamName) {
     set.teamName = teamName;
     set.teamNameLowerCase = teamName.toLowerCase();
@@ -270,7 +278,9 @@ function updateTeam({
           callback({ error });
 
           return;
-        } else if (data.exists) {
+        }
+
+        if (data.exists) {
           callback({ error: new errorCreator.AlreadyExists({ name: `teamName ${teamName} ${shortName}` }) });
 
           return;

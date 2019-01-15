@@ -20,6 +20,7 @@ const mongoose = require('mongoose');
 const dbConnector = require('../databaseConnector');
 const errorCreator = require('../../error/errorCreator');
 const dbUser = require('./user');
+const { dbConfig } = require('../../config/defaults/config');
 
 const roomSchema = new mongoose.Schema(dbConnector.createSchema({
   roomName: { type: String, unique: true },
@@ -90,7 +91,9 @@ function getRoom({ query, callback }) {
         callback({ error });
 
         return;
-      } else if (!data.object) {
+      }
+
+      if (!data.object) {
         callback({ error: new errorCreator.DoesNotExist({ name: `room ${JSON.stringify(query, null, 4)}` }) });
 
         return;
@@ -152,7 +155,9 @@ function doesRoomExist({
     callback({ data: { exists: false } });
 
     return;
-  } else if (!roomName && !roomId) {
+  }
+
+  if (!roomName && !roomId) {
     callback({ error: new errorCreator.InvalidData({ expected: 'roomName || roomId' }) });
 
     return;
@@ -220,7 +225,9 @@ function createRoom({
         callback({ error: existsData.error });
 
         return;
-      } else if (existsData.data.exists) {
+      }
+
+      if (existsData.data.exists) {
         if (silentExistsError) {
           callback({ data: { exists: true } });
         } else {
@@ -379,12 +386,15 @@ function updateAccess(params) {
  * @param {Function} params.callback - Callback
  */
 function updateRoom({
-  room,
   roomId,
   callback,
+  room = {},
   options = {},
 }) {
-  const { resetOwnerAliasId } = options;
+  const {
+    resetOwnerAliasId,
+    resetPassword,
+  } = options;
   const {
     roomName,
     ownerAliasId,
@@ -392,6 +402,7 @@ function updateRoom({
     visibility,
     nameIsLocked,
     isAnonymous,
+    password,
   } = room;
   const update = {};
   const set = {};
@@ -401,6 +412,12 @@ function updateRoom({
     unset.ownerAliasId = '';
   } else if (ownerAliasId) {
     set.ownerAliasId = ownerAliasId;
+  }
+
+  if (resetPassword) {
+    unset.password = '';
+  } else if (password) {
+    set.password = password;
   }
 
   if (typeof nameIsLocked === 'boolean') { set.nameIsLocked = nameIsLocked; }
@@ -413,7 +430,7 @@ function updateRoom({
   }
 
   if (Object.keys(set).length > 0) { update.$set = set; }
-  if (Object.keys(unset).length > 0) { update.$unset = set; }
+  if (Object.keys(unset).length > 0) { update.$unset = unset; }
 
   if (roomName) {
     doesRoomExist({
@@ -423,7 +440,9 @@ function updateRoom({
           callback({ error });
 
           return;
-        } else if (data.exists) {
+        }
+
+        if (data.exists) {
           callback({ error: new errorCreator.AlreadyExists({ name: `roomName ${roomName}` }) });
 
           return;
@@ -609,11 +628,12 @@ function getAllRooms({ callback }) {
 /**
  * Add rooms to db.
  * @param {Object} params - Parameters.
- * @param {Object} params.rooms - Rooms to be added.
  * @param {Function} params.callback - Callback.
  */
-function populateDbRooms({ rooms, callback = () => {} }) {
+function populateDbRooms({ callback = () => {} }) {
   console.info('Creating default rooms, if needed');
+
+  const { rooms } = dbConfig;
 
   /**
    * Adds a room to database. Recursive.
