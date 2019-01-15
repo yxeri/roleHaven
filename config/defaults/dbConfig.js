@@ -249,7 +249,21 @@ config.EmitTypes = {
   RECONNECT: 'reconnect',
   STARTUP: 'startup',
   SENDMSG: 'sendMessage',
+  TRIGGEREVENT: 'triggerEvent',
 };
+
+config.TriggerEventTypes = {
+  DOCFILE: 'docFile',
+  CHATMSG: 'chatMsg',
+  WHISPER: 'whisper',
+  POSITION: 'position',
+};
+
+config.TriggerChangeTypes = {
+  UPDATE: 'update',
+  CREATE: 'create',
+  REMOVE: 'remove',
+}
 
 /**
  * *******************
@@ -776,6 +790,26 @@ config.apiCommands = Object.assign({
   RemoveGameItem: config.apiCommands.RemoveGameItem || {
     name: 'RemoveGameItem',
     accessLevel: config.AccessLevels.MODERATOR,
+  },
+
+  /**
+   * Trigger events
+   */
+  CreateTriggerEvent: config.apiCommands.CreateTriggerEvent || {
+    name: 'CreateTriggerEvent',
+    accessLevel: config.AccessLevels.STANDARD,
+  },
+  RemoveTriggerEvent: config.apiCommands.RemoveTriggerEvent || {
+    name: 'RemoveTriggerEvent',
+    accessLevel: config.AccessLevels.STANDARD,
+  },
+  UpdateTriggerEvent: config.apiCommands.UpdateTriggerEvent || {
+    name: 'UpdateTriggerEvent',
+    accessLevel: config.AccessLevels.STANDARD,
+  },
+  GetTriggerEvents: config.apiCommands.GetTriggerEvents || {
+    name: 'GetTriggerEvents',
+    accessLevel: config.AccessLevels.STANDARD,
   },
 
   /**
