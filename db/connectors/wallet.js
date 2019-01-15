@@ -1,5 +1,5 @@
 /*
- Copyright 2017 Aleksandar Jankovic
+ Copyright 2017 Carmilla Mina Jankovic
 
  Licensed under the Apache License, Version 2.0 (the "License");
  you may not use this file except in compliance with the License.
@@ -72,7 +72,9 @@ function getWallet({ query, callback }) {
         callback({ error });
 
         return;
-      } else if (!data.object) {
+      }
+
+      if (!data.object) {
         callback({ error: new errorCreator.DoesNotExist({ name: `wallet ${JSON.stringify(query, null, 4)}` }) });
 
         return;
@@ -149,8 +151,12 @@ function getWalletsByTeams({ teamIds, callback }) {
 function getWalletsByUser({
   user,
   callback,
+  noVisibility,
 }) {
-  const query = dbConnector.createUserQuery({ user });
+  const query = dbConnector.createUserQuery({
+    user,
+    noVisibility,
+  });
 
   getWallets({
     query,
@@ -235,8 +241,6 @@ function updateWallet({
     } else {
       update.$inc.amount = Math.abs(amount);
     }
-
-    console.log(-Math.abs(amount), Math.abs(amount));
   }
 
   if (resetOwnerAliasId) {
@@ -272,16 +276,17 @@ function updateWallet({
  */
 function updateAccess(params) {
   const accessParams = params;
+  const { callback } = params;
   accessParams.objectId = params.walletId;
   accessParams.object = Wallet;
   accessParams.callback = ({ error, data }) => {
     if (error) {
-      accessParams.callback({ error });
+      callback({ error });
 
       return;
     }
 
-    accessParams.callback({ data: { wallet: data.object } });
+    callback({ data: { wallet: data.object } });
   };
 
   if (params.shouldRemove) {

@@ -1,5 +1,5 @@
 /*
- Copyright 2017 Aleksandar Jankovic
+ Copyright 2017 Carmilla Mina Jankovic
 
  Licensed under the Apache License, Version 2.0 (the "License");
  you may not use this file except in compliance with the License.
@@ -207,7 +207,9 @@ function handle(io) {
       restErrorChecker.checkAndSendError({ response, error: new errorCreator.InvalidData({ expected: 'params = { transactionId }' }) });
 
       return;
-    } else if (!objectValidator.isValidData(request.body, { data: { transaction: true } })) {
+    }
+
+    if (!objectValidator.isValidData(request.body, { data: { transaction: true } })) {
       restErrorChecker.checkAndSendError({ response, error: new errorCreator.InvalidData({ expected: 'data = { transaction }' }), sentData: request.body.data });
 
       return;

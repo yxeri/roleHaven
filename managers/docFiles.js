@@ -1,5 +1,5 @@
 /*
- Copyright 2017 Aleksandar Jankovic
+ Copyright 2017 Carmilla Mina Jankovic
 
  Licensed under the Apache License, Version 2.0 (the "License");
  you may not use this file except in compliance with the License.
@@ -37,20 +37,28 @@ function getFileByAccess({ user, docFile }) {
     toAuth: user,
   });
 
-  if (!hasAccess) {
-    const strippedObject = managerHelper.stripObject({ object: Object.assign({}, docFile) });
-    strippedObject.text = undefined;
-    strippedObject.code = undefined;
-    strippedObject.pictures = undefined;
+  if (hasFullAccess) {
+    const fullDocFile = docFile;
+    fullDocFile.isLocked = false;
 
-    return { docFile: strippedObject, isLocked: true };
-  } else if (!hasFullAccess) {
-    const strippedObject = managerHelper.stripObject({ object: Object.assign({}, docFile) });
-
-    return { docFile: strippedObject, isLocked: false };
+    return { docFile: fullDocFile, isLocked: false };
   }
 
-  return { docFile, isLocked: false };
+  if (hasAccess) {
+    const strippedDocFile = managerHelper.stripObject({ object: docFile });
+    strippedDocFile.isLocked = false;
+
+    return { docFile: strippedDocFile, isLocked: false };
+  }
+
+  const strippedDocFile = managerHelper.stripObject({ object: docFile });
+  strippedDocFile.text = undefined;
+  strippedDocFile.code = undefined;
+  strippedDocFile.pictures = [];
+  strippedDocFile.videoCodes = [];
+  strippedDocFile.isLocked = true;
+
+  return { docFile: strippedDocFile, isLocked: true };
 }
 
 /**
@@ -65,6 +73,7 @@ function saveAndTransmitDocFile({
   docFile,
   callback,
   io,
+  socket,
 }) {
   dbDocFile.createDocFile({
     docFile,
@@ -99,15 +108,20 @@ function saveAndTransmitDocFile({
         },
       };
 
-      io.emit(dbConfig.EmitTypes.DOCFILE, dataToSend);
-      io.to(docFile.ownerAliasId || docFile.ownerId).emit(dbConfig.EmitTypes.DOCFILE, creatorDataToSend);
+      if (socket) {
+        socket.broadcast.emit(dbConfig.EmitTypes.DOCFILE, dataToSend);
+      } else {
+        io.emit(dbConfig.EmitTypes.DOCFILE, dataToSend);
+        io.to(docFile.ownerAliasId || docFile.ownerId).emit(dbConfig.EmitTypes.DOCFILE, {
+          data: {
+            isSender: true,
+            docFile: fullDocFile,
+            changeType: dbConfig.ChangeTypes.UPDATE,
+          },
+        });
+      }
 
-      callback({
-        data: {
-          docFile: fullDocFile,
-          changeType: dbConfig.ChangeTypes.CREATE,
-        },
-      });
+      callback(creatorDataToSend);
     },
   });
 }
@@ -129,12 +143,12 @@ function getDocFileById({
   managerHelper.getObjectById({
     token,
     internalCallUser,
+    callback,
     objectId: docFileId,
     objectType: 'docFile',
     objectIdType: 'docFileId',
     dbCallFunc: dbDocFile.getDocFileById,
     commandName: dbConfig.apiCommands.GetDocFile.name,
-    callback,
   });
 }
 
@@ -150,6 +164,7 @@ function createDocFile({
   io,
   docFile,
   callback,
+  socket,
 }) {
   authenticator.isUserAllowed({
     token,
@@ -159,19 +174,27 @@ function createDocFile({
         callback({ error });
 
         return;
-      } else if (!objectValidator.isValidData({ docFile }, { docFile: { code: true, text: true, title: true } })) {
+      }
+
+      if (!objectValidator.isValidData({ docFile }, { docFile: { code: true, text: true, title: true } })) {
         callback({ error: new errorCreator.InvalidData({ expected: '{ docFile: { code, text, title } }' }) });
 
         return;
-      } else if (docFile.code && (!textTools.hasAllowedText(docFile.code) || docFile.code.length > appConfig.docFileCodeMaxLength || docFile.code < appConfig.docFileCodeMinLength)) {
+      }
+
+      if (docFile.code && (!textTools.hasAllowedText(docFile.code) || docFile.code.length > appConfig.docFileCodeMaxLength || docFile.code < appConfig.docFileCodeMinLength)) {
         callback({ error: new errorCreator.InvalidCharacters({ expected: `Alphanumeric ${docFile.code}. Code length: ${appConfig.docFileCodeMinLength} - ${appConfig.docFileCodeMaxLength}` }) });
 
         return;
-      } else if (docFile.text.join('').length > appConfig.docFileMaxLength || docFile.text.join('') < appConfig.docFileMinLength) {
+      }
+
+      if (docFile.text.join('').length > appConfig.docFileMaxLength || docFile.text.join('') < appConfig.docFileMinLength) {
         callback({ error: new errorCreator.InvalidCharacters({ expected: `Text length: ${appConfig.docFileMinLength} - ${appConfig.docFileMaxLength}` }) });
 
         return;
-      } else if (docFile.title.length > appConfig.docFileTitleMaxLength || docFile.title < appConfig.docFileTitleMinLength) {
+      }
+
+      if (docFile.title.length > appConfig.docFileTitleMaxLength || docFile.title < appConfig.docFileTitleMinLength) {
         callback({ error: new errorCreator.InvalidCharacters({ expected: `Title length: ${appConfig.docFileTitleMinLength} - ${appConfig.docFileTitleMaxLength}` }) });
 
         return;
@@ -191,6 +214,7 @@ function createDocFile({
       saveAndTransmitDocFile({
         io,
         callback,
+        socket,
         docFile: newDocFile,
       });
     },
@@ -214,6 +238,7 @@ function updateDocFile({
   token,
   callback,
   options,
+  socket,
 }) {
   authenticator.isUserAllowed({
     token,
@@ -223,11 +248,15 @@ function updateDocFile({
         callback({ error });
 
         return;
-      } else if (docFile.text && docFile.text.join('').length > appConfig.docFileMaxLength) {
+      }
+
+      if (docFile.text && docFile.text.join('').length > appConfig.docFileMaxLength) {
         callback({ error: new errorCreator.InvalidCharacters({ expected: `Text length: ${appConfig.docFileMaxLength}.` }) });
 
         return;
-      } else if (docFile.title && docFile.title.length > appConfig.docFileTitleMaxLength) {
+      }
+
+      if (docFile.title && docFile.title.length > appConfig.docFileTitleMaxLength) {
         callback({ error: new errorCreator.InvalidCharacters({ expected: `Title length: ${appConfig.docFileTitleMaxLength}` }) });
 
         return;
@@ -271,9 +300,7 @@ function updateDocFile({
               }
 
               const { docFile: updatedDocFile } = updateData;
-              const filteredDocFile = Object.assign({}, updatedDocFile);
-
-              filteredDocFile.code = undefined;
+              const filteredDocFile = getFileByAccess({ user: authUser, docFile: updatedDocFile }).docFile;
 
               const dataToSend = {
                 data: {
@@ -288,8 +315,12 @@ function updateDocFile({
                 },
               };
 
-              io.emit(dbConfig.EmitTypes.DOCFILE, dataToSend);
-              io.to(authUser.objectId).emit(dbConfig.EmitTypes.DOCFILE, dataToReturn);
+              if (socket) {
+                socket.broadcast.emit(dbConfig.EmitTypes.DOCFILE, dataToSend);
+              } else {
+                io.emit(dbConfig.EmitTypes.DOCFILE, dataToSend);
+                io.to(authUser.objectId).emit(dbConfig.EmitTypes.DOCFILE, dataToReturn);
+              }
 
               callback(dataToReturn);
             },
@@ -315,6 +346,8 @@ function unlockDocFile({
   token,
   callback,
   internalCallUser,
+  aliasId,
+  socket,
 }) {
   authenticator.isUserAllowed({
     token,
@@ -327,7 +360,7 @@ function unlockDocFile({
         return;
       }
 
-      const { user } = data;
+      const { user: authUser } = data;
 
       dbDocFile.getDocFileById({
         docFileId,
@@ -346,24 +379,25 @@ function unlockDocFile({
             },
           };
 
-          if (foundDocFile.code !== code || foundDocFile.accessLevel > user.accessLevel) {
+          if (foundDocFile.code !== code || foundDocFile.accessLevel > authUser.accessLevel) {
             callback({ error: new errorCreator.NotAllowed({ name: `docFile ${code}` }) });
 
             return;
           }
 
-          if (user.isAnonymous) {
-            io.to(user.objectId).emit(dbConfig.EmitTypes.DOCFILE, dataToSend);
+          if (authUser.isAnonymous) {
+            if (!socket) {
+              io.to(authUser.objectId).emit(dbConfig.EmitTypes.DOCFILE, dataToSend);
+            }
 
             callback(dataToSend);
 
             return;
           }
 
-
           dbDocFile.updateAccess({
             docFileId: foundDocFile.objectId,
-            userIds: [user.objectId],
+            userIds: [aliasId || authUser.objectId],
             callback: (accessData) => {
               if (accessData.error) {
                 callback({ error: accessData.error });
@@ -371,7 +405,9 @@ function unlockDocFile({
                 return;
               }
 
-              io.to(user.objectId).emit(dbConfig.EmitTypes.DOCFILE, dataToSend);
+              if (!socket) {
+                io.to(authUser.objectId).emit(dbConfig.EmitTypes.DOCFILE, dataToSend);
+              }
 
               callback(dataToSend);
             },
@@ -395,11 +431,13 @@ function removeDocFile({
   token,
   callback,
   io,
+  socket,
 }) {
   managerHelper.removeObject({
     callback,
     token,
     io,
+    socket,
     getDbCallFunc: dbDocFile.getDocFileById,
     getCommandName: dbConfig.apiCommands.GetDocFile.name,
     objectId: docFileId,
@@ -423,6 +461,7 @@ function getDocFilesByUser({
 }) {
   managerHelper.getObjects({
     token,
+    ignoreAuth: true,
     shouldSort: true,
     sortName: 'title',
     commandName: dbConfig.apiCommands.GetDocFile.name,
@@ -436,20 +475,12 @@ function getDocFilesByUser({
       }
 
       const { authUser, docFiles } = data;
-      const allDocFiles = docFiles.map(docFile => getFileByAccess({ user: authUser, docFile }).docFile).sort((a, b) => {
-        const aName = a.title;
-        const bName = b.title;
 
-        if (aName < bName) {
-          return -1;
-        } else if (aName > bName) {
-          return 1;
-        }
-
-        return 0;
+      callback({
+        data: {
+          docFiles: docFiles.map(docFile => getFileByAccess({ user: authUser, docFile }).docFile),
+        },
       });
-
-      callback({ data: { docFiles: allDocFiles } });
     },
   });
 }

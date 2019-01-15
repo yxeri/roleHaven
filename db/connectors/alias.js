@@ -1,5 +1,5 @@
 /*
- Copyright 2017 Aleksandar Jankovic
+ Copyright 2017 Carmilla Mina Jankovic
 
  Licensed under the Apache License, Version 2.0 (the "License");
  you may not use this file except in compliance with the License.
@@ -23,9 +23,14 @@ const dbUser = require('./user');
 
 const aliasSchema = new mongoose.Schema(dbConnector.createSchema({
   aliasName: { type: String, unique: true },
+  aliasNameLowerCase: { type: String, unique: true },
   isIdentity: { type: Boolean, default: false },
+  isVerified: { type: Boolean, default: false },
+  isBanned: { type: Boolean, default: false },
   fullName: { type: String },
   picture: dbConnector.pictureSchema,
+  partOfTeams: { type: [String], default: [] },
+  followingRooms: { type: [String], default: [] },
 }), { collection: 'aliases' });
 
 const Alias = mongoose.model('Alias', aliasSchema);
@@ -96,7 +101,9 @@ function getAlias({ query, callback }) {
         callback({ error });
 
         return;
-      } else if (!data.object) {
+      }
+
+      if (!data.object) {
         callback({ error: new errorCreator.DoesNotExist({ name: `alias ${JSON.stringify(query, null, 4)}` }) });
 
         return;
@@ -120,16 +127,17 @@ function getAlias({ query, callback }) {
  */
 function updateAccess(params) {
   const accessParams = params;
+  const { callback } = params;
   accessParams.objectId = params.aliasId;
   accessParams.object = Alias;
   accessParams.callback = ({ error, data }) => {
     if (error) {
-      accessParams.callback({ error });
+      callback({ error });
 
       return;
     }
 
-    accessParams.callback({ data: { alias: data.object } });
+    callback({ data: { alias: data.object } });
   };
 
   if (params.shouldRemove) {
@@ -151,7 +159,9 @@ function getAliasById({
   aliasName,
   callback,
 }) {
-  const query = aliasId ? { _id: aliasId } : { aliasName };
+  const query = aliasId
+    ? { _id: aliasId }
+    : { aliasName };
 
   getAlias({
     callback,
@@ -168,7 +178,7 @@ function getAliasById({
 function doesAliasExist({ aliasName, callback }) {
   dbConnector.doesObjectExist({
     callback,
-    query: { aliasName },
+    query: { aliasNameLowerCase: aliasName.toLowerCase() },
     object: Alias,
   });
 }
@@ -179,7 +189,11 @@ function doesAliasExist({ aliasName, callback }) {
  * @param {Object} params.alias - Alias to add
  * @param {Function} params.callback - Callback
  */
-function createAlias({ alias, callback }) {
+function createAlias({
+  alias,
+  callback,
+  options = {},
+}) {
   dbUser.doesUserExist({
     username: alias.aliasName,
     callback: (nameData) => {
@@ -187,10 +201,21 @@ function createAlias({ alias, callback }) {
         callback({ error: nameData.error });
 
         return;
-      } else if (nameData.data.exists) {
+      }
+
+      if (nameData.data.exists) {
         callback({ error: new errorCreator.AlreadyExists({ name: `aliasName ${alias.aliasName}` }) });
 
         return;
+      }
+
+      const aliasToSave = alias;
+      aliasToSave.aliasNameLowerCase = aliasToSave.aliasName.toLowerCase();
+
+      if (options.setId && aliasToSave.objectId) {
+        aliasToSave._id = mongoose.Types.ObjectId(aliasToSave.objectId); // eslint-disable-line no-underscore-dangle
+      } else {
+        aliasToSave._id = mongoose.Types.ObjectId(); // eslint-disable-line no-underscore-dangle
       }
 
       dbConnector.saveObject({
@@ -256,10 +281,13 @@ function updateAlias({
   }
 
   if (typeof isPublic === 'boolean') { set.isPublic = isPublic; }
-  if (aliasName) { set.aliasName = aliasName; }
+  if (aliasName) {
+    set.aliasName = aliasName;
+    set.aliasNameLowerCase = aliasName.toLowerCase();
+  }
 
   if (Object.keys(set).length > 0) { update.$set = set; }
-  if (Object.keys(unset).length > 0) { update.$unset = set; }
+  if (Object.keys(unset).length > 0) { update.$unset = unset; }
 
   if (aliasName) {
     dbUser.doesUserExist({
@@ -269,7 +297,9 @@ function updateAlias({
           callback({ error });
 
           return;
-        } else if (data.exists) {
+        }
+
+        if (data.exists) {
           callback({ error: new errorCreator.AlreadyExists({ name: `username ${aliasName}` }) });
 
           return;

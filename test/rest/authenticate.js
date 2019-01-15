@@ -1,5 +1,5 @@
 /*
- Copyright 2017 Aleksandar Jankovic
+ Copyright 2017 Carmilla Mina Jankovic
 
  Licensed under the Apache License, Version 2.0 (the "License");
  you may not use this file except in compliance with the License.
@@ -20,8 +20,8 @@
 
 const chai = require('chai');
 const chaiHttp = require('chai-http');
-const app = require('../../app');
 const chaiJson = require('chai-json-schema');
+const app = require('../../app');
 const authenticateSchemas = require('./schemas/authentications');
 const starterData = require('./testData/starter');
 const baseObjectSchemas = require('./schemas/baseObjects');

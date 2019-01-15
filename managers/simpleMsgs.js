@@ -1,5 +1,5 @@
 /*
- Copyright 2017 Aleksandar Jankovic
+ Copyright 2017 Carmilla Mina Jankovic
 
  Licensed under the Apache License, Version 2.0 (the "License");
  you may not use this file except in compliance with the License.
@@ -58,8 +58,6 @@ function getSimpleMsgById({
             return;
           }
 
-          console.log('found simple', msgData);
-
           const { simpleMsg: foundSimpleMsg } = msgData;
           const {
             hasAccess,
@@ -73,7 +71,9 @@ function getSimpleMsgById({
             callback({ error: new errorCreator.NotAllowed({ name: `get simplemsg ${simpleMsgId}` }) });
 
             return;
-          } else if (!hasAccess) {
+          }
+
+          if (!hasAccess) {
             callback({ data: { simpleMsg: managerHelper.stripObject({ object: foundSimpleMsg }) } });
 
             return;
@@ -99,6 +99,7 @@ function sendSimpleMsg({
   io,
   token,
   callback,
+  socket,
 }) {
   authenticator.isUserAllowed({
     token,
@@ -108,11 +109,15 @@ function sendSimpleMsg({
         callback({ error });
 
         return;
-      } else if (!objectValidator.isValidData({ text }, { text: true })) {
+      }
+
+      if (!objectValidator.isValidData({ text }, { text: true })) {
         callback({ error: new errorCreator.InvalidData({ expected: '{ text }' }) });
 
         return;
-      } else if (text.length === 0 || text.length > appConfig.messageMaxLength) {
+      }
+
+      if (text.length === 0 || text.length > appConfig.messageMaxLength) {
         callback({ error: new errorCreator.InvalidCharacters({ expected: `text length 1-${appConfig.messageMaxLength}` }) });
 
         return;
@@ -141,7 +146,11 @@ function sendSimpleMsg({
             },
           };
 
-          io.emit('simpleMsg', dataToSend);
+          if (socket) {
+            socket.broadcast.emit(dbConfig.EmitTypes.SIMPLEMSG, dataToSend);
+          } else {
+            io.emit(dbConfig.EmitTypes.SIMPLEMSG, dataToSend);
+          }
 
           callback(dataToSend);
         },
@@ -165,6 +174,7 @@ function updateSimpleMsg({
   simpleMsg,
   io,
   options,
+  socket,
 }) {
   authenticator.isUserAllowed({
     token,
@@ -221,7 +231,11 @@ function updateSimpleMsg({
                 },
               };
 
-              io.emit(dbConfig.EmitTypes.SIMPLEMSG, dataToSend);
+              if (socket) {
+                socket.broadcast.emit(dbConfig.EmitTypes.SIMPLEMSG, dataToSend);
+              } else {
+                io.emit(dbConfig.EmitTypes.SIMPLEMSG, dataToSend);
+              }
 
               callback(dataToSend);
             },
@@ -243,6 +257,8 @@ function removeSimpleMsg({
   token,
   callback,
   simpleMsgId,
+  io,
+  socket,
 }) {
   authenticator.isUserAllowed({
     token,
@@ -296,6 +312,12 @@ function removeSimpleMsg({
                   changeType: dbConfig.ChangeTypes.REMOVE,
                 },
               };
+
+              if (socket) {
+                socket.broadcast.emit(dbConfig.EmitTypes.SIMPLEMSG, dataToSend);
+              } else {
+                io.emit(dbConfig.EmitTypes.SIMPLEMSG, dataToSend);
+              }
 
               callback(dataToSend);
             },

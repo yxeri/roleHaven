@@ -1,5 +1,5 @@
 /*
- Copyright 2017 Aleksandar Jankovic
+ Copyright 2017 Carmilla Mina Jankovic
 
  Licensed under the Apache License, Version 2.0 (the "License");
  you may not use this file except in compliance with the License.
@@ -19,6 +19,7 @@
 const mongoose = require('mongoose');
 const dbConnector = require('../databaseConnector');
 const errorCreator = require('../../error/errorCreator');
+const dbWallet = require('./wallet');
 
 const transactionSchema = new mongoose.Schema(dbConnector.createSchema({
   amount: Number,
@@ -99,7 +100,9 @@ function getTransaction({ query, callback }) {
         callback({ error });
 
         return;
-      } else if (!data.object) {
+      }
+
+      if (!data.object) {
         callback({ error: new errorCreator.DoesNotExist({ name: `transaction ${JSON.stringify(query, null, 4)}` }) });
 
         return;
@@ -137,20 +140,39 @@ function getTransactionsByWallet({ walletId, callback }) {
  * @param {Function} params.callback - Callback.
  */
 function getTransactionsByUser({ user, callback }) {
-  const query = dbConnector.createUserQuery({ user });
-
-  getTransactions({
-    query,
-    callback: ({ error, data }) => {
-      if (error) {
-        callback({ error });
+  dbWallet.getWalletsByUser({
+    user,
+    noVisibility: true,
+    callback: ({ error: walletError, data: walletData }) => {
+      if (walletError) {
+        callback({ error: walletError });
 
         return;
       }
 
-      const { transactions } = data;
+      const { wallets } = walletData;
+      const walletIds = wallets.map(wallet => wallet.objectId);
+      const query = {
+        $or: [
+          { toWalletId: { $in: walletIds } },
+          { fromWalletId: { $in: walletIds } },
+        ],
+      };
 
-      callback({ data: { transactions } });
+      getTransactions({
+        query,
+        callback: ({ error, data }) => {
+          if (error) {
+            callback({ error });
+
+            return;
+          }
+
+          const { transactions } = data;
+
+          callback({ data: { transactions } });
+        },
+      });
     },
   });
 }

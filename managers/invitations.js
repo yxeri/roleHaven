@@ -1,5 +1,5 @@
 /*
- Copyright 2017 Aleksandar Jankovic
+ Copyright 2017 Carmilla Mina Jankovic
 
  Licensed under the Apache License, Version 2.0 (the "License");
  you may not use this file except in compliance with the License.
@@ -44,7 +44,9 @@ function getAccessibleInvitation({
         callback({ error: invitationError });
 
         return;
-      } else if (!authenticator.hasAccessTo({
+      }
+
+      if (!authenticator.hasAccessTo({
         shouldBeAdmin,
         toAuth: user,
         objectToAccess: invitationData.invitation,

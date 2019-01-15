@@ -1,5 +1,5 @@
 /*
- Copyright 2017 Aleksandar Jankovic
+ Copyright 2017 Carmilla Mina Jankovic
 
  Licensed under the Apache License, Version 2.0 (the "License");
  you may not use this file except in compliance with the License.
@@ -54,7 +54,9 @@ function handle(io) {
       restErrorChecker.checkAndSendError({ response, error: new errorCreator.InvalidData({ expected: 'params = { forumId }' }) });
 
       return;
-    } else if (!objectValidator.isValidData(request.body, { data: { forum: true } })) {
+    }
+
+    if (!objectValidator.isValidData(request.body, { data: { forum: true } })) {
       restErrorChecker.checkAndSendError({ response, error: new errorCreator.InvalidData({ expected: 'data = { forum: true }' }), sentData: request.body.data });
 
       return;

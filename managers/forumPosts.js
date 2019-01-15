@@ -1,5 +1,5 @@
 /*
- Copyright 2017 Aleksandar Jankovic
+ Copyright 2017 Carmilla Mina Jankovic
 
  Licensed under the Apache License, Version 2.0 (the "License");
  you may not use this file except in compliance with the License.
@@ -64,6 +64,7 @@ function createPost({
   callback,
   token,
   io,
+  socket,
 }) {
   authenticator.isUserAllowed({
     token,
@@ -102,9 +103,9 @@ function createPost({
 
           dbPost.createPost({
             post: postToCreate,
-            callback: (postData) => {
-              if (postData.error) {
-                callback({ error: postData.error });
+            callback: ({ error: postError, data: postData }) => {
+              if (postError) {
+                callback({ error: postError });
 
                 return;
               }
@@ -119,17 +120,32 @@ function createPost({
                     return;
                   }
 
+                  const { post: createdPost } = postData;
                   const dataToSend = {
                     data: {
-                      post: postData.data.post,
+                      post: managerHelper.stripObject({ object: Object.assign({}, createdPost) }),
                       changeType: dbConfig.ChangeTypes.CREATE,
                     },
                   };
 
+                  if (socket) {
+                    socket.broadcast.emit(dbConfig.EmitTypes.FORUMPOST, dataToSend);
+                  } else {
+                    io.emit(dbConfig.EmitTypes.FORUMPOST, dataToSend);
+                    io.to(createdPost.ownerAliasId || authUser.objectId).emit(dbConfig.EmitTypes.FORUMPOST, {
+                      data: {
+                        post: createdPost,
+                        changeType: dbConfig.ChangeTypes.UPDATE,
+                      },
+                    });
+                  }
 
-                  io.emit(dbConfig.EmitTypes.FORUMPOST, dataToSend);
-
-                  callback(dataToSend);
+                  callback({
+                    data: {
+                      post: createdPost,
+                      changeType: dbConfig.ChangeTypes.CREATE,
+                    },
+                  });
                 },
               });
             },
@@ -156,6 +172,7 @@ function updatePost({
   io,
   options,
   internalCallUser,
+  socket,
 }) {
   managerHelper.updateObject({
     callback,
@@ -163,6 +180,7 @@ function updatePost({
     token,
     io,
     internalCallUser,
+    socket,
     objectId: postId,
     object: post,
     commandName: dbConfig.apiCommands.UpdateForumPost.name,
@@ -269,9 +287,9 @@ function getPostsByForum({ forumId, callback, token }) {
               const threadIds = threads.map(thread => thread.objectId);
 
               getPostsByThreads({
-                internalCallUser: authUser,
                 threadIds,
                 callback,
+                internalCallUser: authUser,
               });
             },
           });
@@ -294,11 +312,13 @@ function removePost({
   postId,
   callback,
   io,
+  socket,
 }) {
   managerHelper.removeObject({
     callback,
     token,
     io,
+    socket,
     getDbCallFunc: dbPost.getPostById,
     getCommandName: dbConfig.apiCommands.GetForumPost.name,
     objectId: postId,

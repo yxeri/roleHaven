@@ -1,5 +1,5 @@
 /*
- Copyright 2017 Aleksandar Jankovic
+ Copyright 2017 Carmilla Mina Jankovic
 
  Licensed under the Apache License, Version 2.0 (the "License");
  you may not use this file except in compliance with the License.
@@ -27,6 +27,7 @@ const dbRoom = require('../db/connectors/room');
 const socketUtils = require('../utils/socketIo');
 const dbForum = require('../db/connectors/forum');
 const managerHelper = require('../helpers/manager');
+const positionManager = require('./positions');
 
 /**
  * Create a user.
@@ -41,6 +42,7 @@ function createUser({
   callback,
   io,
   options,
+  socket,
 }) {
   let command;
 
@@ -48,8 +50,6 @@ function createUser({
     command = dbConfig.apiCommands.AnonymousCreation;
   } else if (appConfig.disallowUserRegister) {
     command = dbConfig.apiCommands.CreateDisallowedUser;
-  } else if (user.accessLevel) {
-    command = dbConfig.apiCommands.ChangeUserLevels;
   } else {
     command = dbConfig.apiCommands.CreateUser;
   }
@@ -57,18 +57,24 @@ function createUser({
   authenticator.isUserAllowed({
     token,
     commandName: command.name,
-    callback: ({ error }) => {
+    callback: ({ error, data }) => {
       if (error) {
         callback({ error });
 
         return;
-      } else if (!textTools.isAllowedFull(user.username)) {
+      }
+
+      const { user: authUser } = data;
+
+      if (!textTools.isAllowedFull(user.username)) {
         callback({
           error: new errorCreator.InvalidCharacters({ name: `User name: ${user.username}` }),
         });
 
         return;
-      } else if (user.username.length < appConfig.usernameMinLength || user.username.length > appConfig.usernameMaxLength) {
+      }
+
+      if (user.username.length < appConfig.usernameMinLength || user.username.length > appConfig.usernameMaxLength) {
         callback({
           error: new errorCreator.InvalidLength({
             name: `User name length: ${appConfig.usernameMinLength}-${appConfig.usernameMaxLength}`,
@@ -77,7 +83,9 @@ function createUser({
         });
 
         return;
-      } else if (user.fullName && (user.fullName.length < appConfig.fullNameMinLength || user.fullName.length > appConfig.fullNameMaxLength)) {
+      }
+
+      if (user.fullName && (user.fullName.length < appConfig.fullNameMinLength || user.fullName.length > appConfig.fullNameMaxLength)) {
         callback({
           error: new errorCreator.InvalidLength({
             name: `Full name length: ${appConfig.fullNameMinLength}-${appConfig.fullNameMaxLength}`,
@@ -86,7 +94,9 @@ function createUser({
         });
 
         return;
-      } else if (user.password.length < appConfig.passwordMinLength || user.password.length > appConfig.passwordMaxLength) {
+      }
+
+      if (user.password.length < appConfig.passwordMinLength || user.password.length > appConfig.passwordMaxLength) {
         callback({
           error: new errorCreator.InvalidLength({
             name: `Password length: ${appConfig.passwordMinLength}-${appConfig.passwordMaxLength}`,
@@ -95,7 +105,9 @@ function createUser({
         });
 
         return;
-      } else if (user.registerDevice.length > appConfig.deviceIdLength) {
+      }
+
+      if (user.registerDevice.length > appConfig.deviceIdLength) {
         callback({
           error: new errorCreator.InvalidLength({
             name: `Device length: ${appConfig.deviceIdLength}`,
@@ -104,7 +116,9 @@ function createUser({
         });
 
         return;
-      } else if (dbConfig.protectedNames.includes(user.username.toLowerCase())) {
+      }
+
+      if (dbConfig.protectedNames.includes(user.username.toLowerCase())) {
         callback({
           error: new errorCreator.InvalidCharacters({
             name: `protected name ${user.username}`,
@@ -115,10 +129,26 @@ function createUser({
         return;
       }
 
+      if (user.accessLevel && (authUser.accessLevel < dbConfig.apiCommands.UpdateUserAccess.accessLevel)) {
+        callback({ error: new errorCreator.NotAllowed({ name: 'Set user access level' }) });
+
+        return;
+      }
+
+      if (user.visibility && (authUser.accessLevel < dbConfig.apiCommands.UpdateUserVisibility.accessLevel)) {
+        callback({ error: new errorCreator.NotAllowed({ name: 'Set user visibility' }) });
+
+        return;
+      }
+
       const newUser = user;
+      newUser.usernameLowerCase = newUser.username.toLowerCase();
       newUser.isVerified = !appConfig.userVerify;
       newUser.followingRooms = dbConfig.requiredRooms;
-      newUser.accessLevel = newUser.accessLevel || 1;
+      newUser.accessLevel = newUser.accessLevel || dbConfig.AccessLevels.STANDARD;
+      newUser.mailAddress = newUser.mailAddress
+        ? newUser.mailAddress.toLowerCase()
+        : undefined;
 
       dbUser.createUser({
         options,
@@ -220,9 +250,30 @@ function createUser({
                           changeType: dbConfig.ChangeTypes.CREATE,
                         },
                       };
+                      const forumDataToSend = {
+                        data: {
+                          forum: managerHelper.stripObject({ object: Object.assign({}, createdForum) }),
+                        },
+                      };
 
-                      io.to(createdUser.objectId).emit(dbConfig.EmitTypes.USER, creatorDataToSend);
-                      io.emit(dbConfig.EmitTypes.USER, dataToSend);
+                      if (!socket) {
+                        io.to(createdUser.objectId).emit(dbConfig.EmitTypes.USER, creatorDataToSend);
+                      }
+
+                      if (socket) {
+                        socket.join(createdUser.objectId);
+                        socket.broadcast.emit(dbConfig.EmitTypes.USER, dataToSend);
+                      } else {
+                        const userSocket = socketUtils.getUserSocket({ io, socketId: user.socketId });
+
+                        if (userSocket) {
+                          userSocket.join(createdRoom.objectId);
+                        }
+
+                        io.emit(dbConfig.EmitTypes.USER, dataToSend);
+                      }
+
+                      io.emit(dbConfig.EmitTypes.FORUM, forumDataToSend);
                       io.emit(dbConfig.EmitTypes.ROOM, roomDataToSend);
                       io.emit(dbConfig.EmitTypes.WALLET, walletDataToSend);
 
@@ -261,11 +312,13 @@ function getUsersByUser({
         return;
       }
 
-      const { user } = data;
+      const { user: authUser } = data;
 
       dbUser.getUsersByUser({
-        user,
-        includeInactive: user.accessLevel >= dbConfig.AccessLevels.MODERATOR ? true : includeInactive,
+        user: authUser,
+        includeInactive: authUser.accessLevel >= dbConfig.AccessLevels.MODERATOR
+          ? true
+          : includeInactive,
         callback: ({ error: userError, data: userData }) => {
           if (userError) {
             callback({ error: userError });
@@ -274,12 +327,19 @@ function getUsersByUser({
           }
 
           const { users } = userData;
-          const allUsers = users.map((userItem) => {
-            const { hasFullAccess } = authenticator.hasAccessTo({
-              toAuth: user,
-              objectToAccess: userItem,
+          const allUsers = users.filter((user) => {
+            const { canSee } = authenticator.hasAccessTo({
+              toAuth: authUser,
+              objectToAccess: user,
             });
-            const userObject = userItem;
+
+            return canSee;
+          }).map((user) => {
+            const { hasFullAccess } = authenticator.hasAccessTo({
+              toAuth: authUser,
+              objectToAccess: user,
+            });
+            const userObject = user;
 
             if (!hasFullAccess) {
               return managerHelper.stripObject({ object: userObject });
@@ -292,7 +352,9 @@ function getUsersByUser({
 
             if (aName < bName) {
               return -1;
-            } else if (aName > bName) {
+            }
+
+            if (aName > bName) {
               return 1;
             }
 
@@ -307,9 +369,9 @@ function getUsersByUser({
 }
 
 /**
- * Get user or alais by Id or name.
+ * Get user  Id or name.
  * @param {Object} params - Parameters.
- * @param {string} params.userId - Id of the user or alias to retrieve.
+ * @param {string} params.userId - Id of the user to retrieve.
  * @param {Object} [params.internalCallUser] - User to use on authentication. It will bypass token authentication.
  * @param {Function} params.callback - Callback.
  */
@@ -362,7 +424,9 @@ function getUserById({
             callback({ error: errorCreator.NotAllowed({ name: `user ${username || userId}` }) });
 
             return;
-          } else if (!hasAccess) {
+          }
+
+          if (!hasAccess) {
             callback({ data: { user: managerHelper.stripObject({ object: foundUser }) } });
 
             return;
@@ -504,33 +568,70 @@ function login({
       const { token, user: authUser } = data;
       const { objectId: userId, followingRooms: roomIds } = authUser;
       const socketId = socket.id;
+      const updateOnlineFunc = () => {
+        dbUser.updateOnline({
+          userId,
+          socketId,
+          isOnline: true,
+          callback: (socketData) => {
+            if (socketData.error) {
+              callback({ error: socketData.error });
 
-      dbUser.updateOnline({
-        userId,
-        socketId,
-        isOnline: true,
-        callback: (socketData) => {
-          if (socketData.error) {
-            callback({ error: socketData.error });
+              return;
+            }
 
-            return;
-          }
+            socketUtils.joinRooms({
+              io,
+              socketId,
+              userId,
+              roomIds,
+            });
+            socketUtils.joinRequiredRooms({
+              io,
+              userId,
+              socketId,
+              socket,
+            });
+            socketUtils.joinAliasRooms({
+              io,
+              socketId,
+              aliases: authUser.aliases,
+            });
 
-          socketUtils.joinRooms({
-            io,
-            socketId,
-            userId,
-            roomIds,
-          });
-          socketUtils.joinRequiredRooms({
-            io,
-            userId,
-            socketId,
-          });
+            callback({ data: { user: authUser, token } });
+          },
+        });
+      };
 
-          callback({ data: { user: authUser, token } });
-        },
-      });
+      if (!authUser.lastOnline) {
+        positionManager.createPosition({
+          io,
+          position: {
+            objectId: authUser.objectId,
+            positionName: authUser.objectId,
+            connectedToUser: authUser.objectId,
+            positionType: dbConfig.PositionTypes.USER,
+            coordinates: {
+              accuracy: Number.MAX_VALUE,
+              longitude: 1,
+              latitude: 1,
+            },
+          },
+          internalCallUser: authUser,
+          isLoggedInUserPosition: true,
+          callback: ({ error: positionError }) => {
+            if (positionError) {
+              console.log(`Failed to create logged in user position for ${authUser.objectId}`, positionError);
+            }
+
+            updateOnlineFunc();
+          },
+        });
+
+        return;
+      }
+
+      updateOnlineFunc();
     },
   });
 }
@@ -544,7 +645,6 @@ function login({
  */
 function logout({
   token,
-  io,
   socket,
   callback,
 }) {
@@ -571,11 +671,6 @@ function logout({
           }
 
           roomManager.leaveSocketRooms(socket);
-          socketUtils.joinRequiredRooms({
-            userId,
-            io,
-            socketId: socket.id,
-          });
 
           callback({ data: { success: true } });
         },
@@ -661,7 +756,9 @@ function banUser({
         callback({ error });
 
         return;
-      } else if (banUserId === data.user.objectId) {
+      }
+
+      if (banUserId === data.user.objectId) {
         callback({ error: new errorCreator.InvalidData({ name: 'cannot ban self' }) });
 
         return;
@@ -796,6 +893,7 @@ function updateUser({
   userId,
   user,
   options,
+  socket,
 }) {
   authenticator.isUserAllowed({
     token,
@@ -818,7 +916,9 @@ function updateUser({
             callback({ error: getUserError });
 
             return;
-          } else if (userId === authUser.userId && dbConfig.apiCommands.UpdateSelf.accessLevel > authUser.accessLevel) {
+          }
+
+          if (userId === authUser.userId && dbConfig.apiCommands.UpdateSelf.accessLevel > authUser.accessLevel) {
             callback({ error: new errorCreator.NotAllowed({ name: 'update self' }) });
 
             return;
@@ -837,7 +937,9 @@ function updateUser({
             callback({ error: new errorCreator.NotAllowed({ name: `update user ${userId}` }) });
 
             return;
-          } else if (user.accessLevel && (authUser.accessLevel < dbConfig.AccessLevels.ADMIN || user.accessLevel > dbConfig.AccessLevels.ADMIN)) {
+          }
+
+          if (user.accessLevel && (authUser.accessLevel < dbConfig.AccessLevels.ADMIN || user.accessLevel > dbConfig.AccessLevels.ADMIN)) {
             callback({ error: new errorCreator.NotAllowed({ name: `update access level user ${userId}` }) });
 
             return;
@@ -868,8 +970,11 @@ function updateUser({
                 },
               };
 
-              io.emit(dbConfig.EmitTypes.USER, dataToSend);
-              io.to(userId).emit(dbConfig.EmitTypes.USER, creatorDataToSend);
+              if (socket) {
+                socket.broadcast.emit(dbConfig.EmitTypes.USER, dataToSend);
+              } else {
+                io.emit(dbConfig.EmitTypes.USER, dataToSend);
+              }
 
               callback(creatorDataToSend);
             },
@@ -904,10 +1009,23 @@ function updateId({
         return;
       }
 
-      const { user } = data;
+      const { user: authUser } = data;
 
-      const { objectId: userId, followingRooms: roomIds } = user;
+      const { objectId: userId, followingRooms: roomIds } = authUser;
       const socketId = socket.id;
+
+      if (authUser.isAnonymous) {
+        socketUtils.joinRequiredRooms({
+          io,
+          userId,
+          socketId,
+          socket,
+        });
+
+        callback({ data: { user: authUser } });
+
+        return;
+      }
 
       dbUser.updateOnline({
         userId,
@@ -930,9 +1048,15 @@ function updateId({
             io,
             userId,
             socketId,
+            socket,
+          });
+          socketUtils.joinAliasRooms({
+            io,
+            socketId,
+            aliases: authUser.aliases,
           });
 
-          callback({ data: { user } });
+          callback({ data: { user: authUser } });
         },
       });
     },

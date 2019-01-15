@@ -1,5 +1,5 @@
 /*
- Copyright 2017 Aleksandar Jankovic
+ Copyright 2017 Carmilla Mina Jankovic
 
  Licensed under the Apache License, Version 2.0 (the "License");
  you may not use this file except in compliance with the License.
@@ -63,14 +63,6 @@ function handle(socket, io) {
     params.io = io;
     params.socket = socket;
     docFileManager.getDocFilesByUser(params);
-  });
-
-  socket.on('getDocFilesList', (params, callback = () => {
-  }) => {
-    params.callback = callback;
-    params.io = io;
-    params.socket = socket;
-    docFileManager.getDocFilesList(params);
   });
 
   socket.on('unlockDocFile', (params, callback = () => {

@@ -1,5 +1,5 @@
 /*
- Copyright 2017 Aleksandar Jankovic
+ Copyright 2017 Carmilla Mina Jankovic
 
  Licensed under the Apache License, Version 2.0 (the "License");
  you may not use this file except in compliance with the License.
@@ -16,21 +16,23 @@
 
 'use strict';
 
-const path = require('path');
-
 let config = {};
 
 try {
-  config = require(path.normalize(`${__dirname}/../../../../config/databasePopulation`)).config; // eslint-disable-line import/no-unresolved, global-require, import/no-dynamic-require, prefer-destructuring
+  config = Object.assign({}, require('../dbConfig')); // eslint-disable-line
 } catch (err) {
-  console.log('Did not find modified dbConfig. Using defaults');
+  console.log('Did not find modified dbConfig. Using defaults.');
 }
 
 config.rooms = config.rooms || {};
 config.users = config.users || {};
-config.commands = config.commands || {};
 config.apiCommands = config.apiCommands || {};
+config.forums = config.forums || {};
 
+/**
+ * Access levels are used as permissions for users.
+ * A user that has an level equal to or greater than the required access level will be able to use the function.
+ */
 config.AccessLevels = config.AccessLevels || {
   ANONYMOUS: 0,
   STANDARD: 1,
@@ -46,6 +48,9 @@ config.users.systemUser = config.users.systemUser || {
   username: 'system',
 };
 
+/**
+ * Default user used when the client is not authenticated.
+ */
 config.users.anonymous = config.users.anonymous || {
   username: 'anonymous',
   objectId: '222222222222222222222221',
@@ -133,6 +138,11 @@ config.roomsToBeHidden = [
   config.rooms.news.objectId,
   config.rooms.schedule.objectId,
 ];
+
+config.forums.public = config.forums.public || {
+  objectId: '111111111111111111111120',
+  title: 'Board',
+};
 
 config.deviceRoomPrepend = 'device#';
 
@@ -225,6 +235,7 @@ config.EmitTypes = {
   GAMECODE: 'gameCode',
   ALIAS: 'alias',
   POSITION: 'position',
+  POSITIONS: 'positions',
   ROOM: 'room',
   FOLLOWER: 'follower',
   TEAM: 'team',
@@ -238,6 +249,20 @@ config.EmitTypes = {
   RECONNECT: 'reconnect',
   STARTUP: 'startup',
   SENDMSG: 'sendMessage',
+  TRIGGEREVENT: 'triggerEvent',
+};
+
+config.TriggerEventTypes = {
+  DOCFILE: 'docFile',
+  CHATMSG: 'chatMsg',
+  WHISPER: 'whisper',
+  POSITION: 'position',
+};
+
+config.TriggerChangeTypes = {
+  UPDATE: 'update',
+  CREATE: 'create',
+  REMOVE: 'remove',
 };
 
 /**
@@ -258,13 +283,13 @@ config.defaultRoom = config.rooms.public;
  * ***************************
  */
 
-config.apiCommands = {
+config.apiCommands = Object.assign({
   /**
    * Alias
    */
   CreateAlias: config.apiCommands.CreateAlias || {
     name: 'CreateAlias',
-    accessLevel: config.AccessLevels.STANDARD,
+    accessLevel: process.env.CREATEALIASLEVEL || config.AccessLevels.STANDARD,
   },
   GetAliases: config.apiCommands.GetAliases || {
     name: 'GetAliases',
@@ -277,6 +302,10 @@ config.apiCommands = {
   RemoveAlias: config.apiCommands.RemoveAlias || {
     name: 'RemoveAlias',
     accessLevel: config.AccessLevels.ADMIN,
+  },
+  UpdateAliasVisibility: config.apiCommands.UpdateAliasVisibility || {
+    name: 'UpdateAliasVisibility',
+    accessLevel: config.AccessLevels.MODERATOR,
   },
 
   /**
@@ -332,7 +361,7 @@ config.apiCommands = {
    */
   CreateRoom: config.apiCommands.CreateRoom || {
     name: 'CreateRoom',
-    accessLevel: config.AccessLevels.STANDARD,
+    accessLevel: process.env.CREATEROOM || config.AccessLevels.STANDARD,
   },
   GetRoom: config.apiCommands.GetRoom || {
     name: 'GetRoom',
@@ -368,7 +397,7 @@ config.apiCommands = {
    */
   CreateTransaction: config.apiCommands.CreateTransaction || {
     name: 'CreateTransaction',
-    accessLevel: config.AccessLevels.STANDARD,
+    accessLevel: process.env.CREATETRANSACTION || config.AccessLevels.STANDARD,
   },
   GetTransaction: config.apiCommands.GetTransaction || {
     name: 'GetTransaction',
@@ -412,7 +441,7 @@ config.apiCommands = {
    */
   CreateUser: config.apiCommands.CreateUser || {
     name: 'CreateUser',
-    accessLevel: config.AccessLevels.ANONYMOUS,
+    accessLevel: process.env.CREATEUSER || config.AccessLevels.ANONYMOUS,
   },
   CreateDisallowedUser: config.apiCommands.CreateDisallowedUser || {
     name: 'CreateDisallowedUser',
@@ -446,8 +475,12 @@ config.apiCommands = {
     name: 'SetFullAccess',
     accessLevel: config.AccessLevels.ADMIN,
   },
-  ChangeUserLevels: config.apiCommands.ChangeUserLevels || {
-    name: 'ChangeUserLevels',
+  UpdateUserAccess: config.apiCommands.UpdateUserLevel || {
+    name: 'UpdateUserLevel',
+    accessLevel: config.AccessLevels.ADMIN,
+  },
+  UpdateUserVisibility: config.apiCommands.UpdateUserVisibility || {
+    name: 'UpdateUserVisibility',
     accessLevel: config.AccessLevels.ADMIN,
   },
   GetUser: config.apiCommands.GetUser || {
@@ -500,7 +533,7 @@ config.apiCommands = {
    */
   CreateTeam: config.apiCommands.CreateTeam || {
     name: 'CreateTeam',
-    accessLevel: config.AccessLevels.STANDARD,
+    accessLevel: process.env.CREATETEAM || config.AccessLevels.STANDARD,
   },
   GetTeam: config.apiCommands.GetTeam || {
     name: 'GetTeam',
@@ -536,7 +569,7 @@ config.apiCommands = {
    */
   CreateForum: config.apiCommands.CreateForum || {
     name: 'CreateForum',
-    accessLevel: config.AccessLevels.MODERATOR,
+    accessLevel: process.env.CREATEFORUM || config.AccessLevels.MODERATOR,
   },
   GetForum: config.apiCommands.GetForum || {
     name: 'GetForum',
@@ -556,7 +589,7 @@ config.apiCommands = {
    */
   CreateForumPost: config.apiCommands.CreateForumPost || {
     name: 'CreateForumPost',
-    accessLevel: config.AccessLevels.STANDARD,
+    accessLevel: process.env.CREATEFORUMPOST || config.AccessLevels.STANDARD,
   },
   GetForumPost: config.apiCommands.GetForumPost || {
     name: 'GetForumPost',
@@ -576,7 +609,7 @@ config.apiCommands = {
    */
   CreateForumThread: config.apiCommands.CreateForumThread || {
     name: 'CreateForumThread',
-    accessLevel: config.AccessLevels.STANDARD,
+    accessLevel: process.env.CREATEFORUMTHREAD || config.AccessLevels.STANDARD,
   },
   GetForumThread: config.apiCommands.GetForumThread || {
     name: 'GetForumThread',
@@ -596,7 +629,7 @@ config.apiCommands = {
    */
   CreateDevice: config.apiCommands.CreateDevice || {
     name: 'CreateDevice',
-    accessLevel: config.AccessLevels.STANDARD,
+    accessLevel: process.env.CREATEDEVICE || config.AccessLevels.STANDARD,
   },
   RemoveDevice: config.apiCommands.RemoveDevice || {
     name: 'RemoveDevice',
@@ -620,7 +653,7 @@ config.apiCommands = {
    */
   CreateDocFile: config.apiCommands.CreateDocFile || {
     name: 'CreateDocFile',
-    accessLevel: config.AccessLevels.STANDARD,
+    accessLevel: process.env.CREATEDOCFILE || config.AccessLevels.STANDARD,
   },
   RemoveDocFile: config.apiCommands.RemoveDocFile || {
     name: 'RemoveDocFile',
@@ -668,7 +701,7 @@ config.apiCommands = {
    */
   CreateGameCode: config.apiCommands.CreateGameCode || {
     name: 'CreateGameCode',
-    accessLevel: config.AccessLevels.STANDARD,
+    accessLevel: process.env.CREATEGAMECODE || config.AccessLevels.STANDARD,
   },
   UseGameCode: config.apiCommands.UseGameCode || {
     name: 'UseGameCode',
@@ -692,7 +725,11 @@ config.apiCommands = {
    */
   CreatePosition: config.apiCommands.CreatePosition || {
     name: 'CreatePosition',
-    accessLevel: config.AccessLevels.STANDARD,
+    accessLevel: process.env.CREATEPOSITION || config.AccessLevels.STANDARD,
+  },
+  CreatePermanentPosition: config.apiCommands.CreatePermanentPosition || {
+    name: 'CreatePermanentPosition',
+    accessLevel: process.env.CREATEPERMANENTPOSITION || config.AccessLevels.PRIVILEGED,
   },
   GetPositions: config.apiCommands.GetPositions || {
     name: 'GetPositions',
@@ -756,12 +793,32 @@ config.apiCommands = {
   },
 
   /**
+   * Trigger events
+   */
+  CreateTriggerEvent: config.apiCommands.CreateTriggerEvent || {
+    name: 'CreateTriggerEvent',
+    accessLevel: config.AccessLevels.STANDARD,
+  },
+  RemoveTriggerEvent: config.apiCommands.RemoveTriggerEvent || {
+    name: 'RemoveTriggerEvent',
+    accessLevel: config.AccessLevels.STANDARD,
+  },
+  UpdateTriggerEvent: config.apiCommands.UpdateTriggerEvent || {
+    name: 'UpdateTriggerEvent',
+    accessLevel: config.AccessLevels.STANDARD,
+  },
+  GetTriggerEvents: config.apiCommands.GetTriggerEvents || {
+    name: 'GetTriggerEvents',
+    accessLevel: config.AccessLevels.STANDARD,
+  },
+
+  /**
    * Other
    */
   AnonymousCreation: config.apiCommands.AnonymousCreation || {
     name: 'AnonymousCreation',
     accessLevel: config.AccessLevels.ANONYMOUS,
   },
-};
+}, config.apiCommands || {});
 
 module.exports = config;

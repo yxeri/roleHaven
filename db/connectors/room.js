@@ -1,5 +1,5 @@
 /*
- Copyright 2017 Aleksandar Jankovic
+ Copyright 2017 Carmilla Mina Jankovic
 
  Licensed under the Apache License, Version 2.0 (the "License");
  you may not use this file except in compliance with the License.
@@ -20,9 +20,11 @@ const mongoose = require('mongoose');
 const dbConnector = require('../databaseConnector');
 const errorCreator = require('../../error/errorCreator');
 const dbUser = require('./user');
+const { dbConfig } = require('../../config/defaults/config');
 
 const roomSchema = new mongoose.Schema(dbConnector.createSchema({
   roomName: { type: String, unique: true },
+  roomNameLowerCase: { type: String, unique: true },
   password: String,
   participantIds: { type: [String], default: [] },
   nameIsLocked: { type: Boolean, default: false },
@@ -44,8 +46,6 @@ const Room = mongoose.model('Room', roomSchema);
  */
 function cleanParameters(room) {
   const modifiedRoom = room;
-
-  modifiedRoom.password = typeof room.password === 'string';
 
   return modifiedRoom;
 }
@@ -91,7 +91,9 @@ function getRoom({ query, callback }) {
         callback({ error });
 
         return;
-      } else if (!data.object) {
+      }
+
+      if (!data.object) {
         callback({ error: new errorCreator.DoesNotExist({ name: `room ${JSON.stringify(query, null, 4)}` }) });
 
         return;
@@ -153,7 +155,9 @@ function doesRoomExist({
     callback({ data: { exists: false } });
 
     return;
-  } else if (!roomName && !roomId) {
+  }
+
+  if (!roomName && !roomId) {
     callback({ error: new errorCreator.InvalidData({ expected: 'roomName || roomId' }) });
 
     return;
@@ -161,7 +165,10 @@ function doesRoomExist({
 
   const query = { $or: [] };
 
-  if (roomName) { query.$or.push({ roomName }); }
+  if (roomName) {
+    query.$or.push({ roomNameLowerCase: roomName.toLowerCase() });
+  }
+
   if (roomId) { query.$or.push({ _id: roomId }); }
 
   dbConnector.doesObjectExist({
@@ -218,7 +225,9 @@ function createRoom({
         callback({ error: existsData.error });
 
         return;
-      } else if (existsData.data.exists) {
+      }
+
+      if (existsData.data.exists) {
         if (silentExistsError) {
           callback({ data: { exists: true } });
         } else {
@@ -229,6 +238,7 @@ function createRoom({
       }
 
       const roomToSave = room;
+      roomToSave.roomNameLowerCase = roomToSave.roomName.toLowerCase();
 
       if (setId && roomId) {
         roomToSave._id = mongoose.Types.ObjectId(roomId); // eslint-disable-line no-underscore-dangle
@@ -376,12 +386,15 @@ function updateAccess(params) {
  * @param {Function} params.callback - Callback
  */
 function updateRoom({
-  room,
   roomId,
   callback,
+  room = {},
   options = {},
 }) {
-  const { resetOwnerAliasId } = options;
+  const {
+    resetOwnerAliasId,
+    resetPassword,
+  } = options;
   const {
     roomName,
     ownerAliasId,
@@ -389,6 +402,7 @@ function updateRoom({
     visibility,
     nameIsLocked,
     isAnonymous,
+    password,
   } = room;
   const update = {};
   const set = {};
@@ -400,14 +414,23 @@ function updateRoom({
     set.ownerAliasId = ownerAliasId;
   }
 
+  if (resetPassword) {
+    unset.password = '';
+  } else if (password) {
+    set.password = password;
+  }
+
   if (typeof nameIsLocked === 'boolean') { set.nameIsLocked = nameIsLocked; }
   if (typeof isAnonymous === 'boolean') { set.isAnonymous = isAnonymous; }
   if (accessLevel) { set.accessLevel = accessLevel; }
   if (visibility) { set.visibility = visibility; }
-  if (roomName) { set.roomName = roomName; }
+  if (roomName) {
+    set.roomName = roomName;
+    set.roomNameLowerCase = roomName.toLowerCase();
+  }
 
   if (Object.keys(set).length > 0) { update.$set = set; }
-  if (Object.keys(unset).length > 0) { update.$unset = set; }
+  if (Object.keys(unset).length > 0) { update.$unset = unset; }
 
   if (roomName) {
     doesRoomExist({
@@ -417,7 +440,9 @@ function updateRoom({
           callback({ error });
 
           return;
-        } else if (data.exists) {
+        }
+
+        if (data.exists) {
           callback({ error: new errorCreator.AlreadyExists({ name: `roomName ${roomName}` }) });
 
           return;
@@ -446,17 +471,13 @@ function updateRoom({
  * @param {Object} params - Parameters.
  * @param {string} params.roomId - Id of the room.
  * @param {Function} params.callback - Callback.
- * @param {string} [params.password] - Password for the room.
  */
 function getRoomById({
   roomId,
   roomName,
-  password,
   callback,
 }) {
   const query = {};
-
-  if (password) { query.password = password; }
 
   if (roomId) {
     query._id = roomId;
@@ -467,6 +488,53 @@ function getRoomById({
   getRoom({
     callback,
     query,
+  });
+}
+
+/**
+ * Get room by Id.
+ * @param {Object} params - Parameters.
+ * @param {string} params.roomId - Id of the room.
+ * @param {Function} params.callback - Callback.
+ * @param {string} params.password - Password for the room.
+ */
+function authToRoom({
+  roomId,
+  roomName,
+  password,
+  callback,
+}) {
+  const query = {
+    password,
+  };
+
+  if (roomId) {
+    query._id = roomId;
+  } else {
+    query.roomName = roomName;
+  }
+
+  getRoom({
+    query,
+    callback: ({ error }) => {
+      if (error) {
+        if (error.type === errorCreator.ErrorTypes.DOESNOTEXIST) {
+          callback({
+            data: { hasAuthed: false },
+          });
+
+          return;
+        }
+
+        callback({ error });
+
+        return;
+      }
+
+      callback({
+        data: { hasAuthed: true },
+      });
+    },
   });
 }
 
@@ -560,11 +628,12 @@ function getAllRooms({ callback }) {
 /**
  * Add rooms to db.
  * @param {Object} params - Parameters.
- * @param {Object} params.rooms - Rooms to be added.
  * @param {Function} params.callback - Callback.
  */
-function populateDbRooms({ rooms, callback = () => {} }) {
+function populateDbRooms({ callback = () => {} }) {
   console.info('Creating default rooms, if needed');
+
+  const { rooms } = dbConfig;
 
   /**
    * Adds a room to database. Recursive.
@@ -612,3 +681,4 @@ exports.getRoomsByUser = getRoomsByUser;
 exports.getRoomsByIds = getRoomsByIds;
 exports.getAllRooms = getAllRooms;
 exports.doesWhisperRoomExist = doesWhisperRoomExist;
+exports.authToRoom = authToRoom;

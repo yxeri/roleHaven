@@ -1,5 +1,5 @@
 /*
- Copyright 2017 Aleksandar Jankovic
+ Copyright 2017 Carmilla Mina Jankovic
 
  Licensed under the Apache License, Version 2.0 (the "License");
  you may not use this file except in compliance with the License.
@@ -27,6 +27,36 @@ const dbUser = require('../db/connectors/user');
 const managerHelper = require('../helpers/manager');
 
 /**
+ * Auth to room with password.
+ * @param {Object} params Parameters.
+ * @param {string} params.password Password for room.
+ * @param {Function} params.callback Callback.
+ * @param {string} [params.roomId] Id of the room.
+ * @param {string} [params.roomName] Name of the room.
+ */
+function authToRoom({
+  roomId,
+  roomName,
+  password,
+  callback,
+}) {
+  dbRoom.authToRoom({
+    roomId,
+    roomName,
+    password,
+    callback: ({ error, data }) => {
+      if (error) {
+        callback({ error });
+
+        return;
+      }
+
+      callback({ data });
+    },
+  });
+}
+
+/**
  * Get room by Id or name.
  * @param {Object} params - Parameter.
  * @param {string} params.token - jwt.
@@ -45,23 +75,105 @@ function getRoomById({
   internalCallUser,
   needsAccess,
 }) {
-  managerHelper.getObjectById({
-    token,
+  authenticator.isUserAllowed({
     internalCallUser,
-    callback,
-    needsAccess,
-    objectId: roomId,
-    searchParams: [{
-      paramValue: roomName,
-      paramName: 'roomName',
-    }, {
-      paramValue: password,
-      paramName: 'password',
-    }],
-    objectType: 'room',
-    objectIdType: 'roomId',
-    dbCallFunc: dbRoom.getRoomById,
+    token,
     commandName: dbConfig.apiCommands.GetRoom.name,
+    callback: ({ error: authError, data: authData }) => {
+      if (authError) {
+        callback({ error: authError });
+
+        return;
+      }
+
+      const { user: authUser } = authData;
+      const returnFunc = ({
+        callback: returnCallback,
+        room: roomToReturn,
+        hasFullAccess: accessedFullAccess,
+      }) => {
+        const dataToReturn = {
+          data: {
+            room: !accessedFullAccess
+              ? managerHelper.stripObject({ object: roomToReturn })
+              : roomToReturn,
+          },
+        };
+
+        returnCallback(dataToReturn);
+      };
+
+      dbRoom.getRoomById({
+        roomId,
+        roomName,
+        callback: ({ error, data }) => {
+          if (error) {
+            callback({ error });
+
+            return;
+          }
+
+          const { room } = data;
+
+          const {
+            canSee,
+            hasAccess,
+            hasFullAccess,
+          } = authenticator.hasAccessTo({
+            objectToAccess: room,
+            toAuth: authUser,
+          });
+
+          if (!canSee || (needsAccess && !hasAccess)) {
+            const accessError = new errorCreator.NotAllowed({ name: `${dbConfig.apiCommands.GetRoom.name}. User: ${authUser.objectId}. Access: 'Room' ${room.objectId}` });
+
+            callback({ error: accessError });
+
+            return;
+          }
+
+          if (room.password && !hasAccess) {
+            authToRoom({
+              roomId,
+              roomName,
+              password,
+              callback: ({ error: roomAuthError, data: roomAuthData }) => {
+                if (roomAuthError) {
+                  callback({ error: roomAuthError });
+
+                  return;
+                }
+
+                if (!roomAuthData.hasAuthed) {
+                  const accessError = new errorCreator.NotAllowed({
+                    name: `${dbConfig.apiCommands.GetRoom.name}. User: ${authUser.objectId}. Access: 'Room' ${room.objectId}`,
+                    extraData: { param: 'password' },
+                  });
+
+                  callback({ error: accessError });
+
+                  return;
+                }
+
+                returnFunc({
+                  callback,
+                  room,
+                  hasFullAccess,
+                });
+              },
+            });
+
+            return;
+          }
+
+          returnFunc({
+            callback,
+            room,
+            hasFullAccess,
+          });
+        },
+      });
+    },
   });
 }
 
@@ -148,13 +260,11 @@ function updateAccess({
  * @param {Object} params - Parameters.
  * @param {string[]} params.participantIds - User Ids of the users send private messages to each other.
  * @param {Function} params.callback - Callback.
- * @param {Object} params.socket - Socket.io.
- * @param {Object} params.io - Socket.io. Used if socket is not set.
+ * @param {Object} params.io - Socket.io.
  */
 function createAndFollowWhisperRoom({
   participantIds,
   callback,
-  socket,
   io,
   user,
 }) {
@@ -166,95 +276,122 @@ function createAndFollowWhisperRoom({
     visibility: dbConfig.AccessLevels.SUPERUSER,
   };
 
-  dbRoom.createRoom({
-    room,
-    skipExistsCheck: true,
-    callback: (roomData) => {
-      if (roomData.error) {
-        callback({ error: roomData.error });
+  const followCallback = ({ users = [] }) => {
+    if (users.length === 0) {
+      callback({ error: new errorCreator.DoesNotExist({ name: `create and follow whisper room. User/Alias Id ${participantIds[1]} does not exist.` }) });
 
-        return;
-      }
-      const { objectId: roomId } = roomData.data.room;
+      return;
+    }
 
-      dbRoom.updateAccess({
-        roomId,
-        userIds: participantIds,
-        callback: (accessdata) => {
-          if (accessdata.error) {
-            callback({ error: accessdata.error });
+    dbRoom.createRoom({
+      room,
+      skipExistsCheck: true,
+      callback: (roomData) => {
+        if (roomData.error) {
+          callback({ error: roomData.error });
 
-            return;
-          }
+          return;
+        }
+        const { objectId: roomId } = roomData.data.room;
 
-          dbUser.followRoom({
-            roomId,
-            userId: user.objectId,
-            callback: (senderFollowData) => {
-              if (senderFollowData.error) {
-                callback({ error: senderFollowData.error });
+        dbRoom.updateAccess({
+          roomId,
+          userIds: participantIds,
+          callback: (accessdata) => {
+            if (accessdata.error) {
+              callback({ error: accessdata.error });
+
+              return;
+            }
+
+            dbUser.followRoom({
+              roomId,
+              userIds: [user.objectId],
+              callback: (senderFollowData) => {
+                if (senderFollowData.error) {
+                  callback({ error: senderFollowData.error });
+
+                  return;
+                }
+
+                dbUser.followRoom({
+                  roomId,
+                  userIds: users.map(foundUser => foundUser.objectId),
+                  callback: (receiverFollowData) => {
+                    if (receiverFollowData.error) {
+                      callback({ error: receiverFollowData.error });
+
+                      return;
+                    }
+
+                    const newRoom = accessdata.data.room;
+                    const newRoomId = newRoom.objectId;
+                    const dataToSend = {
+                      data: {
+                        room: newRoom,
+                        changeType: dbConfig.ChangeTypes.CREATE,
+                      },
+                    };
+
+                    users.forEach((foundUser) => {
+                      const receiverSocket = socketUtils.getUserSocket({ io, socketId: foundUser.socketId });
+
+                      if (receiverSocket) {
+                        receiverSocket.join(newRoomId);
+                      }
+                    });
+
+                    const senderSocket = socketUtils.getUserSocket({ io, socketId: user.socketId });
+
+                    if (senderSocket) {
+                      senderSocket.join(newRoomId);
+                    }
+
+                    io.to(newRoomId).emit(dbConfig.EmitTypes.ROOM, dataToSend);
+
+                    callback(roomData);
+                  },
+                });
+              },
+            });
+          },
+        });
+      },
+    });
+  };
+
+  dbUser.getUserById({
+    userId: participantIds[1],
+    supressExistError: true,
+    callback: ({ error: userError, data: userData }) => {
+      if (userError) {
+        if (userError.type && userError.type === errorCreator.ErrorTypes.DOESNOTEXIST) {
+          dbUser.getUsersByAlias({
+            aliasId: participantIds[1],
+            callback: ({ error: aliasError, data: aliasData }) => {
+              if (aliasError) {
+                callback({ error: aliasError });
 
                 return;
               }
 
-              dbUser.getUserById({
-                userId: participantIds[1],
-                aliasId: participantIds[1],
-                callback: (identityData) => {
-                  if (identityData.error) {
-                    callback({ error: identityData.error });
+              const { users } = aliasData;
 
-                    return;
-                  }
-
-                  const { alias: identityAlias, user: identityUser } = identityData.data;
-                  const identityId = identityUser ? identityUser.objectId : identityAlias.ownerId;
-
-                  dbUser.followRoom({
-                    roomId,
-                    userId: identityId,
-                    callback: (receiverFollowData) => {
-                      if (receiverFollowData.error) {
-                        callback({ error: receiverFollowData.error });
-
-                        return;
-                      }
-
-                      const newRoom = accessdata.data.room;
-                      const newRoomId = newRoom.objectId;
-                      const senderId = user.objectId;
-                      const receiverId = identityId;
-                      const dataToSend = {
-                        data: {
-                          room: newRoom,
-                          changeType: dbConfig.ChangeTypes.CREATE,
-                        },
-                      };
-
-                      const receiverSocket = socketUtils.getUserSocket({ io, socketId: receiverId });
-
-                      if (receiverSocket) { receiverSocket.join(newRoomId); }
-
-                      if (socket) {
-                        socket.join(newRoomId);
-                      } else {
-                        const senderSocket = socketUtils.getUserSocket({ io, socketId: senderId });
-
-                        if (senderSocket) { senderSocket.join(newRoomId); }
-                      }
-
-                      io.to(senderId).emit(dbConfig.EmitTypes.ROOM, dataToSend);
-                      io.to(receiverId).emit(dbConfig.EmitTypes.ROOM, dataToSend);
-
-                      callback(roomData);
-                    },
-                  });
-                },
-              });
+              followCallback({ users });
             },
           });
-        },
-      });
+
+          return;
+        }
+
+        callback({ error: userError });
+
+        return;
+      }
+
+      const { user: foundUser } = userData;
+
+      followCallback({ users: [foundUser] });
     },
   });
 }
@@ -310,20 +447,34 @@ function createRoom({
         callback({ error });
 
         return;
-      } else if (!objectValidator.isValidData({ room }, { room: { roomName: true } })) {
+      }
+
+      if (!objectValidator.isValidData({ room }, { room: { roomName: true } })) {
         callback({ error: new errorCreator.InvalidData({ expected: '{ room: { roomName } }' }) });
 
         return;
-      } else if (room.roomName.length > appConfig.roomNameMaxLength || !textTools.hasAllowedText(room.roomName)) {
+      }
+
+      if (room.roomName.length > appConfig.roomNameMaxLength || !textTools.hasAllowedText(room.roomName)) {
         callback({ error: new errorCreator.InvalidCharacters({ expected: 'a-z 0-9 length: 10' }) });
 
         return;
-      } else if (dbConfig.protectedRoomNames.indexOf(room.roomName.toLowerCase()) > -1) {
+      }
+
+      if (dbConfig.protectedRoomNames.indexOf(room.roomName.toLowerCase()) > -1) {
         callback({ error: new errorCreator.InvalidCharacters({ expected: 'not protected words' }) });
 
         return;
-      } else if (!authenticator.isAllowedAccessLevel({ objectToCreate: room, toAuth: data.user })) {
+      }
+
+      if (!authenticator.isAllowedAccessLevel({ objectToCreate: room, toAuth: data.user })) {
         callback({ error: new errorCreator.NotAllowed({ name: 'too high access level or visibility' }) });
+
+        return;
+      }
+
+      if (room.password && room.password.length > appConfig.passwordMaxLength) {
+        callback({ error: new errorCreator.InvalidCharacters({ expected: 'password too long' }) });
 
         return;
       }
@@ -331,7 +482,10 @@ function createRoom({
       const newRoom = room;
       const { user } = data;
       newRoom.ownerId = user.objectId;
-      newRoom.password = newRoom.password && newRoom.password !== '' ? newRoom.password : undefined;
+      newRoom.roomNameLowerCase = newRoom.roomName.toLowerCase();
+      newRoom.password = newRoom.password && newRoom.password !== ''
+        ? newRoom.password
+        : undefined;
 
       dbRoom.createRoom({
         room,
@@ -353,13 +507,14 @@ function createRoom({
 
           if (socket) {
             socket.join(createdRoom.objectId);
+            socket.broadcast.emit(dbConfig.EmitTypes.ROOM, dataToSend);
           } else {
             const userSocket = socketUtils.getUserSocket({ io, socketId: user.socketId });
 
             if (userSocket) { userSocket.join(createdRoom.objectId); }
-          }
 
-          io.emit(dbConfig.EmitTypes.ROOM, dataToSend);
+            io.emit(dbConfig.EmitTypes.ROOM, dataToSend);
+          }
 
           callback(dataToSend);
         },
@@ -376,9 +531,7 @@ function createRoom({
  * @return {boolean} - Is the room protected?
  */
 function isProtectedRoom({ roomId, socket }) {
-  const deviceRegExp = new RegExp(`^${dbConfig.deviceRoomPrepend}`);
-
-  return !dbConfig.requiredRooms.includes(roomId) && (socket && roomId !== socket.id) && roomId.match(deviceRegExp);
+  return dbConfig.requiredRooms.includes(roomId) || (socket && roomId === socket.id);
 }
 
 /**
@@ -401,19 +554,21 @@ function leaveSocketRooms(socket) {
  * @param {Function} params.callback - Callback.
  * @param {Object} params.io - Socket.io. Used if socket is not set.
  * @param {Object} params.user - User trying to follow a room.
- * @param {Object} [params.socket] - Socket.io socket.
  */
 function follow({
   userId,
+  aliasId,
   user,
   roomId,
-  socket,
   io,
   callback,
+  socket,
 }) {
+  const idToAdd = aliasId || userId;
+
   dbRoom.updateAccess({
     roomId,
-    userIds: [userId],
+    userIds: [idToAdd],
     callback: ({ error, data }) => {
       if (error) {
         callback({ error });
@@ -423,7 +578,7 @@ function follow({
 
       dbRoom.addFollowers({
         roomId,
-        userIds: [userId],
+        userIds: [idToAdd],
         callback: (followerData) => {
           if (followerData.error) {
             callback({ error: followerData.error });
@@ -431,11 +586,9 @@ function follow({
             return;
           }
 
-          console.log('follower func done', userId, roomId);
-
           dbUser.followRoom({
             roomId,
-            userId,
+            userIds: [userId],
             callback: (followData) => {
               if (followData.error) {
                 callback({ error: followData.error });
@@ -443,33 +596,55 @@ function follow({
                 return;
               }
 
-              console.log('follow room func done', userId, roomId);
+              const { user: updatedUser } = followData.data;
 
               const toReturn = {
                 data: {
-                  user: { objectId: userId },
+                  user: { objectId: idToAdd },
                   room: data.room,
                   changeType: dbConfig.ChangeTypes.CREATE,
                 },
               };
               const toSend = {
                 data: {
-                  user: { objectId: userId },
+                  user: { objectId: idToAdd },
                   room: { objectId: roomId },
                   changeType: dbConfig.ChangeTypes.CREATE,
                 },
               };
+              const userToReturn = {
+                data: {
+                  user: updatedUser,
+                  changeType: dbConfig.ChangeTypes.UPDATE,
+                },
+              };
 
-              if (socket) {
-                socket.join(roomId);
-              } else {
-                const userSocket = socketUtils.getUserSocket({ io, socketId: user.socketId });
+              const userSocket = socketUtils.getUserSocket({ io, socketId: user.socketId });
 
-                if (userSocket) { userSocket.join(roomId); }
+              if (userSocket) { userSocket.join(roomId); }
+
+              if (aliasId) {
+                io.in(aliasId).clients((ioError, clients) => {
+                  if (ioError) {
+                    console.log(`Failed to emit follow alias id to room ${roomId}`, ioError);
+
+                    return;
+                  }
+
+                  clients.map(socketId => io.sockets.connected[socketId]).forEach((connectedSocket) => {
+                    connectedSocket.join(roomId);
+                  });
+                });
               }
 
-              io.to(userId).emit(dbConfig.EmitTypes.FOLLOW, toReturn);
-              io.to(roomId).emit(dbConfig.EmitTypes.FOLLOWER, toSend);
+              if (socket) {
+                socket.to(idToAdd).emit(dbConfig.EmitTypes.USER, userToReturn);
+                socket.to(roomId).emit(dbConfig.EmitTypes.FOLLOWER, toSend);
+              } else {
+                io.to(idToAdd).emit(dbConfig.EmitTypes.FOLLOW, toReturn);
+                io.to(idToAdd).emit(dbConfig.EmitTypes.USER, userToReturn);
+                io.to(roomId).emit(dbConfig.EmitTypes.FOLLOWER, toSend);
+              }
 
               callback(toReturn);
             },
@@ -576,8 +751,9 @@ function followRoom({
             socket,
             io,
             callback,
-            authUser,
-            userId: aliasId || authUser.objectId,
+            aliasId,
+            user: authUser,
+            userId: authUser.objectId,
           });
         },
       });
@@ -610,13 +786,15 @@ function unfollowRoom({
         callback({ error });
 
         return;
-      } else if (isProtectedRoom({ roomId, socket })) {
+      }
+
+      if (isProtectedRoom({ roomId, socket })) {
         callback({ error: new errorCreator.NotAllowed({ name: `unfollow protected room ${roomId}` }) });
 
         return;
       }
 
-      const { user: authUser } = data.user;
+      const { user: authUser } = data;
 
       if (aliasId && !authUser.aliases.includes(aliasId)) {
         callback({ error: new errorCreator.NotAllowed({ name: `unfollow room ${roomId} with alias ${aliasId}` }) });
@@ -626,7 +804,7 @@ function unfollowRoom({
 
       dbRoom.updateAccess({
         roomId,
-        userIds: [authUser.objectId],
+        userIds: [aliasId || authUser.objectId],
         callback: () => {
           if (error) {
             callback({ error });
@@ -639,7 +817,7 @@ function unfollowRoom({
             socket,
             io,
             callback,
-            authUser,
+            user: authUser,
             userId: aliasId || authUser.objectId,
           });
         },
@@ -697,7 +875,9 @@ function getRoomsByUser({
 
             if (aName < bName) {
               return -1;
-            } else if (aName > bName) {
+            }
+
+            if (aName > bName) {
               return 1;
             }
 
@@ -787,7 +967,9 @@ function removeRoom({
         callback({ error });
 
         return;
-      } else if (isProtectedRoom({ roomId, socket })) {
+      }
+
+      if (isProtectedRoom({ roomId, socket })) {
         callback({ error: new errorCreator.NotAllowed({ name: `remove protected room ${roomId}` }) });
 
         return;
@@ -868,6 +1050,7 @@ function updateRoom({
   options,
   callback,
   io,
+  socket,
 }) {
   authenticator.isUserAllowed({
     token,
@@ -930,8 +1113,13 @@ function updateRoom({
                 },
               };
 
-              io.emit(dbConfig.EmitTypes.ROOM, dataToSend);
-              io.to(roomId).emit(dbConfig.EmitTypes.ROOM, creatorDataToSend);
+              if (socket) {
+                socket.broadcast.emit(dbConfig.EmitTypes.ROOM, dataToSend);
+                socket.broadcast.to(roomId).emit(dbConfig.EmitTypes.ROOM, creatorDataToSend);
+              } else {
+                io.emit(dbConfig.EmitTypes.ROOM, dataToSend);
+                io.to(roomId).emit(dbConfig.EmitTypes.ROOM, creatorDataToSend);
+              }
 
               callback(creatorDataToSend);
             },

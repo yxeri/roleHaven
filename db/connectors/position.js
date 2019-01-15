@@ -1,5 +1,5 @@
 /*
- Copyright 2017 Aleksandar Jankovic
+ Copyright 2017 Carmilla Mina Jankovic
 
  Licensed under the Apache License, Version 2.0 (the "License");
  you may not use this file except in compliance with the License.
@@ -19,7 +19,10 @@
 const mongoose = require('mongoose');
 const errorCreator = require('../../error/errorCreator');
 const dbConnector = require('../databaseConnector');
-const { dbConfig } = require('../../config/defaults/config');
+const {
+  dbConfig,
+  appConfig,
+} = require('../../config/defaults/config');
 
 const mapPositionSchema = new mongoose.Schema(dbConnector.createSchema({
   connectedToUser: {
@@ -36,6 +39,7 @@ const mapPositionSchema = new mongoose.Schema(dbConnector.createSchema({
   origin: { type: String, default: dbConfig.PositionOrigins.LOCAL },
   positionStructure: { type: String, default: dbConfig.PositionStructures.MARKER },
   styleName: String,
+  occupants: [String],
 }), { collection: 'mapPositions' });
 
 const MapPosition = mongoose.model('MapPosition', mapPositionSchema);
@@ -43,9 +47,9 @@ const MapPosition = mongoose.model('MapPosition', mapPositionSchema);
 /**
  * Update position.
  * @private
- * @param {Object} params - Parameter.
- * @param {string} params.positionId - Id of the position to update.
- * @param {Object} params.update - Update.
+ * @param {Object} params Parameter.
+ * @param {string} params.positionId Id of the position to update.
+ * @param {Object} params.update Update.
  * @param {Function} params.callback Callback.
  */
 function updateObject({ positionId, update, callback }) {
@@ -69,9 +73,9 @@ function updateObject({ positionId, update, callback }) {
 /**
  * Get positions.
  * @private
- * @param {Object} params - Parameters.
- * @param {Object} [params.query] - Query to get positions.
- * @param {Function} params.callback - Callback.
+ * @param {Object} params Parameters.
+ * @param {Object} [params.query] Query to get positions.
+ * @param {Function} params.callback Callback.
  */
 function getPositions({
   query,
@@ -101,9 +105,9 @@ function getPositions({
 /**
  * Get position
  * @private
- * @param {Object} params - Parameters.
- * @param {Object} [params.query] - Query to get position.
- * @param {Function} params.callback - Callback.
+ * @param {Object} params Parameters.
+ * @param {Object} [params.query] Query to get position.
+ * @param {Function} params.callback Callback.
  */
 function getPosition({ filter, query, callback }) {
   dbConnector.getObject({
@@ -115,7 +119,9 @@ function getPosition({ filter, query, callback }) {
         callback({ error });
 
         return;
-      } else if (!data.object) {
+      }
+
+      if (!data.object) {
         callback({ error: new errorCreator.DoesNotExist({ name: `position ${JSON.stringify(query, null, 4)}` }) });
 
         return;
@@ -128,9 +134,9 @@ function getPosition({ filter, query, callback }) {
 
 /**
  * Does the position exist?
- * @param {Object} params - Parameters.
- * @param {string} [params.connectedToUser] - Id of the user or alias.
- * @param {Function} params.callback - Callback.
+ * @param {Object} params Parameters.
+ * @param {string} [params.connectedToUser] Id of the user or alias.
+ * @param {Function} params.callback Callback.
  */
 function doesPositionExist({
   positionName,
@@ -162,11 +168,16 @@ function doesPositionExist({
 
 /**
  * Create position
- * @param {Object} params - Parameters
- * @param {Object} params.position - Position to add
- * @param {Function} params.callback - Callback
+ * @param {Object} params Parameters
+ * @param {Object} params.position Position to add
+ * @param {Function} params.callback Callback
  */
-function createPosition({ position, callback }) {
+function createPosition({
+  position,
+  callback,
+  suppressExistsError = false,
+  options = {},
+}) {
   doesPositionExist({
     positionName: position.positionName,
     connectedToUser: position.connectedToUser,
@@ -175,14 +186,25 @@ function createPosition({ position, callback }) {
         callback({ error: positionData.error });
 
         return;
-      } else if (positionData.data.exists) {
-        callback({ error: new errorCreator.AlreadyExists({ name: `positionName ${position.positionName} || connectedToUser ${position.connectedToUser} in position` }) });
+      }
+
+      if (positionData.data.exists) {
+        callback({
+          error: new errorCreator.AlreadyExists({
+            suppressExistsError,
+            name: `positionName ${position.positionName} || connectedToUser ${position.connectedToUser} in position`,
+          }),
+        });
 
         return;
       }
 
       const positionToSave = position;
       positionToSave.coordinatesHistory = [positionToSave.coordinates];
+
+      if (options.setId && position.objectId) {
+        positionToSave._id = mongoose.Types.ObjectId(position.objectId); // eslint-disable-line no-underscore-dangle
+      }
 
       dbConnector.saveObject({
         object: new MapPosition(position),
@@ -201,32 +223,14 @@ function createPosition({ position, callback }) {
   });
 }
 
-/**
- * Update position coordinates.
- * @param {Object} params - Parameters.
- * @param {string} params.positionId - Id of the position.
- * @param {Function} params.callback - Callback.
- * @param {Object} params.coordinates - GPS coordinates.
- */
-function updateCoordinates({ positionId, coordinates, callback }) {
-  const update = { $push: { coordinatesHistory: coordinates } };
-
-  updateObject({
-    positionId,
-    update,
-    callback,
-  });
-}
-
-
 // TODO Position should be automatically created when a user is created. connectedToUser should not be used to identify a user's position
 /**
  * Update position.
- * @param {Object} params - Parameters.
- * @param {Object} params.position - Position object to update with.
- * @param {Object} [params.options] - Options.
- * @param {boolean} params.options.resetOwnerAliasId - Should the owner alias be reset on the position?
- * @param {Function} params.callback - Callback.
+ * @param {Object} params Parameters.
+ * @param {Object} params.position Position object to update with.
+ * @param {Object} [params.options] Options.
+ * @param {boolean} params.options.resetOwnerAliasId Should the owner alias be reset on the position?
+ * @param {Function} params.callback Callback.
  */
 function updatePosition({
   positionId,
@@ -245,12 +249,17 @@ function updatePosition({
     connectedToUser,
     description,
     styleName,
+    coordinates,
   } = position;
-  const { resetOwnerAliasId, resetConnectedToUser } = options;
+  const {
+    resetOwnerAliasId,
+    resetConnectedToUser,
+  } = options;
 
   const update = {};
   const set = {};
   const unset = {};
+  const push = {};
 
   const updateCallback = () => {
     updateObject({
@@ -271,13 +280,20 @@ function updatePosition({
     doesPositionExist({
       positionName,
       connectedToUser,
-      callback: (deviceData) => {
-        if (deviceData.error) {
-          callback({ error: deviceData.error });
+      callback: (positionData) => {
+        if (positionData.error) {
+          callback({ error: positionData.error });
 
           return;
-        } else if (deviceData.data.exists) {
-          callback({ error: new errorCreator.AlreadyExists({ name: `position with connected user ${position.connectedToUser}` }) });
+        }
+
+        if (positionData.data.exists) {
+          if (connectedToUser) {
+            callback({ error: new errorCreator.AlreadyExists({ name: `position with connected user ${position.connectedToUser}` }) });
+          } else {
+            callback({ error: new errorCreator.AlreadyExists({ name: `position with name ${position.positionName}` }) });
+          }
+
 
           return;
         }
@@ -293,6 +309,13 @@ function updatePosition({
   if (description) { set.description = description; }
   if (positionStructure) { set.positionStructure = positionStructure; }
   if (styleName) { set.styleName = styleName; }
+  if (coordinates) {
+    push.coordinatesHistory = {
+      $each: [coordinates],
+      $sort: { timeCreated: 1 },
+      $slice: -appConfig.maxPositionHistory,
+    };
+  }
 
   if (typeof isPublic !== 'undefined') { set.isPublic = isPublic; }
   if (typeof isStationary !== 'undefined') { set.isStationary = isStationary; }
@@ -313,8 +336,9 @@ function updatePosition({
 
   if (Object.keys(set).length > 0) { update.$set = set; }
   if (Object.keys(unset).length > 0) { update.$unset = unset; }
+  if (Object.keys(push).length > 0) { update.$push = push; }
 
-  if (!resetConnectedToUser && connectedToUser) {
+  if ((!resetConnectedToUser && connectedToUser) || positionName) {
     existCallback();
   } else {
     updateCallback();
@@ -323,9 +347,9 @@ function updatePosition({
 
 /**
  * Get positions that the user has access to.
- * @param {Object} params - Parameters.
- * @param {string} params.user - User retrieving the positions.
- * @param {Function} params.callback - Callback.
+ * @param {Object} params Parameters.
+ * @param {string} params.user User retrieving the positions.
+ * @param {Function} params.callback Callback.
  */
 function getPositionsByUser({
   user,
@@ -341,10 +365,10 @@ function getPositionsByUser({
 
 /**
  * Get positions by their structure.
- * @param {Object} params - Parameters.
- * @param {string} params.user - User retrieving the positions.
- * @param {string} params.positionStructure - Type of position structure.
- * @param {Function} params.callback - Callback.
+ * @param {Object} params Parameters.
+ * @param {string} params.user User retrieving the positions.
+ * @param {string} params.positionStructure Type of position structure.
+ * @param {Function} params.callback Callback.
  */
 function getPositionsByStructure({
   user,
@@ -362,9 +386,9 @@ function getPositionsByStructure({
 
 /**
  * Remove position
- * @param {Object} params - Parameters
- * @param {string} params.positionId - ID of the position
- * @param {Function} params.callback - Callback
+ * @param {Object} params Parameters
+ * @param {string} params.positionId ID of the position
+ * @param {Function} params.callback Callback
  */
 function removePosition({ positionId, callback }) {
   dbConnector.removeObject({
@@ -376,9 +400,9 @@ function removePosition({ positionId, callback }) {
 
 /**
  * Remove positions based on position type.
- * @param {Object} params - Parameters
- * @param {string} params.positionType - Position type
- * @param {Function} params.callback - Callback
+ * @param {Object} params Parameters
+ * @param {string} params.positionType Position type
+ * @param {Function} params.callback Callback
  */
 function removePositionsByType({ positionType, callback }) {
   dbConnector.removeObjects({
@@ -390,9 +414,9 @@ function removePositionsByType({ positionType, callback }) {
 
 /**
  * Remove positions based on its origin.
- * @param {Object} params - Parameters.
- * @param {string} params.origin - The creation origin of the positions.
- * @param {Function} params.callback - Callback.
+ * @param {Object} params Parameters.
+ * @param {string} params.origin The creation origin of the positions.
+ * @param {Function} params.callback Callback.
  */
 function removePositionsByOrigin({ origin, callback }) {
   dbConnector.removeObjects({
@@ -404,9 +428,9 @@ function removePositionsByOrigin({ origin, callback }) {
 
 /**
  * Get position by Id.
- * @param {Object} params - Parameters.
- * @param {string} params.positionId - Id of the position.
- * @param {Function} params.callback - Callback.
+ * @param {Object} params Parameters.
+ * @param {string} params.positionId Id of the position.
+ * @param {Function} params.callback Callback.
  */
 function getPositionById({ positionId, callback }) {
   getPosition({
@@ -417,9 +441,9 @@ function getPositionById({ positionId, callback }) {
 
 /**
  * Get position of user
- * @param {Object} params - Parameters
- * @param {Object} params.userId - ID of the user
- * @param {Object} params.callback - Callback
+ * @param {Object} params Parameters
+ * @param {Object} params.userId ID of the user
+ * @param {Object} params.callback Callback
  */
 function getUserPosition({ userId, callback }) {
   getPosition({
@@ -430,27 +454,28 @@ function getUserPosition({ userId, callback }) {
 
 /**
  * Update access to the position.
- * @param {Object} params - Parameters.
- * @param {Function} params.callback - Callback.
- * @param {boolean} [params.shouldRemove] - Should access be removed?
- * @param {string[]} [params.userIds] - Id of the users to update.
- * @param {string[]} [params.teamIds] - Id of the teams to update.
- * @param {string[]} [params.bannedIds] - Id of the blocked Ids to update.
- * @param {string[]} [params.teamAdminIds] - Id of the teams to update admin access for.
- * @param {string[]} [params.userAdminIds] - Id of the users to update admin access for.
+ * @param {Object} params Parameters.
+ * @param {Function} params.callback Callback.
+ * @param {boolean} [params.shouldRemove] Should access be removed?
+ * @param {string[]} [params.userIds] Id of the users to update.
+ * @param {string[]} [params.teamIds] Id of the teams to update.
+ * @param {string[]} [params.bannedIds] Id of the blocked Ids to update.
+ * @param {string[]} [params.teamAdminIds] Id of the teams to update admin access for.
+ * @param {string[]} [params.userAdminIds] Id of the users to update admin access for.
  */
 function updateAccess(params) {
   const accessParams = params;
+  const { callback } = params;
   accessParams.objectId = params.positionId;
   accessParams.object = MapPosition;
   accessParams.callback = ({ error, data }) => {
     if (error) {
-      accessParams.callback({ error });
+      callback({ error });
 
       return;
     }
 
-    accessParams.callback({ data: { position: data.object } });
+    callback({ data: { position: data.object } });
   };
 
   if (params.shouldRemove) {
@@ -460,7 +485,6 @@ function updateAccess(params) {
   }
 }
 
-exports.updatePositionCoordinates = updateCoordinates;
 exports.removePosition = removePosition;
 exports.createPosition = createPosition;
 exports.getPositionsByUser = getPositionsByUser;

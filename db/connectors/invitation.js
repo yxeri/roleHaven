@@ -1,5 +1,5 @@
 /*
- Copyright 2017 Aleksandar Jankovic
+ Copyright 2017 Carmilla Mina Jankovic
 
  Licensed under the Apache License, Version 2.0 (the "License");
  you may not use this file except in compliance with the License.
@@ -71,7 +71,9 @@ function getInvitation({ query, callback }) {
         callback({ error });
 
         return;
-      } else if (!data.object) {
+      }
+
+      if (!data.object) {
         callback({ error: new errorCreator.DoesNotExist({ name: `invitation ${JSON.stringify(query, null, 4)}` }) });
 
         return;
@@ -101,7 +103,9 @@ function createInvitation({ invitation, callback }) {
         callback({ error: new errorCreator.Database({ errorObject: error, name: 'createInvitation' }) });
 
         return;
-      } else if (data.invitation) {
+      }
+
+      if (data.invitation) {
         callback({ error: new errorCreator.AlreadyExists({ name: `invitation ${invitation.invitationType} ${invitation.itemId}` }) });
 
         return;

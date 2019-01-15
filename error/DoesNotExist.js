@@ -1,5 +1,5 @@
 /*
- Copyright 2017 Aleksandar Jankovic
+ Copyright 2017 Carmilla Mina Jankovic
 
  Licensed under the Apache License, Version 2.0 (the "License");
  you may not use this file except in compliance with the License.
@@ -27,12 +27,14 @@ class DoesNotExist extends GeneralError.create {
     errorObject,
     verbose,
     extraData,
+    suppressPrint,
     name = '-',
   }) {
     super({
       errorObject,
       verbose,
       extraData,
+      suppressPrint,
       type: GeneralError.ErrorTypes.DOESNOTEXIST,
       text: [`${name} does not exist`],
     });

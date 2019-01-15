@@ -1,5 +1,5 @@
 /*
- Copyright 2017 Aleksandar Jankovic
+ Copyright 2017 Carmilla Mina Jankovic
 
  Licensed under the Apache License, Version 2.0 (the "License");
  you may not use this file except in compliance with the License.
@@ -27,6 +27,7 @@ schemas.liteUser = tools.buildLiteSchema({
   ],
   properties: {
     username: { type: 'string' },
+    usernameLowerCase: { type: 'string' },
     fullName: { type: 'string' },
     isVerified: { type: 'boolean' },
     isBanned: { type: 'boolean' },
@@ -64,6 +65,7 @@ schemas.fullUser = tools.buildFullSchema({
     fullName: { type: 'string' },
     socketId: { type: 'string' },
     username: { type: 'string' },
+    usernameLowerCase: { type: 'string' },
     isVerified: { type: 'boolean' },
     isBanned: { type: 'boolean' },
     isOnline: { type: 'boolean' },

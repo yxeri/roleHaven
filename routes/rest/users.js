@@ -1,5 +1,5 @@
 /*
- Copyright 2017 Aleksandar Jankovic
+ Copyright 2017 Carmilla Mina Jankovic
 
  Licensed under the Apache License, Version 2.0 (the "License");
  you may not use this file except in compliance with the License.
@@ -130,7 +130,9 @@ function handle(io) {
       restErrorChecker.checkAndSendError({ response, error: new errorCreator.InvalidData({ expected: '{ userId }' }) });
 
       return;
-    } else if (!objectValidator.isValidData(request.body.data, { password: true })) {
+    }
+
+    if (!objectValidator.isValidData(request.body.data, { password: true })) {
       restErrorChecker.checkAndSendError({ response, error: new errorCreator.InvalidData({ expected: '{ password }' }), sentData });
 
       return;
@@ -233,7 +235,9 @@ function handle(io) {
       restErrorChecker.checkAndSendError({ response, error: new errorCreator.InvalidData({ expected: '{ userId }' }) });
 
       return;
-    } else if (!objectValidator.isValidData(request.body, { data: { user: true } })) {
+    }
+
+    if (!objectValidator.isValidData(request.body, { data: { user: true } })) {
       restErrorChecker.checkAndSendError({ response, error: new errorCreator.InvalidData({ expected: '{ data: { user } }' }), sentData: request.body.data });
 
       return;
@@ -333,13 +337,12 @@ function handle(io) {
     }
 
     const { password, aliasId } = request.body.data;
-    const { roomId, userId } = request.params;
+    const { roomId } = request.params;
     const { authorization: token } = request.headers;
 
     roomManager.followRoom({
       io,
       token,
-      userId,
       roomId,
       password,
       aliasId,

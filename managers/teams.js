@@ -1,5 +1,5 @@
 /*
- Copyright 2017 Aleksandar Jankovic
+ Copyright 2017 Carmilla Mina Jankovic
 
  Licensed under the Apache License, Version 2.0 (the "License");
  you may not use this file except in compliance with the License.
@@ -26,6 +26,7 @@ const authenticator = require('../helpers/authenticator');
 const dbRoom = require('../db/connectors/room');
 const socketUtils = require('../utils/socketIo');
 const managerHelper = require('../helpers/manager');
+const textTools = require('../utils/textTools');
 
 /**
  * Get a team.
@@ -75,7 +76,9 @@ function getTeamById({
             callback({ error: errorCreator.NotAllowed({ name: `get team ${teamId}` }) });
 
             return;
-          } else if (!hasAccess) {
+          }
+
+          if (!hasAccess) {
             callback({ data: { team: managerHelper.stripObject({ object: foundTeam }) } });
 
             return;
@@ -105,6 +108,7 @@ function emitTeam({
   user,
   callback,
   io,
+  socket,
 }) {
   const creatorDataToSend = {
     data: {
@@ -116,26 +120,87 @@ function emitTeam({
   };
   const dataToSend = {
     data: {
-      team: managerHelper.stripObject({ object: team }),
+      team: managerHelper.stripObject({ object: Object.assign({}, team) }),
       changeType: dbConfig.ChangeTypes.CREATE,
     },
   };
 
   if (team.isVerified) {
-    const userSocket = socketUtils.getUserSocket({
-      io,
-      socketId: user.socketId,
-    });
+    if (socket) {
+      socket.join(room.objectId);
+      socket.broadcast.emit(dbConfig.EmitTypes.TEAM, dataToSend);
+    } else {
+      const userSocket = socketUtils.getUserSocket({
+        io,
+        socketId: user.socketId,
+      });
 
-    if (userSocket) {
-      userSocket.join(room.objectId);
+      if (userSocket) {
+        userSocket.join(room.objectId);
+      }
+
+      io.emit(dbConfig.EmitTypes.TEAM, dataToSend);
+      io.to(user.objectId).emit(dbConfig.EmitTypes.TEAM, creatorDataToSend);
     }
-
-    io.emit(dbConfig.EmitTypes.TEAM, dataToSend);
-    io.to(user.objectId).emit(dbConfig.EmitTypes.TEAM, creatorDataToSend);
   }
 
   callback(creatorDataToSend);
+}
+
+/**
+ * Add a user to a team.
+ * @private
+ * @param {Object} params - Parameters.
+ * @param {string} params.teamId - Id of the team.
+ * @param {string} params.memberId - Id of the user.
+ * @param {Function} params.callback - Callback
+ * @param {Object} params.io - Socket.io.
+ * @param {boolean} [params.isAdmin] - Should the user be set as an admin of the team?
+ */
+function addUserToTeam({
+  teamId,
+  memberId,
+  isAdmin,
+  callback,
+  io,
+  ignoreSocket = false,
+}) {
+  dbUser.addToTeam({
+    teamId,
+    isAdmin,
+    userIds: [memberId],
+    callback: ({ error, data }) => {
+      if (error) {
+        callback({ error });
+
+        return;
+      }
+
+      const { users } = data;
+      const updatedUser = users[0];
+
+      const dataToSend = {
+        data: {
+          team: { objectId: teamId },
+          user: {
+            objectId: memberId,
+            partOfTeams: updatedUser.partOfTeams,
+          },
+          changeType: dbConfig.ChangeTypes.UPDATE,
+        },
+      };
+
+      if (!ignoreSocket) {
+        const userSocket = socketUtils.getUserSocket({ io, socketId: updatedUser.socketId });
+
+        if (userSocket) { userSocket.join(teamId); }
+
+        io.emit(dbConfig.EmitTypes.TEAMMEMBER, dataToSend);
+      }
+
+      callback(dataToSend);
+    },
+  });
 }
 
 /**
@@ -147,6 +212,7 @@ function emitTeam({
  */
 function createTeamAndDependencies({
   team,
+  io,
   callback,
 }) {
   dbTeam.createTeam({
@@ -168,10 +234,12 @@ function createTeamAndDependencies({
       const wallet = {
         ownerId,
         ownerAliasId,
+        objectId: teamId,
       };
 
       dbWallet.createWallet({
         wallet,
+        options: { setId: true },
         callback: ({ error: walletError, data: walletData }) => {
           if (walletError) {
             callback({ error: walletError });
@@ -183,7 +251,7 @@ function createTeamAndDependencies({
             ownerId,
             ownerAliasId,
             roomName: teamId,
-            roomId: teamId,
+            objectId: teamId,
             accessLevel: dbConfig.AccessLevels.SUPERUSER,
             visibility: dbConfig.AccessLevels.SUPERUSER,
             nameIsLocked: true,
@@ -204,11 +272,25 @@ function createTeamAndDependencies({
                 return;
               }
 
-              callback({
-                data: {
-                  room: roomData.room,
-                  wallet: walletData.wallet,
-                  team: newTeam,
+              addUserToTeam({
+                teamId,
+                io,
+                isAdmin: true,
+                memberId: ownerAliasId || ownerId,
+                callback: ({ error: addError }) => {
+                  if (addError) {
+                    callback({ error: addError });
+
+                    return;
+                  }
+
+                  callback({
+                    data: {
+                      room: roomData.room,
+                      wallet: walletData.wallet,
+                      team: newTeam,
+                    },
+                  });
                 },
               });
             },
@@ -243,11 +325,15 @@ function createTeam({
         callback({ error });
 
         return;
-      } else if (team.teamName.length > appConfig.teamNameMaxLength || team.shortName.length > appConfig.shortTeamMaxLength) {
-        callback({ error: new errorCreator.InvalidData({ name: `Team name length: ${appConfig.teamNameMaxLength} Short name length: ${appConfig.shortTeamMaxLength}` }) });
+      }
+
+      if (team.teamName.length > appConfig.teamNameMaxLength || team.shortName.length > appConfig.shortTeamMaxLength) {
+        callback({ error: new errorCreator.InvalidData({ name: `Team name length: ${appConfig.teamNameMaxLength}. Short name length: ${appConfig.shortTeamMaxLength}` }) });
 
         return;
-      } else if (dbConfig.protectedNames.indexOf(team.teamName.toLowerCase()) > -1 || dbConfig.protectedNames.indexOf(team.shortName.toLowerCase()) > -1) {
+      }
+
+      if (dbConfig.protectedNames.indexOf(team.teamName.toLowerCase()) > -1 || dbConfig.protectedNames.indexOf(team.shortName.toLowerCase()) > -1) {
         callback({ error: new errorCreator.AlreadyExists({ expected: 'not protected name' }) });
 
         return;
@@ -256,11 +342,21 @@ function createTeam({
       const { user: authUser } = data;
       const { ownerAliasId } = team;
       const newTeam = team;
+      newTeam.teamName = textTools.trimSpace(newTeam.teamName);
+      newTeam.teamNameLowerCase = newTeam.teamName;
+      newTeam.shortName = textTools.trimSpace(newTeam.shortName);
+      newTeam.shortNameLowerCase = newTeam.shortName;
       newTeam.ownerId = authUser.objectId;
       newTeam.isVerified = !appConfig.teamVerify;
 
       if (ownerAliasId && !authUser.aliases.includes(ownerAliasId)) {
-        callback({ error: new errorCreator.NotAllowed({ name: `create team with alias ${ownerAliasId}` }) });
+        callback({ error: new errorCreator.NotAllowed({ name: `Creating team with alias ${ownerAliasId}. User ${authUser.objectId} does not have access to the alias` }) });
+
+        return;
+      }
+
+      if (authUser.partOfTeams > appConfig.maxUserTeam) {
+        callback({ error: new errorCreator.InvalidLength({ expected: `User is part of ${authUser.partOfTeams.length}. Max allowed: ${appConfig.maxUserTeam}` }) });
 
         return;
       }
@@ -311,6 +407,7 @@ function verifyTeam({
   teamId,
   callback,
   io,
+  socket,
 }) {
   authenticator.isUserAllowed({
     token,
@@ -339,7 +436,11 @@ function verifyTeam({
             },
           };
 
-          io.emit(dbConfig.EmitTypes.TEAM, dataToSend);
+          if (socket) {
+            socket.broadcast.emit(dbConfig.EmitTypes.TEAM, dataToSend);
+          } else {
+            io.emit(dbConfig.EmitTypes.TEAM, dataToSend);
+          }
 
           callback(dataToSend);
         },
@@ -360,6 +461,7 @@ function inviteToTeam({
   io,
   callback,
   token,
+  socket,
 }) {
   authenticator.isUserAllowed({
     token,
@@ -390,7 +492,9 @@ function inviteToTeam({
             callback({ error: new errorCreator.NotAllowed({ name: `invite to team ${invitation.itemId} with alias ${ownerAliasId}` }) });
 
             return;
-          } else if (foundTeam.members.includes(memberId)) {
+          }
+
+          if (foundTeam.members.includes(memberId)) {
             callback({ error: new errorCreator.AlreadyExists({ name: `invite to team ${invitation.itemId}. User ${invitation.receiverId} already a member` }) });
 
             return;
@@ -419,68 +523,17 @@ function inviteToTeam({
                 },
               };
 
+              if (!socket) {
+                io.to(newInvitation.ownerAliasId || newInvitation.ownerId).emit(dbConfig.EmitTypes.INVITATION, dataToSend);
+              }
+
               io.to(newInvitation.receiverId).emit(dbConfig.EmitTypes.INVITATION, dataToSend);
-              io.to(newInvitation.senderId).emit(dbConfig.EmitTypes.INVITATION, dataToSend);
 
               callback(dataToSend);
             },
           });
         },
       });
-    },
-  });
-}
-
-/**
- * Add a user to a team.
- * @private
- * @param {Object} params - Parameters.
- * @param {string} params.teamId - ID of the team.
- * @param {string} params.memberId - ID of the user.
- * @param {Object} params.user - User being added to the team.
- * @param {Function} params.callback - Callback
- * @param {Object} params.io - Socket.io.
- * @param {boolean} [params.isAdmin] - Should the user be set as an admin of the team?
- */
-function addUserToTeam({
-  teamId,
-  memberId,
-  isAdmin,
-  user,
-  callback,
-  io,
-}) {
-  dbUser.addToTeam({
-    teamId,
-    isAdmin,
-    userIds: [memberId],
-    callback: ({ error, data }) => {
-      if (error) {
-        callback({ error });
-
-        return;
-      }
-
-      const { user: updatedUser } = data;
-
-      const dataToSend = {
-        data: {
-          team: { objectId: teamId },
-          user: {
-            objectId: memberId,
-            partOfTeams: updatedUser.partOfTeams,
-          },
-          changeType: dbConfig.ChangeTypes.UPDATE,
-        },
-      };
-
-      const userSocket = socketUtils.getUserSocket({ io, socketId: user.socketId });
-
-      if (userSocket) { userSocket.join(teamId); }
-
-      io.emit(dbConfig.EmitTypes.TEAMMEMBER, dataToSend);
-
-      callback(dataToSend);
     },
   });
 }
@@ -501,14 +554,12 @@ function acceptTeamInvitation({
   authenticator.isUserAllowed({
     token,
     commandName: dbConfig.apiCommands.AcceptInvitation.name,
-    callback: ({ error, data }) => {
+    callback: ({ error }) => {
       if (error) {
         callback({ error });
 
         return;
       }
-
-      const { user } = data;
 
       dbInvitation.useInvitation({
         invitationId,
@@ -524,7 +575,6 @@ function acceptTeamInvitation({
           addUserToTeam({
             io,
             callback,
-            user,
             memberId: invitation.receiverId,
             teamId: invitation.itemId,
           });
@@ -588,7 +638,9 @@ function getTeamsByUser({
 
             if (aName < bName) {
               return -1;
-            } else if (aName > bName) {
+            }
+
+            if (aName > bName) {
               return 1;
             }
 
@@ -605,7 +657,6 @@ function getTeamsByUser({
 /**
  * Remove a user from a team.
  * @param {Object} params - Parameters.
- * @param {string} params.userId - Id of the user or alias that is leaving a team.
  * @param {string} params.token - jwt.
  * @param {Object} params.io - Socket io.
  * @param {Function} params.callback - Callback.
@@ -749,6 +800,7 @@ function updateTeam({
   token,
   io,
   callback,
+  socket,
 }) {
   authenticator.isUserAllowed({
     token,
@@ -803,7 +855,11 @@ function updateTeam({
                 },
               };
 
-              io.emit(dbConfig.EmitTypes.TEAM, dataToSend);
+              if (socket) {
+                socket.broadcast.emit(dbConfig.EmitTypes.TEAM, dataToSend);
+              } else {
+                io.emit(dbConfig.EmitTypes.TEAM, dataToSend);
+              }
 
               callback(dataToSend);
             },

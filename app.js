@@ -1,5 +1,5 @@
 /*
- Copyright 2017 Aleksandar Jankovic
+ Copyright 2017 Carmilla Mina Jankovic
 
  Licensed under the Apache License, Version 2.0 (the "License");
  you may not use this file except in compliance with the License.
@@ -22,8 +22,9 @@ const path = require('path');
 const bodyParser = require('body-parser');
 const morgan = require('morgan');
 const compression = require('compression');
-const { dbConfig, appConfig } = require('./config/defaults/config');
+const { appConfig } = require('./config/defaults/config');
 const dbRoom = require('./db/connectors/room');
+const dbForum = require('./db/connectors/forum');
 const positionManager = require('./managers/positions');
 const { version: appVersion, name: appName } = require('./package');
 
@@ -59,22 +60,32 @@ if (!appConfig.jsonKey) {
 }
 
 if (appConfig.mode !== appConfig.Modes.TEST) {
-  dbRoom.populateDbRooms({ rooms: dbConfig.rooms });
+  dbRoom.populateDbRooms({});
+  dbForum.populateDbForums({});
 }
 
 if (!appConfig.disablePositionImport) {
-  // TODO Send positions to clients
-  positionManager.getAndStoreGooglePositions({
-    callback: ({ error, data }) => {
-      if (error) {
-        console.log('Failed to retrieve Google Maps positions');
+  const getGooglePositions = () => {
+    positionManager.getAndStoreGooglePositions({
+      io,
+      callback: ({ error, data }) => {
+        if (error) {
+          console.log(error, 'Failed to retrieve Google Maps positions');
 
-        return;
-      }
+          return;
+        }
 
-      console.log(`Retrieved and saved ${data.positions.length + 1} positions from Google Maps`);
-    },
-  });
+        console.log(`Retrieved and saved ${data.positions.length + 1} positions from Google Maps`);
+      },
+    });
+  };
+
+  getGooglePositions();
+
+  setInterval(() => {
+    // TODO Send positions to clients
+    getGooglePositions();
+  }, 3600000);
 }
 
 /*

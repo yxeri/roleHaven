@@ -1,5 +1,5 @@
 /*
- Copyright 2017 Aleksandar Jankovic
+ Copyright 2017 Carmilla Mina Jankovic
 
  Licensed under the Apache License, Version 2.0 (the "License");
  you may not use this file except in compliance with the License.
@@ -62,6 +62,7 @@ function triggerUnlockedContent({
   callback,
   io,
   user,
+  socket,
 }) {
   const dataToSend = {
     data: {
@@ -78,6 +79,7 @@ function triggerUnlockedContent({
       // TODO Fix after transaction manager
       transactionManager.createTransaction({
         io,
+        socket,
         transaction: {
           ownerId: gameCode.ownerId,
           toWalletId: user.objectId,
@@ -103,6 +105,7 @@ function triggerUnlockedContent({
       docFileManager.unlockDocFile({
         token,
         io,
+        aliasId: gameCode.ownerAliasId,
         internalCallUser: user,
         code: gameCode.codeContent[0],
         callback: ({ error, data }) => {
@@ -227,7 +230,9 @@ function useGameCode({
             callback({ error: getError });
 
             return;
-          } else if (getData.gameCode.ownerId === authUser.objectId) {
+          }
+
+          if (getData.gameCode.ownerId === authUser.objectId) {
             callback({ error: new errorCreator.NotAllowed({ name: 'useGameCode on yourself' }) });
 
             return;
@@ -314,11 +319,13 @@ function removeGameCode({
   token,
   io,
   callback,
+  socket,
 }) {
   managerHelper.removeObject({
     callback,
     token,
     io,
+    socket,
     getDbCallFunc: dbGameCode.getGameCodeById,
     getCommandName: dbConfig.apiCommands.GetGameCode.name,
     objectId: gameCodeId,
@@ -375,12 +382,14 @@ function updateGameCode({
   gameCodeId,
   gameCode,
   options,
+  socket,
 }) {
   managerHelper.updateObject({
     callback,
     options,
     token,
     io,
+    socket,
     toStrip: [
       'codeContent',
       'code',

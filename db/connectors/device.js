@@ -1,5 +1,5 @@
 /*
- Copyright 2017 Aleksandar Jankovic
+ Copyright 2017 Carmilla Mina Jankovic
 
  Licensed under the Apache License, Version 2.0 (the "License");
  you may not use this file except in compliance with the License.
@@ -43,6 +43,7 @@ function updateObject({
   deviceSocketId,
   update,
   callback,
+  suppressError,
 }) {
   const query = {};
 
@@ -55,6 +56,7 @@ function updateObject({
   dbConnector.updateObject({
     update,
     query,
+    suppressError,
     object: Device,
     errorNameContent: 'updateDeviceObject',
     callback: ({ error, data }) => {
@@ -111,7 +113,9 @@ function getDevice({ query, callback }) {
         callback({ error });
 
         return;
-      } else if (!data.object) {
+      }
+
+      if (!data.object) {
         callback({ error: new errorCreator.DoesNotExist({ name: `device ${JSON.stringify(query, null, 4)}` }) });
 
         return;
@@ -150,7 +154,9 @@ function createDevice({ device, callback }) {
         callback({ error: nameData.error });
 
         return;
-      } else if (nameData.data.exists) {
+      }
+
+      if (nameData.data.exists) {
         callback({ error: new errorCreator.AlreadyExists({ name: `device ${device.deviceName}` }) });
 
         return;
@@ -191,6 +197,7 @@ function updateDevice({
   deviceSocketId,
   device,
   callback,
+  suppressError,
   options = {},
 }) {
   const {
@@ -233,13 +240,16 @@ function updateDevice({
           callback({ error: nameData.error });
 
           return;
-        } else if (nameData.data.exists) {
+        }
+
+        if (nameData.data.exists) {
           callback({ error: new errorCreator.AlreadyExists({ name: `device name ${deviceName}` }) });
 
           return;
         }
 
         updateObject({
+          suppressError,
           deviceSocketId,
           deviceId,
           update,
@@ -253,8 +263,10 @@ function updateDevice({
 
   updateObject({
     deviceId,
+    deviceSocketId,
     update,
     callback,
+    suppressError,
   });
 }
 
@@ -271,16 +283,17 @@ function updateDevice({
  */
 function updateAccess(params) {
   const accessParams = params;
+  const { callback } = params;
   accessParams.objectId = params.deviceId;
   accessParams.object = Device;
   accessParams.callback = ({ error, data }) => {
     if (error) {
-      accessParams.callback({ error });
+      callback({ error });
 
       return;
     }
 
-    accessParams.callback({ data: { device: data.object } });
+    callback({ data: { device: data.object } });
   };
 
   if (params.shouldRemove) {

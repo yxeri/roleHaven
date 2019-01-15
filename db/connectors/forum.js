@@ -1,5 +1,5 @@
 /*
- Copyright 2017 Aleksandar Jankovic
+ Copyright 2017 Carmilla Mina Jankovic
 
  Licensed under the Apache License, Version 2.0 (the "License");
  you may not use this file except in compliance with the License.
@@ -18,6 +18,7 @@ const mongoose = require('mongoose');
 const errorCreator = require('../../error/errorCreator');
 const dbConnector = require('../databaseConnector');
 const dbForumThread = require('./forumThread');
+const { dbConfig } = require('../../config/defaults/config');
 
 const forumSchema = new mongoose.Schema(dbConnector.createSchema({
   title: { type: String, unique: true },
@@ -106,7 +107,9 @@ function getForum({ query, callback }) {
         callback({ error });
 
         return;
-      } else if (!data.object) {
+      }
+
+      if (!data.object) {
         callback({ error: new errorCreator.DoesNotExist({ name: `forum ${JSON.stringify(query, null, 4)}` }) });
 
         return;
@@ -141,6 +144,7 @@ function doesForumExist({ title, callback }) {
 function createForum({
   forum,
   callback,
+  silentExistsError,
   options = {},
 }) {
   const { setId } = options;
@@ -152,8 +156,14 @@ function createForum({
         callback({ error });
 
         return;
-      } else if (data.exists) {
-        callback({ error: new errorCreator.AlreadyExists({ name: `createForum ${forum.title}` }) });
+      }
+
+      if (data.exists) {
+        if (silentExistsError) {
+          callback({ data: { exists: true } });
+        } else {
+          callback({ error: new errorCreator.AlreadyExists({ name: `createForum ${forum.title}` }) });
+        }
 
         return;
       }
@@ -236,7 +246,9 @@ function updateForum({ forumId, forum, callback }) {
           callback({ error });
 
           return;
-        } else if (data.exists) {
+        }
+
+        if (data.exists) {
           callback({ error: new errorCreator.AlreadyExists({ name: `forum title ${forum.title}` }) });
 
           return;
@@ -356,6 +368,48 @@ function getForumsByUser({
   });
 }
 
+/**
+ * Add forums to db.
+ * @param {Object} params - Parameters.
+ * @param {Function} params.callback - Callback.
+ */
+function populateDbForums({ callback = () => {} }) {
+  console.info('Creating default forums, if needed');
+
+  const { forums } = dbConfig;
+
+  /**
+   * Adds a room to database. Recursive.
+   * @param {string[]} forumNames - Forum names.
+   */
+  function addForum(forumNames) {
+    const forumName = forumNames.shift();
+
+    if (forumName) {
+      createForum({
+        forum: forums[forumName],
+        silentExistsError: true,
+        options: { setId: true },
+        callback: ({ error }) => {
+          if (error) {
+            callback({ error });
+
+            return;
+          }
+
+          addForum(forumNames);
+        },
+      });
+
+      return;
+    }
+
+    callback({ data: { success: true } });
+  }
+
+  addForum(Object.keys(forums));
+}
+
 exports.createForum = createForum;
 exports.getForumById = getForumById;
 exports.getForumById = getForumById;
@@ -365,3 +419,4 @@ exports.getForumsByIds = getForumsByIds;
 exports.removeForum = removeForum;
 exports.updateAccess = updateAccess;
 exports.getForumsByUser = getForumsByUser;
+exports.populateDbForums = populateDbForums;

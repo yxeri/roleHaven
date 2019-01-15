@@ -1,5 +1,5 @@
 /*
- Copyright 2017 Aleksandar Jankovic
+ Copyright 2017 Carmilla Mina Jankovic
 
  Licensed under the Apache License, Version 2.0 (the "License");
  you may not use this file except in compliance with the License.
@@ -26,7 +26,7 @@ const { dbConfig } = require('../config/defaults/config');
  * @return {Object} - Socket.
  */
 function getUserSocket({ io, socketId }) {
-  return socketId ? io.sockets.connected[socketId] : undefined;
+  return io.sockets.connected[socketId];
 }
 
 /**
@@ -36,7 +36,9 @@ function getUserSocket({ io, socketId }) {
 function getSocketsByRoom({ io, roomId }) {
   const room = io.sockets.adapter.rooms[roomId];
 
-  return room ? room.sockets : [];
+  return room
+    ? room.sockets
+    : [];
 }
 
 /**
@@ -76,12 +78,37 @@ function joinRequiredRooms({
   io,
   socketId,
   userId,
+  socket,
+}) {
+  const userSocket = socket || getUserSocket({ io, socketId });
+
+  if (userSocket) {
+    dbConfig.requiredRooms.forEach(roomId => userSocket.join(roomId));
+
+    if (userId) {
+      userSocket.join(userId);
+    }
+  }
+
+  return userSocket;
+}
+
+/**
+ * Join all alias rooms.
+ * @param {Object} params - Parameters.
+ * @param {Object} params.io - Socket.io.
+ * @param {string[]} params.aliases - Alias Ids.
+ * @return {Object} Socket.
+ */
+function joinAliasRooms({
+  io,
+  socketId,
+  aliases,
 }) {
   const userSocket = getUserSocket({ io, socketId });
 
   if (userSocket) {
-    dbConfig.requiredRooms.forEach(roomId => userSocket.join(roomId));
-    userSocket.join(userId);
+    aliases.forEach(aliasId => userSocket.join(aliasId));
   }
 
   return userSocket;
@@ -110,3 +137,4 @@ exports.getSocketsByRoom = getSocketsByRoom;
 exports.joinRooms = joinRooms;
 exports.leaveRooms = leaveRooms;
 exports.joinRequiredRooms = joinRequiredRooms;
+exports.joinAliasRooms = joinAliasRooms;

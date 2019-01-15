@@ -1,5 +1,5 @@
 /*
- Copyright 2017 Aleksandar Jankovic
+ Copyright 2017 Carmilla Mina Jankovic
 
  Licensed under the Apache License, Version 2.0 (the "License");
  you may not use this file except in compliance with the License.
@@ -27,6 +27,7 @@ schemas.alias = tools.buildLiteSchema({
   ],
   properties: {
     aliasName: { type: 'string' },
+    aliasNameLowerCase: { type: 'string' },
     isIdentity: { type: 'boolean' },
   },
 });
@@ -39,6 +40,7 @@ schemas.fullAlias = tools.buildFullSchema({
   ],
   properties: {
     aliasName: { type: 'string' },
+    aliasNameLowerCase: { type: 'string' },
     isIdentity: { type: 'boolean' },
   },
 });

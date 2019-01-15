@@ -1,5 +1,5 @@
 /*
- Copyright 2017 Aleksandar Jankovic
+ Copyright 2017 Carmilla Mina Jankovic
 
  Licensed under the Apache License, Version 2.0 (the "License");
  you may not use this file except in compliance with the License.
@@ -37,6 +37,7 @@ function createAlias({
   token,
   io,
   alias,
+  socket,
   callback,
 }) {
   authenticator.isUserAllowed({
@@ -47,20 +48,34 @@ function createAlias({
         callback({ error });
 
         return;
-      } else if (alias.aliasName.length > appConfig.usernameMaxLength || alias.aliasName.length < appConfig.usernameMinLength) {
+      }
+
+      const { user: authUser } = data;
+
+      if (alias.aliasName.length > appConfig.usernameMaxLength || alias.aliasName.length < appConfig.usernameMinLength) {
         callback({ error: new errorCreator.InvalidCharacters({ name: `Alias length: ${appConfig.usernameMinLength}-${appConfig.usernameMaxLength}` }) });
 
         return;
-      } else if (!textTools.hasAllowedText(alias.aliasName)) {
+      }
+
+      if (!textTools.hasAllowedText(alias.aliasName)) {
         callback({ error: new errorCreator.InvalidCharacters({ name: 'Alias', expected: 'a-z 0-9' }) });
 
         return;
       }
 
-      const { user } = data;
+      if (alias.visibility && authUser.accessLevel < dbConfig.apiCommands.UpdateAliasVisibility.accessLevel) {
+        callback({ error: new errorCreator.NotAllowed({ name: 'Set alias visibility' }) });
+
+        return;
+      }
 
       const aliasToSave = alias;
-      aliasToSave.ownerId = user.objectId;
+      aliasToSave.ownerId = authUser.objectId;
+      aliasToSave.aliasName = textTools.trimSpace(aliasToSave.aliasName);
+      aliasToSave.aliasNameLowerCase = aliasToSave.aliasName.toLowerCase();
+      aliasToSave.isVerified = !appConfig.userVerify;
+      aliasToSave.accessLevel = dbConfig.AccessLevels.STANDARD;
 
       dbAlias.createAlias({
         alias: aliasToSave,
@@ -71,13 +86,13 @@ function createAlias({
             return;
           }
 
-          const createdAlias = aliasData.alias;
+          const { alias: createdAlias } = aliasData;
 
           dbRoom.createRoom({
             options: { setId: true },
             room: {
               objectId: createdAlias.objectId,
-              ownerId: user.objectId,
+              ownerId: authUser.objectId,
               roomName: createdAlias.objectId,
               roomId: createdAlias.objectId,
               accessLevel: dbConfig.AccessLevels.SUPERUSER,
@@ -94,7 +109,7 @@ function createAlias({
 
               const wallet = {
                 objectId: createdAlias.objectId,
-                ownerId: user.objectId,
+                ownerId: authUser.objectId,
                 ownerAliasId: createdAlias.objectId,
                 amount: appConfig.defaultWalletAmount,
               };
@@ -133,6 +148,12 @@ function createAlias({
                       changeType: dbConfig.ChangeTypes.CREATE,
                     },
                   };
+                  const creatorRoomData = {
+                    data: {
+                      room: createdRoom,
+                      changeType: dbConfig.ChangeTypes.CREATE,
+                    },
+                  };
 
                   const walletDataToSend = {
                     data: {
@@ -140,15 +161,55 @@ function createAlias({
                       changeType: dbConfig.ChangeTypes.CREATE,
                     },
                   };
+                  const creatorWalletData = {
+                    data: {
+                      wallet: createdWallet,
+                      changeType: dbConfig.ChangeTypes.CREATE,
+                    },
+                  };
 
-                  const userSocket = socketUtils.getUserSocket({ io, socketId: user.socketId });
+                  if (socket) {
+                    socket.join(createdAlias.objectId);
+                    socket.to(authUser.objectId).emit(dbConfig.EmitTypes.ROOM, creatorRoomData);
+                    socket.to(authUser.objectId).emit(dbConfig.EmitTypes.WALLET, creatorWalletData);
+                    socket.to(authUser.objectId).emit(dbConfig.EmitTypes.USER, {
+                      data: {
+                        user: {
+                          objectId: authUser.objectId,
+                          aliases: authUser.aliases.concat([createdAlias.objectId]),
+                        },
+                        changeType: dbConfig.ChangeTypes.UPDATE,
+                      },
+                    });
+                    socket.broadcast.emit(dbConfig.EmitTypes.WALLET, walletDataToSend);
+                    socket.broadcast.emit(dbConfig.EmitTypes.ROOM, roomDataToSend);
+                    socket.broadcast.emit(dbConfig.EmitTypes.USER, dataToSend);
+                  } else {
+                    const userSocket = socketUtils.getUserSocket({ io, socketId: authUser.socketId });
 
-                  if (userSocket) { userSocket.join(createdRoom.objectId); }
+                    if (userSocket) {
+                      userSocket.join(createdAlias.objectId);
+                    }
 
-                  io.to(user.objectId).emit(dbConfig.EmitTypes.ALIAS, creatorDataToSend);
-                  io.emit(dbConfig.EmitTypes.USER, dataToSend);
-                  io.emit(dbConfig.EmitTypes.ROOM, roomDataToSend);
-                  io.emit(dbConfig.EmitTypes.WALLET, walletDataToSend);
+                    // TODO This needs to be done in sync. Full info > stripped info
+
+                    io.emit(dbConfig.EmitTypes.ROOM, roomDataToSend);
+                    io.emit(dbConfig.EmitTypes.WALLET, walletDataToSend);
+                    io.emit(dbConfig.EmitTypes.USER, dataToSend);
+
+                    io.to(createdAlias.objectId).emit(dbConfig.EmitTypes.ALIAS, creatorDataToSend);
+                    io.to(authUser.objectId).emit(dbConfig.EmitTypes.WALLET, creatorWalletData);
+                    io.to(authUser.objectId).emit(dbConfig.EmitTypes.ROOM, creatorRoomData);
+                    io.to(authUser.objectId).emit(dbConfig.EmitTypes.USER, {
+                      data: {
+                        user: {
+                          objectId: authUser.objectId,
+                          aliases: authUser.aliases.concat([createdAlias.objectId]),
+                        },
+                        changeType: dbConfig.ChangeTypes.UPDATE,
+                      },
+                    });
+                  }
 
                   callback(creatorDataToSend);
                 },
@@ -213,7 +274,9 @@ function getAliasById({
             callback({ error: errorCreator.NotAllowed({ name: `alias ${aliasName || aliasId}` }) });
 
             return;
-          } else if (!hasAccess) {
+          }
+
+          if (!hasAccess) {
             callback({ data: { alias: managerHelper.stripObject({ object: alias }) } });
 
             return;
@@ -258,24 +321,33 @@ function getAliasesByUser({
           }
 
           const { aliases } = getAliasesData;
-          const allAliases = aliases.map((aliasItem) => {
+          const allAliases = aliases.filter((alias) => {
+            const { canSee } = authenticator.hasAccessTo({
+              toAuth: authUser,
+              objectToAccess: alias,
+            });
+
+            return canSee;
+          }).map((alias) => {
             const { hasFullAccess } = authenticator.hasAccessTo({
               toAuth: authUser,
-              objectToAccess: aliasItem,
+              objectToAccess: alias,
             });
 
             if (!hasFullAccess) {
-              return managerHelper.stripObject({ object: aliasItem });
+              return managerHelper.stripObject({ object: alias });
             }
 
-            return aliasItem;
+            return alias;
           }).sort((a, b) => {
             const aName = a.aliasName;
             const bName = b.aliasName;
 
             if (aName < bName) {
               return -1;
-            } else if (aName > bName) {
+            }
+
+            if (aName > bName) {
               return 1;
             }
 
@@ -306,6 +378,7 @@ function updateAlias({
   options,
   aliasId,
   io,
+  socket,
 }) {
   authenticator.isUserAllowed({
     token,
@@ -373,8 +446,12 @@ function updateAlias({
                 },
               };
 
-              io.emit(dbConfig.EmitTypes.USER, dataToSend);
-              io.to(updatedAlias.objectId).emit(dbConfig.EmitTypes.ALIAS, aliasDataToSend);
+              if (socket) {
+                socket.broadcast.emit(dbConfig.EmitTypes.USER, dataToSend);
+              } else {
+                io.emit(dbConfig.EmitTypes.USER, dataToSend);
+                io.to(updatedAlias.objectId).emit(dbConfig.EmitTypes.ALIAS, aliasDataToSend);
+              }
 
               callback(aliasDataToSend);
             },
@@ -446,7 +523,9 @@ function updateAccess({
             return;
           }
 
-          const dbFunc = shouldRemove ? dbAlias.removeAccess : dbAlias.addAccess;
+          const dbFunc = shouldRemove
+            ? dbAlias.removeAccess
+            : dbAlias.addAccess;
 
           dbFunc({
             userIds,
@@ -478,8 +557,8 @@ function updateAccess({
                 },
               };
 
-              io.emit(dbConfig.EmitTypes.DOCFILE, dataToSend);
-              io.to(updatedAlias.ownerId).emit(dbConfig.EmitTypes.DOCFILE, creatorDataToSend);
+              io.emit(dbConfig.EmitTypes.USER, dataToSend);
+              io.to(updatedAlias.ownerId).emit(dbConfig.EmitTypes.USER, creatorDataToSend);
 
               callback(creatorDataToSend);
             },

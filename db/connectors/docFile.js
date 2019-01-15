@@ -1,5 +1,5 @@
 /*
- Copyright 2017 Aleksandar Jankovic
+ Copyright 2017 Carmilla Mina Jankovic
 
  Licensed under the Apache License, Version 2.0 (the "License");
  you may not use this file except in compliance with the License.
@@ -24,6 +24,7 @@ const docFileSchema = new mongoose.Schema(dbConnector.createSchema({
   code: { type: String, unique: true },
   title: { type: String, unique: true },
   text: [String],
+  videoCodes: [String],
   pictures: [dbConnector.pictureSchema],
 }), { collection: 'docFiles' });
 
@@ -106,7 +107,9 @@ function getDocFile({
         callback({ error });
 
         return;
-      } else if (!data.object) {
+      }
+
+      if (!data.object) {
         callback({ error: new errorCreator.DoesNotExist({ name: `docFile ${JSON.stringify(query, null, 4)}` }) });
 
         return;
@@ -152,7 +155,9 @@ function createDocFile({ docFile, callback }) {
         callback({ error });
 
         return;
-      } else if (data.exists) {
+      }
+
+      if (data.exists) {
         callback({ error: new errorCreator.AlreadyExists({ name: `Docfile ${docFile.code} ${docFile.title}` }) });
 
         return;
@@ -241,16 +246,17 @@ function updateDocFile({
  */
 function updateAccess(params) {
   const accessParams = params;
+  const { callback } = params;
   accessParams.objectId = params.docFileId;
   accessParams.object = DocFile;
   accessParams.callback = ({ error, data }) => {
     if (error) {
-      accessParams.callback({ error });
+      callback({ error });
 
       return;
     }
 
-    accessParams.callback({ data: { docFile: data.object } });
+    callback({ data: { docFile: data.object } });
   };
 
   if (params.shouldRemove) {

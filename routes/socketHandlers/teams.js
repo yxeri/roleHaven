@@ -1,5 +1,5 @@
 /*
- Copyright 2017 Aleksandar Jankovic
+ Copyright 2017 Carmilla Mina Jankovic
 
  Licensed under the Apache License, Version 2.0 (the "License");
  you may not use this file except in compliance with the License.
@@ -43,15 +43,6 @@ function handle(socket, io) {
     teamManager.updateTeam(params);
   });
 
-  socket.on('removeTeam', (params, callback = () => {
-  }) => {
-    params.callback = callback;
-    params.io = io;
-    params.socket = socket;
-
-    teamManager.removeTeam(params);
-  });
-
   socket.on('getTeam', (params, callback = () => {
   }) => {
     params.callback = callback;
@@ -68,6 +59,24 @@ function handle(socket, io) {
     params.socket = socket;
 
     teamManager.getTeamsByUser(params);
+  });
+
+  socket.on('inviteToTeam', (params, callback = () => {
+  }) => {
+    params.callback = callback;
+    params.io = io;
+    params.socket = socket;
+
+    teamManager.inviteToTeam(params);
+  });
+
+  socket.on('leaveTeam', (params, callback = () => {
+  }) => {
+    params.callback = callback;
+    params.io = io;
+    params.socket = socket;
+
+    teamManager.leaveTeam(params);
   });
 }
 

@@ -1,5 +1,21 @@
-const dbUser = require('../db/connectors/user');
+/*
+ Copyright 2018 Carmilla Mina Jankovic
+
+ Licensed under the Apache License, Version 2.0 (the "License");
+ you may not use this file except in compliance with the License.
+ You may obtain a copy of the License at
+
+ http://www.apache.org/licenses/LICENSE-2.0
+
+ Unless required by applicable law or agreed to in writing, software
+ distributed under the License is distributed on an "AS IS" BASIS,
+ WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ See the License for the specific language governing permissions and
+ limitations under the License.
+ */
+
 const jwt = require('jsonwebtoken');
+const dbUser = require('../db/connectors/user');
 const errorCreator = require('../error/errorCreator');
 const { appConfig, dbConfig } = require('../config/defaults/config');
 
@@ -32,11 +48,15 @@ function createToken({
         callback({ error });
 
         return;
-      } else if (data.user.isBanned) {
+      }
+
+      if (data.user.isBanned) {
         callback({ error: new errorCreator.Banned({ name: `user ${data.user.username}` }) });
 
         return;
-      } else if (!data.user.isVerified) {
+      }
+
+      if (!data.user.isVerified) {
         callback({ error: new errorCreator.NotAllowed({ name: `user ${data.user.username} not verified` }) });
 
         return;
@@ -86,7 +106,9 @@ function isUserAllowed({
     callback({ error: new errorCreator.DoesNotExist({ name: commandName }) });
 
     return;
-  } else if (!token) {
+  }
+
+  if (!token) {
     if (commandUsed.accessLevel > anonUser.accessLevel) {
       callback({ error: new errorCreator.NotAllowed({ name: commandName, verbose: false }) });
 
@@ -159,27 +181,30 @@ function hasAccessTo({
     userAdminIds = [],
     teamAdminIds = [],
     ownerId,
+    ownerAliasId,
     isPublic,
     visibility,
   } = objectToAccess;
   const {
     hasFullAccess,
     accessLevel,
+    objectId: authUserId,
     teamIds: authTeamIds = [],
-    objectId: authUserId = [],
     aliases = [],
   } = toAuth;
 
+  const foundOwnerAlias = ownerAliasId && aliases.find(aliasId => aliasId === ownerAliasId);
+
   const userHasAccess = userIds.concat([ownerId]).includes(authUserId);
   const teamHasAccess = teamIds.find(teamId => authTeamIds.includes(teamId));
-  const aliasHasAccess = aliases.find(aliasId => userIds.includes(aliasId));
+  const aliasHasAccess = foundOwnerAlias || aliases.find(aliasId => userIds.includes(aliasId));
   const userHasAdminAccess = userAdminIds.includes(authUserId);
-  const aliasHasAdminAccess = aliases.find(aliasId => userAdminIds.includes(aliasId));
+  const aliasHasAdminAccess = foundOwnerAlias || aliases.find(aliasId => userAdminIds.includes(aliasId));
   const teamHasAdminAccess = teamAdminIds.find(adminId => authTeamIds.includes(adminId));
   const isAdmin = ownerId === authUserId || hasFullAccess || accessLevel >= dbConfig.AccessLevels.ADMIN;
 
   return {
-    canSee: isAdmin || isPublic || accessLevel >= visibility,
+    canSee: isAdmin || isPublic || userHasAccess || teamHasAccess || aliasHasAccess || accessLevel >= visibility,
     hasAccess: isAdmin || isPublic || userHasAccess || teamHasAccess || aliasHasAccess,
     hasFullAccess: isAdmin || userHasAdminAccess || teamHasAdminAccess || aliasHasAdminAccess,
   };

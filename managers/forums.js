@@ -1,5 +1,5 @@
 /*
- Copyright 2017 Aleksandar Jankovic
+ Copyright 2017 Carmilla Mina Jankovic
 
  Licensed under the Apache License, Version 2.0 (the "License");
  you may not use this file except in compliance with the License.
@@ -79,6 +79,7 @@ function createForum({
   callback,
   token,
   io,
+  socket,
 }) {
   authenticator.isUserAllowed({
     token,
@@ -111,12 +112,6 @@ function createForum({
           }
 
           const { forum: createdForum } = createData;
-          const creatorDataToSend = {
-            data: {
-              forum: createdForum,
-              changeType: dbConfig.ChangeTypes.CREATE,
-            },
-          };
           const dataToSend = {
             data: {
               forum: managerHelper.stripObject({ object: Object.assign({}, createdForum) }),
@@ -124,10 +119,24 @@ function createForum({
             },
           };
 
-          io.emit(dbConfig.EmitTypes.FORUM, dataToSend);
-          io.to(authUser.objectId).emit(dbConfig.EmitTypes.FORUM, creatorDataToSend);
+          if (socket) {
+            socket.broadcast.emit(dbConfig.EmitTypes.FORUM, dataToSend);
+          } else {
+            io.emit(dbConfig.EmitTypes.FORUM, dataToSend);
+            io.to(authUser.objectId).emit(dbConfig.EmitTypes.FORUM, {
+              data: {
+                forum: createdForum,
+                changeType: dbConfig.ChangeTypes.UPDATE,
+              },
+            });
+          }
 
-          callback(creatorDataToSend);
+          callback({
+            data: {
+              forum: createdForum,
+              changeType: dbConfig.ChangeTypes.CREATE,
+            },
+          });
         },
       });
     },
@@ -172,6 +181,7 @@ function updateForum({
   callback,
   io,
   internalCallUser,
+  socket,
 }) {
   managerHelper.updateObject({
     callback,
@@ -179,6 +189,7 @@ function updateForum({
     token,
     io,
     internalCallUser,
+    socket,
     objectId: forumId,
     object: forum,
     commandName: dbConfig.apiCommands.UpdateForum.name,
@@ -204,11 +215,13 @@ function removeForum({
   forumId,
   callback,
   io,
+  socket,
 }) {
   managerHelper.removeObject({
     callback,
     token,
     io,
+    socket,
     getDbCallFunc: dbForum.getForumById,
     getCommandName: dbConfig.apiCommands.GetForum.name,
     objectId: forumId,

@@ -1,5 +1,5 @@
 /*
- Copyright 2017 Aleksandar Jankovic
+ Copyright 2017 Carmilla Mina Jankovic
 
  Licensed under the Apache License, Version 2.0 (the "License");
  you may not use this file except in compliance with the License.
@@ -52,7 +52,9 @@ function handle() {
       restErrorChecker.checkAndSendError({ response, error: new errorCreator.InvalidData({ expected: 'data = { user: { password } }' }), sentData });
 
       return;
-    } else if (!request.body.data.user.username && !request.body.data.user.userId) {
+    }
+
+    if (!request.body.data.user.username && !request.body.data.user.userId) {
       sentData.user.password = typeof sentData.user.password !== 'undefined';
 
       restErrorChecker.checkAndSendError({ response, error: new errorCreator.InvalidData({ expected: 'userId or username has to be set' }), sentData });
