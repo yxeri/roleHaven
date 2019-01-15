@@ -38,6 +38,7 @@ const baseSchema = {
   teamIds: { type: [String], default: [] },
   bannedIds: { type: [String], default: [] },
   isPublic: { type: Boolean, default: false },
+  triggerEvents: { type: [String], default: [] },
 };
 
 const pictureSchema = {
