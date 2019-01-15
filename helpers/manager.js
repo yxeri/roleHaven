@@ -289,6 +289,7 @@ function updateObject({
   callback,
   internalCallUser,
   options,
+  shouldBroadcast = true,
   toStrip = [],
 }) {
   authenticator.isUserAllowed({
@@ -360,11 +361,16 @@ function updateObject({
                 },
               };
               creatorDataToSend.data[objectType] = updatedObject;
-
               if (socket) {
-                socket.broadcast.emit(emitType, dataToSend);
+                if (shouldBroadcast) {
+                  socket.broadcast.emit(emitType, dataToSend);
+                }
               } else {
-                io.emit(emitType, dataToSend);
+                if (shouldBroadcast) {
+                  io.emit(emitType, dataToSend);
+                } else {
+                  io.to(foundObject.ownerAliasId || foundObject.ownerId);
+                }
               }
 
               callback(creatorDataToSend);
@@ -394,7 +400,7 @@ function updateObject({
  * @param {string} params.getCommandName - Name of the command that will be authenticated against when retrieving the object.
  * @param {Function} params.callback - Callback
  * @param {string} [params.objectType] - Type of object or remove.
- * @param {Function} [params.emitTypeGenerator] - Function to use to create the correct emit type for socket.io. It will be used instead of variable objectType, if set.
+ * @param {Function} [params.emitTypeGenerator] - Function to use to create the correct emit type for socket.io. It will be used instead of variable emitType, if set.
  */
 function removeObject({
   objectId,
