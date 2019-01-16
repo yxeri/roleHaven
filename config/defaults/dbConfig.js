@@ -142,6 +142,7 @@ config.roomsToBeHidden = [
 config.forums.public = config.forums.public || {
   objectId: '111111111111111111111120',
   title: 'Board',
+  isPublic: true,
 };
 
 config.deviceRoomPrepend = 'device#';
