@@ -289,7 +289,7 @@ function updateObject({
   callback,
   internalCallUser,
   options,
-  shouldBroadcast = true,
+  limitAccessLevel = false,
   toStrip = [],
 }) {
   authenticator.isUserAllowed({
@@ -362,14 +362,16 @@ function updateObject({
               };
               creatorDataToSend.data[objectType] = updatedObject;
 
-              if (shouldBroadcast) {
-                if (socket) {
-                  socket.broadcast.emit(emitType, dataToSend);
+              if (socket) {
+                if (limitAccessLevel) {
+                  socket.broadcast.to(dbConfig.apiCommands.CreateTriggerEvent.accessLevel.toString()).emit(emitType, dataToSend);
                 } else {
-                  io.emit(emitType, dataToSend);
+                  socket.broadcast.emit(emitType, dataToSend);
                 }
-              } else if (!socket) {
-                io.to(foundObject.ownerAliasId || foundObject.ownerId).emit(emitType, dataToSend);
+              } else if (limitAccessLevel) {
+                io.to(dbConfig.apiCommands.CreateTriggerEvent.accessLevel.toString()).emit(emitType, dataToSend);
+              } else {
+                io.emit(emitType, dataToSend);
               }
 
               callback(creatorDataToSend);
