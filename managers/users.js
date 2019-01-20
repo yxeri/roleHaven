@@ -566,7 +566,11 @@ function login({
       }
 
       const { token, user: authUser } = data;
-      const { objectId: userId, followingRooms: roomIds } = authUser;
+      const {
+        accessLevel,
+        objectId: userId,
+        followingRooms: roomIds,
+      } = authUser;
       const socketId = socket.id;
       const updateOnlineFunc = () => {
         dbUser.updateOnline({
@@ -591,6 +595,7 @@ function login({
               userId,
               socketId,
               socket,
+              accessLevel,
             });
             socketUtils.joinAliasRooms({
               io,
@@ -1011,7 +1016,11 @@ function updateId({
 
       const { user: authUser } = data;
 
-      const { objectId: userId, followingRooms: roomIds } = authUser;
+      const {
+        accessLevel,
+        objectId: userId,
+        followingRooms: roomIds,
+      } = authUser;
       const socketId = socket.id;
 
       if (authUser.isAnonymous) {
@@ -1020,6 +1029,7 @@ function updateId({
           userId,
           socketId,
           socket,
+          accessLevel: 0,
         });
 
         callback({ data: { user: authUser } });
@@ -1049,6 +1059,7 @@ function updateId({
             userId,
             socketId,
             socket,
+            accessLevel,
           });
           socketUtils.joinAliasRooms({
             io,
