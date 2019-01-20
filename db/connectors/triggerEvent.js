@@ -1,5 +1,5 @@
 /*
- Copyright 2017 Carmilla Mina Jankovic
+ Copyright 2019 Carmilla Mina Jankovic
 
  Licensed under the Apache License, Version 2.0 (the "License");
  you may not use this file except in compliance with the License.
@@ -23,13 +23,15 @@ const dbConnector = require('../databaseConnector');
 
 const triggerEventSchema = new mongoose.Schema(dbConnector.createSchema({
   startTime: Date,
-  endTime: Date,
-  eventType: { type: String, default: dbConfig.EventTypes.TIMED },
+  terminationTime: Date,
+  duration: Number,
+  eventType: String,
+  content: Object,
+  isRecurring: { type: Boolean, default: false },
+  isActive: { type: Boolean, default: false },
+  changeType: { type: String, default: dbConfig.TriggerChangeTypes.CREATE },
   triggeredBy: { type: [String], default: [] },
-  isOpen: { type: Boolean, default: false },
-  text: [String],
-  coordinates: dbConnector.coordinatesSchema,
-  name: String,
+  shouldTargetSingle: { type: Boolean, default: true },
 }), { collection: 'triggerEvents' });
 
 const TriggerEvent = mongoose.model('TriggerEvent', triggerEventSchema);
@@ -160,32 +162,38 @@ function updateTriggerEvent({
 }) {
   const {
     startTime,
-    endTime,
+    terminationTime,
+    duration,
+    isRecurring,
     eventType,
-    isOpen,
-    text,
-    coordinates,
-    name,
+    content,
+    isActive,
   } = triggerEvent;
   const {
-    resetEndTime,
+    resetTerminatonTime,
+    resetDuration,
   } = options;
   const update = {};
   const set = {};
   const unset = {};
 
-  if (resetEndTime) {
-    unset.endTime = '';
-  } else if (endTime) {
-    set.endTime = endTime;
+  if (resetDuration) {
+    unset.duration = '';
+  } else if (duration) {
+    set.duration = duration;
+  }
+
+  if (resetTerminatonTime) {
+    unset.terminationTime = '';
+  } else if (terminationTime) {
+    set.terminationTime = terminationTime;
   }
 
   if (startTime) { set.startTime = startTime; }
   if (eventType) { set.eventType = eventType; }
-  if (isOpen) { set.isOpen = isOpen; }
-  if (text) { set.text = text; }
-  if (coordinates) { set.coordinates = coordinates; }
-  if (name) { set.name = name; }
+  if (content) { set.content = content; }
+  if (isRecurring) { set.isRecurring = isRecurring; }
+  if (isActive) { set.isActive = isActive; }
 
   if (Object.keys(set).length > 0) { update.$set = set; }
   if (Object.keys(unset).length > 0) { update.$unset = unset; }
