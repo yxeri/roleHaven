@@ -165,9 +165,11 @@ function createDocFile({
   docFile,
   callback,
   socket,
+  internalCallUser,
 }) {
   authenticator.isUserAllowed({
     token,
+    internalCallUser,
     commandName: dbConfig.apiCommands.CreateDocFile.name,
     callback: ({ error, data }) => {
       if (error) {
