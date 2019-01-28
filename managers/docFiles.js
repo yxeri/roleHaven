@@ -241,9 +241,11 @@ function updateDocFile({
   callback,
   options,
   socket,
+  internalCallUser,
 }) {
   authenticator.isUserAllowed({
     token,
+    internalCallUser,
     commandName: dbConfig.apiCommands.UpdateDocFile.name,
     callback: ({ error, data }) => {
       if (error) {
@@ -433,6 +435,7 @@ function removeDocFile({
   token,
   callback,
   io,
+  internalCallUser,
   socket,
 }) {
   managerHelper.removeObject({
@@ -440,6 +443,7 @@ function removeDocFile({
     token,
     io,
     socket,
+    internalCallUser,
     getDbCallFunc: dbDocFile.getDocFileById,
     getCommandName: dbConfig.apiCommands.GetDocFile.name,
     objectId: docFileId,

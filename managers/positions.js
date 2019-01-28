@@ -151,6 +151,7 @@ function updatePosition({
   callback,
   options,
   socket,
+  internalCallUser,
 }) {
   managerHelper.updateObject({
     callback,
@@ -158,6 +159,7 @@ function updatePosition({
     token,
     io,
     socket,
+    internalCallUser,
     objectId: positionId,
     object: position,
     commandName: dbConfig.apiCommands.UpdatePosition.name,
@@ -199,8 +201,6 @@ function createPosition({
       }
 
       if (!position.coordinates || !position.coordinates.latitude || !position.coordinates.longitude) {
-        console.log('create', position.coordinates, !position.coordinates, !position.coordinates.latitude, !position.coordinates.longitude, !position.coordinates.accuracy);
-
         callback({ error: new errorCreator.InvalidData({ expected: 'latitude && longitude && accuracy' }) });
 
         return;
@@ -305,12 +305,14 @@ function removePosition({
   callback,
   io,
   socket,
+  internalCallUser,
 }) {
   managerHelper.removeObject({
     callback,
     token,
     io,
     socket,
+    internalCallUser,
     getDbCallFunc: dbPosition.getPositionById,
     getCommandName: dbConfig.apiCommands.GetPositions.name,
     objectId: positionId,

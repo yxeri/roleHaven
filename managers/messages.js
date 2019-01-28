@@ -390,9 +390,11 @@ function sendChatMsg({
   callback,
   io,
   image,
+  internalCallUser,
 }) {
   authenticator.isUserAllowed({
     token,
+    internalCallUser,
     commandName: dbConfig.apiCommands.SendMessage.name,
     callback: ({ error, data }) => {
       if (error) {
@@ -603,12 +605,14 @@ function removeMessage({
   token,
   io,
   socket,
+  internalCallUser,
 }) {
   managerHelper.removeObject({
     callback,
     token,
     io,
     socket,
+    internalCallUser,
     getDbCallFunc: dbMessage.getMessageById,
     getCommandName: dbConfig.apiCommands.GetMessage.name,
     objectId: messageId,
@@ -637,9 +641,11 @@ function updateMessage({
   token,
   io,
   options,
+  internalCallUser,
 }) {
   authenticator.isUserAllowed({
     token,
+    internalCallUser,
     commandName: dbConfig.apiCommands.UpdateMessage.name,
     callback: ({ error, data }) => {
       if (error) {
@@ -648,7 +654,7 @@ function updateMessage({
         return;
       }
 
-      const { user: authUser } = data;
+      const authUser = internalCallUser || data.user;
 
       getMessageById({
         messageId,

@@ -417,9 +417,11 @@ function removeObject({
   emitTypeGenerator,
   callback,
   socket,
+  internalCallUser,
 }) {
   authenticator.isUserAllowed({
     token,
+    internalCallUser,
     commandName,
     callback: ({ error, data }) => {
       if (error) {
