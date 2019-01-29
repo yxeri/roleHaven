@@ -490,7 +490,7 @@ function startTriggers(io) {
                   },
                 });
               } else if (triggerEvent.singleUse || (triggerEvent.isRecurring && now > future)) {
-                triggerEvent.updating = true;
+                timedTriggers.get(eventId).updating = true;
 
                 runEvent({
                   eventId,

@@ -297,7 +297,7 @@ function getTimedTriggerEvents({ callback }) {
     $or: [
       { isRecurring: true },
       { startTime: { $exists: true } },
-      { terminationTime: { $exists: true  } },
+      { terminationTime: { $exists: true } },
     ],
   };
 
