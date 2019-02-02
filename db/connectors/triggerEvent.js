@@ -34,6 +34,13 @@ const triggerEventSchema = new mongoose.Schema(dbConnector.createSchema({
   triggeredBy: { type: [String], default: [] },
   shouldTargetSingle: { type: Boolean, default: false },
   singleUse: { type: Boolean, default: true },
+  triggerType: { type: String, default: dbConfig.TriggerTypes.MANUAL },
+  coordinates: {
+    positionId: String,
+    longitude: Number,
+    latitude: Number,
+    radius: Number,
+  },
 }), { collection: 'triggerEvents' });
 
 const TriggerEvent = mongoose.model('TriggerEvent', triggerEventSchema);

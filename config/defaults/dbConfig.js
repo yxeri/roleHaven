@@ -266,6 +266,13 @@ config.TriggerChangeTypes = {
   REMOVE: 'remove',
 };
 
+config.TriggerTypes = {
+  PROXIMITY: 'proximity',
+  TIMED: 'timed',
+  MANUAL: 'manual',
+  TRIGGER: 'trigger',
+};
+
 /**
  * *******************
  * * Client settings *
