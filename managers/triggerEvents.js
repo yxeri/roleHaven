@@ -85,7 +85,7 @@ function updateTriggerEvent({
 }
 
 /**
- * Get positions.
+ * Get trigger events by owner.
  * @param {Object} params - Parameters.
  * @param {string} params.token - jwt.
  * @param {Function} params.callback - Callback.
@@ -233,7 +233,7 @@ function createTriggerEvent({
 
           callback({
             data: {
-              position: createdEvent,
+              triggerEvent: createdEvent,
               changeType: dbConfig.ChangeTypes.CREATE,
             },
           });
