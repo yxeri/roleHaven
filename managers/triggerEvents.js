@@ -192,6 +192,16 @@ function createTriggerEvent({
         }
       }
 
+      if (newTriggerEvent.triggerType) {
+        if (newTriggerEvent.triggerType === dbConfig.TriggerTypes.PROXIMITY) {
+          if (!newTriggerEvent.coordinates) {
+            callback({ error: new errorCreator.InvalidData({ expected: 'Coordinates { longitude, latitude, radius }' }) });
+
+            return;
+          }
+        }
+      }
+
       dbTriggerEvent.createTriggerEvent({
         triggerEvent: newTriggerEvent,
         callback: ({ error: updateError, data: eventData }) => {
@@ -210,7 +220,8 @@ function createTriggerEvent({
           };
           const ioRoom = Number.parseInt(dbConfig.apiCommands.CreateTriggerEvent.accessLevel, 10);
 
-          if (createdEvent.isRecurring || createdEvent.startTime || createdEvent.terminationTime) {
+          if ([dbConfig.TriggerTypes.TIMED, dbConfig.TriggerTypes.PROXIMITY].includes(triggerEvent.triggerType)
+            && (createdEvent.isRecurring || createdEvent.startTime || createdEvent.terminationTime)) {
             timedTriggers.set(createdEvent.objectId, createdEvent);
           }
 
