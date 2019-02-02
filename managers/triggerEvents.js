@@ -467,51 +467,49 @@ function startTriggers(io) {
 
       setInterval(() => {
         timedTriggers.forEach((triggerEvent) => {
-          if (!triggerEvent.updating) {
-            const {
-              objectId: eventId,
-            } = triggerEvent;
-            const now = new Date();
-            const startTime = new Date(triggerEvent.startTime);
+          const {
+            objectId: eventId,
+          } = triggerEvent;
+          const now = new Date();
+          const startTime = new Date(triggerEvent.startTime);
 
-            if (now > startTime) {
-              const future = new Date(startTime);
-              future.setSeconds(future.getSeconds() + (triggerEvent.duration || 0));
+          if (now > startTime && !triggerEvent.updating) {
+            const future = new Date(startTime);
+            future.setSeconds(future.getSeconds() + (triggerEvent.duration || 0));
 
-              if (triggerEvent.terminationTime && now > triggerEvent.terminationTime) {
-                dbUser.getUserById({
-                  userId: triggerEvent.ownerId,
-                  callback: ({ error: userError, data: userData }) => {
-                    if (userError) {
-                      return;
-                    }
+            if (triggerEvent.terminationTime && now > triggerEvent.terminationTime) {
+              dbUser.getUserById({
+                userId: triggerEvent.ownerId,
+                callback: ({ error: userError, data: userData }) => {
+                  if (userError) {
+                    return;
+                  }
 
-                    const { user } = userData;
+                  const { user } = userData;
 
-                    removeTriggerEvent({
-                      eventId,
-                      io,
-                      internalCallUser: user,
-                      callback: ({ error: runError }) => {
-                        if (runError) {
-                          timedTriggers.delete(eventId);
-                        }
-                      },
-                    });
-                  },
-                });
-              } else if (triggerEvent.singleUse || (triggerEvent.isRecurring && now > future)) {
-                timedTriggers.get(eventId).updating = true;
+                  removeTriggerEvent({
+                    eventId,
+                    io,
+                    internalCallUser: user,
+                    callback: ({ error: runError }) => {
+                      if (runError) {
+                        timedTriggers.delete(eventId);
+                      }
+                    },
+                  });
+                },
+              });
+            } else if (triggerEvent.singleUse || (triggerEvent.isRecurring && now > future)) {
+              timedTriggers.get(eventId).updating = true;
 
-                runEvent({
-                  eventId,
-                  callback: ({ error: runError }) => {
-                    if (runError) {
-                      timedTriggers.delete(eventId);
-                    }
-                  },
-                });
-              }
+              runEvent({
+                eventId,
+                callback: ({ error: runError }) => {
+                  if (runError) {
+                    timedTriggers.delete(eventId);
+                  }
+                },
+              });
             }
           }
         });
