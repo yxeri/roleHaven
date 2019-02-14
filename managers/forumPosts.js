@@ -26,10 +26,10 @@ const managerHelper = require('../helpers/manager');
 
 /**
  * Get a forum post.
- * @param {Object} params - Parameters.
- * @param {string} params.postId - Id of the post.
- * @param {Function} params.callback - Callback.
- * @param {string} params.token - jwt.
+ * @param {Object} params Parameters.
+ * @param {string} params.postId Id of the post.
+ * @param {Function} params.callback Callback.
+ * @param {string} params.token jwt.
  */
 function getPostById({
   postId,
@@ -53,11 +53,11 @@ function getPostById({
 
 /**
  * Create new forum post.
- * @param {Object} params - Parameters.
- * @param {Object} params.post - Forum post to create.
- * @param {Object} params.callback - Callback.
- * @param {Object} params.token - jwt.
- * @param {Object} params.io - Socket.io.
+ * @param {Object} params Parameters.
+ * @param {Object} params.post Forum post to create.
+ * @param {Object} params.callback Callback.
+ * @param {Object} params.token jwt.
+ * @param {Object} params.io Socket.io.
  */
 function createPost({
   post,
@@ -158,11 +158,11 @@ function createPost({
 
 /**
  * Update an existing forum post.
- * @param {Object} params - Parameters.
- * @param {Object} params.post - Forum post to update.
- * @param {Object} params.callback - Callback.
- * @param {Object} params.token - jwt.
- * @param {Object} params.io - Socket.io.
+ * @param {Object} params Parameters.
+ * @param {Object} params.post Forum post to update.
+ * @param {Object} params.callback Callback.
+ * @param {Object} params.token jwt.
+ * @param {Object} params.io Socket.io.
  */
 function updatePost({
   post,
@@ -195,9 +195,9 @@ function updatePost({
 
 /**
  * Get posts created by the user.
- * @param {Object} params - Parameters.
- * @param {string} params.token - jwt.
- * @param {Function} params.callback - Callback.
+ * @param {Object} params Parameters.
+ * @param {string} params.token jwt.
+ * @param {Function} params.callback Callback.
  */
 function getPostsByUser({
   token,
@@ -217,9 +217,9 @@ function getPostsByUser({
 
 /**
  * Get posts by thread.
- * @param {Object} params - Parameters.
- * @param {Function} params.callback - Callback.
- * @param {Object} params.token - jwt.
+ * @param {Object} params Parameters.
+ * @param {Function} params.callback Callback.
+ * @param {Object} params.token jwt.
  */
 function getPostsByThreads({
   token,
@@ -243,10 +243,10 @@ function getPostsByThreads({
 
 /**
  * Get forum posts
- * @param {Object} params - Parameters
- * @param {string} params.forumId - ID of the roum
- * @param {Function} params.callback - Callback
- * @param {Object} params.token - jwt
+ * @param {Object} params Parameters
+ * @param {string} params.forumId ID of the roum
+ * @param {Function} params.callback Callback
+ * @param {Object} params.token jwt
  */
 function getPostsByForum({ forumId, callback, token }) {
   authenticator.isUserAllowed({
@@ -301,11 +301,11 @@ function getPostsByForum({ forumId, callback, token }) {
 
 /**
  * Remove forum post.
- * @param {Object} params - Parameters,.
- * @param {string} params.token - jwt.
- * @param {string} params.postId - ID of the forum ppost.
- * @param {Object} params.io - Socket io.
- * @param {Function} params.callback - Callback.
+ * @param {Object} params Parameters,.
+ * @param {string} params.token jwt.
+ * @param {string} params.postId ID of the forum ppost.
+ * @param {Object} params.io Socket io.
+ * @param {Function} params.callback Callback.
  */
 function removePost({
   token,

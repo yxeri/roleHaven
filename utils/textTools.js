@@ -21,10 +21,10 @@ const fullTextRegex = /^[\w\d\såäöÅÄÖ_-]+$/;
 
 /**
  * Replaces part of the sent string and returns it
- * @param {string} text - Original string
- * @param {string} find - Substring to replace
- * @param {string} replaceWith - String that will replace the found substring
- * @returns {string} - Modified string
+ * @param {string} text Original string
+ * @param {string} find Substring to replace
+ * @param {string} replaceWith String that will replace the found substring
+ * @returns {string} Modified string
  */
 function findOneReplace(text, find, replaceWith) {
   return text.replace(new RegExp(find), replaceWith);
@@ -32,7 +32,7 @@ function findOneReplace(text, find, replaceWith) {
 
 /**
  * Does the string contain only alphanumeric values?
- * @param {string} text - String to check
+ * @param {string} text String to check
  * @returns {boolean} Does the string contain only alphanumeric values?
  */
 function hasAllowedText(text) {
@@ -41,7 +41,7 @@ function hasAllowedText(text) {
 
 /**
  * Does the string contain alphanumeric values, including space and åäö?
- * @param {string} text - String to check.
+ * @param {string} text String to check.
  * @returns {boolean} Does the string contain alphanumeric values, including space and åäö?
  */
 function isAllowedFull(text) {
@@ -50,7 +50,7 @@ function isAllowedFull(text) {
 
 /**
  * Removes empty consecutive elements in the text array.
- * @param {string} text - Array with text.
+ * @param {string} text Array with text.
  * @returns {string[]} Array with text without consecutive empty elements.
  */
 function cleanText(text) {
@@ -69,7 +69,7 @@ function cleanText(text) {
 
 /**
  * Converts string to boolean.
- * @param {string} envar - Value.
+ * @param {string} envar Value.
  * @returns {boolean} Converted boolean.
  */
 function convertToBoolean(envar) {
@@ -82,7 +82,7 @@ function convertToBoolean(envar) {
 
 /**
  * Convert string to float.
- * @param {string} float - Value to be converted.
+ * @param {string} float Value to be converted.
  * @returns {number|null} Converted number.
  */
 function convertToFloat(float) {
@@ -95,7 +95,7 @@ function convertToFloat(float) {
 
 /**
  * Convert string to int.
- * @param {string} int - Value to be converted.
+ * @param {string} int Value to be converted.
  * @returns {number} Converted number.
  */
 function convertToInt(int) {
@@ -107,7 +107,7 @@ function convertToInt(int) {
 }
 
 /**
- * @param {string[]} array - Array to be shuffled.
+ * @param {string[]} array Array to be shuffled.
  * @returns {string[]} Shuffled array.
  */
 function shuffleArray(array) {
@@ -129,9 +129,9 @@ function shuffleArray(array) {
 
 /**
  * Get minutes between dates.
- * @param {Object} params - Parameters.
- * @param {Date} params.firstDate - Start date.
- * @param {Date} params.laterDate - Later date.
+ * @param {Object} params Parameters.
+ * @param {Date} params.firstDate Start date.
+ * @param {Date} params.laterDate Later date.
  * @returns {Date} Difference date.
  */
 function getDifference({ firstDate, laterDate }) {
@@ -151,9 +151,9 @@ function isValidMail(address) {
 
 /**
  * Get minutes between dates.
- * @param {Object} params - Parameters.
- * @param {Date} params.startDate - Start date.
- * @param {Date} params.endDate - Later date.
+ * @param {Object} params Parameters.
+ * @param {Date} params.startDate Start date.
+ * @param {Date} params.endDate Later date.
  * @returns {number} Minutes.
  */
 function calculateMinutesDifference({ firstDate, secondDate }) {
@@ -164,8 +164,8 @@ function calculateMinutesDifference({ firstDate, secondDate }) {
 
 /**
  * Create text code.
- * @param {number} amount - Amount of characters.
- * @returns {string} - Alphanumerical text code.
+ * @param {number} amount Amount of characters.
+ * @returns {string} Alphanumerical text code.
  */
 function generateTextCode(amount = 8) {
   return shuffleArray(['0', '1', '2', '3', '4', '5', '6', '7', '8', '9', 'A', 'B', 'D', 'E', 'F', 'G', 'H', 'L', 'M', 'N', 'P', 'Q', 'R', 'S', 'T', 'U', 'V', 'W', 'X', 'Y', 'Z']).slice(0, amount).join('');
@@ -175,8 +175,8 @@ function generateTextCode(amount = 8) {
  * Trims whitespaces from beginning and end of the string
  * Needed for Android 2.1. trim() is not supported
  * @static
- * @param {string} sentText - String to be trimmed
- * @returns {string} - String with no whitespaces in the beginning and end
+ * @param {string} sentText String to be trimmed
+ * @returns {string} String with no whitespaces in the beginning and end
  */
 function trimSpace(sentText) {
   return findOneReplace(sentText, /^\s+|\s+$/, '');

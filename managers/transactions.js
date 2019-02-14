@@ -25,10 +25,10 @@ const managerHelper = require('../helpers/manager');
 
 /**
  * Get transaction by Id.
- * @param {Object} params - Parameters.
- * @param {string} params.transactionId - Id of the transaction to retrieve.
- * @param {string} params.token - jwt.
- * @param {Function} params.callback - Callback.
+ * @param {Object} params Parameters.
+ * @param {string} params.transactionId Id of the transaction to retrieve.
+ * @param {string} params.token jwt.
+ * @param {Function} params.callback Callback.
  */
 function getTransactionById({
   transactionId,
@@ -88,9 +88,9 @@ function getTransactionById({
 
 /**
  * Get transactions for a wallet.
- * @param {Object} params - Parameters.
- * @param {string} walletId - Id of the wallet.
- * @param {Function} params.callback - Callback.
+ * @param {Object} params Parameters.
+ * @param {string} walletId Id of the wallet.
+ * @param {Function} params.callback Callback.
  */
 function getTransactionsByWallet({
   walletId,
@@ -141,10 +141,10 @@ function getTransactionsByWallet({
 
 /**
  * Create transaction.
- * @param {Object} params - Parameters.
- * @param {Object} params.transaction - Transaction parameters to create.
- * @param {Object} params.io - Socket io. - Used if socket is not set.
- * @param {Function} callback - Callback.
+ * @param {Object} params Parameters.
+ * @param {Object} params.transaction Transaction parameters to create.
+ * @param {Object} params.io Socket io. Used if socket is not set.
+ * @param {Function} callback Callback.
  */
 function createTransaction({
   transaction,
@@ -233,11 +233,11 @@ function createTransaction({
 
 /**
  * Create transaction based on user access.
- * @param {Object} params - Parameters.
- * @param {Object} params.token - jwt.
- * @param {Object} params.transaction - New transaction.
- * @param {Object} params.io - Socket.io.
- * @param {Function} params.callback - Callback.
+ * @param {Object} params Parameters.
+ * @param {Object} params.token jwt.
+ * @param {Object} params.transaction New transaction.
+ * @param {Object} params.io Socket.io.
+ * @param {Function} params.callback Callback.
  */
 function createTransactionBasedOnToken({
   transaction,
@@ -289,11 +289,11 @@ function createTransactionBasedOnToken({
 
 /**
  * Remove a transaction.
- * @param {Object} params - Parameters.
- * @param {string} params.token - jwt.
- * @param {string} params.transactionId - Id of the transaction to remove.
- * @param {Function} params.callback - Callback.
- * @param {Object} params.io - Socket.io.
+ * @param {Object} params Parameters.
+ * @param {string} params.token jwt.
+ * @param {string} params.transactionId Id of the transaction to remove.
+ * @param {Function} params.callback Callback.
+ * @param {Object} params.io Socket.io.
  */
 function removeTransaction({
   token,
@@ -407,11 +407,11 @@ function removeTransaction({
 
 /**
  * Update transaction.
- * @param {Object} params - Parameters.
- * @param {Object} params.transaction - Transaction.
- * @parm {Object} params.options - Options.
- * @param {Function} params.callback - Callback.
- * @param {Object} params.io - Socket io.
+ * @param {Object} params Parameters.
+ * @param {Object} params.transaction Transaction.
+ * @parm {Object} params.options Options.
+ * @param {Function} params.callback Callback.
+ * @param {Object} params.io Socket io.
  */
 function updateTransaction({
   token,
@@ -496,9 +496,9 @@ function updateTransaction({
 
 /**
  * Get transactions that the user has access to.
- * @param {Object} params - Parameters.
- * @param {Object} params.token - jwt.
- * @param {Function} params.callback - Callback.
+ * @param {Object} params Parameters.
+ * @param {Object} params.token jwt.
+ * @param {Function} params.callback Callback.
  */
 function getTransactionsByUser({
   token,

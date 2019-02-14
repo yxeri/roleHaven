@@ -31,10 +31,10 @@ const positionManager = require('./positions');
 
 /**
  * Create a user.
- * @param {Object} params - Parameters.
- * @param {Object} params.user - User to create.
- * @param {Function} params.callback - Callback.
- * @param {Object} params.io - Socket.io.
+ * @param {Object} params Parameters.
+ * @param {Object} params.user User to create.
+ * @param {Function} params.callback Callback.
+ * @param {Object} params.io Socket.io.
  */
 function createUser({
   token,
@@ -292,10 +292,10 @@ function createUser({
 
 /**
  * Get users that the user has access to.
- * @param {Object} params - Parameters.
- * @param {Object} params.token - jwt.
- * @param {Function} params.callback - Callback.
- * @param {boolean} [params.includeInactive] - Should banned and unverified users be in the result?
+ * @param {Object} params Parameters.
+ * @param {Object} params.token jwt.
+ * @param {Function} params.callback Callback.
+ * @param {boolean} [params.includeInactive] Should banned and unverified users be in the result?
  */
 function getUsersByUser({
   token,
@@ -370,10 +370,10 @@ function getUsersByUser({
 
 /**
  * Get user  Id or name.
- * @param {Object} params - Parameters.
- * @param {string} params.userId - Id of the user to retrieve.
- * @param {Object} [params.internalCallUser] - User to use on authentication. It will bypass token authentication.
- * @param {Function} params.callback - Callback.
+ * @param {Object} params Parameters.
+ * @param {string} params.userId Id of the user to retrieve.
+ * @param {Object} [params.internalCallUser] User to use on authentication. It will bypass token authentication.
+ * @param {Function} params.callback Callback.
  */
 function getUserById({
   token,
@@ -441,10 +441,10 @@ function getUserById({
 
 /**
  * Change password for a user.
- * @param {Object} params - Parameters.
- * @param {string} params.userId - Id of the user.
- * @param {string} [params.password] - Password. A password will be auto-generated and returned, if password hasn't been set.
- * @param {Function} params.callback - Callback.
+ * @param {Object} params Parameters.
+ * @param {string} params.userId Id of the user.
+ * @param {string} [params.password] Password. A password will be auto-generated and returned, if password hasn't been set.
+ * @param {Function} params.callback Callback.
  */
 function changePassword({
   token,
@@ -543,11 +543,11 @@ function changePassword({
 
 /**
  * Login user through socket client side.
- * @param {Object} params - Parameters.
- * @param {Object} params.user - User logging in.
- * @param {Object} params.io - Socket.io.
- * @param {Function} params.callback - Callback.
- * @param {Object} params.socket - Socket.io.
+ * @param {Object} params Parameters.
+ * @param {Object} params.user User logging in.
+ * @param {Object} params.io Socket.io.
+ * @param {Function} params.callback Callback.
+ * @param {Object} params.socket Socket.io.
  */
 function login({
   user,
@@ -643,10 +643,10 @@ function login({
 
 /**
  * Logout user.
- * @param {Object} params - Parameters.
+ * @param {Object} params Parameters.
  * @param {string} params.token jwt.
- * @param {Object} params.socket - Socket.io.
- * @param {Function} params.callback - Callback.
+ * @param {Object} params.socket Socket.io.
+ * @param {Function} params.callback Callback.
  */
 function logout({
   token,
@@ -686,11 +686,11 @@ function logout({
 
 /**
  * Unban user.
- * @param {Object} params - Parameters.
- * @param {string} params.token - jwt token.
- * @param {Object} params.bannedUserId - ID of the user to unban.
- * @param {Function} params.callback - Callback.
- * @param {Object} params.io - Socket.io.
+ * @param {Object} params Parameters.
+ * @param {string} params.token jwt token.
+ * @param {Object} params.bannedUserId ID of the user to unban.
+ * @param {Function} params.callback Callback.
+ * @param {Object} params.io Socket.io.
  */
 function unbanUser({
   token,
@@ -739,12 +739,12 @@ function unbanUser({
 
 /**
  * Ban user.
- * @param {Object} params - Parameters.
- * @param {Object} params.banUserId - ID of the user to ban.
- * @param {Object} params.io - socket-io.
- * @param {string} params.token - jwt.
- * @param {Function} params.callback - Callback.
- * @param {string} [params.reason] - Text describing why the user was banned.
+ * @param {Object} params Parameters.
+ * @param {Object} params.banUserId ID of the user to ban.
+ * @param {Object} params.io socket-io.
+ * @param {string} params.token jwt.
+ * @param {Function} params.callback Callback.
+ * @param {string} [params.reason] Text describing why the user was banned.
  */
 function banUser({
   banUserId,
@@ -831,11 +831,11 @@ function banUser({
 
 /**
  * Verifies a user account and allows it to login.
- * @param {Object} params - Parameters.
- * @param {string} params.userIdToVerify - ID of the user to verify.
- * @param {string} params.token - jwt.
- * @param {Object} params.io - Socket.io. Will be used if socket is not set.
- * @param {Function} params.callback - Callback.
+ * @param {Object} params Parameters.
+ * @param {string} params.userIdToVerify ID of the user to verify.
+ * @param {string} params.token jwt.
+ * @param {Object} params.io Socket.io. Will be used if socket is not set.
+ * @param {Function} params.callback Callback.
  */
 function verifyUser({
   userIdToVerify,
@@ -883,13 +883,13 @@ function verifyUser({
 
 /**
  * Update a user.
- * @param {Object} params - Parameters.
- * @param {string} params.token - jwt.
- * @param {Object} params.io - Socket.io.
- * @param {Function} params.callback - Callback.
- * @param {string} params.userId - Id of the user to update.
- * @param {Object} params.user - User parameter to update.
- * @param {Object} [params.options] - Update options.
+ * @param {Object} params Parameters.
+ * @param {string} params.token jwt.
+ * @param {Object} params.io Socket.io.
+ * @param {Function} params.callback Callback.
+ * @param {string} params.userId Id of the user to update.
+ * @param {Object} params.user User parameter to update.
+ * @param {Object} [params.options] Update options.
  */
 function updateUser({
   token,
@@ -992,11 +992,11 @@ function updateUser({
 
 /**
  * Update user. It will be called on reconnects from the client.
- * @param {Object} params - Parameters.
- * @param {string} params.token - jwt.
- * @param {Object} params.io - Socket.io.
- * @param {Object} params.socket - Socket.io.
- * @param {Function} params.callback - Callback.
+ * @param {Object} params Parameters.
+ * @param {string} params.token jwt.
+ * @param {Object} params.io Socket.io.
+ * @param {Object} params.socket Socket.io.
+ * @param {Function} params.callback Callback.
  */
 function updateId({
   token,
@@ -1076,10 +1076,10 @@ function updateId({
 
 /**
  * Get all users.
- * @param {Object} params - Parameters.
- * @param {Object} params.token - Jwt.
- * @param {Object} [params.internalCallUser] - Skip authentication and instead use this user.
- * @param {Function} params.callback - Callback.
+ * @param {Object} params Parameters.
+ * @param {Object} params.token Jwt.
+ * @param {Object} [params.internalCallUser] Skip authentication and instead use this user.
+ * @param {Function} params.callback Callback.
  */
 function getAllUsers({
   token,

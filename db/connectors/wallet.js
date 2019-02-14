@@ -30,9 +30,9 @@ const Wallet = mongoose.model('Wallet', walletSchema);
 /**
  * Get wallets
  * @private
- * @param {Object} params - Parameters
- * @param {string} params.query - Database query
- * @param {Function} params.callback - Callback
+ * @param {Object} params Parameters
+ * @param {string} params.query Database query
+ * @param {Function} params.callback Callback
  */
 function getWallets({ filter, query, callback }) {
   dbConnector.getObjects({
@@ -59,9 +59,9 @@ function getWallets({ filter, query, callback }) {
 /**
  * Get wallet.
  * @private
- * @param {Object} params - Parameters.
- * @param {string} params.query - Query to get wallet.
- * @param {Function} params.callback - Callback
+ * @param {Object} params Parameters.
+ * @param {string} params.query Query to get wallet.
+ * @param {Function} params.callback Callback
  */
 function getWallet({ query, callback }) {
   dbConnector.getObject({
@@ -88,9 +88,9 @@ function getWallet({ query, callback }) {
 /**
  * Update wallet
  * @private
- * @param {Object} params - Parameters
- * @param {string} params.walletId - ID of the wallet to update
- * @param {Function} params.callback - Callback
+ * @param {Object} params Parameters
+ * @param {string} params.walletId ID of the wallet to update
+ * @param {Function} params.callback Callback
  */
 function updateObject({ update, walletId, callback }) {
   dbConnector.updateObject({
@@ -112,8 +112,8 @@ function updateObject({ update, walletId, callback }) {
 
 /**
  * Get all wallets
- * @param {Object} params - Parameters
- * @param {Function} params.callback - Callback
+ * @param {Object} params Parameters
+ * @param {Function} params.callback Callback
  */
 function getAllWallets({ callback }) {
   getWallets({
@@ -124,9 +124,9 @@ function getAllWallets({ callback }) {
 
 /**
  * Get wallets by teams
- * @param {Object} params - Parameters
- * @param {string} params.teamIds - ID of the teams
- * @param {Function} params.callback - Callback
+ * @param {Object} params Parameters
+ * @param {string} params.teamIds ID of the teams
+ * @param {Function} params.callback Callback
  */
 function getWalletsByTeams({ teamIds, callback }) {
   const query = {
@@ -144,9 +144,9 @@ function getWalletsByTeams({ teamIds, callback }) {
 
 /**
  * Get wallets that the user has access to.
- * @param {Object} params - Parameters
- * @param {string} params.user - User retrieving wallets.
- * @param {Function} params.callback - Callback
+ * @param {Object} params Parameters
+ * @param {string} params.user User retrieving wallets.
+ * @param {Function} params.callback Callback
  */
 function getWalletsByUser({
   user,
@@ -166,10 +166,10 @@ function getWalletsByUser({
 
 /**
  * Create and save wallet.
- * @param {Object} params - Parameters.
- * @param {Object} params.wallet - New wallet.
- * @param {Function} params.callback - Callback.
- * @param {Object} [params.options] - Options.
+ * @param {Object} params Parameters.
+ * @param {Object} params.wallet New wallet.
+ * @param {Function} params.callback Callback.
+ * @param {Object} [params.options] Options.
  */
 function createWallet({
   wallet,
@@ -199,15 +199,15 @@ function createWallet({
 
 /**
  * Update wallet
- * @param {Object} params - Parameters
- * @param {string} params.walletId - Wallet ID
- * @param {Object} params.wallet - Update wallet
- * @param {number} [params.wallet.amount] - Amount to increase or decrease with
- * @param {Object} [params.options] - Options
- * @param {boolean} [params.options.shouldDecreaseAmount] - Should the amount in the wallet be decreased?
- * @param {boolean} [params.options.resetAmount] - Should the wallet amount be reset?
- * @param {boolean} [params.options.resetOwnerAliasId] - Should owner alias ID be removed?
- * @param {Function} params.callback - Callback
+ * @param {Object} params Parameters
+ * @param {string} params.walletId Wallet ID
+ * @param {Object} params.wallet Update wallet
+ * @param {number} [params.wallet.amount] Amount to increase or decrease with
+ * @param {Object} [params.options] Options
+ * @param {boolean} [params.options.shouldDecreaseAmount] Should the amount in the wallet be decreased?
+ * @param {boolean} [params.options.resetAmount] Should the wallet amount be reset?
+ * @param {boolean} [params.options.resetOwnerAliasId] Should owner alias ID be removed?
+ * @param {Function} params.callback Callback
  */
 function updateWallet({
   walletId,
@@ -265,14 +265,14 @@ function updateWallet({
 
 /**
  * Update access to the wallet.
- * @param {Object} params - Parameters.
- * @param {Function} params.callback - Callback.
- * @param {boolean} [params.shouldRemove] - Should access be removed?
- * @param {string[]} [params.userIds] - Id of the users to update.
- * @param {string[]} [params.teamIds] - Id of the teams to update.
- * @param {string[]} [params.bannedIds] - Id of the blocked Ids to update.
- * @param {string[]} [params.teamAdminIds] - Id of the teams to update admin access for.
- * @param {string[]} [params.userAdminIds] - Id of the users to update admin access for.
+ * @param {Object} params Parameters.
+ * @param {Function} params.callback Callback.
+ * @param {boolean} [params.shouldRemove] Should access be removed?
+ * @param {string[]} [params.userIds] Id of the users to update.
+ * @param {string[]} [params.teamIds] Id of the teams to update.
+ * @param {string[]} [params.bannedIds] Id of the blocked Ids to update.
+ * @param {string[]} [params.teamAdminIds] Id of the teams to update admin access for.
+ * @param {string[]} [params.userAdminIds] Id of the users to update admin access for.
  */
 function updateAccess(params) {
   const accessParams = params;
@@ -298,9 +298,9 @@ function updateAccess(params) {
 
 /**
  * Remove wallet
- * @param {Object} params - Parameters
- * @param {string} params.walletId - ID of the wallet to remove
- * @param {Function} params.callback - Callback
+ * @param {Object} params Parameters
+ * @param {string} params.walletId ID of the wallet to remove
+ * @param {Function} params.callback Callback
  */
 function removeWallet({ walletId, callback }) {
   dbConnector.removeObject({
@@ -312,9 +312,9 @@ function removeWallet({ walletId, callback }) {
 
 /**
  * Get wallets by Ids
- * @param {Object} params - Parameters
- * @param {string[]} params.walletIds - Wallet Ids
- * @param {Function} params.callback - Callback
+ * @param {Object} params Parameters
+ * @param {string[]} params.walletIds Wallet Ids
+ * @param {Function} params.callback Callback
  */
 function getWalletsByIds({ walletIds, callback }) {
   getWallets({
@@ -325,9 +325,9 @@ function getWalletsByIds({ walletIds, callback }) {
 
 /**
  * Get wallet by Id.
- * @param {Object} params - Parameters.
- * @param {string[]} params.walletId - Wallet Id.
- * @param {Function} params.callback - Callback.
+ * @param {Object} params Parameters.
+ * @param {string[]} params.walletId Wallet Id.
+ * @param {Function} params.callback Callback.
  */
 function getWalletById({ walletId, callback }) {
   getWallet({

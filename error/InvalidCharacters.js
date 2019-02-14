@@ -19,9 +19,9 @@ const GeneralError = require('./GeneralError');
 class InvalidCharacters extends GeneralError.create {
   /**
    * Create invalid length error.
-   * @param {Object} params - Parameters.
-   * @param {string} [params.name] - Name of the string being checked.
-   * @param {Object} [params.errorObject] - Error object.
+   * @param {Object} params Parameters.
+   * @param {string} [params.name] Name of the string being checked.
+   * @param {Object} [params.errorObject] Error object.
    */
   constructor({
     errorObject,

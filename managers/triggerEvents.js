@@ -29,13 +29,13 @@ let baseIo;
 
 /**
  * Update a trigger event.
- * @param {Object} params - Parameters.
- * @param {string} params.eventId - Id of the event to update.
- * @param {Object} params.triggerEvent - Event parameters.
- * @param {string} params.token - jwt.
- * @param {Object} params.io - Socket io.
- * @param {Function} params.callback - Callback.
- * @param {Object} [params.options] - Update options.
+ * @param {Object} params Parameters.
+ * @param {string} params.eventId Id of the event to update.
+ * @param {Object} params.triggerEvent Event parameters.
+ * @param {string} params.token jwt.
+ * @param {Object} params.io Socket io.
+ * @param {Function} params.callback Callback.
+ * @param {Object} [params.options] Update options.
  */
 function updateTriggerEvent({
   eventId,
@@ -86,9 +86,9 @@ function updateTriggerEvent({
 
 /**
  * Get trigger events by owner.
- * @param {Object} params - Parameters.
- * @param {string} params.token - jwt.
- * @param {Function} params.callback - Callback.
+ * @param {Object} params Parameters.
+ * @param {string} params.token jwt.
+ * @param {Function} params.callback Callback.
  */
 function getTriggerEventsByOwner({
   token,
@@ -105,11 +105,11 @@ function getTriggerEventsByOwner({
 
 /**
  * Remove a trigger event.
- * @param {Object} params - Parameters.
- * @param {string} params.eventId - Id of the event to remove.
- * @param {string} params.token - jwt.
- * @param {Function} params.callback - Callback
- * @param {Object} params.io - Socket io.
+ * @param {Object} params Parameters.
+ * @param {string} params.eventId Id of the event to remove.
+ * @param {string} params.token jwt.
+ * @param {Function} params.callback Callback
+ * @param {Object} params.io Socket io.
  */
 function removeTriggerEvent({
   eventId,
@@ -139,11 +139,11 @@ function removeTriggerEvent({
 
 /**
  * Create a trigger event.
- * @param {Object} params - Parameters.
- * @param {Object} params.triggerEvent - The trigger event to create.
- * @param {string} params.token - jwt.
- * @param {Object} params.io - Socket.io.
- * @param {Function} params.callback - Callback.
+ * @param {Object} params Parameters.
+ * @param {Object} params.triggerEvent The trigger event to create.
+ * @param {string} params.token jwt.
+ * @param {Object} params.io Socket.io.
+ * @param {Function} params.callback Callback.
  */
 function createTriggerEvent({
   triggerEvent,
@@ -245,11 +245,11 @@ function createTriggerEvent({
 
 /**
  * Get a trigger event by its Id.
- * @param {Object} params - Parameters.
- * @param {string} params.token - jwt.
- * @param {Function} params.callback - Callback.
- * @param {string} params.eventId - Id of event to retrieve.
- * @param {Object} [params.internalCallUser] - User to use on authentication. It will bypass token authentication.
+ * @param {Object} params Parameters.
+ * @param {string} params.token jwt.
+ * @param {Function} params.callback Callback.
+ * @param {string} params.eventId Id of event to retrieve.
+ * @param {Object} [params.internalCallUser] User to use on authentication. It will bypass token authentication.
  */
 function getTriggerEventById({
   eventId,
@@ -271,9 +271,9 @@ function getTriggerEventById({
 
 /**
  * Trigger an event.
- * @param {Object} params - Parameters.
- * @param {string} params.eventId - Id of the event.
- * @param {Function} params.callback - Callback.
+ * @param {Object} params Parameters.
+ * @param {string} params.eventId Id of the event.
+ * @param {Function} params.callback Callback.
  */
 function runEvent({
   eventId,
@@ -448,7 +448,7 @@ function runEvent({
 
 /**
  * Set socket.io
- * @param {Object} io - Socket.io.
+ * @param {Object} io Socket.io.
  */
 function startTriggers(io) {
   baseIo = io;

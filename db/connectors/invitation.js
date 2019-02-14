@@ -31,9 +31,9 @@ const Invitation = mongoose.model('Invitation', invitationSchema);
 /**
  * Get invitations
  * @private
- * @param {Object} params - Parameters.
- * @param {Object} params.query - Query to get invitations.
- * @param {Function} params.callback - Callback.
+ * @param {Object} params Parameters.
+ * @param {Object} params.query Query to get invitations.
+ * @param {Function} params.callback Callback.
  */
 function getInvitations({ query, callback }) {
   dbConnector.getObjects({
@@ -58,9 +58,9 @@ function getInvitations({ query, callback }) {
 /**
  * Get invitation
  * @private
- * @param {Object} params - Parameters.
- * @param {Object} params.query - Query to get invitations.
- * @param {Function} params.callback - Callback.
+ * @param {Object} params Parameters.
+ * @param {Object} params.query Query to get invitations.
+ * @param {Function} params.callback Callback.
  */
 function getInvitation({ query, callback }) {
   dbConnector.getObject({
@@ -86,9 +86,9 @@ function getInvitation({ query, callback }) {
 
 /**
  * Create invitation
- * @param {Object} params - Parameters.
- * @param {Object} params.invitation - Invitation to save.
- * @param {Function} params.callback - Callback.
+ * @param {Object} params Parameters.
+ * @param {Object} params.invitation Invitation to save.
+ * @param {Function} params.callback Callback.
  */
 function createInvitation({ invitation, callback }) {
   const query = {
@@ -130,9 +130,9 @@ function createInvitation({ invitation, callback }) {
 
 /**
  * Get invitation by Id.
- * @param {Object} params - Parameters.
- * @param {string} params.invitationId - Id of the invitation to remove.
- * @param {Function} params.callback - Callback.
+ * @param {Object} params Parameters.
+ * @param {string} params.invitationId Id of the invitation to remove.
+ * @param {Function} params.callback Callback.
  */
 function getInvitationById({ invitationId, callback }) {
   getInvitations({
@@ -143,9 +143,9 @@ function getInvitationById({ invitationId, callback }) {
 
 /**
  * Get invitations by receiver
- * @param {Object} params - Parameters
- * @param {string} params.receiverId - ID of the receiver of the invitation
- * @param {Function} params.callback - Callback
+ * @param {Object} params Parameters
+ * @param {string} params.receiverId ID of the receiver of the invitation
+ * @param {Function} params.callback Callback
  */
 function getInvitationsByReceiver({ receiverId, callback }) {
   getInvitations({
@@ -156,9 +156,9 @@ function getInvitationsByReceiver({ receiverId, callback }) {
 
 /**
  * Get invitations by sender.
- * @param {Object} params - Parameters.
- * @param {string} params.senderId - Id of the sender of the invitation.
- * @param {Function} params.callback - Callback.
+ * @param {Object} params Parameters.
+ * @param {string} params.senderId Id of the sender of the invitation.
+ * @param {Function} params.callback Callback.
  */
 function getInvitationsBySender({ senderId, callback }) {
   getInvitations({
@@ -174,9 +174,9 @@ function getInvitationsBySender({ senderId, callback }) {
 
 /**
  * Remove invitation
- * @param {Object} params - Parameters.
- * @param {string} params.invitationId - Id of the invitation.
- * @param {Function} params.callback - Callback.
+ * @param {Object} params Parameters.
+ * @param {string} params.invitationId Id of the invitation.
+ * @param {Function} params.callback Callback.
  */
 function removeInvitation({ invitationId, callback }) {
   dbConnector.removeObject({
@@ -188,10 +188,10 @@ function removeInvitation({ invitationId, callback }) {
 
 /**
  * Remove all invitations with the same item Id for a user
- * @param {Object} params - Parameters.
- * @param {string} params.receiverId - Id of the invitation receiver.
- * @param {string} params.itemId - Item Id.
- * @param {Function} params.callback - Callback.
+ * @param {Object} params Parameters.
+ * @param {string} params.receiverId Id of the invitation receiver.
+ * @param {string} params.itemId Item Id.
+ * @param {Function} params.callback Callback.
  */
 function removeInvitationsByItemId({ receiverId, itemId, callback }) {
   const query = {
@@ -208,9 +208,9 @@ function removeInvitationsByItemId({ receiverId, itemId, callback }) {
 
 /**
  * Get and remove an invitation. Return the removed invitation in the callback
- * @param {Object} params - Parameters.
- * @param {string} params.invitationId - Id of the invitation.
- * @param {Function} params.callback - Callback.
+ * @param {Object} params Parameters.
+ * @param {string} params.invitationId Id of the invitation.
+ * @param {Function} params.callback Callback.
  */
 function useInvitation({ invitationId, callback }) {
   getInvitation({

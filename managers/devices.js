@@ -24,10 +24,10 @@ const managerHelper = require('../helpers/manager');
 
 /**
  * Get a device by Id.
- * @param {Object} params - Parameters.
- * @param {string} params.token - jwt.
- * @param {Function} params.callback - Callback.
- * @param {Object} [params.internalCallUser] - User to use on authentication. It will bypass token authentication.
+ * @param {Object} params Parameters.
+ * @param {string} params.token jwt.
+ * @param {Function} params.callback Callback.
+ * @param {Object} [params.internalCallUser] User to use on authentication. It will bypass token authentication.
  */
 function getDeviceById({
   token,
@@ -88,11 +88,11 @@ function getDeviceById({
 
 /**
  * Create a device.
- * @param {Object} params - Parameters.
- * @param {string} params.token - jwt.
- * @param {Object} params.device - Device parameters to create.
- * @param {Function} params.callback - Callback.
- * @param {Object} params.io - Socket io.
+ * @param {Object} params Parameters.
+ * @param {string} params.token jwt.
+ * @param {Object} params.device Device parameters to create.
+ * @param {Function} params.callback Callback.
+ * @param {Object} params.io Socket io.
  */
 function createDevice({
   token,
@@ -155,11 +155,11 @@ function createDevice({
 
 /**
  * Update device.
- * @param {Object} params - Parameters.
- * @param {Object} params.device - Device.
- * @param {Object} params.options - Options.
- * @param {Function} params.callback - Callback.
- * @param {Object} params.io - Socket.io.
+ * @param {Object} params Parameters.
+ * @param {Object} params.device Device.
+ * @param {Object} params.options Options.
+ * @param {Function} params.callback Callback.
+ * @param {Object} params.io Socket.io.
  */
 function updateDevice({
   token,
@@ -250,9 +250,9 @@ function updateDevice({
 
 /**
  * Get devices that are accessible to the user.
- * @param {Object} params - Parameters.
- * @param {string} params.token - jwt.
- * @param {Function} params.callback - Callback.
+ * @param {Object} params Parameters.
+ * @param {string} params.token jwt.
+ * @param {Function} params.callback Callback.
  */
 function getDevicesByUser({
   token,
@@ -304,11 +304,11 @@ function getDevicesByUser({
 
 /**
  * Remove device.
- * @param {Object} params - Parameters.
- * @param {string} params.token - jwt.
- * @param {string} params.deviceId - Id of the device.
- * @param {Object} params.io - Socket.io.
- * @param {Function} params.callback - Callback.
+ * @param {Object} params Parameters.
+ * @param {string} params.token jwt.
+ * @param {string} params.deviceId Id of the device.
+ * @param {Object} params.io Socket.io.
+ * @param {Function} params.callback Callback.
  */
 function removeDevice({
   token,
@@ -381,15 +381,15 @@ function removeDevice({
 
 /**
  * Update access to the device for users or teams.
- * @param {Object} params - Parameters.
- * @param {string} params.deviceId - Id of the device.
- * @param {Function} params.callback - Callback.
- * @param {boolean} [params.shouldRemove] - Should access be removed from the users or teams?
- * @param {string[]} [params.userIds] - Id of the users.
- * @param {string[]} [params.teamIds] - Id of the teams.
- * @param {string[]} [params.bannedIds] - Id of the blocked Ids to add.
- * @param {string[]} [params.teamAdminIds] - Id of the teams to change admin access for.
- * @param {string[]} [params.userAdminIds] - Id of the users to change admin access for.
+ * @param {Object} params Parameters.
+ * @param {string} params.deviceId Id of the device.
+ * @param {Function} params.callback Callback.
+ * @param {boolean} [params.shouldRemove] Should access be removed from the users or teams?
+ * @param {string[]} [params.userIds] Id of the users.
+ * @param {string[]} [params.teamIds] Id of the teams.
+ * @param {string[]} [params.bannedIds] Id of the blocked Ids to add.
+ * @param {string[]} [params.teamAdminIds] Id of the teams to change admin access for.
+ * @param {string[]} [params.userAdminIds] Id of the users to change admin access for.
  */
 function updateAccess({
   token,
