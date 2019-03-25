@@ -23,12 +23,12 @@ const authenticator = require('../helpers/authenticator');
 
 /**
  * Get invitation by Id and check if the user has access to it.
- * @param {Object} params - Parameters.
- * @param {Object} params.user - User retrieving the team.
- * @param {string} params.invitationId - Id of the invitation to retrieve.
- * @param {Function} params.callback - Callback.
- * @param {string} [params.errorContentText] - Text to be printed on error.
- * @param {boolean} [params.shouldBeAdmin] - Does the user have to be an admin?
+ * @param {Object} params Parameters.
+ * @param {Object} params.user User retrieving the team.
+ * @param {string} params.invitationId Id of the invitation to retrieve.
+ * @param {Function} params.callback Callback.
+ * @param {string} [params.errorContentText] Text to be printed on error.
+ * @param {boolean} [params.shouldBeAdmin] Does the user have to be an admin?
  */
 function getAccessibleInvitation({
   user,
@@ -63,11 +63,11 @@ function getAccessibleInvitation({
 
 /**
  * Remove an invitation.
- * @param {Object} params - Parameters.
- * @param {string} params.token - jwt.
- * @param {Function} params.callback - Callback.
- * @param {Object} params.io - Socket.io.
- * @param {string} params.invitationId - Id of the invitation to remove.
+ * @param {Object} params Parameters.
+ * @param {string} params.token jwt.
+ * @param {Function} params.callback Callback.
+ * @param {Object} params.io Socket.io.
+ * @param {string} params.invitationId Id of the invitation to remove.
  */
 function removeInvitation({
   token,

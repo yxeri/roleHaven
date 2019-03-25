@@ -24,10 +24,10 @@ const managerHelper = require('../helpers/manager');
 
 /**
  * Get wallet.
- * @param {Object} params - Parameters.
- * @param {string} params.walletId - Id of the wallet.
- * @param {string} params.token - jwt.
- * @param {Function} params.callback - Callback.
+ * @param {Object} params Parameters.
+ * @param {string} params.walletId Id of the wallet.
+ * @param {string} params.token jwt.
+ * @param {Function} params.callback Callback.
  */
 function getWalletById({
   walletId,
@@ -51,12 +51,12 @@ function getWalletById({
 
 /**
  * Update wallet.
- * @param {Object} params - Parameters.
- * @param {string} params.walletId - Id of the wallet.
- * @param {Object} params.wallet - Wallet parameters to update.
- * @param {Object} params.options - Update options.
- * @param {Function} params.callback - Callback.
- * @param {Object} params.io - Socket.io.
+ * @param {Object} params Parameters.
+ * @param {string} params.walletId Id of the wallet.
+ * @param {Object} params.wallet Wallet parameters to update.
+ * @param {Object} params.options Update options.
+ * @param {Function} params.callback Callback.
+ * @param {Object} params.io Socket.io.
  */
 function updateWallet({
   walletId,
@@ -154,9 +154,9 @@ function updateWallet({
 
 /**
  * Modifies wallets based on transaction.
- * @param {Object} params - Parameters.
- * @param {Object} params.transaction - Transaction.
- * @param {Function} params.callback - Callback
+ * @param {Object} params Parameters.
+ * @param {Object} params.transaction Transaction.
+ * @param {Function} params.callback Callback
  */
 function runTransaction({ transaction, callback }) {
   const {
@@ -204,10 +204,10 @@ function runTransaction({ transaction, callback }) {
 
 /**
  * Checks if the wallet has enough amount.
- * @param {Object} params - Parameters.
- * @param {string} params.walletId - Id of the wallet.
- * @param {number} params.amount - Amount.
- * @param {Function} params.callback - Callback
+ * @param {Object} params Parameters.
+ * @param {string} params.walletId Id of the wallet.
+ * @param {number} params.amount Amount.
+ * @param {Function} params.callback Callback
  */
 function checkAmount({
   walletId,
@@ -238,9 +238,9 @@ function checkAmount({
 
 /**
  * Get wallets that the user has access to.
- * @param {Object} params - Parameters.
- * @param {Function} params.callback - Callback.
- * @param {string} params.token - jwt.
+ * @param {Object} params Parameters.
+ * @param {Function} params.callback Callback.
+ * @param {string} params.token jwt.
  */
 function getWalletsByUser({
   callback,
@@ -257,15 +257,15 @@ function getWalletsByUser({
 
 /**
  * Update access to the wallet for users or teams.
- * @param {Object} params - Parameters.
- * @param {string} params.walletId - Id of the wallet.
- * @param {Function} params.callback - Callback.
- * @param {boolean} [params.shouldRemove] - Should access be removed from the users or teams?
- * @param {string[]} [params.userIds] - Id of the users.
- * @param {string[]} [params.teamIds] - Id of the teams.
- * @param {string[]} [params.bannedIds] - Id of the blocked Ids to add.
- * @param {string[]} [params.teamAdminIds] - Id of the teams to change admin access for.
- * @param {string[]} [params.userAdminIds] - Id of the users to change admin access for.
+ * @param {Object} params Parameters.
+ * @param {string} params.walletId Id of the wallet.
+ * @param {Function} params.callback Callback.
+ * @param {boolean} [params.shouldRemove] Should access be removed from the users or teams?
+ * @param {string[]} [params.userIds] Id of the users.
+ * @param {string[]} [params.teamIds] Id of the teams.
+ * @param {string[]} [params.bannedIds] Id of the blocked Ids to add.
+ * @param {string[]} [params.teamAdminIds] Id of the teams to change admin access for.
+ * @param {string[]} [params.userAdminIds] Id of the users to change admin access for.
  */
 function updateAccess({
   token,

@@ -550,7 +550,7 @@ function verifyUser({ userId, callback }) {
  * @param {Object} params Parameters
  * @param {string} params.userId ID of the user
  * @param {boolean} params.shouldBan Should the user be banned?
- * @param {Function} params.callback - Callback
+ * @param {Function} params.callback Callback
  */
 function updateBanUser({ shouldBan, userId, callback }) {
   const update = {
@@ -575,10 +575,10 @@ function updateBanUser({ shouldBan, userId, callback }) {
 
 /**
  * Set new password for user
- * @param {Object} params - Parameters
- * @param {string} params.userId - ID of the user
- * @param {string} params.password - New password
- * @param {Function} params.callback - Callback
+ * @param {Object} params Parameters
+ * @param {string} params.userId ID of the user
+ * @param {string} params.password New password
+ * @param {Function} params.callback Callback
  */
 function updateUserPassword({ userId, password, callback }) {
   const update = { $set: { password } };
@@ -592,9 +592,9 @@ function updateUserPassword({ userId, password, callback }) {
 
 /**
  * Get users that the user has access to.
- * @param {Object} params - Parameters.
- * @param {Function} params.callback - Callback.
- * @param {boolean} [params.includeInactive] - Should banned and unverified users be retrieved?
+ * @param {Object} params Parameters.
+ * @param {Function} params.callback Callback.
+ * @param {boolean} [params.includeInactive] Should banned and unverified users be retrieved?
  */
 function getUsersByUser({
   includeInactive,
@@ -626,11 +626,11 @@ function getUsersByUser({
 
 /**
  * Add a team to users.
- * @param {Object} params - Parameters.
- * @param {string} params.userIds - Ids of the users.
- * @param {string} params.teamId - Id of the team.
- * @param {Function} params.callback - Callback.
- * @param {boolean} [params.isAdmin] - Should the user be set as an admin for the team?
+ * @param {Object} params Parameters.
+ * @param {string} params.userIds Ids of the users.
+ * @param {string} params.teamId Id of the team.
+ * @param {Function} params.callback Callback.
+ * @param {boolean} [params.isAdmin] Should the user be set as an admin for the team?
  */
 function addToTeam({
   userIds,
@@ -687,10 +687,10 @@ function addToTeam({
 
 /**
  * Add alias to user.
- * @param {Object} params - Parameters.
- * @param {string} params.aliasId - Id of the alias.
- * @param {string} params.userId - Id of the user.
- * @param {Function} params.callback - Callback
+ * @param {Object} params Parameters.
+ * @param {string} params.aliasId Id of the alias.
+ * @param {string} params.userId Id of the user.
+ * @param {Function} params.callback Callback
  */
 function addAlias({
   aliasId,
@@ -714,10 +714,10 @@ function addAlias({
 
 /**
  * Remove alias from user.
- * @param {Object} params - Parameters.
- * @param {string} params.aliasId - Id of the alias.
- * @param {string} params.userId - Id of the user.
- * @param {Function} params.callback - Callback
+ * @param {Object} params Parameters.
+ * @param {string} params.aliasId Id of the alias.
+ * @param {string} params.userId Id of the user.
+ * @param {Function} params.callback Callback
  */
 function removeAlias({
   aliasId,
@@ -733,9 +733,9 @@ function removeAlias({
 
 /**
  * Remove alias from all users.
- * @param {Object} params - Parameters.
- * @param {string} params.aliasId - Id of the alias.
- * @param {Function} params.callback - Callback
+ * @param {Object} params Parameters.
+ * @param {string} params.aliasId Id of the alias.
+ * @param {Function} params.callback Callback
  */
 function removeAliasFromAllUsers({
   aliasId,
@@ -749,10 +749,10 @@ function removeAliasFromAllUsers({
 
 /**
  * Remove a team from the user
- * @param {Object} params - Parameters
- * @param {string} params.userId - ID of the user
- * @param {string} params.teamId - ID of the team
- * @param {Function} params.callback - Callback
+ * @param {Object} params Parameters
+ * @param {string} params.userId ID of the user
+ * @param {string} params.teamId ID of the team
+ * @param {Function} params.callback Callback
  */
 function removeFromTeam({ userId, teamId, callback }) {
   updateObject({
@@ -791,8 +791,8 @@ function removeFromTeam({ userId, teamId, callback }) {
 // TODO Redis would be a good choice to store user id and socket id connection
 /**
  * Get all socket ids from users
- * @param {Object} params - Parameters
- * @param {Function} params.callback - Callback
+ * @param {Object} params Parameters
+ * @param {Function} params.callback Callback
  */
 function getAllSocketIds({ callback }) {
   getUsers({
@@ -817,9 +817,9 @@ function getAllSocketIds({ callback }) {
 
 /**
  * Remove room from all users.
- * @param {Object} params - Parameters
- * @param {string} params.roomId - ID of the room
- * @param {Function} params.callback - Callback
+ * @param {Object} params Parameters
+ * @param {string} params.roomId ID of the room
+ * @param {Function} params.callback Callback
  */
 function removeRoomFromAll({ roomId, callback }) {
   updateObjects({
@@ -830,9 +830,9 @@ function removeRoomFromAll({ roomId, callback }) {
 
 /**
  * Remove team from all users.
- * @param {Object} params - Parameters.
- * @param {string} params.teamId - ID of the team.
- * @param {Function} params.callback - Callback.
+ * @param {Object} params Parameters.
+ * @param {string} params.teamId ID of the team.
+ * @param {Function} params.callback Callback.
  */
 function removeTeamFromAll({ teamId, callback }) {
   updateObjects({
@@ -843,8 +843,8 @@ function removeTeamFromAll({ teamId, callback }) {
 
 /**
  * Get banned and unverified users.
- * @param {Object} params - Parameters.
- * @param {Function} params.callback - Callback.
+ * @param {Object} params Parameters.
+ * @param {Function} params.callback Callback.
  */
 function getInactiveUsers({ callback }) {
   const query = {
@@ -862,10 +862,10 @@ function getInactiveUsers({ callback }) {
 
 /**
  * Add a room to users.
- * @param {Object} params - Parameters.
- * @param {string} params.roomId - Id of the room to add.
- * @param {string[]} params.userIds - Id of the users to update.
- * @param {Function} params.callback - Callback
+ * @param {Object} params Parameters.
+ * @param {string} params.roomId Id of the room to add.
+ * @param {string[]} params.userIds Id of the users to update.
+ * @param {Function} params.callback Callback
  */
 function followRoom({
   roomId,
@@ -891,10 +891,10 @@ function followRoom({
 
 /**
  * Remove a room from a user.
- * @param {Object} params - Parameters.
- * @param {string} params.roomId - Id of the room to remove.
- * @param {string} params.userId - Id of the user to update.
- * @param {Function} params.callback - Callback
+ * @param {Object} params Parameters.
+ * @param {string} params.roomId Id of the room to remove.
+ * @param {string} params.userId Id of the user to update.
+ * @param {Function} params.callback Callback
  */
 function unfollowRoom({
   roomId,
@@ -920,8 +920,8 @@ function unfollowRoom({
 
 /**
  * Get all users.
- * @param {Object} params - Parameters.
- * @param {Function} params.callback - Callback
+ * @param {Object} params Parameters.
+ * @param {Function} params.callback Callback
  */
 function getAllUsers({ callback }) {
   getUsers({
@@ -932,9 +932,9 @@ function getAllUsers({ callback }) {
 
 /**
  * Get users that have access to alias.
- * @param {Object} params - Parameters.
- * @param {string} params.aliasId - Alias Id.
- * @param {Function} params.callback - Callback.
+ * @param {Object} params Parameters.
+ * @param {string} params.aliasId Alias Id.
+ * @param {Function} params.callback Callback.
  */
 function getUsersByAlias({
   aliasId,

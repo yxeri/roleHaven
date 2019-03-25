@@ -33,9 +33,9 @@ const DocFile = mongoose.model('DocFile', docFileSchema);
 /**
  * Update doc file.
  * @private
- * @param {Object} params - Parameters.
- * @param {string} params.docFileId - ID of the doc file to update.
- * @param {Object} params.update - Update.
+ * @param {Object} params Parameters.
+ * @param {string} params.docFileId ID of the doc file to update.
+ * @param {Object} params.update Update.
  * @param {Function} params.callback Callback.
  */
 function updateObject({ docFileId, update, callback }) {
@@ -59,10 +59,10 @@ function updateObject({ docFileId, update, callback }) {
 /**
  * Get doc files.
  * @private
- * @param {Object} params - Parameters.
- * @param {Function} params.callback - Callback.
- * @param {Object} [params.query] - Query to get doc files.
- * @param {Object} [params.filter] - Result filter.
+ * @param {Object} params Parameters.
+ * @param {Function} params.callback Callback.
+ * @param {Object} [params.query] Query to get doc files.
+ * @param {Object} [params.filter] Result filter.
  */
 function getDocFiles({
   query,
@@ -88,10 +88,10 @@ function getDocFiles({
 /**
  * Get a doc file.
  * @private
- * @param {Object} params - Parameters.
- * @param {string} params.query - Query to get doc file.
- * @param {Function} params.callback - Callback.
- * @param {Object} [params.filter] - Result filter.
+ * @param {Object} params Parameters.
+ * @param {string} params.query Query to get doc file.
+ * @param {Function} params.callback Callback.
+ * @param {Object} [params.filter] Result filter.
  */
 function getDocFile({
   query,
@@ -122,10 +122,10 @@ function getDocFile({
 
 /**
  * Does the doc file exist?
- * @param {Object} params - Parameters.
- * @param {string} params.title - Title of the doc file.
- * @param {string} params.code - Code of the doc file.
- * @param {Function} params.callback - Callback.
+ * @param {Object} params Parameters.
+ * @param {string} params.title Title of the doc file.
+ * @param {string} params.code Code of the doc file.
+ * @param {Function} params.callback Callback.
  */
 function doesDocFileExist({ title, code, callback }) {
   const query = { $or: [] };
@@ -142,9 +142,9 @@ function doesDocFileExist({ title, code, callback }) {
 
 /**
  * Create and save docFile.
- * @param {Object} params - Parameters.
- * @param {Object} params.docFile - New docFile.
- * @param {Function} params.callback - Callback.
+ * @param {Object} params Parameters.
+ * @param {Object} params.docFile New docFile.
+ * @param {Function} params.callback Callback.
  */
 function createDocFile({ docFile, callback }) {
   doesDocFileExist({
@@ -182,16 +182,16 @@ function createDocFile({ docFile, callback }) {
 
 /**
  * Update docFile.
- * @param {Object} params - Parameters.
- * @param {string} params.docFile - Doc file info to update.
- * @param {string} params.docFileId - ID of the doc file to update.
- * @param {string[]} [params.docFile.text] - Array with text.
- * @param {string} [params.docFile.title] - Title.
- * @param {number} [params.docFile.visibility] - Minimum access level required to see document.
- * @param {boolean} [params.docFile.isPublic] - Is the document visible to the public?
- * @param {Object} [params.options] - Options.
- * @param {boolean} [params.options.resetOwnerAliasId] - Should owner alias be reset?
- * @param {Function} params.callback - Callback.
+ * @param {Object} params Parameters.
+ * @param {string} params.docFile Doc file info to update.
+ * @param {string} params.docFileId ID of the doc file to update.
+ * @param {string[]} [params.docFile.text] Array with text.
+ * @param {string} [params.docFile.title] Title.
+ * @param {number} [params.docFile.visibility] Minimum access level required to see document.
+ * @param {boolean} [params.docFile.isPublic] Is the document visible to the public?
+ * @param {Object} [params.options] Options.
+ * @param {boolean} [params.options.resetOwnerAliasId] Should owner alias be reset?
+ * @param {Function} params.callback Callback.
  */
 function updateDocFile({
   docFileId,
@@ -235,14 +235,14 @@ function updateDocFile({
 
 /**
  * Update access to the file.
- * @param {Object} params - Parameters.
- * @param {Function} params.callback - Callback.
- * @param {boolean} [params.shouldRemove] - Should access be removed?
- * @param {string[]} [params.userIds] - Id of the users to update.
- * @param {string[]} [params.teamIds] - Id of the teams to update.
- * @param {string[]} [params.bannedIds] - Id of the blocked Ids to update.
- * @param {string[]} [params.teamAdminIds] - Id of the teams to update admin access for.
- * @param {string[]} [params.userAdminIds] - Id of the users to update admin access for.
+ * @param {Object} params Parameters.
+ * @param {Function} params.callback Callback.
+ * @param {boolean} [params.shouldRemove] Should access be removed?
+ * @param {string[]} [params.userIds] Id of the users to update.
+ * @param {string[]} [params.teamIds] Id of the teams to update.
+ * @param {string[]} [params.bannedIds] Id of the blocked Ids to update.
+ * @param {string[]} [params.teamAdminIds] Id of the teams to update admin access for.
+ * @param {string[]} [params.userAdminIds] Id of the users to update admin access for.
  */
 function updateAccess(params) {
   const accessParams = params;
@@ -268,9 +268,9 @@ function updateAccess(params) {
 
 /**
  * Remove doc file.
- * @param {Object} params - Parameters.
- * @param {string} params.docFileId - ID of the doc file.
- * @param {Function} params.callback - Callback.
+ * @param {Object} params Parameters.
+ * @param {string} params.docFileId ID of the doc file.
+ * @param {Function} params.callback Callback.
  */
 function removeDocFile({ docFileId, callback }) {
   const query = { _id: docFileId };
@@ -284,8 +284,8 @@ function removeDocFile({ docFileId, callback }) {
 
 /**
  * Get all doc files.
- * @param {Object} params - Parameters.
- * @param {Function} params.callback - Callback.
+ * @param {Object} params Parameters.
+ * @param {Function} params.callback Callback.
  */
 function getAllDocFiles({ callback }) {
   getDocFiles({
@@ -296,9 +296,9 @@ function getAllDocFiles({ callback }) {
 
 /**
  * Get doc file by id.
- * @param {Object} params - Parameters.
- * @param {string} params.docFileId - ID of the doc file.
- * @param {Function} params.callback - Callback.
+ * @param {Object} params Parameters.
+ * @param {string} params.docFileId ID of the doc file.
+ * @param {Function} params.callback Callback.
  */
 function getDocFileById({
   docFileId,
@@ -312,9 +312,9 @@ function getDocFileById({
 
 /**
  * Get doc file by code.
- * @param {Object} params - Parameters.
- * @param {string} params.code - Docfile code.
- * @param {Function} params.callback - Callback.
+ * @param {Object} params Parameters.
+ * @param {string} params.code Docfile code.
+ * @param {Function} params.callback Callback.
  */
 function getDocFileByCode({
   code,
@@ -328,9 +328,9 @@ function getDocFileByCode({
 
 /**
  * Get files by user.
- * @param {Object} params - Parameters.
- * @param {Object} params.user - User retrieving the files.
- * @param {Function} params.callback - Callback.
+ * @param {Object} params Parameters.
+ * @param {Object} params.user User retrieving the files.
+ * @param {Function} params.callback Callback.
  */
 function getDocFilesByUser({
   user,
@@ -346,8 +346,8 @@ function getDocFilesByUser({
 
 /**
  * Get list of doc files.
- * @param {Object} params - Parameters.
- * @param {Function} params.callback - Callback.
+ * @param {Object} params Parameters.
+ * @param {Function} params.callback Callback.
  */
 function getDocFilesList({ callback }) {
   getDocFiles({

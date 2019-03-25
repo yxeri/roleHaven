@@ -1,5 +1,5 @@
 /*
- Copyright 2017 Carmilla Mina Jankovic
+ Copyright 2019 Carmilla Mina Jankovic
 
  Licensed under the Apache License, Version 2.0 (the "License");
  you may not use this file except in compliance with the License.
@@ -23,23 +23,34 @@ const dbConnector = require('../databaseConnector');
 
 const triggerEventSchema = new mongoose.Schema(dbConnector.createSchema({
   startTime: Date,
-  endTime: Date,
-  eventType: { type: String, default: dbConfig.EventTypes.TIMED },
+  terminationTime: Date,
+  duration: Number,
+  eventType: String,
+  content: Object,
+  iterations: Number,
+  isRecurring: { type: Boolean, default: false },
+  isActive: { type: Boolean, default: false },
+  changeType: { type: String, default: dbConfig.TriggerChangeTypes.CREATE },
   triggeredBy: { type: [String], default: [] },
-  isOpen: { type: Boolean, default: false },
-  text: [String],
-  coordinates: dbConnector.coordinatesSchema,
-  name: String,
+  shouldTargetSingle: { type: Boolean, default: false },
+  singleUse: { type: Boolean, default: true },
+  triggerType: { type: String, default: dbConfig.TriggerTypes.MANUAL },
+  coordinates: {
+    positionId: String,
+    longitude: Number,
+    latitude: Number,
+    radius: Number,
+  },
 }), { collection: 'triggerEvents' });
 
 const TriggerEvent = mongoose.model('TriggerEvent', triggerEventSchema);
 
 /**
  * Update a trigger event object.
- * @param {Object} params - Parameters.
- * @param {string} params.eventId - Id of the event to update.
- * @param {Object} params.update - Update.
- * @param {Function} params.callback - Callback.
+ * @param {Object} params Parameters.
+ * @param {string} params.eventId Id of the event to update.
+ * @param {Object} params.update Update.
+ * @param {Function} params.callback Callback.
  */
 function updateObject({
   eventId,
@@ -70,9 +81,9 @@ function updateObject({
 /**
  * Get trigger events.
  * @private
- * @param {Object} params - Parameters.
- * @param {Object} params.query - Query to get events.
- * @param {Function} params.callback - Callback.
+ * @param {Object} params Parameters.
+ * @param {Object} params.query Query to get events.
+ * @param {Function} params.callback Callback.
  */
 function getTriggerEvents({
   query,
@@ -98,9 +109,9 @@ function getTriggerEvents({
 /**
  * Get a trigger event.
  * @private
- * @param {Object} params - Parameters.
- * @param {string} params.query - Query to get an event.
- * @param {Function} params.callback - Callback.
+ * @param {Object} params Parameters.
+ * @param {string} params.query Query to get an event.
+ * @param {Function} params.callback Callback.
  */
 function getTriggerEvent({ query, callback }) {
   dbConnector.getObject({
@@ -126,9 +137,9 @@ function getTriggerEvent({ query, callback }) {
 
 /**
  * Create and save a trigger event.
- * @param {Object} params - Parameters.
- * @param {Object} params.triggerEvent - New triggerEvent.
- * @param {Function} params.callback - Callback.
+ * @param {Object} params Parameters.
+ * @param {Object} params.triggerEvent New triggerEvent.
+ * @param {Function} params.callback Callback.
  */
 function createTriggerEvent({ triggerEvent, callback }) {
   dbConnector.saveObject({
@@ -148,9 +159,9 @@ function createTriggerEvent({ triggerEvent, callback }) {
 
 /**
  * Update event properties.
- * @param {Object} params - Parameters.
- * @param {Function} params.callback - Callback.
- * @param {Object} params.triggerEvent - Properties to update in the event.
+ * @param {Object} params Parameters.
+ * @param {Function} params.callback Callback.
+ * @param {Object} params.triggerEvent Properties to update in the event.
  */
 function updateTriggerEvent({
   eventId,
@@ -160,32 +171,40 @@ function updateTriggerEvent({
 }) {
   const {
     startTime,
-    endTime,
+    terminationTime,
+    duration,
+    isRecurring,
     eventType,
-    isOpen,
-    text,
-    coordinates,
-    name,
+    content,
+    isActive,
+    iterations,
   } = triggerEvent;
   const {
-    resetEndTime,
+    resetTerminatonTime,
+    resetDuration,
   } = options;
   const update = {};
   const set = {};
   const unset = {};
 
-  if (resetEndTime) {
-    unset.endTime = '';
-  } else if (endTime) {
-    set.endTime = endTime;
+  if (resetDuration) {
+    unset.duration = '';
+  } else if (duration) {
+    set.duration = duration;
+  }
+
+  if (resetTerminatonTime) {
+    unset.terminationTime = '';
+  } else if (terminationTime) {
+    set.terminationTime = terminationTime;
   }
 
   if (startTime) { set.startTime = startTime; }
   if (eventType) { set.eventType = eventType; }
-  if (isOpen) { set.isOpen = isOpen; }
-  if (text) { set.text = text; }
-  if (coordinates) { set.coordinates = coordinates; }
-  if (name) { set.name = name; }
+  if (content) { set.content = content; }
+  if (isRecurring) { set.isRecurring = isRecurring; }
+  if (isActive) { set.isActive = isActive; }
+  if (iterations) { set.iterations = iterations; }
 
   if (Object.keys(set).length > 0) { update.$set = set; }
   if (Object.keys(unset).length > 0) { update.$unset = unset; }
@@ -199,14 +218,14 @@ function updateTriggerEvent({
 
 /**
  * Update access to the trigger event.
- * @param {Object} params - Parameters.
- * @param {Function} params.callback - Callback.
- * @param {boolean} [params.shouldRemove] - Should access be removed?
- * @param {string[]} [params.userIds] - Id of the users to update.
- * @param {string[]} [params.teamIds] - Id of the teams to update.
- * @param {string[]} [params.bannedIds] - Id of the blocked Ids to update.
- * @param {string[]} [params.teamAdminIds] - Id of the teams to update admin access for.
- * @param {string[]} [params.userAdminIds] - Id of the users to update admin access for.
+ * @param {Object} params Parameters.
+ * @param {Function} params.callback Callback.
+ * @param {boolean} [params.shouldRemove] Should access be removed?
+ * @param {string[]} [params.userIds] Id of the users to update.
+ * @param {string[]} [params.teamIds] Id of the teams to update.
+ * @param {string[]} [params.bannedIds] Id of the blocked Ids to update.
+ * @param {string[]} [params.teamAdminIds] Id of the teams to update admin access for.
+ * @param {string[]} [params.userAdminIds] Id of the users to update admin access for.
  */
 function updateAccess(params) {
   const accessParams = params;
@@ -232,9 +251,9 @@ function updateAccess(params) {
 
 /**
  * Remove a trigger event.
- * @param {Object} params - Parameters.
- * @param {string} params.eventId - Id of the event.
- * @param {Function} params.callback - Callback.
+ * @param {Object} params Parameters.
+ * @param {string} params.eventId Id of the event.
+ * @param {Function} params.callback Callback.
  */
 function removeTriggerEvent({ eventId, callback }) {
   dbConnector.removeObject({
@@ -246,22 +265,22 @@ function removeTriggerEvent({ eventId, callback }) {
 
 /**
  * Get a trigger event by its Id.
- * @param {Object} params - Parameters.
- * @param {string} params.eventId - Id of the event.
- * @param {Function} params.callback - Callback.
+ * @param {Object} params Parameters.
+ * @param {string} params.eventId Id of the event.
+ * @param {Function} params.callback Callback.
  */
 function getTriggerEventById({ eventId, callback }) {
   getTriggerEvent({
     callback,
-    query: { eventId },
+    query: { _id: eventId },
   });
 }
 
 /**
  * Get files by the owner.
- * @param {Object} params - Parameters.
- * @param {string} params.ownerId - Id of the owner.
- * @param {Function} params.callback - Callback.
+ * @param {Object} params Parameters.
+ * @param {string} params.ownerId Id of the owner.
+ * @param {Function} params.callback Callback.
  */
 function getTriggerEventsByOwner({
   ownerId,
@@ -275,9 +294,30 @@ function getTriggerEventsByOwner({
   });
 }
 
+/**
+ * Get timed events.
+ * @param {Object} params Parameters.
+ * @param {Function} params.callback Callback.
+ */
+function getTimedTriggerEvents({ callback }) {
+  const query = {
+    $or: [
+      { isRecurring: true },
+      { startTime: { $exists: true } },
+      { terminationTime: { $exists: true } },
+    ],
+  };
+
+  getTriggerEvents({
+    query,
+    callback,
+  });
+}
+
 exports.getTriggerEventById = getTriggerEventById;
 exports.removeTriggerEvent = removeTriggerEvent;
 exports.updateAccess = updateAccess;
 exports.createTriggerEvent = createTriggerEvent;
 exports.updateTriggerEvent = updateTriggerEvent;
 exports.getTriggerEventsByOwner = getTriggerEventsByOwner;
+exports.getTimedTriggerEvents = getTimedTriggerEvents;

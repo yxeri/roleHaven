@@ -78,8 +78,8 @@ mongoose.connect(dbPath, { useNewUrlParser: true }, (err) => {
 
 /**
  * Create and return full schema.
- * @param {Object} schema - Schema to expand.
- * @return {Object} - Schema.
+ * @param {Object} schema Schema to expand.
+ * @return {Object} Schema.
  */
 function createSchema(schema) {
   const fullSchema = schema;
@@ -94,8 +94,8 @@ function createSchema(schema) {
 /**
  * Add object identifier and hide password.
  * @private
- * @param {Object} params - Parameters.
- * @param {Object} params.object - Object to add an Id to.
+ * @param {Object} params Parameters.
+ * @param {Object} params.object Object to add an Id to.
  * @returns {Object} Updated object.
  */
 function modifyObject({ object }) {
@@ -109,9 +109,9 @@ function modifyObject({ object }) {
 
 /**
  * Saves object to database
- * @param {Object} params - Parameters
- * @param {Object} params.object - Object to save
- * @param {Function} params.callback - Callback
+ * @param {Object} params Parameters
+ * @param {Object} params.object Object to save
+ * @param {Function} params.callback Callback
  */
 function saveObject({
   object,
@@ -145,10 +145,10 @@ function saveObject({
 
 /**
  * Verifies object
- * @param {Object} params - Parameters
- * @param {Object} params.query - Search query
- * @param {Object} params.object - Type of object that will be modified
- * @param {Function} params.callback - Callback
+ * @param {Object} params Parameters
+ * @param {Object} params.query Search query
+ * @param {Object} params.object Type of object that will be modified
+ * @param {Function} params.callback Callback
  */
 function verifyObject({
   query,
@@ -182,10 +182,10 @@ function verifyObject({
 
 /**
  * Verifies all object
- * @param {Object} params - Parameters
- * @param {Object} params.query - Search query
- * @param {Object} params.object - Type of object that will be modified
- * @param {Function} params.callback - Callback
+ * @param {Object} params Parameters
+ * @param {Object} params.query Search query
+ * @param {Object} params.object Type of object that will be modified
+ * @param {Function} params.callback Callback
  */
 function verifyAllObjects({
   query,
@@ -213,8 +213,8 @@ function verifyAllObjects({
 
 /**
  * Drops database. Used during testing
- * @param {Object} params - Parameters
- * @param {Function} params.callback - Callback
+ * @param {Object} params Parameters
+ * @param {Function} params.callback Callback
  */
 function dropDatabase({ callback }) {
   if (appConfig.mode !== appConfig.Modes.TEST && appConfig.mode !== appConfig.Modes.DEV) {
@@ -236,12 +236,12 @@ function dropDatabase({ callback }) {
 
 /**
  * Retrieves and returns object
- * @param {Object} params - Parameters
- * @param {Function} params.callback - Callback
- * @param {Object} params.object - Object to call and get
- * @param {string} [params.query] - Database query
- * @param {string} [params.errorNameContent] - Content that will be sent with error
- * @param {Object} [params.filter] - Parameter filter
+ * @param {Object} params Parameters
+ * @param {Function} params.callback Callback
+ * @param {Object} params.object Object to call and get
+ * @param {string} [params.query] Database query
+ * @param {string} [params.errorNameContent] Content that will be sent with error
+ * @param {Object} [params.filter] Parameter filter
  */
 function getObject({
   object,
@@ -274,10 +274,10 @@ function getObject({
 
 /**
  * Does the object exist?
- * @param {Object} params - Parameters.
- * @param {Function} params.callback - Callback.
- * @param {Object} params.object - Object to call and get.
- * @param {string} params.query - Database query.
+ * @param {Object} params Parameters.
+ * @param {Function} params.callback Callback.
+ * @param {Object} params.object Object to call and get.
+ * @param {string} params.query Database query.
  */
 function doesObjectExist({
   object,
@@ -302,13 +302,13 @@ function doesObjectExist({
 
 /**
  * Retrieves and returns objects
- * @param {Object} params - Parameters
- * @param {Function} params.callback - Callback
- * @param {Object} params.object - Object to call and get
- * @param {Object} [params.query] - Database query
- * @param {Object} [params.sort] - Sorting instructions
- * @param {string} [params.errorNameContent] - Content that will be sent with error
- * @param {Object} [params.filter] - Parameter filter
+ * @param {Object} params Parameters
+ * @param {Function} params.callback Callback
+ * @param {Object} params.object Object to call and get
+ * @param {Object} [params.query] Database query
+ * @param {Object} [params.sort] Sorting instructions
+ * @param {string} [params.errorNameContent] Content that will be sent with error
+ * @param {Object} [params.filter] Parameter filter
  */
 function getObjects({
   object,
@@ -337,12 +337,12 @@ function getObjects({
 
 /**
  * Update object.
- * @param {Object} params - Parameters.
- * @param {Function} params.callback - Callback.
- * @param {Object} params.object - Object to call and get.
- * @param {string} params.query - Database query.
- * @param {string} [params.errorNameContent] - Content that will be sent with error.
- * @param {Object} [params.options] - Database call options.
+ * @param {Object} params Parameters.
+ * @param {Function} params.callback Callback.
+ * @param {Object} params.object Object to call and get.
+ * @param {string} params.query Database query.
+ * @param {string} [params.errorNameContent] Content that will be sent with error.
+ * @param {Object} [params.options] Database call options.
  */
 function updateObject({
   object,
@@ -385,11 +385,11 @@ function updateObject({
 
 /**
  * Update objects.
- * @param {Object} params - Parameters.
- * @param {Function} params.callback - Callback.
- * @param {Object} params.object - Object to call and get.
- * @param {string} [params.query] - Database query.
- * @param {string} [params.errorNameContent] - Content that will be sent with error.
+ * @param {Object} params Parameters.
+ * @param {Function} params.callback Callback.
+ * @param {Object} params.object Object to call and get.
+ * @param {string} [params.query] Database query.
+ * @param {string} [params.errorNameContent] Content that will be sent with error.
  */
 function updateObjects({
   object,
@@ -438,10 +438,10 @@ function updateObjects({
 
 /**
  * Remove object
- * @param {Object} params - Parameters
- * @param {Object} params.object - Type of object to remove
- * @param {string} params.query - Database query
- * @param {Function} params.callback - Callback
+ * @param {Object} params Parameters
+ * @param {Object} params.object Type of object to remove
+ * @param {string} params.query Database query
+ * @param {Function} params.callback Callback
  */
 function removeObject({
   object,
@@ -463,10 +463,10 @@ function removeObject({
 
 /**
  * Remove objects
- * @param {Object} params - Parameters
- * @param {Object} params.object - Type of objects to remove
- * @param {string} params.query - Database query
- * @param {Function} params.callback - Callback
+ * @param {Object} params Parameters
+ * @param {Object} params.object Type of objects to remove
+ * @param {string} params.query Database query
+ * @param {Function} params.callback Callback
  */
 function removeObjects({
   object,
@@ -486,14 +486,14 @@ function removeObjects({
 
 /**
  * Add object access for users or teams.
- * @param {Object} params - Parameters.
- * @param {string} params.objectId - Id of the device to update.
- * @param {Function} params.callback - Callback.
- * @param {string[]} [params.userIds] - Id of the users to add.
- * @param {string[]} [params.teamIds] - Id of the teams to add.
- * @param {string[]} [params.bannedIds] - Id of the banned user/teams to add.
- * @param {string[]} [params.teamAdminIds] - Id of the team admins to remove.
- * @param {string[]} [params.userAdminIds] - Id of the user admins to remove.
+ * @param {Object} params Parameters.
+ * @param {string} params.objectId Id of the device to update.
+ * @param {Function} params.callback Callback.
+ * @param {string[]} [params.userIds] Id of the users to add.
+ * @param {string[]} [params.teamIds] Id of the teams to add.
+ * @param {string[]} [params.bannedIds] Id of the banned user/teams to add.
+ * @param {string[]} [params.teamAdminIds] Id of the team admins to remove.
+ * @param {string[]} [params.userAdminIds] Id of the user admins to remove.
  */
 function addObjectAccess({
   objectId,
@@ -541,14 +541,14 @@ function addObjectAccess({
 
 /**
  * Remove object access for users or teams.
- * @param {Object} params - Parameters.
- * @param {string} params.objectId - Id of the device to update.
- * @param {Function} params.callback - Callback.
- * @param {string[]} [params.userIds] - Id of the users to remove.
- * @param {string[]} [params.teamIds] - Id of the teams to remove.
- * @param {string[]} [params.bannedIds] - Id of the banned users/teams to remove.
- * @param {string[]} [params.teamAdminIds] - Id of the team admins to remove.
- * @param {string[]} [params.userAdminIds] - Id of the user admins to remove.
+ * @param {Object} params Parameters.
+ * @param {string} params.objectId Id of the device to update.
+ * @param {Function} params.callback Callback.
+ * @param {string[]} [params.userIds] Id of the users to remove.
+ * @param {string[]} [params.teamIds] Id of the teams to remove.
+ * @param {string[]} [params.bannedIds] Id of the banned users/teams to remove.
+ * @param {string[]} [params.teamAdminIds] Id of the team admins to remove.
+ * @param {string[]} [params.userAdminIds] Id of the user admins to remove.
  */
 function removeObjectAccess({
   objectId,
@@ -587,9 +587,9 @@ function removeObjectAccess({
 
 /**
  * Create base query to check if the user has access to the object
- * @param {Object} params - Parameters.
- * @param {Object} params.user - User running a query.
- * @param {boolean} [params.noVisibility] - Should visibility be removed of the query?
+ * @param {Object} params Parameters.
+ * @param {Object} params.user User running a query.
+ * @param {boolean} [params.noVisibility] Should visibility be removed of the query?
  * @return {Object} Query.
  */
 function createUserQuery({ user, noVisibility }) {

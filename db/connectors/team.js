@@ -38,8 +38,8 @@ const Team = mongoose.model('Team', teamSchema);
 /**
  * Update team
  * @private
- * @param {Object} params - Parameters
- * @param {Object} params.teamId - ID of the team
+ * @param {Object} params Parameters
+ * @param {Object} params.teamId ID of the team
  * @param {Function} params.callback Callback
  */
 function updateObject({ teamId, update, callback }) {
@@ -63,10 +63,10 @@ function updateObject({ teamId, update, callback }) {
 /**
  * Get teams.
  * @private
- * @param {Object} params - Parameters.
- * @param {Object} params.query - Query to get teams.
- * @param {Object} [params.filter] - Filter for the result.
- * @param {Function} params.callback - Callback.
+ * @param {Object} params Parameters.
+ * @param {Object} params.query Query to get teams.
+ * @param {Object} [params.filter] Filter for the result.
+ * @param {Function} params.callback Callback.
  */
 function getTeams({
   query,
@@ -96,9 +96,9 @@ function getTeams({
 /**
  * Get a team.
  * @private
- * @param {Object} params - Parameters.
- * @param {Object} params.query - Query to get teams.
- * @param {Function} params.callback - Callback.
+ * @param {Object} params Parameters.
+ * @param {Object} params.query Query to get teams.
+ * @param {Function} params.callback Callback.
  */
 function getTeam({ query, callback }) {
   dbConnector.getObject({
@@ -125,10 +125,10 @@ function getTeam({ query, callback }) {
 /**
  * Does the team exist?
  * @private
- * @param {Object} params - Parameters.
- * @param {string} params.teamName - Name of the team.
- * @param {string} params.shortName - Short name of the team.
- * @param {Function} params.callback - Callback.
+ * @param {Object} params Parameters.
+ * @param {string} params.teamName Name of the team.
+ * @param {string} params.shortName Short name of the team.
+ * @param {Function} params.callback Callback.
  */
 function doesTeamExist({
   teamName,
@@ -163,9 +163,9 @@ function doesTeamExist({
 
 /**
  * Create and save team
- * @param {Object} params - Parameters
- * @param {Object} params.team - New team
- * @param {Function} params.callback - Callback
+ * @param {Object} params Parameters
+ * @param {Object} params.team New team
+ * @param {Function} params.callback Callback
  */
 function createTeam({ team, callback }) {
   doesTeamExist({
@@ -207,10 +207,10 @@ function createTeam({ team, callback }) {
 
 /**
  * Update team
- * @param {Object} params - Parameters
- * @param {Object} params.team - Fields to update
- * @param {Object} [params.options] - Options
- * @param {Function} params.callback - Callback
+ * @param {Object} params Parameters
+ * @param {Object} params.team Fields to update
+ * @param {Object} [params.options] Options
+ * @param {Function} params.callback Callback
  */
 function updateTeam({
   teamId,
@@ -298,14 +298,14 @@ function updateTeam({
 
 /**
  * Update access to the team.
- * @param {Object} params - Parameters.
- * @param {Function} params.callback - Callback.
- * @param {boolean} [params.shouldRemove] - Should access be removed?
- * @param {string[]} [params.userIds] - Id of the users to update.
- * @param {string[]} [params.teamIds] - Id of the teams to update.
- * @param {string[]} [params.bannedIds] - Id of the blocked Ids to update.
- * @param {string[]} [params.teamAdminIds] - Id of the teams to update admin access for.
- * @param {string[]} [params.userAdminIds] - Id of the users to update admin access for.
+ * @param {Object} params Parameters.
+ * @param {Function} params.callback Callback.
+ * @param {boolean} [params.shouldRemove] Should access be removed?
+ * @param {string[]} [params.userIds] Id of the users to update.
+ * @param {string[]} [params.teamIds] Id of the teams to update.
+ * @param {string[]} [params.bannedIds] Id of the blocked Ids to update.
+ * @param {string[]} [params.teamAdminIds] Id of the teams to update admin access for.
+ * @param {string[]} [params.userAdminIds] Id of the users to update admin access for.
  */
 function updateAccess(params) {
   const accessParams = params;
@@ -331,10 +331,10 @@ function updateAccess(params) {
 
 /**
  * Get teams that the user has access to.
- * @param {Object} params - Parameters.
- * @param {string} params.user - User retrieving the teams.
- * @param {Function} params.callback - Callback.
- * @param {boolean} [params.includeInactive] - Should unverified teams be returned?
+ * @param {Object} params Parameters.
+ * @param {string} params.user User retrieving the teams.
+ * @param {Function} params.callback Callback.
+ * @param {boolean} [params.includeInactive] Should unverified teams be returned?
  */
 function getTeamsByUser({
   user,
@@ -353,9 +353,9 @@ function getTeamsByUser({
 
 /**
  * Get team by Id.
- * @param {Object} params - Parameters.
- * @param {string} params.teamId - Id of the team.
- * @param {Function} params.callback - Callback.
+ * @param {Object} params Parameters.
+ * @param {string} params.teamId Id of the team.
+ * @param {Function} params.callback Callback.
  */
 function getTeamById({ teamId, callback }) {
   getTeam({
@@ -366,9 +366,9 @@ function getTeamById({ teamId, callback }) {
 
 /**
  * Verify the team.
- * @param {Object} params - Parameters.
- * @param {string} params.teamId - Id of the team to verify.
- * @param {Function} params.callback - Callback.
+ * @param {Object} params Parameters.
+ * @param {string} params.teamId Id of the team to verify.
+ * @param {Function} params.callback Callback.
  */
 function verifyTeam({ teamId, callback }) {
   updateTeam({
@@ -380,10 +380,10 @@ function verifyTeam({ teamId, callback }) {
 
 /**
  * Add a new member to the team.
- * @param {Object} params - Parameters.
- * @param {string[]} params.memberIds - Ids of the users.
- * @param {string} params.teamId - Id of the team.
- * @param {Function} params.callback - Callback.
+ * @param {Object} params Parameters.
+ * @param {string[]} params.memberIds Ids of the users.
+ * @param {string} params.teamId Id of the team.
+ * @param {Function} params.callback Callback.
  */
 function addTeamMembers({ memberIds, teamId, callback }) {
   updateObject({
@@ -395,10 +395,10 @@ function addTeamMembers({ memberIds, teamId, callback }) {
 
 /**
  * Remove a member from the team.
- * @param {Object} params - Parameters.
- * @param {string[]} params.memberIds - Ids of the users.
- * @param {string} params.teamId - Id of the team.
- * @param {Function} params.callback - Callback.
+ * @param {Object} params Parameters.
+ * @param {string[]} params.memberIds Ids of the users.
+ * @param {string} params.teamId Id of the team.
+ * @param {Function} params.callback Callback.
  */
 function removeTeamMembers({ memberIds, teamId, callback }) {
   updateObject({

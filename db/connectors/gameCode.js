@@ -34,10 +34,10 @@ const GameCode = mongoose.model('GameCode', gameCodeSchema);
 /**
  * Update game code.
  * @private
- * @param {Object} params - Parameters.
- * @param {string} params.gameCodeId - Id of the game code to update.
- * @param {Object} params.update - Update.
- * @param {Function} params.callback - Callback.
+ * @param {Object} params Parameters.
+ * @param {string} params.gameCodeId Id of the game code to update.
+ * @param {Object} params.update Update.
+ * @param {Function} params.callback Callback.
  */
 function updateObject({ gameCodeId, update, callback }) {
   dbConnector.updateObject({
@@ -60,9 +60,9 @@ function updateObject({ gameCodeId, update, callback }) {
 /**
  * Get game code
  * @private
- * @param {Object} params - Parameters
- * @param {string} params.query - Query to get game code
- * @param {Function} params.callback - Callback
+ * @param {Object} params Parameters
+ * @param {string} params.query Query to get game code
+ * @param {Function} params.callback Callback
  */
 function getGameCode({
   query,
@@ -94,9 +94,9 @@ function getGameCode({
 /**
  * Get game codes
  * @private
- * @param {Object} params - Parameters.
- * @param {Object} params.query - Query to get game codes.
- * @param {Function} params.callback - Callback.
+ * @param {Object} params Parameters.
+ * @param {Object} params.query Query to get game codes.
+ * @param {Function} params.callback Callback.
  */
 function getGameCodes({
   query,
@@ -126,9 +126,9 @@ function getGameCodes({
 /**
  * Does the game code exist?
  * @private
- * @param {Object} params - Parameters.
- * @param {string} params.query - Query to get game code.
- * @param {Function} params.callback - Callback.
+ * @param {Object} params Parameters.
+ * @param {string} params.query Query to get game code.
+ * @param {Function} params.callback Callback.
  */
 function doesExist({ query, callback }) {
   dbConnector.getObject({
@@ -140,9 +140,9 @@ function doesExist({ query, callback }) {
 
 /**
  * Create game code
- * @param {Object} params - Parameters.
- * @param {Object} params.gameCode - Game code.
- * @param {Function} params.callback - Callback.
+ * @param {Object} params Parameters.
+ * @param {Object} params.gameCode Game code.
+ * @param {Function} params.callback Callback.
  */
 function createGameCode({ gameCode, callback }) {
   doesExist({
@@ -179,13 +179,13 @@ function createGameCode({ gameCode, callback }) {
 
 /**
  * Update a game code.
- * @param {Object} params - Parameters.
- * @param {Function} params.callback - Callback.
- * @param {Object} params.gameCode - Game code.
- * @param {string} [params.gameCode.code] - Game code.
- * @param {string} 8params.gameCode.codeType] - Type of game code.
- * @param {boolean} [params.gameCode.isRenewable] - Should a new game code be created after usage?
- * @param {string[]} [params.gameCode.codeContent] - Content that will be retrieved by user that uses the code.
+ * @param {Object} params Parameters.
+ * @param {Function} params.callback Callback.
+ * @param {Object} params.gameCode Game code.
+ * @param {string} [params.gameCode.code] Game code.
+ * @param {string} 8params.gameCode.codeType] Type of game code.
+ * @param {boolean} [params.gameCode.isRenewable] Should a new game code be created after usage?
+ * @param {string[]} [params.gameCode.codeContent] Content that will be retrieved by user that uses the code.
  */
 function updateGameCode({
   gameCodeId,
@@ -215,9 +215,9 @@ function updateGameCode({
 
 /**
  * Get game codes by user.
- * @param {Object} params - Parameters.
- * @param {Object} params.user - User retrieving game codes.
- * @param {Function} params.callback - Callback.
+ * @param {Object} params Parameters.
+ * @param {Object} params.user User retrieving game codes.
+ * @param {Function} params.callback Callback.
  */
 function getGameCodesByUser({
   user,
@@ -234,9 +234,9 @@ function getGameCodesByUser({
 
 /**
  * Get game code by Id.
- * @param {Object} params - Parameters
- * @param {string} params.gameCodeId - Id of the game code to retrieve.
- * @param {Function} params.callback - Callback.
+ * @param {Object} params Parameters
+ * @param {string} params.gameCodeId Id of the game code to retrieve.
+ * @param {Function} params.callback Callback.
  */
 function getGameCodeById({
   gameCodeId,
@@ -252,9 +252,9 @@ function getGameCodeById({
 
 /**
  * Remove game code.
- * @param {Object} params - Parameters.
- * @param {string} params.gameCodeId - Id of the game code.
- * @param {Function} params.callback - Callback.
+ * @param {Object} params Parameters.
+ * @param {string} params.gameCodeId Id of the game code.
+ * @param {Function} params.callback Callback.
  */
 function removeGameCode({ gameCodeId, callback }) {
   dbConnector.removeObject({
@@ -266,9 +266,9 @@ function removeGameCode({ gameCodeId, callback }) {
 
 /**
  * Get user's profile code.
- * @param {Object} params - Parameters.
- * @param {string} params.ownerId - Id of the user.
- * @param {Function} params.callback - Callback
+ * @param {Object} params Parameters.
+ * @param {string} params.ownerId Id of the user.
+ * @param {Function} params.callback Callback
  */
 function getProfileGameCode({ ownerId, callback }) {
   const query = {

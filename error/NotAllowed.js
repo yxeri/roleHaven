@@ -19,7 +19,7 @@ const GeneralError = require('./GeneralError');
 class NotAllowedError extends GeneralError.create {
   /**
    * Create not allowed error.
-   * @param {Object} params - Parameters.
+   * @param {Object} params Parameters.
    * @param {string} [params.name] Description of what the user tried to access
    * @param {Object} [params.errorObject] Error object
    */

@@ -41,8 +41,8 @@ const Room = mongoose.model('Room', roomSchema);
 /**
  * Remove private parameters from room.
  * @private
- * @param {Object} room - Room.
- * @return {Object} - Room with cleaned parameters
+ * @param {Object} room Room.
+ * @return {Object} Room with cleaned parameters
  */
 function cleanParameters(room) {
   const modifiedRoom = room;
@@ -53,10 +53,10 @@ function cleanParameters(room) {
 /**
  * Update room.
  * @private
- * @param {Object} params - Parameters.
- * @param {string} params.roomId - Id of the room to update.
- * @param {Object} params.update - Update.
- * @param {Function} params.callback - Callback.
+ * @param {Object} params Parameters.
+ * @param {string} params.roomId Id of the room to update.
+ * @param {Object} params.update Update.
+ * @param {Function} params.callback Callback.
  */
 function updateObject({ update, roomId, callback }) {
   dbConnector.updateObject({
@@ -78,9 +78,9 @@ function updateObject({ update, roomId, callback }) {
 
 /**
  * Get a room.
- * @param {Object} params - Parameters-
- * @param {string} params.query - Query to get room.
- * @param {Function} params.callback - Callback.
+ * @param {Object} params Parameters-
+ * @param {string} params.query Query to get room.
+ * @param {Function} params.callback Callback.
  */
 function getRoom({ query, callback }) {
   dbConnector.getObject({
@@ -107,10 +107,10 @@ function getRoom({ query, callback }) {
 /**
  * Get rooms.
  * @private
- * @param {Object} params - Parameters.
- * @param {Object} params.query - Query to get rooms.
- * @param {Function} params.callback - Callback.
- * @param {Object} [params.filter] - Parameters to be filtered from the db result.
+ * @param {Object} params Parameters.
+ * @param {Object} params.query Query to get rooms.
+ * @param {Function} params.callback Callback.
+ * @param {Object} [params.filter] Parameters to be filtered from the db result.
  */
 function getRooms({
   filter,
@@ -139,11 +139,11 @@ function getRooms({
 
 /**
  * Does the room exist?
- * @param {Object} params - Parameters.
- * @param {boolean} [params.skipExistsCheck] - Should the exist check be skipped?
- * @param {string} [params.roomName] - Name of the room.
- * @param {string} [params.roomId] - Id of the room.
- * @param {Function} params.callback - Callback.
+ * @param {Object} params Parameters.
+ * @param {boolean} [params.skipExistsCheck] Should the exist check be skipped?
+ * @param {string} [params.roomName] Name of the room.
+ * @param {string} [params.roomId] Id of the room.
+ * @param {Function} params.callback Callback.
  */
 function doesRoomExist({
   skipExistsCheck,
@@ -180,10 +180,10 @@ function doesRoomExist({
 
 /**
  * Add followers.
- * @param {Object} params - Parameters.
- * @param {string[]} params.userIds - Id of the users to add.
- * @param {string} params.roomId - Id of the room.
- * @param {Function} params.callback - Callback.
+ * @param {Object} params Parameters.
+ * @param {string[]} params.userIds Id of the users to add.
+ * @param {string} params.roomId Id of the room.
+ * @param {Function} params.callback Callback.
  */
 function addFollowers({ userIds, roomId, callback }) {
   const update = {
@@ -201,11 +201,11 @@ function addFollowers({ userIds, roomId, callback }) {
 
 /**
  * Create and save room.
- * @param {Object} params - Parameters.
- * @param {Object} params.room - New room.
- * @param {Function} params.callback - Callback.
- * @param {Object} [params.options] - Options.
- * @param {boolean} [params.silentExistsError] - Should error be skipped if the room already exists?
+ * @param {Object} params Parameters.
+ * @param {Object} params.room New room.
+ * @param {Function} params.callback Callback.
+ * @param {Object} [params.options] Options.
+ * @param {boolean} [params.silentExistsError] Should error be skipped if the room already exists?
  */
 function createRoom({
   room,
@@ -283,10 +283,10 @@ function createRoom({
 
 /**
  * Remove room.
- * @param {Object} params - Parameters.
- * @param {string} params.roomId - ID of the room.
- * @param {Function} params.callback - Callback.
- * @param {boolean} [params.fullRemoval] - Should the room be removed from all users?
+ * @param {Object} params Parameters.
+ * @param {string} params.roomId ID of the room.
+ * @param {Function} params.callback Callback.
+ * @param {boolean} [params.fullRemoval] Should the room be removed from all users?
  */
 function removeRoom({ roomId, fullRemoval, callback }) {
   dbConnector.removeObject({
@@ -328,10 +328,10 @@ function removeRoom({ roomId, fullRemoval, callback }) {
 
 /**
  * Remove followers
- * @param {Object} params - Parameters
- * @param {string[]} params.userIds - ID of the users to remove
- * @param {string} params.roomId - ID of the room
- * @param {Function} params.callback - Callback
+ * @param {Object} params Parameters
+ * @param {string[]} params.userIds ID of the users to remove
+ * @param {string} params.roomId ID of the room
+ * @param {Function} params.callback Callback
  */
 function removeFollowers({ userIds, roomId, callback }) {
   updateObject({
@@ -345,14 +345,14 @@ function removeFollowers({ userIds, roomId, callback }) {
 
 /**
  * Update access to the file.
- * @param {Object} params - Parameters.
- * @param {Function} params.callback - Callback.
- * @param {boolean} [params.shouldRemove] - Should access be removed?
- * @param {string[]} [params.userIds] - Id of the users to update.
- * @param {string[]} [params.teamIds] - Id of the teams to update.
- * @param {string[]} [params.bannedIds] - Id of the blocked Ids to update.
- * @param {string[]} [params.teamAdminIds] - Id of the teams to update admin access for.
- * @param {string[]} [params.userAdminIds] - Id of the users to update admin access for.
+ * @param {Object} params Parameters.
+ * @param {Function} params.callback Callback.
+ * @param {boolean} [params.shouldRemove] Should access be removed?
+ * @param {string[]} [params.userIds] Id of the users to update.
+ * @param {string[]} [params.teamIds] Id of the teams to update.
+ * @param {string[]} [params.bannedIds] Id of the blocked Ids to update.
+ * @param {string[]} [params.teamAdminIds] Id of the teams to update admin access for.
+ * @param {string[]} [params.userAdminIds] Id of the users to update admin access for.
  */
 function updateAccess(params) {
   const { callback } = params;
@@ -378,12 +378,12 @@ function updateAccess(params) {
 
 /**
  * Update room
- * @param {Object} params - Parameters
- * @param {string} params.roomId - ID of the room to update
- * @param {Object} params.room - Fields to update
- * @param {Object} [params.options] - Options
- * @param {Object} params.options.resetOwnerAliasId - Should ownerAliasId be removed?
- * @param {Function} params.callback - Callback
+ * @param {Object} params Parameters
+ * @param {string} params.roomId ID of the room to update
+ * @param {Object} params.room Fields to update
+ * @param {Object} [params.options] Options
+ * @param {Object} params.options.resetOwnerAliasId Should ownerAliasId be removed?
+ * @param {Function} params.callback Callback
  */
 function updateRoom({
   roomId,
@@ -468,9 +468,9 @@ function updateRoom({
 
 /**
  * Get room by Id.
- * @param {Object} params - Parameters.
- * @param {string} params.roomId - Id of the room.
- * @param {Function} params.callback - Callback.
+ * @param {Object} params Parameters.
+ * @param {string} params.roomId Id of the room.
+ * @param {Function} params.callback Callback.
  */
 function getRoomById({
   roomId,
@@ -493,10 +493,10 @@ function getRoomById({
 
 /**
  * Get room by Id.
- * @param {Object} params - Parameters.
- * @param {string} params.roomId - Id of the room.
- * @param {Function} params.callback - Callback.
- * @param {string} params.password - Password for the room.
+ * @param {Object} params Parameters.
+ * @param {string} params.roomId Id of the room.
+ * @param {Function} params.callback Callback.
+ * @param {string} params.password Password for the room.
  */
 function authToRoom({
   roomId,
@@ -540,9 +540,9 @@ function authToRoom({
 
 /**
  * Get rooms by Ids
- * @param {Object} params - Parameters.
- * @param {string[]} params.roomIds - Ids of the rooms.
- * @param {Function} params.callback - Callback.
+ * @param {Object} params Parameters.
+ * @param {string[]} params.roomIds Ids of the rooms.
+ * @param {Function} params.callback Callback.
  */
 function getRoomsByIds({ roomIds, callback }) {
   getRooms({
@@ -553,9 +553,9 @@ function getRoomsByIds({ roomIds, callback }) {
 
 /**
  * Get rooms that the user has access to.
- * @param {Object} params - Parameters.
- * @param {Object} params.user - User retrieving the rooms.
- * @param {Function} params.callback - Callback.
+ * @param {Object} params Parameters.
+ * @param {Object} params.user User retrieving the rooms.
+ * @param {Function} params.callback Callback.
  */
 function getRoomsByUser({
   user,
@@ -574,9 +574,9 @@ function getRoomsByUser({
 
 /**
  * Get whisper room.
- * @param {Object} params - Parameters.
- * @param {string} params.participantIds - Id of the users.
- * @param {Function} params.callback - Callback.
+ * @param {Object} params Parameters.
+ * @param {string} params.participantIds Id of the users.
+ * @param {Function} params.callback Callback.
  */
 function getWhisperRoom({ participantIds, callback }) {
   const query = {
@@ -592,9 +592,9 @@ function getWhisperRoom({ participantIds, callback }) {
 
 /**
  * Does the whisper room exist?
- * @param {Object} params - Parameters.
- * @param {string[]} [params.participantIds] - Participants in the room.
- * @param {Function} params.callback - Callback.
+ * @param {Object} params Parameters.
+ * @param {string[]} [params.participantIds] Participants in the room.
+ * @param {Function} params.callback Callback.
  */
 function doesWhisperRoomExist({ participantIds, callback }) {
   const query = {
@@ -611,8 +611,8 @@ function doesWhisperRoomExist({ participantIds, callback }) {
 
 /**
  * Get all rooms
- * @param {Object} params - Parameters.
- * @param {Function} params.callback - Callback.
+ * @param {Object} params Parameters.
+ * @param {Function} params.callback Callback.
  */
 function getAllRooms({ callback }) {
   getRooms({
@@ -627,8 +627,8 @@ function getAllRooms({ callback }) {
 
 /**
  * Add rooms to db.
- * @param {Object} params - Parameters.
- * @param {Function} params.callback - Callback.
+ * @param {Object} params Parameters.
+ * @param {Function} params.callback Callback.
  */
 function populateDbRooms({ callback = () => {} }) {
   console.info('Creating default rooms, if needed');
@@ -637,7 +637,7 @@ function populateDbRooms({ callback = () => {} }) {
 
   /**
    * Adds a room to database. Recursive.
-   * @param {string[]} roomNames - Room names.
+   * @param {string[]} roomNames Room names.
    */
   function addRoom(roomNames) {
     const roomName = roomNames.shift();

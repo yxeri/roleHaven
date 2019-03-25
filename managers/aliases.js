@@ -28,10 +28,10 @@ const managerHelper = require('../helpers/manager');
 
 /**
  * Create and add alias to user.
- * @param {Object} params - Parameter.
- * @param {Object} params.alias - Alias to add.
- * @param {Object} [params.io] - Socket io.
- * @param {Function} params.callback - Callback.
+ * @param {Object} params Parameter.
+ * @param {Object} params.alias Alias to add.
+ * @param {Object} [params.io] Socket io.
+ * @param {Function} params.callback Callback.
  */
 function createAlias({
   token,
@@ -224,12 +224,12 @@ function createAlias({
 
 /**
  * Get alias by Id or name.
- * @param {Object} params - Parameter.
- * @param {string} params.token - jwt.
- * @param {Function} params.callback - Callback.
- * @param {string} [params.aliasId] - Id of the alias.
- * @param {string} [params.aliasName] - Name of the alias.
- * @param {Object} [params.internalCallUser] - User to use on authentication. It will bypass token authentication.
+ * @param {Object} params Parameter.
+ * @param {string} params.token jwt.
+ * @param {Function} params.callback Callback.
+ * @param {string} [params.aliasId] Id of the alias.
+ * @param {string} [params.aliasName] Name of the alias.
+ * @param {Object} [params.internalCallUser] User to use on authentication. It will bypass token authentication.
  */
 function getAliasById({
   token,
@@ -291,9 +291,9 @@ function getAliasById({
 
 /**
  * Get aliases that the user has access to.
- * @param {Object} params - Parameter.
- * @param {Object} params.token - jwt.
- * @param {Function} params.callback - Callback.
+ * @param {Object} params Parameter.
+ * @param {Object} params.token jwt.
+ * @param {Function} params.callback Callback.
  */
 function getAliasesByUser({
   token,
@@ -363,13 +363,13 @@ function getAliasesByUser({
 
 /**
  * Update alias.
- * @param {Object} params - Parameter.
- * @param {Object} params.token - jwt.
- * @param {Function} params.callback - Callback.
- * @param {Object} params.aliasId - Id of the alias to update.
- * @param {Object} params.alias - Alias parameters to update.
- * @param {Object} params.io - Socket io. Will be used if socket is not set.
- * @param {Object} [params.options] - Alias update options.
+ * @param {Object} params Parameter.
+ * @param {Object} params.token jwt.
+ * @param {Function} params.callback Callback.
+ * @param {Object} params.aliasId Id of the alias to update.
+ * @param {Object} params.alias Alias parameters to update.
+ * @param {Object} params.io Socket io. Will be used if socket is not set.
+ * @param {Object} [params.options] Alias update options.
  */
 function updateAlias({
   token,
@@ -464,15 +464,15 @@ function updateAlias({
 
 /**
  * Update access to the alias for users or teams.
- * @param {Object} params - Parameters.
- * @param {string} params.aliasId - Id of the alias.
- * @param {Function} params.callback - Callback.
- * @param {boolean} [params.shouldRemove] - Should access be removed from the users or teams?
- * @param {string[]} [params.userIds] - Id of the users.
- * @param {string[]} [params.teamIds] - Id of the teams.
- * @param {string[]} [params.bannedIds] - Id of the blocked Ids to add.
- * @param {string[]} [params.teamAdminIds] - Id of the teams to change admin access for.
- * @param {string[]} [params.userAdminIds] - Id of the users to change admin access for.
+ * @param {Object} params Parameters.
+ * @param {string} params.aliasId Id of the alias.
+ * @param {Function} params.callback Callback.
+ * @param {boolean} [params.shouldRemove] Should access be removed from the users or teams?
+ * @param {string[]} [params.userIds] Id of the users.
+ * @param {string[]} [params.teamIds] Id of the teams.
+ * @param {string[]} [params.bannedIds] Id of the blocked Ids to add.
+ * @param {string[]} [params.teamAdminIds] Id of the teams to change admin access for.
+ * @param {string[]} [params.userAdminIds] Id of the users to change admin access for.
  */
 function updateAccess({
   token,
@@ -571,10 +571,10 @@ function updateAccess({
 
 /**
  * Get all aliases.
- * @param {Object} params - Parameters.
- * @param {Object} params.token - Jwt.
- * @param {Object} [params.internalCallUser] - Skip authentication and instead use this user.
- * @param {Function} params.callback - Callback.
+ * @param {Object} params Parameters.
+ * @param {Object} params.token Jwt.
+ * @param {Object} [params.internalCallUser] Skip authentication and instead use this user.
+ * @param {Function} params.callback Callback.
  */
 function getAllAliases({
   token,

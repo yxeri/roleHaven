@@ -25,10 +25,10 @@ const managerHelper = require('../helpers/manager');
 
 /**
  * Get a simple msg.
- * @param {Object} params - Parameters.
- * @param {string} params.token - jwt.
- * @param {Function} params.callback - Callback.
- * @param {string} params.simpleMsgId - Id of the message.
+ * @param {Object} params Parameters.
+ * @param {string} params.token jwt.
+ * @param {Function} params.callback Callback.
+ * @param {string} params.simpleMsgId Id of the message.
  */
 function getSimpleMsgById({
   token,
@@ -88,11 +88,11 @@ function getSimpleMsgById({
 
 /**
  * Send simple message.
- * @param {Object} params - Parameters.
- * @param {string} params.text - Text to add to message.
- * @param {Object} params.io - Socket io.
- * @param {string} params.token - jwt.
- * @param {Function} params.callback - Callback.
+ * @param {Object} params Parameters.
+ * @param {string} params.text Text to add to message.
+ * @param {Object} params.io Socket io.
+ * @param {string} params.token jwt.
+ * @param {Function} params.callback Callback.
  */
 function sendSimpleMsg({
   text,
@@ -161,11 +161,11 @@ function sendSimpleMsg({
 
 /**
  * Update a simple msg.
- * @param {Object} params - Parameters.
- * @param {string} params.token - jwt.
- * @param {Function} params.callback - Callback.
- * @param {string} params.simpleMsgId - Id of the message to update.
- * @param {Object} params.simpleMsg - Parameters to update.
+ * @param {Object} params Parameters.
+ * @param {string} params.token jwt.
+ * @param {Function} params.callback Callback.
+ * @param {string} params.simpleMsgId Id of the message to update.
+ * @param {Object} params.simpleMsg Parameters to update.
  */
 function updateSimpleMsg({
   token,
@@ -248,10 +248,10 @@ function updateSimpleMsg({
 
 /**
  * Remove a simple msg.
- * @param {Object} params - Parameters.
- * @param {string} params.token - jwt.
- * @param {Function} params.callback - Callback.
- * @param {string} params.simpleMsgId - Id of the message.
+ * @param {Object} params Parameters.
+ * @param {string} params.token jwt.
+ * @param {Function} params.callback Callback.
+ * @param {string} params.simpleMsgId Id of the message.
  */
 function removeSimpleMsg({
   token,
@@ -330,9 +330,9 @@ function removeSimpleMsg({
 
 /**
  * Get simple messages that the user has access to.
- * @param {Object} params - Parameters.
- * @param {string} params.token - jwt.
- * @param {Function} params.callback - Callback.
+ * @param {Object} params Parameters.
+ * @param {string} params.token jwt.
+ * @param {Function} params.callback Callback.
  */
 function getSimpleMsgsByUser({
   token,

@@ -22,8 +22,8 @@ const { dbConfig } = require('../config/defaults/config');
 
 /**
  * Removes variables with admin info.
- * @param {Object} params - Parameters.
- * @param {Object} params.object - Object to strip.
+ * @param {Object} params Parameters.
+ * @param {Object} params.object Object to strip.
  * @return {Object} Stripped object.
  */
 function stripObject({ object }) {
@@ -46,15 +46,15 @@ function stripObject({ object }) {
 
 /**
  * Get an object.
- * @param {Object} params - Parameters.
- * @param {string} params.token - Jwt.
- * @param {string} params.commandName - Name of the command that will be authenticated against when retrieving the object.
- * @param {Function} params.dbCallFunc - Database call that will be used to get the object.
- * @param {Function} params.callback - Callback.
- * @param {string} [params.objectType] - Type of the object that will be retrieved.
- * @param {Object} [params.internalCallUser] - Authentication will be bypassed with the set user.
- * @param {boolean} [params.needsAccess] - User has to have access to the object to retrieve it.
- * @param {string[]} [params.searchParams] - Parameters that will be matched against when retrieving the object.
+ * @param {Object} params Parameters.
+ * @param {string} params.token Jwt.
+ * @param {string} params.commandName Name of the command that will be authenticated against when retrieving the object.
+ * @param {Function} params.dbCallFunc Database call that will be used to get the object.
+ * @param {Function} params.callback Callback.
+ * @param {string} [params.objectType] Type of the object that will be retrieved.
+ * @param {Object} [params.internalCallUser] Authentication will be bypassed with the set user.
+ * @param {boolean} [params.needsAccess] User has to have access to the object to retrieve it.
+ * @param {string[]} [params.searchParams] Parameters that will be matched against when retrieving the object.
  */
 function getObjectById({
   token,
@@ -142,18 +142,18 @@ function getObjectById({
 
 /**
  * Get objects.
- * @param {Object} params - Parameters.
- * @param {string} params.token - Jwt.
- * @param {string} params.commandName - Name of the command that will be authenticated against when updating the object.
- * @param {Function} params.dbCallFunc - Database call that will be used to update the object.
- * @param {Function} params.callback - Callback.
- * @param {string} [params.objectsType] - Type of objects that will be retrieved.
- * @param {Object} [params.internalCallUser] - Authentication will be bypassed with the set user.
- * @param {boolean} [params.shouldSort] - Should the retrieved objects be sorted?
- * @param {string[]} [params.getParams] - Variables that be matched against when retrieving the objects.
- * @param {string} [params.sortName] - Variable name that will be used to sort objects with.
- * @param {string} [params.fallbackSortName] - Variable name that will be used if sortName isn't matched.
- * @param {boolean} [params.ignoreAuth] - Returns all objects and does not check if the user has access to them.
+ * @param {Object} params Parameters.
+ * @param {string} params.token Jwt.
+ * @param {string} params.commandName Name of the command that will be authenticated against when updating the object.
+ * @param {Function} params.dbCallFunc Database call that will be used to update the object.
+ * @param {Function} params.callback Callback.
+ * @param {string} [params.objectsType] Type of objects that will be retrieved.
+ * @param {Object} [params.internalCallUser] Authentication will be bypassed with the set user.
+ * @param {boolean} [params.shouldSort] Should the retrieved objects be sorted?
+ * @param {string[]} [params.getParams] Variables that be matched against when retrieving the objects.
+ * @param {string} [params.sortName] Variable name that will be used to sort objects with.
+ * @param {string} [params.fallbackSortName] Variable name that will be used if sortName isn't matched.
+ * @param {boolean} [params.ignoreAuth] Returns all objects and does not check if the user has access to them.
  */
 function getObjects({
   token,
@@ -257,21 +257,21 @@ function getObjects({
 
 /**
  * Update an object.
- * @param {Object} params - Parameters.
- * @param {string} params.objectId - Id of the object to update.
- * @param {string} params.token - Jwt.
- * @param {string} params.commandName - Name of the command that will be authenticated against when updating the object.
- * @param {Function} params.dbCallFunc - Database call that will be used to update the object.
- * @param {string} params.emitType - Socket.io emit type on successful update.
- * @param {Object} params.io - Socket.io
- * @param {string} params.objectIdType - Name of the object Id.
- * @param {Function} params.getDbCallFunc - Database call that will be used to get the object and check if the user has access to it.
- * @param {string} params.getCommandName - Name of the command that will be authenticated against when retrieving the object.
- * @param {Function} params.callback - Callback
- * @param {string} [params.objectType] - Type of object to update
- * @param {Object} [params.internalCallUser] - Authentication will be bypassed with the set user.
- * @param {Object} [params.options] - Database call options.
- * @param {string[]} [params.toStrip] - Variables that should be removed when emitting the updated object.
+ * @param {Object} params Parameters.
+ * @param {string} params.objectId Id of the object to update.
+ * @param {string} params.token Jwt.
+ * @param {string} params.commandName Name of the command that will be authenticated against when updating the object.
+ * @param {Function} params.dbCallFunc Database call that will be used to update the object.
+ * @param {string} params.emitType Socket.io emit type on successful update.
+ * @param {Object} params.io Socket.io
+ * @param {string} params.objectIdType Name of the object Id.
+ * @param {Function} params.getDbCallFunc Database call that will be used to get the object and check if the user has access to it.
+ * @param {string} params.getCommandName Name of the command that will be authenticated against when retrieving the object.
+ * @param {Function} params.callback Callback
+ * @param {string} [params.objectType] Type of object to update
+ * @param {Object} [params.internalCallUser] Authentication will be bypassed with the set user.
+ * @param {Object} [params.options] Database call options.
+ * @param {string[]} [params.toStrip] Variables that should be removed when emitting the updated object.
  */
 function updateObject({
   objectId,
@@ -289,7 +289,7 @@ function updateObject({
   callback,
   internalCallUser,
   options,
-  shouldBroadcast = true,
+  limitAccessLevel = false,
   toStrip = [],
 }) {
   authenticator.isUserAllowed({
@@ -362,14 +362,16 @@ function updateObject({
               };
               creatorDataToSend.data[objectType] = updatedObject;
 
-              if (shouldBroadcast) {
-                if (socket) {
-                  socket.broadcast.emit(emitType, dataToSend);
+              if (socket) {
+                if (limitAccessLevel) {
+                  socket.broadcast.to(dbConfig.apiCommands.CreateTriggerEvent.accessLevel.toString()).emit(emitType, dataToSend);
                 } else {
-                  io.emit(emitType, dataToSend);
+                  socket.broadcast.emit(emitType, dataToSend);
                 }
-              } else if (!socket) {
-                io.to(foundObject.ownerAliasId || foundObject.ownerId).emit(emitType, dataToSend);
+              } else if (limitAccessLevel) {
+                io.to(dbConfig.apiCommands.CreateTriggerEvent.accessLevel.toString()).emit(emitType, dataToSend);
+              } else {
+                io.emit(emitType, dataToSend);
               }
 
               callback(creatorDataToSend);
@@ -387,19 +389,19 @@ function updateObject({
 
 /**
  * Remove an object.
- * @param {Object} params - Parameters.
- * @param {string} params.objectId - Id of the object to remove.
- * @param {string} params.token - Jwt.
- * @param {string} params.commandName - Name of the command that will be authenticated against when deleting the object.
- * @param {Function} params.dbCallFunc - Database call that will be used to remove the object.
- * @param {string} params.emitType - Socket.io emit type on successful deletion.
- * @param {Object} params.io - Socket.io
- * @param {string} params.objectIdType - Name of the object Id.
- * @param {Function} params.getDbCallFunc - Database call that will be used to get the object and check if the user has access to it.
- * @param {string} params.getCommandName - Name of the command that will be authenticated against when retrieving the object.
- * @param {Function} params.callback - Callback
- * @param {string} [params.objectType] - Type of object or remove.
- * @param {Function} [params.emitTypeGenerator] - Function to use to create the correct emit type for socket.io. It will be used instead of variable emitType, if set.
+ * @param {Object} params Parameters.
+ * @param {string} params.objectId Id of the object to remove.
+ * @param {string} params.token Jwt.
+ * @param {string} params.commandName Name of the command that will be authenticated against when deleting the object.
+ * @param {Function} params.dbCallFunc Database call that will be used to remove the object.
+ * @param {string} params.emitType Socket.io emit type on successful deletion.
+ * @param {Object} params.io Socket.io
+ * @param {string} params.objectIdType Name of the object Id.
+ * @param {Function} params.getDbCallFunc Database call that will be used to get the object and check if the user has access to it.
+ * @param {string} params.getCommandName Name of the command that will be authenticated against when retrieving the object.
+ * @param {Function} params.callback Callback
+ * @param {string} [params.objectType] Type of object or remove.
+ * @param {Function} [params.emitTypeGenerator] Function to use to create the correct emit type for socket.io. It will be used instead of variable emitType, if set.
  */
 function removeObject({
   objectId,
@@ -415,9 +417,11 @@ function removeObject({
   emitTypeGenerator,
   callback,
   socket,
+  internalCallUser,
 }) {
   authenticator.isUserAllowed({
     token,
+    internalCallUser,
     commandName,
     callback: ({ error, data }) => {
       if (error) {
@@ -496,27 +500,27 @@ function removeObject({
 
 /**
  * Update permission on an object.
- * @param {Object} params - Parameters.
- * @param {string} params.objectId - Id of the object to update.
- * @param {string} params.token - Jwt.
- * @param {string} params.commandName - Name of the command that will be authenticated against when updating the object.
- * @param {Function} params.dbCallFunc - Database call that will be used to update the object.
- * @param {string} params.emitType - Socket.io emit type on successful update.
- * @param {Object} params.io - Socket.io
- * @param {string} params.objectIdType - Name of the object Id.
- * @param {Function} params.getDbCallFunc - Database call that will be used to get the object and check if the user has access to it.
- * @param {string} params.getCommandName - Name of the command that will be authenticated against when retrieving the object.
- * @param {Function} params.callback - Callback
- * @param {string} [params.objectType] - Type of object to update
- * @param {Object} [params.internalCallUser] - Authentication will be bypassed with the set user.
- * @param {Object} [params.options] - Database call options.
- * @param {string[]} [params.toStrip] - Variables that should be removed when emitting the updated object.
- * @param {boolean} [params.shouldRemove] - Should the user and team Id's access be removed? Default is false.
- * @param {string[]} [params.userIds] - Ids of the users that will be given/lose permissions to access the object.
- * @param {string[]} [params.teamIds] - Ids of the teams that will be given/lose permissions to access the object.
- * @param {string[]} [params.userAdminIds] - Ids of the users that will be given/lose permissions admin access on the object.
- * @param {string[]} [params.teamAdminIds] - Ids of the teams that will be given/lose permissions admin access on the object.
- * @param {string[]} [params.bannedIds] - Ids of the users that will be banned/unbanned from the object.
+ * @param {Object} params Parameters.
+ * @param {string} params.objectId Id of the object to update.
+ * @param {string} params.token Jwt.
+ * @param {string} params.commandName Name of the command that will be authenticated against when updating the object.
+ * @param {Function} params.dbCallFunc Database call that will be used to update the object.
+ * @param {string} params.emitType Socket.io emit type on successful update.
+ * @param {Object} params.io Socket.io
+ * @param {string} params.objectIdType Name of the object Id.
+ * @param {Function} params.getDbCallFunc Database call that will be used to get the object and check if the user has access to it.
+ * @param {string} params.getCommandName Name of the command that will be authenticated against when retrieving the object.
+ * @param {Function} params.callback Callback
+ * @param {string} [params.objectType] Type of object to update
+ * @param {Object} [params.internalCallUser] Authentication will be bypassed with the set user.
+ * @param {Object} [params.options] Database call options.
+ * @param {string[]} [params.toStrip] Variables that should be removed when emitting the updated object.
+ * @param {boolean} [params.shouldRemove] Should the user and team Id's access be removed? Default is false.
+ * @param {string[]} [params.userIds] Ids of the users that will be given/lose permissions to access the object.
+ * @param {string[]} [params.teamIds] Ids of the teams that will be given/lose permissions to access the object.
+ * @param {string[]} [params.userAdminIds] Ids of the users that will be given/lose permissions admin access on the object.
+ * @param {string[]} [params.teamAdminIds] Ids of the teams that will be given/lose permissions admin access on the object.
+ * @param {string[]} [params.bannedIds] Ids of the users that will be banned/unbanned from the object.
  */
 function updateAccess({
   objectId,

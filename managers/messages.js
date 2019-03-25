@@ -30,8 +30,8 @@ const aliasManager = require('./aliases');
 
 /**
  * Get an emit type based on the message type
- * @param {Object} message - The message to generate an emit type from.
- * @return {string} - Emit type
+ * @param {Object} message The message to generate an emit type from.
+ * @return {string} Emit type
  */
 function generateEmitType(message) {
   switch (message.messageType) {
@@ -43,12 +43,12 @@ function generateEmitType(message) {
 
 /**
  * Store and send a message.
- * @param {Object} params - Parameters.
- * @param {Object} params.message - Message to store and send.
- * @param {Function} params.callback - Callback.
- * @param {Object} params.io - Socket.io.
- * @param {string} params.emitType - Type of emit event.
- * @param {Object} [params.image] - Image attached to the message.
+ * @param {Object} params Parameters.
+ * @param {Object} params.message Message to store and send.
+ * @param {Function} params.callback Callback.
+ * @param {Object} params.io Socket.io.
+ * @param {string} params.emitType Type of emit event.
+ * @param {Object} [params.image] Image attached to the message.
  */
 function sendAndStoreMessage({
   message,
@@ -91,10 +91,10 @@ function sendAndStoreMessage({
 
 /**
  * Get a message by Id.
- * @param {Object} params - Parameters.
- * @param {string} params.token - jwt.
- * @param {Function} params.callback - Callback.
- * @param {string} params.messageId - Id of the message to retrieve.
+ * @param {Object} params Parameters.
+ * @param {string} params.token jwt.
+ * @param {Function} params.callback Callback.
+ * @param {string} params.messageId Id of the message to retrieve.
  */
 function getMessageById({
   token,
@@ -116,12 +116,12 @@ function getMessageById({
 
 /**
  * Get messages by room
- * @param {Object} params - Parameters.
- * @param {string} params.token - jwt.
- * @param {Function} params.callback - Callback.
- * @param {string} params.roomId - Id of the room to retrieve messages from.
- * @param {Date} [params.startDate] - Date for when to start the span of messages.
- * @param {boolean} [params.shouldGetFuture] - Should messages from the future of the start date be retrieved?
+ * @param {Object} params Parameters.
+ * @param {string} params.token jwt.
+ * @param {Function} params.callback Callback.
+ * @param {string} params.roomId Id of the room to retrieve messages from.
+ * @param {Date} [params.startDate] Date for when to start the span of messages.
+ * @param {boolean} [params.shouldGetFuture] Should messages from the future of the start date be retrieved?
  */
 function getMessagesByRoom({
   token,
@@ -174,9 +174,9 @@ function getMessagesByRoom({
 
 /**
  * Get messages from all the rooms that the user is following.
- * @param {Object} params - Parameters.
- * @param {string} params.token - jwt
- * @param {Function} params.callback - Callback.
+ * @param {Object} params Parameters.
+ * @param {string} params.token jwt
+ * @param {Function} params.callback Callback.
  */
 function getMessagesByUser({
   token,
@@ -197,9 +197,9 @@ function getMessagesByUser({
 /**
  * Get all messages from all rooms. Ids of the users and aliases are translated to names.
  * It returns rooms that includes messages.
- * @param {Object} params - Parameters.
- * @param {string} params.token - jwt.
- * @param {Function} params.callback - Callback.
+ * @param {Object} params Parameters.
+ * @param {string} params.token jwt.
+ * @param {Function} params.callback Callback.
  */
 function getFullHistory({ token, callback }) {
   authenticator.isUserAllowed({
@@ -309,12 +309,12 @@ function getFullHistory({ token, callback }) {
 
 /**
  * Send broadcast message.
- * @param {Object} params - Parameters.
- * @param {Object} params.message - Message to be sent.
- * @param {Object} params.io - Socket.io. Used by API, when no socket is available.
- * @param {Function} params.callback - Client callback.
- * @param {Object} [params.socket] - Socket.io socket.
- * @param {Object} [params.image] - Image attached to the message.
+ * @param {Object} params Parameters.
+ * @param {Object} params.message Message to be sent.
+ * @param {Object} params.io Socket.io. Used by API, when no socket is available.
+ * @param {Function} params.callback Client callback.
+ * @param {Object} [params.socket] Socket.io socket.
+ * @param {Object} [params.image] Image attached to the message.
  */
 function sendBroadcastMsg({
   token,
@@ -376,12 +376,12 @@ function sendBroadcastMsg({
 
 /**
  * Send a chat message.
- * @param {Object} params - Parameters.
- * @param {Object} params.message - Message to be sent.
- * @param {Object} params.io - Socket.io. Used by API, when no socket is available.
- * @param {Function} params.callback - Client callback.
- * @param {Object} [params.socket] - Socket.io socket.
- * @param {Object} [params.image] - Image attached to the message.
+ * @param {Object} params Parameters.
+ * @param {Object} params.message Message to be sent.
+ * @param {Object} params.io Socket.io. Used by API, when no socket is available.
+ * @param {Function} params.callback Client callback.
+ * @param {Object} [params.socket] Socket.io socket.
+ * @param {Object} [params.image] Image attached to the message.
  */
 function sendChatMsg({
   token,
@@ -390,9 +390,11 @@ function sendChatMsg({
   callback,
   io,
   image,
+  internalCallUser,
 }) {
   authenticator.isUserAllowed({
     token,
+    internalCallUser,
     commandName: dbConfig.apiCommands.SendMessage.name,
     callback: ({ error, data }) => {
       if (error) {
@@ -454,13 +456,13 @@ function sendChatMsg({
 
 /**
  * Send whisper message.
- * @param {Object} params - Parameters.
- * @param {Object} params.message - Message to be sent.
- * @param {Object} params.io - Socket.io. Used by API, when no socket is available.
- * @param {Function} params.callback - Client callback.
- * @param {string} params.participantIds - Id of the users.
- * @param {Object} [params.socket] - Socket.io socket.
- * @param {Object} [params.image] - Image attached to the message.
+ * @param {Object} params Parameters.
+ * @param {Object} params.message Message to be sent.
+ * @param {Object} params.io Socket.io. Used by API, when no socket is available.
+ * @param {Function} params.callback Client callback.
+ * @param {string} params.participantIds Id of the users.
+ * @param {Object} [params.socket] Socket.io socket.
+ * @param {Object} [params.image] Image attached to the message.
  */
 function sendWhisperMsg({
   token,
@@ -591,11 +593,11 @@ function sendWhisperMsg({
 
 /**
  * Remove a message.
- * @param {Object} params - Parameters.
- * @param {string} params.messageId - Id of the message.
- * @param {Function} params.callback - Callback.
- * @param {string} params.token - jwt.
- * @param {Object} params.io - Socket.io.
+ * @param {Object} params Parameters.
+ * @param {string} params.messageId Id of the message.
+ * @param {Function} params.callback Callback.
+ * @param {string} params.token jwt.
+ * @param {Object} params.io Socket.io.
  */
 function removeMessage({
   messageId,
@@ -603,12 +605,14 @@ function removeMessage({
   token,
   io,
   socket,
+  internalCallUser,
 }) {
   managerHelper.removeObject({
     callback,
     token,
     io,
     socket,
+    internalCallUser,
     getDbCallFunc: dbMessage.getMessageById,
     getCommandName: dbConfig.apiCommands.GetMessage.name,
     objectId: messageId,
@@ -622,13 +626,13 @@ function removeMessage({
 
 /**
  * Update a message.
- * @param {Object} params - Parameters.
- * @param {Object} params.message - Message to update with.
- * @param {string} params.messageId - Id of the message.
- * @param {Function} params.callback - Callback.
- * @param {string} params.token - jwt.
- * @param {Object} params.io - Socket.io.
- * @param {Object} params.options - Update options.
+ * @param {Object} params Parameters.
+ * @param {Object} params.message Message to update with.
+ * @param {string} params.messageId Id of the message.
+ * @param {Function} params.callback Callback.
+ * @param {string} params.token jwt.
+ * @param {Object} params.io Socket.io.
+ * @param {Object} params.options Update options.
  */
 function updateMessage({
   messageId,
@@ -637,9 +641,11 @@ function updateMessage({
   token,
   io,
   options,
+  internalCallUser,
 }) {
   authenticator.isUserAllowed({
     token,
+    internalCallUser,
     commandName: dbConfig.apiCommands.UpdateMessage.name,
     callback: ({ error, data }) => {
       if (error) {
@@ -648,7 +654,7 @@ function updateMessage({
         return;
       }
 
-      const { user: authUser } = data;
+      const authUser = internalCallUser || data.user;
 
       getMessageById({
         messageId,

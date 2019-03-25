@@ -142,6 +142,7 @@ config.roomsToBeHidden = [
 config.forums.public = config.forums.public || {
   objectId: '111111111111111111111120',
   title: 'Board',
+  isPublic: true,
 };
 
 config.deviceRoomPrepend = 'device#';
@@ -263,6 +264,13 @@ config.TriggerChangeTypes = {
   UPDATE: 'update',
   CREATE: 'create',
   REMOVE: 'remove',
+};
+
+config.TriggerTypes = {
+  PROXIMITY: 'proximity',
+  TIMED: 'timed',
+  MANUAL: 'manual',
+  TRIGGER: 'trigger',
 };
 
 /**

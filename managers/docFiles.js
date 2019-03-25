@@ -64,10 +64,10 @@ function getFileByAccess({ user, docFile }) {
 /**
  * Saves doc file to database and transmits it to sockets.
  * @private
- * @param {Object} params - Parameters.
- * @param {Object} params.docFile - Doc file to save.
- * @param {Function} params.callback - Callback.
- * @param {Object} params.io - Socket.io.
+ * @param {Object} params Parameters.
+ * @param {Object} params.docFile Doc file to save.
+ * @param {Function} params.callback Callback.
+ * @param {Object} params.io Socket.io.
  */
 function saveAndTransmitDocFile({
   docFile,
@@ -128,11 +128,11 @@ function saveAndTransmitDocFile({
 
 /**
  * Get doc file by its Id.
- * @param {Object} params - Parameters.
- * @param {string} params.token - jwt.
- * @param {Function} params.callback - Callback.
- * @param {string} params.docFileId - Id of Docfile to retrieve.
- * @param {Object} [params.internalCallUser] - User to use on authentication. It will bypass token authentication.
+ * @param {Object} params Parameters.
+ * @param {string} params.token jwt.
+ * @param {Function} params.callback Callback.
+ * @param {string} params.docFileId Id of Docfile to retrieve.
+ * @param {Object} [params.internalCallUser] User to use on authentication. It will bypass token authentication.
  */
 function getDocFileById({
   docFileId,
@@ -154,10 +154,10 @@ function getDocFileById({
 
 /**
  * Create a docFile.
- * @param {Object} params - Parameters.
- * @param {Object} params.docFile - DocFile to create.
- * @param {Object} params.io - Socket io.
- * @param {Function} params.callback - Callback.
+ * @param {Object} params Parameters.
+ * @param {Object} params.docFile DocFile to create.
+ * @param {Object} params.io Socket io.
+ * @param {Function} params.callback Callback.
  */
 function createDocFile({
   token,
@@ -165,9 +165,11 @@ function createDocFile({
   docFile,
   callback,
   socket,
+  internalCallUser,
 }) {
   authenticator.isUserAllowed({
     token,
+    internalCallUser,
     commandName: dbConfig.apiCommands.CreateDocFile.name,
     callback: ({ error, data }) => {
       if (error) {
@@ -223,13 +225,13 @@ function createDocFile({
 
 /**
  * Update existing docFile.
- * @param {Object} params - Parameters.
- * @param {Object} params.docFile - Doc file changes.
- * @param {tring} params.docFileId - Doc file.
- * @param {Object} params.io - Socket io. Will be used if socket is undefined.
- * @param {Function} params.callback - Callback.
- * @param {Object} params.io - Socket io.
- * @param {Object} [params.options] - Update options.
+ * @param {Object} params Parameters.
+ * @param {Object} params.docFile Doc file changes.
+ * @param {tring} params.docFileId Doc file.
+ * @param {Object} params.io Socket io. Will be used if socket is undefined.
+ * @param {Function} params.callback Callback.
+ * @param {Object} params.io Socket io.
+ * @param {Object} [params.options] Update options.
  */
 function updateDocFile({
   docFile,
@@ -239,9 +241,11 @@ function updateDocFile({
   callback,
   options,
   socket,
+  internalCallUser,
 }) {
   authenticator.isUserAllowed({
     token,
+    internalCallUser,
     commandName: dbConfig.apiCommands.UpdateDocFile.name,
     callback: ({ error, data }) => {
       if (error) {
@@ -333,11 +337,11 @@ function updateDocFile({
 
 /**
  * Get doc file by code.
- * @param {Object} params - Parameters.
- * @param {string} params.code - Doc file Code.
- * @param {string} params.token - jwt.
- * @param {Object} params.io - Socket.io;
- * @param {Function} params.callback - Callback.
+ * @param {Object} params Parameters.
+ * @param {string} params.code Doc file Code.
+ * @param {string} params.token jwt.
+ * @param {Object} params.io Socket.io;
+ * @param {Function} params.callback Callback.
  */
 function unlockDocFile({
   io,
@@ -420,17 +424,18 @@ function unlockDocFile({
 
 /**
  * Remove doc file.
- * @param {Object} params - Parameters.
- * @param {string} params.docFileId - ID of the file to remove.
- * @param {string} params.token - jwt.
- * @param {Function} params.callback - Callback
- * @param {Object} params.io - Socket io.
+ * @param {Object} params Parameters.
+ * @param {string} params.docFileId ID of the file to remove.
+ * @param {string} params.token jwt.
+ * @param {Function} params.callback Callback
+ * @param {Object} params.io Socket io.
  */
 function removeDocFile({
   docFileId,
   token,
   callback,
   io,
+  internalCallUser,
   socket,
 }) {
   managerHelper.removeObject({
@@ -438,6 +443,7 @@ function removeDocFile({
     token,
     io,
     socket,
+    internalCallUser,
     getDbCallFunc: dbDocFile.getDocFileById,
     getCommandName: dbConfig.apiCommands.GetDocFile.name,
     objectId: docFileId,
@@ -451,9 +457,9 @@ function removeDocFile({
 
 /**
  * Get files by user.
- * @param {Object} params - Parameters.
- * @param {string} params.token - jwt.
- * @param {Function} params.callback - Callback
+ * @param {Object} params Parameters.
+ * @param {string} params.token jwt.
+ * @param {Function} params.callback Callback
  */
 function getDocFilesByUser({
   token,
@@ -487,15 +493,15 @@ function getDocFilesByUser({
 
 /**
  * Update access to the docFile for users or teams.
- * @param {Object} params - Parameters.
- * @param {string} params.docFileId - Id of the file.
- * @param {Function} params.callback - Callback.
- * @param {boolean} [params.shouldRemove] - Should access be removed from the users or teams?
- * @param {string[]} [params.userIds] - Id of the users.
- * @param {string[]} [params.teamIds] - Id of the teams.
- * @param {string[]} [params.bannedIds] - Id of the blocked Ids to add.
- * @param {string[]} [params.teamAdminIds] - Id of the teams to change admin access for.
- * @param {string[]} [params.userAdminIds] - Id of the users to change admin access for.
+ * @param {Object} params Parameters.
+ * @param {string} params.docFileId Id of the file.
+ * @param {Function} params.callback Callback.
+ * @param {boolean} [params.shouldRemove] Should access be removed from the users or teams?
+ * @param {string[]} [params.userIds] Id of the users.
+ * @param {string[]} [params.teamIds] Id of the teams.
+ * @param {string[]} [params.bannedIds] Id of the blocked Ids to add.
+ * @param {string[]} [params.teamAdminIds] Id of the teams to change admin access for.
+ * @param {string[]} [params.userAdminIds] Id of the users to change admin access for.
  */
 function updateAccess({
   token,

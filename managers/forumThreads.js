@@ -25,10 +25,10 @@ const managerHelper = require('../helpers/manager');
 
 /**
  * Get forum thread by Id.
- * @param {Object} params - Parameters.
- * @param {string} [params.threadId] - Id of forum thread to retrieve.
- * @param {string} params.token - jwt.
- * @param {Function} params.callback - Callback.
+ * @param {Object} params Parameters.
+ * @param {string} [params.threadId] Id of forum thread to retrieve.
+ * @param {string} params.token jwt.
+ * @param {Function} params.callback Callback.
  */
 function getThreadById({
   threadId,
@@ -52,11 +52,11 @@ function getThreadById({
 
 /**
  * Create new forum thread
- * @param {Object} params - Parameters
- * @param {Object} params.thread - Forum thread to create
- * @param {Function} params.callback - Callback
- * @param {string} params.token - jwt
- * @param {Object} params.io - Socket.io.
+ * @param {Object} params Parameters
+ * @param {Object} params.thread Forum thread to create
+ * @param {Function} params.callback Callback
+ * @param {string} params.token jwt
+ * @param {Object} params.io Socket.io.
  */
 function createThread({
   thread,
@@ -157,10 +157,10 @@ function createThread({
 
 /**
  * Get threads by forum.
- * @param {Object} params - Parameters.
- * @param {string[]} params.forumId - Id of the forum.
- * @param {Function} params.callback - Callback.
- * @param {string} params.token - jwt.
+ * @param {Object} params Parameters.
+ * @param {string[]} params.forumId Id of the forum.
+ * @param {Function} params.callback Callback.
+ * @param {string} params.token jwt.
  */
 function getForumThreadsByForum({
   forumId,
@@ -184,9 +184,9 @@ function getForumThreadsByForum({
 
 /**
  * Get threads from the forums that the user has access to.
- * @param {Object} params - Parameters.
- * @param {string} params.token - jwt.
- * @param {Function} params.callback - Callback.
+ * @param {Object} params Parameters.
+ * @param {string} params.token jwt.
+ * @param {Function} params.callback Callback.
  */
 function getThreadsByUser({
   token,
@@ -206,12 +206,12 @@ function getThreadsByUser({
 
 /**
  * Update thread.
- * @param {Object} params - Parameters.
- * @param {Object} params.thread - Forum thread.
- * @param {string} params.threadId - Id of the thread to update.
- * @param {Object} params.options - Options.
- * @param {Function} params.callback - Callback.
- * @param {Object} params.io - Socket.io.
+ * @param {Object} params Parameters.
+ * @param {Object} params.thread Forum thread.
+ * @param {string} params.threadId Id of the thread to update.
+ * @param {Object} params.options Options.
+ * @param {Function} params.callback Callback.
+ * @param {Object} params.io Socket.io.
  */
 function updateThread({
   token,
@@ -242,11 +242,11 @@ function updateThread({
 
 /**
  * Remove thread.
- * @param {Object} params - Parameters.
- * @param {string} params.token - jwt.
- * @param {string} params.threadId - ID of the forum thread.
- * @param {Object} params.io - Socket io.
- * @param {Function} params.callback - Callback.
+ * @param {Object} params Parameters.
+ * @param {string} params.token jwt.
+ * @param {string} params.threadId ID of the forum thread.
+ * @param {Object} params.io Socket io.
+ * @param {Function} params.callback Callback.
  */
 function removeThread({
   token,
@@ -273,9 +273,9 @@ function removeThread({
 
 /**
  * Get all forums.
- * @param {Object} params - Parameters.
- * @param {Function} params.callback - Callback.
- * @param {string} params.token - jwt.
+ * @param {Object} params Parameters.
+ * @param {Function} params.callback Callback.
+ * @param {string} params.token jwt.
  */
 function getAllThreads({ callback, token }) {
   authenticator.isUserAllowed({
@@ -295,10 +295,10 @@ function getAllThreads({ callback, token }) {
 
 /**
  * Update last updated date on thread and its parent forum, if forum Id is set.
- * @param {Object} params - Parameters.
- * @param {string} params.threadId - Id of the thread.
- * @param {Function} params.callback - Callback.
- * @param {string} [params.forumId] - Id of the forum.
+ * @param {Object} params Parameters.
+ * @param {string} params.threadId Id of the thread.
+ * @param {Function} params.callback Callback.
+ * @param {string} [params.forumId] Id of the forum.
  */
 function updateThreadTime({
   threadId,
@@ -327,15 +327,15 @@ function updateThreadTime({
 
 /**
  * Update access to the forum thread for users or teams.
- * @param {Object} params - Parameters.
- * @param {string} params.threadId - Id of the forum thread.
- * @param {Function} params.callback - Callback.
- * @param {boolean} [params.shouldRemove] - Should access be removed from the users or teams?
- * @param {string[]} [params.userIds] - Id of the users.
- * @param {string[]} [params.teamIds] - Id of the teams.
- * @param {string[]} [params.bannedIds] - Id of the blocked Ids to add.
- * @param {string[]} [params.teamAdminIds] - Id of the teams to change admin access for.
- * @param {string[]} [params.userAdminIds] - Id of the users to change admin access for.
+ * @param {Object} params Parameters.
+ * @param {string} params.threadId Id of the forum thread.
+ * @param {Function} params.callback Callback.
+ * @param {boolean} [params.shouldRemove] Should access be removed from the users or teams?
+ * @param {string[]} [params.userIds] Id of the users.
+ * @param {string[]} [params.teamIds] Id of the teams.
+ * @param {string[]} [params.bannedIds] Id of the blocked Ids to add.
+ * @param {string[]} [params.teamAdminIds] Id of the teams to change admin access for.
+ * @param {string[]} [params.userAdminIds] Id of the users to change admin access for.
  */
 function updateAccess({
   token,

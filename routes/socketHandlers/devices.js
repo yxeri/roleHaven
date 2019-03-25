@@ -21,8 +21,8 @@ const deviceManager = require('../../managers/devices');
 /* eslint-disable no-param-reassign */
 
 /**
- * @param {object} socket - Socket.Io socket.
- * @param {object} io - Socket.Io.
+ * @param {object} socket Socket.Io socket.
+ * @param {object} io Socket.Io.
  */
 function handle(socket, io) {
   socket.on('createDevice', (params, callback = () => {
