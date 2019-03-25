@@ -4,17 +4,13 @@ roleHaven is part of an initiative to create a platform to be used in-game durin
 
 ## Configuration
 
-The default configuration files are in /config/defaults/ (appConfig and databasePopulation). You can override the defaults by either adding appConfig and/or databasePopulation in /config/modified or set envar CONFIGPATH with an URL to a repo withappConfig and/or databasePopulation.
+The default configuration files are in /config/defaults/ (appConfig and dbConfig). You can override the defaults by either adding appConfig and/or dbConfig in /config/modified or set envar CONFIGPATH with an URL to a repo with appConfig and/or dbConfig.
 
 ## Deployment
 
-Envar JSONKEY has to be set. It is used for the generation of JSON Web Tokens.
+Envar JSONKEY has to be set. It's needed for JWT.
 
 It is recommended to use Docker to deploy and run roleHaven.
-
-## First run
-
-A user named * is automatically created when the app is first deployed. Its password is printed to the logs. This user will be removed as soon as another user exists in the system.
 
 ## API
 
@@ -34,7 +30,16 @@ The documentation for the REST API can be found at https://thethirdgift.com/role
 
 ## Contributors/Supporters
 
+* Mathias Abrahamsson
+* 55463
+* Joakim Sandström
+* William Von Hofsten
+* Kenny Svensson
 * tz
+* Niklas Sandström
+* Joachim
+* Erik Jonsson
+* Karl Dahlgren
 * H. Merkelbach
 * Varg Johan
 * Jenny L.
@@ -42,15 +47,6 @@ The documentation for the REST API can be found at https://thethirdgift.com/role
 * Stefan Scott
 * Tveskägg
 * Tobias W.
-* Mathias Abrahamsson
-* 55463
-* Joakim Sandström
-* William Von Hofsten
-* Kenny Svensson
-* Niklas Sandström
-* Joachim
-* Erik Jonsson
-* Karl Dahlgren
 * Jimmy Bengtsson
 * [Blodsband Reloaded](https://www.bbreloaded.se)
 * [Sommarland](http://beratta.org/sommarland/)
