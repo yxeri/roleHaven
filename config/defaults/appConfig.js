@@ -139,6 +139,7 @@ config.routes = config.ignoreDefaultRoutes
     { sitePath: '/api/forumPosts', filePath: '/routes/rest/forumPosts' },
     { sitePath: '/api/messages', filePath: '/routes/rest/messages' },
     { sitePath: '/api/transactions', filePath: '/routes/rest/transactions' },
+    { sitePath: '/api/triggerEvents', filePath: '/routes/rest/triggerEvents' },
   ]).concat(config.routes || []).concat([{ sitePath: '*', filePath: '/routes/error.js' }]).map((route) => {
     return {
       sitePath: route.sitePath,

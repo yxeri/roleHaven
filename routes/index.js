@@ -26,7 +26,7 @@ const socketUtils = require('../utils/socketIo');
 const router = new express.Router();
 
 /**
- * @param {Object} io - Socket.IO
+ * @param {Object} io Socket.IO
  * @returns {Object} Router
  */
 function handle(io) {

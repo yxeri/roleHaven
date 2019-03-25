@@ -58,13 +58,13 @@ function authToRoom({
 
 /**
  * Get room by Id or name.
- * @param {Object} params - Parameter.
- * @param {string} params.token - jwt.
- * @param {Function} params.callback - Callback.
- * @param {string} [params.roomId] - Id of the room.
- * @param {string} [params.roomName] - Name of the room.
- * @param {string} [params.password] - Password for the room.
- * @param {Object} [params.internalCallUser] - User to use on authentication. It will bypass token authentication.
+ * @param {Object} params Parameter.
+ * @param {string} params.token jwt.
+ * @param {Function} params.callback Callback.
+ * @param {string} [params.roomId] Id of the room.
+ * @param {string} [params.roomName] Name of the room.
+ * @param {string} [params.password] Password for the room.
+ * @param {Object} [params.internalCallUser] User to use on authentication. It will bypass token authentication.
  */
 function getRoomById({
   token,
@@ -179,15 +179,15 @@ function getRoomById({
 
 /**
  * Update access to the room for users or teams.
- * @param {Object} params - Parameters.
- * @param {string} params.roomId - Id of the room.
- * @param {Function} params.callback - Callback.
- * @param {boolean} [params.shouldRemove] - Should access be removed from the users or teams?
- * @param {string[]} [params.userIds] - Id of the users.
- * @param {string[]} [params.teamIds] - Id of the teams.
- * @param {string[]} [params.bannedIds] - Id of the blocked Ids to add.
- * @param {string[]} [params.teamAdminIds] - Id of the teams to change admin access for.
- * @param {string[]} [params.userAdminIds] - Id of the users to change admin access for.
+ * @param {Object} params Parameters.
+ * @param {string} params.roomId Id of the room.
+ * @param {Function} params.callback Callback.
+ * @param {boolean} [params.shouldRemove] Should access be removed from the users or teams?
+ * @param {string[]} [params.userIds] Id of the users.
+ * @param {string[]} [params.teamIds] Id of the teams.
+ * @param {string[]} [params.bannedIds] Id of the blocked Ids to add.
+ * @param {string[]} [params.teamAdminIds] Id of the teams to change admin access for.
+ * @param {string[]} [params.userAdminIds] Id of the users to change admin access for.
  */
 function updateAccess({
   token,
@@ -257,10 +257,10 @@ function updateAccess({
 
 /**
  * Create a whisper room and give access to the participants.
- * @param {Object} params - Parameters.
- * @param {string[]} params.participantIds - User Ids of the users send private messages to each other.
- * @param {Function} params.callback - Callback.
- * @param {Object} params.io - Socket.io.
+ * @param {Object} params Parameters.
+ * @param {string[]} params.participantIds User Ids of the users send private messages to each other.
+ * @param {Function} params.callback Callback.
+ * @param {Object} params.io Socket.io.
  */
 function createAndFollowWhisperRoom({
   participantIds,
@@ -398,9 +398,9 @@ function createAndFollowWhisperRoom({
 
 /**
  * Retrieve whisper room.
- * @param {Object} params - Parameters.
- * @param {string[]} params.participantIds - Ids of the users.
- * @param {Function} params.callback - Callback.
+ * @param {Object} params Parameters.
+ * @param {string[]} params.participantIds Ids of the users.
+ * @param {Function} params.callback Callback.
  */
 function getWhisperRoom({ participantIds, callback }) {
   dbRoom.getWhisperRoom({
@@ -411,9 +411,9 @@ function getWhisperRoom({ participantIds, callback }) {
 
 /**
  * Does the whisper room exist?
- * @param {Object} params - Parameters.
- * @param {string[]} participantIds - Ids of the users.
- * @param {Function} callback - Callback.
+ * @param {Object} params Parameters.
+ * @param {string[]} participantIds Ids of the users.
+ * @param {Function} callback Callback.
  */
 function doesWhisperRoomExist({ participantIds, callback }) {
   dbRoom.doesWhisperRoomExist({
@@ -424,12 +424,12 @@ function doesWhisperRoomExist({ participantIds, callback }) {
 
 /**
  * Creates a new chat room and adds the user who created it to it.
- * @param {Object} params - Parameters.
- * @param {Object} params.room - New room.
- * @param {Object} params.io - Socket.io. Used if socket isn't set.
- * @param {Object} params.options - Update options.
- * @param {Function} params.callback - callback.
- * @param {Object} [params.socket] - Socket io.
+ * @param {Object} params Parameters.
+ * @param {Object} params.room New room.
+ * @param {Object} params.io Socket.io. Used if socket isn't set.
+ * @param {Object} params.options Update options.
+ * @param {Function} params.callback callback.
+ * @param {Object} [params.socket] Socket io.
  */
 function createRoom({
   room,
@@ -525,10 +525,10 @@ function createRoom({
 
 /**
  * Is the room protected? Protected rooms should not be unfollowed.
- * @param {Object} params - Parameters.
- * @param {string} params.roomId - Id of the room.
- * @param {Object} [params.socket] - Socket.io.
- * @return {boolean} - Is the room protected?
+ * @param {Object} params Parameters.
+ * @param {string} params.roomId Id of the room.
+ * @param {Object} [params.socket] Socket.io.
+ * @return {boolean} Is the room protected?
  */
 function isProtectedRoom({ roomId, socket }) {
   return dbConfig.requiredRooms.includes(roomId) || (socket && roomId === socket.id);
@@ -536,7 +536,7 @@ function isProtectedRoom({ roomId, socket }) {
 
 /**
  * Leave all rooms, except the required ones, on the socket
- * @param {Object} socket - Socket.io socket
+ * @param {Object} socket Socket.io socket
  */
 function leaveSocketRooms(socket) {
   Object.keys(socket.rooms).forEach((roomId) => {
@@ -548,12 +548,12 @@ function leaveSocketRooms(socket) {
 
 /**
  * Follow room and update user's access to it.
- * @param {Object} params - Parameters.
- * @param {string} params.userId - ID that will start following the room.
- * @param {string} params.roomId - ID of the room to follow.
- * @param {Function} params.callback - Callback.
- * @param {Object} params.io - Socket.io. Used if socket is not set.
- * @param {Object} params.user - User trying to follow a room.
+ * @param {Object} params Parameters.
+ * @param {string} params.userId ID that will start following the room.
+ * @param {string} params.roomId ID of the room to follow.
+ * @param {Function} params.callback Callback.
+ * @param {Object} params.io Socket.io. Used if socket is not set.
+ * @param {Object} params.user User trying to follow a room.
  */
 function follow({
   userId,
@@ -657,13 +657,13 @@ function follow({
 
 /**
  * Unfollow room and update user's access to it.
- * @param {Object} params - Parameters.
- * @param {string} params.userId - ID that will unfollow the room.
- * @param {string} params.roomId - ID of the room to unfollow.
- * @param {Function} params.callback - Callback.
- * @param {Object} params.io - Socket.io. Used if socket is not set.
- * @param {Object} params.user - User trying to unfollow a room.
- * @param {Object} [params.socket] - Socket.io socket.
+ * @param {Object} params Parameters.
+ * @param {string} params.userId ID that will unfollow the room.
+ * @param {string} params.roomId ID of the room to unfollow.
+ * @param {Function} params.callback Callback.
+ * @param {Object} params.io Socket.io. Used if socket is not set.
+ * @param {Object} params.user User trying to unfollow a room.
+ * @param {Object} [params.socket] Socket.io socket.
  */
 function unfollow({
   userId,
@@ -700,13 +700,13 @@ function unfollow({
 
 /**
  * Follow a new room on the user.
- * @param {Object} params - Parameters.
- * @param {string} params.roomId - Id of the room to follow.
- * @param {Function} params.callback - Callback.
- * @param {Object} params.io - Socket.io. Used if socket is not set.
- * @param {string} [params.aliasId] - Id of the alias that the user is using to follow the room.
- * @param {Object} [params.socket] - Socket.io socket.
- * @param {string} [params.password] - Password to the room.
+ * @param {Object} params Parameters.
+ * @param {string} params.roomId Id of the room to follow.
+ * @param {Function} params.callback Callback.
+ * @param {Object} params.io Socket.io. Used if socket is not set.
+ * @param {string} [params.aliasId] Id of the alias that the user is using to follow the room.
+ * @param {Object} [params.socket] Socket.io socket.
+ * @param {string} [params.password] Password to the room.
  */
 function followRoom({
   token,
@@ -763,12 +763,12 @@ function followRoom({
 
 /**
  * Unfollow room.
- * @param {Object} params - Parameters.
- * @param {Object} params.roomId - Id of the room to unfollow.
- * @param {Function} params.callback - Callback.
- * @param {Object} params.io - Socket io. Will be used if socket is not set.
- * @param {Object} [params.socket] - Socket.io.
- * @param {string} [params.aliasId] - Id of the alias that the user is using to unfollow the room.
+ * @param {Object} params Parameters.
+ * @param {Object} params.roomId Id of the room to unfollow.
+ * @param {Function} params.callback Callback.
+ * @param {Object} params.io Socket io. Will be used if socket is not set.
+ * @param {Object} [params.socket] Socket.io.
+ * @param {string} [params.aliasId] Id of the alias that the user is using to unfollow the room.
  */
 function unfollowRoom({
   token,
@@ -828,9 +828,9 @@ function unfollowRoom({
 
 /**
  * Get rooms that the user has access to.
- * @param {Object} params - Parameters.
- * @param {string} params.token - jwt.
- * @param {Function} params.callback - Callback.
+ * @param {Object} params Parameters.
+ * @param {string} params.token jwt.
+ * @param {Function} params.callback Callback.
  */
 function getRoomsByUser({
   token,
@@ -893,9 +893,9 @@ function getRoomsByUser({
 
 /**
  * Get all the rooms followed by the user.
- * @param {Object} params - Parameters.
- * @param {string} params.token - jwt.
- * @param {Function} params.callback - Callback.
+ * @param {Object} params Parameters.
+ * @param {string} params.token jwt.
+ * @param {Function} params.callback Callback.
  */
 function getFollowedRooms({ token, callback }) {
   authenticator.isUserAllowed({
@@ -918,8 +918,8 @@ function getFollowedRooms({ token, callback }) {
 
 /**
  * Get all rooms.
- * @param {Object} params - Parameters.
- * @param {string} params.token - jwt.
+ * @param {Object} params Parameters.
+ * @param {string} params.token jwt.
  * @param {Function} params.callback Callback.
  */
 function getAllRooms({
@@ -945,12 +945,12 @@ function getAllRooms({
 
 /**
  * Remove room.
- * @param {Object} params - Parameters.
- * @param {string} params.token - jwt.
- * @param {string} params.roomId - Id of the room to remove.
- * @param {Object} params.io - Socket.io. Will be used if socket is not set.
- * @param {Function} params.callback - Callback
- * @param {Object} [params.socket] - Socket.io.
+ * @param {Object} params Parameters.
+ * @param {string} params.token jwt.
+ * @param {string} params.roomId Id of the room to remove.
+ * @param {Object} params.io Socket.io. Will be used if socket is not set.
+ * @param {Function} params.callback Callback
+ * @param {Object} [params.socket] Socket.io.
  */
 function removeRoom({
   token,
@@ -1036,12 +1036,12 @@ function removeRoom({
 
 /**
  * Update room.
- * @param {Object} params - Parameters.
- * @param {Object} params.room - Room.
- * @param {string} params.roomId - ID of the room to update.
- * @param {Object} params.options - Update options.
- * @param {Function} params.callback - Callback.
- * @param {Object} params.io - Socket io.
+ * @param {Object} params Parameters.
+ * @param {Object} params.room Room.
+ * @param {string} params.roomId ID of the room to update.
+ * @param {Object} params.options Update options.
+ * @param {Function} params.callback Callback.
+ * @param {Object} params.io Socket io.
  */
 function updateRoom({
   token,

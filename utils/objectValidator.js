@@ -53,7 +53,7 @@ function checkKeys(data, expected, options) {
 
 /**
  * Calls checkKeys to check if the data has the expected structure
- * @param {Object} data - Sent object
+ * @param {Object} data Sent object
  * @param {Object} expected Expected structure of the object
  * @param {Object} options Options
  * @param {boolean} options.verbose Should error messages be printed?

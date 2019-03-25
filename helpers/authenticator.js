@@ -21,11 +21,11 @@ const { appConfig, dbConfig } = require('../config/defaults/config');
 
 /**
  * Create json web token. The user can be found by either the username or userId.
- * @param {Object} params - Parameters.
- * @param {string} params.password - Password of user to auth.
- * @param {Function} params.callback - Callback.
- * @param {string} [params.userId] - Id of user to auth.
- * @param {string} [params.username] - Name of user to auth.
+ * @param {Object} params Parameters.
+ * @param {string} params.password Password of user to auth.
+ * @param {Function} params.callback Callback.
+ * @param {string} [params.userId] Id of user to auth.
+ * @param {string} [params.username] Name of user to auth.
  */
 function createToken({
   username,
@@ -81,11 +81,11 @@ function createToken({
 
 /**
  * Checks if the user is allowed to use the command.
- * @param {Object} params - Parameters.
- * @param {string} params.token - Json web token.
- * @param {string} params.commandName - Name of the command.
- * @param {Object} [params.internalCallUser] - User set in an internal system call.
- * @param {Function} params.callback - callback.
+ * @param {Object} params Parameters.
+ * @param {string} params.token Json web token.
+ * @param {string} params.commandName Name of the command.
+ * @param {Object} [params.internalCallUser] User set in an internal system call.
+ * @param {Function} params.callback callback.
  */
 function isUserAllowed({
   commandName,
@@ -155,10 +155,10 @@ function isUserAllowed({
 
 /**
  * Does the user have equal or higher access level to the set visibility/access level in the object that will be created?
- * @param {Object} params - Parameters.
- * @param {Object} params.objectToCreate - Object that is going to be created.
- * @param {Object} params.toAuth - User trying to create an object.
- * @return {boolean} - Does the user have a high enough access level?
+ * @param {Object} params Parameters.
+ * @param {Object} params.objectToCreate Object that is going to be created.
+ * @param {Object} params.toAuth User trying to create an object.
+ * @return {boolean} Does the user have a high enough access level?
  */
 function isAllowedAccessLevel({ objectToCreate, toAuth }) {
   return (!objectToCreate.accessLevel || toAuth.accessLevel >= objectToCreate.accessLevel) || (!objectToCreate.visibility || toAuth.accessLevel >= objectToCreate.visibility);
@@ -166,10 +166,10 @@ function isAllowedAccessLevel({ objectToCreate, toAuth }) {
 
 /**
  * Checks if user has access, is admin or can see the object.
- * @param {Object} params - Parameter.
- * @param {Object} params.objectToAccess - Object to access.
- * @param {Object} params.toAuth - Object to auth.
- * @returns {boolean} - Does the user have access to the object?
+ * @param {Object} params Parameter.
+ * @param {Object} params.objectToAccess Object to access.
+ * @param {Object} params.toAuth Object to auth.
+ * @returns {boolean} Does the user have access to the object?
  */
 function hasAccessTo({
   objectToAccess,

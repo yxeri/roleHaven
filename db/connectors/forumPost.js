@@ -35,9 +35,9 @@ const ForumPost = mongoose.model('ForumPost', forumPostSchema);
 /**
  * Get forum posts
  * @private
- * @param {Object} params - Parameters
- * @param {Object} params.query - Query to get doc files
- * @param {Function} params.callback - Callback
+ * @param {Object} params Parameters
+ * @param {Object} params.query Query to get doc files
+ * @param {Function} params.callback Callback
  */
 function getPosts({
   query,
@@ -67,9 +67,9 @@ function getPosts({
 /**
  * Get forum post
  * @private
- * @param {Object} params - Parameters
- * @param {string} params.query - Query to get forum object
- * @param {Function} params.callback - Callback
+ * @param {Object} params Parameters
+ * @param {string} params.query Query to get forum object
+ * @param {Function} params.callback Callback
  */
 function getPost({
   query,
@@ -101,9 +101,9 @@ function getPost({
 /**
  * Update forum post
  * @private
- * @param {Object} params - Parameters
- * @param {string} params.postId - ID of forum post to update
- * @param {Object} params.update - Update
+ * @param {Object} params Parameters
+ * @param {string} params.postId ID of forum post to update
+ * @param {Object} params.update Update
  * @param {Function} params.callback Callback
  */
 function updateObject({
@@ -130,9 +130,9 @@ function updateObject({
 
 /**
  * Create forum post.
- * @param {Object} params - Parameters
- * @param {Object} params.post - Forum post to save
- * @param {Function} params.callback - Callback
+ * @param {Object} params Parameters
+ * @param {Object} params.post Forum post to save
+ * @param {Function} params.callback Callback
  */
 function createPost({ post, callback }) {
   const forumPostToSave = post;
@@ -221,9 +221,9 @@ function createPost({ post, callback }) {
 
 /**
  * Get forum post
- * @param {Object} params - Parameters
- * @param {string} params.postId - ID of the forum post
- * @param {Function} params.callback - Callback
+ * @param {Object} params Parameters
+ * @param {string} params.postId ID of the forum post
+ * @param {Function} params.callback Callback
  */
 function getPostById({ postId, callback }) {
   getPost({
@@ -234,9 +234,9 @@ function getPostById({ postId, callback }) {
 
 /**
  * Get forum posts by their IDs
- * @param {Object} params - Parameters
- * @param {string} params.postIds - ID of the forum posts
- * @param {Function} params.callback - Callback
+ * @param {Object} params Parameters
+ * @param {string} params.postIds ID of the forum posts
+ * @param {Function} params.callback Callback
  */
 function getPostsById({ postIds, callback }) {
   getPosts({
@@ -247,9 +247,9 @@ function getPostsById({ postIds, callback }) {
 
 /**
  * Get forum posts by thread ids
- * @param {Object} params - Parameters
- * @param {string} params.threadIds - ID of the threads
- * @param {Function} params.callback - Callback
+ * @param {Object} params Parameters
+ * @param {string} params.threadIds ID of the threads
+ * @param {Function} params.callback Callback
  */
 function getPostsByThreads({
   threadIds,
@@ -263,9 +263,9 @@ function getPostsByThreads({
 
 /**
  * Get forum posts by thread Id.
- * @param {Object} params - Parameters.
- * @param {string} params.threadId - Id of the thread.
- * @param {Function} params.callback - Callback.
+ * @param {Object} params Parameters.
+ * @param {string} params.threadId Id of the thread.
+ * @param {Function} params.callback Callback.
  */
 function getPostsByThread({
   threadId,
@@ -279,9 +279,9 @@ function getPostsByThread({
 
 /**
  * Get posts by the user.
- * @param {Object} params - Parameters.
- * @param {string} params.user - User.
- * @param {Function} params.callback - Callback.
+ * @param {Object} params Parameters.
+ * @param {string} params.user User.
+ * @param {Function} params.callback Callback.
  */
 function getPostsByUser({
   user,
@@ -323,12 +323,12 @@ function getPostsByUser({
 
 /**
  * Update existing forum post
- * @param {Object} params - Parameters
- * @param {string} params.postId - ID of the thread
- * @param {Object} params.post - Forum post updates
- * @param {Object} [params.options] - Options
- * @param {Object} params.options.resetOwnerAliasId - Should ownerAliasId be removed?
- * @param {Function} params.callback - Callback
+ * @param {Object} params Parameters
+ * @param {string} params.postId ID of the thread
+ * @param {Object} params.post Forum post updates
+ * @param {Object} [params.options] Options
+ * @param {Object} params.options.resetOwnerAliasId Should ownerAliasId be removed?
+ * @param {Function} params.callback Callback
  */
 function updatePost({
   postId,
@@ -360,9 +360,9 @@ function updatePost({
 
 /**
  * Remove forum posts.
- * @param {Object} params - Parameters
- * @param {string[]} params.postIds - IDs of forums posts to remove
- * @param {Function} params.callback - Callback
+ * @param {Object} params Parameters
+ * @param {string[]} params.postIds IDs of forums posts to remove
+ * @param {Function} params.callback Callback
  */
 function removePostsByIds({ postIds, callback }) {
   dbConnector.removeObjects({
@@ -374,9 +374,9 @@ function removePostsByIds({ postIds, callback }) {
 
 /**
  * Remove forum post.
- * @param {Object} params - Parameters
- * @param {string[]} params.postId - ID of forum post to remove
- * @param {Function} params.callback - Callback
+ * @param {Object} params Parameters
+ * @param {string[]} params.postId ID of forum post to remove
+ * @param {Function} params.callback Callback
  */
 function removePostById({ postId, callback }) {
   dbConnector.removeObject({
@@ -388,9 +388,9 @@ function removePostById({ postId, callback }) {
 
 /**
  * Remove forum posts by thread ids.
- * @param {Object} params - Parameters
- * @param {string[]} params.threadIds - IDs of forums threads
- * @param {Function} params.callback - Callback
+ * @param {Object} params Parameters
+ * @param {string[]} params.threadIds IDs of forums threads
+ * @param {Function} params.callback Callback
  */
 function removePostsByThreadIds({ threadIds, callback }) {
   dbConnector.removeObjects({
@@ -402,9 +402,9 @@ function removePostsByThreadIds({ threadIds, callback }) {
 
 /**
  * Remove forum posts by thread id.
- * @param {Object} params - Parameters
- * @param {string} params.threadId - ID of forum thread
- * @param {Function} params.callback - Callback
+ * @param {Object} params Parameters
+ * @param {string} params.threadId ID of forum thread
+ * @param {Function} params.callback Callback
  */
 function removePostsByThreadId({ threadId, callback }) {
   dbConnector.removeObjects({
@@ -416,14 +416,14 @@ function removePostsByThreadId({ threadId, callback }) {
 
 /**
  * Update access to the post.
- * @param {Object} params - Parameters.
- * @param {Function} params.callback - Callback.
- * @param {boolean} [params.shouldRemove] - Should access be removed?
- * @param {string[]} [params.userIds] - Id of the users to update.
- * @param {string[]} [params.teamIds] - Id of the teams to update.
- * @param {string[]} [params.bannedIds] - Id of the blocked Ids to update.
- * @param {string[]} [params.teamAdminIds] - Id of the teams to update admin access for.
- * @param {string[]} [params.userAdminIds] - Id of the users to update admin access for.
+ * @param {Object} params Parameters.
+ * @param {Function} params.callback Callback.
+ * @param {boolean} [params.shouldRemove] Should access be removed?
+ * @param {string[]} [params.userIds] Id of the users to update.
+ * @param {string[]} [params.teamIds] Id of the teams to update.
+ * @param {string[]} [params.bannedIds] Id of the blocked Ids to update.
+ * @param {string[]} [params.teamAdminIds] Id of the teams to update admin access for.
+ * @param {string[]} [params.userAdminIds] Id of the users to update admin access for.
  */
 function updateAccess(params) {
   const accessParams = params;

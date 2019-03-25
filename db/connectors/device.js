@@ -33,10 +33,10 @@ const Device = mongoose.model('Device', deviceSchema);
 
 /**
  * Update device object.
- * @param {Object} params - Parameters.
- * @param {string} params.deviceId - Id of the device to update.
- * @param {Object} params.update - Update.
- * @param {Function} params.callback - Callback.
+ * @param {Object} params Parameters.
+ * @param {string} params.deviceId Id of the device to update.
+ * @param {Object} params.update Update.
+ * @param {Function} params.callback Callback.
  */
 function updateObject({
   deviceId,
@@ -74,9 +74,9 @@ function updateObject({
 /**
  * Get devices.
  * @private
- * @param {Object} params - Parameters.
- * @param {Object} params.query - Query to get devices.
- * @param {Function} params.callback - Callback.
+ * @param {Object} params Parameters.
+ * @param {Object} params.query Query to get devices.
+ * @param {Function} params.callback Callback.
  */
 function getDevices({
   query,
@@ -100,9 +100,9 @@ function getDevices({
 /**
  * Get device.
  * @private
- * @param {Object} params - Parameters.
- * @param {string} params.query - Query to get device.
- * @param {Function} params.callback - Callback.
+ * @param {Object} params Parameters.
+ * @param {string} params.query Query to get device.
+ * @param {Function} params.callback Callback.
  */
 function getDevice({ query, callback }) {
   dbConnector.getObject({
@@ -128,9 +128,9 @@ function getDevice({ query, callback }) {
 
 /**
  * Does the device exist?
- * @param {Object} params - Parameters
- * @param {string} params.deviceName - Name of the device
- * @param {Function} params.callback - Callback
+ * @param {Object} params Parameters
+ * @param {string} params.deviceName Name of the device
+ * @param {Function} params.callback Callback
  */
 function doesDeviceExist({ deviceName, callback }) {
   dbConnector.doesObjectExist({
@@ -142,9 +142,9 @@ function doesDeviceExist({ deviceName, callback }) {
 
 /**
  * Create and save device
- * @param {Object} params - Parameters
- * @param {Object} params.device - New device
- * @param {Function} params.callback - Callback
+ * @param {Object} params Parameters
+ * @param {Object} params.device New device
+ * @param {Function} params.callback Callback
  */
 function createDevice({ device, callback }) {
   doesDeviceExist({
@@ -185,12 +185,12 @@ function createDevice({ device, callback }) {
 
 /**
  * Update device properties. Creates a new device if one doesn't exist with sent deviceId.
- * @param {Object} params - Parameters.
- * @param {Function} params.callback - Callback.
- * @param {Object} params.device - Properties to update in device.
- * @param {string} [params.deviceId] - Device Id. It overrides deviceSocketId and will be used to get and update a device.
- * @param {string} [params.deviceSocketId] - Socket Id of the device. It will be used to get and update a device. deviceId overrides it.
- * @param {Object} [params.options] - Options.
+ * @param {Object} params Parameters.
+ * @param {Function} params.callback Callback.
+ * @param {Object} params.device Properties to update in device.
+ * @param {string} [params.deviceId] Device Id. It overrides deviceSocketId and will be used to get and update a device.
+ * @param {string} [params.deviceSocketId] Socket Id of the device. It will be used to get and update a device. deviceId overrides it.
+ * @param {Object} [params.options] Options.
  */
 function updateDevice({
   deviceId,
@@ -272,14 +272,14 @@ function updateDevice({
 
 /**
  * Update access to the device
- * @param {Object} params - Parameters.
- * @param {Function} params.callback - Callback.
- * @param {boolean} [params.shouldRemove] - Should access be removed?
- * @param {string[]} [params.userIds] - Id of the users to update.
- * @param {string[]} [params.teamIds] - Id of the teams to update.
- * @param {string[]} [params.bannedIds] - Id of the blocked Ids to update.
- * @param {string[]} [params.teamAdminIds] - Id of the teams to update admin access for.
- * @param {string[]} [params.userAdminIds] - Id of the users to update admin access for.
+ * @param {Object} params Parameters.
+ * @param {Function} params.callback Callback.
+ * @param {boolean} [params.shouldRemove] Should access be removed?
+ * @param {string[]} [params.userIds] Id of the users to update.
+ * @param {string[]} [params.teamIds] Id of the teams to update.
+ * @param {string[]} [params.bannedIds] Id of the blocked Ids to update.
+ * @param {string[]} [params.teamAdminIds] Id of the teams to update admin access for.
+ * @param {string[]} [params.userAdminIds] Id of the users to update admin access for.
  */
 function updateAccess(params) {
   const accessParams = params;
@@ -305,9 +305,9 @@ function updateAccess(params) {
 
 /**
  * Get devices that the user has access to
- * @param {Object} params - Parameters.
- * @param {Object} params.user - User retrieving the devices.
- * @param {Function} params.callback - Callback.
+ * @param {Object} params Parameters.
+ * @param {Object} params.user User retrieving the devices.
+ * @param {Function} params.callback Callback.
  */
 function getDevicesByUser({
   user,
@@ -323,9 +323,9 @@ function getDevicesByUser({
 
 /**
  * Get device by Id.
- * @param {Object} params - Parameters.
- * @param {string} params.deviceId - Id of the device.
- * @param {Function} params.callback - Callback.
+ * @param {Object} params Parameters.
+ * @param {string} params.deviceId Id of the device.
+ * @param {Function} params.callback Callback.
  */
 function getDeviceById({
   deviceId,
@@ -339,9 +339,9 @@ function getDeviceById({
 
 /**
  * Remove device
- * @param {Object} params - Parameters
- * @param {string} params.deviceId - ID of the device
- * @param {Function} params.callback - Callback
+ * @param {Object} params Parameters
+ * @param {string} params.deviceId ID of the device
+ * @param {Function} params.callback Callback
  */
 function removeDevice({ deviceId, callback }) {
   dbConnector.removeObject({
@@ -353,9 +353,9 @@ function removeDevice({ deviceId, callback }) {
 
 /**
  * Get device by socket Id.
- * @param {Object} params - Parameters.
- * @param {string} params.socketId - Socket.io Id.
- * @param {Function} params.callback - Callback.
+ * @param {Object} params Parameters.
+ * @param {string} params.socketId Socket.io Id.
+ * @param {Function} params.callback Callback.
  */
 function getDeviceBySocketId({ socketId, callback }) {
   getDevice({

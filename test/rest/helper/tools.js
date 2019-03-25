@@ -2,8 +2,8 @@ const baseObjects = require('../schemas/baseObjects');
 
 /**
  * Create a randomized string.
- * @param {Object} params - Parameters.
- * @param {number} params.length - Length of string.
+ * @param {Object} params Parameters.
+ * @param {number} params.length Length of string.
  * @returns {string} Randomized string.
  */
 function createRandString({ length }) {
@@ -22,7 +22,7 @@ function createRandString({ length }) {
 
 /**
  * Create a lite schema with base and specific objects. A lite schema has some properties stripped away from the base and specific objects.
- * @param {Object} schema - Specific object schema.
+ * @param {Object} schema Specific object schema.
  * @return {Object} Lite object schema.
  */
 function buildLiteSchema(schema) {
@@ -39,7 +39,7 @@ function buildLiteSchema(schema) {
 
 /**
  * Create a complete schema with base and specific objects.
- * @param {Object} schema - Specific object schema.
+ * @param {Object} schema Specific object schema.
  * @return {Object} Full object schema.
  */
 function buildFullSchema(schema) {

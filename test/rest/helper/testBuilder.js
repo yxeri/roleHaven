@@ -33,11 +33,11 @@ chai.use(chaiJson);
 
 /**
  * Create tests for the creation of objects.
- * @param {Object} params - Parameters.
- * @param {Object} params.testData - Data to use in the creation of an object.
- * @param {string} params.objectType - Type of object to create.
- * @param {string} params.apiPath - Path to endpoint.
- * @param {Object} params.schema - Schema to test against.
+ * @param {Object} params Parameters.
+ * @param {Object} params.testData Data to use in the creation of an object.
+ * @param {string} params.objectType Type of object to create.
+ * @param {string} params.apiPath Path to endpoint.
+ * @param {Object} params.schema Schema to test against.
  */
 function createTestCreate({
   testData,
@@ -141,13 +141,13 @@ function createTestCreate({
 
 /**
  * Create tests for updating objects.
- * @param {Object} params - Parameters.
- * @param {Object} params.testData - Data to use in the update of an object.
- * @param {string} params.objectType - Type of object to update.
- * @param {string} params.objectIdType - Id for the type of object to test.
- * @param {string} params.apiPath - Path to endpoint.
- * @param {Object} params.schema - Schema to test against.
- * @param {boolean} [params.skipCreation] - Should the creation of a test object be skipped? The object tested against will fall back to the basic user object.
+ * @param {Object} params Parameters.
+ * @param {Object} params.testData Data to use in the update of an object.
+ * @param {string} params.objectType Type of object to update.
+ * @param {string} params.objectIdType Id for the type of object to test.
+ * @param {string} params.apiPath Path to endpoint.
+ * @param {Object} params.schema Schema to test against.
+ * @param {boolean} [params.skipCreation] Should the creation of a test object be skipped? The object tested against will fall back to the basic user object.
  */
 function createTestUpdate({
   testData,
@@ -229,11 +229,11 @@ function createTestUpdate({
 
 /**
  * Create tests for removal of objects.
- * @param {Object} params - Parameters.
- * @param {Object} params.testData - Data to use in the removal of an object.
- * @param {string} params.objectType - Type of object to remove.
- * @param {string} params.objectIdType - Id for the type of object to test.
- * @param {string} params.apiPath - Path to endpoint.
+ * @param {Object} params Parameters.
+ * @param {Object} params.testData Data to use in the removal of an object.
+ * @param {string} params.objectType Type of object to remove.
+ * @param {string} params.objectIdType Id for the type of object to test.
+ * @param {string} params.apiPath Path to endpoint.
  */
 function createTestDelete({
   testData,
@@ -348,16 +348,16 @@ function createTestDelete({
 
 /**
  * Create tests for updating objects.
- * @param {Object} params - Parameters.
- * @param {string} params.objectType - Type of object to update.
- * @param {string} params.objectIdType - Id for the type of object to test.
- * @param {string} params.apiPath - Path to endpoint.
+ * @param {Object} params Parameters.
+ * @param {string} params.objectType Type of object to update.
+ * @param {string} params.objectIdType Id for the type of object to test.
+ * @param {string} params.apiPath Path to endpoint.
  * @param {Object} params.singleLiteSchema -
  * @param {Object} params.multiLiteSchema -
  * @param {Object} params.singleFullSchema -
  * @param {Object} params.multiFullSchema -
- * @param {Object} params.testData - Data to use in the creation of a test object.
- * @param {boolean} [params.skipCreation] - Should the creation of a test object be skipped? The object tested against will fall back to the basic user object.
+ * @param {Object} params.testData Data to use in the creation of a test object.
+ * @param {boolean} [params.skipCreation] Should the creation of a test object be skipped? The object tested against will fall back to the basic user object.
  */
 function createTestGet({
   testData,

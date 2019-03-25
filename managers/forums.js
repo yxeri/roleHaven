@@ -24,10 +24,10 @@ const managerHelper = require('../helpers/manager');
 
 /**
  * Get forum by Id.
- * @param {Object} params - Parameters.
- * @param {string} params.token - jwt.
- * @param {Function} params.callback - Callback.
- * @param {string} [params.forumId] - Id of forum to retrieve.
+ * @param {Object} params Parameters.
+ * @param {string} params.token jwt.
+ * @param {Function} params.callback Callback.
+ * @param {string} [params.forumId] Id of forum to retrieve.
  */
 function getForumById({
   forumId,
@@ -51,9 +51,9 @@ function getForumById({
 
 /**
  * Update last updated date on forum.
- * @param {Object} params - Parameters.
- * @param {string} params.forumId - Id of the forum.
- * @param {Function} params.callback - Callback.
+ * @param {Object} params Parameters.
+ * @param {string} params.forumId Id of the forum.
+ * @param {Function} params.callback Callback.
  */
 function updateForumTime({
   forumId,
@@ -68,11 +68,11 @@ function updateForumTime({
 
 /**
  * Create a new forum.
- * @param {Object} params - Parameters.
- * @param {Object} params.forum - Forum to create.
- * @param {Object} params.callback - Callback.
- * @param {Object} params.token - jwt.
- * @param {Object} params.io - Socket.io.
+ * @param {Object} params Parameters.
+ * @param {Object} params.forum Forum to create.
+ * @param {Object} params.callback Callback.
+ * @param {Object} params.token jwt.
+ * @param {Object} params.io Socket.io.
  */
 function createForum({
   forum,
@@ -145,9 +145,9 @@ function createForum({
 
 /**
  * Get all forums.
- * @param {Object} params - Parameters.
- * @param {Function} params.callback - Callback.
- * @param {string} params.token - jwt.
+ * @param {Object} params Parameters.
+ * @param {Function} params.callback Callback.
+ * @param {string} params.token jwt.
  */
 function getAllForums({ callback, token }) {
   authenticator.isUserAllowed({
@@ -167,11 +167,11 @@ function getAllForums({ callback, token }) {
 
 /**
  * Update forum.
- * @param {Object} params - Parameters.
- * @param {Object} params.forum - Forum.
- * @parm {Object} params.options - Options.
- * @param {Function} params.callback - Callback.
- * @param {Object} params.io - Socket io.
+ * @param {Object} params Parameters.
+ * @param {Object} params.forum Forum.
+ * @parm {Object} params.options Options.
+ * @param {Function} params.callback Callback.
+ * @param {Object} params.io Socket io.
  */
 function updateForum({
   token,
@@ -204,11 +204,11 @@ function updateForum({
 
 /**
  * Remove forum.
- * @param {Object} params - Parameters.
- * @param {string} params.token - jwt.
- * @param {string} params.forumId - Id of the forum.
- * @param {Object} params.io - Socket io.
- * @param {Function} params.callback - Callback.
+ * @param {Object} params Parameters.
+ * @param {string} params.token jwt.
+ * @param {string} params.forumId Id of the forum.
+ * @param {Object} params.io Socket io.
+ * @param {Function} params.callback Callback.
  */
 function removeForum({
   token,
@@ -235,9 +235,9 @@ function removeForum({
 
 /**
  * Get forums by user.
- * @param {Object} params - Parameters.
- * @param {string} params.token - jwt.
- * @param {Function} params.callback - Callback
+ * @param {Object} params Parameters.
+ * @param {string} params.token jwt.
+ * @param {Function} params.callback Callback
  */
 function getForumsByUser({
   token,
@@ -256,15 +256,15 @@ function getForumsByUser({
 
 /**
  * Update access to the forum for users or teams.
- * @param {Object} params - Parameters.
- * @param {string} params.forumId - Id of the forum.
- * @param {Function} params.callback - Callback.
- * @param {boolean} [params.shouldRemove] - Should access be removed from the users or teams?
- * @param {string[]} [params.userIds] - Id of the users.
- * @param {string[]} [params.teamIds] - Id of the teams.
- * @param {string[]} [params.bannedIds] - Id of the blocked Ids to add.
- * @param {string[]} [params.teamAdminIds] - Id of the teams to change admin access for.
- * @param {string[]} [params.userAdminIds] - Id of the users to change admin access for.
+ * @param {Object} params Parameters.
+ * @param {string} params.forumId Id of the forum.
+ * @param {Function} params.callback Callback.
+ * @param {boolean} [params.shouldRemove] Should access be removed from the users or teams?
+ * @param {string[]} [params.userIds] Id of the users.
+ * @param {string[]} [params.teamIds] Id of the teams.
+ * @param {string[]} [params.bannedIds] Id of the blocked Ids to add.
+ * @param {string[]} [params.teamAdminIds] Id of the teams to change admin access for.
+ * @param {string[]} [params.userAdminIds] Id of the users to change admin access for.
  */
 function updateAccess({
   token,

@@ -20,9 +20,9 @@ class Internal extends GeneralError.create {
   /**
    * Create an internal error object.
    * Indicates that something went wrong locally
-   * @param {Object} params - Parameters.
-   * @param {string} [params.name] - Retrieval source.
-   * @param {Error} [params.errorObject] - Error object.
+   * @param {Object} params Parameters.
+   * @param {string} [params.name] Retrieval source.
+   * @param {Error} [params.errorObject] Error object.
    */
   constructor({
     errorObject,

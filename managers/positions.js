@@ -25,11 +25,11 @@ const managerHelper = require('../helpers/manager');
 
 /**
  * Get position.
- * @param {Object} params - Parameter.
- * @param {string} params.token - jwt.
- * @param {Function} params.callback - Callback.
- * @param {string} [params.positionId] - Id of the position.
- * @param {Object} [params.internalCallUser] - User to use on authentication. It will bypass token authentication.
+ * @param {Object} params Parameter.
+ * @param {string} params.token jwt.
+ * @param {Function} params.callback Callback.
+ * @param {string} [params.positionId] Id of the position.
+ * @param {Object} [params.internalCallUser] User to use on authentication. It will bypass token authentication.
  */
 function getPositionById({
   token,
@@ -54,8 +54,8 @@ function getPositionById({
 // TODO Should update if the position already exist
 /**
  * Retrieve and store positions from a Google Maps collaborative map.
- * @param {Object} params - Parameters.
- * @param {Function} params.callback - Callback.
+ * @param {Object} params Parameters.
+ * @param {Function} params.callback Callback.
  */
 function getAndStoreGooglePositions({
   io,
@@ -135,13 +135,13 @@ function getAndStoreGooglePositions({
 
 /**
  * Update user position. Will create a new one if it doesn't exist.
- * @param {Object} params - Parameters.
- * @param {string} params.positionId - Id of the position to update.
- * @param {Object} params.position - User position to update or create.
- * @param {string} params.token - jwt.
- * @param {Object} params.io - Socket io.
- * @param {Function} params.callback - Callback.
- * @param {Object} [params.options] - Update options.
+ * @param {Object} params Parameters.
+ * @param {string} params.positionId Id of the position to update.
+ * @param {Object} params.position User position to update or create.
+ * @param {string} params.token jwt.
+ * @param {Object} params.io Socket io.
+ * @param {Function} params.callback Callback.
+ * @param {Object} [params.options] Update options.
  */
 function updatePosition({
   positionId,
@@ -151,6 +151,7 @@ function updatePosition({
   callback,
   options,
   socket,
+  internalCallUser,
 }) {
   managerHelper.updateObject({
     callback,
@@ -158,6 +159,7 @@ function updatePosition({
     token,
     io,
     socket,
+    internalCallUser,
     objectId: positionId,
     object: position,
     commandName: dbConfig.apiCommands.UpdatePosition.name,
@@ -172,11 +174,11 @@ function updatePosition({
 
 /**
  * Create a position.
- * @param {Object} params - Parameters.
- * @param {Object} params.position - Position to create.
- * @param {string} params.token - jwt.
- * @param {Object} params.io - Socket.io.
- * @param {Function} params.callback - Callback.
+ * @param {Object} params Parameters.
+ * @param {Object} params.position Position to create.
+ * @param {string} params.token jwt.
+ * @param {Object} params.io Socket.io.
+ * @param {Function} params.callback Callback.
  */
 function createPosition({
   position,
@@ -199,8 +201,6 @@ function createPosition({
       }
 
       if (!position.coordinates || !position.coordinates.latitude || !position.coordinates.longitude) {
-        console.log('create', position.coordinates, !position.coordinates, !position.coordinates.latitude, !position.coordinates.longitude, !position.coordinates.accuracy);
-
         callback({ error: new errorCreator.InvalidData({ expected: 'latitude && longitude && accuracy' }) });
 
         return;
@@ -272,9 +272,9 @@ function createPosition({
 
 /**
  * Get positions.
- * @param {Object} params - Parameters.
- * @param {string} params.token - jwt.
- * @param {Function} params.callback - Callback.
+ * @param {Object} params Parameters.
+ * @param {string} params.token jwt.
+ * @param {Function} params.callback Callback.
  */
 function getPositionsByUser({
   token,
@@ -293,11 +293,11 @@ function getPositionsByUser({
 
 /**
  * Remove position.
- * @param {Object} params - Parameters.
- * @param {string} params.positionId - ID of the position to remove.
- * @param {string} params.token - jwt.
- * @param {Function} params.callback - Callback
- * @param {Object} params.io - Socket io.
+ * @param {Object} params Parameters.
+ * @param {string} params.positionId ID of the position to remove.
+ * @param {string} params.token jwt.
+ * @param {Function} params.callback Callback
+ * @param {Object} params.io Socket io.
  */
 function removePosition({
   positionId,
@@ -305,12 +305,14 @@ function removePosition({
   callback,
   io,
   socket,
+  internalCallUser,
 }) {
   managerHelper.removeObject({
     callback,
     token,
     io,
     socket,
+    internalCallUser,
     getDbCallFunc: dbPosition.getPositionById,
     getCommandName: dbConfig.apiCommands.GetPositions.name,
     objectId: positionId,

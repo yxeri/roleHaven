@@ -72,6 +72,7 @@ function joinRooms({
  * @param {Object} params.io - Socket.io.
  * @param {string} params.socketId - Id of the socket.
  * @param {string} params.userId - Id of the user. The user will follow a room with its Id.
+ * @param {number} [params.accessLevel] - The user's access level.
  * @return {Object} Socket.
  */
 function joinRequiredRooms({
@@ -79,6 +80,7 @@ function joinRequiredRooms({
   socketId,
   userId,
   socket,
+  accessLevel,
 }) {
   const userSocket = socket || getUserSocket({ io, socketId });
 
@@ -87,6 +89,12 @@ function joinRequiredRooms({
 
     if (userId) {
       userSocket.join(userId);
+    }
+
+    if (accessLevel) {
+      for (let i = 0; i <= accessLevel; i += 1) {
+        userSocket.join(i.toString());
+      }
     }
   }
 
