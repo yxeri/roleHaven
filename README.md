@@ -8,9 +8,9 @@ The default configuration files are in /config/defaults/ (appConfig and dbConfig
 
 ## Deployment
 
-Envar JSONKEY has to be set. It's needed for JWT.
+Envar JSONKEY has to be set. It's needed for the JWT.
 
-It is recommended to use Docker to deploy and run roleHaven.
+It's recommended to use Docker to deploy and run roleHaven. You'll find an example Docker compose file at https://gist.github.com/yxeri/74dba82029d56899e187b1b1be06d106.
 
 ## API
 
