@@ -224,6 +224,10 @@ function createPosition({
       newPosition.ownerId = authUser.objectId;
       newPosition.coordinates.accuracy = newPosition.coordinates.accuracy || appConfig.minimumPositionAccuracy;
 
+      if (position.positionStructure && position.positionStructure === dbConfig.PositionStructures.CIRCLE && !position.radius) {
+        newPosition.radius = appConfig.defaultPositionRadius;
+      }
+
       if (newPosition.ownerAliasId && !authUser.aliases.includes(newPosition.ownerAliasId)) {
         callback({ error: new errorCreator.NotAllowed({ name: `create position with alias ${newPosition.ownerAliasId}` }) });
 
