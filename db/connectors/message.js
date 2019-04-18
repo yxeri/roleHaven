@@ -30,12 +30,7 @@ const messageSchema = new mongoose.Schema(dbConnector.createSchema({
   coordinates: dbConnector.coordinatesSchema,
   intro: [String],
   extro: [String],
-  image: dbConnector.createSchema({
-    imageName: String,
-    fileName: String,
-    width: Number,
-    height: Number,
-  }),
+  image: dbConnector.imageSchema,
 }), { collection: 'messages' });
 
 const Message = mongoose.model('Message', messageSchema);
