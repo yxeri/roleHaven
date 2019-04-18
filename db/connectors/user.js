@@ -45,7 +45,7 @@ const userSchema = new mongoose.Schema(dbConnector.createSchema({
   partOfTeams: { type: [String], default: [] },
   followingRooms: { type: [String], default: [] },
   aliases: { type: [String], default: [] },
-  picture: dbConnector.pictureSchema,
+  image: dbConnector.imageSchema,
 }), { collection: 'users' });
 
 const User = mongoose.model('User', userSchema);

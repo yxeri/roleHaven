@@ -182,6 +182,18 @@ function trimSpace(sentText) {
   return findOneReplace(sentText, /^\s+|\s+$/, '');
 }
 
+/**
+ * Builds a full filename.
+ * @param {Objet} params Parameters.
+ * @param {string} name - Name of the file.
+ * @return {string} Filename
+ */
+function buildFileName({
+  name,
+}) {
+  return `${Date.now()}-${name.replace(/[^\w.]/g, '-')}`;
+}
+
 exports.hasAllowedText = hasAllowedText;
 exports.isAllowedFull = isAllowedFull;
 exports.cleanText = cleanText;
@@ -194,3 +206,4 @@ exports.isValidMail = isValidMail;
 exports.calculateMinutesDifference = calculateMinutesDifference;
 exports.generateTextCode = generateTextCode;
 exports.trimSpace = trimSpace;
+exports.buildFileName = buildFileName;

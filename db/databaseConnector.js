@@ -41,10 +41,11 @@ const baseSchema = {
   triggerEvents: { type: [String], default: [] },
 };
 
-const pictureSchema = {
-  url: String,
+const imageSchema = {
   height: Number,
   width: Number,
+  imageName: String,
+  fileName: String,
 };
 
 const coordinatesSchema = {
@@ -618,7 +619,7 @@ function createUserQuery({ user, noVisibility }) {
 }
 
 exports.coordinatesSchema = coordinatesSchema;
-exports.pictureSchema = pictureSchema;
+exports.imageSchema = imageSchema;
 
 exports.saveObject = saveObject;
 exports.verifyObject = verifyObject;

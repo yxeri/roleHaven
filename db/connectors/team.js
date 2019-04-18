@@ -28,7 +28,7 @@ const teamSchema = new mongoose.Schema(dbConnector.createSchema({
   isVerified: { type: Boolean, default: false },
   isProtected: { type: Boolean, default: false },
   members: { type: [String], default: [] },
-  picture: dbConnector.pictureSchema,
+  image: dbConnector.imageSchema,
   locationName: String,
   isPermissionsOnly: { type: Boolean, default: false },
 }), { collection: 'teams' });

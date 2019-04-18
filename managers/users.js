@@ -28,6 +28,7 @@ const socketUtils = require('../utils/socketIo');
 const dbForum = require('../db/connectors/forum');
 const managerHelper = require('../helpers/manager');
 const positionManager = require('./positions');
+const imager = require('../helpers/imager');
 
 /**
  * Create a user.
@@ -43,6 +44,7 @@ function createUser({
   io,
   options,
   socket,
+  image,
 }) {
   let command;
 
@@ -129,6 +131,17 @@ function createUser({
         return;
       }
 
+      if (user.description && user.description.join('').length > appConfig.userDescriptionMaxLength) {
+        callback({
+          error: new errorCreator.InvalidLength({
+            name: `Device length: ${appConfig.deviceIdLength}`,
+            extraData: { param: 'device' },
+          }),
+        });
+
+        return;
+      }
+
       if (user.accessLevel && (authUser.accessLevel < dbConfig.apiCommands.UpdateUserAccess.accessLevel)) {
         callback({ error: new errorCreator.NotAllowed({ name: 'Set user access level' }) });
 
@@ -150,142 +163,167 @@ function createUser({
         ? newUser.mailAddress.toLowerCase()
         : undefined;
 
-      dbUser.createUser({
-        options,
-        user: newUser,
-        callback: ({ error: userError, data: userData }) => {
-          if (userError) {
-            callback({ error: userError });
+      const userCallback = () => {
+        dbUser.createUser({
+          options,
+          user: newUser,
+          callback: ({ error: userError, data: userData }) => {
+            if (userError) {
+              callback({ error: userError });
 
-            return;
-          }
+              return;
+            }
 
-          const { user: createdUser } = userData;
+            const { user: createdUser } = userData;
 
-          dbRoom.createRoom({
-            room: {
-              ownerId: createdUser.objectId,
-              roomName: createdUser.objectId,
-              objectId: createdUser.objectId,
-              visibility: dbConfig.AccessLevels.STANDARD,
-              accessLevel: dbConfig.AccessLevels.SUPERUSER,
-              isUser: true,
-            },
-            options: {
-              setId: true,
-              isFollower: true,
-            },
-            callback: ({ error: roomError, data: roomData }) => {
-              if (roomError) {
-                callback({ error: roomError });
-
-                return;
-              }
-
-              const wallet = {
-                objectId: createdUser.objectId,
-                accessLevel: createdUser.accessLevel,
+            dbRoom.createRoom({
+              room: {
                 ownerId: createdUser.objectId,
-                amount: appConfig.defaultWalletAmount,
-              };
-              const walletOptions = { setId: true };
+                roomName: createdUser.objectId,
+                objectId: createdUser.objectId,
+                visibility: dbConfig.AccessLevels.STANDARD,
+                accessLevel: dbConfig.AccessLevels.SUPERUSER,
+                isUser: true,
+              },
+              options: {
+                setId: true,
+                isFollower: true,
+              },
+              callback: ({ error: roomError, data: roomData }) => {
+                if (roomError) {
+                  callback({ error: roomError });
 
-              dbWallet.createWallet({
-                wallet,
-                options: walletOptions,
-                callback: ({ error: walletError, data: walletData }) => {
-                  if (walletError) {
-                    callback({ error: walletError });
+                  return;
+                }
 
-                    return;
-                  }
+                const wallet = {
+                  objectId: createdUser.objectId,
+                  accessLevel: createdUser.accessLevel,
+                  ownerId: createdUser.objectId,
+                  amount: appConfig.defaultWalletAmount,
+                };
+                const walletOptions = { setId: true };
 
-                  const forum = {
-                    title: newUser.fullName || newUser.username,
-                    isPersonal: true,
-                    objectId: createdUser.objectId,
-                    ownerId: createdUser.objectId,
-                  };
-                  const forumOptions = { setId: true };
+                dbWallet.createWallet({
+                  wallet,
+                  options: walletOptions,
+                  callback: ({ error: walletError, data: walletData }) => {
+                    if (walletError) {
+                      callback({ error: walletError });
 
-                  dbForum.createForum({
-                    forum,
-                    options: forumOptions,
-                    callback: ({ error: forumError, data: forumData }) => {
-                      if (forumError) {
-                        callback({ error: forumError });
+                      return;
+                    }
 
-                        return;
-                      }
+                    const forum = {
+                      title: newUser.fullName || newUser.username,
+                      isPersonal: true,
+                      objectId: createdUser.objectId,
+                      ownerId: createdUser.objectId,
+                    };
+                    const forumOptions = { setId: true };
 
-                      const createdRoom = roomData.room;
-                      const createdWallet = walletData.wallet;
-                      const createdForum = forumData.forum;
+                    dbForum.createForum({
+                      forum,
+                      options: forumOptions,
+                      callback: ({ error: forumError, data: forumData }) => {
+                        if (forumError) {
+                          callback({ error: forumError });
 
-                      const creatorDataToSend = {
-                        data: {
-                          wallet: createdWallet,
-                          room: createdRoom,
-                          user: createdUser,
-                          forum: createdForum,
-                          isSender: true,
-                          changeType: dbConfig.ChangeTypes.CREATE,
-                        },
-                      };
-                      const dataToSend = {
-                        data: {
-                          user: managerHelper.stripObject({ object: Object.assign({}, createdUser) }),
-                          changeType: dbConfig.ChangeTypes.CREATE,
-                        },
-                      };
-                      const roomDataToSend = {
-                        data: {
-                          room: managerHelper.stripObject({ object: Object.assign({}, createdRoom) }),
-                          changeType: dbConfig.ChangeTypes.CREATE,
-                        },
-                      };
-                      const walletDataToSend = {
-                        data: {
-                          wallet: managerHelper.stripObject({ object: Object.assign({}, createdWallet) }),
-                          changeType: dbConfig.ChangeTypes.CREATE,
-                        },
-                      };
-                      const forumDataToSend = {
-                        data: {
-                          forum: managerHelper.stripObject({ object: Object.assign({}, createdForum) }),
-                        },
-                      };
-
-                      if (!socket) {
-                        io.to(createdUser.objectId).emit(dbConfig.EmitTypes.USER, creatorDataToSend);
-                      }
-
-                      if (socket) {
-                        socket.join(createdUser.objectId);
-                        socket.broadcast.emit(dbConfig.EmitTypes.USER, dataToSend);
-                      } else {
-                        const userSocket = socketUtils.getUserSocket({ io, socketId: user.socketId });
-
-                        if (userSocket) {
-                          userSocket.join(createdRoom.objectId);
+                          return;
                         }
 
-                        io.emit(dbConfig.EmitTypes.USER, dataToSend);
-                      }
+                        const createdRoom = roomData.room;
+                        const createdWallet = walletData.wallet;
+                        const createdForum = forumData.forum;
 
-                      io.emit(dbConfig.EmitTypes.FORUM, forumDataToSend);
-                      io.emit(dbConfig.EmitTypes.ROOM, roomDataToSend);
-                      io.emit(dbConfig.EmitTypes.WALLET, walletDataToSend);
+                        const creatorDataToSend = {
+                          data: {
+                            wallet: createdWallet,
+                            room: createdRoom,
+                            user: createdUser,
+                            forum: createdForum,
+                            isSender: true,
+                            changeType: dbConfig.ChangeTypes.CREATE,
+                          },
+                        };
+                        const dataToSend = {
+                          data: {
+                            user: managerHelper.stripObject({ object: Object.assign({}, createdUser) }),
+                            changeType: dbConfig.ChangeTypes.CREATE,
+                          },
+                        };
+                        const roomDataToSend = {
+                          data: {
+                            room: managerHelper.stripObject({ object: Object.assign({}, createdRoom) }),
+                            changeType: dbConfig.ChangeTypes.CREATE,
+                          },
+                        };
+                        const walletDataToSend = {
+                          data: {
+                            wallet: managerHelper.stripObject({ object: Object.assign({}, createdWallet) }),
+                            changeType: dbConfig.ChangeTypes.CREATE,
+                          },
+                        };
+                        const forumDataToSend = {
+                          data: {
+                            forum: managerHelper.stripObject({ object: Object.assign({}, createdForum) }),
+                          },
+                        };
 
-                      callback(creatorDataToSend);
-                    },
-                  });
-                },
-              });
-            },
-          });
-        },
-      });
+                        if (!socket) {
+                          io.to(createdUser.objectId).emit(dbConfig.EmitTypes.USER, creatorDataToSend);
+                        }
+
+                        if (socket) {
+                          socket.join(createdUser.objectId);
+                          socket.broadcast.emit(dbConfig.EmitTypes.USER, dataToSend);
+                        } else {
+                          const userSocket = socketUtils.getUserSocket({ io, socketId: user.socketId });
+
+                          if (userSocket) {
+                            userSocket.join(createdRoom.objectId);
+                          }
+
+                          io.emit(dbConfig.EmitTypes.USER, dataToSend);
+                        }
+
+                        io.emit(dbConfig.EmitTypes.FORUM, forumDataToSend);
+                        io.emit(dbConfig.EmitTypes.ROOM, roomDataToSend);
+                        io.emit(dbConfig.EmitTypes.WALLET, walletDataToSend);
+
+                        callback(creatorDataToSend);
+                      },
+                    });
+                  },
+                });
+              },
+            });
+          },
+        });
+      };
+
+      if (image) {
+        imager.createImage({
+          image,
+          callback: ({ error: imageError, data: imageData }) => {
+            if (imageError) {
+              callback({ error: imageError });
+
+              return;
+            }
+
+            const { image: createdImage } = imageData;
+
+            newUser.image = createdImage;
+
+            userCallback();
+          },
+        });
+
+        return;
+      }
+
+      userCallback();
     },
   });
 }
@@ -674,6 +712,13 @@ function logout({
 
             return;
           }
+
+          positionManager.updatePosition({
+            positionId: userId,
+            position: {},
+            options: { resetConnectedToUser: true },
+            callback: () => {},
+          });
 
           roomManager.leaveSocketRooms(socket);
 

@@ -27,7 +27,7 @@ const forumPostSchema = new mongoose.Schema(dbConnector.createSchema({
   depth: { type: Number, default: 0 },
   likes: { type: Number, default: 0 },
   dislikes: { type: Number, default: 0 },
-  pictures: [dbConnector.pictureSchema],
+  images: [dbConnector.imageSchema],
 }), { collection: 'forumPosts' });
 
 const ForumPost = mongoose.model('ForumPost', forumPostSchema);
