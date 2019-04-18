@@ -27,6 +27,7 @@ const textTools = require('../utils/textTools');
 const managerHelper = require('../helpers/manager');
 const userManager = require('./users');
 const aliasManager = require('./aliases');
+const imager = require('../helpers/imager');
 
 /**
  * Get an emit type based on the message type
@@ -58,35 +59,56 @@ function sendAndStoreMessage({
   image,
   socket,
 }) {
+  const messageCallback = (chatMsg) => {
+    dbMessage.createMessage({
+      message: chatMsg,
+      callback: ({ error, data }) => {
+        if (error) {
+          callback({ error });
+
+          return;
+        }
+
+        const dataToSend = {
+          data: {
+            message: data.message,
+            changeType: dbConfig.ChangeTypes.CREATE,
+          },
+        };
+
+        if (socket) {
+          socket.broadcast.to(message.roomId).emit(emitType, dataToSend);
+        } else {
+          io.to(message.roomId).emit(emitType, dataToSend);
+        }
+
+        callback(dataToSend);
+      },
+    });
+  };
+
   if (image) {
-    // Contact file storage and create the file or retrieve and existing one.
+    imager.createImage({
+      image,
+      callback: ({ error: imageError, data: imageData }) => {
+        if (imageError) {
+          callback({ error: imageError });
+
+          return;
+        }
+
+        const { image: createdImage } = imageData;
+        const chatMsg = message;
+        chatMsg.image = createdImage;
+
+        messageCallback(chatMsg);
+      },
+    });
+
+    return;
   }
 
-  dbMessage.createMessage({
-    message,
-    callback: ({ error, data }) => {
-      if (error) {
-        callback({ error });
-
-        return;
-      }
-
-      const dataToSend = {
-        data: {
-          message: data.message,
-          changeType: dbConfig.ChangeTypes.CREATE,
-        },
-      };
-
-      if (socket) {
-        socket.broadcast.to(message.roomId).emit(emitType, dataToSend);
-      } else {
-        io.to(message.roomId).emit(emitType, dataToSend);
-      }
-
-      callback(dataToSend);
-    },
-  });
+  messageCallback(message);
 }
 
 /**
