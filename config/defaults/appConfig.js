@@ -510,7 +510,7 @@ config.usernameMinLength = process.env.USERNAMEMINLENGTH || config.usernameMinLe
  * Maximum amount of characters in a user name
  * @type {number}
  */
-config.usernameMaxLength = process.env.USERNAMEMAXLENGTH || config.usernameMaxLength || 10;
+config.usernameMaxLength = process.env.USERNAMEMAXLENGTH || config.usernameMaxLength || 20;
 
 /**
  * Maximum amount warnings before a user account is banned
