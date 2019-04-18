@@ -1,5 +1,5 @@
 {
-  "name": "roleHaven",
+  "name": "rolehaven",
   "version": "1.2.13",
   "description": "roleHaven is part of an initiative to create a platform to be used in-game during LARPs",
   "author": "Carmilla Mina Jankovic <carmillam@icloud.com>",
@@ -49,6 +49,7 @@
     "morgan": "1.9.1",
     "node-sass": "4.10.0",
     "request": "2.88.0",
+    "sharp": "0.22.0",
     "socket.io": "2.1.1",
     "uglify-js": "3.4.9",
     "xml2json": "0.11.2"
