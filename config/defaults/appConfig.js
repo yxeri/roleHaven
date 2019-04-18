@@ -467,7 +467,7 @@ config.gameCodeLength = process.env.GAMECODELENGTH || config.gameCodeLength || 8
 config.maxHistoryAmount = process.env.MAXHISTORYAMOUNT || config.maxHistoryAmount || 60;
 
 /**
- * Should messagesbe allowed to have an attached image?
+ * Should messages allowed to have an attached image?
  * @type {boolean}
  */
 config.allowMessageImage = typeof allowMessageImageEnv !== 'undefined'
@@ -485,6 +485,15 @@ config.messageMaxLength = process.env.MESSAGEMAXLENGTH || config.messageMaxLengt
  * @type {number}
  */
 config.broadcastMaxLength = process.env.BROADCASTMAXLENGTH || config.broadcastMaxLength || 600;
+
+/**
+ * *********
+ * * Image *
+ * *********
+ */
+
+config.imageMaxWidth = process.env.IMAGEMAXWIDTH || config.imageMaxWidth || 500;
+config.imageMaxHeight = process.env.IMAGEMAXHEIGHT || config.imageMaxHeight || 500;
 
 /**
  * ********
@@ -549,6 +558,12 @@ config.fullNameMinLength = process.env.FULLNAMEMINLENGTH || config.fullNameMinLe
  * @type {number}
  */
 config.fullNameMaxLength = process.env.FULLNAMEMAXLENGTH || config.fullNameMaxLength || 40;
+
+/**
+ * Maximum amount of characters in a user's description.
+ * @type {number}
+ */
+config.userDescriptionMaxLength = process.env.USERDESCRIPTIONMAXLENGTH || config.userDescriptionMaxLength || 500;
 
 /**
  * ********
