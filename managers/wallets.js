@@ -17,7 +17,7 @@
 'use strict';
 
 const dbWallet = require('../db/connectors/wallet');
-const { dbConfig } = require('../config/defaults/config');
+const { appConfig, dbConfig } = require('../config/defaults/config');
 const errorCreator = require('../error/errorCreator');
 const authenticator = require('../helpers/authenticator');
 const managerHelper = require('../helpers/manager');
@@ -225,7 +225,7 @@ function checkAmount({
 
       const { wallet } = data;
 
-      if (wallet.amount - amount < 0) {
+      if (wallet.amount - amount < appConfig.walletMinimumAmount) {
         callback({ error: new errorCreator.Insufficient({ name: `checkAmount. Update amount ${amount} without enough in wallet ${walletId}.` }) });
 
         return;

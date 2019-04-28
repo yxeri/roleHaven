@@ -23,6 +23,7 @@ const dbDocFile = require('../db/connectors/docFile');
 const authenticator = require('../helpers/authenticator');
 const objectValidator = require('../utils/objectValidator');
 const managerHelper = require('../helpers/manager');
+const imager = require('../helpers/imager');
 
 /**
  * Returns either a filtered or complete file, depending if the user or the user's teams has access to it.
@@ -166,6 +167,7 @@ function createDocFile({
   callback,
   socket,
   internalCallUser,
+  images,
 }) {
   authenticator.isUserAllowed({
     token,
@@ -209,6 +211,32 @@ function createDocFile({
 
       if (newDocFile.ownerAliasId && !authUser.aliases.includes(newDocFile.ownerAliasId)) {
         callback({ error: new errorCreator.NotAllowed({ name: `create position with alias ${newDocFile.ownerAliasId}` }) });
+
+        return;
+      }
+
+      if (images) {
+        imager.createImage({
+          image: images[0],
+          callback: ({ error: imageError, data: imageData }) => {
+            if (imageError) {
+              callback({ error: imageError });
+
+              return;
+            }
+
+            const { image: createdImage } = imageData;
+
+            newDocFile.images = [createdImage];
+
+            saveAndTransmitDocFile({
+              io,
+              callback,
+              socket,
+              docFile: newDocFile,
+            });
+          },
+        });
 
         return;
       }

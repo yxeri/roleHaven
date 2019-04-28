@@ -688,6 +688,12 @@ config.deviceAliasMaxLength = process.env.DEVICEALIASMAXLENGTH || config.deviceA
 config.defaultWalletAmount = process.env.DEFAULTWALLETAMOUNT || config.defaultWalletAmount || 10;
 
 /**
+ * Minimum amount that a wallet can contain.
+ * @type {number}
+ */
+config.walletMinimumAmount = process.env.WALLETMINIMUMAMOUNT || config.walletMinimumAmount || 0;
+
+/**
  * ************
  * * Position *
  * ************
@@ -723,7 +729,7 @@ config.importedPositionMinAccessLevel = process.env.IMPORTEDPOSITIONMINACCESSLEV
  */
 config.maxPositionHistory = process.env.MAXPOSITIONHISTORY || config.maxPositionHistory || 15;
 
-config.defaultPositionRadius = process.env.DEFAULTPOSITIONRADIUS || config.defaultPositionRadius || 40;
+config.defaultPositionRadius = process.env.DEFAULTPOSITIONRADIUS || config.defaultPositionRadius || 50;
 
 /**
  * *********
