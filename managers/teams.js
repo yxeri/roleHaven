@@ -40,6 +40,7 @@ function getTeamById({
   token,
   callback,
   internalCallUser,
+  needsAccess,
 }) {
   authenticator.isUserAllowed({
     token,
@@ -72,7 +73,7 @@ function getTeamById({
             toAuth: authUser,
           });
 
-          if (!canSee) {
+          if (!canSee || (needsAccess && !hasAccess)) {
             callback({ error: errorCreator.NotAllowed({ name: `get team ${teamId}` }) });
 
             return;
@@ -476,6 +477,7 @@ function inviteToTeam({
       const { user: authUser } = data;
 
       getTeamById({
+        needsAccess: true,
         internalCallUser: authUser,
         teamId: invitation.itemId,
         callback: ({ error: teamError, data: teamData }) => {
