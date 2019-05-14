@@ -158,8 +158,8 @@
  * @apiParam {string} positionType Type of position. Valid types: USER, WORLD. Default is WORLD.
  * @apiParam {string[]} [description] Text content of the position.
  * @apiParam {number} radius] Radius, in meters, for the position.
- * @apiParam {string} [positionName] [Mutable] Human-readable position name.
- * @apiParam {boolean} isStationary Is the position stationary?
+ * @apiParam {string} [positionName] [Unique, mutable] Human-readable position name.
+ * @apiParam {boolean} [isStationary] Is the position stationary?
  */
 
 /**
@@ -169,7 +169,7 @@
  *
  * @apiDescription The Coordinates object.
  *
- * @apiParam {Object} coordinates GPS coordinates for where the message was sent.
+ * @apiParam {Object} coordinates GPS coordinates.
  * @apiParam {number} coordinates.longitude Longitude.
  * @apiParam {number} coordinates.latitude Latitude.
  * @apiParam {number} coordinates.accuracy Position accuracy in meters.
