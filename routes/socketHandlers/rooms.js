@@ -87,6 +87,24 @@ function handle(socket, io) {
 
     roomManager.getRoomsByUser(params);
   });
+
+  socket.on('inviteToRoom', (params, callback = () => {
+  }) => {
+    params.callback = callback;
+    params.io = io;
+    params.socket = socket;
+
+    roomManager.inviteToRoom(params);
+  });
+
+  socket.on('acceptRoomInvitation', (params, callback = () => {
+  }) => {
+    params.callback = callback;
+    params.io = io;
+    params.socket = socket;
+
+    roomManager.acceptRoomInvitation(params);
+  });
 }
 
 exports.handle = handle;

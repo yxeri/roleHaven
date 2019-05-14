@@ -181,6 +181,7 @@ config.GameCodeTypes = {
 
 config.InvitationTypes = {
   TEAM: 'team',
+  ROOM: 'room',
 };
 
 config.MessageTypes = {
@@ -397,6 +398,10 @@ config.apiCommands = Object.assign({
   },
   UpdateRoom: config.apiCommands.UpdateRoom || {
     name: 'UpdateRoom',
+    accessLevel: config.AccessLevels.STANDARD,
+  },
+  InviteToRoom: config.apiCommands.InviteToRoom || {
+    name: 'InviteToRoom',
     accessLevel: config.AccessLevels.STANDARD,
   },
 

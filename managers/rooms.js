@@ -25,6 +25,7 @@ const dbRoom = require('../db/connectors/room');
 const socketUtils = require('../utils/socketIo');
 const dbUser = require('../db/connectors/user');
 const managerHelper = require('../helpers/manager');
+const dbInvitation = require('../db/connectors/invitation');
 
 /**
  * Auth to room with password.
@@ -59,8 +60,8 @@ function authToRoom({
 /**
  * Get room by Id or name.
  * @param {Object} params Parameter.
- * @param {string} params.token jwt.
  * @param {Function} params.callback Callback.
+ * @param {string} [params.token] jwt.
  * @param {string} [params.roomId] Id of the room.
  * @param {string} [params.roomName] Name of the room.
  * @param {string} [params.password] Password for the room.
@@ -802,7 +803,7 @@ function unfollowRoom({
         return;
       }
 
-      dbRoom.updateAccess({
+      dbRoom.removeFollowers({
         roomId,
         userIds: [aliasId || authUser.objectId],
         callback: () => {
@@ -1130,6 +1131,147 @@ function updateRoom({
   });
 }
 
+/**
+ * Invite users to a room.
+ * @param {Object} params Parameters.
+ * @param {Function} params.callback Callback.
+ * @param {Object} params.io Socket io.
+ */
+function inviteToRoom({
+  aliasId,
+  followerIds,
+  roomId,
+  io,
+  callback,
+  token,
+  socket,
+}) {
+  authenticator.isUserAllowed({
+    token,
+    commandName: dbConfig.apiCommands.InviteToRoom.name,
+    callback: ({ error, data }) => {
+      if (error) {
+        callback({ error });
+
+        return;
+      }
+
+      const { user: authUser } = data;
+
+      getRoomById({
+        roomId,
+        needsAccess: true,
+        internalCallUser: authUser,
+        callback: ({ error: roomError, data: roomData }) => {
+          if (roomError) {
+            callback({ error: roomError });
+
+            return;
+          }
+
+          const { room: foundRoom } = roomData;
+
+          if (aliasId && !authUser.aliases.includes(aliasId)) {
+            callback({ error: new errorCreator.NotAllowed({ name: `invite to room ${followerIds} with alias ${aliasId}` }) });
+
+            return;
+          }
+
+          followerIds.filter(followerId => !foundRoom.followers.includes(followerId)).forEach((followerId) => {
+            const invitationToCreate = {
+              receiverId: followerId,
+              itemId: roomId,
+              ownerId: authUser.objectId,
+              ownerAliasId: aliasId,
+              invitationType: dbConfig.InvitationTypes.ROOM,
+            };
+
+            dbInvitation.createInvitation({
+              invitation: invitationToCreate,
+              callback: ({ error: inviteError, data: invitationData }) => {
+                if (inviteError) {
+                  callback({ error: inviteError });
+
+                  return;
+                }
+
+                const { invitation: newInvitation } = invitationData;
+                const dataToSend = {
+                  data: {
+                    invitation: newInvitation,
+                    changeType: dbConfig.ChangeTypes.CREATE,
+                  },
+                };
+
+                if (!socket) {
+                  io.to(newInvitation.ownerAliasId || newInvitation.ownerId).emit(dbConfig.EmitTypes.INVITATION, dataToSend);
+                }
+
+                io.to(newInvitation.receiverId).emit(dbConfig.EmitTypes.INVITATION, dataToSend);
+
+                callback(dataToSend);
+              },
+            });
+          });
+        },
+      });
+    },
+  });
+}
+
+/**
+ * User accepts sent invitation and joins the room.
+ * @param {Object} params Parameters.
+ * @param {Object} params.invitationId ID of the invitation that will be accepted.
+ * @param {Object} params.io Socket io.
+ * @param {Function} params.callback Callback.
+ */
+function acceptRoomInvitation({
+  token,
+  invitationId,
+  io,
+  socket,
+  callback,
+}) {
+  authenticator.isUserAllowed({
+    token,
+    commandName: dbConfig.apiCommands.AcceptInvitation.name,
+    callback: ({ error, data }) => {
+      if (error) {
+        callback({ error });
+
+        return;
+      }
+
+      const { user: authUser } = data;
+
+      dbInvitation.useInvitation({
+        invitationId,
+        callback: ({ error: invitationError, data: invitationData }) => {
+          if (invitationError) {
+            callback({ error: invitationError });
+
+            return;
+          }
+
+          const { invitation } = invitationData;
+
+          follow({
+            io,
+            callback,
+            socket,
+            roomId: invitation.itemId,
+            userId: authUser.objectId,
+            aliasId: authUser.aliases.includes(invitation.receiverId)
+              ? invitation.receiverId
+              : undefined,
+          });
+        },
+      });
+    },
+  });
+}
+
 exports.createRoom = createRoom;
 exports.updateRoom = updateRoom;
 exports.removeRoom = removeRoom;
@@ -1144,3 +1286,5 @@ exports.getAllRooms = getAllRooms;
 exports.getRoomsByUser = getRoomsByUser;
 exports.getFollowedRooms = getFollowedRooms;
 exports.doesWhisperRoomExist = doesWhisperRoomExist;
+exports.inviteToRoom = inviteToRoom;
+exports.acceptRoomInvitation = acceptRoomInvitation;
