@@ -729,7 +729,7 @@ config.importedPositionMinAccessLevel = process.env.IMPORTEDPOSITIONMINACCESSLEV
  */
 config.maxPositionHistory = process.env.MAXPOSITIONHISTORY || config.maxPositionHistory || 15;
 
-config.defaultPositionRadius = process.env.DEFAULTPOSITIONRADIUS || config.defaultPositionRadius || 50;
+config.defaultPositionRadius = process.env.DEFAULTPOSITIONRADIUS || config.defaultPositionRadius || 25;
 
 /**
  * *********
