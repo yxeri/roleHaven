@@ -184,13 +184,23 @@ function doesRoomExist({
  * @param {string[]} params.userIds Id of the users to add.
  * @param {string} params.roomId Id of the room.
  * @param {Function} params.callback Callback.
+ * @param {boolean} [params.addParticipants] Should they be added as participants too?
  */
-function addFollowers({ userIds, roomId, callback }) {
+function addFollowers({
+  userIds,
+  roomId,
+  callback,
+  addParticipants,
+}) {
   const update = {
     $addToSet: {
       followers: { $each: userIds },
     },
   };
+
+  if (addParticipants) {
+    update.$addToSet.participantIds = { $each: userIds };
+  }
 
   updateObject({
     roomId,

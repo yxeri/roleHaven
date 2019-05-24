@@ -870,19 +870,11 @@ function followRoom({
   userIds = [],
 }) {
   updateObjects({
+    callback,
     query: {
       _id: { $in: userIds },
     },
     update: { $addToSet: { followingRooms: roomId } },
-    callback: ({ error, data }) => {
-      if (error) {
-        callback({ error });
-
-        return;
-      }
-
-      callback({ data });
-    },
   });
 }
 
@@ -930,17 +922,20 @@ function getAllUsers({ callback }) {
 /**
  * Get users that have access to alias.
  * @param {Object} params Parameters.
- * @param {string} params.aliasId Alias Id.
+ * @param {string} params.aliasIds Aliases.
  * @param {Function} params.callback Callback.
  */
-function getUsersByAlias({
-  aliasId,
+function getUsersByAliases({
+  aliasIds,
   callback,
 }) {
   getUsers({
     callback,
     query: {
-      aliases: { $in: [aliasId] },
+      $or: [
+        { _id: { $in: aliasIds } },
+        { aliases: { $in: aliasIds } },
+      ],
     },
   });
 }
@@ -967,5 +962,5 @@ exports.addAlias = addAlias;
 exports.removeAlias = removeAlias;
 exports.removeAliasFromAllUsers = removeAliasFromAllUsers;
 exports.getAllUsers = getAllUsers;
-exports.getUsersByAlias = getUsersByAlias;
+exports.getUsersByAliases = getUsersByAliases;
 exports.doesUserSocketIdExist = doesUserSocketIdExist;
