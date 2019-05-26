@@ -456,8 +456,8 @@ function createRoom({
         return;
       }
 
-      if (room.roomName.length > appConfig.roomNameMaxLength || !textTools.hasAllowedText(room.roomName)) {
-        callback({ error: new errorCreator.InvalidCharacters({ expected: 'a-z 0-9 length: 10' }) });
+      if (room.roomName.length > appConfig.roomNameMaxLength) {
+        callback({ error: new errorCreator.InvalidCharacters({ expected: 'a-z 0-9 length: 20' }) });
 
         return;
       }
