@@ -18,13 +18,13 @@
 
 const { appConfig, dbConfig } = require('../config/defaults/config');
 const errorCreator = require('../error/errorCreator');
-const textTools = require('../utils/textTools');
 const objectValidator = require('../utils/objectValidator');
 const authenticator = require('../helpers/authenticator');
 const dbRoom = require('../db/connectors/room');
 const socketUtils = require('../utils/socketIo');
 const dbUser = require('../db/connectors/user');
 const managerHelper = require('../helpers/manager');
+const dbInvitation = require('../db/connectors/invitation');
 
 /**
  * Auth to room with password.
@@ -59,8 +59,8 @@ function authToRoom({
 /**
  * Get room by Id or name.
  * @param {Object} params Parameter.
- * @param {string} params.token jwt.
  * @param {Function} params.callback Callback.
+ * @param {string} [params.token] jwt.
  * @param {string} [params.roomId] Id of the room.
  * @param {string} [params.roomName] Name of the room.
  * @param {string} [params.password] Password for the room.
@@ -366,8 +366,8 @@ function createAndFollowWhisperRoom({
     callback: ({ error: userError, data: userData }) => {
       if (userError) {
         if (userError.type && userError.type === errorCreator.ErrorTypes.DOESNOTEXIST) {
-          dbUser.getUsersByAlias({
-            aliasId: participantIds[1],
+          dbUser.getUsersByAliases({
+            aliasIds: [participantIds[1]],
             callback: ({ error: aliasError, data: aliasData }) => {
               if (aliasError) {
                 callback({ error: aliasError });
@@ -455,8 +455,8 @@ function createRoom({
         return;
       }
 
-      if (room.roomName.length > appConfig.roomNameMaxLength || !textTools.hasAllowedText(room.roomName)) {
-        callback({ error: new errorCreator.InvalidCharacters({ expected: 'a-z 0-9 length: 10' }) });
+      if (room.roomName.length > appConfig.roomNameMaxLength) {
+        callback({ error: new errorCreator.InvalidCharacters({ expected: 'a-z 0-9 length: 20' }) });
 
         return;
       }
@@ -563,13 +563,15 @@ function follow({
   io,
   callback,
   socket,
+  addParticipants,
+  invited = false,
 }) {
   const idToAdd = aliasId || userId;
 
   dbRoom.updateAccess({
     roomId,
     userIds: [idToAdd],
-    callback: ({ error, data }) => {
+    callback: ({ error }) => {
       if (error) {
         callback({ error });
 
@@ -578,6 +580,7 @@ function follow({
 
       dbRoom.addFollowers({
         roomId,
+        addParticipants,
         userIds: [idToAdd],
         callback: (followerData) => {
           if (followerData.error) {
@@ -585,6 +588,8 @@ function follow({
 
             return;
           }
+
+          const { room: updatedRoom } = followerData.data;
 
           dbUser.followRoom({
             roomId,
@@ -596,25 +601,19 @@ function follow({
                 return;
               }
 
-              const { user: updatedUser } = followData.data;
+              const { users } = followData.data;
 
               const toReturn = {
                 data: {
+                  invited,
                   user: { objectId: idToAdd },
-                  room: data.room,
-                  changeType: dbConfig.ChangeTypes.CREATE,
-                },
-              };
-              const toSend = {
-                data: {
-                  user: { objectId: idToAdd },
-                  room: { objectId: roomId },
-                  changeType: dbConfig.ChangeTypes.CREATE,
+                  room: updatedRoom,
+                  changeType: dbConfig.ChangeTypes.UPDATE,
                 },
               };
               const userToReturn = {
                 data: {
-                  user: updatedUser,
+                  user: users[0] || { objectId: userId },
                   changeType: dbConfig.ChangeTypes.UPDATE,
                 },
               };
@@ -639,11 +638,15 @@ function follow({
 
               if (socket) {
                 socket.to(idToAdd).emit(dbConfig.EmitTypes.USER, userToReturn);
-                socket.to(roomId).emit(dbConfig.EmitTypes.FOLLOWER, toSend);
+                socket.to(roomId).emit(dbConfig.EmitTypes.ROOM, toReturn);
+
+                if (invited) {
+                  socket.to(idToAdd).emit(dbConfig.EmitTypes.FOLLOW, toReturn);
+                }
               } else {
                 io.to(idToAdd).emit(dbConfig.EmitTypes.FOLLOW, toReturn);
                 io.to(idToAdd).emit(dbConfig.EmitTypes.USER, userToReturn);
-                io.to(roomId).emit(dbConfig.EmitTypes.FOLLOWER, toSend);
+                io.to(roomId).emit(dbConfig.EmitTypes.ROOM, toReturn);
               }
 
               callback(toReturn);
@@ -802,7 +805,7 @@ function unfollowRoom({
         return;
       }
 
-      dbRoom.updateAccess({
+      dbRoom.removeFollowers({
         roomId,
         userIds: [aliasId || authUser.objectId],
         callback: () => {
@@ -1130,6 +1133,240 @@ function updateRoom({
   });
 }
 
+/**
+ * Invite users and aliases to a room.
+ * @param {Object} params Parameters.
+ * @param {string} params.roomId Id of the room.
+ * @param {string[]} params.followerIds Ids of the users and aliases to invite.
+ * @param {Object} [params.socket] Socket.Io.
+ * @param {Object} params.io Socket.Io.
+ * @param {string} params.token JWT.
+ * @param {Function} params.callback Callback.
+ */
+function inviteToRoom({
+  roomId,
+  followerIds,
+  socket,
+  io,
+  token,
+  callback,
+}) {
+  authenticator.isUserAllowed({
+    token,
+    commandName: dbConfig.apiCommands.InviteToRoom.name,
+    callback: ({ error, data }) => {
+      if (error) {
+        callback({ error });
+
+        return;
+      }
+
+      const { user: authUser } = data;
+
+      getRoomById({
+        roomId,
+        internalCallUser: authUser,
+        needsAccess: true,
+        callback: ({ error: roomError, data: roomData }) => {
+          if (roomError) {
+            callback({ error: roomError });
+
+            return;
+          }
+
+          const { room } = roomData;
+
+          dbUser.getUsersByAliases({
+            aliasIds: followerIds,
+            callback: ({ error: aliasError, data: aliasData }) => {
+              if (aliasError) {
+                callback({ error: aliasError });
+
+                return;
+              }
+
+              const { users: foundUsers } = aliasData;
+              const followers = followerIds.filter(id => !room.followers.includes(id)).map((id) => {
+                const user = foundUsers.find((foundUser) => {
+                  return foundUser.objectId === id || foundUser.aliases.includes(id);
+                });
+
+                return {
+                  user,
+                  aliasId: id,
+                };
+              });
+              room.followers = room.followers.concat(followers.map(follower => follower.aliasId));
+
+              followers.forEach(({ user, aliasId }) => {
+                follow({
+                  aliasId,
+                  user,
+                  roomId,
+                  io,
+                  socket,
+                  invited: true,
+                  addParticipants: room.isWhisper,
+                  callback: () => {},
+                  userId: user.objectId,
+                });
+              });
+
+              callback({
+                data: {
+                  room,
+                  changeType: dbConfig.ChangeTypes.UPDATE,
+                },
+              });
+            },
+          });
+        },
+      });
+    },
+  });
+}
+
+/**
+ * Invite users to a room.
+ * @param {Object} params Parameters.
+ * @param {Function} params.callback Callback.
+ * @param {Object} params.io Socket io.
+ */
+function sendInvitationToRoom({
+  aliasId,
+  followerIds,
+  roomId,
+  io,
+  callback,
+  token,
+  socket,
+}) {
+  authenticator.isUserAllowed({
+    token,
+    commandName: dbConfig.apiCommands.InviteToRoom.name,
+    callback: ({ error, data }) => {
+      if (error) {
+        callback({ error });
+
+        return;
+      }
+
+      const { user: authUser } = data;
+
+      if (aliasId && !authUser.aliases.includes(aliasId)) {
+        callback({ error: new errorCreator.NotAllowed({ name: `invite to room ${followerIds} with alias ${aliasId}` }) });
+
+        return;
+      }
+
+      getRoomById({
+        roomId,
+        needsAccess: true,
+        internalCallUser: authUser,
+        callback: ({ error: roomError, data: roomData }) => {
+          if (roomError) {
+            callback({ error: roomError });
+
+            return;
+          }
+
+          const { room: foundRoom } = roomData;
+
+          followerIds.filter(followerId => !foundRoom.followers.includes(followerId)).forEach((followerId) => {
+            const invitationToCreate = {
+              receiverId: followerId,
+              itemId: roomId,
+              ownerId: authUser.objectId,
+              ownerAliasId: aliasId,
+              invitationType: dbConfig.InvitationTypes.ROOM,
+            };
+
+            dbInvitation.createInvitation({
+              invitation: invitationToCreate,
+              callback: ({ error: inviteError, data: invitationData }) => {
+                if (inviteError) {
+                  callback({ error: inviteError });
+
+                  return;
+                }
+
+                const { invitation: newInvitation } = invitationData;
+                const dataToSend = {
+                  data: {
+                    invitation: newInvitation,
+                    changeType: dbConfig.ChangeTypes.CREATE,
+                  },
+                };
+
+                if (!socket) {
+                  io.to(newInvitation.ownerAliasId || newInvitation.ownerId).emit(dbConfig.EmitTypes.INVITATION, dataToSend);
+                }
+
+                io.to(newInvitation.receiverId).emit(dbConfig.EmitTypes.INVITATION, dataToSend);
+
+                callback(dataToSend);
+              },
+            });
+          });
+        },
+      });
+    },
+  });
+}
+
+/**
+ * User accepts sent invitation and joins the room.
+ * @param {Object} params Parameters.
+ * @param {Object} params.invitationId ID of the invitation that will be accepted.
+ * @param {Object} params.io Socket io.
+ * @param {Function} params.callback Callback.
+ */
+function acceptRoomInvitation({
+  token,
+  invitationId,
+  io,
+  socket,
+  callback,
+}) {
+  authenticator.isUserAllowed({
+    token,
+    commandName: dbConfig.apiCommands.AcceptInvitation.name,
+    callback: ({ error, data }) => {
+      if (error) {
+        callback({ error });
+
+        return;
+      }
+
+      const { user: authUser } = data;
+
+      dbInvitation.useInvitation({
+        invitationId,
+        callback: ({ error: invitationError, data: invitationData }) => {
+          if (invitationError) {
+            callback({ error: invitationError });
+
+            return;
+          }
+
+          const { invitation } = invitationData;
+
+          follow({
+            io,
+            callback,
+            socket,
+            roomId: invitation.itemId,
+            userId: authUser.objectId,
+            aliasId: authUser.aliases.includes(invitation.receiverId)
+              ? invitation.receiverId
+              : undefined,
+          });
+        },
+      });
+    },
+  });
+}
+
 exports.createRoom = createRoom;
 exports.updateRoom = updateRoom;
 exports.removeRoom = removeRoom;
@@ -1144,3 +1381,6 @@ exports.getAllRooms = getAllRooms;
 exports.getRoomsByUser = getRoomsByUser;
 exports.getFollowedRooms = getFollowedRooms;
 exports.doesWhisperRoomExist = doesWhisperRoomExist;
+exports.sendInvitationToRoom = sendInvitationToRoom;
+exports.acceptRoomInvitation = acceptRoomInvitation;
+exports.inviteToRoom = inviteToRoom;

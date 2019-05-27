@@ -87,6 +87,33 @@ function handle(socket, io) {
 
     roomManager.getRoomsByUser(params);
   });
+
+  socket.on('sendInvitationToRoom', (params, callback = () => {
+  }) => {
+    params.callback = callback;
+    params.io = io;
+    params.socket = socket;
+
+    roomManager.sendInvitationToRoom(params);
+  });
+
+  socket.on('acceptRoomInvitation', (params, callback = () => {
+  }) => {
+    params.callback = callback;
+    params.io = io;
+    params.socket = socket;
+
+    roomManager.acceptRoomInvitation(params);
+  });
+
+  socket.on('inviteToRoom', (params, callback = () => {
+  }) => {
+    params.callback = callback;
+    params.io = io;
+    params.socket = socket;
+
+    roomManager.inviteToRoom(params);
+  });
 }
 
 exports.handle = handle;

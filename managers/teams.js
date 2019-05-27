@@ -40,6 +40,7 @@ function getTeamById({
   token,
   callback,
   internalCallUser,
+  needsAccess,
 }) {
   authenticator.isUserAllowed({
     token,
@@ -72,7 +73,7 @@ function getTeamById({
             toAuth: authUser,
           });
 
-          if (!canSee) {
+          if (!canSee || (needsAccess && !hasAccess)) {
             callback({ error: errorCreator.NotAllowed({ name: `get team ${teamId}` }) });
 
             return;
@@ -476,6 +477,7 @@ function inviteToTeam({
       const { user: authUser } = data;
 
       getTeamById({
+        needsAccess: true,
         internalCallUser: authUser,
         teamId: invitation.itemId,
         callback: ({ error: teamError, data: teamData }) => {
@@ -727,65 +729,6 @@ function leaveTeam({
 }
 
 /**
- * Decline team invitation.
- * @param {Object} params Parameters.
- * @param {string} params.invitationId Id of the invitation to decline.
- * @param {string} params.token jwt.
- * @param {Object} params.io Socket.io. Will be used if socket is not set.
- * @param {Function} params.callback Callback.
- * @param {Object} [params.socket] Socket.io.
- */
-function declineTeamInvitation({
-  invitationId,
-  token,
-  callback,
-  socket,
-  io,
-}) {
-  authenticator.isUserAllowed({
-    token,
-    commandName: dbConfig.apiCommands.DeclineInvitation.name,
-    callback: ({ error }) => {
-      if (error) {
-        callback({ error });
-
-        return;
-      }
-
-      dbInvitation.useInvitation({
-        invitationId,
-        callback: ({ error: invitationError, data: invitationData }) => {
-          if (invitationError) {
-            callback({ error: invitationError });
-
-            return;
-          }
-
-          const { receiverId, itemId, invitationType } = invitationData;
-          const dataToSend = {
-            data: {
-              invitation: {
-                receiverId,
-                invitationType,
-              },
-              changeType: dbConfig.ChangeTypes.REMOVE,
-            },
-          };
-
-          if (socket) {
-            socket.broadcast.to(itemId).emit(dbConfig.EmitTypes.INVITATION, dataToSend);
-          } else {
-            io.to(itemId).emit(dbConfig.EmitTypes.INVITATION, dataToSend);
-          }
-
-          callback(dataToSend);
-        },
-      });
-    },
-  });
-}
-
-/**
  * Update a team.
  * @param {Object} params Parameters.
  * @param {string} params.teamId ID of the team to update.
@@ -878,5 +821,4 @@ exports.inviteToTeam = inviteToTeam;
 exports.acceptTeamInvitation = acceptTeamInvitation;
 exports.getTeamById = getTeamById;
 exports.leaveTeam = leaveTeam;
-exports.declineTeamInvitation = declineTeamInvitation;
 exports.getTeamsByUser = getTeamsByUser;

@@ -85,19 +85,51 @@ function getInvitation({ query, callback }) {
 }
 
 /**
+ * Does an invitation with the same item Id and receiver Id exist?
+ * @param {Object} params Parameters.
+ * @param {string} params.itemId Item Id.
+ * @param {string} params.receiverId Receiver Id.
+ * @param {Function} params.callback Callback.
+ */
+function doesInvitationExist({
+  itemId,
+  receiverId,
+  callback,
+}) {
+  dbConnector.getObject({
+    query: {
+      itemId,
+      receiverId,
+    },
+    object: Invitation,
+    callback: ({ error, data }) => {
+      if (error) {
+        callback({ error });
+
+        return;
+      }
+
+      if (!data.object) {
+        callback({ data: { exists: false } });
+
+        return;
+      }
+
+      callback({ data: { exists: true } });
+    },
+  });
+}
+
+/**
  * Create invitation
  * @param {Object} params Parameters.
  * @param {Object} params.invitation Invitation to save.
  * @param {Function} params.callback Callback.
  */
 function createInvitation({ invitation, callback }) {
-  const query = {
+  doesInvitationExist({
     itemId: invitation.itemId,
     receiverId: invitation.receiverId,
-  };
-
-  getInvitation({
-    query,
     callback: ({ error, data }) => {
       if (error) {
         callback({ error: new errorCreator.Database({ errorObject: error, name: 'createInvitation' }) });
@@ -105,7 +137,7 @@ function createInvitation({ invitation, callback }) {
         return;
       }
 
-      if (data.invitation) {
+      if (data.exists) {
         callback({ error: new errorCreator.AlreadyExists({ name: `invitation ${invitation.invitationType} ${invitation.itemId}` }) });
 
         return;
@@ -142,15 +174,20 @@ function getInvitationById({ invitationId, callback }) {
 }
 
 /**
- * Get invitations by receiver
- * @param {Object} params Parameters
- * @param {string} params.receiverId ID of the receiver of the invitation
- * @param {Function} params.callback Callback
+ * Get invitations that the user (or its aliases) has received.
+ * @param {Object} params Parameters.
+ * @param {Object} params.user User.
+ * @param {Function} params.callback Callback.
  */
-function getInvitationsByReceiver({ receiverId, callback }) {
+function getInvitationsByReceiver({ user, callback }) {
   getInvitations({
     callback,
-    query: { receiverId },
+    query: {
+      $or: [
+        { receiverId: user.objectId },
+        { receiverId: { $in: user.aliases } },
+      ],
+    },
   });
 }
 
@@ -187,15 +224,13 @@ function removeInvitation({ invitationId, callback }) {
 }
 
 /**
- * Remove all invitations with the same item Id for a user
+ * Remove all invitations with the same item Id for a user.
  * @param {Object} params Parameters.
- * @param {string} params.receiverId Id of the invitation receiver.
  * @param {string} params.itemId Item Id.
  * @param {Function} params.callback Callback.
  */
-function removeInvitationsByItemId({ receiverId, itemId, callback }) {
+function removeInvitationsByItemId({ itemId, callback }) {
   const query = {
-    receiverId,
     itemId,
   };
 
@@ -207,12 +242,15 @@ function removeInvitationsByItemId({ receiverId, itemId, callback }) {
 }
 
 /**
- * Get and remove an invitation. Return the removed invitation in the callback
+ * Remove invitations with the same itemId as the sent invitation.
  * @param {Object} params Parameters.
  * @param {string} params.invitationId Id of the invitation.
  * @param {Function} params.callback Callback.
  */
-function useInvitation({ invitationId, callback }) {
+function useInvitation({
+  invitationId,
+  callback,
+}) {
   getInvitation({
     query: { _id: invitationId },
     callback: ({ error, data }) => {
@@ -223,12 +261,10 @@ function useInvitation({ invitationId, callback }) {
       }
 
       const {
-        receiverId,
         itemId,
       } = data.invitation;
 
       removeInvitationsByItemId({
-        receiverId,
         itemId,
         callback: ({ error: removeError }) => {
           if (removeError) {
