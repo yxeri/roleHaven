@@ -37,8 +37,8 @@ function handle(io) {
       socketPath: appConfig.socketPath,
       mainJs: `scripts/${appConfig.mainJsName}.js?version=${appConfig.jsVersion}`,
       mainCss: req.query.style && !Number.isNaN(req.query.style)
-        ? `styles/${req.query.style}.css`
-        : `styles/${appConfig.mainCssName}.css`,
+        ? `styles/${req.query.style}.css?version=${appConfig.jsVersion}`
+        : `styles/${appConfig.mainCssName}.css?version=${appConfig.jsVersion}`,
     });
   });
 
@@ -49,8 +49,8 @@ function handle(io) {
       socketPath: appConfig.socketPath,
       adminJs: `scripts/${appConfig.adminIndexName}.js?version=${appConfig.jsVersion}`,
       adminCss: req.query.style && !Number.isNaN(req.query.style)
-        ? `styles/admin${req.query.style}.css`
-        : `styles/${appConfig.adminCssName}.css`,
+        ? `styles/admin${req.query.style}.css?version=${appConfig.jsVersion}`
+        : `styles/${appConfig.adminCssName}.css?version=${appConfig.jsVersion}`,
     });
   });
 
