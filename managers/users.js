@@ -134,8 +134,8 @@ function createUser({
       if (user.description && user.description.join('').length > appConfig.userDescriptionMaxLength) {
         callback({
           error: new errorCreator.InvalidLength({
-            name: `Device length: ${appConfig.deviceIdLength}`,
-            extraData: { param: 'device' },
+            name: `Description length: ${appConfig.userDescriptionMaxLength}`,
+            extraData: { param: 'description' },
           }),
         });
 
@@ -941,9 +941,10 @@ function updateUser({
   io,
   callback,
   userId,
-  user,
   options,
   socket,
+  image,
+  user = {},
 }) {
   authenticator.isUserAllowed({
     token,
@@ -956,81 +957,106 @@ function updateUser({
       }
 
       const { user: authUser } = data;
+      const userUpdate = user;
+      const updateUserCallback = () => {
+        getUserById({
+          token,
+          userId,
+          internalCallUser: authUser,
+          callback: ({ error: getUserError, data: getUserData }) => {
+            if (getUserError) {
+              callback({ error: getUserError });
 
-      getUserById({
-        token,
-        userId,
-        internalCallUser: authUser,
-        callback: ({ error: getUserError, data: getUserData }) => {
-          if (getUserError) {
-            callback({ error: getUserError });
+              return;
+            }
 
-            return;
-          }
+            if (userId === authUser.userId && dbConfig.apiCommands.UpdateSelf.accessLevel > authUser.accessLevel) {
+              callback({ error: new errorCreator.NotAllowed({ name: 'update self' }) });
 
-          if (userId === authUser.userId && dbConfig.apiCommands.UpdateSelf.accessLevel > authUser.accessLevel) {
-            callback({ error: new errorCreator.NotAllowed({ name: 'update self' }) });
+              return;
+            }
 
-            return;
-          }
+            const { user: foundUser } = getUserData;
 
-          const { user: foundUser } = getUserData;
+            const {
+              hasFullAccess,
+            } = authenticator.hasAccessTo({
+              objectToAccess: foundUser,
+              toAuth: authUser,
+            });
 
-          const {
-            hasFullAccess,
-          } = authenticator.hasAccessTo({
-            objectToAccess: foundUser,
-            toAuth: authUser,
-          });
+            if (!hasFullAccess) {
+              callback({ error: new errorCreator.NotAllowed({ name: `update user ${userId}` }) });
 
-          if (!hasFullAccess) {
-            callback({ error: new errorCreator.NotAllowed({ name: `update user ${userId}` }) });
+              return;
+            }
 
-            return;
-          }
+            if (user.accessLevel && (authUser.accessLevel < dbConfig.AccessLevels.ADMIN || user.accessLevel > dbConfig.AccessLevels.ADMIN)) {
+              callback({ error: new errorCreator.NotAllowed({ name: `update access level user ${userId}` }) });
 
-          if (user.accessLevel && (authUser.accessLevel < dbConfig.AccessLevels.ADMIN || user.accessLevel > dbConfig.AccessLevels.ADMIN)) {
-            callback({ error: new errorCreator.NotAllowed({ name: `update access level user ${userId}` }) });
+              return;
+            }
 
-            return;
-          }
+            dbUser.updateUser({
+              options,
+              userId,
+              user: userUpdate,
+              callback: ({ error: updateError, data: updateData }) => {
+                if (updateError) {
+                  callback({ error: updateError });
 
-          dbUser.updateUser({
-            user,
-            options,
-            userId,
-            callback: ({ error: updateError, data: updateData }) => {
-              if (updateError) {
-                callback({ error: updateError });
+                  return;
+                }
 
-                return;
-              }
+                const { user: updatedUser } = updateData;
+                const dataToSend = {
+                  data: {
+                    user: managerHelper.stripObject({ object: Object.assign({}, updatedUser) }),
+                    changeType: dbConfig.ChangeTypes.UPDATE,
+                  },
+                };
+                const creatorDataToSend = {
+                  data: {
+                    user: updatedUser,
+                    changeType: dbConfig.ChangeTypes.UPDATE,
+                  },
+                };
 
-              const { user: updatedUser } = updateData;
-              const dataToSend = {
-                data: {
-                  user: managerHelper.stripObject({ object: Object.assign({}, updatedUser) }),
-                  changeType: dbConfig.ChangeTypes.UPDATE,
-                },
-              };
-              const creatorDataToSend = {
-                data: {
-                  user: updatedUser,
-                  changeType: dbConfig.ChangeTypes.UPDATE,
-                },
-              };
+                if (socket) {
+                  socket.broadcast.emit(dbConfig.EmitTypes.USER, dataToSend);
+                } else {
+                  io.emit(dbConfig.EmitTypes.USER, dataToSend);
+                }
 
-              if (socket) {
-                socket.broadcast.emit(dbConfig.EmitTypes.USER, dataToSend);
-              } else {
-                io.emit(dbConfig.EmitTypes.USER, dataToSend);
-              }
+                callback(creatorDataToSend);
+              },
+            });
+          },
+        });
+      };
 
-              callback(creatorDataToSend);
-            },
-          });
-        },
-      });
+      if (image) {
+        imager.createImage({
+          image,
+          callback: ({ error: imageError, data: imageData }) => {
+            if (imageError) {
+              callback({ error: imageError });
+
+              return;
+            }
+
+            const { image: createdImage } = imageData;
+
+            userUpdate.image = createdImage;
+
+            updateUserCallback();
+          },
+        });
+
+        return;
+      }
+
+      updateUserCallback();
     },
   });
 }

@@ -460,6 +460,7 @@ function updateUser({
     hasFullAccess,
     socketId,
     aliases,
+    image,
   } = user;
   const {
     resetSocket,
@@ -487,6 +488,7 @@ function updateUser({
   if (typeof isLootable === 'boolean') { set.isLootable = isLootable; }
   if (typeof hasFullAccess === 'boolean') { set.hasFullAccess = hasFullAccess; }
   if (aliases) { addToSet.aliases = { $each: aliases }; }
+  if (image) { set.image = image; }
 
   if (Object.keys(set).length > 0) { update.$set = set; }
   if (Object.keys(unset).length > 0) { update.$unset = unset; }
