@@ -18,7 +18,6 @@
 
 const { appConfig, dbConfig } = require('../config/defaults/config');
 const errorCreator = require('../error/errorCreator');
-const textTools = require('../utils/textTools');
 const objectValidator = require('../utils/objectValidator');
 const authenticator = require('../helpers/authenticator');
 const dbRoom = require('../db/connectors/room');
