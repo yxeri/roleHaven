@@ -38,6 +38,7 @@ function createImage({
 
   sharp(imgBuffer)
     .resize(appConfig.imageMaxWidth, appConfig.imageMaxHeight, { fit: 'inside' })
+    .rotate()
     .toFile(`${appConfig.publicBase}/images/upload/${fileName}`, (error, info) => {
       if (error) {
         console.log(error);
