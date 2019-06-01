@@ -366,7 +366,7 @@ function sendBroadcastMsg({
 
       const text = message.text.join('');
 
-      if (text.length > appConfig.broadcastMaxLength || text.length <= 0) {
+      if (!image && (text.length > appConfig.broadcastMaxLength || text.length <= 0)) {
         callback({ error: new errorCreator.InvalidLength({ expected: `text length ${appConfig.broadcastMaxLength}` }) });
 
         return;
@@ -433,7 +433,7 @@ function sendChatMsg({
 
       const text = message.text.join('');
 
-      if (text.length > appConfig.messageMaxLength || text.length <= 0) {
+      if (!image && (text.length > appConfig.messageMaxLength || text.length <= 0)) {
         callback({ error: new errorCreator.InvalidCharacters({ expected: `text length ${appConfig.messageMaxLength}` }) });
 
         return;
@@ -513,7 +513,7 @@ function sendWhisperMsg({
 
       const text = message.text.join('');
 
-      if (text.length > appConfig.messageMaxLength || text.length <= 0) {
+      if (!image && (text.length > appConfig.messageMaxLength || text.length <= 0)) {
         callback({ error: new errorCreator.InvalidCharacters({ expected: `text length ${appConfig.messageMaxLength}` }) });
 
         return;
