@@ -515,7 +515,7 @@ config.userVerify = typeof userVerifyEnv !== 'undefined'
  * Minimum amount of characters in a user name
  * @type {number}
  */
-config.usernameMinLength = process.env.USERNAMEMINLENGTH || config.usernameMinLength || 2;
+config.usernameMinLength = process.env.USERNAMEMINLENGTH || config.usernameMinLength || 1;
 
 /**
  * Maximum amount of characters in a user name
@@ -533,13 +533,13 @@ config.maxUserWarnings = process.env.MAXUSERWARNINGS || config.maxUserWarnings |
  * Minimum amount of characters in a password
  * @type {number}
  */
-config.passwordMinLength = process.env.PASSWORDMINLENGTH || config.passwordMinLength || 4;
+config.passwordMinLength = process.env.PASSWORDMINLENGTH || config.passwordMinLength || 3;
 
 /**
  * Maximum amount of characters in a password
  * @type {number}
  */
-config.passwordMaxLength = process.env.PASSWORDMAXLENGTH || config.passwordMaxLength || 40;
+config.passwordMaxLength = process.env.PASSWORDMAXLENGTH || config.passwordMaxLength || 100;
 
 /**
  * Should users be able to register? Does not block register through rest api.
@@ -553,7 +553,7 @@ config.disallowUserRegister = typeof disallowRegisterEnv !== 'undefined'
  * Minimum amount of characters in a user's full name.
  * @type {number}
  */
-config.fullNameMinLength = process.env.FULLNAMEMINLENGTH || config.fullNameMinLength || 3;
+config.fullNameMinLength = process.env.FULLNAMEMINLENGTH || config.fullNameMinLength || 1;
 
 /**
  * Maximum amount of characters in a user's full name.
