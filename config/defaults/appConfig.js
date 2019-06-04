@@ -494,6 +494,8 @@ config.broadcastMaxLength = process.env.BROADCASTMAXLENGTH || config.broadcastMa
 
 config.imageMaxWidth = process.env.IMAGEMAXWIDTH || config.imageMaxWidth || 500;
 config.imageMaxHeight = process.env.IMAGEMAXHEIGHT || config.imageMaxHeight || 500;
+config.imageThumbMaxWidth = process.env.IMAGETHUMBMAXWIDTH || config.imageThumbMaxWidth || 125;
+config.imageThumbMaxHeight = process.env.IMAGETHUMBMAXHEIGHT || config.imageThumbMaxHeight || 125;
 
 /**
  * ********
