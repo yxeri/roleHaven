@@ -406,6 +406,7 @@ function updateAlias({
   aliasId,
   io,
   socket,
+  image,
 }) {
   authenticator.isUserAllowed({
     token,
@@ -417,7 +418,8 @@ function updateAlias({
         return;
       }
 
-      const { user } = data;
+      const { user: authUser } = data;
+      const aliasUpdate = alias;
 
       getAliasById({
         aliasId,
@@ -434,7 +436,7 @@ function updateAlias({
             hasFullAccess,
           } = authenticator.hasAccessTo({
             objectToAccess: foundAlias,
-            toAuth: user,
+            toAuth: authUser,
           });
 
           if (!hasFullAccess) {
@@ -443,46 +445,71 @@ function updateAlias({
             return;
           }
 
-          dbAlias.updateAlias({
-            alias,
-            options,
-            aliasId,
-            callback: ({ error: updateAliasError, data: updateAliasData }) => {
-              if (updateAliasError) {
-                callback({ error: updateAliasError });
+          const updateCallback = () => {
+            dbAlias.updateAlias({
+              options,
+              aliasId,
+              alias: aliasUpdate,
+              callback: ({ error: updateAliasError, data: updateAliasData }) => {
+                if (updateAliasError) {
+                  callback({ error: updateAliasError });
 
-                return;
-              }
+                  return;
+                }
 
-              const { alias: updatedAlias } = updateAliasData;
-              const aliasToSend = Object.assign({}, updatedAlias);
-              aliasToSend.username = aliasToSend.aliasName;
-              aliasToSend.aliasName = undefined;
+                const { alias: updatedAlias } = updateAliasData;
+                const aliasToSend = Object.assign({}, updatedAlias);
+                aliasToSend.username = aliasToSend.aliasName;
+                aliasToSend.aliasName = undefined;
 
-              const aliasDataToSend = {
-                data: {
-                  isSender: true,
-                  alias: updatedAlias,
-                  changeType: dbConfig.ChangeTypes.UPDATE,
-                },
-              };
-              const dataToSend = {
-                data: {
-                  user: managerHelper.stripObject({ object: aliasToSend }),
-                  changeType: dbConfig.ChangeTypes.UPDATE,
-                },
-              };
+                const aliasDataToSend = {
+                  data: {
+                    isSender: true,
+                    alias: updatedAlias,
+                    changeType: dbConfig.ChangeTypes.UPDATE,
+                  },
+                };
+                const dataToSend = {
+                  data: {
+                    user: managerHelper.stripObject({ object: aliasToSend }),
+                    changeType: dbConfig.ChangeTypes.UPDATE,
+                  },
+                };
 
-              if (socket) {
-                socket.broadcast.emit(dbConfig.EmitTypes.USER, dataToSend);
-              } else {
-                io.emit(dbConfig.EmitTypes.USER, dataToSend);
-                io.to(updatedAlias.objectId).emit(dbConfig.EmitTypes.ALIAS, aliasDataToSend);
-              }
+                if (socket) {
+                  socket.broadcast.emit(dbConfig.EmitTypes.USER, dataToSend);
+                } else {
+                  io.emit(dbConfig.EmitTypes.USER, dataToSend);
+                  io.to(updatedAlias.objectId).emit(dbConfig.EmitTypes.ALIAS, aliasDataToSend);
+                }
 
-              callback(aliasDataToSend);
-            },
-          });
+                callback(aliasDataToSend);
+              },
+            });
+          };
+
+          if (image) {
+            imager.createImage({
+              image,
+              callback: ({ error: imageError, data: imageData }) => {
+                if (imageError) {
+                  callback({ error: imageError });
+
+                  return;
+                }
+
+                const { image: createdImage } = imageData;
+
+                aliasUpdate.image = createdImage;
+
+                updateCallback();
+              },
+            });
+
+            return;
+          }
+
+          updateCallback();
         },
       });
     },
