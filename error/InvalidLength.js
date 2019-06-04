@@ -33,10 +33,10 @@ class InvalidCharacters extends GeneralError.create {
     super({
       errorObject,
       extraData,
-      type: GeneralError.ErrorTypes.INVALIDCHARACTERS,
+      type: GeneralError.ErrorTypes.INVALIDLENGTH,
       text: [
-        `Property ${name} has invalid characters`,
-        `Valid characters: ${expected}`,
+        `Property ${name} has an invalid length`,
+        `Valid length span: ${expected}`,
       ],
     });
   }
