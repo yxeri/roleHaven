@@ -70,7 +70,18 @@ function createUser({
 
       if (!textTools.isAllowedFull(user.username)) {
         callback({
-          error: new errorCreator.InvalidCharacters({ name: `User name: ${user.username}` }),
+          error: new errorCreator.InvalidCharacters({ name: `User name: ${user.username}.` }),
+        });
+
+        return;
+      }
+
+      if (user.fullName && !textTools.isAllowedFull(user.fullName)) {
+        callback({
+          error: new errorCreator.InvalidCharacters({
+            name: `Full name: ${user.fullName}.`,
+            extraData: { param: 'fullName' },
+          }),
         });
 
         return;
