@@ -16,6 +16,7 @@
 
 'use strict';
 
+const bcrypt = require('bcrypt');
 const { appConfig, dbConfig } = require('../config/defaults/config');
 const errorCreator = require('../error/errorCreator');
 const objectValidator = require('../utils/objectValidator');
@@ -25,36 +26,6 @@ const socketUtils = require('../utils/socketIo');
 const dbUser = require('../db/connectors/user');
 const managerHelper = require('../helpers/manager');
 const dbInvitation = require('../db/connectors/invitation');
-
-/**
- * Auth to room with password.
- * @param {Object} params Parameters.
- * @param {string} params.password Password for room.
- * @param {Function} params.callback Callback.
- * @param {string} [params.roomId] Id of the room.
- * @param {string} [params.roomName] Name of the room.
- */
-function authToRoom({
-  roomId,
-  roomName,
-  password,
-  callback,
-}) {
-  dbRoom.authToRoom({
-    roomId,
-    roomName,
-    password,
-    callback: ({ error, data }) => {
-      if (error) {
-        callback({ error });
-
-        return;
-      }
-
-      callback({ data });
-    },
-  });
-}
 
 /**
  * Get room by Id or name.
@@ -106,6 +77,7 @@ function getRoomById({
       dbRoom.getRoomById({
         roomId,
         roomName,
+        getPassword: true,
         callback: ({ error, data }) => {
           if (error) {
             callback({ error });
@@ -133,34 +105,40 @@ function getRoomById({
           }
 
           if (room.password && !hasAccess) {
-            authToRoom({
-              roomId,
-              roomName,
-              password,
-              callback: ({ error: roomAuthError, data: roomAuthData }) => {
-                if (roomAuthError) {
-                  callback({ error: roomAuthError });
+            if (!password) {
+              const accessError = new errorCreator.NotAllowed({
+                name: `${dbConfig.apiCommands.GetRoom.name}. User: ${authUser.objectId}. Access: 'Room' ${room.objectId}`,
+                extraData: { param: 'password' },
+              });
 
-                  return;
-                }
+              callback({ error: accessError });
 
-                if (!roomAuthData.hasAuthed) {
-                  const accessError = new errorCreator.NotAllowed({
-                    name: `${dbConfig.apiCommands.GetRoom.name}. User: ${authUser.objectId}. Access: 'Room' ${room.objectId}`,
-                    extraData: { param: 'password' },
-                  });
+              return;
+            }
 
-                  callback({ error: accessError });
+            bcrypt.compare(password, room.password, (hashError, result) => {
+              if (hashError) {
+                callback({ error: new errorCreator.Internal({ errorObject: hashError }) });
 
-                  return;
-                }
+                return;
+              }
 
-                returnFunc({
-                  callback,
-                  room,
-                  hasFullAccess,
+              if (!result) {
+                const accessError = new errorCreator.NotAllowed({
+                  name: `${dbConfig.apiCommands.GetRoom.name}. User: ${authUser.objectId}. Access: 'Room' ${room.objectId}`,
+                  extraData: { param: 'password' },
                 });
-              },
+
+                callback({ error: accessError });
+
+                return;
+              }
+
+              returnFunc({
+                callback,
+                room,
+                hasFullAccess,
+              });
             });
 
             return;
@@ -487,38 +465,58 @@ function createRoom({
         ? newRoom.password
         : undefined;
 
-      dbRoom.createRoom({
-        room,
-        options,
-        callback: ({ error: roomError, data: roomData }) => {
-          if (roomError) {
-            callback({ error: roomError });
+      const roomCallback = () => {
+        dbRoom.createRoom({
+          room,
+          options,
+          callback: ({ error: roomError, data: roomData }) => {
+            if (roomError) {
+              callback({ error: roomError });
+
+              return;
+            }
+
+            const createdRoom = roomData.room;
+            const dataToSend = {
+              data: {
+                room: createdRoom,
+                changeType: dbConfig.ChangeTypes.CREATE,
+              },
+            };
+
+            if (socket) {
+              socket.join(createdRoom.objectId);
+              socket.broadcast.emit(dbConfig.EmitTypes.ROOM, dataToSend);
+            } else {
+              const userSocket = socketUtils.getUserSocket({ io, socketId: user.socketId });
+
+              if (userSocket) { userSocket.join(createdRoom.objectId); }
+
+              io.emit(dbConfig.EmitTypes.ROOM, dataToSend);
+            }
+
+            callback(dataToSend);
+          },
+        });
+      };
+
+      if (newRoom.password) {
+        bcrypt.hash(newRoom.password, 10, (hashError, hash) => {
+          if (hashError) {
+            callback({ error: new errorCreator.Internal({ errorObject: hashError }) });
 
             return;
           }
 
-          const createdRoom = roomData.room;
-          const dataToSend = {
-            data: {
-              room: createdRoom,
-              changeType: dbConfig.ChangeTypes.CREATE,
-            },
-          };
+          newRoom.password = hash;
 
-          if (socket) {
-            socket.join(createdRoom.objectId);
-            socket.broadcast.emit(dbConfig.EmitTypes.ROOM, dataToSend);
-          } else {
-            const userSocket = socketUtils.getUserSocket({ io, socketId: user.socketId });
+          roomCallback();
+        });
 
-            if (userSocket) { userSocket.join(createdRoom.objectId); }
+        return;
+      }
 
-            io.emit(dbConfig.EmitTypes.ROOM, dataToSend);
-          }
-
-          callback(dataToSend);
-        },
-      });
+      roomCallback();
     },
   });
 }

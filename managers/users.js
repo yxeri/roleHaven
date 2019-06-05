@@ -29,6 +29,7 @@ const dbForum = require('../db/connectors/forum');
 const managerHelper = require('../helpers/manager');
 const positionManager = require('./positions');
 const imager = require('../helpers/imager');
+const bcrypt = require('bcrypt');
 
 /**
  * Create a user.
@@ -198,7 +199,6 @@ function createUser({
               },
               options: {
                 setId: true,
-                isFollower: true,
               },
               callback: ({ error: roomError, data: roomData }) => {
                 if (roomError) {
@@ -313,28 +313,38 @@ function createUser({
         });
       };
 
-      if (image) {
-        imager.createImage({
-          image,
-          callback: ({ error: imageError, data: imageData }) => {
-            if (imageError) {
-              callback({ error: imageError });
+      bcrypt.hash(newUser.password, 10, (hashError, hash) => {
+        if (hashError) {
+          callback({ error: new errorCreator.Internal({ errObject: hashError }) });
 
-              return;
-            }
+          return;
+        }
 
-            const { image: createdImage } = imageData;
+        newUser.password = hash;
 
-            newUser.image = createdImage;
+        if (image) {
+          imager.createImage({
+            image,
+            callback: ({ error: imageError, data: imageData }) => {
+              if (imageError) {
+                callback({ error: imageError });
 
-            userCallback();
-          },
-        });
+                return;
+              }
 
-        return;
-      }
+              const { image: createdImage } = imageData;
 
-      userCallback();
+              newUser.image = createdImage;
+
+              userCallback();
+            },
+          });
+
+          return;
+        }
+
+        userCallback();
+      });
     },
   });
 }

@@ -57,8 +57,6 @@ const User = mongoose.model('User', userSchema);
 function modifyUserParameters(user, noClean) {
   const modifiedUser = user;
 
-  modifiedUser.password = typeof modifiedUser.password === 'string';
-
   if (!noClean) {
     modifiedUser.mailAddress = typeof modifiedUser.mailAddress === 'string';
   }
@@ -168,16 +166,19 @@ function getUsers({ filter, query, callback }) {
  * @param {Object} params Parameters
  * @param {string} params.query Query to get alias
  * @param {Function} params.callback Callback
+ * @param {boolean} [params.getPassword] Should password hash be returned?
  */
 function getUser({
   filter,
   query,
   callback,
   supressExistError,
+  getPassword,
 }) {
   dbConnector.getObject({
     query,
     filter,
+    noClean: getPassword,
     object: User,
     callback: ({ error, data }) => {
       if (error) {
@@ -197,7 +198,11 @@ function getUser({
         return;
       }
 
-      callback({ data: { user: modifyUserParameters(data.object) } });
+      callback({
+        data: {
+          user: modifyUserParameters(data.object, getPassword),
+        },
+      });
     },
   });
 }
@@ -207,11 +212,13 @@ function getUser({
  * @param {Object} params Parameters.
  * @param {string} params.userId Id of the user.
  * @param {Function} params.callback Callback.
+ * @param {boolean} [params.getPassword] Should password hash be returned?
  */
 function getUserById({
   userId,
   username,
   callback,
+  getPassword = false,
   supressExistError,
 }) {
   const query = userId
@@ -221,6 +228,7 @@ function getUserById({
   getUser({
     query,
     supressExistError,
+    getPassword,
     callback: ({ error, data }) => {
       if (error) {
         callback({ error });
@@ -257,34 +265,6 @@ function doesUserSocketIdExist({
 
       callback({ data });
     },
-  });
-}
-
-/**
- * Authorize user. The user can be found by either the username or user Id.
- * @param {Object} params Parameters.
- * @param {string} params.password Password of the user.
- * @param {Function} params.callback Callback.
- * @param {string} [params.userId] Id of the user.
- * @param {string} [params.username] Name of the user.
- */
-function authUser({
-  username,
-  userId,
-  password,
-  callback,
-}) {
-  const query = { password };
-
-  if (userId) {
-    query._id = userId;
-  } else {
-    query.username = username;
-  }
-
-  getUser({
-    callback,
-    query,
   });
 }
 
@@ -942,7 +922,6 @@ function getUsersByAliases({
   });
 }
 
-exports.authUser = authUser;
 exports.createUser = createUser;
 exports.updateUser = updateUser;
 exports.verifyUser = verifyUser;
