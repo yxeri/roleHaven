@@ -21,6 +21,7 @@
 const chai = require('chai');
 const chaiHttp = require('chai-http');
 const chaiJson = require('chai-json-schema');
+const bcrypt = require('bcrypt');
 const dbConnector = require('../../db/databaseConnector');
 const dbRoom = require('../../db/connectors/room');
 const { dbConfig } = require('../../config/defaults/config');
@@ -51,114 +52,153 @@ before('Create all app default rooms', function createRooms(done) {
 });
 
 before('Create admin user 1', (done) => {
-  dbUser.createUser({
-    user: starterData.adminUserOne,
-    callback: (createData) => {
-      createData.should.be.jsonSchema(baseObjectSchemas.returnData);
-      createData.should.have.property('data');
+  bcrypt.hash(starterData.adminUserOne.password, 10, (hashError, hash) => {
+    const user = Object.assign({}, starterData.adminUserOne);
+    user.password = hash;
 
-      starterData.adminUserOne.objectId = createData.data.user.objectId;
+    dbUser.createUser({
+      user,
+      callback: (createData) => {
+        createData.should.be.jsonSchema(baseObjectSchemas.returnData);
+        createData.should.have.property('data');
 
-      done();
-    },
+        starterData.adminUserOne.objectId = createData.data.user.objectId;
+
+        done();
+      },
+    });
   });
 });
 
 before('Create admin user 2', (done) => {
-  dbUser.createUser({
-    user: starterData.adminUserTwo,
-    callback: (createData) => {
-      createData.should.be.jsonSchema(baseObjectSchemas.returnData);
-      createData.should.have.property('data');
+  bcrypt.hash(starterData.adminUserTwo.password, 10, (hashError, hash) => {
+    const user = Object.assign({}, starterData.adminUserTwo);
+    user.password = hash;
 
-      starterData.adminUserTwo.objectId = createData.data.user.objectId;
+    dbUser.createUser({
+      user,
+      callback: (createData) => {
+        createData.should.be.jsonSchema(baseObjectSchemas.returnData);
+        createData.should.have.property('data');
 
-      done();
-    },
+        starterData.adminUserTwo.objectId = createData.data.user.objectId;
+
+        done();
+      },
+    });
   });
 });
 
 before('Create basic user 1', (done) => {
-  dbUser.createUser({
-    user: starterData.basicUserOne,
-    callback: (createData) => {
-      createData.should.be.jsonSchema(baseObjectSchemas.returnData);
-      createData.should.have.property('data');
+  bcrypt.hash(starterData.basicUserOne.password, 10, (hashError, hash) => {
+    const user = Object.assign({}, starterData.basicUserOne);
+    user.password = hash;
 
-      starterData.basicUserOne.objectId = createData.data.user.objectId;
+    dbUser.createUser({
+      user,
+      callback: (createData) => {
+        createData.should.be.jsonSchema(baseObjectSchemas.returnData);
+        createData.should.have.property('data');
 
-      done();
-    },
+        starterData.basicUserOne.objectId = createData.data.user.objectId;
+
+        done();
+      },
+    });
   });
 });
 
 before('Create basic user 2', (done) => {
-  dbUser.createUser({
-    user: starterData.basicUserTwo,
-    callback: (createData) => {
-      createData.should.be.jsonSchema(baseObjectSchemas.returnData);
-      createData.should.have.property('data');
+  bcrypt.hash(starterData.basicUserTwo.password, 10, (hashError, hash) => {
+    const user = Object.assign({}, starterData.basicUserTwo);
+    user.password = hash;
 
-      starterData.basicUserTwo.objectId = createData.data.user.objectId;
+    dbUser.createUser({
+      user,
+      callback: (createData) => {
+        createData.should.be.jsonSchema(baseObjectSchemas.returnData);
+        createData.should.have.property('data');
 
-      done();
-    },
+        starterData.basicUserTwo.objectId = createData.data.user.objectId;
+
+        done();
+      },
+    });
   });
 });
 
 before('Create moderator user 1', (done) => {
-  dbUser.createUser({
-    user: starterData.moderatorUserOne,
-    callback: (createData) => {
-      createData.should.be.jsonSchema(baseObjectSchemas.returnData);
-      createData.should.have.property('data');
+  bcrypt.hash(starterData.moderatorUserOne.password, 10, (hashError, hash) => {
+    const user = Object.assign({}, starterData.moderatorUserOne);
+    user.password = hash;
 
-      starterData.moderatorUserOne.objectId = createData.data.user.objectId;
+    dbUser.createUser({
+      user,
+      callback: (createData) => {
+        createData.should.be.jsonSchema(baseObjectSchemas.returnData);
+        createData.should.have.property('data');
 
-      done();
-    },
+        starterData.moderatorUserOne.objectId = createData.data.user.objectId;
+
+        done();
+      },
+    });
   });
 });
 
 before('Create moderator user 2', (done) => {
-  dbUser.createUser({
-    user: starterData.moderatorUserTwo,
-    callback: (createData) => {
-      createData.should.be.jsonSchema(baseObjectSchemas.returnData);
-      createData.should.have.property('data');
+  bcrypt.hash(starterData.moderatorUserTwo.password, 10, (hashError, hash) => {
+    const user = Object.assign({}, starterData.moderatorUserTwo);
+    user.password = hash;
+    dbUser.createUser({
+      user,
+      callback: (createData) => {
+        createData.should.be.jsonSchema(baseObjectSchemas.returnData);
+        createData.should.have.property('data');
 
-      starterData.moderatorUserTwo.objectId = createData.data.user.objectId;
+        starterData.moderatorUserTwo.objectId = createData.data.user.objectId;
 
-      done();
-    },
+        done();
+      },
+    });
   });
 });
 
 before('Create unverified user', (done) => {
-  dbUser.createUser({
-    user: starterData.unverifiedUser,
-    callback: (createData) => {
-      createData.should.be.jsonSchema(baseObjectSchemas.returnData);
-      createData.should.have.property('data');
+  bcrypt.hash(starterData.unverifiedUser.password, 10, (hashError, hash) => {
+    const user = Object.assign({}, starterData.unverifiedUser);
+    user.password = hash;
 
-      starterData.unverifiedUser.objectId = createData.data.user.objectId;
+    dbUser.createUser({
+      user,
+      callback: (createData) => {
+        createData.should.be.jsonSchema(baseObjectSchemas.returnData);
+        createData.should.have.property('data');
 
-      done();
-    },
+        starterData.unverifiedUser.objectId = createData.data.user.objectId;
+
+        done();
+      },
+    });
   });
 });
 
 before('Create banned user', (done) => {
-  dbUser.createUser({
-    user: starterData.bannedUser,
-    callback: (createData) => {
-      createData.should.be.jsonSchema(baseObjectSchemas.returnData);
-      createData.should.have.property('data');
+  bcrypt.hash(starterData.bannedUser.password, 10, (hashError, hash) => {
+    const user = Object.assign({}, starterData.bannedUser);
+    user.password = hash;
 
-      starterData.bannedUser.objectId = createData.data.user.objectId;
+    dbUser.createUser({
+      user,
+      callback: (createData) => {
+        createData.should.be.jsonSchema(baseObjectSchemas.returnData);
+        createData.should.have.property('data');
 
-      done();
-    },
+        starterData.bannedUser.objectId = createData.data.user.objectId;
+
+        done();
+      },
+    });
   });
 });
 
