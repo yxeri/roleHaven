@@ -16,6 +16,7 @@
 
 'use strict';
 
+const bcrypt = require('bcrypt');
 const dbUser = require('../db/connectors/user');
 const dbWallet = require('../db/connectors/wallet');
 const { dbConfig, appConfig } = require('../config/defaults/config');
@@ -29,7 +30,6 @@ const dbForum = require('../db/connectors/forum');
 const managerHelper = require('../helpers/manager');
 const positionManager = require('./positions');
 const imager = require('../helpers/imager');
-const bcrypt = require('bcrypt');
 
 /**
  * Create a user.
