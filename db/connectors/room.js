@@ -39,18 +39,6 @@ const roomSchema = new mongoose.Schema(dbConnector.createSchema({
 const Room = mongoose.model('Room', roomSchema);
 
 /**
- * Remove private parameters from room.
- * @private
- * @param {Object} room Room.
- * @return {Object} Room with cleaned parameters
- */
-function cleanParameters(room) {
-  const modifiedRoom = room;
-
-  return modifiedRoom;
-}
-
-/**
  * Update room.
  * @private
  * @param {Object} params Parameters.
@@ -71,7 +59,7 @@ function updateObject({ update, roomId, callback }) {
         return;
       }
 
-      callback({ data: { room: cleanParameters(data.object) } });
+      callback({ data: { room: data.object } });
     },
   });
 }
@@ -82,9 +70,14 @@ function updateObject({ update, roomId, callback }) {
  * @param {string} params.query Query to get room.
  * @param {Function} params.callback Callback.
  */
-function getRoom({ query, callback }) {
+function getRoom({
+  getPassword,
+  query,
+  callback,
+}) {
   dbConnector.getObject({
     query,
+    noClean: getPassword,
     object: Room,
     callback: ({ error, data }) => {
       if (error) {
@@ -99,7 +92,7 @@ function getRoom({ query, callback }) {
         return;
       }
 
-      callback({ data: { room: cleanParameters(data.object) } });
+      callback({ data: { room: data.object } });
     },
   });
 }
@@ -130,7 +123,7 @@ function getRooms({
 
       callback({
         data: {
-          rooms: data.objects.map(room => cleanParameters(room)),
+          rooms: data.objects,
         },
       });
     },
@@ -264,7 +257,7 @@ function createRoom({
             return;
           }
 
-          const createdRoom = cleanParameters(data.savedObject);
+          const createdRoom = data.savedObject;
 
           if (isFollower) {
             addFollowers({
@@ -486,6 +479,7 @@ function getRoomById({
   roomId,
   roomName,
   callback,
+  getPassword,
 }) {
   const query = {};
 
@@ -498,53 +492,7 @@ function getRoomById({
   getRoom({
     callback,
     query,
-  });
-}
-
-/**
- * Get room by Id.
- * @param {Object} params Parameters.
- * @param {string} params.roomId Id of the room.
- * @param {Function} params.callback Callback.
- * @param {string} params.password Password for the room.
- */
-function authToRoom({
-  roomId,
-  roomName,
-  password,
-  callback,
-}) {
-  const query = {
-    password,
-  };
-
-  if (roomId) {
-    query._id = roomId;
-  } else {
-    query.roomName = roomName;
-  }
-
-  getRoom({
-    query,
-    callback: ({ error }) => {
-      if (error) {
-        if (error.type === errorCreator.ErrorTypes.DOESNOTEXIST) {
-          callback({
-            data: { hasAuthed: false },
-          });
-
-          return;
-        }
-
-        callback({ error });
-
-        return;
-      }
-
-      callback({
-        data: { hasAuthed: true },
-      });
-    },
+    getPassword,
   });
 }
 
@@ -691,4 +639,3 @@ exports.getRoomsByUser = getRoomsByUser;
 exports.getRoomsByIds = getRoomsByIds;
 exports.getAllRooms = getAllRooms;
 exports.doesWhisperRoomExist = doesWhisperRoomExist;
-exports.authToRoom = authToRoom;

@@ -1,6 +1,6 @@
 {
   "name": "rolehaven",
-  "version": "1.3.2",
+  "version": "1.4.0",
   "description": "roleHaven is part of an initiative to create a platform to be used in-game during LARPs",
   "author": "Carmilla Mina Jankovic <carmillam@icloud.com>",
   "private": true,
@@ -37,6 +37,7 @@
     "@babel/core": "7.1.2",
     "@babel/preset-env": "7.1.0",
     "babelify": "10.0.0",
+    "bcrypt": "^3.0.6",
     "body-parser": "1.18.3",
     "browserify": "16.2.3",
     "compression": "1.7.3",

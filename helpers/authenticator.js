@@ -15,6 +15,7 @@
  */
 
 const jwt = require('jsonwebtoken');
+const bcrypt = require('bcrypt');
 const dbUser = require('../db/connectors/user');
 const errorCreator = require('../error/errorCreator');
 const { appConfig, dbConfig } = require('../config/defaults/config');
@@ -39,10 +40,10 @@ function createToken({
     return;
   }
 
-  dbUser.authUser({
+  dbUser.getUserById({
     userId,
     username,
-    password,
+    getPassword: true,
     callback: ({ error, data }) => {
       if (error) {
         callback({ error });
@@ -50,30 +51,44 @@ function createToken({
         return;
       }
 
-      if (data.user.isBanned) {
-        callback({ error: new errorCreator.Banned({ name: `user ${data.user.username}` }) });
-
-        return;
-      }
-
-      if (!data.user.isVerified) {
-        callback({ error: new errorCreator.NotAllowed({ name: `user ${data.user.username} not verified` }) });
-
-        return;
-      }
-
       const { user } = data;
 
-      const jwtUser = { userId: user.objectId };
+      if (user.isBanned) {
+        callback({ error: new errorCreator.Banned({ name: `user ${user.username}` }) });
 
-      jwt.sign({ data: jwtUser }, appConfig.jsonKey, (err, token) => {
-        if (err) {
-          callback({ error: new errorCreator.Internal({ name: 'jwt', errorObject: err }) });
+        return;
+      }
+
+      if (!user.isVerified) {
+        callback({ error: new errorCreator.NotAllowed({ name: `user ${user.username} not verified` }) });
+
+        return;
+      }
+
+      bcrypt.compare(password, user.password, (hashError, result) => {
+        if (hashError) {
+          callback({ error: new errorCreator.Internal({ errorObject: hashError }) });
 
           return;
         }
 
-        callback({ data: { token, user } });
+        if (!result) {
+          callback({ error: new errorCreator.NotAllowed({ name: `user ${user.username} wrong password` }) });
+
+          return;
+        }
+
+        const jwtUser = { userId: user.objectId };
+
+        jwt.sign({ data: jwtUser }, appConfig.jsonKey, (err, token) => {
+          if (err) {
+            callback({ error: new errorCreator.Internal({ name: 'jwt', errorObject: err }) });
+
+            return;
+          }
+
+          callback({ data: { token, user } });
+        });
       });
     },
   });

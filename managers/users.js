@@ -16,6 +16,7 @@
 
 'use strict';
 
+const bcrypt = require('bcrypt');
 const dbUser = require('../db/connectors/user');
 const dbWallet = require('../db/connectors/wallet');
 const { dbConfig, appConfig } = require('../config/defaults/config');
@@ -70,7 +71,18 @@ function createUser({
 
       if (!textTools.isAllowedFull(user.username)) {
         callback({
-          error: new errorCreator.InvalidCharacters({ name: `User name: ${user.username}` }),
+          error: new errorCreator.InvalidCharacters({ name: `User name: ${user.username}.` }),
+        });
+
+        return;
+      }
+
+      if (user.fullName && !textTools.isAllowedFull(user.fullName)) {
+        callback({
+          error: new errorCreator.InvalidCharacters({
+            name: `Full name: ${user.fullName}.`,
+            extraData: { param: 'fullName' },
+          }),
         });
 
         return;
@@ -187,7 +199,6 @@ function createUser({
               },
               options: {
                 setId: true,
-                isFollower: true,
               },
               callback: ({ error: roomError, data: roomData }) => {
                 if (roomError) {
@@ -302,28 +313,38 @@ function createUser({
         });
       };
 
-      if (image) {
-        imager.createImage({
-          image,
-          callback: ({ error: imageError, data: imageData }) => {
-            if (imageError) {
-              callback({ error: imageError });
+      bcrypt.hash(newUser.password, 10, (hashError, hash) => {
+        if (hashError) {
+          callback({ error: new errorCreator.Internal({ errObject: hashError }) });
 
-              return;
-            }
+          return;
+        }
 
-            const { image: createdImage } = imageData;
+        newUser.password = hash;
 
-            newUser.image = createdImage;
+        if (image) {
+          imager.createImage({
+            image,
+            callback: ({ error: imageError, data: imageData }) => {
+              if (imageError) {
+                callback({ error: imageError });
 
-            userCallback();
-          },
-        });
+                return;
+              }
 
-        return;
-      }
+              const { image: createdImage } = imageData;
 
-      userCallback();
+              newUser.image = createdImage;
+
+              userCallback();
+            },
+          });
+
+          return;
+        }
+
+        userCallback();
+      });
     },
   });
 }

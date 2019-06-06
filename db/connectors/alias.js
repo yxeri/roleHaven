@@ -270,6 +270,7 @@ function updateAlias({
     aliasName,
     ownerAliasId,
     isPublic,
+    image,
   } = alias;
   const update = {};
   const set = {};
@@ -286,6 +287,7 @@ function updateAlias({
     set.aliasName = aliasName;
     set.aliasNameLowerCase = aliasName.toLowerCase();
   }
+  if (image) { set.image = image; }
 
   if (Object.keys(set).length > 0) { update.$set = set; }
   if (Object.keys(unset).length > 0) { update.$unset = unset; }

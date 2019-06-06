@@ -99,11 +99,14 @@ function createSchema(schema) {
  * @param {Object} params.object Object to add an Id to.
  * @returns {Object} Updated object.
  */
-function modifyObject({ object }) {
+function modifyObject({ noClean, object }) {
   const modifiedObject = object;
 
   modifiedObject.objectId = object._id.toString(); // eslint-disable-line no-underscore-dangle
-  modifiedObject.password = typeof object.password === 'string';
+
+  if (!noClean) {
+    modifiedObject.password = typeof object.password === 'string';
+  }
 
   return modifiedObject;
 }
@@ -247,6 +250,7 @@ function dropDatabase({ callback }) {
 function getObject({
   object,
   callback,
+  noClean = false,
   errorNameContent = 'getObject',
   query = {},
   filter = {},
@@ -267,7 +271,7 @@ function getObject({
     callback({
       data: {
         exists: true,
-        object: modifyObject({ object: foundObject }),
+        object: modifyObject({ noClean, object: foundObject }),
       },
     });
   });
