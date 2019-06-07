@@ -134,7 +134,7 @@ function getAndStoreGooglePositions({
 }
 
 /**
- * Update user position. Will create a new one if it doesn't exist.
+ * Update position.
  * @param {Object} params Parameters.
  * @param {string} params.positionId Id of the position to update.
  * @param {Object} params.position User position to update or create.
@@ -187,7 +187,7 @@ function createPosition({
   internalCallUser,
   callback,
   socket,
-  isLoggedInUserPosition = false,
+  isUserPosition = false,
 }) {
   authenticator.isUserAllowed({
     token,
@@ -200,7 +200,7 @@ function createPosition({
         return;
       }
 
-      if (!position.coordinates || !position.coordinates.latitude || !position.coordinates.longitude) {
+      if (!isUserPosition && (!position.coordinates || !position.coordinates.latitude || !position.coordinates.longitude)) {
         callback({ error: new errorCreator.InvalidData({ expected: 'latitude && longitude && accuracy' }) });
 
         return;
@@ -213,7 +213,7 @@ function createPosition({
         return;
       }
 
-      if (!isLoggedInUserPosition && position.coordinates.accuracy && position.coordinates.accuracy > appConfig.minimumPositionAccuracy) {
+      if (!isUserPosition && position.coordinates.accuracy && position.coordinates.accuracy > appConfig.minimumPositionAccuracy) {
         callback({ error: new errorCreator.InvalidData({ expected: `accuracy less than ${appConfig.minimumPositionAccuracy}` }) });
 
         return;
@@ -222,7 +222,10 @@ function createPosition({
       const { user: authUser } = data;
       const newPosition = position;
       newPosition.ownerId = authUser.objectId;
-      newPosition.coordinates.accuracy = newPosition.coordinates.accuracy || appConfig.minimumPositionAccuracy;
+
+      if (newPosition.coordinates) {
+        newPosition.coordinates.accuracy = newPosition.coordinates.accuracy || appConfig.minimumPositionAccuracy;
+      }
 
       if (position.positionStructure && position.positionStructure === dbConfig.PositionStructures.CIRCLE && !position.radius) {
         newPosition.radius = appConfig.defaultPositionRadius;
@@ -235,9 +238,9 @@ function createPosition({
       }
 
       dbPosition.createPosition({
-        suppressExistsError: isLoggedInUserPosition,
+        suppressExistsError: isUserPosition,
         options: {
-          setId: isLoggedInUserPosition,
+          setId: isUserPosition,
         },
         position: newPosition,
         callback: ({ error: updateError, data: positionData }) => {
@@ -261,7 +264,7 @@ function createPosition({
             },
           };
 
-          if (socket && !isLoggedInUserPosition) {
+          if (socket && !isUserPosition) {
             socket.broadcast.emit(dbConfig.EmitTypes.POSITION, dataToSend);
           } else {
             io.emit(dbConfig.EmitTypes.POSITION, dataToSend);

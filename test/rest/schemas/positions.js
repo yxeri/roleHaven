@@ -30,7 +30,6 @@ schemas.position = tools.buildLiteSchema({
   ],
   properties: {
     deviceId: { type: 'string' },
-    connectedToUser: { type: 'string' },
     coordinatesHistory: {
       type: 'array',
       items: baseObjects.coordinates,
@@ -55,7 +54,6 @@ schemas.fullPosition = tools.buildFullSchema({
   ],
   properties: {
     deviceId: { type: 'string' },
-    connectedToUser: { type: 'string' },
     coordinatesHistory: {
       type: 'array',
       items: baseObjects.coordinates,

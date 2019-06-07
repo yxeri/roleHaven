@@ -153,7 +153,6 @@
  * @apiDescription The Position object.
  *
  * @apiParam {string} positionId [Unique, immutable] Id of the position. It is used to target this specific object.
- * @apiParam {string} connectedToUser [Unique, mutable] Id of the user that is connected to the position. It is usually an indication that the position is used to show the user's position on the map.
  * @apiParam {Coordinates[]} coordinatesHistory GPS coordinates.
  * @apiParam {string} positionType Type of position. Valid types: USER, WORLD. Default is WORLD.
  * @apiParam {string[]} [description] Text content of the position.
