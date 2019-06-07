@@ -25,12 +25,7 @@ const {
 } = require('../../config/defaults/config');
 
 const mapPositionSchema = new mongoose.Schema(dbConnector.createSchema({
-  connectedToUser: {
-    type: String,
-    unique: true,
-    sparse: true,
-  },
-  coordinatesHistory: [dbConnector.coordinatesSchema],
+  coordinatesHistory: { type: [dbConnector.coordinatesSchema], default: [] },
   positionName: { type: String, unique: true },
   positionType: { type: String, default: dbConfig.PositionTypes.WORLD },
   description: { type: [String], default: [] },
@@ -52,9 +47,15 @@ const MapPosition = mongoose.model('MapPosition', mapPositionSchema);
  * @param {Object} params.update Update.
  * @param {Function} params.callback Callback.
  */
-function updateObject({ positionId, update, callback }) {
+function updateObject({
+  positionId,
+  update,
+  callback,
+  upsert,
+}) {
   dbConnector.updateObject({
     update,
+    upsert,
     query: { _id: positionId },
     object: MapPosition,
     errorNameContent: 'updatePosition',
@@ -135,29 +136,13 @@ function getPosition({ filter, query, callback }) {
 /**
  * Does the position exist?
  * @param {Object} params Parameters.
- * @param {string} [params.connectedToUser] Id of the user or alias.
  * @param {Function} params.callback Callback.
  */
 function doesPositionExist({
   positionName,
-  connectedToUser,
   callback,
 }) {
-  if (!connectedToUser && !positionName) {
-    callback({ data: { exists: false } });
-
-    return;
-  }
-
-  const query = { $or: [] };
-
-  if (connectedToUser) {
-    query.$or.push({ connectedToUser: { $exists: true } });
-  }
-
-  if (positionName) {
-    query.$or.push({ positionName });
-  }
+  const query = { positionName };
 
   dbConnector.doesObjectExist({
     callback,
@@ -180,7 +165,6 @@ function createPosition({
 }) {
   doesPositionExist({
     positionName: position.positionName,
-    connectedToUser: position.connectedToUser,
     callback: (positionData) => {
       if (positionData.error) {
         callback({ error: positionData.error });
@@ -192,7 +176,7 @@ function createPosition({
         callback({
           error: new errorCreator.AlreadyExists({
             suppressExistsError,
-            name: `positionName ${position.positionName} || connectedToUser ${position.connectedToUser} in position`,
+            name: `positionName ${position.positionName} in position`,
           }),
         });
 
@@ -200,7 +184,10 @@ function createPosition({
       }
 
       const positionToSave = position;
-      positionToSave.coordinatesHistory = [positionToSave.coordinates];
+
+      if (positionToSave.coordinates) {
+        positionToSave.coordinatesHistory = [positionToSave.coordinates];
+      }
 
       if (options.setId && position.objectId) {
         positionToSave._id = mongoose.Types.ObjectId(position.objectId); // eslint-disable-line no-underscore-dangle
@@ -223,7 +210,6 @@ function createPosition({
   });
 }
 
-// TODO Position should be automatically created when a user is created. connectedToUser should not be used to identify a user's position
 /**
  * Update position.
  * @param {Object} params Parameters.
@@ -246,14 +232,12 @@ function updatePosition({
     positionType,
     text,
     isPublic,
-    connectedToUser,
     description,
     styleName,
     coordinates,
   } = position;
   const {
     resetOwnerAliasId,
-    resetConnectedToUser,
   } = options;
 
   const update = {};
@@ -279,7 +263,6 @@ function updatePosition({
   const existCallback = () => {
     doesPositionExist({
       positionName,
-      connectedToUser,
       callback: (positionData) => {
         if (positionData.error) {
           callback({ error: positionData.error });
@@ -288,12 +271,7 @@ function updatePosition({
         }
 
         if (positionData.data.exists) {
-          if (connectedToUser) {
-            callback({ error: new errorCreator.AlreadyExists({ name: `position with connected user ${position.connectedToUser}` }) });
-          } else {
-            callback({ error: new errorCreator.AlreadyExists({ name: `position with name ${position.positionName}` }) });
-          }
-
+          callback({ error: new errorCreator.AlreadyExists({ name: `position with name ${position.positionName}` }) });
 
           return;
         }
@@ -320,14 +298,6 @@ function updatePosition({
   if (typeof isPublic !== 'undefined') { set.isPublic = isPublic; }
   if (typeof isStationary !== 'undefined') { set.isStationary = isStationary; }
 
-  if (resetConnectedToUser) {
-    unset.connectedToUser = '';
-    set.positionType = dbConfig.PositionTypes.DEVICE;
-  } else if (connectedToUser) {
-    set.connectedToUser = connectedToUser;
-    set.positionType = dbConfig.PositionTypes.USER;
-  }
-
   if (resetOwnerAliasId) {
     unset.ownerAliasId = '';
   } else if (ownerAliasId) {
@@ -338,7 +308,7 @@ function updatePosition({
   if (Object.keys(unset).length > 0) { update.$unset = unset; }
   if (Object.keys(push).length > 0) { update.$push = push; }
 
-  if ((!resetConnectedToUser && connectedToUser) || positionName) {
+  if (positionName) {
     existCallback();
   } else {
     updateCallback();
@@ -448,7 +418,7 @@ function getPositionById({ positionId, callback }) {
 function getUserPosition({ userId, callback }) {
   getPosition({
     callback,
-    query: { connectedToUser: userId },
+    query: { _id: userId },
   });
 }
 
