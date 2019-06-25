@@ -27,7 +27,6 @@ const userSchema = new mongoose.Schema(dbConnector.createSchema({
   username: { type: String, unique: true },
   usernameLowerCase: { type: String, unique: true },
   mailAddress: { type: String, unique: true, sparse: true },
-  fullName: String,
   password: String,
   socketId: String,
   lastOnline: Date,
@@ -43,6 +42,7 @@ const userSchema = new mongoose.Schema(dbConnector.createSchema({
   followingRooms: { type: [String], default: [] },
   aliases: { type: [String], default: [] },
   image: dbConnector.imageSchema,
+  offName: String,
 }), { collection: 'users' });
 
 const User = mongoose.model('User', userSchema);

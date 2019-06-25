@@ -45,6 +45,7 @@ const bypassExternalConnectionEnv = textTools.convertToBoolean(process.env.BYPAS
 const userVerifyEnv = textTools.convertToBoolean(process.env.USERVERIFY);
 const showDevInfoEnv = textTools.convertToBoolean(process.env.SHOWDEVINFO);
 const disablePositionImportEnv = textTools.convertToBoolean(process.env.DISABLEPOSITIONIMPORT);
+const requireOffNameEnv = textTools.convertToBoolean(process.env.REQUIREOFFNAME);
 
 /**
  * **********
@@ -549,17 +550,21 @@ config.disallowUserRegister = typeof disallowRegisterEnv !== 'undefined'
   ? disallowRegisterEnv
   : config.disallowUserRegister || false;
 
-/**
- * Minimum amount of characters in a user's full name.
- * @type {number}
- */
-config.fullNameMinLength = process.env.FULLNAMEMINLENGTH || config.fullNameMinLength || 1;
+config.requireOffName = typeof requireOffNameEnv !== 'undefined'
+  ? requireOffNameEnv
+  : config.requireOffName || false;
 
 /**
- * Maximum amount of characters in a user's full name.
+ * Minimum amount of characters in a user's off-game name.
  * @type {number}
  */
-config.fullNameMaxLength = process.env.FULLNAMEMAXLENGTH || config.fullNameMaxLength || 40;
+config.offNameMinLength = process.env.OFFNAMEMINLENGTH || config.offNameMinLength || 1;
+
+/**
+ * Maximum amount of characters in a user's off-game name.
+ * @type {number}
+ */
+config.offNameNameMaxLength = process.env.OFFNAMEMAXLENGTH || config.offNameNameMaxLength || 40;
 
 /**
  * Maximum amount of characters in a user's description.

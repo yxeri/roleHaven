@@ -69,20 +69,20 @@ function createUser({
 
       const { user: authUser } = data;
 
-      if (!textTools.isAllowedFull(user.username)) {
+      if (appConfig.requireOffName && !user.offName) {
         callback({
-          error: new errorCreator.InvalidCharacters({ name: `User name: ${user.username}.` }),
+          error: new errorCreator.InvalidData({
+            expected: 'offName',
+            extraData: { param: 'offName' },
+          }),
         });
 
         return;
       }
 
-      if (user.fullName && !textTools.isAllowedFull(user.fullName)) {
+      if (!textTools.isAllowedFull(user.username)) {
         callback({
-          error: new errorCreator.InvalidCharacters({
-            name: `Full name: ${user.fullName}.`,
-            extraData: { param: 'fullName' },
-          }),
+          error: new errorCreator.InvalidCharacters({ name: `User name: ${user.username}.` }),
         });
 
         return;
@@ -99,11 +99,11 @@ function createUser({
         return;
       }
 
-      if (user.fullName && (user.fullName.length < appConfig.fullNameMinLength || user.fullName.length > appConfig.fullNameMaxLength)) {
+      if (user.offName && (user.offName.length < appConfig.offNameMinLength || user.offName.length > appConfig.offNameNameMaxLength)) {
         callback({
           error: new errorCreator.InvalidLength({
-            name: `Full name length: ${appConfig.fullNameMinLength}-${appConfig.fullNameMaxLength}`,
-            extraData: { param: 'fullName' },
+            name: `Off name length: ${appConfig.offNameMinLength}-${appConfig.offNameNameMaxLength}`,
+            extraData: { param: 'offName' },
           }),
         });
 
@@ -396,6 +396,7 @@ function getUsersByUser({
         includeInactive: authUser.accessLevel >= dbConfig.AccessLevels.MODERATOR
           ? true
           : includeInactive,
+        includeOff: authUser.accessLevel >= dbConfig.AccessLevels.STANDARD,
         callback: ({ error: userError, data: userData }) => {
           if (userError) {
             callback({ error: userError });

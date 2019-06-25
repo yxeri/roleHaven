@@ -316,7 +316,7 @@
  *
  * @apiParam {string} userId [Unique, immutable] Id of the user. It is used to target this specific object.
  * @apiParam {string} username [Unique, mutable] Human-readable username.
- * @apiParam {string} [fullName] Full name of the user.
+ * @apiParam {string} [offName] Off-game name of the user.
  * @apiParam {string} password User's password.
  * @apiParam {string} socketId Socket.io Id.
  * @apiParam {Date} lastOnline Latest date when the user was online.
