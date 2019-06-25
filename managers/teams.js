@@ -197,6 +197,7 @@ function addUserToTeam({
         if (userSocket) { userSocket.join(teamId); }
 
         io.emit(dbConfig.EmitTypes.TEAMMEMBER, dataToSend);
+        io.emit(dbConfig.EmitTypes.USER, dataToSend);
       }
 
       callback(dataToSend);

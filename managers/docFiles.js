@@ -180,8 +180,8 @@ function createDocFile({
         return;
       }
 
-      if (!objectValidator.isValidData({ docFile }, { docFile: { code: true, text: true, title: true } })) {
-        callback({ error: new errorCreator.InvalidData({ expected: '{ docFile: { code, text, title } }' }) });
+      if (!objectValidator.isValidData({ docFile }, { docFile: { text: true, title: true } })) {
+        callback({ error: new errorCreator.InvalidData({ expected: '{ docFile: { text, title } }' }) });
 
         return;
       }

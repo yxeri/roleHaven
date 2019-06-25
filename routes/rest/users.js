@@ -23,7 +23,6 @@ const roomManager = require('../../managers/rooms');
 const aliasManager = require('../../managers/aliases');
 const restErrorChecker = require('../../helpers/restErrorChecker');
 const errorCreator = require('../../error/errorCreator');
-const gameCodeManager = require('../../managers/gameCodes');
 const { dbConfig } = require('../../config/defaults/config');
 
 const router = new express.Router();
@@ -33,44 +32,6 @@ const router = new express.Router();
  * @returns {Object} Router
  */
 function handle(io) {
-  /**
-   * @api {get} /users/:userId/gameCodes Get user's game codes.
-   * @apiVersion 8.0.0
-   * @apiName GetUserGameCodes
-   * @apiGroup Users
-   *
-   * @apiHeader {string} Authorization Your JSON Web Token.
-   *
-   * @apiDescription Get user's game codes.
-   *
-   * @apiSuccess {Object} data
-   * @apiSuccess {Object[]} data.gameCodes Found game codes.
-   */
-  router.get('/:userId/gameCodes', (request, response) => {
-    if (!objectValidator.isValidData(request.params, { userId: true })) {
-      restErrorChecker.checkAndSendError({ response, error: new errorCreator.InvalidData({ expected: '{ userId }' }) });
-
-      return;
-    }
-
-    const { userId } = request.params;
-    const { authorization: token } = request.headers;
-
-    gameCodeManager.getGameCodesByOwner({
-      userId,
-      token,
-      callback: ({ error, data }) => {
-        if (error) {
-          restErrorChecker.checkAndSendError({ response, error, sentData: request.body.data });
-
-          return;
-        }
-
-        response.json({ data });
-      },
-    });
-  });
-
   /**
    * @api {get} /users Get users.
    * @apiVersion 8.0.0
@@ -123,17 +84,11 @@ function handle(io) {
    * @apiSuccess {Object} data
    * @apiSuccess {Object[]} data.success Was the password properly changed?
    */
-  router.post('/:username/password', (request, response) => {
+  router.post('/:userId/password', (request, response) => {
     const sentData = request.body.data;
 
     if (!objectValidator.isValidData(request.params, { userId: true })) {
       restErrorChecker.checkAndSendError({ response, error: new errorCreator.InvalidData({ expected: '{ userId }' }) });
-
-      return;
-    }
-
-    if (!objectValidator.isValidData(request.body.data, { password: true })) {
-      restErrorChecker.checkAndSendError({ response, error: new errorCreator.InvalidData({ expected: '{ password }' }), sentData });
 
       return;
     }

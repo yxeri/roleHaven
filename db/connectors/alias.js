@@ -24,13 +24,11 @@ const dbUser = require('./user');
 const aliasSchema = new mongoose.Schema(dbConnector.createSchema({
   aliasName: { type: String, unique: true },
   aliasNameLowerCase: { type: String, unique: true },
-  isIdentity: { type: Boolean, default: false },
-  isVerified: { type: Boolean, default: false },
-  isBanned: { type: Boolean, default: false },
   image: dbConnector.imageSchema,
   partOfTeams: { type: [String], default: [] },
   followingRooms: { type: [String], default: [] },
   description: { type: [String], default: [] },
+  pronouns: [String],
 }), { collection: 'aliases' });
 
 const Alias = mongoose.model('Alias', aliasSchema);

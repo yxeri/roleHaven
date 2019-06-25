@@ -248,15 +248,15 @@ function createAndFollowWhisperRoom({
 }) {
   const room = {
     participantIds,
-    roomName: participantIds.join(''),
+    roomName: Date.now().toString(),
     isWhisper: true,
     accessLevel: dbConfig.AccessLevels.SUPERUSER,
     visibility: dbConfig.AccessLevels.SUPERUSER,
   };
 
   const followCallback = ({ users = [] }) => {
-    if (users.length === 0) {
-      callback({ error: new errorCreator.DoesNotExist({ name: `create and follow whisper room. User/Alias Id ${participantIds[1]} does not exist.` }) });
+    if (users.length !== participantIds.length) {
+      callback({ error: new errorCreator.DoesNotExist({ name: `create and follow whisper room. User/Alias Ids ${participantIds} does not exist.` }) });
 
       return;
     }
@@ -270,6 +270,7 @@ function createAndFollowWhisperRoom({
 
           return;
         }
+
         const { objectId: roomId } = roomData.data.room;
 
         dbRoom.updateAccess({
@@ -284,52 +285,40 @@ function createAndFollowWhisperRoom({
 
             dbUser.followRoom({
               roomId,
-              userIds: [user.objectId],
-              callback: (senderFollowData) => {
-                if (senderFollowData.error) {
-                  callback({ error: senderFollowData.error });
+              userIds: users.map(foundUser => foundUser.objectId).concat([user.objectId]),
+              callback: (receiverFollowData) => {
+                if (receiverFollowData.error) {
+                  callback({ error: receiverFollowData.error });
 
                   return;
                 }
 
-                dbUser.followRoom({
-                  roomId,
-                  userIds: users.map(foundUser => foundUser.objectId),
-                  callback: (receiverFollowData) => {
-                    if (receiverFollowData.error) {
-                      callback({ error: receiverFollowData.error });
-
-                      return;
-                    }
-
-                    const newRoom = accessdata.data.room;
-                    const newRoomId = newRoom.objectId;
-                    const dataToSend = {
-                      data: {
-                        room: newRoom,
-                        changeType: dbConfig.ChangeTypes.CREATE,
-                      },
-                    };
-
-                    users.forEach((foundUser) => {
-                      const receiverSocket = socketUtils.getUserSocket({ io, socketId: foundUser.socketId });
-
-                      if (receiverSocket) {
-                        receiverSocket.join(newRoomId);
-                      }
-                    });
-
-                    const senderSocket = socketUtils.getUserSocket({ io, socketId: user.socketId });
-
-                    if (senderSocket) {
-                      senderSocket.join(newRoomId);
-                    }
-
-                    io.to(newRoomId).emit(dbConfig.EmitTypes.ROOM, dataToSend);
-
-                    callback(roomData);
+                const newRoom = accessdata.data.room;
+                const newRoomId = newRoom.objectId;
+                const dataToSend = {
+                  data: {
+                    room: newRoom,
+                    changeType: dbConfig.ChangeTypes.CREATE,
                   },
+                };
+
+                users.forEach((foundUser) => {
+                  const receiverSocket = socketUtils.getUserSocket({ io, socketId: foundUser.socketId });
+
+                  if (receiverSocket) {
+                    receiverSocket.join(newRoomId);
+                  }
                 });
+
+                const senderSocket = socketUtils.getUserSocket({ io, socketId: user.socketId });
+
+                if (senderSocket) {
+                  senderSocket.join(newRoomId);
+                }
+
+                io.to(newRoomId).emit(dbConfig.EmitTypes.ROOM, dataToSend);
+
+                callback(roomData);
               },
             });
           },
@@ -338,38 +327,18 @@ function createAndFollowWhisperRoom({
     });
   };
 
-  dbUser.getUserById({
-    userId: participantIds[1],
-    supressExistError: true,
-    callback: ({ error: userError, data: userData }) => {
-      if (userError) {
-        if (userError.type && userError.type === errorCreator.ErrorTypes.DOESNOTEXIST) {
-          dbUser.getUsersByAliases({
-            aliasIds: [participantIds[1]],
-            callback: ({ error: aliasError, data: aliasData }) => {
-              if (aliasError) {
-                callback({ error: aliasError });
-
-                return;
-              }
-
-              const { users } = aliasData;
-
-              followCallback({ users });
-            },
-          });
-
-          return;
-        }
-
-        callback({ error: userError });
+  dbUser.getUsersByAliases({
+    aliasIds: participantIds,
+    callback: ({ error: aliasError, data: aliasData }) => {
+      if (aliasError) {
+        callback({ error: aliasError });
 
         return;
       }
 
-      const { user: foundUser } = userData;
+      const { users } = aliasData;
 
-      followCallback({ users: [foundUser] });
+      followCallback({ users });
     },
   });
 }

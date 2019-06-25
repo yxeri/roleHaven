@@ -173,9 +173,9 @@ function createAlias({
 
                     if (socket) {
                       socket.join(createdAlias.objectId);
-                      socket.to(authUser.objectId).emit(dbConfig.EmitTypes.ROOM, creatorRoomData);
-                      socket.to(authUser.objectId).emit(dbConfig.EmitTypes.WALLET, creatorWalletData);
-                      socket.to(authUser.objectId).emit(dbConfig.EmitTypes.USER, {
+                      io.to(authUser.objectId).emit(dbConfig.EmitTypes.ROOM, creatorRoomData);
+                      io.to(authUser.objectId).emit(dbConfig.EmitTypes.WALLET, creatorWalletData);
+                      io.to(authUser.objectId).emit(dbConfig.EmitTypes.USER, {
                         data: {
                           user: {
                             objectId: authUser.objectId,

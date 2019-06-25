@@ -30,6 +30,7 @@ const dbForum = require('../db/connectors/forum');
 const managerHelper = require('../helpers/manager');
 const positionManager = require('./positions');
 const imager = require('../helpers/imager');
+const messageManager = require('./messages');
 
 /**
  * Create a user.
@@ -318,6 +319,19 @@ function createUser({
                             io.emit(dbConfig.EmitTypes.ROOM, roomDataToSend);
                             io.emit(dbConfig.EmitTypes.WALLET, walletDataToSend);
 
+                            if (!createdUser.isVerified) {
+                              messageManager.sendChatMsg({
+                                io,
+                                socket,
+                                message: {
+                                  roomId: dbConfig.rooms.admin.objectId,
+                                  text: [`User ${createdUser.username} (${createdUser.objectId}) needs to be verified.`],
+                                },
+                                internalCallUser: dbConfig.users.systemUser,
+                                callback: () => {},
+                              });
+                            }
+
                             callback(creatorDataToSend);
                           },
                         });
@@ -424,7 +438,7 @@ function getUsersByUser({
             }
 
             return userObject;
-          }).sort((a, b) => {
+          }).concat([dbConfig.users.systemUser]).sort((a, b) => {
             const aName = a.username;
             const bName = b.username;
 
@@ -570,12 +584,52 @@ function changePassword({
           if (!password) {
             const generatedPassword = textTools.generateTextCode(10);
 
+            bcrypt.hash(generatedPassword, 10, (hashError, hash) => {
+              if (hashError) {
+                callback({ error: new errorCreator.Internal({ errObject: hashError }) });
+
+                return;
+              }
+
+              dbUser.updateUserPassword({
+                userId,
+                password: hash,
+                callback: ({ error: passwordError }) => {
+                  if (passwordError) {
+                    callback({ error: passwordError });
+
+                    return;
+                  }
+
+                  callback({
+                    data: {
+                      success: true,
+                      user: {
+                        objectId: userId,
+                        password: generatedPassword,
+                      },
+                    },
+                  });
+                },
+              });
+            });
+
+            return;
+          }
+
+          bcrypt.hash(password, 10, (hashError, hash) => {
+            if (hashError) {
+              callback({ error: new errorCreator.Internal({ errObject: hashError }) });
+
+              return;
+            }
+
             dbUser.updateUserPassword({
-              userId,
-              password: generatedPassword,
-              callback: ({ error: passwordError }) => {
-                if (passwordError) {
-                  callback({ error: passwordError });
+              password: hash,
+              userId: foundUser.objectId,
+              callback: ({ error: updateError }) => {
+                if (updateError) {
+                  callback({ error: updateError });
 
                   return;
                 }
@@ -583,35 +637,11 @@ function changePassword({
                 callback({
                   data: {
                     success: true,
-                    user: {
-                      objectId: userId,
-                      password: generatedPassword,
-                    },
+                    user: { objectId: userId },
                   },
                 });
               },
             });
-
-            return;
-          }
-
-          dbUser.updateUserPassword({
-            password,
-            userId: foundUser.objectId,
-            callback: ({ error: updateError }) => {
-              if (updateError) {
-                callback({ error: updateError });
-
-                return;
-              }
-
-              callback({
-                data: {
-                  success: true,
-                  user: { objectId: userId },
-                },
-              });
-            },
           });
         },
       });

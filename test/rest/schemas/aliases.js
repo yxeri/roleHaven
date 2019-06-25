@@ -28,7 +28,6 @@ schemas.alias = tools.buildLiteSchema({
   properties: {
     aliasName: { type: 'string' },
     aliasNameLowerCase: { type: 'string' },
-    isIdentity: { type: 'boolean' },
   },
 });
 
@@ -36,12 +35,10 @@ schemas.fullAlias = tools.buildFullSchema({
   type: 'object',
   required: [
     'aliasName',
-    'isIdentity',
   ],
   properties: {
     aliasName: { type: 'string' },
     aliasNameLowerCase: { type: 'string' },
-    isIdentity: { type: 'boolean' },
   },
 });
 

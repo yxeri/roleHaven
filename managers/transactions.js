@@ -201,18 +201,30 @@ function createTransaction({
               const { fromWallet, toWallet } = runTransactionData;
               const fromDataToSend = {
                 data: {
-                  wallet: fromWallet,
                   transaction: createdTransaction,
                   changeType: dbConfig.ChangeTypes.CREATE,
                 },
               };
               const toDataToSend = {
                 data: {
-                  wallet: toWallet,
                   transaction: createdTransaction,
                   changeType: dbConfig.ChangeTypes.CREATE,
                 },
               };
+              const fromWalletData = {
+                data: {
+                  wallet: fromWallet,
+                  changeType: dbConfig.ChangeTypes.UPDATE,
+                },
+              };
+              const toWalletData = {
+                data: {
+                  wallet: toWallet,
+                  changeType: dbConfig.ChangeTypes.UPDATE,
+                },
+              };
+
+              console.log(fromWalletData);
 
               if (socket) {
                 socket.broadcast.to(fromWallet.objectId).emit(dbConfig.EmitTypes.TRANSACTION, fromDataToSend);
@@ -221,6 +233,9 @@ function createTransaction({
                 io.to(fromWallet.objectId).emit(dbConfig.EmitTypes.TRANSACTION, fromDataToSend);
                 io.to(toWallet.objectId).emit(dbConfig.EmitTypes.TRANSACTION, toDataToSend);
               }
+
+              io.to(fromWallet.objectId).emit(dbConfig.EmitTypes.WALLET, fromWalletData);
+              io.to(toWallet.objectId).emit(dbConfig.EmitTypes.WALLET, toWalletData);
 
               callback(fromDataToSend);
             },

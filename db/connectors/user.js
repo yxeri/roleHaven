@@ -43,6 +43,7 @@ const userSchema = new mongoose.Schema(dbConnector.createSchema({
   aliases: { type: [String], default: [] },
   image: dbConnector.imageSchema,
   offName: String,
+  pronouns: [String],
 }), { collection: 'users' });
 
 const User = mongoose.model('User', userSchema);
@@ -50,15 +51,25 @@ const User = mongoose.model('User', userSchema);
 /**
  * Remove private parameters
  * @private
- * @param {Object} user User
- * @param {boolean} [noClean] Should less parameters be removed before returning object?
+ * @param {Object} params Parameters.
+ * @param {Object} params.user User
+ * @param {boolean} [params.noClean] Should less parameters be removed before returning object?
+ * @param {boolean} [params.includeOff] Should off-game fields be included?
  * @returns {Object} Clean user
  */
-function modifyUserParameters(user, noClean) {
+function modifyUserParameters({
+  user,
+  noClean,
+  includeOff = false,
+}) {
   const modifiedUser = user;
 
   if (!noClean) {
     modifiedUser.mailAddress = typeof modifiedUser.mailAddress === 'string';
+  }
+
+  if (!includeOff) {
+    modifiedUser.offName = typeof modifiedUser.offName === 'string';
   }
 
   return modifiedUser;
@@ -77,6 +88,7 @@ function updateObject({
   update,
   callback,
   suppressError,
+  includeOff,
 }) {
   const query = {};
 
@@ -98,7 +110,7 @@ function updateObject({
         return;
       }
 
-      callback({ data: { user: modifyUserParameters(data.object) } });
+      callback({ data: { user: modifyUserParameters({ user: data.object, includeOff }) } });
     },
   });
 }
@@ -124,7 +136,7 @@ function updateObjects({ query, update, callback }) {
 
       callback({
         data: {
-          users: data.objects.map(object => modifyUserParameters(object)),
+          users: data.objects.map(object => modifyUserParameters({ user: object })),
         },
       });
     },
@@ -139,7 +151,12 @@ function updateObjects({ query, update, callback }) {
  * @param {Object} params.query Query to get users.
  * @param {Function} params.callback Callback.
  */
-function getUsers({ filter, query, callback }) {
+function getUsers({
+  filter,
+  query,
+  callback,
+  includeOff,
+}) {
   dbConnector.getObjects({
     query,
     filter,
@@ -153,7 +170,7 @@ function getUsers({ filter, query, callback }) {
 
       callback({
         data: {
-          users: data.objects.map(user => modifyUserParameters(user)),
+          users: data.objects.map(user => modifyUserParameters({ user, includeOff })),
         },
       });
     },
@@ -200,7 +217,7 @@ function getUser({
 
       callback({
         data: {
-          user: modifyUserParameters(data.object, getPassword),
+          user: modifyUserParameters({ user: data.object, noClean: getPassword }),
         },
       });
     },
@@ -363,7 +380,7 @@ function createUser({
             return;
           }
 
-          callback({ data: { user: modifyUserParameters(data.savedObject) } });
+          callback({ data: { user: modifyUserParameters({ user: data.savedObject, includeOff: true }) } });
         },
       });
     },
@@ -432,7 +449,6 @@ function updateUser({
   const {
     mailAddress,
     username,
-    fullName,
     visibility,
     accessLevel,
     defaultRoomId,
@@ -441,6 +457,8 @@ function updateUser({
     socketId,
     aliases,
     image,
+    offName,
+    pronouns,
   } = user;
   const {
     resetSocket,
@@ -461,7 +479,6 @@ function updateUser({
     set.username = username;
     set.usernameLowerCase = username.toLowerCase();
   }
-  if (fullName) { set.fullName = fullName; }
   if (visibility) { set.visibility = visibility; }
   if (accessLevel) { set.accessLevel = accessLevel; }
   if (defaultRoomId) { set.defaultRoomId = defaultRoomId; }
@@ -469,6 +486,8 @@ function updateUser({
   if (typeof hasFullAccess === 'boolean') { set.hasFullAccess = hasFullAccess; }
   if (aliases) { addToSet.aliases = { $each: aliases }; }
   if (image) { set.image = image; }
+  if (offName) { set.offName = offName; }
+  if (pronouns) { set.pronouns = pronouns; }
 
   if (Object.keys(set).length > 0) { update.$set = set; }
   if (Object.keys(unset).length > 0) { update.$unset = unset; }
@@ -496,6 +515,7 @@ function updateUser({
           callback,
           userSocketId,
           userId,
+          includeOff: typeof offName !== 'undefined',
         });
       },
     });
@@ -547,7 +567,7 @@ function updateBanUser({ shouldBan, userId, callback }) {
         return;
       }
 
-      callback({ data: { user: modifyUserParameters(data.user) } });
+      callback({ data: { user: modifyUserParameters({ user: data.user }) } });
     },
   });
 }
@@ -579,6 +599,7 @@ function getUsersByUser({
   includeInactive,
   user,
   callback,
+  includeOff,
 }) {
   const query = dbConnector.createUserQuery({ user });
 
@@ -589,6 +610,7 @@ function getUsersByUser({
 
   getUsers({
     query,
+    includeOff,
     callback: ({ error, data }) => {
       if (error) {
         callback({ error });
