@@ -19,10 +19,10 @@ const GeneralError = require('./GeneralError');
 class InvalidCharacters extends GeneralError.create {
   /**
    * Create invalid characters error.
-   * @param {Object} params - Parameters.
-   * @param {string} [params.name] - Name of the string being checked.
-   * @param {string} [params.expected] - Expected valid characters.
-   * @param {Object} [params.errorObject] - Error object.
+   * @param {Object} params Parameters.
+   * @param {string} [params.name] Name of the string being checked.
+   * @param {string} [params.expected] Expected valid characters.
+   * @param {Object} [params.errorObject] Error object.
    */
   constructor({
     errorObject,
@@ -33,10 +33,10 @@ class InvalidCharacters extends GeneralError.create {
     super({
       errorObject,
       extraData,
-      type: GeneralError.ErrorTypes.INVALIDCHARACTERS,
+      type: GeneralError.ErrorTypes.INVALIDLENGTH,
       text: [
-        `Property ${name} has invalid characters`,
-        `Valid characters: ${expected}`,
+        `Property ${name} has an invalid length`,
+        `Valid length span: ${expected}`,
       ],
     });
   }

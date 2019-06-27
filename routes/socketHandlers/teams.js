@@ -21,8 +21,8 @@ const teamManager = require('../../managers/teams');
 /* eslint-disable no-param-reassign */
 
 /**
- * @param {object} socket - Socket.Io socket.
- * @param {object} io - Socket.Io.
+ * @param {object} socket Socket.Io socket.
+ * @param {object} io Socket.Io.
  */
 function handle(socket, io) {
   socket.on('createTeam', (params, callback = () => {
@@ -77,6 +77,15 @@ function handle(socket, io) {
     params.socket = socket;
 
     teamManager.leaveTeam(params);
+  });
+
+  socket.on('acceptTeamInvitation', (params, callback = () => {
+  }) => {
+    params.callback = callback;
+    params.io = io;
+    params.socket = socket;
+
+    teamManager.acceptTeamInvitation(params);
   });
 }
 

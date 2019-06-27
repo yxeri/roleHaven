@@ -22,11 +22,11 @@ const errorCreator = require('../error/errorCreator');
 
 /**
  * Post request to external server
- * @param {Object} params - Parameters.
- * @param {string} params.host - Host name.
- * @param {string} params.path - Path.
- * @param {Function} params.callback - Callback.
- * @param {Object} params.data - Data to send.
+ * @param {Object} params Parameters.
+ * @param {string} params.host Host name.
+ * @param {string} params.path Path.
+ * @param {Function} params.callback Callback.
+ * @param {Object} params.data Data to send.
  */
 function postRequest({
   host,

@@ -27,7 +27,7 @@ const forumThreadSchema = new mongoose.Schema(dbConnector.createSchema({
   postIds: { type: [String], default: [] },
   likes: { type: Number, default: 0 },
   dislikes: { type: Number, default: 0 },
-  pictures: [dbConnector.pictureSchema],
+  images: [dbConnector.imageSchema],
 }), { collection: 'forumThreads' });
 
 const ForumThread = mongoose.model('ForumThread', forumThreadSchema);
@@ -35,9 +35,9 @@ const ForumThread = mongoose.model('ForumThread', forumThreadSchema);
 /**
  * Get forum threads
  * @private
- * @param {Object} params - Parameters
- * @param {Object} params.query - Query to get doc files
- * @param {Function} params.callback - Callback
+ * @param {Object} params Parameters
+ * @param {Object} params.query Query to get doc files
+ * @param {Function} params.callback Callback
  */
 function getThreads({
   filter,
@@ -67,9 +67,9 @@ function getThreads({
 /**
  * Get forum thread
  * @private
- * @param {Object} params - Parameters
- * @param {string} params.query - Query to get forum object
- * @param {Function} params.callback - Callback
+ * @param {Object} params Parameters
+ * @param {string} params.query Query to get forum object
+ * @param {Function} params.callback Callback
  */
 function getThread({ query, callback }) {
   dbConnector.getObject({
@@ -96,9 +96,9 @@ function getThread({ query, callback }) {
 /**
  * Update forum object fields
  * @private
- * @param {Object} params - Parameters
- * @param {string} params.threadId - ID of forum object to update
- * @param {Object} params.update - Update
+ * @param {Object} params Parameters
+ * @param {string} params.threadId ID of forum object to update
+ * @param {Object} params.update Update
  * @param {Function} params.callback Callback
  */
 function updateObject({
@@ -125,9 +125,9 @@ function updateObject({
 
 /**
  * Create thread.
- * @param {Object} params - Parameters
- * @param {Object} params.thread - Forum thread to save
- * @param {Function} params.callback - Callback
+ * @param {Object} params Parameters
+ * @param {Object} params.thread Forum thread to save
+ * @param {Function} params.callback Callback
  */
 function createThread({ thread, callback }) {
   dbConnector.saveObject({
@@ -147,9 +147,9 @@ function createThread({ thread, callback }) {
 
 /**
  * Get forum thread
- * @param {Object} params - Parameters
- * @param {string} params.threadId - ID of the thread
- * @param {Function} params.callback - Callback
+ * @param {Object} params Parameters
+ * @param {string} params.threadId ID of the thread
+ * @param {Function} params.callback Callback
  */
 function getThreadById({ threadId, callback }) {
   getThread({
@@ -160,9 +160,9 @@ function getThreadById({ threadId, callback }) {
 
 /**
  * Get threads by forum
- * @param {Object} params - Parameters
- * @param {string} params.forumId - ID of the forum
- * @param {Function} params.callback - Callback
+ * @param {Object} params Parameters
+ * @param {string} params.forumId ID of the forum
+ * @param {Function} params.callback Callback
  */
 function getThreadsByForum({ forumId, callback }) {
   getThreads({
@@ -173,9 +173,9 @@ function getThreadsByForum({ forumId, callback }) {
 
 /**
  * Get threads by forums
- * @param {Object} params - Parameters
- * @param {string[]} params.forumIds - ID of the forums
- * @param {Function} params.callback - Callback
+ * @param {Object} params Parameters
+ * @param {string[]} params.forumIds ID of the forums
+ * @param {Function} params.callback Callback
  */
 function getThreadsByForums({ forumIds, callback }) {
   getThreads({
@@ -186,12 +186,12 @@ function getThreadsByForums({ forumIds, callback }) {
 
 /**
  * Update existing forum thread
- * @param {Object} params - Parameters
- * @param {string} params.threadId - ID of the thread
- * @param {Object} params.thread - Thread updates
- * @param {Object} [params.options] - Options
- * @param {Object} [params.options.resetOwnerAliasId] - Should ownerAliasId be removed?
- * @param {Function} params.callback - Callback
+ * @param {Object} params Parameters
+ * @param {string} params.threadId ID of the thread
+ * @param {Object} params.thread Thread updates
+ * @param {Object} [params.options] Options
+ * @param {Object} [params.options.resetOwnerAliasId] Should ownerAliasId be removed?
+ * @param {Function} params.callback Callback
  */
 function updateThread({
   threadId,
@@ -226,10 +226,10 @@ function updateThread({
 /**
  * Remove forum threads.
  * Setting fullRemoval will also remove all connected forum posts.
- * @param {Object} params - Parameters.
- * @param {string[]} params.threadIds - IDs of forums threads to remove.
- * @param {boolean} [params.fullRemoval] - Should connected forum posts be removed?
- * @param {Function} params.callback - Callback.
+ * @param {Object} params Parameters.
+ * @param {string[]} params.threadIds IDs of forums threads to remove.
+ * @param {boolean} [params.fullRemoval] Should connected forum posts be removed?
+ * @param {Function} params.callback Callback.
  */
 function removeThreads({ threadIds, fullRemoval, callback }) {
   dbConnector.removeObject({
@@ -259,10 +259,10 @@ function removeThreads({ threadIds, fullRemoval, callback }) {
 /**
  * Remove forum thread.
  * Setting fullRemoval will also remove all connected forum posts.
- * @param {Object} params - Parameters.
- * @param {string} params.threadId - ID of forum thread to remove.
- * @param {boolean} [params.fullRemoval] - Should connected forum posts be removed?
- * @param {Function} params.callback - Callback.
+ * @param {Object} params Parameters.
+ * @param {string} params.threadId ID of forum thread to remove.
+ * @param {boolean} [params.fullRemoval] Should connected forum posts be removed?
+ * @param {Function} params.callback Callback.
  */
 function removeThread({ threadId, fullRemoval, callback }) {
   dbConnector.removeObject({
@@ -292,10 +292,10 @@ function removeThread({ threadId, fullRemoval, callback }) {
 /**
  * Remove forum threads by forum.
  * Setting fullRemoval will also remove all connected forum posts.
- * @param {Object} params - Parameters
- * @param {string[]} params.forumId - ID of forum
- * @param {boolean} [params.fullRemoval] - Should connected forum posts be removed?
- * @param {Function} params.callback - Callback
+ * @param {Object} params Parameters
+ * @param {string[]} params.forumId ID of forum
+ * @param {boolean} [params.fullRemoval] Should connected forum posts be removed?
+ * @param {Function} params.callback Callback
  */
 function removeThreadsByForum({ forumId, fullRemoval, callback }) {
   const removeFunc = () => {
@@ -339,14 +339,14 @@ function removeThreadsByForum({ forumId, fullRemoval, callback }) {
 
 /**
  * Update access to the thread.
- * @param {Object} params - Parameters.
- * @param {Function} params.callback - Callback.
- * @param {boolean} [params.shouldRemove] - Should access be removed?
- * @param {string[]} [params.userIds] - Id of the users to update.
- * @param {string[]} [params.teamIds] - Id of the teams to update.
- * @param {string[]} [params.bannedIds] - Id of the blocked Ids to update.
- * @param {string[]} [params.teamAdminIds] - Id of the teams to update admin access for.
- * @param {string[]} [params.userAdminIds] - Id of the users to update admin access for.
+ * @param {Object} params Parameters.
+ * @param {Function} params.callback Callback.
+ * @param {boolean} [params.shouldRemove] Should access be removed?
+ * @param {string[]} [params.userIds] Id of the users to update.
+ * @param {string[]} [params.teamIds] Id of the teams to update.
+ * @param {string[]} [params.bannedIds] Id of the blocked Ids to update.
+ * @param {string[]} [params.teamAdminIds] Id of the teams to update admin access for.
+ * @param {string[]} [params.userAdminIds] Id of the users to update admin access for.
  */
 function updateAccess(params) {
   const { callback } = params;
@@ -372,8 +372,8 @@ function updateAccess(params) {
 
 /**
  * Get all forums
- * @param {Object} params - Parameters
- * @param {Function} params.callback - Callback
+ * @param {Object} params Parameters
+ * @param {Function} params.callback Callback
  */
 function getAllThreads({ callback }) {
   getThreads({ callback });
@@ -381,9 +381,9 @@ function getAllThreads({ callback }) {
 
 /**
  * Get threads created by the user.
- * @param {Object} params - Parameters.
- * @param {string} params.user - User.
- * @param {Function} params.callback - Callback.
+ * @param {Object} params Parameters.
+ * @param {string} params.user User.
+ * @param {Function} params.callback Callback.
  */
 function getThreadsByUser({
   user,

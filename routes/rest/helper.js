@@ -26,10 +26,10 @@ const forumThreadManager = require('../../managers/forumThreads');
 
 /**
  * Send message. Called by the REST API.
- * @param {Object} params - Parameters.
- * @param {Object} params.request - Request.
- * @param {Object} params.response - Response.
- * @param {Object} params.io - Socket.io.
+ * @param {Object} params Parameters.
+ * @param {Object} params.request Request.
+ * @param {Object} params.response Response.
+ * @param {Object} params.io Socket.io.
  */
 function sendMessage({ request, response, io }) {
   if (!objectValidator.isValidData(request.body, { data: { message: { text: true } } })) {
@@ -90,9 +90,9 @@ function sendMessage({ request, response, io }) {
 
 /**
  * Get messages. Called by the REST API.
- * @param {Object} params - Parameters.
- * @param {Object} params.request - Request.
- * @param {Object} params.response - Response
+ * @param {Object} params Parameters.
+ * @param {Object} params.request Request.
+ * @param {Object} params.response Response
  */
 function getMessages({ request, response }) {
   const { authorization: token } = request.headers;
@@ -136,9 +136,9 @@ function getMessages({ request, response }) {
 
 /**
  * Get forum posts. Called by the REST API.
- * @param {Object} params - Parameters.
- * @param {Object} params.request - Request.
- * @param {Object} params.response - Response.
+ * @param {Object} params Parameters.
+ * @param {Object} params.request Request.
+ * @param {Object} params.response Response.
  */
 function getForumPosts({ request, response }) {
   const { threadId, forumId } = request.params || request.query;
@@ -176,9 +176,9 @@ function getForumPosts({ request, response }) {
 
 /**
  * Get forum threads. Called by REST API.
- * @param {Object} params - Parameters.
- * @param {Object} params.request - Request.
- * @param {Object} params.response - Response.
+ * @param {Object} params Parameters.
+ * @param {Object} params.request Request.
+ * @param {Object} params.response Response.
  */
 function getForumThreads({ request, response }) {
   const { forumId } = request.params || request.query;
@@ -210,10 +210,10 @@ function getForumThreads({ request, response }) {
 
 /**
  * Create a forum post. Called by the REST API.
- * @param {Object} params - Parameters.
- * @param {Object} params.request - Request.
- * @param {Object} params.response - Response.
- * @param {Object} params.io - Socket.io.
+ * @param {Object} params Parameters.
+ * @param {Object} params.request Request.
+ * @param {Object} params.response Response.
+ * @param {Object} params.io Socket.io.
  */
 function createForumPost({ request, response, io }) {
   if (!objectValidator.isValidData(request.body, { data: { post: { text: true } } })) {
@@ -244,10 +244,10 @@ function createForumPost({ request, response, io }) {
 
 /**
  * Create a forum thread. Called by the REST API.
- * @param {Object} params - Parameters.
- * @param {Object} params.request - Request.
- * @param {Object} params.response - Response.
- * @param {Object} params.io - Socket.io.
+ * @param {Object} params Parameters.
+ * @param {Object} params.request Request.
+ * @param {Object} params.response Response.
+ * @param {Object} params.io Socket.io.
  */
 function createThread({ request, response, io }) {
   if (!objectValidator.isValidData(request.body, { data: { thread: { title: true, text: true } } })) {

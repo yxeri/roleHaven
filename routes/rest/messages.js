@@ -208,7 +208,7 @@ function handle(io) {
    * @apiParam {Message} data.message Message.
    * @apiParam {string} data.messageType Type of message. Default is CHAT.
    * @apiParam {Object} [data.image] Image parameters to attach to the message.
-   * @apiParam {string} data.roomId - Id of the room to send the message to.
+   * @apiParam {string} data.roomId Id of the room to send the message to.
    *
    * @apiSuccess {Object} data
    * @apiSuccess {Message} data.message Sent message.

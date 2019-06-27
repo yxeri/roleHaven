@@ -45,6 +45,7 @@ const bypassExternalConnectionEnv = textTools.convertToBoolean(process.env.BYPAS
 const userVerifyEnv = textTools.convertToBoolean(process.env.USERVERIFY);
 const showDevInfoEnv = textTools.convertToBoolean(process.env.SHOWDEVINFO);
 const disablePositionImportEnv = textTools.convertToBoolean(process.env.DISABLEPOSITIONIMPORT);
+const requireOffNameEnv = textTools.convertToBoolean(process.env.REQUIREOFFNAME);
 
 /**
  * **********
@@ -139,6 +140,7 @@ config.routes = config.ignoreDefaultRoutes
     { sitePath: '/api/forumPosts', filePath: '/routes/rest/forumPosts' },
     { sitePath: '/api/messages', filePath: '/routes/rest/messages' },
     { sitePath: '/api/transactions', filePath: '/routes/rest/transactions' },
+    { sitePath: '/api/triggerEvents', filePath: '/routes/rest/triggerEvents' },
   ]).concat(config.routes || []).concat([{ sitePath: '*', filePath: '/routes/error.js' }]).map((route) => {
     return {
       sitePath: route.sitePath,
@@ -466,7 +468,7 @@ config.gameCodeLength = process.env.GAMECODELENGTH || config.gameCodeLength || 8
 config.maxHistoryAmount = process.env.MAXHISTORYAMOUNT || config.maxHistoryAmount || 60;
 
 /**
- * Should messagesbe allowed to have an attached image?
+ * Should messages allowed to have an attached image?
  * @type {boolean}
  */
 config.allowMessageImage = typeof allowMessageImageEnv !== 'undefined'
@@ -486,6 +488,17 @@ config.messageMaxLength = process.env.MESSAGEMAXLENGTH || config.messageMaxLengt
 config.broadcastMaxLength = process.env.BROADCASTMAXLENGTH || config.broadcastMaxLength || 600;
 
 /**
+ * *********
+ * * Image *
+ * *********
+ */
+
+config.imageMaxWidth = process.env.IMAGEMAXWIDTH || config.imageMaxWidth || 500;
+config.imageMaxHeight = process.env.IMAGEMAXHEIGHT || config.imageMaxHeight || 500;
+config.imageThumbMaxWidth = process.env.IMAGETHUMBMAXWIDTH || config.imageThumbMaxWidth || 150;
+config.imageThumbMaxHeight = process.env.IMAGETHUMBMAXHEIGHT || config.imageThumbMaxHeight || 150;
+
+/**
  * ********
  * * User *
  * ********
@@ -503,13 +516,13 @@ config.userVerify = typeof userVerifyEnv !== 'undefined'
  * Minimum amount of characters in a user name
  * @type {number}
  */
-config.usernameMinLength = process.env.USERNAMEMINLENGTH || config.usernameMinLength || 2;
+config.usernameMinLength = process.env.USERNAMEMINLENGTH || config.usernameMinLength || 1;
 
 /**
  * Maximum amount of characters in a user name
  * @type {number}
  */
-config.usernameMaxLength = process.env.USERNAMEMAXLENGTH || config.usernameMaxLength || 10;
+config.usernameMaxLength = process.env.USERNAMEMAXLENGTH || config.usernameMaxLength || 20;
 
 /**
  * Maximum amount warnings before a user account is banned
@@ -521,13 +534,13 @@ config.maxUserWarnings = process.env.MAXUSERWARNINGS || config.maxUserWarnings |
  * Minimum amount of characters in a password
  * @type {number}
  */
-config.passwordMinLength = process.env.PASSWORDMINLENGTH || config.passwordMinLength || 4;
+config.passwordMinLength = process.env.PASSWORDMINLENGTH || config.passwordMinLength || 3;
 
 /**
  * Maximum amount of characters in a password
  * @type {number}
  */
-config.passwordMaxLength = process.env.PASSWORDMAXLENGTH || config.passwordMaxLength || 40;
+config.passwordMaxLength = process.env.PASSWORDMAXLENGTH || config.passwordMaxLength || 100;
 
 /**
  * Should users be able to register? Does not block register through rest api.
@@ -537,17 +550,27 @@ config.disallowUserRegister = typeof disallowRegisterEnv !== 'undefined'
   ? disallowRegisterEnv
   : config.disallowUserRegister || false;
 
-/**
- * Minimum amount of characters in a user's full name.
- * @type {number}
- */
-config.fullNameMinLength = process.env.FULLNAMEMINLENGTH || config.fullNameMinLength || 3;
+config.requireOffName = typeof requireOffNameEnv !== 'undefined'
+  ? requireOffNameEnv
+  : config.requireOffName || false;
 
 /**
- * Maximum amount of characters in a user's full name.
+ * Minimum amount of characters in a user's off-game name.
  * @type {number}
  */
-config.fullNameMaxLength = process.env.FULLNAMEMAXLENGTH || config.fullNameMaxLength || 40;
+config.offNameMinLength = process.env.OFFNAMEMINLENGTH || config.offNameMinLength || 1;
+
+/**
+ * Maximum amount of characters in a user's off-game name.
+ * @type {number}
+ */
+config.offNameNameMaxLength = process.env.OFFNAMEMAXLENGTH || config.offNameNameMaxLength || 40;
+
+/**
+ * Maximum amount of characters in a user's description.
+ * @type {number}
+ */
+config.userDescriptionMaxLength = process.env.USERDESCRIPTIONMAXLENGTH || config.userDescriptionMaxLength || 500;
 
 /**
  * ********
@@ -672,6 +695,12 @@ config.deviceAliasMaxLength = process.env.DEVICEALIASMAXLENGTH || config.deviceA
 config.defaultWalletAmount = process.env.DEFAULTWALLETAMOUNT || config.defaultWalletAmount || 10;
 
 /**
+ * Minimum amount that a wallet can contain.
+ * @type {number}
+ */
+config.walletMinimumAmount = process.env.WALLETMINIMUMAMOUNT || config.walletMinimumAmount || 0;
+
+/**
  * ************
  * * Position *
  * ************
@@ -706,6 +735,8 @@ config.importedPositionMinAccessLevel = process.env.IMPORTEDPOSITIONMINACCESSLEV
  * @type {number}
  */
 config.maxPositionHistory = process.env.MAXPOSITIONHISTORY || config.maxPositionHistory || 15;
+
+config.defaultPositionRadius = process.env.DEFAULTPOSITIONRADIUS || config.defaultPositionRadius || 25;
 
 /**
  * *********

@@ -28,7 +28,6 @@ data.adminUserOne = {
   accessLevel: dbConfig.AccessLevels.ADMIN,
   visibility: dbConfig.AccessLevels.ADMIN,
   isVerified: true,
-  fullName: tools.createRandString({ length: appConfig.usernameMaxLength }),
 };
 
 data.adminUserTwo = {
@@ -38,7 +37,6 @@ data.adminUserTwo = {
   accessLevel: dbConfig.AccessLevels.ADMIN,
   visibility: dbConfig.AccessLevels.STANDARD,
   isVerified: true,
-  fullName: tools.createRandString({ length: appConfig.usernameMaxLength }),
 };
 
 data.basicUserOne = {
@@ -47,7 +45,6 @@ data.basicUserOne = {
   registerDevice: tools.createRandString({ length: appConfig.deviceIdLength }),
   isVerified: true,
   accessLevel: dbConfig.AccessLevels.STANDARD,
-  fullName: tools.createRandString({ length: appConfig.usernameMaxLength }),
 };
 
 data.basicUserTwo = {
@@ -56,7 +53,6 @@ data.basicUserTwo = {
   registerDevice: tools.createRandString({ length: appConfig.deviceIdLength }),
   isVerified: true,
   accessLevel: dbConfig.AccessLevels.STANDARD,
-  fullName: tools.createRandString({ length: appConfig.usernameMaxLength }),
 };
 
 data.moderatorUserOne = {
@@ -65,7 +61,6 @@ data.moderatorUserOne = {
   registerDevice: tools.createRandString({ length: appConfig.deviceIdLength }),
   isVerified: true,
   accessLevel: dbConfig.AccessLevels.MODERATOR,
-  fullName: tools.createRandString({ length: appConfig.usernameMaxLength }),
 };
 data.moderatorUserTwo = {
   username: 'moderatorTwo',
@@ -73,7 +68,6 @@ data.moderatorUserTwo = {
   registerDevice: tools.createRandString({ length: appConfig.deviceIdLength }),
   isVerified: true,
   accessLevel: dbConfig.AccessLevels.MODERATOR,
-  fullName: tools.createRandString({ length: appConfig.usernameMaxLength }),
 };
 
 data.unverifiedUser = {
@@ -81,7 +75,6 @@ data.unverifiedUser = {
   password: tools.createRandString({ length: appConfig.passwordMaxLength }),
   registerDevice: tools.createRandString({ length: appConfig.deviceIdLength }),
   isVerified: false,
-  fullName: tools.createRandString({ length: appConfig.usernameMaxLength }),
 };
 
 data.bannedUser = {
@@ -90,7 +83,6 @@ data.bannedUser = {
   registerDevice: tools.createRandString({ length: appConfig.deviceIdLength }),
   isVerified: true,
   isBanned: true,
-  fullName: tools.createRandString({ length: appConfig.usernameMaxLength }),
 };
 
 data.nonExistingUser = {
@@ -99,7 +91,6 @@ data.nonExistingUser = {
   registerDevice: tools.createRandString({ length: appConfig.deviceIdLength }),
   isVerified: true,
   isBanned: true,
-  fullName: tools.createRandString({ length: appConfig.usernameMaxLength }),
 };
 
 module.exports = data;

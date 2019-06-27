@@ -27,10 +27,10 @@ const managerHelper = require('../helpers/manager');
 
 /**
  * Get a game code by Id.
- * @param {Object} params - Parameters.
- * @param {string} params.token - jwt.
- * @param {Function} params.callback - Callback.
- * @param {string} params.gameCodeId - Code of the game code.
+ * @param {Object} params Parameters.
+ * @param {string} params.token jwt.
+ * @param {Function} params.callback Callback.
+ * @param {string} params.gameCodeId Code of the game code.
  */
 function getGameCodeById({
   token,
@@ -50,11 +50,11 @@ function getGameCodeById({
 
 /**
  * Send data to client based on code type.
- * @param {Object} params - Parameters.
- * @param {Object} params.gameCode - Game code that has been used.
- * @param {string} params.token - jwt.
- * @param {Function} params.callback - Callback.
- * @param {Object} params.io - Socket.io.
+ * @param {Object} params Parameters.
+ * @param {Object} params.gameCode Game code that has been used.
+ * @param {string} params.token jwt.
+ * @param {Function} params.callback Callback.
+ * @param {Object} params.io Socket.io.
  */
 function triggerUnlockedContent({
   token,
@@ -140,10 +140,10 @@ function triggerUnlockedContent({
 
 /**
  * Create game code.
- * @param {Object} params - Parameters.
- * @param {string} params.gameCode - Game code to save.
- * @param {string} params.token - jwt.
- * @param {Function} params.callback - Callback.
+ * @param {Object} params Parameters.
+ * @param {string} params.gameCode Game code to save.
+ * @param {string} params.token jwt.
+ * @param {Function} params.callback Callback.
  */
 function createGameCode({
   gameCode,
@@ -199,11 +199,11 @@ function createGameCode({
 
 /**
  * Use game code.
- * @param {Object} params - Parameters.
- * @param {Object} params.io - Socket io. Will be used if socket is not set.
- * @param {string} params.code - Code for a game code.
- * @param {string} params.token - jwt.
- * @param {Function} params.callback - Callback.
+ * @param {Object} params Parameters.
+ * @param {Object} params.io Socket io. Will be used if socket is not set.
+ * @param {string} params.code Code for a game code.
+ * @param {string} params.token jwt.
+ * @param {Function} params.callback Callback.
  */
 function useGameCode({
   io,
@@ -309,10 +309,10 @@ function useGameCode({
 
 /**
  * Remove game code.
- * @param {Object} params - Parameters.
- * @param {string} params.gameCodeId - Id of the game code.
- * @param {Object} params.token - jwt.
- * @param {Function} params.callback - Callback.
+ * @param {Object} params Parameters.
+ * @param {string} params.gameCodeId Id of the game code.
+ * @param {Object} params.token jwt.
+ * @param {Function} params.callback Callback.
  */
 function removeGameCode({
   gameCodeId,
@@ -339,10 +339,10 @@ function removeGameCode({
 
 /**
  * Get user's profile code.
- * @param {Object} params - Parameters.
- * @param {string} params.ownerId - Id of the owner of the code.
- * @param {Function} params.callback - Callback.
- * @param {string} params.token - jwt.
+ * @param {Object} params Parameters.
+ * @param {string} params.ownerId Id of the owner of the code.
+ * @param {Function} params.callback Callback.
+ * @param {string} params.token jwt.
  */
 function getProfileGameCode({
   ownerId,
@@ -369,11 +369,11 @@ function getProfileGameCode({
 
 /**
  * Update a game code.
- * @param {Object} params - Parameters.
- * @param {string} params.token - jwt.
- * @param {Function} params.callback - Callback.
- * @param {string} params.gameCodeId - Id of the game code.
- * @param {Object} params.gameCode - Game code parameters to update.
+ * @param {Object} params Parameters.
+ * @param {string} params.token jwt.
+ * @param {Function} params.callback Callback.
+ * @param {string} params.gameCodeId Id of the game code.
+ * @param {Object} params.gameCode Game code parameters to update.
  */
 function updateGameCode({
   token,
@@ -408,9 +408,9 @@ function updateGameCode({
 
 /**
  * Get game codes.
- * @param {Object} params - Parameters.
- * @param {string} params.token - jwt.
- * @param {Function} params.callback - Callback.
+ * @param {Object} params Parameters.
+ * @param {string} params.token jwt.
+ * @param {Function} params.callback Callback.
  */
 function getGameCodesByUser({
   token,

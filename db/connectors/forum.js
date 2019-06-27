@@ -24,7 +24,7 @@ const forumSchema = new mongoose.Schema(dbConnector.createSchema({
   title: { type: String, unique: true },
   text: { type: [String], default: [] },
   isPersonal: { type: Boolean, default: false },
-  picture: dbConnector.pictureSchema,
+  image: dbConnector.imageSchema,
 }), { collection: 'forums' });
 
 const Forum = mongoose.model('Forum', forumSchema);
@@ -32,9 +32,9 @@ const Forum = mongoose.model('Forum', forumSchema);
 /**
  * Update forum object fields.
  * @private
- * @param {Object} params - Parameters.
- * @param {string} params.forumId - Id of forum to update.
- * @param {Object} params.update - Update.
+ * @param {Object} params Parameters.
+ * @param {string} params.forumId Id of forum to update.
+ * @param {Object} params.update Update.
  * @param {Function} params.callback Callback.
  */
 function updateObject({
@@ -62,9 +62,9 @@ function updateObject({
 /**
  * Get forums
  * @private
- * @param {Object} params - Parameters
- * @param {Object} params.query - Query to get forums
- * @param {Function} params.callback - Callback
+ * @param {Object} params Parameters
+ * @param {Object} params.query Query to get forums
+ * @param {Function} params.callback Callback
  */
 function getForums({
   query,
@@ -94,9 +94,9 @@ function getForums({
 /**
  * Get forum object
  * @private
- * @param {Object} params - Parameters
- * @param {string} params.query - Query to get forum object
- * @param {Function} params.callback - Callback
+ * @param {Object} params Parameters
+ * @param {string} params.query Query to get forum object
+ * @param {Function} params.callback Callback
  */
 function getForum({ query, callback }) {
   dbConnector.getObject({
@@ -122,9 +122,9 @@ function getForum({ query, callback }) {
 
 /**
  * Does forum exist?
- * @param {Object} params - Parameters
- * @param {string} params.title - Title of the forum
- * @param {Function} params.callback - Callback
+ * @param {Object} params Parameters
+ * @param {string} params.title Title of the forum
+ * @param {Function} params.callback Callback
  */
 function doesForumExist({ title, callback }) {
   dbConnector.doesObjectExist({
@@ -136,10 +136,10 @@ function doesForumExist({ title, callback }) {
 
 /**
  * Create a forum.
- * @param {Object} params - Parameters.
- * @param {Object} params.forum - Forum to save.
- * @param {Function} params.callback - Callback.
- * @param {Object} [params.options] - Creation options.
+ * @param {Object} params Parameters.
+ * @param {Object} params.forum Forum to save.
+ * @param {Function} params.callback Callback.
+ * @param {Object} [params.options] Creation options.
  */
 function createForum({
   forum,
@@ -193,9 +193,9 @@ function createForum({
 
 /**
  * Get forum by Id
- * @param {Object} params - Parameters
- * @param {string} params.forumId - ID of the forum
- * @param {Function} params.callback - Callback
+ * @param {Object} params Parameters
+ * @param {string} params.forumId ID of the forum
+ * @param {Function} params.callback Callback
  */
 function getForumById({ forumId, callback }) {
   getForum({
@@ -206,9 +206,9 @@ function getForumById({ forumId, callback }) {
 
 /**
  * Get forums by Id
- * @param {Object} params - Parameters
- * @param {string[]} params.forumIds - ID of the forum
- * @param {Function} params.callback - Callback
+ * @param {Object} params Parameters
+ * @param {string[]} params.forumIds ID of the forum
+ * @param {Function} params.callback Callback
  */
 function getForumsByIds({ forumIds, callback }) {
   getForums({
@@ -219,8 +219,8 @@ function getForumsByIds({ forumIds, callback }) {
 
 /**
  * Get all forums
- * @param {Object} params - Parameters
- * @param {Function} params.callback - Callback
+ * @param {Object} params Parameters
+ * @param {Function} params.callback Callback
  */
 function getAllForums({ callback }) {
   getForums({ callback });
@@ -228,10 +228,10 @@ function getAllForums({ callback }) {
 
 /**
  * Update existing forum
- * @param {Object} params - Parameters
- * @param {string} params.forumId - ID of the forum
- * @param {Object} params.forum - Forum updates
- * @param {Function} params.callback - Callback
+ * @param {Object} params Parameters
+ * @param {string} params.forumId ID of the forum
+ * @param {Object} params.forum Forum updates
+ * @param {Function} params.callback Callback
  */
 function updateForum({ forumId, forum, callback }) {
   const update = { $set: {} };
@@ -275,10 +275,10 @@ function updateForum({ forumId, forum, callback }) {
 /**
  * Remove forum.
  * Setting fullRemoval will also remove all connected forum threads and posts.
- * @param {Object} params - Parameters
- * @param {string[]} params.forumId - ID of forum to remove
- * @param {boolean} params.fullRemoval - Should connected forum threads and posts be removed?
- * @param {Function} params.callback - Callback
+ * @param {Object} params Parameters
+ * @param {string[]} params.forumId ID of forum to remove
+ * @param {boolean} params.fullRemoval Should connected forum threads and posts be removed?
+ * @param {Function} params.callback Callback
  */
 function removeForum({ forumId, fullRemoval, callback }) {
   dbConnector.removeObjects({
@@ -319,14 +319,14 @@ function removeForum({ forumId, fullRemoval, callback }) {
 
 /**
  * Update access to the forum.
- * @param {Object} params - Parameters.
- * @param {Function} params.callback - Callback.
- * @param {boolean} [params.shouldRemove] - Should access be removed?
- * @param {string[]} [params.userIds] - Id of the users to update.
- * @param {string[]} [params.teamIds] - Id of the teams to update.
- * @param {string[]} [params.bannedIds] - Id of the blocked Ids to update.
- * @param {string[]} [params.teamAdminIds] - Id of the teams to update admin access for.
- * @param {string[]} [params.userAdminIds] - Id of the users to update admin access for.
+ * @param {Object} params Parameters.
+ * @param {Function} params.callback Callback.
+ * @param {boolean} [params.shouldRemove] Should access be removed?
+ * @param {string[]} [params.userIds] Id of the users to update.
+ * @param {string[]} [params.teamIds] Id of the teams to update.
+ * @param {string[]} [params.bannedIds] Id of the blocked Ids to update.
+ * @param {string[]} [params.teamAdminIds] Id of the teams to update admin access for.
+ * @param {string[]} [params.userAdminIds] Id of the users to update admin access for.
  */
 function updateAccess(params) {
   const { callback } = params;
@@ -352,9 +352,9 @@ function updateAccess(params) {
 
 /**
  * Get forums by user.
- * @param {Object} params - Parameters.
- * @param {Object} params.user - User retrieving the forums.
- * @param {Function} params.callback - Callback.
+ * @param {Object} params Parameters.
+ * @param {Object} params.user User retrieving the forums.
+ * @param {Function} params.callback Callback.
  */
 function getForumsByUser({
   user,
@@ -370,8 +370,8 @@ function getForumsByUser({
 
 /**
  * Add forums to db.
- * @param {Object} params - Parameters.
- * @param {Function} params.callback - Callback.
+ * @param {Object} params Parameters.
+ * @param {Function} params.callback Callback.
  */
 function populateDbForums({ callback = () => {} }) {
   console.info('Creating default forums, if needed');
@@ -380,7 +380,7 @@ function populateDbForums({ callback = () => {} }) {
 
   /**
    * Adds a room to database. Recursive.
-   * @param {string[]} forumNames - Forum names.
+   * @param {string[]} forumNames Forum names.
    */
   function addForum(forumNames) {
     const forumName = forumNames.shift();

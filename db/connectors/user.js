@@ -23,14 +23,10 @@ const { dbConfig } = require('../../config/defaults/config');
 const dbAlias = require('./alias');
 const dbTeam = require('./team');
 
-// Access levels: Lowest / Lower / Middle / Higher / Highest / God
-// 1 / 3 / 5 / 7 / 9 / 11
-
 const userSchema = new mongoose.Schema(dbConnector.createSchema({
   username: { type: String, unique: true },
   usernameLowerCase: { type: String, unique: true },
   mailAddress: { type: String, unique: true, sparse: true },
-  fullName: String,
   password: String,
   socketId: String,
   lastOnline: Date,
@@ -45,7 +41,9 @@ const userSchema = new mongoose.Schema(dbConnector.createSchema({
   partOfTeams: { type: [String], default: [] },
   followingRooms: { type: [String], default: [] },
   aliases: { type: [String], default: [] },
-  picture: dbConnector.pictureSchema,
+  image: dbConnector.imageSchema,
+  offName: String,
+  pronouns: [String],
 }), { collection: 'users' });
 
 const User = mongoose.model('User', userSchema);
@@ -53,17 +51,25 @@ const User = mongoose.model('User', userSchema);
 /**
  * Remove private parameters
  * @private
- * @param {Object} user User
- * @param {boolean} [noClean] Should less parameters be removed before returning object?
+ * @param {Object} params Parameters.
+ * @param {Object} params.user User
+ * @param {boolean} [params.noClean] Should less parameters be removed before returning object?
+ * @param {boolean} [params.includeOff] Should off-game fields be included?
  * @returns {Object} Clean user
  */
-function modifyUserParameters(user, noClean) {
+function modifyUserParameters({
+  user,
+  noClean,
+  includeOff = false,
+}) {
   const modifiedUser = user;
-
-  modifiedUser.password = typeof modifiedUser.password === 'string';
 
   if (!noClean) {
     modifiedUser.mailAddress = typeof modifiedUser.mailAddress === 'string';
+  }
+
+  if (!includeOff) {
+    modifiedUser.offName = typeof modifiedUser.offName === 'string';
   }
 
   return modifiedUser;
@@ -82,6 +88,7 @@ function updateObject({
   update,
   callback,
   suppressError,
+  includeOff,
 }) {
   const query = {};
 
@@ -103,7 +110,7 @@ function updateObject({
         return;
       }
 
-      callback({ data: { user: modifyUserParameters(data.object) } });
+      callback({ data: { user: modifyUserParameters({ user: data.object, includeOff }) } });
     },
   });
 }
@@ -129,7 +136,7 @@ function updateObjects({ query, update, callback }) {
 
       callback({
         data: {
-          users: data.objects.map(object => modifyUserParameters(object)),
+          users: data.objects.map(object => modifyUserParameters({ user: object })),
         },
       });
     },
@@ -144,7 +151,12 @@ function updateObjects({ query, update, callback }) {
  * @param {Object} params.query Query to get users.
  * @param {Function} params.callback Callback.
  */
-function getUsers({ filter, query, callback }) {
+function getUsers({
+  filter,
+  query,
+  callback,
+  includeOff,
+}) {
   dbConnector.getObjects({
     query,
     filter,
@@ -158,7 +170,7 @@ function getUsers({ filter, query, callback }) {
 
       callback({
         data: {
-          users: data.objects.map(user => modifyUserParameters(user)),
+          users: data.objects.map(user => modifyUserParameters({ user, includeOff })),
         },
       });
     },
@@ -171,16 +183,19 @@ function getUsers({ filter, query, callback }) {
  * @param {Object} params Parameters
  * @param {string} params.query Query to get alias
  * @param {Function} params.callback Callback
+ * @param {boolean} [params.getPassword] Should password hash be returned?
  */
 function getUser({
   filter,
   query,
   callback,
   supressExistError,
+  getPassword,
 }) {
   dbConnector.getObject({
     query,
     filter,
+    noClean: getPassword,
     object: User,
     callback: ({ error, data }) => {
       if (error) {
@@ -200,7 +215,11 @@ function getUser({
         return;
       }
 
-      callback({ data: { user: modifyUserParameters(data.object) } });
+      callback({
+        data: {
+          user: modifyUserParameters({ user: data.object, noClean: getPassword }),
+        },
+      });
     },
   });
 }
@@ -210,11 +229,13 @@ function getUser({
  * @param {Object} params Parameters.
  * @param {string} params.userId Id of the user.
  * @param {Function} params.callback Callback.
+ * @param {boolean} [params.getPassword] Should password hash be returned?
  */
 function getUserById({
   userId,
   username,
   callback,
+  getPassword = false,
   supressExistError,
 }) {
   const query = userId
@@ -224,6 +245,7 @@ function getUserById({
   getUser({
     query,
     supressExistError,
+    getPassword,
     callback: ({ error, data }) => {
       if (error) {
         callback({ error });
@@ -260,34 +282,6 @@ function doesUserSocketIdExist({
 
       callback({ data });
     },
-  });
-}
-
-/**
- * Authorize user. The user can be found by either the username or user Id.
- * @param {Object} params Parameters.
- * @param {string} params.password Password of the user.
- * @param {Function} params.callback Callback.
- * @param {string} [params.userId] Id of the user.
- * @param {string} [params.username] Name of the user.
- */
-function authUser({
-  username,
-  userId,
-  password,
-  callback,
-}) {
-  const query = { password };
-
-  if (userId) {
-    query._id = userId;
-  } else {
-    query.username = username;
-  }
-
-  getUser({
-    callback,
-    query,
   });
 }
 
@@ -386,7 +380,7 @@ function createUser({
             return;
           }
 
-          callback({ data: { user: modifyUserParameters(data.savedObject) } });
+          callback({ data: { user: modifyUserParameters({ user: data.savedObject, includeOff: true }) } });
         },
       });
     },
@@ -455,7 +449,6 @@ function updateUser({
   const {
     mailAddress,
     username,
-    fullName,
     visibility,
     accessLevel,
     defaultRoomId,
@@ -463,6 +456,9 @@ function updateUser({
     hasFullAccess,
     socketId,
     aliases,
+    image,
+    offName,
+    pronouns,
   } = user;
   const {
     resetSocket,
@@ -483,13 +479,15 @@ function updateUser({
     set.username = username;
     set.usernameLowerCase = username.toLowerCase();
   }
-  if (fullName) { set.fullName = fullName; }
   if (visibility) { set.visibility = visibility; }
   if (accessLevel) { set.accessLevel = accessLevel; }
   if (defaultRoomId) { set.defaultRoomId = defaultRoomId; }
   if (typeof isLootable === 'boolean') { set.isLootable = isLootable; }
   if (typeof hasFullAccess === 'boolean') { set.hasFullAccess = hasFullAccess; }
   if (aliases) { addToSet.aliases = { $each: aliases }; }
+  if (image) { set.image = image; }
+  if (offName) { set.offName = offName; }
+  if (pronouns) { set.pronouns = pronouns; }
 
   if (Object.keys(set).length > 0) { update.$set = set; }
   if (Object.keys(unset).length > 0) { update.$unset = unset; }
@@ -517,6 +515,7 @@ function updateUser({
           callback,
           userSocketId,
           userId,
+          includeOff: typeof offName !== 'undefined',
         });
       },
     });
@@ -550,7 +549,7 @@ function verifyUser({ userId, callback }) {
  * @param {Object} params Parameters
  * @param {string} params.userId ID of the user
  * @param {boolean} params.shouldBan Should the user be banned?
- * @param {Function} params.callback - Callback
+ * @param {Function} params.callback Callback
  */
 function updateBanUser({ shouldBan, userId, callback }) {
   const update = {
@@ -568,17 +567,17 @@ function updateBanUser({ shouldBan, userId, callback }) {
         return;
       }
 
-      callback({ data: { user: modifyUserParameters(data.user) } });
+      callback({ data: { user: modifyUserParameters({ user: data.user }) } });
     },
   });
 }
 
 /**
  * Set new password for user
- * @param {Object} params - Parameters
- * @param {string} params.userId - ID of the user
- * @param {string} params.password - New password
- * @param {Function} params.callback - Callback
+ * @param {Object} params Parameters
+ * @param {string} params.userId ID of the user
+ * @param {string} params.password New password
+ * @param {Function} params.callback Callback
  */
 function updateUserPassword({ userId, password, callback }) {
   const update = { $set: { password } };
@@ -592,14 +591,15 @@ function updateUserPassword({ userId, password, callback }) {
 
 /**
  * Get users that the user has access to.
- * @param {Object} params - Parameters.
- * @param {Function} params.callback - Callback.
- * @param {boolean} [params.includeInactive] - Should banned and unverified users be retrieved?
+ * @param {Object} params Parameters.
+ * @param {Function} params.callback Callback.
+ * @param {boolean} [params.includeInactive] Should banned and unverified users be retrieved?
  */
 function getUsersByUser({
   includeInactive,
   user,
   callback,
+  includeOff,
 }) {
   const query = dbConnector.createUserQuery({ user });
 
@@ -610,6 +610,7 @@ function getUsersByUser({
 
   getUsers({
     query,
+    includeOff,
     callback: ({ error, data }) => {
       if (error) {
         callback({ error });
@@ -626,11 +627,11 @@ function getUsersByUser({
 
 /**
  * Add a team to users.
- * @param {Object} params - Parameters.
- * @param {string} params.userIds - Ids of the users.
- * @param {string} params.teamId - Id of the team.
- * @param {Function} params.callback - Callback.
- * @param {boolean} [params.isAdmin] - Should the user be set as an admin for the team?
+ * @param {Object} params Parameters.
+ * @param {string} params.userIds Ids of the users.
+ * @param {string} params.teamId Id of the team.
+ * @param {Function} params.callback Callback.
+ * @param {boolean} [params.isAdmin] Should the user be set as an admin for the team?
  */
 function addToTeam({
   userIds,
@@ -687,10 +688,10 @@ function addToTeam({
 
 /**
  * Add alias to user.
- * @param {Object} params - Parameters.
- * @param {string} params.aliasId - Id of the alias.
- * @param {string} params.userId - Id of the user.
- * @param {Function} params.callback - Callback
+ * @param {Object} params Parameters.
+ * @param {string} params.aliasId Id of the alias.
+ * @param {string} params.userId Id of the user.
+ * @param {Function} params.callback Callback
  */
 function addAlias({
   aliasId,
@@ -714,10 +715,10 @@ function addAlias({
 
 /**
  * Remove alias from user.
- * @param {Object} params - Parameters.
- * @param {string} params.aliasId - Id of the alias.
- * @param {string} params.userId - Id of the user.
- * @param {Function} params.callback - Callback
+ * @param {Object} params Parameters.
+ * @param {string} params.aliasId Id of the alias.
+ * @param {string} params.userId Id of the user.
+ * @param {Function} params.callback Callback
  */
 function removeAlias({
   aliasId,
@@ -733,9 +734,9 @@ function removeAlias({
 
 /**
  * Remove alias from all users.
- * @param {Object} params - Parameters.
- * @param {string} params.aliasId - Id of the alias.
- * @param {Function} params.callback - Callback
+ * @param {Object} params Parameters.
+ * @param {string} params.aliasId Id of the alias.
+ * @param {Function} params.callback Callback
  */
 function removeAliasFromAllUsers({
   aliasId,
@@ -749,10 +750,10 @@ function removeAliasFromAllUsers({
 
 /**
  * Remove a team from the user
- * @param {Object} params - Parameters
- * @param {string} params.userId - ID of the user
- * @param {string} params.teamId - ID of the team
- * @param {Function} params.callback - Callback
+ * @param {Object} params Parameters
+ * @param {string} params.userId ID of the user
+ * @param {string} params.teamId ID of the team
+ * @param {Function} params.callback Callback
  */
 function removeFromTeam({ userId, teamId, callback }) {
   updateObject({
@@ -791,8 +792,8 @@ function removeFromTeam({ userId, teamId, callback }) {
 // TODO Redis would be a good choice to store user id and socket id connection
 /**
  * Get all socket ids from users
- * @param {Object} params - Parameters
- * @param {Function} params.callback - Callback
+ * @param {Object} params Parameters
+ * @param {Function} params.callback Callback
  */
 function getAllSocketIds({ callback }) {
   getUsers({
@@ -817,9 +818,9 @@ function getAllSocketIds({ callback }) {
 
 /**
  * Remove room from all users.
- * @param {Object} params - Parameters
- * @param {string} params.roomId - ID of the room
- * @param {Function} params.callback - Callback
+ * @param {Object} params Parameters
+ * @param {string} params.roomId ID of the room
+ * @param {Function} params.callback Callback
  */
 function removeRoomFromAll({ roomId, callback }) {
   updateObjects({
@@ -830,9 +831,9 @@ function removeRoomFromAll({ roomId, callback }) {
 
 /**
  * Remove team from all users.
- * @param {Object} params - Parameters.
- * @param {string} params.teamId - ID of the team.
- * @param {Function} params.callback - Callback.
+ * @param {Object} params Parameters.
+ * @param {string} params.teamId ID of the team.
+ * @param {Function} params.callback Callback.
  */
 function removeTeamFromAll({ teamId, callback }) {
   updateObjects({
@@ -843,8 +844,8 @@ function removeTeamFromAll({ teamId, callback }) {
 
 /**
  * Get banned and unverified users.
- * @param {Object} params - Parameters.
- * @param {Function} params.callback - Callback.
+ * @param {Object} params Parameters.
+ * @param {Function} params.callback Callback.
  */
 function getInactiveUsers({ callback }) {
   const query = {
@@ -862,10 +863,10 @@ function getInactiveUsers({ callback }) {
 
 /**
  * Add a room to users.
- * @param {Object} params - Parameters.
- * @param {string} params.roomId - Id of the room to add.
- * @param {string[]} params.userIds - Id of the users to update.
- * @param {Function} params.callback - Callback
+ * @param {Object} params Parameters.
+ * @param {string} params.roomId Id of the room to add.
+ * @param {string[]} params.userIds Id of the users to update.
+ * @param {Function} params.callback Callback
  */
 function followRoom({
   roomId,
@@ -873,28 +874,20 @@ function followRoom({
   userIds = [],
 }) {
   updateObjects({
+    callback,
     query: {
       _id: { $in: userIds },
     },
     update: { $addToSet: { followingRooms: roomId } },
-    callback: ({ error, data }) => {
-      if (error) {
-        callback({ error });
-
-        return;
-      }
-
-      callback({ data });
-    },
   });
 }
 
 /**
  * Remove a room from a user.
- * @param {Object} params - Parameters.
- * @param {string} params.roomId - Id of the room to remove.
- * @param {string} params.userId - Id of the user to update.
- * @param {Function} params.callback - Callback
+ * @param {Object} params Parameters.
+ * @param {string} params.roomId Id of the room to remove.
+ * @param {string} params.userId Id of the user to update.
+ * @param {Function} params.callback Callback
  */
 function unfollowRoom({
   roomId,
@@ -920,8 +913,8 @@ function unfollowRoom({
 
 /**
  * Get all users.
- * @param {Object} params - Parameters.
- * @param {Function} params.callback - Callback
+ * @param {Object} params Parameters.
+ * @param {Function} params.callback Callback
  */
 function getAllUsers({ callback }) {
   getUsers({
@@ -932,23 +925,25 @@ function getAllUsers({ callback }) {
 
 /**
  * Get users that have access to alias.
- * @param {Object} params - Parameters.
- * @param {string} params.aliasId - Alias Id.
- * @param {Function} params.callback - Callback.
+ * @param {Object} params Parameters.
+ * @param {string} params.aliasIds Aliases.
+ * @param {Function} params.callback Callback.
  */
-function getUsersByAlias({
-  aliasId,
+function getUsersByAliases({
+  aliasIds,
   callback,
 }) {
   getUsers({
     callback,
     query: {
-      aliases: { $in: [aliasId] },
+      $or: [
+        { _id: { $in: aliasIds } },
+        { aliases: { $in: aliasIds } },
+      ],
     },
   });
 }
 
-exports.authUser = authUser;
 exports.createUser = createUser;
 exports.updateUser = updateUser;
 exports.verifyUser = verifyUser;
@@ -970,5 +965,5 @@ exports.addAlias = addAlias;
 exports.removeAlias = removeAlias;
 exports.removeAliasFromAllUsers = removeAliasFromAllUsers;
 exports.getAllUsers = getAllUsers;
-exports.getUsersByAlias = getUsersByAlias;
+exports.getUsersByAliases = getUsersByAliases;
 exports.doesUserSocketIdExist = doesUserSocketIdExist;

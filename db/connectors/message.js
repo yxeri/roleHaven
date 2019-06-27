@@ -30,12 +30,7 @@ const messageSchema = new mongoose.Schema(dbConnector.createSchema({
   coordinates: dbConnector.coordinatesSchema,
   intro: [String],
   extro: [String],
-  image: dbConnector.createSchema({
-    imageName: String,
-    fileName: String,
-    width: Number,
-    height: Number,
-  }),
+  image: dbConnector.imageSchema,
 }), { collection: 'messages' });
 
 const Message = mongoose.model('Message', messageSchema);
@@ -43,9 +38,9 @@ const Message = mongoose.model('Message', messageSchema);
 /**
  * Update message.
  * @private
- * @param {Object} params - Parameters.
- * @param {string} params.messageId - Id of the message.
- * @param {Object} params.update - Update.
+ * @param {Object} params Parameters.
+ * @param {string} params.messageId Id of the message.
+ * @param {Object} params.update Update.
  * @param {Function} params.callback Callback.
  */
 function updateObject({ messageId, update, callback }) {
@@ -69,12 +64,12 @@ function updateObject({ messageId, update, callback }) {
 /**
  * Get messages.
  * @private
- * @param {Object} params - Parameters.
- * @param {Object} params.query - Query to get messages.
- * @param {Function} params.callback - Callback.
- * @param {string} [params.errorNameContent] - Error text to be printed.
- * @param {Date} [params.startDate] - Date for when to start the span of messages.
- * @param {boolean} [params.shouldGetFuture] - Should messages from the future of the start date be retrieved?
+ * @param {Object} params Parameters.
+ * @param {Object} params.query Query to get messages.
+ * @param {Function} params.callback Callback.
+ * @param {string} [params.errorNameContent] Error text to be printed.
+ * @param {Date} [params.startDate] Date for when to start the span of messages.
+ * @param {boolean} [params.shouldGetFuture] Should messages from the future of the start date be retrieved?
  */
 function getMessages({
   query,
@@ -134,10 +129,10 @@ function getMessages({
 /**
  * Get message.
  * @private
- * @param {Object} params - Parameters.
- * @param {string} params.query - Query to get alias.
- * @param {string} params.errorNameContent - Error text to be printed.
- * @param {Function} params.callback - Callback.
+ * @param {Object} params Parameters.
+ * @param {string} params.query Query to get alias.
+ * @param {string} params.errorNameContent Error text to be printed.
+ * @param {Function} params.callback Callback.
  */
 function getMessage({
   query,
@@ -168,9 +163,9 @@ function getMessage({
 
 /**
  * Create message.
- * @param {Object} params - Parameters
- * @param {Object} params.message - Message to create
- * @param {Function} params.callback - Callback
+ * @param {Object} params Parameters
+ * @param {Object} params.message Message to create
+ * @param {Function} params.callback Callback
  */
 function createMessage({ message, callback }) {
   dbConnector.saveObject({
@@ -190,19 +185,19 @@ function createMessage({ message, callback }) {
 
 /**
  * Update a message.
- * @param {Object} params - Parameters.
- * @param {string} params.messageId - ID of the message to update.
- * @param {Object} params.message - Message.
- * @param {string[]} [params.message.roomId] - ID of the room.
- * @param {string[]} [params.message.text] - Text in message.
- * @param {string} [params.message.aliasId] - ID of the alias that will be shown as sender.
- * @param {string[]} [params.message.intro] - Text that will be printed before message.text.
- * @param {string[]} [params.message.extro] - Text that will be printed after message.text.
- * @param {string[]} [params.message.customTimeCreated] - A custom date of when the message was created.
- * @param {string[]} [params.message.customlastUpdated] - A custom date of when the message was last updated.
- * @param {Object} [params.options] - Options
- * @param {boolean} [params.options.resetOwnerAliasId] - Should ownerAliasId be reset?
- * @param {Function} params.callback - Callback.
+ * @param {Object} params Parameters.
+ * @param {string} params.messageId ID of the message to update.
+ * @param {Object} params.message Message.
+ * @param {string[]} [params.message.roomId] ID of the room.
+ * @param {string[]} [params.message.text] Text in message.
+ * @param {string} [params.message.aliasId] ID of the alias that will be shown as sender.
+ * @param {string[]} [params.message.intro] Text that will be printed before message.text.
+ * @param {string[]} [params.message.extro] Text that will be printed after message.text.
+ * @param {string[]} [params.message.customTimeCreated] A custom date of when the message was created.
+ * @param {string[]} [params.message.customlastUpdated] A custom date of when the message was last updated.
+ * @param {Object} [params.options] Options
+ * @param {boolean} [params.options.resetOwnerAliasId] Should ownerAliasId be reset?
+ * @param {Function} params.callback Callback.
  */
 function updateMessage({
   messageId,
@@ -281,12 +276,12 @@ function updateMessage({
 
 /**
  * Gets messages by room Id
- * @param {Object} params - Parameters.
- * @param {string} params.roomId - Id of the room.
- * @param {Function} params.callback - Callback.
- * @param {Object} params.user - User retrieving the messages.
- * @param {Date} [params.startDate] - Date for when to start the span of messages.
- * @param {boolean} [params.shouldGetFuture] - Should messages from the future of the start date be retrieved?
+ * @param {Object} params Parameters.
+ * @param {string} params.roomId Id of the room.
+ * @param {Function} params.callback Callback.
+ * @param {Object} params.user User retrieving the messages.
+ * @param {Date} [params.startDate] Date for when to start the span of messages.
+ * @param {boolean} [params.shouldGetFuture] Should messages from the future of the start date be retrieved?
  */
 function getMessagesByRoom({
   roomId,
@@ -309,9 +304,9 @@ function getMessagesByRoom({
 
 /**
  * Get messages from all the rooms the user is following.
- * @param {Object} params - Parameters.
- * @param {Object} params.user - User.
- * @param {Function} params.callback - Callback.
+ * @param {Object} params Parameters.
+ * @param {Object} params.user User.
+ * @param {Function} params.callback Callback.
  */
 function getMessagesByUser({
   user,
@@ -328,9 +323,9 @@ function getMessagesByUser({
 
 /**
  * Remove messages by room ID.
- * @param {Object} params - Parameters.
- * @param {string} params.roomId - ID of the room.
- * @param {Function} params.callback - Callback.
+ * @param {Object} params Parameters.
+ * @param {string} params.roomId ID of the room.
+ * @param {Function} params.callback Callback.
  */
 function removeMessagesByRoom({ roomId, callback }) {
   dbConnector.removeObjects({
@@ -342,9 +337,9 @@ function removeMessagesByRoom({ roomId, callback }) {
 
 /**
  * Remove messages by user ID.
- * @param {Object} params - Parameters.
- * @param {string} params.ownerId - ID of the user.
- * @param {Function} params.callback - Callback.
+ * @param {Object} params Parameters.
+ * @param {string} params.ownerId ID of the user.
+ * @param {Function} params.callback Callback.
  */
 function removeMessagesByUser({ ownerId, callback }) {
   dbConnector.removeObjects({
@@ -356,11 +351,11 @@ function removeMessagesByUser({ ownerId, callback }) {
 
 /**
  * Remove messages by alias ID.
- * @param {Object} params - Parameters.
- * @param {string} params.ownerAliasId - Alias ID.
- * @param {Function} params.callback - Callback.
- * @param {Date} [params.startDate] - Date for when to start the span of messages.
- * @param {boolean} [params.shouldGetFuture] - Should messages from the future of the start date be retrieved?
+ * @param {Object} params Parameters.
+ * @param {string} params.ownerAliasId Alias ID.
+ * @param {Function} params.callback Callback.
+ * @param {Date} [params.startDate] Date for when to start the span of messages.
+ * @param {boolean} [params.shouldGetFuture] Should messages from the future of the start date be retrieved?
  */
 function removeMessagesByAlias({ ownerAliasId, callback }) {
   dbConnector.removeObjects({
@@ -372,9 +367,9 @@ function removeMessagesByAlias({ ownerAliasId, callback }) {
 
 /**
  * Get message by id.
- * @param {Object} params - Parameters.
- * @param {string} params.messageId - ID of the message.
- * @param {Function} params.callback - Callback.
+ * @param {Object} params Parameters.
+ * @param {string} params.messageId ID of the message.
+ * @param {Function} params.callback Callback.
  */
 function getMessageById({ messageId, callback }) {
   getMessage({
@@ -385,9 +380,9 @@ function getMessageById({ messageId, callback }) {
 
 /**
  * Remove message.
- * @param {Object} params - Parameters.
- * @param {string} params.messageId - ID of the message.
- * @param {Function} params.callback - Callback.
+ * @param {Object} params Parameters.
+ * @param {string} params.messageId ID of the message.
+ * @param {Function} params.callback Callback.
  */
 function removeMessage({ messageId, callback }) {
   dbConnector.removeObject({
@@ -399,8 +394,8 @@ function removeMessage({ messageId, callback }) {
 
 /**
  * Get all messages.
- * @param {Object} params - Parameters.
- * @param {Function} params.callback - Callback
+ * @param {Object} params Parameters.
+ * @param {Function} params.callback Callback
  */
 function getAllMessages({ callback }) {
   getMessages({

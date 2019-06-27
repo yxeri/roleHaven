@@ -22,7 +22,7 @@ const { appConfig, dbConfig } = require('../config/defaults/config');
 
 /**
  * Convert xml to json
- * @param {Object} xml - XML data
+ * @param {Object} xml XML data
  * @returns {Object} JSON
  */
 function convertToJson(xml) {
@@ -31,7 +31,7 @@ function convertToJson(xml) {
 
 /**
  * Parse and clean up coordinates from Google Maps
- * @param {string} string - Coordinate string
+ * @param {string} string Coordinate string
  * @returns {string[]} Coordinates
  */
 function parseGoogleCoords(string) {
@@ -40,7 +40,7 @@ function parseGoogleCoords(string) {
 
 /**
  * Creates a collection of all Google coordinates
- * @param {string[]} coords - Coordinates from Google maps
+ * @param {string[]} coords Coordinates from Google maps
  * @returns {{lat: number, lng: number}[]} Collection with positions (latitudes and longitudes)
  */
 function createCoordsCollection(coords) {
@@ -72,16 +72,16 @@ function createCoordsCollection(coords) {
 
 /**
  * Create and return a position with a position from Google Maps as base
- * @param {Object} params - Parameters.
- * @param {Object} params.position - Google Maps position
- * @param {string} params.position.name - Google Maps position name
- * @param {string} [params.position.description] - Google Maps position description
- * @param {Object} [params.position.Polygon] - Google Maps position polygon
- * @param {string} params.position.Polygon.outerBoundaryIs.LinearRing.coordinates - Google Maps polygon coordinates
- * @param {Object} [params.position.LineString] - Google Maps position line
- * @param {string} params.position.LineString.coordinates - Google Maps line coordinates
- * @param {Object} [params.position.Point] - Google Maps position point
- * @param {string} params.layerName - Name of the layer
+ * @param {Object} params Parameters.
+ * @param {Object} params.position Google Maps position
+ * @param {string} params.position.name Google Maps position name
+ * @param {string} [params.position.description] Google Maps position description
+ * @param {Object} [params.position.Polygon] Google Maps position polygon
+ * @param {string} params.position.Polygon.outerBoundaryIs.LinearRing.coordinates Google Maps polygon coordinates
+ * @param {Object} [params.position.LineString] Google Maps position line
+ * @param {string} params.position.LineString.coordinates Google Maps line coordinates
+ * @param {Object} [params.position.Point] Google Maps position point
+ * @param {string} params.layerName Name of the layer
  * @returns {{positionName: string, position: Object, isStationary: boolean, type: string, geometry: string, description: string[]}} New position
  */
 function createPosition({ position, layerName }) {
@@ -132,8 +132,8 @@ function createPosition({ position, layerName }) {
 
 /**
  * Get Google Maps positions.
- * @param {Object} params - Parameters.
- * @param {Function} params.callback - Callback.
+ * @param {Object} params Parameters.
+ * @param {Function} params.callback Callback.
  */
 function getGooglePositions({ callback }) {
   if (!appConfig.mapLayersPath) {

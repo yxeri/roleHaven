@@ -74,8 +74,6 @@ function handle() {
       password,
       callback: ({ error, data }) => {
         if (error) {
-          sentData.user.password = typeof sentData.user.password !== 'undefined';
-
           restErrorChecker.checkAndSendError({ response, error, sentData });
 
           return;

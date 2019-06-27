@@ -21,8 +21,8 @@ const roomManager = require('../../managers/rooms');
 /* eslint-disable no-param-reassign */
 
 /**
- * @param {object} socket - Socket.Io socket.
- * @param {object} io - Socket.Io.
+ * @param {object} socket Socket.Io socket.
+ * @param {object} io Socket.Io.
  */
 function handle(socket, io) {
   socket.on('createRoom', (params, callback = () => {
@@ -86,6 +86,33 @@ function handle(socket, io) {
     params.socket = socket;
 
     roomManager.getRoomsByUser(params);
+  });
+
+  socket.on('sendInvitationToRoom', (params, callback = () => {
+  }) => {
+    params.callback = callback;
+    params.io = io;
+    params.socket = socket;
+
+    roomManager.sendInvitationToRoom(params);
+  });
+
+  socket.on('acceptRoomInvitation', (params, callback = () => {
+  }) => {
+    params.callback = callback;
+    params.io = io;
+    params.socket = socket;
+
+    roomManager.acceptRoomInvitation(params);
+  });
+
+  socket.on('inviteToRoom', (params, callback = () => {
+  }) => {
+    params.callback = callback;
+    params.io = io;
+    params.socket = socket;
+
+    roomManager.inviteToRoom(params);
   });
 }
 

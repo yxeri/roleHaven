@@ -33,10 +33,10 @@ const Transaction = mongoose.model('transaction', transactionSchema);
 
 /**
  * Update transaction properties.
- * @param {Object} params - Parameters.
- * @param {string} params.transactionId - Id of the transaction to update.
- * @param {Object} params.update - Properties to update.
- * @param {Function} params.callback - Callback.
+ * @param {Object} params Parameters.
+ * @param {string} params.transactionId Id of the transaction to update.
+ * @param {Object} params.update Properties to update.
+ * @param {Function} params.callback Callback.
  */
 function updateObject({ transactionId, update, callback }) {
   dbConnector.updateObject({
@@ -59,9 +59,9 @@ function updateObject({ transactionId, update, callback }) {
 /**
  * Get transactions
  * @private
- * @param {Object} params - Parameters
- * @param {Object} params.query - Query to get transactions
- * @param {Function} params.callback - Callback
+ * @param {Object} params Parameters
+ * @param {Object} params.query Query to get transactions
+ * @param {Function} params.callback Callback
  */
 function getTransactions({ filter, query, callback }) {
   dbConnector.getObjects({
@@ -87,9 +87,9 @@ function getTransactions({ filter, query, callback }) {
 /**
  * Get transaction
  * @private
- * @param {Object} params - Parameters
- * @param {Object} params.query - Query to get transaction
- * @param {Function} params.callback - Callback
+ * @param {Object} params Parameters
+ * @param {Object} params.query Query to get transaction
+ * @param {Function} params.callback Callback
  */
 function getTransaction({ query, callback }) {
   dbConnector.getObject({
@@ -115,9 +115,9 @@ function getTransaction({ query, callback }) {
 
 /**
  * Get transactions
- * @param {Object} params - Parameters
- * @param {string} params.walletId - Wallet ID
- * @param {Function} params.callback - Callback
+ * @param {Object} params Parameters
+ * @param {string} params.walletId Wallet ID
+ * @param {Function} params.callback Callback
  */
 function getTransactionsByWallet({ walletId, callback }) {
   const query = {
@@ -135,9 +135,9 @@ function getTransactionsByWallet({ walletId, callback }) {
 
 /**
  * Get transactions by user.
- * @param {Object} params - Parameters.
- * @param {string} params.user - User retrieving the transactions.
- * @param {Function} params.callback - Callback.
+ * @param {Object} params Parameters.
+ * @param {string} params.user User retrieving the transactions.
+ * @param {Function} params.callback Callback.
  */
 function getTransactionsByUser({ user, callback }) {
   dbWallet.getWalletsByUser({
@@ -179,9 +179,9 @@ function getTransactionsByUser({ user, callback }) {
 
 /**
  * Create and save transaction
- * @param {Object} params - Parameters
- * @param {Object} params.transaction - New transaction
- * @param {Function} params.callback - Callback
+ * @param {Object} params Parameters
+ * @param {Object} params.transaction New transaction
+ * @param {Function} params.callback Callback
  */
 function createTransaction({ transaction, callback }) {
   const newTransaction = new Transaction(transaction);
@@ -203,9 +203,9 @@ function createTransaction({ transaction, callback }) {
 
 /**
  * Remove transaction
- * @param {Object} params - Parameters
- * @param {string} params.transactionId - ID of the transaction
- * @param {Function} params.callback - Callback
+ * @param {Object} params Parameters
+ * @param {string} params.transactionId ID of the transaction
+ * @param {Function} params.callback Callback
  */
 function removeTransaction({ transactionId, callback }) {
   dbConnector.removeObject({
@@ -217,9 +217,9 @@ function removeTransaction({ transactionId, callback }) {
 
 /**
  * Get transaction by Id.
- * @param {Object} params - Parameters.
- * @param {string} params.transactionId - Id of the transaction.
- * @param {Function} params.callback - Callback.
+ * @param {Object} params Parameters.
+ * @param {string} params.transactionId Id of the transaction.
+ * @param {Function} params.callback Callback.
  */
 function getTransactionById({
   transactionId,
@@ -233,11 +233,11 @@ function getTransactionById({
 
 /**
  * Update transaction properties.
- * @param {Object} params - Parameters
- * @param {Object} params.transaction - Properties to update in the transaction.
- * @param {string} params.transactionId - Id of the transaction to update.
- * @param {Object} [params.options] - Update options.
- * @param {Function} params.callback - Callback.
+ * @param {Object} params Parameters
+ * @param {Object} params.transaction Properties to update in the transaction.
+ * @param {string} params.transactionId Id of the transaction to update.
+ * @param {Object} [params.options] Update options.
+ * @param {Function} params.callback Callback.
  */
 function updateTransaction({
   transactionId,

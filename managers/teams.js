@@ -30,16 +30,17 @@ const textTools = require('../utils/textTools');
 
 /**
  * Get a team.
- * @param {Object} params - Parameters.
- * @param {string} params.teamId - Id of the team.
- * @param {string} params.token - jwt.
- * @param {Function} params.callback - Callback.
+ * @param {Object} params Parameters.
+ * @param {string} params.teamId Id of the team.
+ * @param {string} params.token jwt.
+ * @param {Function} params.callback Callback.
  */
 function getTeamById({
   teamId,
   token,
   callback,
   internalCallUser,
+  needsAccess,
 }) {
   authenticator.isUserAllowed({
     token,
@@ -72,7 +73,7 @@ function getTeamById({
             toAuth: authUser,
           });
 
-          if (!canSee) {
+          if (!canSee || (needsAccess && !hasAccess)) {
             callback({ error: errorCreator.NotAllowed({ name: `get team ${teamId}` }) });
 
             return;
@@ -93,13 +94,13 @@ function getTeamById({
 
 /**
  * Emits team to clients.
- * @param {Object} params - Parameters.
- * @param {Object} params.room - Team room.
- * @param {Object} params.wallet - Team wallet.
- * @param {Object} params.team - Team.
- * @param {Object} params.user - User who created the team.
- * @param {Function} params.callback - Callback.
- * @param {Object} params.io - Socket.io.
+ * @param {Object} params Parameters.
+ * @param {Object} params.room Team room.
+ * @param {Object} params.wallet Team wallet.
+ * @param {Object} params.team Team.
+ * @param {Object} params.user User who created the team.
+ * @param {Function} params.callback Callback.
+ * @param {Object} params.io Socket.io.
  */
 function emitTeam({
   room,
@@ -150,12 +151,12 @@ function emitTeam({
 /**
  * Add a user to a team.
  * @private
- * @param {Object} params - Parameters.
- * @param {string} params.teamId - Id of the team.
- * @param {string} params.memberId - Id of the user.
- * @param {Function} params.callback - Callback
- * @param {Object} params.io - Socket.io.
- * @param {boolean} [params.isAdmin] - Should the user be set as an admin of the team?
+ * @param {Object} params Parameters.
+ * @param {string} params.teamId Id of the team.
+ * @param {string} params.memberId Id of the user.
+ * @param {Function} params.callback Callback
+ * @param {Object} params.io Socket.io.
+ * @param {boolean} [params.isAdmin] Should the user be set as an admin of the team?
  */
 function addUserToTeam({
   teamId,
@@ -196,6 +197,7 @@ function addUserToTeam({
         if (userSocket) { userSocket.join(teamId); }
 
         io.emit(dbConfig.EmitTypes.TEAMMEMBER, dataToSend);
+        io.emit(dbConfig.EmitTypes.USER, dataToSend);
       }
 
       callback(dataToSend);
@@ -206,9 +208,9 @@ function addUserToTeam({
 /**
  * Create the team, together with the team's wallet and room.
  * @private
- * @param {Object} params - Parameters.
- * @param {Object} params.team - The team to save.
- * @param {Function} params.callback - Callback.
+ * @param {Object} params Parameters.
+ * @param {Object} params.team The team to save.
+ * @param {Function} params.callback Callback.
  */
 function createTeamAndDependencies({
   team,
@@ -303,12 +305,12 @@ function createTeamAndDependencies({
 
 /**
  * Create a team.
- * @param {Object} params - Parameters.
+ * @param {Object} params Parameters.
  * @param {Object} params.team Team to create.
- * @param {Object} params.io - Socket io. Will be used if socket is not set.
- * @param {string} params.token - jwt.
- * @param {Function} params.callback - Callback.
- * @param {Object} [params.socket] - Socket io.
+ * @param {Object} params.io Socket io. Will be used if socket is not set.
+ * @param {string} params.token jwt.
+ * @param {Function} params.callback Callback.
+ * @param {Object} [params.socket] Socket io.
  */
 function createTeam({
   team,
@@ -396,11 +398,11 @@ function createTeam({
 
 /**
  * Verify a team.
- * @param {Object} params - Parameters.
- * @param {string} params.token - jwt.
- * @param {string} params.teamId - Id of the team to verify.
- * @param {Function} params.callback - Callback.
- * @param {Object} params.io - Socket.io.
+ * @param {Object} params Parameters.
+ * @param {string} params.token jwt.
+ * @param {string} params.teamId Id of the team to verify.
+ * @param {Function} params.callback Callback.
+ * @param {Object} params.io Socket.io.
  */
 function verifyTeam({
   token,
@@ -451,10 +453,10 @@ function verifyTeam({
 
 /**
  * Invite a user to a team.
- * @param {Object} params - Parameters.
- * @param {Object} params.invitation - The invitation to create.
- * @param {Function} params.callback - Callback.
- * @param {Object} params.io - Socket io.
+ * @param {Object} params Parameters.
+ * @param {Object} params.invitation The invitation to create.
+ * @param {Function} params.callback Callback.
+ * @param {Object} params.io Socket io.
  */
 function inviteToTeam({
   invitation,
@@ -476,6 +478,7 @@ function inviteToTeam({
       const { user: authUser } = data;
 
       getTeamById({
+        needsAccess: true,
         internalCallUser: authUser,
         teamId: invitation.itemId,
         callback: ({ error: teamError, data: teamData }) => {
@@ -540,10 +543,10 @@ function inviteToTeam({
 
 /**
  * User accepts sent invitation and joins the team.
- * @param {Object} params - Parameters.
- * @param {Object} params.invitationId - ID of the invitation that will be accepted.
- * @param {Object} params.io - Socket io. Will be used if socket is not set.
- * @param {Function} params.callback - Callback.
+ * @param {Object} params Parameters.
+ * @param {Object} params.invitationId ID of the invitation that will be accepted.
+ * @param {Object} params.io Socket io. Will be used if socket is not set.
+ * @param {Function} params.callback Callback.
  */
 function acceptTeamInvitation({
   token,
@@ -586,10 +589,10 @@ function acceptTeamInvitation({
 
 /**
  * Get teams that the user has access to.
- * @param {Object} params - Parameters.
- * @param {string} params.token - jwt.
- * @param {Function} params.callback - Callback.
- * @param {boolean} [params.includeInactive] - Should unverified teams be returned?
+ * @param {Object} params Parameters.
+ * @param {string} params.token jwt.
+ * @param {Function} params.callback Callback.
+ * @param {boolean} [params.includeInactive] Should unverified teams be returned?
  */
 function getTeamsByUser({
   token,
@@ -656,10 +659,10 @@ function getTeamsByUser({
 
 /**
  * Remove a user from a team.
- * @param {Object} params - Parameters.
- * @param {string} params.token - jwt.
- * @param {Object} params.io - Socket io.
- * @param {Function} params.callback - Callback.
+ * @param {Object} params Parameters.
+ * @param {string} params.token jwt.
+ * @param {Object} params.io Socket io.
+ * @param {Function} params.callback Callback.
  */
 function leaveTeam({
   teamId,
@@ -727,72 +730,13 @@ function leaveTeam({
 }
 
 /**
- * Decline team invitation.
- * @param {Object} params - Parameters.
- * @param {string} params.invitationId - Id of the invitation to decline.
- * @param {string} params.token - jwt.
- * @param {Object} params.io - Socket.io. Will be used if socket is not set.
- * @param {Function} params.callback - Callback.
- * @param {Object} [params.socket] Socket.io.
- */
-function declineTeamInvitation({
-  invitationId,
-  token,
-  callback,
-  socket,
-  io,
-}) {
-  authenticator.isUserAllowed({
-    token,
-    commandName: dbConfig.apiCommands.DeclineInvitation.name,
-    callback: ({ error }) => {
-      if (error) {
-        callback({ error });
-
-        return;
-      }
-
-      dbInvitation.useInvitation({
-        invitationId,
-        callback: ({ error: invitationError, data: invitationData }) => {
-          if (invitationError) {
-            callback({ error: invitationError });
-
-            return;
-          }
-
-          const { receiverId, itemId, invitationType } = invitationData;
-          const dataToSend = {
-            data: {
-              invitation: {
-                receiverId,
-                invitationType,
-              },
-              changeType: dbConfig.ChangeTypes.REMOVE,
-            },
-          };
-
-          if (socket) {
-            socket.broadcast.to(itemId).emit(dbConfig.EmitTypes.INVITATION, dataToSend);
-          } else {
-            io.to(itemId).emit(dbConfig.EmitTypes.INVITATION, dataToSend);
-          }
-
-          callback(dataToSend);
-        },
-      });
-    },
-  });
-}
-
-/**
  * Update a team.
- * @param {Object} params - Parameters.
+ * @param {Object} params Parameters.
  * @param {string} params.teamId ID of the team to update.
- * @param {Object} params.team - New team parameters.
- * @param {Object} params.token - jwt.
- * @param {Object} params.io - Socket.io.
- * @param {Function} params.callback - Callback.
+ * @param {Object} params.team New team parameters.
+ * @param {Object} params.token jwt.
+ * @param {Object} params.io Socket.io.
+ * @param {Function} params.callback Callback.
  */
 function updateTeam({
   teamId,
@@ -878,5 +822,4 @@ exports.inviteToTeam = inviteToTeam;
 exports.acceptTeamInvitation = acceptTeamInvitation;
 exports.getTeamById = getTeamById;
 exports.leaveTeam = leaveTeam;
-exports.declineTeamInvitation = declineTeamInvitation;
 exports.getTeamsByUser = getTeamsByUser;

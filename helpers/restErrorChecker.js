@@ -3,12 +3,12 @@ const { appConfig } = require('../config/defaults/config');
 
 /**
  * Checks the type of error and sends it in response.
- * @param {Object} params - Parameters.
- * @param {Object} params.response - Router response.
- * @param {Object} params.error - Error object.
- * @param {string} [params.title] - Error title.
- * @param {string} [params.detail] - Error detail.
- * @param {Object} [params.sentData] - Data sent.
+ * @param {Object} params Parameters.
+ * @param {Object} params.response Router response.
+ * @param {Object} params.error Error object.
+ * @param {string} [params.title] Error title.
+ * @param {string} [params.detail] Error detail.
+ * @param {Object} [params.sentData] Data sent.
  */
 function checkAndSendError({
   response,

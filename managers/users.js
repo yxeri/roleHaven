@@ -16,6 +16,7 @@
 
 'use strict';
 
+const bcrypt = require('bcrypt');
 const dbUser = require('../db/connectors/user');
 const dbWallet = require('../db/connectors/wallet');
 const { dbConfig, appConfig } = require('../config/defaults/config');
@@ -28,13 +29,15 @@ const socketUtils = require('../utils/socketIo');
 const dbForum = require('../db/connectors/forum');
 const managerHelper = require('../helpers/manager');
 const positionManager = require('./positions');
+const imager = require('../helpers/imager');
+const messageManager = require('./messages');
 
 /**
  * Create a user.
- * @param {Object} params - Parameters.
- * @param {Object} params.user - User to create.
- * @param {Function} params.callback - Callback.
- * @param {Object} params.io - Socket.io.
+ * @param {Object} params Parameters.
+ * @param {Object} params.user User to create.
+ * @param {Function} params.callback Callback.
+ * @param {Object} params.io Socket.io.
  */
 function createUser({
   token,
@@ -43,6 +46,7 @@ function createUser({
   io,
   options,
   socket,
+  image,
 }) {
   let command;
 
@@ -66,9 +70,20 @@ function createUser({
 
       const { user: authUser } = data;
 
+      if (appConfig.requireOffName && !user.offName) {
+        callback({
+          error: new errorCreator.InvalidData({
+            expected: 'offName',
+            extraData: { param: 'offName' },
+          }),
+        });
+
+        return;
+      }
+
       if (!textTools.isAllowedFull(user.username)) {
         callback({
-          error: new errorCreator.InvalidCharacters({ name: `User name: ${user.username}` }),
+          error: new errorCreator.InvalidCharacters({ name: `User name: ${user.username}.` }),
         });
 
         return;
@@ -85,11 +100,11 @@ function createUser({
         return;
       }
 
-      if (user.fullName && (user.fullName.length < appConfig.fullNameMinLength || user.fullName.length > appConfig.fullNameMaxLength)) {
+      if (user.offName && (user.offName.length < appConfig.offNameMinLength || user.offName.length > appConfig.offNameNameMaxLength)) {
         callback({
           error: new errorCreator.InvalidLength({
-            name: `Full name length: ${appConfig.fullNameMinLength}-${appConfig.fullNameMaxLength}`,
-            extraData: { param: 'fullName' },
+            name: `Off name length: ${appConfig.offNameMinLength}-${appConfig.offNameNameMaxLength}`,
+            extraData: { param: 'offName' },
           }),
         });
 
@@ -129,6 +144,17 @@ function createUser({
         return;
       }
 
+      if (user.description && user.description.join('').length > appConfig.userDescriptionMaxLength) {
+        callback({
+          error: new errorCreator.InvalidLength({
+            name: `Description length: ${appConfig.userDescriptionMaxLength}`,
+            extraData: { param: 'description' },
+          }),
+        });
+
+        return;
+      }
+
       if (user.accessLevel && (authUser.accessLevel < dbConfig.apiCommands.UpdateUserAccess.accessLevel)) {
         callback({ error: new errorCreator.NotAllowed({ name: 'Set user access level' }) });
 
@@ -150,141 +176,206 @@ function createUser({
         ? newUser.mailAddress.toLowerCase()
         : undefined;
 
-      dbUser.createUser({
-        options,
-        user: newUser,
-        callback: ({ error: userError, data: userData }) => {
-          if (userError) {
-            callback({ error: userError });
+      const userCallback = () => {
+        dbUser.createUser({
+          options,
+          user: newUser,
+          callback: ({ error: userError, data: userData }) => {
+            if (userError) {
+              callback({ error: userError });
 
-            return;
-          }
+              return;
+            }
 
-          const { user: createdUser } = userData;
+            const { user: createdUser } = userData;
 
-          dbRoom.createRoom({
-            room: {
-              ownerId: createdUser.objectId,
-              roomName: createdUser.objectId,
-              objectId: createdUser.objectId,
-              visibility: dbConfig.AccessLevels.STANDARD,
-              accessLevel: dbConfig.AccessLevels.SUPERUSER,
-              isUser: true,
-            },
-            options: {
-              setId: true,
-              isFollower: true,
-            },
-            callback: ({ error: roomError, data: roomData }) => {
-              if (roomError) {
-                callback({ error: roomError });
+            dbRoom.createRoom({
+              room: {
+                ownerId: createdUser.objectId,
+                roomName: createdUser.objectId,
+                objectId: createdUser.objectId,
+                visibility: dbConfig.AccessLevels.STANDARD,
+                accessLevel: dbConfig.AccessLevels.SUPERUSER,
+                isUser: true,
+              },
+              options: {
+                setId: true,
+              },
+              callback: ({ error: roomError, data: roomData }) => {
+                if (roomError) {
+                  callback({ error: roomError });
+
+                  return;
+                }
+
+                const wallet = {
+                  objectId: createdUser.objectId,
+                  accessLevel: createdUser.accessLevel,
+                  ownerId: createdUser.objectId,
+                  amount: appConfig.defaultWalletAmount,
+                };
+                const walletOptions = { setId: true };
+
+                dbWallet.createWallet({
+                  wallet,
+                  options: walletOptions,
+                  callback: ({ error: walletError, data: walletData }) => {
+                    if (walletError) {
+                      callback({ error: walletError });
+
+                      return;
+                    }
+
+                    positionManager.createPosition({
+                      io,
+                      position: {
+                        objectId: createdUser.objectId,
+                        positionName: createdUser.objectId,
+                        positionType: dbConfig.PositionTypes.USER,
+                      },
+                      internalCallUser: createdUser,
+                      isUserPosition: true,
+                      callback: ({ error: positionError }) => {
+                        if (positionError) {
+                          callback({ error: positionError });
+
+                          return;
+                        }
+
+                        const forum = {
+                          title: newUser.fullName || newUser.username,
+                          isPersonal: true,
+                          objectId: createdUser.objectId,
+                          ownerId: createdUser.objectId,
+                        };
+                        const forumOptions = { setId: true };
+
+                        dbForum.createForum({
+                          forum,
+                          options: forumOptions,
+                          callback: ({ error: forumError, data: forumData }) => {
+                            if (forumError) {
+                              callback({ error: forumError });
+
+                              return;
+                            }
+
+                            const createdRoom = roomData.room;
+                            const createdWallet = walletData.wallet;
+                            const createdForum = forumData.forum;
+
+                            const creatorDataToSend = {
+                              data: {
+                                wallet: createdWallet,
+                                room: createdRoom,
+                                user: createdUser,
+                                forum: createdForum,
+                                isSender: true,
+                                changeType: dbConfig.ChangeTypes.CREATE,
+                              },
+                            };
+                            const dataToSend = {
+                              data: {
+                                user: managerHelper.stripObject({ object: Object.assign({}, createdUser) }),
+                                changeType: dbConfig.ChangeTypes.CREATE,
+                              },
+                            };
+                            const roomDataToSend = {
+                              data: {
+                                room: managerHelper.stripObject({ object: Object.assign({}, createdRoom) }),
+                                changeType: dbConfig.ChangeTypes.CREATE,
+                              },
+                            };
+                            const walletDataToSend = {
+                              data: {
+                                wallet: managerHelper.stripObject({ object: Object.assign({}, createdWallet) }),
+                                changeType: dbConfig.ChangeTypes.CREATE,
+                              },
+                            };
+                            const forumDataToSend = {
+                              data: {
+                                forum: managerHelper.stripObject({ object: Object.assign({}, createdForum) }),
+                              },
+                            };
+
+                            if (!socket) {
+                              io.to(createdUser.objectId).emit(dbConfig.EmitTypes.USER, creatorDataToSend);
+                            }
+
+                            if (socket) {
+                              socket.join(createdUser.objectId);
+                              socket.broadcast.emit(dbConfig.EmitTypes.USER, dataToSend);
+                            } else {
+                              const userSocket = socketUtils.getUserSocket({ io, socketId: user.socketId });
+
+                              if (userSocket) {
+                                userSocket.join(createdRoom.objectId);
+                              }
+
+                              io.emit(dbConfig.EmitTypes.USER, dataToSend);
+                            }
+
+                            io.emit(dbConfig.EmitTypes.FORUM, forumDataToSend);
+                            io.emit(dbConfig.EmitTypes.ROOM, roomDataToSend);
+                            io.emit(dbConfig.EmitTypes.WALLET, walletDataToSend);
+
+                            if (!createdUser.isVerified) {
+                              messageManager.sendChatMsg({
+                                io,
+                                socket,
+                                message: {
+                                  roomId: dbConfig.rooms.admin.objectId,
+                                  text: [`User ${createdUser.username} (${createdUser.objectId}) needs to be verified.`],
+                                },
+                                internalCallUser: dbConfig.users.systemUser,
+                                callback: () => {},
+                              });
+                            }
+
+                            callback(creatorDataToSend);
+                          },
+                        });
+                      },
+                    });
+                  },
+                });
+              },
+            });
+          },
+        });
+      };
+
+      bcrypt.hash(newUser.password, 10, (hashError, hash) => {
+        if (hashError) {
+          callback({ error: new errorCreator.Internal({ errObject: hashError }) });
+
+          return;
+        }
+
+        newUser.password = hash;
+
+        if (image) {
+          imager.createImage({
+            image,
+            callback: ({ error: imageError, data: imageData }) => {
+              if (imageError) {
+                callback({ error: imageError });
 
                 return;
               }
 
-              const wallet = {
-                objectId: createdUser.objectId,
-                accessLevel: createdUser.accessLevel,
-                ownerId: createdUser.objectId,
-                amount: appConfig.defaultWalletAmount,
-              };
-              const walletOptions = { setId: true };
+              const { image: createdImage } = imageData;
 
-              dbWallet.createWallet({
-                wallet,
-                options: walletOptions,
-                callback: ({ error: walletError, data: walletData }) => {
-                  if (walletError) {
-                    callback({ error: walletError });
+              newUser.image = createdImage;
 
-                    return;
-                  }
-
-                  const forum = {
-                    title: newUser.fullName || newUser.username,
-                    isPersonal: true,
-                    objectId: createdUser.objectId,
-                    ownerId: createdUser.objectId,
-                  };
-                  const forumOptions = { setId: true };
-
-                  dbForum.createForum({
-                    forum,
-                    options: forumOptions,
-                    callback: ({ error: forumError, data: forumData }) => {
-                      if (forumError) {
-                        callback({ error: forumError });
-
-                        return;
-                      }
-
-                      const createdRoom = roomData.room;
-                      const createdWallet = walletData.wallet;
-                      const createdForum = forumData.forum;
-
-                      const creatorDataToSend = {
-                        data: {
-                          wallet: createdWallet,
-                          room: createdRoom,
-                          user: createdUser,
-                          forum: createdForum,
-                          isSender: true,
-                          changeType: dbConfig.ChangeTypes.CREATE,
-                        },
-                      };
-                      const dataToSend = {
-                        data: {
-                          user: managerHelper.stripObject({ object: Object.assign({}, createdUser) }),
-                          changeType: dbConfig.ChangeTypes.CREATE,
-                        },
-                      };
-                      const roomDataToSend = {
-                        data: {
-                          room: managerHelper.stripObject({ object: Object.assign({}, createdRoom) }),
-                          changeType: dbConfig.ChangeTypes.CREATE,
-                        },
-                      };
-                      const walletDataToSend = {
-                        data: {
-                          wallet: managerHelper.stripObject({ object: Object.assign({}, createdWallet) }),
-                          changeType: dbConfig.ChangeTypes.CREATE,
-                        },
-                      };
-                      const forumDataToSend = {
-                        data: {
-                          forum: managerHelper.stripObject({ object: Object.assign({}, createdForum) }),
-                        },
-                      };
-
-                      if (!socket) {
-                        io.to(createdUser.objectId).emit(dbConfig.EmitTypes.USER, creatorDataToSend);
-                      }
-
-                      if (socket) {
-                        socket.join(createdUser.objectId);
-                        socket.broadcast.emit(dbConfig.EmitTypes.USER, dataToSend);
-                      } else {
-                        const userSocket = socketUtils.getUserSocket({ io, socketId: user.socketId });
-
-                        if (userSocket) {
-                          userSocket.join(createdRoom.objectId);
-                        }
-
-                        io.emit(dbConfig.EmitTypes.USER, dataToSend);
-                      }
-
-                      io.emit(dbConfig.EmitTypes.FORUM, forumDataToSend);
-                      io.emit(dbConfig.EmitTypes.ROOM, roomDataToSend);
-                      io.emit(dbConfig.EmitTypes.WALLET, walletDataToSend);
-
-                      callback(creatorDataToSend);
-                    },
-                  });
-                },
-              });
+              userCallback();
             },
           });
-        },
+
+          return;
+        }
+
+        userCallback();
       });
     },
   });
@@ -292,10 +383,10 @@ function createUser({
 
 /**
  * Get users that the user has access to.
- * @param {Object} params - Parameters.
- * @param {Object} params.token - jwt.
- * @param {Function} params.callback - Callback.
- * @param {boolean} [params.includeInactive] - Should banned and unverified users be in the result?
+ * @param {Object} params Parameters.
+ * @param {Object} params.token jwt.
+ * @param {Function} params.callback Callback.
+ * @param {boolean} [params.includeInactive] Should banned and unverified users be in the result?
  */
 function getUsersByUser({
   token,
@@ -319,6 +410,7 @@ function getUsersByUser({
         includeInactive: authUser.accessLevel >= dbConfig.AccessLevels.MODERATOR
           ? true
           : includeInactive,
+        includeOff: authUser.accessLevel >= dbConfig.AccessLevels.STANDARD,
         callback: ({ error: userError, data: userData }) => {
           if (userError) {
             callback({ error: userError });
@@ -346,7 +438,7 @@ function getUsersByUser({
             }
 
             return userObject;
-          }).sort((a, b) => {
+          }).concat([dbConfig.users.systemUser]).sort((a, b) => {
             const aName = a.username;
             const bName = b.username;
 
@@ -370,10 +462,10 @@ function getUsersByUser({
 
 /**
  * Get user  Id or name.
- * @param {Object} params - Parameters.
- * @param {string} params.userId - Id of the user to retrieve.
- * @param {Object} [params.internalCallUser] - User to use on authentication. It will bypass token authentication.
- * @param {Function} params.callback - Callback.
+ * @param {Object} params Parameters.
+ * @param {string} params.userId Id of the user to retrieve.
+ * @param {Object} [params.internalCallUser] User to use on authentication. It will bypass token authentication.
+ * @param {Function} params.callback Callback.
  */
 function getUserById({
   token,
@@ -441,10 +533,10 @@ function getUserById({
 
 /**
  * Change password for a user.
- * @param {Object} params - Parameters.
- * @param {string} params.userId - Id of the user.
- * @param {string} [params.password] - Password. A password will be auto-generated and returned, if password hasn't been set.
- * @param {Function} params.callback - Callback.
+ * @param {Object} params Parameters.
+ * @param {string} params.userId Id of the user.
+ * @param {string} [params.password] Password. A password will be auto-generated and returned, if password hasn't been set.
+ * @param {Function} params.callback Callback.
  */
 function changePassword({
   token,
@@ -492,12 +584,52 @@ function changePassword({
           if (!password) {
             const generatedPassword = textTools.generateTextCode(10);
 
+            bcrypt.hash(generatedPassword, 10, (hashError, hash) => {
+              if (hashError) {
+                callback({ error: new errorCreator.Internal({ errObject: hashError }) });
+
+                return;
+              }
+
+              dbUser.updateUserPassword({
+                userId,
+                password: hash,
+                callback: ({ error: passwordError }) => {
+                  if (passwordError) {
+                    callback({ error: passwordError });
+
+                    return;
+                  }
+
+                  callback({
+                    data: {
+                      success: true,
+                      user: {
+                        objectId: userId,
+                        password: generatedPassword,
+                      },
+                    },
+                  });
+                },
+              });
+            });
+
+            return;
+          }
+
+          bcrypt.hash(password, 10, (hashError, hash) => {
+            if (hashError) {
+              callback({ error: new errorCreator.Internal({ errObject: hashError }) });
+
+              return;
+            }
+
             dbUser.updateUserPassword({
-              userId,
-              password: generatedPassword,
-              callback: ({ error: passwordError }) => {
-                if (passwordError) {
-                  callback({ error: passwordError });
+              password: hash,
+              userId: foundUser.objectId,
+              callback: ({ error: updateError }) => {
+                if (updateError) {
+                  callback({ error: updateError });
 
                   return;
                 }
@@ -505,35 +637,11 @@ function changePassword({
                 callback({
                   data: {
                     success: true,
-                    user: {
-                      objectId: userId,
-                      password: generatedPassword,
-                    },
+                    user: { objectId: userId },
                   },
                 });
               },
             });
-
-            return;
-          }
-
-          dbUser.updateUserPassword({
-            password,
-            userId: foundUser.objectId,
-            callback: ({ error: updateError }) => {
-              if (updateError) {
-                callback({ error: updateError });
-
-                return;
-              }
-
-              callback({
-                data: {
-                  success: true,
-                  user: { objectId: userId },
-                },
-              });
-            },
           });
         },
       });
@@ -543,11 +651,11 @@ function changePassword({
 
 /**
  * Login user through socket client side.
- * @param {Object} params - Parameters.
- * @param {Object} params.user - User logging in.
- * @param {Object} params.io - Socket.io.
- * @param {Function} params.callback - Callback.
- * @param {Object} params.socket - Socket.io.
+ * @param {Object} params Parameters.
+ * @param {Object} params.user User logging in.
+ * @param {Object} params.io Socket.io.
+ * @param {Function} params.callback Callback.
+ * @param {Object} params.socket Socket.io.
  */
 function login({
   user,
@@ -566,82 +674,56 @@ function login({
       }
 
       const { token, user: authUser } = data;
-      const { objectId: userId, followingRooms: roomIds } = authUser;
+      const {
+        accessLevel,
+        objectId: userId,
+        followingRooms: roomIds,
+      } = authUser;
       const socketId = socket.id;
-      const updateOnlineFunc = () => {
-        dbUser.updateOnline({
-          userId,
-          socketId,
-          isOnline: true,
-          callback: (socketData) => {
-            if (socketData.error) {
-              callback({ error: socketData.error });
 
-              return;
-            }
+      dbUser.updateOnline({
+        userId,
+        socketId,
+        isOnline: true,
+        callback: (socketData) => {
+          if (socketData.error) {
+            callback({ error: socketData.error });
 
-            socketUtils.joinRooms({
-              io,
-              socketId,
-              userId,
-              roomIds,
-            });
-            socketUtils.joinRequiredRooms({
-              io,
-              userId,
-              socketId,
-              socket,
-            });
-            socketUtils.joinAliasRooms({
-              io,
-              socketId,
-              aliases: authUser.aliases,
-            });
+            return;
+          }
 
-            callback({ data: { user: authUser, token } });
-          },
-        });
-      };
+          socketUtils.joinRooms({
+            io,
+            socketId,
+            userId,
+            roomIds,
+          });
+          socketUtils.joinRequiredRooms({
+            io,
+            userId,
+            socketId,
+            socket,
+            accessLevel,
+          });
+          socketUtils.joinAliasRooms({
+            io,
+            socketId,
+            aliases: authUser.aliases,
+          });
 
-      if (!authUser.lastOnline) {
-        positionManager.createPosition({
-          io,
-          position: {
-            objectId: authUser.objectId,
-            positionName: authUser.objectId,
-            connectedToUser: authUser.objectId,
-            positionType: dbConfig.PositionTypes.USER,
-            coordinates: {
-              accuracy: Number.MAX_VALUE,
-              longitude: 1,
-              latitude: 1,
-            },
-          },
-          internalCallUser: authUser,
-          isLoggedInUserPosition: true,
-          callback: ({ error: positionError }) => {
-            if (positionError) {
-              console.log(`Failed to create logged in user position for ${authUser.objectId}`, positionError);
-            }
-
-            updateOnlineFunc();
-          },
-        });
-
-        return;
-      }
-
-      updateOnlineFunc();
+          callback({ data: { user: authUser, token } });
+        },
+      });
     },
   });
 }
 
 /**
  * Logout user.
- * @param {Object} params - Parameters.
+ * @param {Object} params Parameters.
  * @param {string} params.token jwt.
- * @param {Object} params.socket - Socket.io.
- * @param {Function} params.callback - Callback.
+ * @param {Object} params.socket Socket.io.
+ * @param {Function} params.callback Callback.
  */
 function logout({
   token,
@@ -670,6 +752,13 @@ function logout({
             return;
           }
 
+          positionManager.updatePosition({
+            positionId: userId,
+            position: {},
+            options: { resetConnectedToUser: true },
+            callback: () => {},
+          });
+
           roomManager.leaveSocketRooms(socket);
 
           callback({ data: { success: true } });
@@ -681,11 +770,11 @@ function logout({
 
 /**
  * Unban user.
- * @param {Object} params - Parameters.
- * @param {string} params.token - jwt token.
- * @param {Object} params.bannedUserId - ID of the user to unban.
- * @param {Function} params.callback - Callback.
- * @param {Object} params.io - Socket.io.
+ * @param {Object} params Parameters.
+ * @param {string} params.token jwt token.
+ * @param {Object} params.bannedUserId ID of the user to unban.
+ * @param {Function} params.callback Callback.
+ * @param {Object} params.io Socket.io.
  */
 function unbanUser({
   token,
@@ -734,12 +823,12 @@ function unbanUser({
 
 /**
  * Ban user.
- * @param {Object} params - Parameters.
- * @param {Object} params.banUserId - ID of the user to ban.
- * @param {Object} params.io - socket-io.
- * @param {string} params.token - jwt.
- * @param {Function} params.callback - Callback.
- * @param {string} [params.reason] - Text describing why the user was banned.
+ * @param {Object} params Parameters.
+ * @param {Object} params.banUserId ID of the user to ban.
+ * @param {Object} params.io socket-io.
+ * @param {string} params.token jwt.
+ * @param {Function} params.callback Callback.
+ * @param {string} [params.reason] Text describing why the user was banned.
  */
 function banUser({
   banUserId,
@@ -826,11 +915,11 @@ function banUser({
 
 /**
  * Verifies a user account and allows it to login.
- * @param {Object} params - Parameters.
- * @param {string} params.userIdToVerify - ID of the user to verify.
- * @param {string} params.token - jwt.
- * @param {Object} params.io - Socket.io. Will be used if socket is not set.
- * @param {Function} params.callback - Callback.
+ * @param {Object} params Parameters.
+ * @param {string} params.userIdToVerify ID of the user to verify.
+ * @param {string} params.token jwt.
+ * @param {Object} params.io Socket.io. Will be used if socket is not set.
+ * @param {Function} params.callback Callback.
  */
 function verifyUser({
   userIdToVerify,
@@ -878,22 +967,23 @@ function verifyUser({
 
 /**
  * Update a user.
- * @param {Object} params - Parameters.
- * @param {string} params.token - jwt.
- * @param {Object} params.io - Socket.io.
- * @param {Function} params.callback - Callback.
- * @param {string} params.userId - Id of the user to update.
- * @param {Object} params.user - User parameter to update.
- * @param {Object} [params.options] - Update options.
+ * @param {Object} params Parameters.
+ * @param {string} params.token jwt.
+ * @param {Object} params.io Socket.io.
+ * @param {Function} params.callback Callback.
+ * @param {string} params.userId Id of the user to update.
+ * @param {Object} params.user User parameter to update.
+ * @param {Object} [params.options] Update options.
  */
 function updateUser({
   token,
   io,
   callback,
   userId,
-  user,
   options,
   socket,
+  image,
+  user = {},
 }) {
   authenticator.isUserAllowed({
     token,
@@ -906,92 +996,117 @@ function updateUser({
       }
 
       const { user: authUser } = data;
+      const userUpdate = user;
+      const updateUserCallback = () => {
+        getUserById({
+          token,
+          userId,
+          internalCallUser: authUser,
+          callback: ({ error: getUserError, data: getUserData }) => {
+            if (getUserError) {
+              callback({ error: getUserError });
 
-      getUserById({
-        token,
-        userId,
-        internalCallUser: authUser,
-        callback: ({ error: getUserError, data: getUserData }) => {
-          if (getUserError) {
-            callback({ error: getUserError });
+              return;
+            }
 
-            return;
-          }
+            if (userId === authUser.userId && dbConfig.apiCommands.UpdateSelf.accessLevel > authUser.accessLevel) {
+              callback({ error: new errorCreator.NotAllowed({ name: 'update self' }) });
 
-          if (userId === authUser.userId && dbConfig.apiCommands.UpdateSelf.accessLevel > authUser.accessLevel) {
-            callback({ error: new errorCreator.NotAllowed({ name: 'update self' }) });
+              return;
+            }
 
-            return;
-          }
+            const { user: foundUser } = getUserData;
 
-          const { user: foundUser } = getUserData;
+            const {
+              hasFullAccess,
+            } = authenticator.hasAccessTo({
+              objectToAccess: foundUser,
+              toAuth: authUser,
+            });
 
-          const {
-            hasFullAccess,
-          } = authenticator.hasAccessTo({
-            objectToAccess: foundUser,
-            toAuth: authUser,
-          });
+            if (!hasFullAccess) {
+              callback({ error: new errorCreator.NotAllowed({ name: `update user ${userId}` }) });
 
-          if (!hasFullAccess) {
-            callback({ error: new errorCreator.NotAllowed({ name: `update user ${userId}` }) });
+              return;
+            }
 
-            return;
-          }
+            if (user.accessLevel && (authUser.accessLevel < dbConfig.AccessLevels.ADMIN || user.accessLevel > dbConfig.AccessLevels.ADMIN)) {
+              callback({ error: new errorCreator.NotAllowed({ name: `update access level user ${userId}` }) });
 
-          if (user.accessLevel && (authUser.accessLevel < dbConfig.AccessLevels.ADMIN || user.accessLevel > dbConfig.AccessLevels.ADMIN)) {
-            callback({ error: new errorCreator.NotAllowed({ name: `update access level user ${userId}` }) });
+              return;
+            }
 
-            return;
-          }
+            dbUser.updateUser({
+              options,
+              userId,
+              user: userUpdate,
+              callback: ({ error: updateError, data: updateData }) => {
+                if (updateError) {
+                  callback({ error: updateError });
 
-          dbUser.updateUser({
-            user,
-            options,
-            userId,
-            callback: ({ error: updateError, data: updateData }) => {
-              if (updateError) {
-                callback({ error: updateError });
+                  return;
+                }
 
-                return;
-              }
+                const { user: updatedUser } = updateData;
+                const dataToSend = {
+                  data: {
+                    user: managerHelper.stripObject({ object: Object.assign({}, updatedUser) }),
+                    changeType: dbConfig.ChangeTypes.UPDATE,
+                  },
+                };
+                const creatorDataToSend = {
+                  data: {
+                    user: updatedUser,
+                    changeType: dbConfig.ChangeTypes.UPDATE,
+                  },
+                };
 
-              const { user: updatedUser } = updateData;
-              const dataToSend = {
-                data: {
-                  user: managerHelper.stripObject({ object: Object.assign({}, updatedUser) }),
-                  changeType: dbConfig.ChangeTypes.UPDATE,
-                },
-              };
-              const creatorDataToSend = {
-                data: {
-                  user: updatedUser,
-                  changeType: dbConfig.ChangeTypes.UPDATE,
-                },
-              };
+                if (socket) {
+                  socket.broadcast.emit(dbConfig.EmitTypes.USER, dataToSend);
+                } else {
+                  io.emit(dbConfig.EmitTypes.USER, dataToSend);
+                }
 
-              if (socket) {
-                socket.broadcast.emit(dbConfig.EmitTypes.USER, dataToSend);
-              } else {
-                io.emit(dbConfig.EmitTypes.USER, dataToSend);
-              }
+                callback(creatorDataToSend);
+              },
+            });
+          },
+        });
+      };
 
-              callback(creatorDataToSend);
-            },
-          });
-        },
-      });
+      if (image) {
+        imager.createImage({
+          image,
+          callback: ({ error: imageError, data: imageData }) => {
+            if (imageError) {
+              callback({ error: imageError });
+
+              return;
+            }
+
+            const { image: createdImage } = imageData;
+
+            userUpdate.image = createdImage;
+
+            updateUserCallback();
+          },
+        });
+
+        return;
+      }
+
+      updateUserCallback();
     },
   });
 }
 
 /**
  * Update user. It will be called on reconnects from the client.
- * @param {Object} params - Parameters.
- * @param {string} params.token - jwt.
- * @param {Object} params.io - Socket.io.
- * @param {Object} params.socket - Socket.io.
- * @param {Function} params.callback - Callback.
+ * @param {Object} params Parameters.
+ * @param {string} params.token jwt.
+ * @param {Object} params.io Socket.io.
+ * @param {Object} params.socket Socket.io.
+ * @param {Function} params.callback Callback.
  */
 function updateId({
   token,
@@ -1011,7 +1126,11 @@ function updateId({
 
       const { user: authUser } = data;
 
-      const { objectId: userId, followingRooms: roomIds } = authUser;
+      const {
+        accessLevel,
+        objectId: userId,
+        followingRooms: roomIds,
+      } = authUser;
       const socketId = socket.id;
 
       if (authUser.isAnonymous) {
@@ -1020,6 +1139,7 @@ function updateId({
           userId,
           socketId,
           socket,
+          accessLevel: 0,
         });
 
         callback({ data: { user: authUser } });
@@ -1049,6 +1169,7 @@ function updateId({
             userId,
             socketId,
             socket,
+            accessLevel,
           });
           socketUtils.joinAliasRooms({
             io,
@@ -1065,10 +1186,10 @@ function updateId({
 
 /**
  * Get all users.
- * @param {Object} params - Parameters.
- * @param {Object} params.token - Jwt.
- * @param {Object} [params.internalCallUser] - Skip authentication and instead use this user.
- * @param {Function} params.callback - Callback.
+ * @param {Object} params Parameters.
+ * @param {Object} params.token Jwt.
+ * @param {Object} [params.internalCallUser] Skip authentication and instead use this user.
+ * @param {Function} params.callback Callback.
  */
 function getAllUsers({
   token,

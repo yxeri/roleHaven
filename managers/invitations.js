@@ -17,114 +17,61 @@
 'use strict';
 
 const { dbConfig } = require('../config/defaults/config');
-const errorCreator = require('../error/errorCreator');
-const dbInvitation = require('../db/connectors/invitation');
 const authenticator = require('../helpers/authenticator');
+const dbInvitation = require('../db/connectors/invitation');
 
 /**
- * Get invitation by Id and check if the user has access to it.
- * @param {Object} params - Parameters.
- * @param {Object} params.user - User retrieving the team.
- * @param {string} params.invitationId - Id of the invitation to retrieve.
- * @param {Function} params.callback - Callback.
- * @param {string} [params.errorContentText] - Text to be printed on error.
- * @param {boolean} [params.shouldBeAdmin] - Does the user have to be an admin?
+ * Decline an invitation.
+ * @param {Object} params Parameters.
+ * @param {string} params.invitationId Id of the invitation to decline.
+ * @param {string} params.token jwt.
+ * @param {Object} params.io Socket.io. Will be used if socket is not set.
+ * @param {Function} params.callback Callback.
+ * @param {Object} [params.socket] Socket.io.
  */
-function getAccessibleInvitation({
-  user,
+function declineInvitation({
   invitationId,
-  callback,
-  shouldBeAdmin,
-  errorContentText = `invitation ${invitationId}`,
-}) {
-  dbInvitation.getInvitationById({
-    invitationId,
-    callback: ({ error: invitationError, data: invitationData }) => {
-      if (invitationError) {
-        callback({ error: invitationError });
-
-        return;
-      }
-
-      if (!authenticator.hasAccessTo({
-        shouldBeAdmin,
-        toAuth: user,
-        objectToAccess: invitationData.invitation,
-      })) {
-        callback({ error: new errorCreator.NotAllowed({ name: errorContentText }) });
-
-        return;
-      }
-
-      callback({ data: invitationData });
-    },
-  });
-}
-
-/**
- * Remove an invitation.
- * @param {Object} params - Parameters.
- * @param {string} params.token - jwt.
- * @param {Function} params.callback - Callback.
- * @param {Object} params.io - Socket.io.
- * @param {string} params.invitationId - Id of the invitation to remove.
- */
-function removeInvitation({
   token,
   callback,
+  socket,
   io,
-  invitationId,
 }) {
   authenticator.isUserAllowed({
     token,
-    commandName: dbConfig.apiCommands.RemoveTeamInvitation.name,
-    callback: ({ error, data }) => {
+    commandName: dbConfig.apiCommands.DeclineInvitation.name,
+    callback: ({ error }) => {
       if (error) {
         callback({ error });
 
         return;
       }
 
-      const { user } = data;
-
-      getAccessibleInvitation({
-        user,
+      dbInvitation.useInvitation({
         invitationId,
-        shouldBeAdmin: true,
-        callback: ({ error: getError, data: getData }) => {
-          if (getError) {
-            callback({ error: getError });
+        callback: ({ error: invitationError, data: invitationData }) => {
+          if (invitationError) {
+            callback({ error: invitationError });
 
             return;
           }
 
-          const { invitation } = getData;
-
-          dbInvitation.removeInvitation({
-            invitationId,
-            callback: ({ error: inviteError }) => {
-              if (inviteError) {
-                callback({ err: inviteError });
-
-                return;
-              }
-
-              const dataToSend = {
-                data: {
-                  invitation: { objectId: invitationId },
-                  changeType: dbConfig.ChangeTypes.REMOVE,
-                },
-              };
-
-              io.to(invitation.receiverId).emit(dbConfig.EmitTypes.INVITATION, dataToSend);
-
-              callback(dataToSend);
+          const { invitation } = invitationData;
+          const dataToSend = {
+            data: {
+              invitation,
+              changeType: dbConfig.ChangeTypes.REMOVE,
             },
-          });
+          };
+
+          if (!socket) {
+            io.to(invitation.receiver).emit(dbConfig.EmitTypes.INVITATION, dataToSend);
+          }
+
+          callback(dataToSend);
         },
       });
     },
   });
 }
 
-exports.removeInvitation = removeInvitation;
+exports.declineInvitation = declineInvitation;

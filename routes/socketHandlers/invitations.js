@@ -1,5 +1,5 @@
 /*
- Copyright 2017 Carmilla Mina Jankovic
+ Copyright 2019 Carmilla Mina Jankovic
 
  Licensed under the Apache License, Version 2.0 (the "License");
  you may not use this file except in compliance with the License.
@@ -16,7 +16,7 @@
 
 'use strict';
 
-const walletManager = require('../../managers/wallets');
+const invitationManager = require('../../managers/invitations');
 
 /* eslint-disable no-param-reassign */
 
@@ -25,31 +25,22 @@ const walletManager = require('../../managers/wallets');
  * @param {object} io Socket.Io.
  */
 function handle(socket, io) {
-  socket.on('updateWallet', (params, callback = () => {
+  socket.on('declineInvitation', (params, callback = () => {
   }) => {
     params.callback = callback;
     params.io = io;
     params.socket = socket;
 
-    walletManager.updateWallet(params);
+    invitationManager.declineInvitation(params);
   });
 
-  socket.on('getWallet', (params, callback = () => {
+  socket.on('getInvitations', (params, callback = () => {
   }) => {
     params.callback = callback;
     params.io = io;
     params.socket = socket;
 
-    walletManager.getWalletById(params);
-  });
-
-  socket.on('getWallets', (params, callback = () => {
-  }) => {
-    params.callback = callback;
-    params.io = io;
-    params.socket = socket;
-
-    walletManager.getWalletsByUser(params);
+    invitationManager.getInvitations(params);
   });
 }
 

@@ -24,13 +24,11 @@ const dbUser = require('./user');
 const aliasSchema = new mongoose.Schema(dbConnector.createSchema({
   aliasName: { type: String, unique: true },
   aliasNameLowerCase: { type: String, unique: true },
-  isIdentity: { type: Boolean, default: false },
-  isVerified: { type: Boolean, default: false },
-  isBanned: { type: Boolean, default: false },
-  fullName: { type: String },
-  picture: dbConnector.pictureSchema,
+  image: dbConnector.imageSchema,
   partOfTeams: { type: [String], default: [] },
   followingRooms: { type: [String], default: [] },
+  description: { type: [String], default: [] },
+  pronouns: [String],
 }), { collection: 'aliases' });
 
 const Alias = mongoose.model('Alias', aliasSchema);
@@ -38,9 +36,9 @@ const Alias = mongoose.model('Alias', aliasSchema);
 /**
  * Update alias
  * @private
- * @param {Object} params - Parameters.
- * @param {string} params.aliasId - Id of the alias to update.
- * @param {Object} params.update - Update.
+ * @param {Object} params Parameters.
+ * @param {string} params.aliasId Id of the alias to update.
+ * @param {Object} params.update Update.
  * @param {Function} params.callback Callback.
  */
 function updateObject({ aliasId, update, callback }) {
@@ -64,9 +62,9 @@ function updateObject({ aliasId, update, callback }) {
 /**
  * Get aliases
  * @private
- * @param {Object} params - Parameters
- * @param {Object} params.query - Query to get aliases
- * @param {Function} params.callback - Callback
+ * @param {Object} params Parameters
+ * @param {Object} params.query Query to get aliases
+ * @param {Function} params.callback Callback
  */
 function getAliases({ filter, query, callback }) {
   dbConnector.getObjects({
@@ -88,9 +86,9 @@ function getAliases({ filter, query, callback }) {
 /**
  * Get alias
  * @private
- * @param {Object} params - Parameters
- * @param {string} params.query - Query to get alias
- * @param {Function} params.callback - Callback
+ * @param {Object} params Parameters
+ * @param {string} params.query Query to get alias
+ * @param {Function} params.callback Callback
  */
 function getAlias({ query, callback }) {
   dbConnector.getObject({
@@ -116,14 +114,14 @@ function getAlias({ query, callback }) {
 
 /**
  * Update access to the alias
- * @param {Object} params - Parameters.
- * @param {Function} params.callback - Callback.
- * @param {boolean} [params.shouldRemove] - Should access be removed?
- * @param {string[]} [params.userIds] - Id of the users to update.
- * @param {string[]} [params.teamIds] - Id of the teams to update.
- * @param {string[]} [params.bannedIds] - Id of the blocked Ids to update.
- * @param {string[]} [params.teamAdminIds] - Id of the teams to update admin access for.
- * @param {string[]} [params.userAdminIds] - Id of the users to update admin access for.
+ * @param {Object} params Parameters.
+ * @param {Function} params.callback Callback.
+ * @param {boolean} [params.shouldRemove] Should access be removed?
+ * @param {string[]} [params.userIds] Id of the users to update.
+ * @param {string[]} [params.teamIds] Id of the teams to update.
+ * @param {string[]} [params.bannedIds] Id of the blocked Ids to update.
+ * @param {string[]} [params.teamAdminIds] Id of the teams to update admin access for.
+ * @param {string[]} [params.userAdminIds] Id of the users to update admin access for.
  */
 function updateAccess(params) {
   const accessParams = params;
@@ -149,10 +147,10 @@ function updateAccess(params) {
 
 /**
  * Get alias by id or name.
- * @param {Object} params - Parameters.
- * @param {string} [params.aliasId] - Id of the alias.
- * @param {string} [params.aliasName] - Name of the alias.
- * @param {Function} params.callback - Callback.
+ * @param {Object} params Parameters.
+ * @param {string} [params.aliasId] Id of the alias.
+ * @param {string} [params.aliasName] Name of the alias.
+ * @param {Function} params.callback Callback.
  */
 function getAliasById({
   aliasId,
@@ -171,9 +169,9 @@ function getAliasById({
 
 /**
  * Does the alias exist?
- * @param {Object} params - Parameters
- * @param {string} params.aliasName - Name of the alias
- * @param {Function} params.callback - Callback
+ * @param {Object} params Parameters
+ * @param {string} params.aliasName Name of the alias
+ * @param {Function} params.callback Callback
  */
 function doesAliasExist({ aliasName, callback }) {
   dbConnector.doesObjectExist({
@@ -185,9 +183,9 @@ function doesAliasExist({ aliasName, callback }) {
 
 /**
  * Add an alias to the user, if a user with the alias or a matching user name doesn't already exist
- * @param {Object} params - Parameters
- * @param {Object} params.alias - Alias to add
- * @param {Function} params.callback - Callback
+ * @param {Object} params Parameters
+ * @param {Object} params.alias Alias to add
+ * @param {Function} params.callback Callback
  */
 function createAlias({
   alias,
@@ -251,12 +249,12 @@ function createAlias({
 
 /**
  * Update alias
- * @param {Object} params - Parameters
- * @param {Object} params.alias - Fields to update
- * @param {string} params.aliasId - ID of the alias to update
- * @param {Object} [params.options] - Options
- * @param {Object} [params.options.resetOwnerAliasId] - Should ownerAliasId be removed?
- * @param {Function} params.callback - Callback
+ * @param {Object} params Parameters
+ * @param {Object} params.alias Fields to update
+ * @param {string} params.aliasId ID of the alias to update
+ * @param {Object} [params.options] Options
+ * @param {Object} [params.options.resetOwnerAliasId] Should ownerAliasId be removed?
+ * @param {Function} params.callback Callback
  */
 function updateAlias({
   aliasId,
@@ -269,6 +267,7 @@ function updateAlias({
     aliasName,
     ownerAliasId,
     isPublic,
+    image,
   } = alias;
   const update = {};
   const set = {};
@@ -285,6 +284,7 @@ function updateAlias({
     set.aliasName = aliasName;
     set.aliasNameLowerCase = aliasName.toLowerCase();
   }
+  if (image) { set.image = image; }
 
   if (Object.keys(set).length > 0) { update.$set = set; }
   if (Object.keys(unset).length > 0) { update.$unset = unset; }
@@ -325,9 +325,9 @@ function updateAlias({
 
 /**
  * Get aliases that the user has access to.
- * @param {Object} params - Parameters.
- * @param {string} params.user - User retrieving the aliases.
- * @param {Function} params.callback - Callback.
+ * @param {Object} params Parameters.
+ * @param {string} params.user User retrieving the aliases.
+ * @param {Function} params.callback Callback.
  */
 function getAliasesByUser({
   user,
@@ -343,8 +343,8 @@ function getAliasesByUser({
 
 /**
  * Get all aliases.
- * @param {Object} params - Parameters.
- * @param {Function} params.callback - Callback
+ * @param {Object} params Parameters.
+ * @param {Function} params.callback Callback
  */
 function getAllAliases({ callback }) {
   getAliases({

@@ -26,6 +26,7 @@ const { appConfig } = require('./config/defaults/config');
 const dbRoom = require('./db/connectors/room');
 const dbForum = require('./db/connectors/forum');
 const positionManager = require('./managers/positions');
+const triggerEventManager = require('./managers/triggerEvents');
 const { version: appVersion, name: appName } = require('./package');
 
 const app = express();
@@ -55,6 +56,8 @@ appConfig.routes.forEach((route) => {
   app.use(route.sitePath, require(path.resolve(route.filePath))(app.io));
 });
 
+triggerEventManager.startTriggers(io);
+
 if (!appConfig.jsonKey) {
   console.log('WARNING! JSONKEY is not set in the config. User authentication will not work.');
 }
@@ -81,11 +84,6 @@ if (!appConfig.disablePositionImport) {
   };
 
   getGooglePositions();
-
-  setInterval(() => {
-    // TODO Send positions to clients
-    getGooglePositions();
-  }, 3600000);
 }
 
 /*
