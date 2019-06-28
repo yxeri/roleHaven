@@ -23,6 +23,7 @@ The documentation for the REST API can be found at https://thethirdgift.com/role
 ## Development contributors
 
 * Carmilla Mina Jankovic - [Github](https://github.com/yxeri)
+* Mia Häggström
 * Stanislav B - [Github](https://github.com/stanislavb)
 * Sebastian Streiffert
 * Johnathan Browall
