@@ -105,7 +105,9 @@ function createLanternTeam({
       callback({ error: new errorCreator.Database({ errorObject: err, name: 'createLanternTeam' }) });
 
       return;
-    } else if (foundTeam) {
+    }
+
+    if (foundTeam) {
       callback({ error: new errorCreator.AlreadyExists({ name: `Lantern team ${team.teamName} ${team.shortName}` }) });
 
       return;
@@ -174,7 +176,9 @@ function updateLanternTeam({
       callback({ error: new errorCreator.Database({ errorObject: error, name: 'updateLanternTeam' }) });
 
       return;
-    } else if (!team) {
+    }
+
+    if (!team) {
       callback({ error: new errorCreator.DoesNotExist({ name: `Team id ${teamId}. updateLanternTeam` }) });
 
       return;
@@ -205,7 +209,9 @@ function updateSignalValue({
       callback({ error: new errorCreator.Database({ errorObject: err, name: 'updateSignalValue' }) });
 
       return;
-    } else if (!station) {
+    }
+
+    if (!station) {
       callback({ error: new errorCreator.DoesNotExist({ name: `station ${stationId}` }) });
 
       return;
@@ -250,7 +256,9 @@ function updateLanternRound({
       callback({ error: new errorCreator.Database({ errorObject: err, name: 'startLanternRound' }) });
 
       return;
-    } else if (!updatedRound) {
+    }
+
+    if (!updatedRound) {
       callback({ error: new errorCreator.DoesNotExist({ name: 'active round' }) });
 
       return;
@@ -273,7 +281,9 @@ function getLanternRound({ callback }) {
       callback({ error: new errorCreator.Database({ errorObject: err, name: 'getLanternRound' }) });
 
       return;
-    } else if (!foundRound) {
+    }
+
+    if (!foundRound) {
       callback({ error: new errorCreator.DoesNotExist({ name: 'round does not exist' }) });
 
       return;
@@ -312,7 +322,9 @@ function getStation({
       callback({ error: new errorCreator.Database({ errorObject: err, name: 'getStation' }) });
 
       return;
-    } else if (!foundStation) {
+    }
+
+    if (!foundStation) {
       callback({ error: new errorCreator.DoesNotExist({ name: `${stationId} station` }) });
 
       return;
@@ -360,7 +372,9 @@ function createStation({
       callback({ error: new errorCreator.Database({ errorObject: err, name: 'createStation' }) });
 
       return;
-    } else if (foundStation) {
+    }
+
+    if (foundStation) {
       callback({ error: new errorCreator.AlreadyExists({ name: `Station ${station.stationId}` }) });
 
       return;
@@ -457,7 +471,9 @@ function updateLanternStation({
       callback({ error: new errorCreator.Database({ errorObject: err, name: 'updateLanternStation' }) });
 
       return;
-    } else if (!station) {
+    }
+
+    if (!station) {
       callback({ error: new errorCreator.DoesNotExist({ name: `${stationId} station` }) });
 
       return;
@@ -520,7 +536,9 @@ function updateLanternHack({
       callback({ error: new errorCreator.Database({ errorObject: err }) });
 
       return;
-    } else if (!updatedLanternHack) {
+    }
+
+    if (!updatedLanternHack) {
       callback({ error: new errorCreator.AlreadyExists({ name: `lantern hack for ${stationId} station, owner ${owner}` }) });
 
       return;
@@ -549,7 +567,9 @@ function lowerHackTries({
       callback({ error: new errorCreator.Database({ errorObject: err }) });
 
       return;
-    } else if (!lanternHack) {
+    }
+
+    if (!lanternHack) {
       callback({ error: new errorCreator.AlreadyExists({ name: `lantern hack try for owner ${owner}` }) });
 
       return;
@@ -576,7 +596,9 @@ function getLanternHack({
       callback({ error: new errorCreator.Database({ errorObject: err }) });
 
       return;
-    } else if (!foundHack) {
+    }
+
+    if (!foundHack) {
       callback({ error: new errorCreator.DoesNotExist({ name: `get lantern hack for owner ${owner}` }) });
 
       return;
@@ -838,7 +860,9 @@ function setDone({
       callback({ error: new errorCreator.Database({ errorObject: err }) });
 
       return;
-    } else if (!lanternHack) {
+    }
+
+    if (!lanternHack) {
       callback({ error: new errorCreator.AlreadyExists({ name: `lantern hack done for owner ${owner}` }) });
 
       return;

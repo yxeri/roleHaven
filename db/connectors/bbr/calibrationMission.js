@@ -51,7 +51,9 @@ function getActiveMission({
       callback({ error: new errorCreator.Database({ errorObject: err, name: 'getActiveMission' }) });
 
       return;
-    } else if (!foundMission) {
+    }
+
+    if (!foundMission) {
       if (!silentOnDoesNotExist) {
         callback({ error: new errorCreator.DoesNotExist({ name: `calibration mission ${owner}` }) });
       } else {
@@ -162,7 +164,9 @@ function createMission({
       callback({ error: new errorCreator.Database({ errorObject: err, name: 'createMission' }) });
 
       return;
-    } else if (foundMission) {
+    }
+
+    if (foundMission) {
       callback({ error: new errorCreator.AlreadyExists({ name: `Calibration mission ${mission.owner}` }) });
 
       return;
@@ -216,7 +220,9 @@ function setMissionCompleted({
       callback({ error: new errorCreator.Database({ errorObject: err, name: 'setMissionCompleted' }) });
 
       return;
-    } else if (!foundMission) {
+    }
+
+    if (!foundMission) {
       callback({ error: new errorCreator.DoesNotExist({ name: `Mission owner: ${owner}` }) });
 
       return;
