@@ -53,11 +53,6 @@ schemas.fullUser = tools.buildFullSchema({
     'isVerified',
     'isBanned',
     'isOnline',
-    'hasFullAccess',
-    'isLootable',
-    'defaultRoomId',
-    'followingRooms',
-    'registerDevice',
   ],
   properties: {
     password: { type: 'boolean' },
