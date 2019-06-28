@@ -46,6 +46,10 @@ config.AccessLevels = config.AccessLevels || {
 config.users.systemUser = config.users.systemUser || {
   objectId: '222222222222222222222220',
   username: 'system',
+  partOfTeams: [],
+  aliases: [],
+  followingRooms: [],
+  visibility: config.AccessLevels.MODERATOR,
 };
 
 /**
@@ -54,6 +58,10 @@ config.users.systemUser = config.users.systemUser || {
 config.users.anonymous = config.users.anonymous || {
   username: 'anonymous',
   objectId: '222222222222222222222221',
+  partOfTeams: [],
+  aliases: [],
+  followingRooms: [],
+  visibility: config.AccessLevels.MODERATOR,
 };
 
 /**
@@ -272,6 +280,13 @@ config.TriggerTypes = {
   TIMED: 'timed',
   MANUAL: 'manual',
   TRIGGER: 'trigger',
+};
+
+config.Pronouns = {
+  SHE: 'She',
+  HE: 'He',
+  THEY: 'They',
+  IT: 'It',
 };
 
 /**

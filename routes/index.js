@@ -89,6 +89,7 @@ function handle(io) {
         userVerify: appConfig.userVerify,
         showDevInfo: appConfig.showDevInfo,
         dayModification: appConfig.dayModification,
+        requireOffName: appConfig.requireOffName,
         permissions: {
           CreatePosition: dbConfig.apiCommands.CreatePosition,
           UpdatePosition: dbConfig.apiCommands.UpdatePosition,

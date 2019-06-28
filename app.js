@@ -84,11 +84,6 @@ if (!appConfig.disablePositionImport) {
   };
 
   getGooglePositions();
-
-  setInterval(() => {
-    // TODO Send positions to clients
-    getGooglePositions();
-  }, 3600000);
 }
 
 /*

@@ -30,6 +30,7 @@ const dbForum = require('../db/connectors/forum');
 const managerHelper = require('../helpers/manager');
 const positionManager = require('./positions');
 const imager = require('../helpers/imager');
+const messageManager = require('./messages');
 
 /**
  * Create a user.
@@ -69,20 +70,20 @@ function createUser({
 
       const { user: authUser } = data;
 
-      if (!textTools.isAllowedFull(user.username)) {
+      if (appConfig.requireOffName && !user.offName) {
         callback({
-          error: new errorCreator.InvalidCharacters({ name: `User name: ${user.username}.` }),
+          error: new errorCreator.InvalidData({
+            expected: 'offName',
+            extraData: { param: 'offName' },
+          }),
         });
 
         return;
       }
 
-      if (user.fullName && !textTools.isAllowedFull(user.fullName)) {
+      if (!textTools.isAllowedFull(user.username)) {
         callback({
-          error: new errorCreator.InvalidCharacters({
-            name: `Full name: ${user.fullName}.`,
-            extraData: { param: 'fullName' },
-          }),
+          error: new errorCreator.InvalidCharacters({ name: `User name: ${user.username}.` }),
         });
 
         return;
@@ -99,11 +100,11 @@ function createUser({
         return;
       }
 
-      if (user.fullName && (user.fullName.length < appConfig.fullNameMinLength || user.fullName.length > appConfig.fullNameMaxLength)) {
+      if (user.offName && (user.offName.length < appConfig.offNameMinLength || user.offName.length > appConfig.offNameNameMaxLength)) {
         callback({
           error: new errorCreator.InvalidLength({
-            name: `Full name length: ${appConfig.fullNameMinLength}-${appConfig.fullNameMaxLength}`,
-            extraData: { param: 'fullName' },
+            name: `Off name length: ${appConfig.offNameMinLength}-${appConfig.offNameNameMaxLength}`,
+            extraData: { param: 'offName' },
           }),
         });
 
@@ -318,6 +319,19 @@ function createUser({
                             io.emit(dbConfig.EmitTypes.ROOM, roomDataToSend);
                             io.emit(dbConfig.EmitTypes.WALLET, walletDataToSend);
 
+                            if (!createdUser.isVerified) {
+                              messageManager.sendChatMsg({
+                                io,
+                                socket,
+                                message: {
+                                  roomId: dbConfig.rooms.admin.objectId,
+                                  text: [`User ${createdUser.username} (${createdUser.objectId}) needs to be verified.`],
+                                },
+                                internalCallUser: dbConfig.users.systemUser,
+                                callback: () => {},
+                              });
+                            }
+
                             callback(creatorDataToSend);
                           },
                         });
@@ -396,6 +410,7 @@ function getUsersByUser({
         includeInactive: authUser.accessLevel >= dbConfig.AccessLevels.MODERATOR
           ? true
           : includeInactive,
+        includeOff: authUser.accessLevel >= dbConfig.AccessLevels.STANDARD,
         callback: ({ error: userError, data: userData }) => {
           if (userError) {
             callback({ error: userError });
@@ -569,12 +584,52 @@ function changePassword({
           if (!password) {
             const generatedPassword = textTools.generateTextCode(10);
 
+            bcrypt.hash(generatedPassword, 10, (hashError, hash) => {
+              if (hashError) {
+                callback({ error: new errorCreator.Internal({ errObject: hashError }) });
+
+                return;
+              }
+
+              dbUser.updateUserPassword({
+                userId,
+                password: hash,
+                callback: ({ error: passwordError }) => {
+                  if (passwordError) {
+                    callback({ error: passwordError });
+
+                    return;
+                  }
+
+                  callback({
+                    data: {
+                      success: true,
+                      user: {
+                        objectId: userId,
+                        password: generatedPassword,
+                      },
+                    },
+                  });
+                },
+              });
+            });
+
+            return;
+          }
+
+          bcrypt.hash(password, 10, (hashError, hash) => {
+            if (hashError) {
+              callback({ error: new errorCreator.Internal({ errObject: hashError }) });
+
+              return;
+            }
+
             dbUser.updateUserPassword({
-              userId,
-              password: generatedPassword,
-              callback: ({ error: passwordError }) => {
-                if (passwordError) {
-                  callback({ error: passwordError });
+              password: hash,
+              userId: foundUser.objectId,
+              callback: ({ error: updateError }) => {
+                if (updateError) {
+                  callback({ error: updateError });
 
                   return;
                 }
@@ -582,35 +637,11 @@ function changePassword({
                 callback({
                   data: {
                     success: true,
-                    user: {
-                      objectId: userId,
-                      password: generatedPassword,
-                    },
+                    user: { objectId: userId },
                   },
                 });
               },
             });
-
-            return;
-          }
-
-          dbUser.updateUserPassword({
-            password,
-            userId: foundUser.objectId,
-            callback: ({ error: updateError }) => {
-              if (updateError) {
-                callback({ error: updateError });
-
-                return;
-              }
-
-              callback({
-                data: {
-                  success: true,
-                  user: { objectId: userId },
-                },
-              });
-            },
           });
         },
       });

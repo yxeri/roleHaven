@@ -79,6 +79,7 @@ function createToken({
         }
 
         const jwtUser = { userId: user.objectId };
+        user.password = true;
 
         jwt.sign({ data: jwtUser }, appConfig.jsonKey, (err, token) => {
           if (err) {
@@ -156,7 +157,7 @@ function isUserAllowed({
         const { user } = data;
         const { accessLevel } = commandUsed;
 
-        if (accessLevel > user.accessLevel) {
+        if (user.isBanned || !user.isVerified || accessLevel > user.accessLevel) {
           callback({ error: new errorCreator.NotAllowed({ name: commandName }) });
 
           return;
