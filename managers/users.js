@@ -438,7 +438,7 @@ function getUsersByUser({
             }
 
             return userObject;
-          }).concat([dbConfig.users.systemUser]).sort((a, b) => {
+          }).sort((a, b) => {
             const aName = a.username;
             const bName = b.username;
 
