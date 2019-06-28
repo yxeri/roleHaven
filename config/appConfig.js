@@ -9,6 +9,7 @@ config.routes = [
 
 config.handlers = [
   '/routes/socketHandlers/bbr/calibrationMissions',
+  '/routes/socketHandlers/bbr/lanternHacking',
 ];
 
 config.hackingApiHost = process.env.HACKINGAPIHOST || '34.245.62.115';
