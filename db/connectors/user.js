@@ -240,7 +240,7 @@ function getUserById({
 }) {
   const query = userId
     ? { _id: userId }
-    : { username };
+    : { usernameLowerCase: username.toLowerCase() };
 
   getUser({
     query,
@@ -459,6 +459,7 @@ function updateUser({
     image,
     offName,
     pronouns,
+    description,
   } = user;
   const {
     resetSocket,
@@ -488,6 +489,7 @@ function updateUser({
   if (image) { set.image = image; }
   if (offName) { set.offName = offName; }
   if (pronouns) { set.pronouns = pronouns; }
+  if (description) { set.description = description; }
 
   if (Object.keys(set).length > 0) { update.$set = set; }
   if (Object.keys(unset).length > 0) { update.$unset = unset; }
