@@ -100,9 +100,9 @@ function updateLanternRound({
                 return;
               }
 
-              const next = data.isActive ?
-                data.endTime :
-                data.startTime;
+              const next = data.isActive
+                ? data.endTime
+                : data.startTime;
 
               const dataToSend = {
                 timeLeft: textTools.getDifference({ laterDate: next, firstDate: new Date() }),

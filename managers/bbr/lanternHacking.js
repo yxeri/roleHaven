@@ -47,7 +47,9 @@ function resetStations({
         callback({ error: roundError });
 
         return;
-      } else if (!roundData.isActive) {
+      }
+
+      if (!roundData.isActive) {
         return;
       }
 
@@ -210,9 +212,9 @@ function updateSignalValue({
       }
 
       setNewValue({
-        signalValue: signalValue + (boostingSignal ?
-          signalChange :
-          -Math.abs(signalChange)),
+        signalValue: signalValue + (boostingSignal
+          ? signalChange
+          : -Math.abs(signalChange)),
       });
     },
   });
@@ -274,7 +276,9 @@ function createLanternHack({
         callback({ error });
 
         return;
-      } else if (data.gameUsers.length <= 0) {
+      }
+
+      if (data.gameUsers.length <= 0) {
         callback({ error: new errorCreator.DoesNotExist({ name: 'game users' }) });
 
         return;
@@ -519,7 +523,9 @@ function getLanternHack({
         callback({ error });
 
         return;
-      } else if (!objectValidator.isValidData({ stationId }, { stationId: true })) {
+      }
+
+      if (!objectValidator.isValidData({ stationId }, { stationId: true })) {
         callback({ error: new errorCreator.InvalidData({ expected: '{ stationId }' }) });
 
         return;
@@ -604,12 +610,12 @@ function getLanternInfo({ token, callback }) {
         return;
       }
 
-      const startTime = data.startTime ?
-        new Date(data.startTime) :
-        0;
-      const endTime = data.endTime ?
-        new Date(data.endTime) :
-        0;
+      const startTime = data.startTime
+        ? new Date(data.startTime)
+        : 0;
+      const endTime = data.endTime
+        ? new Date(data.endTime)
+        : 0;
 
       if (!data.isActive) {
         callback({

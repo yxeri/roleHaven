@@ -132,11 +132,11 @@ function createLanternStation({
       }
 
       const newStation = station;
-      newStation.calibrationReward = typeof newStation.calibrationReward === 'number' &&
-      newStation.calibrationReward >= appConfig.calibrationRewardMinimum &&
-      newStation.calibrationReward <= appConfig.calibrationRewardMax ?
-        newStation.calibrationReward :
-        undefined;
+      newStation.calibrationReward = typeof newStation.calibrationReward === 'number'
+      && newStation.calibrationReward >= appConfig.calibrationRewardMinimum
+      && newStation.calibrationReward <= appConfig.calibrationRewardMax
+        ? newStation.calibrationReward
+        : undefined;
 
       dbLanternHack.createStation({
         station,
@@ -203,11 +203,11 @@ function updateLanternStation({
         isActive,
         stationName,
         owner,
-        calibrationReward: typeof calibrationReward === 'number' &&
-          calibrationReward >= appConfig.calibrationRewardMinimum &&
-          calibrationReward <= appConfig.calibrationRewardMax ?
-          calibrationReward :
-          undefined,
+        calibrationReward: typeof calibrationReward === 'number'
+          && calibrationReward >= appConfig.calibrationRewardMinimum
+          && calibrationReward <= appConfig.calibrationRewardMax
+          ? calibrationReward
+          : undefined,
         callback: ({ error: updateError, data: updateData }) => {
           if (updateError) {
             callback({ error: updateError });

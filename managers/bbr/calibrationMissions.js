@@ -68,7 +68,9 @@ function getActiveCalibrationMission({
                 callback({ error: lanternError });
 
                 return;
-              } else if (lanternData.isActive) {
+              }
+
+              if (lanternData.isActive) {
                 callback({ error: new errorCreator.External({ name: 'lantern hack active' }) });
 
                 return;
@@ -100,7 +102,9 @@ function getActiveCalibrationMission({
                         callback({ error: inactiveErr });
 
                         return;
-                      } else if (inactiveData.missions.length > 0 && new Date().getTime() < new Date(inactiveData.missions[inactiveData.missions.length - 1].timeCreated).getTime() + (appConfig.calibrationTimeout * 60000)) {
+                      }
+
+                      if (inactiveData.missions.length > 0 && new Date().getTime() < new Date(inactiveData.missions[inactiveData.missions.length - 1].timeCreated).getTime() + (appConfig.calibrationTimeout * 60000)) {
                         callback({
                           error: new errorCreator.TooFrequent({
                             name: 'calibration mission',
@@ -119,7 +123,9 @@ function getActiveCalibrationMission({
                             callback({ error: stationsError });
 
                             return;
-                          } else if (stationsData.stations.length < 1) {
+                          }
+
+                          if (stationsData.stations.length < 1) {
                             callback({ error: new errorCreator.DoesNotExist({ name: 'no active stations' }) });
 
                             return;
@@ -464,7 +470,9 @@ function getValidStations({
             callback({ error: activeError });
 
             return;
-          } else if (activeData.mission) {
+          }
+
+          if (activeData.mission) {
             callback({ data: activeData });
 
             return;
@@ -477,7 +485,9 @@ function getValidStations({
                 callback({ error: inactiveErr });
 
                 return;
-              } else if (inactiveData.missions.length > 0 && new Date().getTime() < new Date(inactiveData.missions[inactiveData.missions.length - 1].timeCreated).getTime() + (appConfig.calibrationTimeout * 60000)) {
+              }
+
+              if (inactiveData.missions.length > 0 && new Date().getTime() < new Date(inactiveData.missions[inactiveData.missions.length - 1].timeCreated).getTime() + (appConfig.calibrationTimeout * 60000)) {
                 callback({
                   error: new errorCreator.TooFrequent({
                     name: 'calibration mission',
@@ -496,7 +506,9 @@ function getValidStations({
                     callback({ error: stationsError });
 
                     return;
-                  } else if (stationsData.stations.length < 1) {
+                  }
+
+                  if (stationsData.stations.length < 1) {
                     callback({ error: new errorCreator.DoesNotExist({ name: 'no active stations' }) });
 
                     return;
@@ -506,9 +518,9 @@ function getValidStations({
                   const { missions } = inactiveData;
 
                   if (missions && missions.length > 0) {
-                    const previousStationIds = missions.length > 1 ?
-                      [missions[missions.length - 1].stationId, missions[missions.length - 2].stationId] :
-                      [missions[missions.length - 1].stationId];
+                    const previousStationIds = missions.length > 1
+                      ? [missions[missions.length - 1].stationId, missions[missions.length - 2].stationId]
+                      : [missions[missions.length - 1].stationId];
 
                     previousStationIds.forEach((stationIdToRemove) => {
                       stationIds.splice(stationIds.indexOf(stationIdToRemove), 1);

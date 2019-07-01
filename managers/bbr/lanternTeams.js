@@ -103,7 +103,9 @@ function createLanternTeam({
         callback({ error });
 
         return;
-      } else if (!objectValidator.isValidData({ team }, { team: { teamName: true, shortName: true, teamId: true } })) {
+      }
+
+      if (!objectValidator.isValidData({ team }, { team: { teamName: true, shortName: true, teamId: true } })) {
         callback({ error: new errorCreator.InvalidData({ expected: '{ team: { teamName, shortName, teamId } }' }) });
 
         return;
@@ -174,15 +176,15 @@ function updateLanternTeam({
         teamId,
         isActive,
         resetPoints,
-        teamName: teamName ?
-          teamName.toLowerCase() :
-          undefined,
-        shortName: shortName ?
-          shortName.toLowerCase() :
-          undefined,
-        points: typeof points === 'number' && team.points > -1 ?
-          points :
-          undefined,
+        teamName: teamName
+          ? teamName.toLowerCase()
+          : undefined,
+        shortName: shortName
+          ? shortName.toLowerCase()
+          : undefined,
+        points: typeof points === 'number' && team.points > -1
+          ? points
+          : undefined,
         callback: ({ error: teamError, data: teamData }) => {
           if (teamError) {
             callback({ error: teamError });
