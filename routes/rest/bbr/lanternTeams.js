@@ -228,7 +228,9 @@ function handle(io) {
       restErrorChecker.checkAndSendError({ response, error: new errorCreator.InvalidData({ expected: '' }), sentData: request.body.data });
 
       return;
-    } else if (!objectValidator.isValidData(request.body, { data: { team: true } })) {
+    }
+
+    if (!objectValidator.isValidData(request.body, { data: { team: true } })) {
       restErrorChecker.checkAndSendError({ response, error: new errorCreator.InvalidData({ expected: '' }), sentData: request.body.data });
 
       return;
