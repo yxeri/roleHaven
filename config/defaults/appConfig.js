@@ -570,7 +570,7 @@ config.offNameNameMaxLength = process.env.OFFNAMEMAXLENGTH || config.offNameName
  * Maximum amount of characters in a user's description.
  * @type {number}
  */
-config.userDescriptionMaxLength = process.env.USERDESCRIPTIONMAXLENGTH || config.userDescriptionMaxLength || 500;
+config.userDescriptionMaxLength = process.env.USERDESCRIPTIONMAXLENGTH || config.userDescriptionMaxLength || 300;
 
 /**
  * ********
