@@ -28,18 +28,18 @@ config.apiCommands = {
   },
   GetCalibrationMissions: {
     name: 'GetCalibrationMissions',
-    accessLevel: config.AccessLevels.MODERATOR,
+    accessLevel: config.AccessLevels.STANDARD,
   },
   GetCalibrationMission: {
     name: 'GetCalibrationMission',
-    accessLevel: config.AccessLevels.MODERATOR,
+    accessLevel: config.AccessLevels.STANDARD,
   },
   /**
    * Lantern
    */
   HackLantern: {
     name: 'HackLantern',
-    accessLevel: config.AccessLevels.MODERATOR,
+    accessLevel: config.AccessLevels.STANDARD,
   },
   /**
    * Lantern round
@@ -62,11 +62,11 @@ config.apiCommands = {
   },
   GetLanternRound: {
     name: 'GetLanternRound',
-    accessLevel: config.AccessLevels.MODERATOR,
+    accessLevel: config.AccessLevels.STANDARD,
   },
   GetLanternStations: {
     name: 'GetLanternStations',
-    accessLevel: config.AccessLevels.MODERATOR,
+    accessLevel: config.AccessLevels.STANDARD,
   },
   /**
    * Lantern team
@@ -81,7 +81,7 @@ config.apiCommands = {
   },
   GetLanternTeam: {
     name: 'GetLanternTeam',
-    accessLevel: config.AccessLevels.MODERATOR,
+    accessLevel: config.AccessLevels.STANDARD,
   },
 };
 
