@@ -285,9 +285,9 @@ function createLanternHack({
       }
 
       const gameUsers = textTools.shuffleArray(data.gameUsers).slice(0, 2).map((gameUser) => {
-        const passwordRand = Math.floor(Math.random() * (gameUser.passwords.length));
+        const passwordRand = Math.floor(Math.random() * ((gameUser.passwords.length - 1) + 1));
         const password = gameUser.passwords[passwordRand];
-        const randomIndex = Math.floor(Math.random() * password.length);
+        const randomIndex = Math.floor(Math.random() * ((password.length - 1) + 1));
 
         return {
           password,

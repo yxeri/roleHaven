@@ -14,10 +14,10 @@
 'use strict';
 
 const express = require('express');
-const objectValidator = require('../../utils/objectValidator');
-const restErrorChecker = require('../../helpers/restErrorChecker');
-const errorCreator = require('../../error/errorCreator');
-const gameItemManager = require('../../managers/bbr/gameItems');
+const objectValidator = require('../../../utils/objectValidator');
+const restErrorChecker = require('../../../helpers/restErrorChecker');
+const errorCreator = require('../../../error/errorCreator');
+const gameItemManager = require('../../../managers/bbr/gameItems');
 
 const router = new express.Router();
 
