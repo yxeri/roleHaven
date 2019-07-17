@@ -590,7 +590,7 @@ config.teamVerify = typeof teamVerifyEnv !== 'undefined'
  * Maximum amount of characters in a team name
  * @type {number}
  */
-config.teamNameMaxLength = process.env.TEAMNAMEMAXLENGTH || config.teamNameMaxLength || 10;
+config.teamNameMaxLength = process.env.TEAMNAMEMAXLENGTH || config.teamNameMaxLength || 20;
 
 /**
  * Maximum amount of characters in a team acronym
