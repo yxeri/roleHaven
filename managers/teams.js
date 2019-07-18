@@ -125,8 +125,22 @@ function emitTeam({
       changeType: dbConfig.ChangeTypes.CREATE,
     },
   };
+  const roomToSend = {
+    data: {
+      room,
+      changeType: dbConfig.ChangeTypes.CREATE,
+    },
+  };
+  const walletToSend = {
+    data: {
+      wallet,
+      changeType: dbConfig.ChangeTypes.CREATE,
+    },
+  };
 
   if (team.isVerified) {
+    io.emit(dbConfig.EmitTypes.TEAM, dataToSend);
+
     if (socket) {
       socket.join(room.objectId);
       socket.broadcast.emit(dbConfig.EmitTypes.TEAM, dataToSend);
@@ -140,9 +154,12 @@ function emitTeam({
         userSocket.join(room.objectId);
       }
 
-      io.emit(dbConfig.EmitTypes.TEAM, dataToSend);
       io.to(user.objectId).emit(dbConfig.EmitTypes.TEAM, creatorDataToSend);
     }
+
+    io.to(user.objectId).emit(dbConfig.EmitTypes.USER, creatorDataToSend);
+    io.emit(dbConfig.EmitTypes.ROOM, roomToSend);
+    io.emit(dbConfig.EmitTypes.WALLET, walletToSend);
   }
 
   callback(creatorDataToSend);
@@ -196,7 +213,7 @@ function addUserToTeam({
 
         if (userSocket) { userSocket.join(teamId); }
 
-        io.emit(dbConfig.EmitTypes.TEAMMEMBER, dataToSend);
+        io.to(teamId).emit(dbConfig.EmitTypes.TEAMMEMBER, dataToSend);
         io.emit(dbConfig.EmitTypes.USER, dataToSend);
       }
 
@@ -252,7 +269,7 @@ function createTeamAndDependencies({
           const roomToCreate = {
             ownerId,
             ownerAliasId,
-            roomName: teamId,
+            roomName: `${team.teamName}-team`,
             objectId: teamId,
             accessLevel: dbConfig.AccessLevels.SUPERUSER,
             visibility: dbConfig.AccessLevels.SUPERUSER,
@@ -364,9 +381,7 @@ function createTeam({
       }
 
       createTeamAndDependencies({
-        socket,
         io,
-        user: authUser,
         team: newTeam,
         callback: ({ error: teamError, data: teamData }) => {
           if (teamError) {
