@@ -68,6 +68,14 @@ function createAlias({
         return;
       }
 
+      if (dbConfig.protectedNames.includes(alias.aliasName.toLowerCase())) {
+        callback({
+          error: new errorCreator.InvalidCharacters({
+            name: `protected name ${alias.aliasName}`,
+            extraData: { param: 'aliasName' },
+          }),
+        });
+
         return;
       }
 
