@@ -60,8 +60,21 @@ function createAlias({
         return;
       }
 
-      if (!textTools.hasAllowedText(alias.aliasName)) {
-        callback({ error: new errorCreator.InvalidCharacters({ name: 'Alias', expected: 'a-z 0-9' }) });
+      if (!textTools.isAllowedFull(alias.aliasName)) {
+        callback({
+          error: new errorCreator.InvalidCharacters({ name: `Alias: ${alias.aliasName}.` }),
+        });
+
+        return;
+      }
+
+      if (dbConfig.protectedNames.includes(alias.aliasName.toLowerCase())) {
+        callback({
+          error: new errorCreator.InvalidCharacters({
+            name: `protected name ${alias.aliasName}`,
+            extraData: { param: 'aliasName' },
+          }),
+        });
 
         return;
       }
