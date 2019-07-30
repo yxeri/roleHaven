@@ -362,9 +362,7 @@ function createTeam({
       const { ownerAliasId } = team;
       const newTeam = team;
       newTeam.teamName = textTools.trimSpace(newTeam.teamName);
-      newTeam.teamNameLowerCase = newTeam.teamName;
       newTeam.shortName = textTools.trimSpace(newTeam.shortName);
-      newTeam.shortNameLowerCase = newTeam.shortName;
       newTeam.ownerId = authUser.objectId;
       newTeam.isVerified = !appConfig.teamVerify;
 
