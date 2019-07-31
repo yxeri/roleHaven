@@ -52,6 +52,14 @@ function handle(socket, io) {
       callback,
     });
   });
+
+  socket.on('getWreckingStatus', ({ token }, callback = () => {}) => {
+    lanternHackManager.getWreckingStatus({
+      socket,
+      token,
+      callback,
+    });
+  });
 }
 
 exports.handle = handle;

@@ -651,7 +651,6 @@ function getLanternInfo({ token, callback }) {
                 return;
               }
 
-
               callback({
                 data: {
                   activeStations,
@@ -669,6 +668,38 @@ function getLanternInfo({ token, callback }) {
   });
 }
 
+/**
+ * Get wrecking status
+ * @param {Object} params Parameters.
+ * @param {Object} params.socket Socket.io.
+ * @param {Function} params.callback Callback.
+ */
+function getWreckingStatus({
+  socket,
+  callback,
+}) {
+  dbLanternHack.getLanternStats({
+    callback: ({ error, data }) => {
+      if (error) {
+        callback({ error });
+
+        return;
+      }
+
+      const { lanternStats } = data;
+      const {
+        round,
+        teams,
+        stations,
+      } = lanternStats;
+
+      socket.emit('lanternTeams', { data: { teams } });
+      socket.emit('lanternStations', { data: { stations } });
+      socket.emit('lanternRound', { data: { round } });
+    },
+  });
+}
+
 exports.createLanternHack = createLanternHack;
 exports.updateSignalValue = updateSignalValue;
 exports.manipulateStation = manipulateStation;
@@ -676,3 +707,4 @@ exports.getLanternHack = getLanternHack;
 exports.getLanternInfo = getLanternInfo;
 exports.resetStations = resetStations;
 exports.startResetInterval = startResetInterval;
+exports.getWreckingStatus = getWreckingStatus;
