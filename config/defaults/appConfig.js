@@ -148,6 +148,12 @@ config.routes = config.ignoreDefaultRoutes
     };
   });
 
+/**
+ * Array of functions that will be called on startup.
+ * @type {Function[]}
+ */
+config.startupFuncs = config.startupFuncs || [];
+
 /* eslint-disable */
 
 config.handlers = config.ignoreDefaultHandlers

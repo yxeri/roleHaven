@@ -86,6 +86,8 @@ if (!appConfig.disablePositionImport) {
   getGooglePositions();
 }
 
+appConfig.startupFuncs.forEach(func => func({ io }));
+
 /*
  * Catches all exceptions.
  */
