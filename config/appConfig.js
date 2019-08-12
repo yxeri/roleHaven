@@ -1,5 +1,3 @@
-const hackingManager = require('../managers/bbr/lanternHacking');
-
 const config = {};
 
 config.routes = [
@@ -57,7 +55,7 @@ config.signalChangePercentage = process.env.SIGNALCHANGEPERCENTAGE || config.sig
 config.signalMaxChange = process.env.SIGNALMAXCHANGE || config.signalMaxChange || 10;
 
 config.startupFuncs = [
-  hackingManager.startResetInterval,
+  require('../managers/bbr/lanternHacking').startResetInterval, // eslint-disable-line
 ];
 
 module.exports = config;
