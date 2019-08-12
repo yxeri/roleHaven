@@ -55,7 +55,9 @@ config.signalChangePercentage = process.env.SIGNALCHANGEPERCENTAGE || config.sig
 config.signalMaxChange = process.env.SIGNALMAXCHANGE || config.signalMaxChange || 10;
 
 config.startupFuncs = [
-  require('../managers/bbr/lanternHacking').startResetInterval, // eslint-disable-line
+  ({ io }) => {
+    require('../managers/bbr/lanternHacking').startResetInterval({ io }); // eslint-disable-line
+  },
 ];
 
 module.exports = config;
