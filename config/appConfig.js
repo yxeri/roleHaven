@@ -1,3 +1,5 @@
+const hackingManager = require('../managers/bbr/lanternHacking');
+
 const config = {};
 
 config.routes = [
@@ -53,5 +55,9 @@ config.signalThreshold = process.env.SIGNALTRESHHOLD || config.signalThreshold |
 config.signalChangePercentage = process.env.SIGNALCHANGEPERCENTAGE || config.signalChangePercentage || 0.2;
 
 config.signalMaxChange = process.env.SIGNALMAXCHANGE || config.signalMaxChange || 10;
+
+config.startupFuncs = [
+  hackingManager.startResetInterval,
+];
 
 module.exports = config;
