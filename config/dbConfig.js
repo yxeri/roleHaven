@@ -83,6 +83,13 @@ config.apiCommands = {
     name: 'GetLanternTeam',
     accessLevel: config.AccessLevels.STANDARD,
   },
+  /**
+   * Alias
+   */
+  CreateAlias: {
+    name: 'CreateAlias',
+    accessLevel: config.AccessLevels.MODERATOR,
+  },
 };
 
 module.exports = config;

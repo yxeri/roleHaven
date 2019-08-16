@@ -616,17 +616,9 @@ function getLanternInfo({ token, callback }) {
       const endTime = data.endTime
         ? new Date(data.endTime)
         : 0;
-
-      if (!data.isActive) {
-        callback({
-          data: {
-            timeLeft: textTools.getDifference({ laterDate: startTime, firstDate: new Date() }),
-            round: data,
-          },
-        });
-
-        return;
-      }
+      const timeLeft = !data.isActive
+        ? textTools.getDifference({ laterDate: startTime, firstDate: new Date() })
+        : textTools.getDifference({ laterDate: endTime, firstDate: new Date() });
 
       lanternStationManager.getLanternStations({
         token,
@@ -655,8 +647,8 @@ function getLanternInfo({ token, callback }) {
                 data: {
                   activeStations,
                   inactiveStations,
+                  timeLeft,
                   round: data,
-                  timeLeft: textTools.getDifference({ laterDate: endTime, firstDate: new Date() }),
                   teams: teamsData.teams,
                 },
               });
@@ -668,38 +660,6 @@ function getLanternInfo({ token, callback }) {
   });
 }
 
-/**
- * Get wrecking status
- * @param {Object} params Parameters.
- * @param {Object} params.socket Socket.io.
- * @param {Function} params.callback Callback.
- */
-function getWreckingStatus({
-  socket,
-  callback,
-}) {
-  dbLanternHack.getLanternStats({
-    callback: ({ error, data }) => {
-      if (error) {
-        callback({ error });
-
-        return;
-      }
-
-      const { lanternStats } = data;
-      const {
-        round,
-        teams,
-        stations,
-      } = lanternStats;
-
-      socket.emit('lanternTeams', { data: { teams } });
-      socket.emit('lanternStations', { data: { stations } });
-      socket.emit('lanternRound', { data: { round } });
-    },
-  });
-}
-
 exports.createLanternHack = createLanternHack;
 exports.updateSignalValue = updateSignalValue;
 exports.manipulateStation = manipulateStation;
@@ -707,4 +667,3 @@ exports.getLanternHack = getLanternHack;
 exports.getLanternInfo = getLanternInfo;
 exports.resetStations = resetStations;
 exports.startResetInterval = startResetInterval;
-exports.getWreckingStatus = getWreckingStatus;
