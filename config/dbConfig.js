@@ -14,6 +14,7 @@ config.AccessLevels = {
   GOD: 6,
 };
 
+config.apiCommands = {};
 config.apiCommands = {
   /**
    * Calibration mission
@@ -88,6 +89,13 @@ config.apiCommands = {
    */
   CreateAlias: {
     name: 'CreateAlias',
+    accessLevel: config.AccessLevels.MODERATOR,
+  },
+  /**
+   * Others
+   */
+  IncludeOff: config.apiCommands.IncludeOff || {
+    name: 'IncludeOff',
     accessLevel: config.AccessLevels.MODERATOR,
   },
 };
