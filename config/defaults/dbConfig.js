@@ -847,6 +847,10 @@ config.apiCommands = Object.assign({
     name: 'AnonymousCreation',
     accessLevel: config.AccessLevels.ANONYMOUS,
   },
+  IncludeOff: config.apiCommands.IncludeOff || {
+    name: 'IncludeOff',
+    accessLevel: config.AccessLevels.STANDARD,
+  },
 }, config.apiCommands || {});
 
 module.exports = config;

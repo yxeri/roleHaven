@@ -107,6 +107,7 @@ function handle(io) {
           CreateUser: dbConfig.apiCommands.CreateUser,
           CreateTeam: dbConfig.apiCommands.CreateTeam,
           InviteToTeam: dbConfig.apiCommands.InviteToTeam,
+          IncludeOff: dbConfig.apiCommands.IncludeOff,
         },
       },
     });

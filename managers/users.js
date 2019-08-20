@@ -410,7 +410,7 @@ function getUsersByUser({
         includeInactive: authUser.accessLevel >= dbConfig.AccessLevels.MODERATOR
           ? true
           : includeInactive,
-        includeOff: authUser.accessLevel >= dbConfig.AccessLevels.STANDARD,
+        includeOff: authUser.accessLevel >= dbConfig.apiCommands.IncludeOff.accessLevel,
         callback: ({ error: userError, data: userData }) => {
           if (userError) {
             callback({ error: userError });
