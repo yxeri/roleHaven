@@ -40,7 +40,6 @@ const gpsTrackingEnv = textTools.convertToBoolean(process.env.GPSTRACKING);
 const teamVerifyEnv = textTools.convertToBoolean(process.env.TEAMVERIFY);
 const disallowRegisterEnv = textTools.convertToBoolean(process.env.DISALLOWUSERREGISTER);
 const verboseErrorEnv = textTools.convertToBoolean(process.env.VERBOSEERROR);
-const allowMessageImageEnv = textTools.convertToBoolean(process.env.ALLOWMESSAGEIMAGE);
 const bypassExternalConnectionEnv = textTools.convertToBoolean(process.env.BYPASSEXTERNALCONNECTIONS);
 const userVerifyEnv = textTools.convertToBoolean(process.env.USERVERIFY);
 const showDevInfoEnv = textTools.convertToBoolean(process.env.SHOWDEVINFO);
@@ -474,14 +473,6 @@ config.gameCodeLength = process.env.GAMECODELENGTH || config.gameCodeLength || 8
 config.maxHistoryAmount = process.env.MAXHISTORYAMOUNT || config.maxHistoryAmount || 60;
 
 /**
- * Should messages allowed to have an attached image?
- * @type {boolean}
- */
-config.allowMessageImage = typeof allowMessageImageEnv !== 'undefined'
-  ? allowMessageImageEnv
-  : config.allowMessageImage || false;
-
-/**
  * Maximum amount of characters in a message
  * @type {number}
  */
@@ -761,6 +752,16 @@ config.forumTitleMaxLength = process.env.FORUMTITLEMAXLENGTH || config.forumTitl
  * @type {number}
  */
 config.forumPostMaxLength = process.env.FORUMPOSTMAXLENGTH || config.forumPostMaxLength || 2500;
+
+/**
+ * Should images be allowed in the specified content?
+ * @type {{PROFILE: boolean, DOCFILE: boolean, CHAT: boolean}}
+ */
+config.allowedImages = config.allowedImages || {
+  CHAT: true,
+  PROFILE: true,
+  DOCFILE: true,
+};
 
 /**
  * ***********
