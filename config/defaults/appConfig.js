@@ -40,7 +40,6 @@ const gpsTrackingEnv = textTools.convertToBoolean(process.env.GPSTRACKING);
 const teamVerifyEnv = textTools.convertToBoolean(process.env.TEAMVERIFY);
 const disallowRegisterEnv = textTools.convertToBoolean(process.env.DISALLOWUSERREGISTER);
 const verboseErrorEnv = textTools.convertToBoolean(process.env.VERBOSEERROR);
-const allowMessageImageEnv = textTools.convertToBoolean(process.env.ALLOWMESSAGEIMAGE);
 const bypassExternalConnectionEnv = textTools.convertToBoolean(process.env.BYPASSEXTERNALCONNECTIONS);
 const userVerifyEnv = textTools.convertToBoolean(process.env.USERVERIFY);
 const showDevInfoEnv = textTools.convertToBoolean(process.env.SHOWDEVINFO);
@@ -472,14 +471,6 @@ config.gameCodeLength = process.env.GAMECODELENGTH || config.gameCodeLength || 8
  * @type {number}
  */
 config.maxHistoryAmount = process.env.MAXHISTORYAMOUNT || config.maxHistoryAmount || 60;
-
-/**
- * Should messages allowed to have an attached image?
- * @type {boolean}
- */
-config.allowMessageImage = typeof allowMessageImageEnv !== 'undefined'
-  ? allowMessageImageEnv
-  : config.allowMessageImage || false;
 
 /**
  * Maximum amount of characters in a message
