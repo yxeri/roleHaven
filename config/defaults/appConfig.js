@@ -754,6 +754,16 @@ config.forumTitleMaxLength = process.env.FORUMTITLEMAXLENGTH || config.forumTitl
 config.forumPostMaxLength = process.env.FORUMPOSTMAXLENGTH || config.forumPostMaxLength || 2500;
 
 /**
+ * Should images be allowed in the specified content?
+ * @type {{PROFILE: boolean, DOCFILE: boolean, CHAT: boolean}}
+ */
+config.allowedImages = config.allowedImages || {
+  CHAT: true,
+  PROFILE: true,
+  DOCFILE: true,
+};
+
+/**
  * ***********
  * * Spotify *
  * ***********
