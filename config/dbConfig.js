@@ -63,11 +63,11 @@ config.apiCommands = {
   },
   GetLanternRound: {
     name: 'GetLanternRound',
-    accessLevel: config.AccessLevels.STANDARD,
+    accessLevel: config.AccessLevels.ANONYMOUS,
   },
   GetLanternStations: {
     name: 'GetLanternStations',
-    accessLevel: config.AccessLevels.STANDARD,
+    accessLevel: config.AccessLevels.ANONYMOUS,
   },
   /**
    * Lantern team
@@ -82,7 +82,7 @@ config.apiCommands = {
   },
   GetLanternTeam: {
     name: 'GetLanternTeam',
-    accessLevel: config.AccessLevels.STANDARD,
+    accessLevel: config.AccessLevels.ANONYMOUS,
   },
   /**
    * Alias
