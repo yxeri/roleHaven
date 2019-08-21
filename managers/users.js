@@ -168,6 +168,7 @@ function createUser({
       }
 
       const newUser = user;
+      newUser.username = textTools.trimSpace(newUser.username);
       newUser.usernameLowerCase = newUser.username.toLowerCase();
       newUser.isVerified = !appConfig.userVerify;
       newUser.followingRooms = dbConfig.requiredRooms;
