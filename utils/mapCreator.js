@@ -156,9 +156,11 @@ function getGooglePositions({ callback }) {
     const layers = convertToJson(body).kml.Document.Folder;
 
     layers.forEach((layer) => {
-      layer.Placemark.forEach((position) => {
-        positions.push(createPosition({ position, layerName: layer.name }));
-      });
+      if (layer.Placemark) {
+        layer.Placemark.forEach((position) => {
+          positions.push(createPosition({ position, layerName: layer.name }));
+        });
+      }
     });
 
     callback({ data: { positions } });
