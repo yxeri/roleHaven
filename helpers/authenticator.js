@@ -60,7 +60,7 @@ function createToken({
       }
 
       if (!user.isVerified) {
-        callback({ error: new errorCreator.NotAllowed({ name: `user ${user.username} not verified` }) });
+        callback({ error: new errorCreator.NeedsVerification({ name: user.username }) });
 
         return;
       }
