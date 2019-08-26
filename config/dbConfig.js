@@ -85,11 +85,18 @@ config.apiCommands = {
     accessLevel: config.AccessLevels.ANONYMOUS,
   },
   /**
+   * Position
+   */
+  CreatePosition: {
+    name: 'CreatePosition',
+    accessLevel: process.env.CREATEPOSITION || config.AccessLevels.PRIVILEGED,
+  },
+  /**
    * Alias
    */
   CreateAlias: {
     name: 'CreateAlias',
-    accessLevel: config.AccessLevels.MODERATOR,
+    accessLevel: config.AccessLevels.PRIVILEGED,
   },
   /**
    * Others
