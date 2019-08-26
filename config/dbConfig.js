@@ -96,7 +96,7 @@ config.apiCommands = {
    */
   CreateAlias: {
     name: 'CreateAlias',
-    accessLevel: config.AccessLevels.PRIVILEGED,
+    accessLevel: process.env.CREATEALIASLEVEL || config.AccessLevels.PRIVILEGED,
   },
   /**
    * Others
