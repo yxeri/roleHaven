@@ -713,7 +713,7 @@ config.positionNameMaxLength = process.env.POSITIONNAMEMAXLENGTH || config.posit
  * Minimum position accuracy. Positions with worse accuracy will not be stored nor sent to clients
  * @type {number}
  */
-config.minimumPositionAccuracy = process.env.MINIMUMPOSITIONACCURACY || config.minimumPositionAccuracy || 50;
+config.minimumPositionAccuracy = process.env.MINIMUMPOSITIONACCURACY || config.minimumPositionAccuracy || 100;
 
 /**
  * Maximum amount of time before a position is no longer valid. Used on clients.
