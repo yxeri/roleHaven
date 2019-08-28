@@ -489,7 +489,7 @@ config.apiCommands = Object.assign({
   },
   VerifyUser: config.apiCommands.VerifyUser || {
     name: 'VerifyUser',
-    accessLevel: config.AccessLevels.MODERATOR,
+    accessLevel: config.AccessLevels.PRIVILEGED,
   },
   UpdateId: config.apiCommands.UpdateId || {
     name: 'UpdateId',
