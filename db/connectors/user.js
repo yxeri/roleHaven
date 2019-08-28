@@ -44,6 +44,7 @@ const userSchema = new mongoose.Schema(dbConnector.createSchema({
   image: dbConnector.imageSchema,
   offName: String,
   pronouns: [String],
+  customFields: [dbConnector.customFieldSchema],
 }), { collection: 'users' });
 
 const User = mongoose.model('User', userSchema);
@@ -460,6 +461,7 @@ function updateUser({
     offName,
     pronouns,
     description,
+    customFields,
   } = user;
   const {
     resetSocket,
@@ -490,6 +492,7 @@ function updateUser({
   if (offName) { set.offName = offName; }
   if (pronouns) { set.pronouns = pronouns; }
   if (description) { set.description = description; }
+  if (customFields) { set.customFields = customFields; }
 
   if (Object.keys(set).length > 0) { update.$set = set; }
   if (Object.keys(unset).length > 0) { update.$unset = unset; }

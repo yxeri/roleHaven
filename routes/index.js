@@ -91,6 +91,7 @@ function handle(io) {
         dayModification: appConfig.dayModification,
         requireOffName: appConfig.requireOffName,
         allowedImages: appConfig.allowedImages,
+        customUserFields: dbConfig.customUserFields,
         permissions: {
           CreatePosition: dbConfig.apiCommands.CreatePosition,
           UpdatePosition: dbConfig.apiCommands.UpdatePosition,
