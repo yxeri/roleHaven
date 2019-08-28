@@ -14,6 +14,48 @@ config.AccessLevels = {
   GOD: 6,
 };
 
+config.customUserFields = [{
+  parent: 'spoony',
+  name: 'spoony',
+  type: 'checkBox',
+  revealOnClick: true,
+}, {
+  hidden: true,
+  parent: 'spoony',
+  name: 'spoony-description',
+  type: 'textArea',
+}, {
+  hidden: true,
+  parent: 'spoony',
+  name: 'spoony-describe',
+  type: 'textArea',
+}, {
+  hidden: true,
+  parent: 'spoony',
+  name: 'spoony-twoCreatures',
+  type: 'input',
+}, {
+  hidden: true,
+  parent: 'spoony',
+  name: 'spoony-twoItems',
+  type: 'input',
+}, {
+  hidden: true,
+  parent: 'spoony',
+  name: 'spoony-space',
+  type: 'input',
+}, {
+  hidden: true,
+  parent: 'spoony',
+  name: 'spoony-std',
+  type: 'textArea',
+}, {
+  hidden: true,
+  parent: 'spoony',
+  name: 'spoony-stone',
+  type: 'textArea',
+}];
+
 config.apiCommands = {};
 config.apiCommands = {
   /**
