@@ -22,38 +22,57 @@ config.customUserFields = [{
 }, {
   hidden: true,
   parent: 'spoony',
-  name: 'spoony-description',
-  type: 'textArea',
-}, {
-  hidden: true,
-  parent: 'spoony',
   name: 'spoony-describe',
   type: 'textArea',
+  maxLength: 50,
 }, {
   hidden: true,
   parent: 'spoony',
   name: 'spoony-twoCreatures',
   type: 'input',
+  maxLength: 20,
 }, {
   hidden: true,
   parent: 'spoony',
   name: 'spoony-twoItems',
   type: 'input',
+  maxLength: 20,
 }, {
   hidden: true,
   parent: 'spoony',
   name: 'spoony-space',
   type: 'input',
+  maxLength: 20,
 }, {
   hidden: true,
   parent: 'spoony',
   name: 'spoony-std',
   type: 'textArea',
+  maxLength: 50,
 }, {
   hidden: true,
   parent: 'spoony',
   name: 'spoony-stone',
   type: 'textArea',
+  maxLength: 50,
+}, {
+  hidden: true,
+  parent: 'spoony',
+  name: 'spoony-appearance',
+  type: 'textArea',
+  maxLength: 100,
+}, {
+  hidden: true,
+  parent: 'spoony',
+  name: 'spoony-turnOn',
+  type: 'textArea',
+  maxLength: 100,
+}, {
+  hidden: true,
+  parent: 'spoony',
+  name: 'spoony-description',
+  type: 'textArea',
+  maxLength: 100,
 }];
 
 config.apiCommands = {};
