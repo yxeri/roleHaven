@@ -289,6 +289,8 @@ config.Pronouns = {
   IT: 'It',
 };
 
+config.customUserFields = config.customUserFields || [];
+
 /**
  * *******************
  * * Client settings *
