@@ -89,7 +89,6 @@ function createAlias({
       aliasToSave.ownerId = authUser.objectId;
       aliasToSave.aliasName = textTools.trimSpace(aliasToSave.aliasName);
       aliasToSave.aliasNameLowerCase = aliasToSave.aliasName.toLowerCase();
-      aliasToSave.isVerified = !appConfig.userVerify;
       aliasToSave.accessLevel = dbConfig.AccessLevels.STANDARD;
 
       const aliasCallback = () => {
