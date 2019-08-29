@@ -373,7 +373,12 @@ function createTeam({
       }
 
       if (authUser.partOfTeams > appConfig.maxUserTeam) {
-        callback({ error: new errorCreator.InvalidLength({ expected: `User is part of ${authUser.partOfTeams.length}. Max allowed: ${appConfig.maxUserTeam}` }) });
+        callback({
+          error: new errorCreator.InvalidLength({
+            expected: `User is part of ${authUser.partOfTeams.length}. Max allowed: ${appConfig.maxUserTeam}`,
+            extraData: { paramName: 'maxUserTeam' },
+          }),
+        });
 
         return;
       }
