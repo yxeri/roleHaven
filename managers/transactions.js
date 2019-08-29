@@ -224,8 +224,6 @@ function createTransaction({
                 },
               };
 
-              console.log(fromWalletData);
-
               if (socket) {
                 socket.broadcast.to(fromWallet.objectId).emit(dbConfig.EmitTypes.TRANSACTION, fromDataToSend);
                 socket.broadcast.to(toWallet.objectId).emit(dbConfig.EmitTypes.TRANSACTION, toDataToSend);
