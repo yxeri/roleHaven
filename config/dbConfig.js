@@ -72,7 +72,7 @@ config.customUserFields = [{
   parent: 'spoony',
   name: 'spoony-description',
   type: 'textArea',
-  maxLength: 100,
+  maxLength: 200,
 }];
 
 config.apiCommands = {};
