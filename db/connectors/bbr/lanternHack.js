@@ -525,6 +525,7 @@ function updateLanternHack({
     owner,
     gameUsers,
     triesLeft,
+    done: false,
   };
   const options = {
     upsert: true,
@@ -558,7 +559,10 @@ function lowerHackTries({
   owner,
   callback,
 }) {
-  const query = { owner };
+  const query = {
+    owner,
+    done: false,
+  };
   const update = { $inc: { triesLeft: -1 } };
   const options = { new: true };
 

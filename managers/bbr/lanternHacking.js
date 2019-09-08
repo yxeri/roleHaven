@@ -388,43 +388,7 @@ function manipulateStation({
                       return;
                     }
 
-                    const { stationId } = lanternHack;
-
-                    dbLanternHack.getStation({
-                      stationId,
-                      callback: (stationData) => {
-                        if (stationData.error) {
-                          callback({ error });
-
-                          return;
-                        }
-
-                        const { stationName } = stationData.data.station;
-
-                        messageManager.sendBroadcastMsg({
-                          io,
-                          socket,
-                          message: {
-                            ownerId: dbConfig.users.systemUser.objectId,
-                            text: [
-                              `ACTIVITY DETECTED: user ${authUser.username} has ${boostingSignal
-                                ? 'blocked'
-                                : 'amplified'} the signal to station ${stationName}`,
-                            ],
-                          },
-                          internalCallUser: authUser,
-                          callback: ({ error: messageError }) => {
-                            if (messageError) {
-                              callback({ error: messageError });
-
-                              return;
-                            }
-
-                            callback({ data: { success: true, boostingSignal } });
-                          },
-                        });
-                      },
-                    });
+                    callback({ data: { success: true, boostingSignal } });
                   },
                 });
               },
