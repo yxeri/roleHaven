@@ -15,7 +15,7 @@
 
 const dbLanternHack = require('../../db/connectors/bbr/lanternHack');
 const authenticator = require('../../helpers/authenticator');
-const dbConfig = require('../../config/defaults/config').databasePopulation;
+const { dbConfig } = require('../../config/defaults/config');
 
 /**
  * Create game users
