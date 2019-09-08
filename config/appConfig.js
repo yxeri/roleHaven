@@ -5,6 +5,7 @@ config.routes = [
   { sitePath: '/api/lanternStations', filePath: '/routes/rest/bbr/lanternStations.js' },
   { sitePath: '/api/lanternRounds', filePath: '/routes/rest/bbr/lanternRounds.js' },
   { sitePath: '/api/lanternTeams', filePath: '/routes/rest/bbr/lanternTeams.js' },
+  { sitePath: '/api/gameItems', filePath: '/routes/rest/bbr/gameItems.js' },
 ];
 
 config.handlers = [
