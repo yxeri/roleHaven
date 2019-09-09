@@ -413,7 +413,7 @@ function manipulateStation({
               if (loweredHack.triesLeft <= 0) {
                 dbLanternHack.setDone({
                   stationId,
-                  owner: authUser.userName,
+                  owner: authUser.username,
                   wasSuccessful: false,
                   callback: ({ error: removeError }) => {
                     if (removeError) {
