@@ -591,9 +591,18 @@ function lowerHackTries({
  */
 function getLanternHack({
   owner,
+  stationId,
+  done,
   callback,
 }) {
-  const query = { owner };
+  const query = {
+    stationId,
+    owner,
+  };
+
+  if (typeof done === 'boolean') {
+    query.done = done;
+  }
 
   LanternHack.findOne(query).lean().exec((err, foundHack) => {
     if (err) {
@@ -845,10 +854,12 @@ function setDone({
   callback,
   owner,
   coordinates,
+  stationId,
   wasSuccessful = false,
 }) {
   const query = {
     owner,
+    stationId,
     done: false,
   };
   const update = {

@@ -23,6 +23,7 @@ function handle(socket, io) {
   socket.on('manipulateStation', ({
     password,
     boostingSignal,
+    stationId,
     token,
   }, callback = () => {}) => {
     lanternHackManager.manipulateStation({
@@ -31,6 +32,7 @@ function handle(socket, io) {
       password,
       boostingSignal,
       token,
+      stationId,
       callback,
     });
   });

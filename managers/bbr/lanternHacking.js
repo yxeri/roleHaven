@@ -330,11 +330,10 @@ function createLanternHack({
  * @param {Function} params.callback Callback.
  */
 function manipulateStation({
-  socket,
-  io,
   password,
   boostingSignal,
   token,
+  stationId,
   callback,
 }) {
   if (!objectValidator.isValidData({ password, boostingSignal }, { password: true, boostingSignal: true })) {
@@ -356,6 +355,8 @@ function manipulateStation({
       const { user: authUser } = data;
 
       dbLanternHack.getLanternHack({
+        stationId,
+        done: false,
         owner: authUser.username,
         callback: ({ error: getError, data: hackLanternData }) => {
           if (getError) {
@@ -379,6 +380,7 @@ function manipulateStation({
                 }
 
                 dbLanternHack.setDone({
+                  stationId,
                   owner: authUser.username,
                   wasSuccessful: true,
                   callback: ({ error: removeError }) => {
@@ -410,24 +412,7 @@ function manipulateStation({
 
               if (loweredHack.triesLeft <= 0) {
                 dbLanternHack.setDone({
-                  owner: authUser.username,
-                  callback: ({ error: removeError }) => {
-                    if (removeError) {
-                      callback({ error: removeError });
-
-                      return;
-                    }
-
-                    callback({
-                      data: {
-                        success: false,
-                        triesLeft: loweredHack.triesLeft,
-                      },
-                    });
-                  },
-                });
-
-                dbLanternHack.setDone({
+                  stationId,
                   owner: authUser.userName,
                   wasSuccessful: false,
                   callback: ({ error: removeError }) => {
@@ -498,6 +483,8 @@ function getLanternHack({
       const { user: authUser } = data;
 
       dbLanternHack.getLanternHack({
+        stationId,
+        done: false,
         owner: authUser.username,
         callback: ({ error: getError, data: lanternHackData }) => {
           if (getError && getError.type !== errorCreator.ErrorTypes.DOESNOTEXIST) {
@@ -506,11 +493,7 @@ function getLanternHack({
             return;
           }
 
-          /**
-           * Generates a new hack if the chosen station is different from the users previous choice
-           * Different users + passwords are connected to specific stations
-           */
-          if (!lanternHackData || lanternHackData.lanternHack.stationId !== stationId) {
+          if (!lanternHackData) {
             createLanternHack({
               stationId,
               owner: authUser.username,
