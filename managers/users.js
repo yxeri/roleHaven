@@ -680,6 +680,7 @@ function login({
       const { token, user: authUser } = data;
       const {
         accessLevel,
+        partOfTeams = [],
         objectId: userId,
         followingRooms: roomIds,
       } = authUser;
@@ -700,7 +701,7 @@ function login({
             io,
             socketId,
             userId,
-            roomIds,
+            roomIds: roomIds.concat(partOfTeams),
           });
           socketUtils.joinRequiredRooms({
             io,
@@ -1132,6 +1133,7 @@ function updateId({
 
       const {
         accessLevel,
+        partOfTeams = [],
         objectId: userId,
         followingRooms: roomIds,
       } = authUser;
@@ -1166,7 +1168,7 @@ function updateId({
             io,
             socketId,
             userId,
-            roomIds,
+            roomIds: roomIds.concat(partOfTeams),
           });
           socketUtils.joinRequiredRooms({
             io,
