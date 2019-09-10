@@ -54,7 +54,7 @@ function handle(socket, io) {
     params.callback = callback;
     params.io = io;
     params.socket = socket;
-    docFileManager.getDocFileById(params);
+    docFileManager.getDocFile(params);
   });
 
   socket.on('getDocFiles', (params, callback = () => {

@@ -135,12 +135,57 @@ function saveAndTransmitDocFile({
  * @param {string} params.docFileId Id of Docfile to retrieve.
  * @param {Object} [params.internalCallUser] User to use on authentication. It will bypass token authentication.
  */
-function getDocFileById({
+function getDocFile({
   docFileId,
+  code,
   token,
   callback,
   internalCallUser,
 }) {
+  if (code) {
+    authenticator.isUserAllowed({
+      token,
+      internalCallUser,
+      commandName: dbConfig.apiCommands.GetDocFile.name,
+      callback: ({ error, data }) => {
+        if (error) {
+          callback({ error });
+
+          return;
+        }
+
+        const { user: authUser } = data;
+
+        dbDocFile.getDocFileByCode({
+          code,
+          callback: (docFileData) => {
+            if (docFileData.error) {
+              callback({ error: docFileData.error });
+
+              return;
+            }
+
+            const foundDocFile = docFileData.data.docFile;
+            const dataToSend = {
+              data: {
+                docFile: foundDocFile,
+                changeType: dbConfig.ChangeTypes.UPDATE,
+              },
+            };
+
+            if (foundDocFile.code !== code || foundDocFile.accessLevel > authUser.accessLevel) {
+              callback({ error: new errorCreator.NotAllowed({ name: `docFile ${code}` }) });
+
+              return;
+            }
+
+            callback(dataToSend);
+          },
+        });
+      },
+    });
+  }
+
   managerHelper.getObjectById({
     token,
     internalCallUser,
@@ -296,7 +341,7 @@ function updateDocFile({
 
       const { user: authUser } = data;
 
-      getDocFileById({
+      getDocFile({
         docFileId,
         internalCallUser: authUser,
         callback: ({ error: getDocFileError, data: getDocFileData }) => {
@@ -364,7 +409,7 @@ function updateDocFile({
 }
 
 /**
- * Get doc file by code.
+ * Get doc file by code and id.
  * @param {Object} params Parameters.
  * @param {string} params.code Doc file Code.
  * @param {string} params.token jwt.
@@ -554,7 +599,7 @@ function updateAccess({
 
       const { user: authUser } = data;
 
-      getDocFileById({
+      getDocFile({
         docFileId,
         internalCallUser: authUser,
         callback: ({ error: docFileError, data: docFileData }) => {
@@ -598,7 +643,7 @@ function updateAccess({
 exports.createDocFile = createDocFile;
 exports.updateDocFile = updateDocFile;
 exports.unlockDocFile = unlockDocFile;
-exports.getDocFileById = getDocFileById;
+exports.getDocFile = getDocFile;
 exports.removeDocFile = removeDocFile;
 exports.getDocFilesByUser = getDocFilesByUser;
 exports.updateAccess = updateAccess;
