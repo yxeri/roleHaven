@@ -404,7 +404,7 @@ function removeTeamMembers({ memberIds, teamId, callback }) {
   updateObject({
     callback,
     teamId,
-    update: { $pull: { members: { $each: memberIds } } },
+    update: { $pull: { members: { $in: memberIds } } },
   });
 }
 
