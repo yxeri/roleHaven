@@ -763,7 +763,7 @@ function removeAliasFromAllUsers({
 function removeFromTeam({ userId, teamId, callback }) {
   updateObject({
     userId,
-    update: { partOfTeams: { $pull: teamId } },
+    update: { $pull: { partOfTeams: teamId } },
     callback: ({ error }) => {
       if (error) {
         callback({ error });
