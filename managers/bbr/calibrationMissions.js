@@ -20,7 +20,7 @@ const dbLanternHack = require('../../db/connectors/bbr/lanternHack');
 const errorCreator = require('../../error/errorCreator');
 const poster = require('../../helpers/poster');
 const userManager = require('../users');
-const walletManager = require('../wallets');
+const dbWallet = require('../../db/connectors/wallet');
 const {
   dbConfig,
   appConfig,
@@ -290,7 +290,7 @@ function completeActiveCalibrationMission({
 
                   const transaction = {
                     toWalletId: ownerId,
-                    fromWalletId: dbConfig.users.systemUser.objectId,
+                    fromWalletId: 'SYSTEM',
                     amount: stationData.station.calibrationReward || appConfig.calibrationRewardAmount,
                     note: `CALIBRATION OF STATION ${completedMission.stationId}`,
                   };
@@ -306,11 +306,13 @@ function completeActiveCalibrationMission({
 
                       const { transaction: newTransaction } = transactionData;
 
-                      walletManager.runTransaction({
-                        transaction: newTransaction,
-                        callback: ({ error: walletError }) => {
-                          if (walletError) {
-                            callback({ error: walletError });
+                      dbWallet.updateWallet({
+                        walletId: transaction.toWalletId,
+                        wallet: { amount: transaction.amount },
+                        options: { shouldDecreaseAmount: false },
+                        callback: ({ error: increaseError }) => {
+                          if (increaseError) {
+                            callback({ error: increaseError });
 
                             return;
                           }
