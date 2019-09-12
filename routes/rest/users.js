@@ -24,6 +24,7 @@ const aliasManager = require('../../managers/aliases');
 const restErrorChecker = require('../../helpers/restErrorChecker');
 const errorCreator = require('../../error/errorCreator');
 const { dbConfig } = require('../../config/defaults/config');
+const calibrationMissionManager = require('../../managers/bbr/calibrationMissions');
 
 const router = new express.Router();
 
@@ -438,6 +439,96 @@ function handle(io) {
         }
 
         response.json({ data });
+      },
+    });
+  });
+
+  /**
+   * @api {post} /users/:userName/calibrationMission/complete Complete user's calibration mission
+   * @apiVersion 6.0.0
+   * @apiName CompleteCalibrationMission
+   * @apiGroup Users
+   *
+   * @apiHeader {string} Authorization Your JSON Web Token
+   *
+   * @apiDescription Complete the mission. A transaction will be created
+   *
+   * @apiParam {String} userName Owner of the mission
+   *
+   * @apiSuccess {Object} data
+   * @apiSuccess {Object[]} data.mission Mission completed
+   * @apiSuccess {Object[]} data.transaction Transaction for completed mission
+   * @apiSuccessExample {json} Success-Response:
+   *   {
+   *    "data": {
+   *      "mission": {
+   *        "code": 12345678,
+   *        "stationId": 1,
+   *        "completed": true,
+   *        "timeCompleted": "2016-10-14T11:13:03.555Z"
+   *      },
+   *      "transaction": {
+   *        "to": "raz",
+   *        "from": "SYSTEM",
+   *        "amount": 50
+   *        "time": "2016-10-14T11:13:03.555Z"
+   *      }
+   *    }
+   *  }
+   */
+  router.post('/:userName/calibrationMission/complete', (request, response) => {
+    calibrationMissionManager.completeActiveCalibrationMission({
+      io,
+      token: request.headers.authorization,
+      owner: request.params.userName,
+      callback: ({ error, data }) => {
+        if (error) {
+          restErrorChecker.checkAndSendError({ response, error, sentData: request.body.data });
+
+          return;
+        }
+
+        response.json({ data });
+      },
+    });
+  });
+
+  /**
+   * @api {get} /users/:userName/calibrationMission Get user's calibration mission
+   * @apiVersion 6.0.0
+   * @apiName GetCalibrationMission
+   * @apiGroup Users
+   *
+   * @apiHeader {String} Authorization Your JSON Web Token
+   *
+   * @apiDescription Get user's calibration mission
+   *
+   * @apiSuccess {Object} data
+   * @apiSuccess {Object[]} data.mission Mission found
+   * @apiSuccessExample {json} Success-Response:
+   *   {
+   *    "data": {
+   *      "mission": {
+   *        owner: 'raz',
+   *        stationId: 1,
+   *        code: 81855211,
+   *        completed: false,
+   *      }
+   *    }
+   *  }
+   */
+  router.get('/:userName/calibrationMission', (request, response) => {
+    calibrationMissionManager.getActiveCalibrationMission({
+      token: request.headers.authorization,
+      userName: request.params.userName,
+      callback: ({ error: calibrationError, data: calibrationData }) => {
+        if (calibrationError) {
+          restErrorChecker.checkAndSendError({ response, error: calibrationError, sentData: request.body.data });
+
+          return;
+        }
+
+        response.json({ data: calibrationData });
       },
     });
   });
