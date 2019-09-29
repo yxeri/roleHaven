@@ -81,15 +81,17 @@ function createThread({
         internalCallUser: authUser,
         forumId: thread.forumId,
         needsAccess: true,
-        callback: ({ error: forumError }) => {
+        callback: ({ error: forumError, data: forumData }) => {
           if (forumError) {
             callback({ error: forumError });
 
             return;
           }
 
+          const { forum } = forumData;
           const threadToCreate = thread;
           threadToCreate.ownerId = authUser.objectId;
+          threadToCreate.isPublic = forum.isPublic;
 
           if (threadToCreate.ownerAliasId && !authUser.aliases.includes(threadToCreate.ownerAliasId)) {
             callback({ error: new errorCreator.NotAllowed({ name: `create thread with alias ${threadToCreate.ownerAliasId}` }) });
