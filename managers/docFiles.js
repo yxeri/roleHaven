@@ -55,7 +55,7 @@ function getFileByAccess({ user, docFile }) {
   const strippedDocFile = managerHelper.stripObject({ object: docFile });
   strippedDocFile.text = undefined;
   strippedDocFile.code = undefined;
-  strippedDocFile.pictures = [];
+  strippedDocFile.images = [];
   strippedDocFile.videoCodes = [];
   strippedDocFile.isLocked = true;
 
