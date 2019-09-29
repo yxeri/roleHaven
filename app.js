@@ -67,7 +67,7 @@ if (appConfig.mode !== appConfig.Modes.TEST) {
   dbForum.populateDbForums({});
 }
 
-if (!appConfig.disablePositionImport) {
+if (!appConfig.disablePositionImport && appConfig.mapLayersPath) {
   const getGooglePositions = () => {
     positionManager.getAndStoreGooglePositions({
       io,
