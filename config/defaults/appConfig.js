@@ -476,7 +476,7 @@ config.maxHistoryAmount = process.env.MAXHISTORYAMOUNT || config.maxHistoryAmoun
  * Maximum amount of characters in a message
  * @type {number}
  */
-config.messageMaxLength = process.env.MESSAGEMAXLENGTH || config.messageMaxLength || 2500;
+config.messageMaxLength = process.env.MESSAGEMAXLENGTH || config.messageMaxLength || 600;
 
 /**
  * Maximum amount of characters in a broadcast
@@ -745,13 +745,13 @@ config.defaultPositionRadius = process.env.DEFAULTPOSITIONRADIUS || config.defau
  * Maximum amount of characters in a forum title
  * @type {number}
  */
-config.forumTitleMaxLength = process.env.FORUMTITLEMAXLENGTH || config.forumTitleMaxLength || 50;
+config.forumTitleMaxLength = process.env.FORUMTITLEMAXLENGTH || config.forumTitleMaxLength || 40;
 
 /**
  * Maximum amount of characters in a forum post
  * @type {number}
  */
-config.forumPostMaxLength = process.env.FORUMPOSTMAXLENGTH || config.forumPostMaxLength || 2500;
+config.forumPostMaxLength = process.env.FORUMPOSTMAXLENGTH || config.forumPostMaxLength || 600;
 
 /**
  * Should images be allowed in the specified content?
