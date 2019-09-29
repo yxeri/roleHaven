@@ -236,6 +236,8 @@ function getAllForums({ callback }) {
 function updateForum({ forumId, forum, callback }) {
   const update = { $set: {} };
 
+  if (forum.text) { update.$set.text = forum.text; }
+
   if (forum.title) {
     update.$set.title = forum.title;
 
