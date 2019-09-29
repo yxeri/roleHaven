@@ -92,6 +92,7 @@ function handle(io) {
         requireOffName: appConfig.requireOffName,
         allowedImages: appConfig.allowedImages,
         customUserFields: dbConfig.customUserFields,
+        defaultForum: dbConfig.defaultForum,
         permissions: {
           CreatePosition: dbConfig.apiCommands.CreatePosition,
           UpdatePosition: dbConfig.apiCommands.UpdatePosition,

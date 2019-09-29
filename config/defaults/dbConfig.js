@@ -166,6 +166,7 @@ config.anonymousUser = {
   partOfTeams: [],
   aliases: [],
   isAnonymous: true,
+  customFields: [],
 };
 
 config.protectedNames = [
@@ -302,6 +303,8 @@ config.customUserFields = config.customUserFields || [];
  * @type {Room}
  */
 config.defaultRoom = config.rooms.public;
+
+config.defaultForum = config.forums.public.objectId;
 
 /**
  * ***************************
