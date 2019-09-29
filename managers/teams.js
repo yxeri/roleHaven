@@ -28,6 +28,7 @@ const socketUtils = require('../utils/socketIo');
 const managerHelper = require('../helpers/manager');
 const textTools = require('../utils/textTools');
 const userManager = require('./users');
+const roomManager = require('./rooms');
 
 /**
  * Get a team.
@@ -182,6 +183,7 @@ function addUserToTeam({
   isAdmin,
   callback,
   io,
+  socket,
   ignoreSocket = false,
 }) {
   dbUser.addToTeam({
@@ -198,27 +200,44 @@ function addUserToTeam({
       const { users } = data;
       const updatedUser = users[0];
 
-      const dataToSend = {
-        data: {
-          team: { objectId: teamId },
-          user: {
-            objectId: memberId,
-            partOfTeams: updatedUser.partOfTeams,
-          },
-          changeType: dbConfig.ChangeTypes.UPDATE,
+      roomManager.follow({
+        io,
+        socket,
+        user: updatedUser,
+        invited: true,
+        userId: memberId,
+        roomId: teamId,
+        callback: ({ error: roomError }) => {
+          if (roomError) {
+            callback({ error: roomError });
+
+            return;
+          }
+
+          const dataToSend = {
+            data: {
+              room: { objectId: teamId },
+              team: { objectId: teamId },
+              user: {
+                objectId: memberId,
+                partOfTeams: updatedUser.partOfTeams,
+              },
+              changeType: dbConfig.ChangeTypes.UPDATE,
+            },
+          };
+
+          if (!ignoreSocket) {
+            const userSocket = socketUtils.getUserSocket({ io, socketId: updatedUser.socketId });
+
+            if (userSocket) { userSocket.join(teamId); }
+
+            io.to(teamId).emit(dbConfig.EmitTypes.TEAMMEMBER, dataToSend);
+            io.emit(dbConfig.EmitTypes.USER, dataToSend);
+          }
+
+          callback(dataToSend);
         },
-      };
-
-      if (!ignoreSocket) {
-        const userSocket = socketUtils.getUserSocket({ io, socketId: updatedUser.socketId });
-
-        if (userSocket) { userSocket.join(teamId); }
-
-        io.to(teamId).emit(dbConfig.EmitTypes.TEAMMEMBER, dataToSend);
-        io.emit(dbConfig.EmitTypes.USER, dataToSend);
-      }
-
-      callback(dataToSend);
+      });
     },
   });
 }
@@ -726,7 +745,7 @@ function leaveTeam({
 
                 return;
               }
-              
+
               dbTeam.removeTeamMembers({
                 teamId,
                 memberIds: [userId],

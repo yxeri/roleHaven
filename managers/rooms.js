@@ -1351,3 +1351,4 @@ exports.doesWhisperRoomExist = doesWhisperRoomExist;
 exports.sendInvitationToRoom = sendInvitationToRoom;
 exports.acceptRoomInvitation = acceptRoomInvitation;
 exports.inviteToRoom = inviteToRoom;
+exports.follow = follow;
