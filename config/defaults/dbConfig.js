@@ -138,7 +138,7 @@ config.requiredRooms = [
   config.rooms.schedule.objectId,
 ];
 
-config.protectedRoomNames = Object.keys(config.rooms).map(objectId => config.rooms[objectId].roomName);
+config.protectedRoomNames = Object.keys(config.rooms).map((objectId) => config.rooms[objectId].roomName);
 
 config.roomsToBeHidden = [
   config.rooms.bcast.objectId,
@@ -160,7 +160,7 @@ config.anonymousUser = {
   accessLevel: config.AccessLevels.ANONYMOUS,
   visibility: config.AccessLevels.ANONYMOUS,
   registerDevice: 'ANONYMOUS_USER',
-  followingRooms: Object.keys(config.rooms).map(key => config.rooms[key].objectId),
+  followingRooms: Object.keys(config.rooms).map((key) => config.rooms[key].objectId),
   isVerified: true,
   defaultRoomId: config.rooms.public.objectId,
   partOfTeams: [],
@@ -312,8 +312,7 @@ config.defaultForum = config.forums.public.objectId;
  * ***************************
  */
 
-config.apiCommands = Object.assign({
-  /**
+config.apiCommands = { /**
    * Alias
    */
   CreateAlias: config.apiCommands.CreateAlias || {
@@ -856,6 +855,7 @@ config.apiCommands = Object.assign({
     name: 'IncludeOff',
     accessLevel: config.AccessLevels.STANDARD,
   },
-}, config.apiCommands || {});
+  ...config.apiCommands || {},
+};
 
 module.exports = config;

@@ -114,7 +114,7 @@ function createForum({
           const { forum: createdForum } = createData;
           const dataToSend = {
             data: {
-              forum: managerHelper.stripObject({ object: Object.assign({}, createdForum) }),
+              forum: managerHelper.stripObject({ object: { ...createdForum } }),
               changeType: dbConfig.ChangeTypes.CREATE,
             },
           };

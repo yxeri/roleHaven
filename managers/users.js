@@ -280,25 +280,25 @@ function createUser({
                             };
                             const dataToSend = {
                               data: {
-                                user: managerHelper.stripObject({ object: Object.assign({}, createdUser) }),
+                                user: managerHelper.stripObject({ object: { ...createdUser } }),
                                 changeType: dbConfig.ChangeTypes.CREATE,
                               },
                             };
                             const roomDataToSend = {
                               data: {
-                                room: managerHelper.stripObject({ object: Object.assign({}, createdRoom) }),
+                                room: managerHelper.stripObject({ object: { ...createdRoom } }),
                                 changeType: dbConfig.ChangeTypes.CREATE,
                               },
                             };
                             const walletDataToSend = {
                               data: {
-                                wallet: managerHelper.stripObject({ object: Object.assign({}, createdWallet) }),
+                                wallet: managerHelper.stripObject({ object: { ...createdWallet } }),
                                 changeType: dbConfig.ChangeTypes.CREATE,
                               },
                             };
                             const forumDataToSend = {
                               data: {
-                                forum: managerHelper.stripObject({ object: Object.assign({}, createdForum) }),
+                                forum: managerHelper.stripObject({ object: { ...createdForum } }),
                               },
                             };
 
@@ -1055,7 +1055,7 @@ function updateUser({
                 const { user: updatedUser } = updateData;
                 const dataToSend = {
                   data: {
-                    user: managerHelper.stripObject({ object: Object.assign({}, updatedUser) }),
+                    user: managerHelper.stripObject({ object: { ...updatedUser } }),
                     changeType: dbConfig.ChangeTypes.UPDATE,
                   },
                 };

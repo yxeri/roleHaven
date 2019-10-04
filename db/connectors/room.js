@@ -314,7 +314,7 @@ function removeRoom({ roomId, fullRemoval, callback }) {
 
             callback({
               data: {
-                userIds: usersData.users.map(user => user.objectId),
+                userIds: usersData.users.map((user) => user.objectId),
                 success: true,
               },
             });

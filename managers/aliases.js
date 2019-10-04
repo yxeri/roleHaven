@@ -470,7 +470,7 @@ function updateAlias({
                 }
 
                 const { alias: updatedAlias } = updateAliasData;
-                const aliasToSend = Object.assign({}, updatedAlias);
+                const aliasToSend = { ...updatedAlias };
                 aliasToSend.username = aliasToSend.aliasName;
                 aliasToSend.aliasName = undefined;
 

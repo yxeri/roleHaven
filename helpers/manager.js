@@ -349,7 +349,7 @@ function updateObject({
                   changeType: dbConfig.ChangeTypes.UPDATE,
                 },
               };
-              dataToSend.data[objectType] = stripObject({ object: Object.assign({}, updatedObject) });
+              dataToSend.data[objectType] = stripObject({ object: { ...updatedObject } });
 
               toStrip.forEach((stripVar) => {
                 dataToSend.data[objectType][stripVar] = undefined;
@@ -607,7 +607,7 @@ function updateAccess({
                   changeType: dbConfig.ChangeTypes.UPDATE,
                 },
               };
-              dataToSend.data[objectType] = stripObject({ object: Object.assign({}, foundObject) });
+              dataToSend.data[objectType] = stripObject({ object: { ...foundObject } });
 
               toStrip.forEach((stripVar) => {
                 dataToSend.data[objectType][stripVar] = undefined;

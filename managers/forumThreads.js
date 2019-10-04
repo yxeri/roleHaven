@@ -130,7 +130,7 @@ function createThread({
 
                   const dataToSend = {
                     data: {
-                      thread: managerHelper.stripObject({ object: Object.assign({}, createdThread) }),
+                      thread: managerHelper.stripObject({ object: { ...createdThread } }),
                       changeType: dbConfig.ChangeTypes.CREATE,
                     },
                   };

@@ -317,7 +317,7 @@ function removeThreadsByForum({ forumId, fullRemoval, callback }) {
         }
 
         dbForumPost.removePostsByThreadIds({
-          threadIds: threadsData.data.threads.map(thread => thread.objectId),
+          threadIds: threadsData.data.threads.map((thread) => thread.objectId),
           callback: ({ error }) => {
             if (error) {
               callback({ error });
@@ -398,7 +398,7 @@ function getThreadsByUser({
         return;
       }
 
-      const forumIds = data.forums.map(forum => forum.objectId);
+      const forumIds = data.forums.map((forum) => forum.objectId);
       const query = dbConnector.createUserQuery({ user });
       query.forumId = { $in: forumIds };
 

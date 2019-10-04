@@ -129,7 +129,7 @@ function createPost({
                   const { post: createdPost } = postData;
                   const dataToSend = {
                     data: {
-                      post: managerHelper.stripObject({ object: Object.assign({}, createdPost) }),
+                      post: managerHelper.stripObject({ object: { ...createdPost } }),
                       changeType: dbConfig.ChangeTypes.CREATE,
                     },
                   };
@@ -290,7 +290,7 @@ function getPostsByForum({ forumId, callback, token }) {
               }
 
               const { threads } = threadsData;
-              const threadIds = threads.map(thread => thread.objectId);
+              const threadIds = threads.map((thread) => thread.objectId);
 
               getPostsByThreads({
                 threadIds,
