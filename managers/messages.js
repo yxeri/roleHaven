@@ -384,6 +384,12 @@ function sendBroadcastMsg({
         return;
       }
 
+      if (message.teamId && !authUser.partOfTeams.includes(message.teamId)) {
+        callback({ error: new errorCreator.NotAllowed({ name: `${dbConfig.apiCommands.SendBroadcast.name}. User: ${authUser.objectId}. Access team ${message.teamId}` }) });
+
+        return;
+      }
+
       sendAndStoreMessage({
         socket,
         io,
@@ -447,6 +453,12 @@ function sendChatMsg({
 
       if (message.ownerAliasId && !authUser.aliases.includes(message.ownerAliasId)) {
         callback({ error: new errorCreator.NotAllowed({ name: `${dbConfig.apiCommands.SendMessage.name}. User: ${authUser.objectId}. Access alias ${message.ownerAliasId}` }) });
+
+        return;
+      }
+
+      if (message.teamId && !authUser.partOfTeams.includes(message.teamId)) {
+        callback({ error: new errorCreator.NotAllowed({ name: `${dbConfig.apiCommands.SendMessage.name}. User: ${authUser.objectId}. Access team ${message.teamId}` }) });
 
         return;
       }
@@ -524,10 +536,16 @@ function sendWhisperMsg({
       newMessage.text = textTools.cleanText(message.text);
       newMessage.messageType = dbConfig.MessageTypes.WHISPER;
       newMessage.ownerId = authUser.objectId;
-      newMessage.ownerAliasId = participantIds.find(participant => authUser.aliases.includes(participant));
+      newMessage.ownerAliasId = participantIds.find((participant) => authUser.aliases.includes(participant));
 
       if (message.ownerAliasId && !authUser.aliases.includes(message.ownerAliasId)) {
         callback({ error: new errorCreator.NotAllowed({ name: `${dbConfig.apiCommands.SendWhisper.name}. User: ${authUser.objectId}. Access alias ${message.ownerAliasId}` }) });
+
+        return;
+      }
+
+      if (message.teamId && !authUser.partOfTeams.includes(message.teamId)) {
+        callback({ error: new errorCreator.NotAllowed({ name: `${dbConfig.apiCommands.SendWhisper.name}. User: ${authUser.objectId}. Access team ${message.teamId}` }) });
 
         return;
       }

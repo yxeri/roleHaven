@@ -87,6 +87,12 @@ function createPost({
         return;
       }
 
+      if (postToCreate.teamId && !authUser.partOfTeams.includes(postToCreate.teamId)) {
+        callback({ error: new errorCreator.NotAllowed({ name: `create forum post with team ${postToCreate.teamId}` }) });
+
+        return;
+      }
+
       threadManager.getThreadById({
         token,
         needsAccess: true,

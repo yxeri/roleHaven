@@ -260,6 +260,12 @@ function createDocFile({
         return;
       }
 
+      if (newDocFile.teamId && !authUser.partOfTeams.includes(newDocFile.teamId)) {
+        callback({ error: new errorCreator.NotAllowed({ name: `create position with team ${newDocFile.teamId}` }) });
+
+        return;
+      }
+
       if (images) {
         imager.createImage({
           image: images[0],
