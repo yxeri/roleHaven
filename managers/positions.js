@@ -237,6 +237,12 @@ function createPosition({
         return;
       }
 
+      if (newPosition.teamId && !authUser.partOfTeams.includes(newPosition.teamId)) {
+        callback({ error: new errorCreator.NotAllowed({ name: `create position with team ${newPosition.teamId}` }) });
+
+        return;
+      }
+
       dbPosition.createPosition({
         suppressExistsError: isUserPosition,
         options: {

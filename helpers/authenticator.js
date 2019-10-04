@@ -192,31 +192,34 @@ function hasAccessTo({
   toAuth,
 }) {
   const {
+    ownerId,
+    ownerAliasId,
+    teamId,
+    isPublic,
+    visibility,
     teamIds = [],
     userIds = [],
     userAdminIds = [],
     teamAdminIds = [],
-    ownerId,
-    ownerAliasId,
-    isPublic,
-    visibility,
   } = objectToAccess;
   const {
     hasFullAccess,
-    accessLevel,
+    accessLevel = dbConfig.AccessLevels.ANONYMOUS,
+    partOfTeams = [],
     objectId: authUserId,
     teamIds: authTeamIds = [],
     aliases = [],
   } = toAuth;
 
-  const foundOwnerAlias = ownerAliasId && aliases.find(aliasId => aliasId === ownerAliasId);
+  const foundOwnerAlias = ownerAliasId && aliases.includes(ownerAliasId);
+  const partOfTeam = teamId && partOfTeams.includes(teamId);
 
   const userHasAccess = userIds.concat([ownerId]).includes(authUserId);
-  const teamHasAccess = teamIds.find(teamId => authTeamIds.includes(teamId));
-  const aliasHasAccess = foundOwnerAlias || aliases.find(aliasId => userIds.includes(aliasId));
+  const teamHasAccess = partOfTeam || teamIds.find((id) => authTeamIds.includes(id));
+  const aliasHasAccess = foundOwnerAlias || aliases.find((aliasId) => userIds.includes(aliasId));
   const userHasAdminAccess = userAdminIds.includes(authUserId);
-  const aliasHasAdminAccess = foundOwnerAlias || aliases.find(aliasId => userAdminIds.includes(aliasId));
-  const teamHasAdminAccess = teamAdminIds.find(adminId => authTeamIds.includes(adminId));
+  const aliasHasAdminAccess = foundOwnerAlias || aliases.find((aliasId) => userAdminIds.includes(aliasId));
+  const teamHasAdminAccess = partOfTeam || teamAdminIds.find((adminId) => authTeamIds.includes(adminId));
   const isAdmin = ownerId === authUserId || hasFullAccess || accessLevel >= dbConfig.AccessLevels.ADMIN;
 
   return {

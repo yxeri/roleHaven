@@ -99,6 +99,12 @@ function createThread({
             return;
           }
 
+          if (threadToCreate.teamId && !authUser.partOfTeams.includes(threadToCreate.teamId)) {
+            callback({ error: new errorCreator.NotAllowed({ name: `create thread with team ${threadToCreate.teamId}` }) });
+
+            return;
+          }
+
           dbThread.createThread({
             thread: threadToCreate,
             callback: ({ error: createError, data: createData }) => {
