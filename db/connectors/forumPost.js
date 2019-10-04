@@ -296,7 +296,7 @@ function getPostsByUser({
         return;
       }
 
-      const forumIds = forumData.forums.map(forum => forum.objectId);
+      const forumIds = forumData.forums.map((forum) => forum.objectId);
 
       dbForumThread.getThreadsByForums({
         forumIds,
@@ -307,7 +307,7 @@ function getPostsByUser({
             return;
           }
 
-          const threadIds = threadData.threads.map(thread => thread.objectId);
+          const threadIds = threadData.threads.map((thread) => thread.objectId);
           const query = dbConnector.createUserQuery({ user });
           query.threadId = { $in: threadIds };
 

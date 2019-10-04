@@ -116,7 +116,7 @@ function createTestCreate({
       Object.keys(testData.missing).forEach((param) => {
         it(`Should NOT create a ${objectType} with missing parameter ${param} on ${apiPath} POST`, (done) => {
           const dataToSend = { data: {} };
-          dataToSend.data[objectType] = Object.assign({}, testData.missing);
+          dataToSend.data[objectType] = { ...testData.missing };
           dataToSend.data[objectType][param] = undefined;
 
           chai

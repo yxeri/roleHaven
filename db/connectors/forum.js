@@ -305,7 +305,7 @@ function removeForum({ forumId, fullRemoval, callback }) {
 
             dbForumThread.removeThreads({
               callback,
-              threadIds: threadsData.data.threads.map(forumThread => forumThread.objectId),
+              threadIds: threadsData.data.threads.map((forumThread) => forumThread.objectId),
               fullRemoval: true,
             });
           },

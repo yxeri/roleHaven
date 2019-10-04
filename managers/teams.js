@@ -123,7 +123,7 @@ function emitTeam({
   };
   const dataToSend = {
     data: {
-      team: managerHelper.stripObject({ object: Object.assign({}, team) }),
+      team: managerHelper.stripObject({ object: { ...team } }),
       changeType: dbConfig.ChangeTypes.CREATE,
     },
   };

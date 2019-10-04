@@ -146,7 +146,7 @@ function handle(io) {
       });
     });
 
-    appConfig.handlers.forEach(handlePath => require(path.resolve(handlePath)).handle(socket, io)); // eslint-disable-line global-require, import/no-dynamic-require
+    appConfig.handlers.forEach((handlePath) => require(path.resolve(handlePath)).handle(socket, io)); // eslint-disable-line global-require, import/no-dynamic-require
   });
 
   return router;

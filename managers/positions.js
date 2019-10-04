@@ -265,7 +265,7 @@ function createPosition({
           };
           const dataToSend = {
             data: {
-              position: managerHelper.stripObject({ object: Object.assign({}, updatedPosition) }),
+              position: managerHelper.stripObject({ object: { ...updatedPosition } }),
               changeType: dbConfig.ChangeTypes.CREATE,
             },
           };

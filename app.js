@@ -86,7 +86,7 @@ if (!appConfig.disablePositionImport && appConfig.mapLayersPath) {
   getGooglePositions();
 }
 
-appConfig.startupFuncs.forEach(func => func({ io }));
+appConfig.startupFuncs.forEach((func) => func({ io }));
 
 /*
  * Catches all exceptions.

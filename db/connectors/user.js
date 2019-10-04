@@ -137,7 +137,7 @@ function updateObjects({ query, update, callback }) {
 
       callback({
         data: {
-          users: data.objects.map(object => modifyUserParameters({ user: object })),
+          users: data.objects.map((object) => modifyUserParameters({ user: object })),
         },
       });
     },
@@ -171,7 +171,7 @@ function getUsers({
 
       callback({
         data: {
-          users: data.objects.map(user => modifyUserParameters({ user, includeOff })),
+          users: data.objects.map((user) => modifyUserParameters({ user, includeOff })),
         },
       });
     },

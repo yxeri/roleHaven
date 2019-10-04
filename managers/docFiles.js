@@ -86,7 +86,7 @@ function saveAndTransmitDocFile({
       }
 
       const { docFile: newDocFile } = createData;
-      const fullDocFile = Object.assign({}, newDocFile);
+      const fullDocFile = { ...newDocFile };
 
       if (!newDocFile.isPublic) {
         newDocFile.isLocked = true;
@@ -563,7 +563,7 @@ function getDocFilesByUser({
 
       callback({
         data: {
-          docFiles: docFiles.map(docFile => getFileByAccess({ user: authUser, docFile }).docFile),
+          docFiles: docFiles.map((docFile) => getFileByAccess({ user: authUser, docFile }).docFile),
         },
       });
     },

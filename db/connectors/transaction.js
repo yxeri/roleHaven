@@ -151,7 +151,7 @@ function getTransactionsByUser({ user, callback }) {
       }
 
       const { wallets } = walletData;
-      const walletIds = wallets.map(wallet => wallet.objectId);
+      const walletIds = wallets.map((wallet) => wallet.objectId);
       const query = {
         $or: [
           { toWalletId: { $in: walletIds } },

@@ -285,7 +285,7 @@ function createAndFollowWhisperRoom({
 
             dbUser.followRoom({
               roomId,
-              userIds: users.map(foundUser => foundUser.objectId).concat([user.objectId]),
+              userIds: users.map((foundUser) => foundUser.objectId).concat([user.objectId]),
               callback: (receiverFollowData) => {
                 if (receiverFollowData.error) {
                   callback({ error: receiverFollowData.error });
@@ -597,7 +597,7 @@ function follow({
                     return;
                   }
 
-                  clients.map(socketId => io.sockets.connected[socketId]).forEach((connectedSocket) => {
+                  clients.map((socketId) => io.sockets.connected[socketId]).forEach((connectedSocket) => {
                     connectedSocket.join(roomId);
                   });
                 });
@@ -1072,7 +1072,7 @@ function updateRoom({
               const { room: updatedRoom } = updateData;
               const dataToSend = {
                 data: {
-                  room: managerHelper.stripObject({ object: Object.assign({}, updatedRoom) }),
+                  room: managerHelper.stripObject({ object: { ...updatedRoom } }),
                   changeType: dbConfig.ChangeTypes.UPDATE,
                 },
               };
@@ -1153,7 +1153,7 @@ function inviteToRoom({
               }
 
               const { users: foundUsers } = aliasData;
-              const followers = followerIds.filter(id => !room.followers.includes(id)).map((id) => {
+              const followers = followerIds.filter((id) => !room.followers.includes(id)).map((id) => {
                 const user = foundUsers.find((foundUser) => {
                   return foundUser.objectId === id || foundUser.aliases.includes(id);
                 });
@@ -1163,7 +1163,7 @@ function inviteToRoom({
                   aliasId: id,
                 };
               });
-              room.followers = room.followers.concat(followers.map(follower => follower.aliasId));
+              room.followers = room.followers.concat(followers.map((follower) => follower.aliasId));
 
               followers.forEach(({ user, aliasId }) => {
                 follow({
@@ -1239,7 +1239,7 @@ function sendInvitationToRoom({
 
           const { room: foundRoom } = roomData;
 
-          followerIds.filter(followerId => !foundRoom.followers.includes(followerId)).forEach((followerId) => {
+          followerIds.filter((followerId) => !foundRoom.followers.includes(followerId)).forEach((followerId) => {
             const invitationToCreate = {
               receiverId: followerId,
               itemId: roomId,
