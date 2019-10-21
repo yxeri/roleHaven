@@ -29,6 +29,7 @@ const managerHelper = require('../helpers/manager');
 const textTools = require('../utils/textTools');
 const userManager = require('./users');
 const roomManager = require('./rooms');
+const imager = require('../helpers/imager');
 
 /**
  * Get a team.
@@ -355,6 +356,7 @@ function createTeam({
   io,
   callback,
   token,
+  image,
 }) {
   authenticator.isUserAllowed({
     token,
@@ -403,33 +405,58 @@ function createTeam({
         return;
       }
 
-      createTeamAndDependencies({
-        io,
-        team: newTeam,
-        callback: ({ error: teamError, data: teamData }) => {
-          if (teamError) {
-            callback({ error: teamError });
+      const teamCallback = () => {
+        createTeamAndDependencies({
+          io,
+          team: newTeam,
+          callback: ({ error: teamError, data: teamData }) => {
+            if (teamError) {
+              callback({ error: teamError });
 
-            return;
-          }
+              return;
+            }
 
-          const {
-            room,
-            wallet,
-            team: teamToEmit,
-          } = teamData;
+            const {
+              room,
+              wallet,
+              team: teamToEmit,
+            } = teamData;
 
-          emitTeam({
-            socket,
-            io,
-            callback,
-            room,
-            wallet,
-            team: teamToEmit,
-            user: authUser,
-          });
-        },
-      });
+            emitTeam({
+              socket,
+              io,
+              callback,
+              room,
+              wallet,
+              team: teamToEmit,
+              user: authUser,
+            });
+          },
+        });
+      };
+
+      if (image) {
+        imager.createImage({
+          image,
+          callback: ({ error: imageError, data: imageData }) => {
+            if (imageError) {
+              callback({ error: imageError });
+
+              return;
+            }
+
+            const { image: createdImage } = imageData;
+
+            newTeam.image = createdImage;
+
+            teamCallback();
+          },
+        });
+
+        return;
+      }
+
+      teamCallback();
     },
   });
 }
@@ -803,6 +830,7 @@ function updateTeam({
   io,
   callback,
   socket,
+  image,
 }) {
   authenticator.isUserAllowed({
     token,
@@ -840,32 +868,59 @@ function updateTeam({
             return;
           }
 
-          dbTeam.updateTeam({
-            teamId,
-            team,
-            callback: ({ error: teamError, data: teamData }) => {
-              if (teamError) {
-                callback({ error: teamError });
+          const teamUpdate = team;
 
-                return;
-              }
+          const teamCallback = () => {
+            dbTeam.updateTeam({
+              teamId,
+              team: teamUpdate,
+              callback: ({ error: teamError, data: teamData }) => {
+                if (teamError) {
+                  callback({ error: teamError });
 
-              const dataToSend = {
-                data: {
-                  team: teamData.team,
-                  changeType: dbConfig.ChangeTypes.UPDATE,
-                },
-              };
+                  return;
+                }
 
-              if (socket) {
-                socket.broadcast.emit(dbConfig.EmitTypes.TEAM, dataToSend);
-              } else {
-                io.emit(dbConfig.EmitTypes.TEAM, dataToSend);
-              }
+                const dataToSend = {
+                  data: {
+                    team: teamData.team,
+                    changeType: dbConfig.ChangeTypes.UPDATE,
+                  },
+                };
 
-              callback(dataToSend);
-            },
-          });
+                if (socket) {
+                  socket.broadcast.emit(dbConfig.EmitTypes.TEAM, dataToSend);
+                } else {
+                  io.emit(dbConfig.EmitTypes.TEAM, dataToSend);
+                }
+
+                callback(dataToSend);
+              },
+            });
+          };
+
+          if (image) {
+            imager.createImage({
+              image,
+              callback: ({ error: imageError, data: imageData }) => {
+                if (imageError) {
+                  callback({ error: imageError });
+
+                  return;
+                }
+
+                const { image: createdImage } = imageData;
+
+                teamUpdate.image = createdImage;
+
+                teamCallback();
+              },
+            });
+
+            return;
+          }
+
+          teamCallback();
         },
       });
     },
