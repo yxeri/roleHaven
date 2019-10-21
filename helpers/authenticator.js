@@ -110,7 +110,7 @@ function isUserAllowed({
   callback,
 }) {
   const commandUsed = dbConfig.apiCommands[commandName];
-  const anonUser = dbConfig.anonymousUser;
+  const anonUser = dbConfig.users.anonymous;
 
   if (internalCallUser) {
     callback({ data: { user: internalCallUser } });
@@ -229,7 +229,24 @@ function hasAccessTo({
   };
 }
 
+function checkAliasAccess({
+  object,
+  user,
+  text,
+}) {
+  if (object.ownerAliasId && !user.aliases.includes(object.ownerAliasId)) {
+    return { error: new errorCreator.NotAllowed({ name: `${text}. User: ${user.objectId}. Access alias ${object.ownerAliasId}` }) };
+  }
+
+  if (object.teamId && !user.partOfTeams.includes(object.teamId)) {
+    return { error: new errorCreator.NotAllowed({ name: `${text}. User: ${user.objectId}. Access team ${object.teamId}` }) };
+  }
+
+  return {};
+}
+
 exports.isUserAllowed = isUserAllowed;
 exports.createToken = createToken;
 exports.hasAccessTo = hasAccessTo;
 exports.isAllowedAccessLevel = isAllowedAccessLevel;
+exports.checkAliasAccess = checkAliasAccess;

@@ -45,6 +45,8 @@ const userSchema = new mongoose.Schema(dbConnector.createSchema({
   offName: String,
   pronouns: [String],
   customFields: [dbConnector.customFieldSchema],
+  pushToken: String,
+  disableNotifications: Boolean,
 }), { collection: 'users' });
 
 const User = mongoose.model('User', userSchema);
@@ -182,7 +184,7 @@ function getUsers({
  * Get user
  * @private
  * @param {Object} params Parameters
- * @param {string} params.query Query to get alias
+ * @param {string} params.query Query to get user
  * @param {Function} params.callback Callback
  * @param {boolean} [params.getPassword] Should password hash be returned?
  */
@@ -400,6 +402,7 @@ function updateOnline({
   userId,
   isOnline,
   socketId,
+  pushToken,
   callback,
   suppressError,
 }) {
@@ -410,12 +413,12 @@ function updateOnline({
   if (isOnline) {
     set.isOnline = true;
 
-    if (socketId) {
-      set.socketId = socketId;
-    }
+    if (socketId) { set.socketId = socketId; }
+    if (pushToken) { set.pushToken = pushToken; }
   } else {
     set.isOnline = false;
     unset.socketId = '';
+    unset.pushToken = '';
   }
 
   set.lastOnline = new Date();
@@ -462,6 +465,8 @@ function updateUser({
     pronouns,
     description,
     customFields,
+    pushToken,
+    disableNotifications,
   } = user;
   const {
     resetSocket,
@@ -493,6 +498,8 @@ function updateUser({
   if (pronouns) { set.pronouns = pronouns; }
   if (description) { set.description = description; }
   if (customFields) { set.customFields = customFields; }
+  if (pushToken) { set.pushToken = pushToken; }
+  if (typeof disableNotifications === 'boolean') { set.disableNotifications = disableNotifications; }
 
   if (Object.keys(set).length > 0) { update.$set = set; }
   if (Object.keys(unset).length > 0) { update.$unset = unset; }
@@ -921,7 +928,17 @@ function unfollowRoom({
  * @param {Object} params Parameters.
  * @param {Function} params.callback Callback
  */
-function getAllUsers({ callback }) {
+function getAllUsers({
+  includeInactive = true,
+  callback,
+}) {
+  const query = {};
+
+  if (!includeInactive) {
+    query.isBanned = false;
+    query.isVerified = true;
+  }
+
   getUsers({
     callback,
     query: {},

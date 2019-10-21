@@ -31,6 +31,7 @@ const managerHelper = require('../helpers/manager');
 const positionManager = require('./positions');
 const imager = require('../helpers/imager');
 const messageManager = require('./messages');
+const dbAlias = require('../db/connectors/alias');
 
 /**
  * Create a user.
@@ -140,7 +141,7 @@ function createUser({
         callback({
           error: new errorCreator.InvalidCharacters({
             name: `protected name ${user.username}`,
-            extraData: { param: 'username' },
+            extraData: { param: 'protected' },
           }),
         });
 
@@ -465,7 +466,7 @@ function getUsersByUser({
 }
 
 /**
- * Get user  Id or name.
+ * Get user by Id or name.
  * @param {Object} params Parameters.
  * @param {string} params.userId Id of the user to retrieve.
  * @param {Object} [params.internalCallUser] User to use on authentication. It will bypass token authentication.
@@ -529,6 +530,114 @@ function getUserById({
           }
 
           callback({ data: userData });
+        },
+      });
+    },
+  });
+}
+
+/**
+ * Get user or owner (user) of the alias.
+ * @param {Object} params Parameters.
+ * @param {string} params.identityId Id of the user or alias owner to retrieve.
+ * @param {Object} [params.internalCallUser] User to use on authentication. It will bypass token authentication.
+ * @param {Function} params.callback Callback.
+ */
+function getUserOrAliasOwner({
+  token,
+  identityId,
+  internalCallUser,
+  callback,
+}) {
+  authenticator.isUserAllowed({
+    token,
+    internalCallUser,
+    commandName: dbConfig.apiCommands.GetUser.name,
+    callback: ({ error, data }) => {
+      if (error) {
+        callback({ error });
+
+        return;
+      }
+
+      const { user: authUser } = data;
+      const userCall = ({ data: userData }) => {
+        const { user, alias } = userData;
+        const {
+          hasAccess,
+          canSee,
+        } = authenticator.hasAccessTo({
+          objectToAccess: user,
+          toAuth: authUser,
+        });
+
+        if (!canSee) {
+          callback({ error: errorCreator.NotAllowed({ name: `identity ${identityId}` }) });
+
+          return;
+        }
+
+        if (!hasAccess) {
+          callback({
+            data: {
+              user: managerHelper.stripObject({ object: user }),
+              alias: managerHelper.stripObject({ object: alias }),
+            },
+          });
+
+          return;
+        }
+
+        callback({ data: userData });
+      };
+
+      if (identityId === authUser.objectId) {
+        callback({ data: { user: authUser } });
+
+        return;
+      }
+
+      dbUser.getUserById({
+        userId: identityId,
+        supressExistError: true,
+        callback: ({ error: userError, data: userData }) => {
+          if (userError) {
+            if (userError.type !== 'does not exist') {
+              callback({ error: userError });
+
+              return;
+            }
+
+            dbAlias.getAliasById({
+              aliasId: identityId,
+              callback: ({ error: aliasError, data: aliasData }) => {
+                if (aliasError) {
+                  callback({ error: aliasError });
+
+                  return;
+                }
+
+                const { alias } = aliasData;
+
+                dbUser.getUserById({
+                  userId: alias.ownerId,
+                  callback: ({ error: ownerError, data: ownerData }) => {
+                    if (ownerError) {
+                      callback({ error: ownerError });
+
+                      return;
+                    }
+
+                    userCall({ data: { user: ownerData.user, alias } });
+                  },
+                });
+              },
+            });
+
+            return;
+          }
+
+          userCall({ data: userData });
         },
       });
     },
@@ -667,9 +776,15 @@ function login({
   io,
   callback,
 }) {
+  const {
+    username,
+    password,
+    pushToken,
+  } = user;
+
   authenticator.createToken({
-    username: user.username,
-    password: user.password,
+    username,
+    password,
     callback: ({ error, data }) => {
       if (error) {
         callback({ error });
@@ -689,6 +804,7 @@ function login({
       dbUser.updateOnline({
         userId,
         socketId,
+        pushToken,
         isOnline: true,
         callback: (socketData) => {
           if (socketData.error) {
@@ -1218,6 +1334,73 @@ function getAllUsers({
   });
 }
 
+function getPushTokens({
+  identities,
+  token,
+  callback,
+  internalCallUser,
+}) {
+  authenticator.isUserAllowed({
+    token,
+    internalCallUser,
+    commandName: dbConfig.apiCommands.GetUsers.name,
+    callback: ({ error }) => {
+      if (error) {
+        callback({ error });
+
+        return;
+      }
+
+      dbUser.getAllUsers({
+        includeInactive: false,
+        callback: ({ error: userError, data: userData }) => {
+          if (userError) {
+            callback({ error: userError });
+
+            return;
+          }
+
+          const { users } = userData;
+
+          if (!identities) {
+            callback({
+              data: {
+                pushTokens: users
+                  .filter((user) => { return user.pushToken; })
+                  .map((user) => { return user.pushToken; }),
+              },
+            });
+
+            return;
+          }
+
+          dbAlias.getAllAliases({
+            callback: ({ error: aliasError, data: aliasData }) => {
+              if (aliasError) {
+                callback({ error: aliasError });
+
+                return;
+              }
+
+              const { aliases } = aliasData;
+              const aliasOwnerIds = aliases
+                .filter((alias) => { return identities.includes(alias.objectId); })
+                .map((alias) => { return alias.ownerId; });
+              const pushTokens = users
+                .filter((user) => {
+                  return user.pushToken && (identities.includes(user.objectId) || aliasOwnerIds.includes(user.objectId));
+                })
+                .map((user) => { return user.pushToken; });
+
+              callback({ data: { pushTokens } });
+            },
+          });
+        },
+      });
+    },
+  });
+}
+
 exports.createUser = createUser;
 exports.getUserById = getUserById;
 exports.changePassword = changePassword;
@@ -1230,3 +1413,5 @@ exports.updateUser = updateUser;
 exports.getUsersByUser = getUsersByUser;
 exports.updateId = updateId;
 exports.getAllUsers = getAllUsers;
+exports.getUserOrAliasOwner = getUserOrAliasOwner;
+exports.getPushTokens = getPushTokens;

@@ -60,8 +60,8 @@ class GeneralError {
    */
   constructor({
     errorObject,
-    extraData,
     suppressPrint,
+    extraData = {},
     text = ['Something went wrong'],
     type = ErrorTypes.GENERAL,
     verbose = true,

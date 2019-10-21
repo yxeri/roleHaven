@@ -22,6 +22,7 @@ const path = require('path');
 const bodyParser = require('body-parser');
 const morgan = require('morgan');
 const compression = require('compression');
+const firebase = require('firebase-admin');
 const { appConfig } = require('./config/defaults/config');
 const dbRoom = require('./db/connectors/room');
 const dbForum = require('./db/connectors/forum');
@@ -67,6 +68,15 @@ if (appConfig.mode !== appConfig.Modes.TEST) {
   dbForum.populateDbForums({});
 }
 
+if (appConfig.firebaseConfig.private_key && appConfig.firebaseConfig.private_key_id && appConfig.firebaseDbUrl) {
+  console.log('Initializing Firebase.');
+
+  firebase.initializeApp({
+    credential: firebase.credential.cert(appConfig.firebaseConfig),
+    databaseURL: appConfig.firebaseDbUrl,
+  });
+}
+
 if (!appConfig.disablePositionImport && appConfig.mapLayersPath) {
   const getGooglePositions = () => {
     positionManager.getAndStoreGooglePositions({
@@ -78,7 +88,7 @@ if (!appConfig.disablePositionImport && appConfig.mapLayersPath) {
           return;
         }
 
-        console.log(`Retrieved and saved ${data.positions.length + 1} positions from Google Maps`);
+        console.log(`Retrieved and saved ${data.positions.length + 1} positions from Google Maps.`);
       },
     });
   };

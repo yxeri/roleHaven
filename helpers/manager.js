@@ -27,6 +27,10 @@ const { dbConfig } = require('../config/defaults/config');
  * @return {Object} Stripped object.
  */
 function stripObject({ object }) {
+  if (!object) {
+    return undefined;
+  }
+
   const modifiedObject = object;
 
   modifiedObject.ownerId = modifiedObject.ownerAliasId || modifiedObject.ownerId;
