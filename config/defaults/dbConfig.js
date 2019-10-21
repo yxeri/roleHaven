@@ -53,18 +53,6 @@ config.users.systemUser = config.users.systemUser || {
 };
 
 /**
- * Default user used when the client is not authenticated.
- */
-config.users.anonymous = config.users.anonymous || {
-  username: 'anonymous',
-  objectId: '222222222222222222222221',
-  partOfTeams: [],
-  aliases: [],
-  followingRooms: [],
-  visibility: config.AccessLevels.MODERATOR,
-};
-
-/**
  * Default rooms
  */
 
@@ -155,18 +143,22 @@ config.forums.public = config.forums.public || {
 
 config.deviceRoomPrepend = 'device#';
 
-config.anonymousUser = {
-  username: 'ANONYMOUS_USER',
-  accessLevel: config.AccessLevels.ANONYMOUS,
-  visibility: config.AccessLevels.ANONYMOUS,
-  registerDevice: 'ANONYMOUS_USER',
-  followingRooms: Object.keys(config.rooms).map((key) => config.rooms[key].objectId),
-  isVerified: true,
-  defaultRoomId: config.rooms.public.objectId,
+/**
+ * Default user used when the client is not authenticated.
+ */
+config.users.anonymous = config.users.anonymous || {
+  username: 'anonymous',
+  objectId: '222222222222222222222221',
   partOfTeams: [],
   aliases: [],
+  followingRooms: Object.keys(config.rooms).map((key) => config.rooms[key].objectId),
+  visibility: config.AccessLevels.MODERATOR,
+  registerDevice: 'ANONYMOUS_USER',
+  isVerified: true,
   isAnonymous: true,
   customFields: [],
+  accessLevel: config.AccessLevels.ANONYMOUS,
+  defaultRoomId: config.rooms.public.objectId,
 };
 
 config.protectedNames = [
