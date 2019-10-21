@@ -26,6 +26,7 @@ const socketUtils = require('../utils/socketIo');
 const dbUser = require('../db/connectors/user');
 const managerHelper = require('../helpers/manager');
 const dbInvitation = require('../db/connectors/invitation');
+const textTools = require('../utils/textTools');
 
 /**
  * Get room by Id or name.
@@ -370,127 +371,6 @@ function doesWhisperRoomExist({ participantIds, callback }) {
 }
 
 /**
- * Creates a new chat room and adds the user who created it to it.
- * @param {Object} params Parameters.
- * @param {Object} params.room New room.
- * @param {Object} params.io Socket.io. Used if socket isn't set.
- * @param {Object} params.options Update options.
- * @param {Function} params.callback callback.
- * @param {Object} [params.socket] Socket io.
- */
-function createRoom({
-  room,
-  options,
-  token,
-  socket,
-  io,
-  callback,
-}) {
-  authenticator.isUserAllowed({
-    token,
-    commandName: dbConfig.apiCommands.CreateRoom.name,
-    callback: ({ error, data }) => {
-      if (error) {
-        callback({ error });
-
-        return;
-      }
-
-      if (!objectValidator.isValidData({ room }, { room: { roomName: true } })) {
-        callback({ error: new errorCreator.InvalidData({ expected: '{ room: { roomName } }' }) });
-
-        return;
-      }
-
-      if (room.roomName.length > appConfig.roomNameMaxLength) {
-        callback({ error: new errorCreator.InvalidCharacters({ expected: 'a-z 0-9 length: 20' }) });
-
-        return;
-      }
-
-      if (dbConfig.protectedRoomNames.indexOf(room.roomName.toLowerCase()) > -1) {
-        callback({ error: new errorCreator.InvalidCharacters({ expected: 'not protected words' }) });
-
-        return;
-      }
-
-      if (!authenticator.isAllowedAccessLevel({ objectToCreate: room, toAuth: data.user })) {
-        callback({ error: new errorCreator.NotAllowed({ name: 'too high access level or visibility' }) });
-
-        return;
-      }
-
-      if (room.password && room.password.length > appConfig.passwordMaxLength) {
-        callback({ error: new errorCreator.InvalidCharacters({ expected: 'password too long' }) });
-
-        return;
-      }
-
-      const newRoom = room;
-      const { user } = data;
-      newRoom.ownerId = user.objectId;
-      newRoom.roomNameLowerCase = newRoom.roomName.toLowerCase();
-      newRoom.password = newRoom.password && newRoom.password !== ''
-        ? newRoom.password
-        : undefined;
-
-      const roomCallback = () => {
-        dbRoom.createRoom({
-          room,
-          options,
-          callback: ({ error: roomError, data: roomData }) => {
-            if (roomError) {
-              callback({ error: roomError });
-
-              return;
-            }
-
-            const createdRoom = roomData.room;
-            const dataToSend = {
-              data: {
-                room: createdRoom,
-                changeType: dbConfig.ChangeTypes.CREATE,
-              },
-            };
-
-            if (socket) {
-              socket.join(createdRoom.objectId);
-              socket.broadcast.emit(dbConfig.EmitTypes.ROOM, dataToSend);
-            } else {
-              const userSocket = socketUtils.getUserSocket({ io, socketId: user.socketId });
-
-              if (userSocket) { userSocket.join(createdRoom.objectId); }
-
-              io.emit(dbConfig.EmitTypes.ROOM, dataToSend);
-            }
-
-            callback(dataToSend);
-          },
-        });
-      };
-
-      if (newRoom.password) {
-        bcrypt.hash(newRoom.password, 10, (hashError, hash) => {
-          if (hashError) {
-            callback({ error: new errorCreator.Internal({ errorObject: hashError }) });
-
-            return;
-          }
-
-          newRoom.password = hash;
-
-          roomCallback();
-        });
-
-        return;
-      }
-
-      roomCallback();
-    },
-  });
-}
-
-/**
  * Is the room protected? Protected rooms should not be unfollowed.
  * @param {Object} params Parameters.
  * @param {string} params.roomId Id of the room.
@@ -666,6 +546,160 @@ function unfollow({
   }
 
   callback(toSend);
+}
+
+/**
+ * Creates a new chat room and adds the user who created it to it.
+ * @param {Object} params Parameters.
+ * @param {Object} params.room New room.
+ * @param {Object} params.io Socket.io. Used if socket isn't set.
+ * @param {Object} params.options Update options.
+ * @param {Function} params.callback callback.
+ * @param {Object} [params.socket] Socket io.
+ */
+function createRoom({
+  room,
+  options,
+  token,
+  socket,
+  io,
+  callback,
+}) {
+  if (!objectValidator.isValidData({ room }, { room: { roomName: true } })) {
+    callback({ error: new errorCreator.InvalidData({ expected: '{ room: { roomName } }' }) });
+
+    return;
+  }
+
+  if (room.roomName.length > appConfig.roomNameMaxLength) {
+    callback({
+      error: new errorCreator.InvalidLength({
+        expected: 'a-z 0-9 length: 20',
+        extraData: { param: 'roomName' },
+      }),
+    });
+
+    return;
+  }
+
+  if (!textTools.isAllowedFull(room.roomName)) {
+    callback({
+      error: new errorCreator.InvalidCharacters({
+        name: `Room name: ${room.roomName}.`,
+        extraData: { param: 'roomName' },
+      }),
+    });
+
+    return;
+  }
+
+  if (dbConfig.protectedRoomNames.indexOf(room.roomName.toLowerCase()) > -1) {
+    callback({
+      error: new errorCreator.InvalidCharacters({
+        expected: 'not protected name',
+        extraData: { param: 'protected' },
+      }),
+    });
+
+    return;
+  }
+
+  if (room.password && room.password.length > appConfig.passwordMaxLength) {
+    callback({
+      error: new errorCreator.InvalidLength({
+        expected: 'password too long',
+        extraData: { param: 'password' },
+      }),
+    });
+
+    return;
+  }
+
+  authenticator.isUserAllowed({
+    token,
+    commandName: dbConfig.apiCommands.CreateRoom.name,
+    callback: ({ error, data }) => {
+      if (error) {
+        callback({ error });
+
+        return;
+      }
+
+      const { user: authUser } = data;
+
+      if (!authenticator.isAllowedAccessLevel({ objectToCreate: room, toAuth: authUser })) {
+        callback({ error: new errorCreator.NotAllowed({ name: 'too high access level or visibility' }) });
+
+        return;
+      }
+
+      const newRoom = room;
+      const { user } = data;
+      newRoom.ownerId = user.objectId;
+      newRoom.roomNameLowerCase = newRoom.roomName.toLowerCase();
+      newRoom.password = newRoom.password && newRoom.password !== ''
+        ? newRoom.password
+        : undefined;
+
+      const roomCallback = () => {
+        dbRoom.createRoom({
+          room,
+          options,
+          callback: ({ error: roomError, data: roomData }) => {
+            if (roomError) {
+              callback({ error: roomError });
+
+              return;
+            }
+
+            const createdRoom = roomData.room;
+            const dataToSend = {
+              data: {
+                room: createdRoom,
+                changeType: dbConfig.ChangeTypes.CREATE,
+              },
+            };
+
+            if (socket) {
+              socket.broadcast.emit(dbConfig.EmitTypes.ROOM, dataToSend);
+            } else {
+              io.emit(dbConfig.EmitTypes.ROOM, dataToSend);
+            }
+
+            callback(dataToSend);
+
+            follow({
+              user,
+              socket,
+              io,
+              invited: true,
+              callback: () => {},
+              userId: user.objectId,
+              roomId: createdRoom.objectId,
+            });
+          },
+        });
+      };
+
+      if (newRoom.password) {
+        bcrypt.hash(newRoom.password, 10, (hashError, hash) => {
+          if (hashError) {
+            callback({ error: new errorCreator.Internal({ errorObject: hashError }) });
+
+            return;
+          }
+
+          newRoom.password = hash;
+
+          roomCallback();
+        });
+
+        return;
+      }
+
+      roomCallback();
+    },
+  });
 }
 
 /**
