@@ -17,7 +17,7 @@
 'use strict';
 
 const dbForum = require('../db/connectors/forum');
-const { dbConfig } = require('../config/defaults/config');
+const { appConfig, dbConfig } = require('../config/defaults/config');
 const errorCreator = require('../error/errorCreator');
 const authenticator = require('../helpers/authenticator');
 const managerHelper = require('../helpers/manager');
@@ -93,14 +93,34 @@ function createForum({
 
       const { user: authUser } = data;
 
-      const forumToCreate = forum;
-      forumToCreate.ownerId = authUser.objectId;
-
-      if (forumToCreate.ownerAliasId && !authUser.aliases.includes(forumToCreate.ownerAliasId)) {
-        callback({ error: new errorCreator.NotAllowed({ name: `create forum with alias ${forumToCreate.ownerAliasId}` }) });
+      if (forum.text && forum.text.join('').length > appConfig.forumPostMaxLength) {
+        callback({
+          error: new errorCreator.InvalidLength({
+            expected: `Text length: ${appConfig.forumPostMaxLength}.`,
+            extraData: { param: 'text' },
+          }),
+        });
 
         return;
       }
+
+      if (forum.title && forum.title.length > appConfig.forumTitleMaxLength) {
+        callback({
+          error: new errorCreator.InvalidLength({
+            expected: `Title length: ${appConfig.forumTitleMaxLength}`,
+            extraData: { param: 'title' },
+          }),
+        });
+
+        return;
+      }
+
+      const forumToCreate = forum;
+      forumToCreate.ownerId = authUser.objectId;
+
+      const aliasAccess = authenticator.checkAliasAccess({ object: forumToCreate, user: authUser, text: dbConfig.apiCommands.CreateForum.name });
+
+      if (aliasAccess.error) { callback({ error: aliasAccess.error }); }
 
       dbForum.createForum({
         forum: forumToCreate,
@@ -183,6 +203,28 @@ function updateForum({
   internalCallUser,
   socket,
 }) {
+  if (forum.text && forum.text.join('').length > appConfig.forumPostMaxLength) {
+    callback({
+      error: new errorCreator.InvalidLength({
+        expected: `Text length: ${appConfig.forumPostMaxLength}.`,
+        extraData: { param: 'text' },
+      }),
+    });
+
+    return;
+  }
+
+  if (forum.title && forum.title.length > appConfig.forumTitleMaxLength) {
+    callback({
+      error: new errorCreator.InvalidLength({
+        expected: `Title length: ${appConfig.forumTitleMaxLength}`,
+        extraData: { param: 'title' },
+      }),
+    });
+
+    return;
+  }
+
   managerHelper.updateObject({
     callback,
     options,

@@ -214,6 +214,51 @@ function createDocFile({
   internalCallUser,
   images,
 }) {
+  if (!objectValidator.isValidData({ docFile }, { docFile: { text: true, title: true } })) {
+    callback({ error: new errorCreator.InvalidData({ expected: '{ docFile: { text, title } }' }) });
+
+    return;
+  }
+
+  if (docFile.code && (!textTools.hasAllowedText(docFile.code))) {
+    callback({ error: new errorCreator.InvalidCharacters({ expected: 'Alphanumeric', extraData: { paramName: 'code' } }) });
+
+    return;
+  }
+
+  if (docFile.code.length > appConfig.docFileCodeMaxLength || docFile.code < appConfig.docFileCodeMinLength) {
+    callback({
+      error: new errorCreator.InvalidLength({
+        expected: `Code length: ${appConfig.docFileCodeMinLength} - ${appConfig.docFileCodeMaxLength}`,
+        extraData: { param: 'code' },
+      }),
+    });
+
+    return;
+  }
+
+  if (docFile.text.join('').length > appConfig.docFileMaxLength || docFile.text.join('') < appConfig.docFileMinLength) {
+    callback({
+      error: new errorCreator.InvalidLength({
+        expected: `Text length: ${appConfig.docFileMinLength} - ${appConfig.docFileMaxLength}`,
+        extraData: { param: 'text' },
+      }),
+    });
+
+    return;
+  }
+
+  if (docFile.title.length > appConfig.docFileTitleMaxLength || docFile.title < appConfig.docFileTitleMinLength) {
+    callback({
+      error: new errorCreator.InvalidLength({
+        expected: `Title length: ${appConfig.docFileTitleMinLength} - ${appConfig.docFileTitleMaxLength}`,
+        extraData: { param: 'title' },
+      }),
+    });
+
+    return;
+  }
+
   authenticator.isUserAllowed({
     token,
     internalCallUser,
@@ -225,46 +270,14 @@ function createDocFile({
         return;
       }
 
-      if (!objectValidator.isValidData({ docFile }, { docFile: { text: true, title: true } })) {
-        callback({ error: new errorCreator.InvalidData({ expected: '{ docFile: { text, title } }' }) });
-
-        return;
-      }
-
-      if (docFile.code && (!textTools.hasAllowedText(docFile.code) || docFile.code.length > appConfig.docFileCodeMaxLength || docFile.code < appConfig.docFileCodeMinLength)) {
-        callback({ error: new errorCreator.InvalidCharacters({ expected: `Alphanumeric ${docFile.code}. Code length: ${appConfig.docFileCodeMinLength} - ${appConfig.docFileCodeMaxLength}` }) });
-
-        return;
-      }
-
-      if (docFile.text.join('').length > appConfig.docFileMaxLength || docFile.text.join('') < appConfig.docFileMinLength) {
-        callback({ error: new errorCreator.InvalidCharacters({ expected: `Text length: ${appConfig.docFileMinLength} - ${appConfig.docFileMaxLength}` }) });
-
-        return;
-      }
-
-      if (docFile.title.length > appConfig.docFileTitleMaxLength || docFile.title < appConfig.docFileTitleMinLength) {
-        callback({ error: new errorCreator.InvalidCharacters({ expected: `Title length: ${appConfig.docFileTitleMinLength} - ${appConfig.docFileTitleMaxLength}` }) });
-
-        return;
-      }
-
       const { user: authUser } = data;
       const newDocFile = docFile;
       newDocFile.ownerId = authUser.objectId;
       newDocFile.code = newDocFile.code || textTools.generateTextCode();
 
-      if (newDocFile.ownerAliasId && !authUser.aliases.includes(newDocFile.ownerAliasId)) {
-        callback({ error: new errorCreator.NotAllowed({ name: `create position with alias ${newDocFile.ownerAliasId}` }) });
+      const aliasAccess = authenticator.checkAliasAccess({ object: newDocFile, user: authUser, text: dbConfig.apiCommands.CreateDocFile.name });
 
-        return;
-      }
-
-      if (newDocFile.teamId && !authUser.partOfTeams.includes(newDocFile.teamId)) {
-        callback({ error: new errorCreator.NotAllowed({ name: `create position with team ${newDocFile.teamId}` }) });
-
-        return;
-      }
+      if (aliasAccess.error) { callback({ error: aliasAccess.error }); }
 
       if (images) {
         imager.createImage({
@@ -322,6 +335,28 @@ function updateDocFile({
   socket,
   internalCallUser,
 }) {
+  if (docFile.text && docFile.text.join('').length > appConfig.docFileMaxLength) {
+    callback({
+      error: new errorCreator.InvalidLength({
+        expected: `Text length: ${appConfig.docFileMaxLength}.`,
+        extraData: { param: 'text' },
+      }),
+    });
+
+    return;
+  }
+
+  if (docFile.title && docFile.title.length > appConfig.docFileTitleMaxLength) {
+    callback({
+      error: new errorCreator.InvalidLength({
+        expected: `Title length: ${appConfig.docFileTitleMaxLength}`,
+        extraData: { param: 'title' },
+      }),
+    });
+
+    return;
+  }
+
   authenticator.isUserAllowed({
     token,
     internalCallUser,
@@ -329,18 +364,6 @@ function updateDocFile({
     callback: ({ error, data }) => {
       if (error) {
         callback({ error });
-
-        return;
-      }
-
-      if (docFile.text && docFile.text.join('').length > appConfig.docFileMaxLength) {
-        callback({ error: new errorCreator.InvalidCharacters({ expected: `Text length: ${appConfig.docFileMaxLength}.` }) });
-
-        return;
-      }
-
-      if (docFile.title && docFile.title.length > appConfig.docFileTitleMaxLength) {
-        callback({ error: new errorCreator.InvalidCharacters({ expected: `Title length: ${appConfig.docFileTitleMaxLength}` }) });
 
         return;
       }

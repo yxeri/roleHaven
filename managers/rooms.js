@@ -1143,6 +1143,12 @@ function inviteToRoom({
 
           const { room } = roomData;
 
+          if (room.isWhisper) {
+            callback({ error: new errorCreator.NotAllowed({ name: `invite to whisper room ${room.objectId}` }) });
+
+            return;
+          }
+
           dbUser.getUsersByAliases({
             aliasIds: followerIds,
             callback: ({ error: aliasError, data: aliasData }) => {

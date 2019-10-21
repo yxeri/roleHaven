@@ -27,6 +27,7 @@ class InvalidCharacters extends GeneralError.create {
     errorObject,
     extraData,
     name = '-',
+    expected = '-',
   }) {
     super({
       errorObject,
@@ -34,6 +35,7 @@ class InvalidCharacters extends GeneralError.create {
       type: GeneralError.ErrorTypes.INVALIDCHARACTERS,
       text: [
         `Property ${name} contains invalid characters`,
+        `Expected: ${expected}`,
       ],
     });
   }

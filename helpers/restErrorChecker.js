@@ -77,6 +77,13 @@ function checkAndSendError({
 
       break;
     }
+    case errorCreator.ErrorTypes.NEEDSVERIFICATION: {
+      sendError.status = 401;
+      sendError.title = title || 'Not verified';
+      sendError.detail = detail || 'User is not verified';
+
+      break;
+    }
     case errorCreator.ErrorTypes.ALREADYEXISTS: {
       sendError.status = 403;
       sendError.title = title || 'Already exists';

@@ -153,6 +153,24 @@ function updatePosition({
   socket,
   internalCallUser,
 }) {
+  if (position.positionName && (position.positionName.length > appConfig.positionNameMaxLength || position.positionName.length <= 0)) {
+    callback({ error: new errorCreator.InvalidLength({ expected: `´title length: ${appConfig.positionNameMaxLength}` }) });
+
+    return;
+  }
+
+  if (position.description && position.description.join('').length > appConfig.docFileMaxLength) {
+    callback({ error: new errorCreator.InvalidLength({ expected: `description length: ${appConfig.docFileMaxLength}` }) });
+
+    return;
+  }
+
+  if (position.coordinates && position.coordinates.accuracy && position.coordinates.accuracy > appConfig.minimumPositionAccuracy) {
+    callback({ error: new errorCreator.InvalidData({ expected: `accuracy less than ${appConfig.minimumPositionAccuracy}` }) });
+
+    return;
+  }
+
   managerHelper.updateObject({
     callback,
     options,
@@ -206,9 +224,14 @@ function createPosition({
         return;
       }
 
-      if ((position.positionName && (position.positionName.length > appConfig.positionNameMaxLength || position.positionName.length <= 0))
-        || (position.description && position.description.join('').length > appConfig.docFileMaxLength)) {
-        callback({ error: new errorCreator.InvalidCharacters({ expected: `text length: ${appConfig.docFileMaxLength}, title length: ${appConfig.positionNameMaxLength}` }) });
+      if (position.positionName && (position.positionName.length > appConfig.positionNameMaxLength || position.positionName.length <= 0)) {
+        callback({ error: new errorCreator.InvalidLength({ expected: `´title length: ${appConfig.positionNameMaxLength}` }) });
+
+        return;
+      }
+
+      if (position.description && position.description.join('').length > appConfig.docFileMaxLength) {
+        callback({ error: new errorCreator.InvalidLength({ expected: `description length: ${appConfig.docFileMaxLength}` }) });
 
         return;
       }
@@ -231,17 +254,9 @@ function createPosition({
         newPosition.radius = appConfig.defaultPositionRadius;
       }
 
-      if (newPosition.ownerAliasId && !authUser.aliases.includes(newPosition.ownerAliasId)) {
-        callback({ error: new errorCreator.NotAllowed({ name: `create position with alias ${newPosition.ownerAliasId}` }) });
+      const aliasAccess = authenticator.checkAliasAccess({ object: newPosition, user: authUser, text: dbConfig.apiCommands.CreatePosition.name });
 
-        return;
-      }
-
-      if (newPosition.teamId && !authUser.partOfTeams.includes(newPosition.teamId)) {
-        callback({ error: new errorCreator.NotAllowed({ name: `create position with team ${newPosition.teamId}` }) });
-
-        return;
-      }
+      if (aliasAccess.error) { callback({ error: aliasAccess.error }); }
 
       dbPosition.createPosition({
         suppressExistsError: isUserPosition,
