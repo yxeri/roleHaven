@@ -845,7 +845,7 @@ config.apiCommands = { /**
   },
   IncludeOff: config.apiCommands.IncludeOff || {
     name: 'IncludeOff',
-    accessLevel: config.AccessLevels.STANDARD,
+    accessLevel: config.AccessLevels.MODERATOR,
   },
   ...config.apiCommands || {},
 };
