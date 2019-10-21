@@ -1022,6 +1022,41 @@ function updateRoom({
   io,
   socket,
 }) {
+  if (room.roomName) {
+    if (!textTools.isAllowedFull(room.roomName)) {
+      callback({
+        error: new errorCreator.InvalidCharacters({
+          name: `Room name: ${room.roomName}.`,
+          extraData: { param: 'roomName' },
+        }),
+      });
+
+      return;
+    }
+
+    if (room.roomName.length > appConfig.roomNameMaxLength) {
+      callback({
+        error: new errorCreator.InvalidLength({
+          expected: 'a-z 0-9 length: 20',
+          extraData: { param: 'roomName' },
+        }),
+      });
+
+      return;
+    }
+
+    if (dbConfig.protectedRoomNames.indexOf(room.roomName.toLowerCase()) > -1) {
+      callback({
+        error: new errorCreator.InvalidCharacters({
+          expected: 'not protected words',
+          extraData: { param: 'protected' },
+        }),
+      });
+
+      return;
+    }
+  }
+
   authenticator.isUserAllowed({
     token,
     commandName: dbConfig.apiCommands.UpdateRoom.name,
@@ -1033,6 +1068,23 @@ function updateRoom({
       }
 
       const { user: authUser } = data;
+
+      if ((room.accessLevel || room.visibility) && !authenticator.isAllowedAccessLevel({ objectToCreate: room, toAuth: authUser })) {
+        callback({ error: new errorCreator.NotAllowed({ name: 'too high access level or visibility' }) });
+
+        return;
+      }
+
+      if (room.password && room.password.length > appConfig.passwordMaxLength) {
+        callback({
+          error: new errorCreator.InvalidLength({
+            expected: 'password too long',
+            extraData: { param: 'password' },
+          }),
+        });
+
+        return;
+      }
 
       getRoomById({
         roomId,
