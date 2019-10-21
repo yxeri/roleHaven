@@ -97,7 +97,7 @@ function handle(io) {
     const { docFileId } = request.params;
     const { authorization: token } = request.headers;
 
-    docFileManager.getDocFileById({
+    docFileManager.getDocFile({
       docFileId,
       token,
       callback: ({ error, data }) => {
