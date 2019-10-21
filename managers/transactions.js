@@ -16,7 +16,7 @@
 
 'use strict';
 
-const { dbConfig } = require('../config/defaults/config');
+const { appConfig, dbConfig } = require('../config/defaults/config');
 const errorCreator = require('../error/errorCreator');
 const dbTransaction = require('../db/connectors/transaction');
 const authenticator = require('../helpers/authenticator');
@@ -160,6 +160,12 @@ function createTransaction({
 
   if (transaction.amount <= 0) {
     callback({ error: new errorCreator.Insufficient({ name: 'amount is 0 or less' }) });
+
+    return;
+  }
+
+  if (transaction.note && (transaction.note.length > appConfig.messageMaxLength || transaction.note.length <= 0)) {
+    callback({ error: new errorCreator.InvalidCharacters({ expected: `note length ${appConfig.noteMaxLength}` }) });
 
     return;
   }

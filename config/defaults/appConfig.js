@@ -698,6 +698,12 @@ config.defaultWalletAmount = process.env.DEFAULTWALLETAMOUNT || config.defaultWa
 config.walletMinimumAmount = process.env.WALLETMINIMUMAMOUNT || config.walletMinimumAmount || 0;
 
 /**
+ * Max length of the note text.
+ * @type {number}
+ */
+config.noteMaxLength = process.env.NOTEMAXLENGTH || config.noteMaxLength || 50;
+
+/**
  * ************
  * * Position *
  * ************
