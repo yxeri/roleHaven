@@ -29,6 +29,7 @@ const dbForum = require('./db/connectors/forum');
 const positionManager = require('./managers/positions');
 const triggerEventManager = require('./managers/triggerEvents');
 const { version: appVersion, name: appName } = require('./package');
+const walletManager = require('./managers/wallets');
 
 const app = express();
 const io = socketIo();
@@ -97,6 +98,7 @@ if (!appConfig.disablePositionImport && appConfig.mapLayersPath) {
 }
 
 appConfig.startupFuncs.forEach((func) => func({ io }));
+walletManager.startOverdraftInterval({ io });
 
 /*
  * Catches all exceptions.

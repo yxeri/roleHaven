@@ -704,6 +704,18 @@ config.walletMinimumAmount = process.env.WALLETMINIMUMAMOUNT || config.walletMin
 config.noteMaxLength = process.env.NOTEMAXLENGTH || config.noteMaxLength || 50;
 
 /**
+ * Percentage that will be deducted from a wallet that is over the limit.
+ * @type {number}
+ */
+config.overdraftRate = process.env.OVERDRAFTRATE || config.overdraftRate || 0.1;
+
+/**
+ * Overdraft frequency. Setting it to 0 will disable overdraft deductions.
+ * @type {number}
+ */
+config.overdraftInterval = process.env.OVERDRAFTINTERVAL || config.overdraftInterval || 0;
+
+/**
  * ************
  * * Position *
  * ************

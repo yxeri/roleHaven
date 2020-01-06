@@ -23,6 +23,67 @@ const authenticator = require('../helpers/authenticator');
 const managerHelper = require('../helpers/manager');
 
 /**
+ * Start overdraft interval.
+ * @param {Object} params Parameters.
+ * @param {Object} params.io Socket.io.
+ */
+function startOverdraftInterval({ io }) {
+  if (appConfig.overdraftInterval < 999) {
+    return;
+  }
+
+  console.log('Starting overdraft interval');
+
+  setInterval(() => {
+    dbWallet.getAllWallets({
+      callback: ({ error, data }) => {
+        if (error) {
+          console.log('Overdraft error');
+
+          return;
+        }
+
+        const { wallets } = data;
+
+        wallets.forEach((wallet) => {
+          const { amount } = wallet;
+
+          if (wallet.amount < 0) {
+            let deduction = amount * appConfig.overdraftRate;
+
+            if (amount + deduction < appConfig.walletMinimumAmount) {
+              deduction = amount + Math.abs(appConfig.walletMinimumAmount);
+            }
+
+            console.log(deduction, amount);
+
+            dbWallet.updateWallet({
+              wallet: { amount: deduction },
+              options: { shouldDecreaseAmount: true },
+              walletId: wallet.objectId,
+              callback: ({ error: updateError, data: updateData }) => {
+                if (updateError) {
+                  console.log('Overdraft error');
+
+                  return;
+                }
+
+                io.to(wallet.objectId).emit(dbConfig.EmitTypes.WALLET, {
+                  data: {
+                    wallet: updateData.wallet,
+                    changeType: dbConfig.ChangeTypes.UPDATE,
+                  },
+                });
+              },
+            });
+          }
+        });
+      },
+    });
+  }, appConfig.overdraftInterval);
+}
+
+/**
  * Get wallet.
  * @param {Object} params Parameters.
  * @param {string} params.walletId Id of the wallet.
@@ -337,3 +398,4 @@ exports.runTransaction = runTransaction;
 exports.checkAmount = checkAmount;
 exports.getWalletsByUser = getWalletsByUser;
 exports.updateAccess = updateAccess;
+exports.startOverdraftInterval = startOverdraftInterval;
