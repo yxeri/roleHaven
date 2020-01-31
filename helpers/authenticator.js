@@ -229,6 +229,14 @@ function hasAccessTo({
   };
 }
 
+/**
+ * Check if the user has access to the alias. Returns an empty object if the user has access.
+ * @param {Object} params Parameters.
+ * @param {Object} params.object Object to check.
+ * @param {Object} params.user User to check.
+ * @param {string} params.text Text to print on error.
+ * @return {Object} Returns an empty object on success.
+ */
 function checkAliasAccess({
   object,
   user,

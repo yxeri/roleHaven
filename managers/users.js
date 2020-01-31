@@ -1334,6 +1334,14 @@ function getAllUsers({
   });
 }
 
+/**
+ * Get push tokens from users.
+ * @param {Object} params Parameters
+ * @param {string[]} [params.identities] User or alias Ids to retrieve tokens from.
+ * @param {string} params.token Jwt.
+ * @param {function} params.callback Callback.
+ * @param {Object} [params.internalCallUser] Skip authentication and instead use this user.
+ */
 function getPushTokens({
   identities,
   token,
