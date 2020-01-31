@@ -240,6 +240,8 @@ function createTransaction({
 
               io.to(fromWallet.objectId).emit(dbConfig.EmitTypes.WALLET, fromWalletData);
               io.to(toWallet.objectId).emit(dbConfig.EmitTypes.WALLET, toWalletData);
+              io.to(dbConfig.AccessLevels.MODERATOR).emit(dbConfig.EmitTypes.WALLET, fromWalletData);
+              io.to(dbConfig.AccessLevels.MODERATOR).emit(dbConfig.EmitTypes.WALLET, toWalletData);
 
               callback(fromDataToSend);
             },

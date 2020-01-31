@@ -55,8 +55,6 @@ function startOverdraftInterval({ io }) {
               deduction = amount + Math.abs(appConfig.walletMinimumAmount);
             }
 
-            console.log(deduction, amount);
-
             dbWallet.updateWallet({
               wallet: { amount: deduction },
               options: { shouldDecreaseAmount: true },
@@ -68,12 +66,15 @@ function startOverdraftInterval({ io }) {
                   return;
                 }
 
-                io.to(wallet.objectId).emit(dbConfig.EmitTypes.WALLET, {
+                const dataToSend = {
                   data: {
                     wallet: updateData.wallet,
                     changeType: dbConfig.ChangeTypes.UPDATE,
                   },
-                });
+                };
+
+                io.to(wallet.objectId).emit(dbConfig.EmitTypes.WALLET, dataToSend);
+                io.to(dbConfig.AccessLevels.MODERATOR).emit(dbConfig.EmitTypes.WALLET, dataToSend);
               },
             });
           }
@@ -203,6 +204,8 @@ function updateWallet({
               } else {
                 io.emit(dbConfig.EmitTypes.WALLET, dataToSend);
               }
+
+              io.to(dbConfig.AccessLevels.MODERATOR).emit(dbConfig.EmitTypes.WALLET, dataToSend);
 
               callback(dataToSend);
             },
