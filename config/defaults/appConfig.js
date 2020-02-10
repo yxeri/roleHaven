@@ -656,10 +656,10 @@ config.docFileCodeMinLength = process.env.DOCFILECODEMINLENGTH || config.docFile
 config.roomNameMaxLength = process.env.ROOMNAMEMAXLENGTH || config.roomNameMaxLength || 20;
 
 /**
- * Maximum amount of characters in a room name
+ * Maximum amount of characters in the room topic
  * @type {number}
  */
-config.roomNameMinLength = process.env.ROOMNAMEMINLENGTH || config.roomNameMinLength || 3;
+config.topicMaxLength = process.env.TOPICMAXLENGTH || config.topicMaxLength || 300;
 
 /**
  * **********

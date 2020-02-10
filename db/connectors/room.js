@@ -34,6 +34,7 @@ const roomSchema = new mongoose.Schema(dbConnector.createSchema({
   isSystemRoom: { type: Boolean, default: false },
   isUser: { type: Boolean, default: false },
   isTeam: { type: Boolean, default: false },
+  topic: { type: String, default: '' },
 }), { collection: 'rooms' });
 
 const Room = mongoose.model('Room', roomSchema);
@@ -406,6 +407,7 @@ function updateRoom({
     nameIsLocked,
     isAnonymous,
     password,
+    topic,
   } = room;
   const update = {};
   const set = {};
@@ -431,6 +433,7 @@ function updateRoom({
     set.roomName = roomName;
     set.roomNameLowerCase = roomName.toLowerCase();
   }
+  if (topic) { set.topic = topic; }
 
   if (Object.keys(set).length > 0) { update.$set = set; }
   if (Object.keys(unset).length > 0) { update.$unset = unset; }
