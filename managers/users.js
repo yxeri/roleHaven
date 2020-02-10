@@ -16,6 +16,7 @@
 
 'use strict';
 
+const crypto = require('crypto');
 const bcrypt = require('bcrypt');
 const dbUser = require('../db/connectors/user');
 const dbWallet = require('../db/connectors/wallet');
@@ -180,6 +181,7 @@ function createUser({
       newUser.mailAddress = newUser.mailAddress
         ? newUser.mailAddress.toLowerCase()
         : undefined;
+      newUser.code = crypto.randomBytes(5).toString('hex');
 
       const userCallback = () => {
         dbUser.createUser({
@@ -1409,6 +1411,66 @@ function getPushTokens({
   });
 }
 
+function getUserByCode({
+  code,
+  token,
+  callback,
+}) {
+  authenticator.isUserAllowed({
+    token,
+    commandName: dbConfig.apiCommands.GetUser.name,
+    callback: ({ error, data }) => {
+      if (error) {
+        callback({ error });
+
+        return;
+      }
+
+      const { user: authUser } = data;
+
+      if (authUser.code === code) {
+        callback({ data: { user: authUser } });
+
+        return;
+      }
+
+      dbUser.getUserByCode({
+        code,
+        callback: ({ error: userError, data: userData }) => {
+          if (userError) {
+            callback({ error: userError });
+
+            return;
+          }
+
+          const { user: foundUser } = userData;
+          const {
+            hasAccess,
+            canSee,
+          } = authenticator.hasAccessTo({
+            objectToAccess: foundUser,
+            toAuth: authUser,
+          });
+
+          if (!canSee) {
+            callback({ error: errorCreator.NotAllowed({ name: `user code ${code}` }) });
+
+            return;
+          }
+
+          if (!hasAccess) {
+            callback({ data: { user: managerHelper.stripObject({ object: foundUser }) } });
+
+            return;
+          }
+
+          callback({ data: userData });
+        },
+      });
+    },
+  });
+}
+
 exports.createUser = createUser;
 exports.getUserById = getUserById;
 exports.changePassword = changePassword;
@@ -1423,3 +1485,4 @@ exports.updateId = updateId;
 exports.getAllUsers = getAllUsers;
 exports.getUserOrAliasOwner = getUserOrAliasOwner;
 exports.getPushTokens = getPushTokens;
+exports.getUserByCode = getUserByCode;

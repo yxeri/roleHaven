@@ -47,6 +47,7 @@ const userSchema = new mongoose.Schema(dbConnector.createSchema({
   customFields: [dbConnector.customFieldSchema],
   pushToken: String,
   disableNotifications: Boolean,
+  code: String,
 }), { collection: 'users' });
 
 const User = mongoose.model('User', userSchema);
@@ -69,6 +70,7 @@ function modifyUserParameters({
 
   if (!noClean) {
     modifiedUser.mailAddress = typeof modifiedUser.mailAddress === 'string';
+    modifiedUser.code = true;
   }
 
   if (!includeOff) {
@@ -966,6 +968,16 @@ function getUsersByAliases({
   });
 }
 
+function getUserByCode({
+  code,
+  callback,
+}) {
+  getUser({
+    callback,
+    query: { code },
+  });
+}
+
 exports.createUser = createUser;
 exports.updateUser = updateUser;
 exports.verifyUser = verifyUser;
@@ -989,3 +1001,4 @@ exports.removeAliasFromAllUsers = removeAliasFromAllUsers;
 exports.getAllUsers = getAllUsers;
 exports.getUsersByAliases = getUsersByAliases;
 exports.doesUserSocketIdExist = doesUserSocketIdExist;
+exports.getUserByCode = getUserByCode;
