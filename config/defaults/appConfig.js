@@ -230,7 +230,7 @@ config.Modes = {
  * Server mode.
  * @type {string}
  */
-config.mode = process.env.MODE || config.mode || config.Modes.DEV;
+config.mode = process.env.MODE || config.mode || config.Modes.PROD;
 
 /**
  * Database host name.
@@ -270,7 +270,7 @@ config.country = process.env.COUNTRY || config.country || 'Sweden';
 /**
  * Secret key used with JSON Web Token.
  */
-config.jsonKey = process.env.JSONKEY || (config.mode === config.Modes.TEST
+config.jsonKey = process.env.JSONKEY || (config.mode === config.Modes.TEST || config.mode === config.Modes.DEV
   ? 'TESTKEY'
   : undefined);
 
