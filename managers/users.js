@@ -520,7 +520,7 @@ function getUserById({
           });
 
           if (!canSee) {
-            callback({ error: errorCreator.NotAllowed({ name: `user ${username || userId}` }) });
+            callback({ error: new errorCreator.NotAllowed({ name: `user ${username || userId}` }) });
 
             return;
           }
@@ -574,7 +574,7 @@ function getUserOrAliasOwner({
         });
 
         if (!canSee) {
-          callback({ error: errorCreator.NotAllowed({ name: `identity ${identityId}` }) });
+          callback({ error: new errorCreator.NotAllowed({ name: `identity ${identityId}` }) });
 
           return;
         }
@@ -691,7 +691,7 @@ function changePassword({
           });
 
           if (!hasFullAccess) {
-            callback({ error: errorCreator.NotAllowed({ name: `change password ${userId}` }) });
+            callback({ error: new errorCreator.NotAllowed({ name: `change password ${userId}` }) });
 
             return;
           }
