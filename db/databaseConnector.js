@@ -67,6 +67,11 @@ const coordinatesSchema = {
   },
 };
 
+const customFieldSchema = {
+  name: String,
+  value: {},
+};
+
 mongoose.connect(dbPath, { useNewUrlParser: true }, (err) => {
   if (err) {
     console.error('Failed to connect to the database');
@@ -211,7 +216,7 @@ function verifyAllObjects({
       return;
     }
 
-    callback({ data: { verified: verified.map(verifiedObject => modifyObject({ object: verifiedObject })) } });
+    callback({ data: { verified: verified.map((verifiedObject) => modifyObject({ object: verifiedObject })) } });
   });
 }
 
@@ -330,7 +335,7 @@ function getObjects({
       return;
     }
 
-    callback({ data: { objects: objects.map(foundObject => modifyObject({ object: foundObject })) } });
+    callback({ data: { objects: objects.map((foundObject) => modifyObject({ object: foundObject })) } });
   };
 
   if (sort) {
@@ -433,7 +438,7 @@ function updateObjects({
 
         callback({
           data: {
-            objects: objects.map(foundObject => modifyObject({ object: foundObject })),
+            objects: objects.map((foundObject) => modifyObject({ object: foundObject })),
           },
         });
       },
@@ -624,6 +629,7 @@ function createUserQuery({ user, noVisibility }) {
 
 exports.coordinatesSchema = coordinatesSchema;
 exports.imageSchema = imageSchema;
+exports.customFieldSchema = customFieldSchema;
 
 exports.saveObject = saveObject;
 exports.verifyObject = verifyObject;

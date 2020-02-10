@@ -26,6 +26,7 @@ const socketUtils = require('../utils/socketIo');
 const dbWallet = require('../db/connectors/wallet');
 const managerHelper = require('../helpers/manager');
 const imager = require('../helpers/imager');
+const objectValidator = require('../utils/objectValidator');
 
 /**
  * Create and add alias to user.
@@ -42,6 +43,67 @@ function createAlias({
   image,
   callback,
 }) {
+  if (!objectValidator.isValidData({ alias }, { alias: { aliasName: true } })) {
+    callback({ error: new errorCreator.InvalidData({ expected: '{ alias: { aliasName } }' }) });
+
+    return;
+  }
+
+  if (dbConfig.protectedNames.includes(alias.aliasName.toLowerCase())) {
+    callback({
+      error: new errorCreator.InvalidCharacters({
+        name: `protected name ${alias.aliasName}`,
+        extraData: { param: 'protected' },
+      }),
+    });
+
+    return;
+  }
+
+  if (alias.aliasName.length > appConfig.usernameMaxLength || alias.aliasName.length < appConfig.usernameMinLength) {
+    callback({
+      error: new errorCreator.InvalidLength({
+        expected: `Alias length: ${appConfig.usernameMinLength}-${appConfig.usernameMaxLength}`,
+        extraData: { param: 'aliasName' },
+      }),
+    });
+
+    return;
+  }
+
+  if (alias.description && alias.description.join('').length > appConfig.userDescriptionMaxLength) {
+    callback({
+      error: new errorCreator.InvalidLength({
+        expected: `Description length: ${appConfig.userDescriptionMaxLength}`,
+        extraData: { param: 'description' },
+      }),
+    });
+
+    return;
+  }
+
+  if (!textTools.isAllowedFull(alias.aliasName)) {
+    callback({
+      error: new errorCreator.InvalidCharacters({
+        name: `Alias: ${alias.aliasName}.`,
+        extraData: { param: 'aliasName' },
+      }),
+    });
+
+    return;
+  }
+
+  if (dbConfig.protectedNames.includes(alias.aliasName.toLowerCase())) {
+    callback({
+      error: new errorCreator.InvalidCharacters({
+        name: `protected name ${alias.aliasName}`,
+        extraData: { param: 'aliasName' },
+      }),
+    });
+
+    return;
+  }
+
   authenticator.isUserAllowed({
     token,
     commandName: dbConfig.apiCommands.CreateAlias.name,
@@ -54,18 +116,6 @@ function createAlias({
 
       const { user: authUser } = data;
 
-      if (alias.aliasName.length > appConfig.usernameMaxLength || alias.aliasName.length < appConfig.usernameMinLength) {
-        callback({ error: new errorCreator.InvalidCharacters({ name: `Alias length: ${appConfig.usernameMinLength}-${appConfig.usernameMaxLength}` }) });
-
-        return;
-      }
-
-      if (!textTools.hasAllowedText(alias.aliasName)) {
-        callback({ error: new errorCreator.InvalidCharacters({ name: 'Alias', expected: 'a-z 0-9' }) });
-
-        return;
-      }
-
       if (alias.visibility && authUser.accessLevel < dbConfig.apiCommands.UpdateAliasVisibility.accessLevel) {
         callback({ error: new errorCreator.NotAllowed({ name: 'Set alias visibility' }) });
 
@@ -76,7 +126,6 @@ function createAlias({
       aliasToSave.ownerId = authUser.objectId;
       aliasToSave.aliasName = textTools.trimSpace(aliasToSave.aliasName);
       aliasToSave.aliasNameLowerCase = aliasToSave.aliasName.toLowerCase();
-      aliasToSave.isVerified = !appConfig.userVerify;
       aliasToSave.accessLevel = dbConfig.AccessLevels.STANDARD;
 
       const aliasCallback = () => {
@@ -408,6 +457,39 @@ function updateAlias({
   socket,
   image,
 }) {
+  if (alias.aliasName && dbConfig.protectedNames.includes(alias.aliasName.toLowerCase())) {
+    callback({
+      error: new errorCreator.InvalidCharacters({
+        name: `protected name ${alias.aliasName}`,
+        extraData: { param: 'protected' },
+      }),
+    });
+
+    return;
+  }
+
+  if (alias.aliasName && (alias.aliasName.length > appConfig.usernameMaxLength || alias.aliasName.length < appConfig.usernameMinLength)) {
+    callback({
+      error: new errorCreator.InvalidLength({
+        expected: `Alias length: ${appConfig.usernameMinLength}-${appConfig.usernameMaxLength}`,
+        extraData: { param: 'aliasName' },
+      }),
+    });
+
+    return;
+  }
+
+  if (alias.description && alias.description.join('').length > appConfig.userDescriptionMaxLength) {
+    callback({
+      error: new errorCreator.InvalidLength({
+        expected: `Description length: ${appConfig.userDescriptionMaxLength}`,
+        extraData: { param: 'description' },
+      }),
+    });
+
+    return;
+  }
+
   authenticator.isUserAllowed({
     token,
     commandName: dbConfig.apiCommands.UpdateAlias.name,
@@ -458,7 +540,7 @@ function updateAlias({
                 }
 
                 const { alias: updatedAlias } = updateAliasData;
-                const aliasToSend = Object.assign({}, updatedAlias);
+                const aliasToSend = { ...updatedAlias };
                 aliasToSend.username = aliasToSend.aliasName;
                 aliasToSend.aliasName = undefined;
 

@@ -27,6 +27,9 @@ const dbRoom = require('../db/connectors/room');
 const socketUtils = require('../utils/socketIo');
 const managerHelper = require('../helpers/manager');
 const textTools = require('../utils/textTools');
+const userManager = require('./users');
+const roomManager = require('./rooms');
+const imager = require('../helpers/imager');
 
 /**
  * Get a team.
@@ -121,12 +124,26 @@ function emitTeam({
   };
   const dataToSend = {
     data: {
-      team: managerHelper.stripObject({ object: Object.assign({}, team) }),
+      team: managerHelper.stripObject({ object: { ...team } }),
+      changeType: dbConfig.ChangeTypes.CREATE,
+    },
+  };
+  const roomToSend = {
+    data: {
+      room,
+      changeType: dbConfig.ChangeTypes.CREATE,
+    },
+  };
+  const walletToSend = {
+    data: {
+      wallet,
       changeType: dbConfig.ChangeTypes.CREATE,
     },
   };
 
   if (team.isVerified) {
+    io.emit(dbConfig.EmitTypes.TEAM, dataToSend);
+
     if (socket) {
       socket.join(room.objectId);
       socket.broadcast.emit(dbConfig.EmitTypes.TEAM, dataToSend);
@@ -140,9 +157,12 @@ function emitTeam({
         userSocket.join(room.objectId);
       }
 
-      io.emit(dbConfig.EmitTypes.TEAM, dataToSend);
       io.to(user.objectId).emit(dbConfig.EmitTypes.TEAM, creatorDataToSend);
     }
+
+    io.to(user.objectId).emit(dbConfig.EmitTypes.USER, creatorDataToSend);
+    io.emit(dbConfig.EmitTypes.ROOM, roomToSend);
+    io.emit(dbConfig.EmitTypes.WALLET, walletToSend);
   }
 
   callback(creatorDataToSend);
@@ -164,6 +184,7 @@ function addUserToTeam({
   isAdmin,
   callback,
   io,
+  socket,
   ignoreSocket = false,
 }) {
   dbUser.addToTeam({
@@ -180,27 +201,44 @@ function addUserToTeam({
       const { users } = data;
       const updatedUser = users[0];
 
-      const dataToSend = {
-        data: {
-          team: { objectId: teamId },
-          user: {
-            objectId: memberId,
-            partOfTeams: updatedUser.partOfTeams,
-          },
-          changeType: dbConfig.ChangeTypes.UPDATE,
+      roomManager.follow({
+        io,
+        socket,
+        user: updatedUser,
+        invited: true,
+        userId: memberId,
+        roomId: teamId,
+        callback: ({ error: roomError }) => {
+          if (roomError) {
+            callback({ error: roomError });
+
+            return;
+          }
+
+          const dataToSend = {
+            data: {
+              room: { objectId: teamId },
+              team: { objectId: teamId },
+              user: {
+                objectId: memberId,
+                partOfTeams: updatedUser.partOfTeams,
+              },
+              changeType: dbConfig.ChangeTypes.UPDATE,
+            },
+          };
+
+          if (!ignoreSocket) {
+            const userSocket = socketUtils.getUserSocket({ io, socketId: updatedUser.socketId });
+
+            if (userSocket) { userSocket.join(teamId); }
+
+            io.to(teamId).emit(dbConfig.EmitTypes.TEAMMEMBER, dataToSend);
+            io.emit(dbConfig.EmitTypes.USER, dataToSend);
+          }
+
+          callback(dataToSend);
         },
-      };
-
-      if (!ignoreSocket) {
-        const userSocket = socketUtils.getUserSocket({ io, socketId: updatedUser.socketId });
-
-        if (userSocket) { userSocket.join(teamId); }
-
-        io.emit(dbConfig.EmitTypes.TEAMMEMBER, dataToSend);
-        io.emit(dbConfig.EmitTypes.USER, dataToSend);
-      }
-
-      callback(dataToSend);
+      });
     },
   });
 }
@@ -252,7 +290,7 @@ function createTeamAndDependencies({
           const roomToCreate = {
             ownerId,
             ownerAliasId,
-            roomName: teamId,
+            roomName: `${team.teamName}-team`,
             objectId: teamId,
             accessLevel: dbConfig.AccessLevels.SUPERUSER,
             visibility: dbConfig.AccessLevels.SUPERUSER,
@@ -318,6 +356,7 @@ function createTeam({
   io,
   callback,
   token,
+  image,
 }) {
   authenticator.isUserAllowed({
     token,
@@ -345,9 +384,7 @@ function createTeam({
       const { ownerAliasId } = team;
       const newTeam = team;
       newTeam.teamName = textTools.trimSpace(newTeam.teamName);
-      newTeam.teamNameLowerCase = newTeam.teamName;
       newTeam.shortName = textTools.trimSpace(newTeam.shortName);
-      newTeam.shortNameLowerCase = newTeam.shortName;
       newTeam.ownerId = authUser.objectId;
       newTeam.isVerified = !appConfig.teamVerify;
 
@@ -358,40 +395,68 @@ function createTeam({
       }
 
       if (authUser.partOfTeams > appConfig.maxUserTeam) {
-        callback({ error: new errorCreator.InvalidLength({ expected: `User is part of ${authUser.partOfTeams.length}. Max allowed: ${appConfig.maxUserTeam}` }) });
+        callback({
+          error: new errorCreator.InvalidLength({
+            expected: `User is part of ${authUser.partOfTeams.length}. Max allowed: ${appConfig.maxUserTeam}`,
+            extraData: { paramName: 'maxUserTeam' },
+          }),
+        });
 
         return;
       }
 
-      createTeamAndDependencies({
-        socket,
-        io,
-        user: authUser,
-        team: newTeam,
-        callback: ({ error: teamError, data: teamData }) => {
-          if (teamError) {
-            callback({ error: teamError });
+      const teamCallback = () => {
+        createTeamAndDependencies({
+          io,
+          team: newTeam,
+          callback: ({ error: teamError, data: teamData }) => {
+            if (teamError) {
+              callback({ error: teamError });
 
-            return;
-          }
+              return;
+            }
 
-          const {
-            room,
-            wallet,
-            team: teamToEmit,
-          } = teamData;
+            const {
+              room,
+              wallet,
+              team: teamToEmit,
+            } = teamData;
 
-          emitTeam({
-            socket,
-            io,
-            callback,
-            room,
-            wallet,
-            team: teamToEmit,
-            user: authUser,
-          });
-        },
-      });
+            emitTeam({
+              socket,
+              io,
+              callback,
+              room,
+              wallet,
+              team: teamToEmit,
+              user: authUser,
+            });
+          },
+        });
+      };
+
+      if (image) {
+        imager.createImage({
+          image,
+          callback: ({ error: imageError, data: imageData }) => {
+            if (imageError) {
+              callback({ error: imageError });
+
+              return;
+            }
+
+            const { image: createdImage } = imageData;
+
+            newTeam.image = createdImage;
+
+            teamCallback();
+          },
+        });
+
+        return;
+      }
+
+      teamCallback();
     },
   });
 }
@@ -503,36 +568,32 @@ function inviteToTeam({
             return;
           }
 
-          const invitationToCreate = invitation;
-          invitationToCreate.ownerId = authUser.objectId;
-          invitationToCreate.invitationType = dbConfig.InvitationTypes.TEAM;
-
-          // TODO Check if user receiver id exists
-
-          dbInvitation.createInvitation({
-            invitation: invitationToCreate,
-            callback: ({ error: inviteError, data: invitationData }) => {
-              if (inviteError) {
-                callback({ error: inviteError });
+          userManager.getUserById({
+            token,
+            internalCallUser: authUser,
+            userId: memberId,
+            callback: ({ error: getError, data: userData }) => {
+              if (getError) {
+                callback({ error: getError });
 
                 return;
               }
 
-              const { invitation: newInvitation } = invitationData;
-              const dataToSend = {
-                data: {
-                  invitation: newInvitation,
-                  changeType: dbConfig.ChangeTypes.CREATE,
-                },
-              };
+              const { user: foundUser } = userData;
 
-              if (!socket) {
-                io.to(newInvitation.ownerAliasId || newInvitation.ownerId).emit(dbConfig.EmitTypes.INVITATION, dataToSend);
+              if (foundUser.partOfTeams.length >= appConfig.maxUserTeam) {
+                callback({ error: new errorCreator.AlreadyExists({ name: `invite to team ${invitation.itemId}. User ${invitation.receiverId} already a member` }) });
+
+                return;
               }
 
-              io.to(newInvitation.receiverId).emit(dbConfig.EmitTypes.INVITATION, dataToSend);
-
-              callback(dataToSend);
+              addUserToTeam({
+                io,
+                callback,
+                socket,
+                memberId: invitation.receiverId,
+                teamId: invitation.itemId,
+              });
             },
           });
         },
@@ -712,15 +773,39 @@ function leaveTeam({
                 return;
               }
 
-              socketUtils.leaveRooms({
-                io,
-                roomIds: [teamId],
-                socketId: authUser.socketId,
+              dbTeam.removeTeamMembers({
+                teamId,
+                memberIds: [userId],
+                callback: ({ error: removeTeamError, data: updatedData }) => {
+                  if (removeTeamError) {
+                    callback({ error: removeTeamError });
+
+                    return;
+                  }
+
+                  const { team: updatedTeam } = updatedData;
+                  const teamToSend = {
+                    data: {
+                      team: {
+                        objectId: teamId,
+                        members: updatedTeam.members,
+                      },
+                      changeType: dbConfig.ChangeTypes.UPDATE,
+                    },
+                  };
+
+                  socketUtils.leaveRooms({
+                    io,
+                    roomIds: [teamId],
+                    socketId: authUser.socketId,
+                  });
+
+                  io.to(teamId).emit(dbConfig.EmitTypes.TEAMMEMBER, dataToSend);
+                  io.emit(dbConfig.EmitTypes.TEAM, teamToSend);
+
+                  callback(dataToSend);
+                },
               });
-
-              io.to(teamId).emit(dbConfig.EmitTypes.TEAMMEMBER, dataToSend);
-
-              callback(dataToSend);
             },
           });
         },
@@ -745,6 +830,7 @@ function updateTeam({
   io,
   callback,
   socket,
+  image,
 }) {
   authenticator.isUserAllowed({
     token,
@@ -782,32 +868,59 @@ function updateTeam({
             return;
           }
 
-          dbTeam.updateTeam({
-            teamId,
-            team,
-            callback: ({ error: teamError, data: teamData }) => {
-              if (teamError) {
-                callback({ error: teamError });
+          const teamUpdate = team;
 
-                return;
-              }
+          const teamCallback = () => {
+            dbTeam.updateTeam({
+              teamId,
+              team: teamUpdate,
+              callback: ({ error: teamError, data: teamData }) => {
+                if (teamError) {
+                  callback({ error: teamError });
 
-              const dataToSend = {
-                data: {
-                  team: teamData.team,
-                  changeType: dbConfig.ChangeTypes.UPDATE,
-                },
-              };
+                  return;
+                }
 
-              if (socket) {
-                socket.broadcast.emit(dbConfig.EmitTypes.TEAM, dataToSend);
-              } else {
-                io.emit(dbConfig.EmitTypes.TEAM, dataToSend);
-              }
+                const dataToSend = {
+                  data: {
+                    team: teamData.team,
+                    changeType: dbConfig.ChangeTypes.UPDATE,
+                  },
+                };
 
-              callback(dataToSend);
-            },
-          });
+                if (socket) {
+                  socket.broadcast.emit(dbConfig.EmitTypes.TEAM, dataToSend);
+                } else {
+                  io.emit(dbConfig.EmitTypes.TEAM, dataToSend);
+                }
+
+                callback(dataToSend);
+              },
+            });
+          };
+
+          if (image) {
+            imager.createImage({
+              image,
+              callback: ({ error: imageError, data: imageData }) => {
+                if (imageError) {
+                  callback({ error: imageError });
+
+                  return;
+                }
+
+                const { image: createdImage } = imageData;
+
+                teamUpdate.image = createdImage;
+
+                teamCallback();
+              },
+            });
+
+            return;
+          }
+
+          teamCallback();
         },
       });
     },

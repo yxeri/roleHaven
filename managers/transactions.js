@@ -16,7 +16,7 @@
 
 'use strict';
 
-const { dbConfig } = require('../config/defaults/config');
+const { appConfig, dbConfig } = require('../config/defaults/config');
 const errorCreator = require('../error/errorCreator');
 const dbTransaction = require('../db/connectors/transaction');
 const authenticator = require('../helpers/authenticator');
@@ -164,6 +164,12 @@ function createTransaction({
     return;
   }
 
+  if (transaction.note && (transaction.note.length > appConfig.messageMaxLength || transaction.note.length <= 0)) {
+    callback({ error: new errorCreator.InvalidCharacters({ expected: `note length ${appConfig.noteMaxLength}` }) });
+
+    return;
+  }
+
   const newTransaction = transaction;
   newTransaction.amount = Math.abs(newTransaction.amount);
   newTransaction.ownerId = newTransaction.ownerId || dbConfig.users.systemUser.objectId;
@@ -224,8 +230,6 @@ function createTransaction({
                 },
               };
 
-              console.log(fromWalletData);
-
               if (socket) {
                 socket.broadcast.to(fromWallet.objectId).emit(dbConfig.EmitTypes.TRANSACTION, fromDataToSend);
                 socket.broadcast.to(toWallet.objectId).emit(dbConfig.EmitTypes.TRANSACTION, toDataToSend);
@@ -236,6 +240,8 @@ function createTransaction({
 
               io.to(fromWallet.objectId).emit(dbConfig.EmitTypes.WALLET, fromWalletData);
               io.to(toWallet.objectId).emit(dbConfig.EmitTypes.WALLET, toWalletData);
+              io.to(dbConfig.AccessLevels.MODERATOR).emit(dbConfig.EmitTypes.WALLET, fromWalletData);
+              io.to(dbConfig.AccessLevels.MODERATOR).emit(dbConfig.EmitTypes.WALLET, toWalletData);
 
               callback(fromDataToSend);
             },

@@ -59,7 +59,7 @@ function joinRooms({
   const userSocket = getUserSocket({ io, socketId });
 
   if (userSocket) {
-    roomIds.forEach(roomId => userSocket.join(roomId));
+    roomIds.forEach((roomId) => userSocket.join(roomId));
     userSocket.join(userId);
   }
 
@@ -85,7 +85,7 @@ function joinRequiredRooms({
   const userSocket = socket || getUserSocket({ io, socketId });
 
   if (userSocket) {
-    dbConfig.requiredRooms.forEach(roomId => userSocket.join(roomId));
+    dbConfig.requiredRooms.forEach((roomId) => userSocket.join(roomId));
 
     if (userId) {
       userSocket.join(userId);
@@ -116,7 +116,7 @@ function joinAliasRooms({
   const userSocket = getUserSocket({ io, socketId });
 
   if (userSocket) {
-    aliases.forEach(aliasId => userSocket.join(aliasId));
+    aliases.forEach((aliasId) => userSocket.join(aliasId));
   }
 
   return userSocket;
@@ -134,7 +134,7 @@ function leaveRooms({ roomIds, io, socketId }) {
   const userSocket = getUserSocket({ io, socketId });
 
   if (userSocket) {
-    roomIds.forEach(roomId => userSocket.join(roomId));
+    roomIds.forEach((roomId) => userSocket.join(roomId));
   }
 
   return userSocket;

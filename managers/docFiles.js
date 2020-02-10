@@ -55,7 +55,7 @@ function getFileByAccess({ user, docFile }) {
   const strippedDocFile = managerHelper.stripObject({ object: docFile });
   strippedDocFile.text = undefined;
   strippedDocFile.code = undefined;
-  strippedDocFile.pictures = [];
+  strippedDocFile.images = [];
   strippedDocFile.videoCodes = [];
   strippedDocFile.isLocked = true;
 
@@ -86,7 +86,7 @@ function saveAndTransmitDocFile({
       }
 
       const { docFile: newDocFile } = createData;
-      const fullDocFile = Object.assign({}, newDocFile);
+      const fullDocFile = { ...newDocFile };
 
       if (!newDocFile.isPublic) {
         newDocFile.isLocked = true;
@@ -135,12 +135,57 @@ function saveAndTransmitDocFile({
  * @param {string} params.docFileId Id of Docfile to retrieve.
  * @param {Object} [params.internalCallUser] User to use on authentication. It will bypass token authentication.
  */
-function getDocFileById({
+function getDocFile({
   docFileId,
+  code,
   token,
   callback,
   internalCallUser,
 }) {
+  if (code) {
+    authenticator.isUserAllowed({
+      token,
+      internalCallUser,
+      commandName: dbConfig.apiCommands.GetDocFile.name,
+      callback: ({ error, data }) => {
+        if (error) {
+          callback({ error });
+
+          return;
+        }
+
+        const { user: authUser } = data;
+
+        dbDocFile.getDocFileByCode({
+          code,
+          callback: (docFileData) => {
+            if (docFileData.error) {
+              callback({ error: docFileData.error });
+
+              return;
+            }
+
+            const foundDocFile = docFileData.data.docFile;
+            const dataToSend = {
+              data: {
+                docFile: foundDocFile,
+                changeType: dbConfig.ChangeTypes.UPDATE,
+              },
+            };
+
+            if (foundDocFile.code !== code || foundDocFile.accessLevel > authUser.accessLevel) {
+              callback({ error: new errorCreator.NotAllowed({ name: `docFile ${code}` }) });
+
+              return;
+            }
+
+            callback(dataToSend);
+          },
+        });
+      },
+    });
+  }
+
   managerHelper.getObjectById({
     token,
     internalCallUser,
@@ -169,6 +214,51 @@ function createDocFile({
   internalCallUser,
   images,
 }) {
+  if (!objectValidator.isValidData({ docFile }, { docFile: { text: true, title: true } })) {
+    callback({ error: new errorCreator.InvalidData({ expected: '{ docFile: { text, title } }' }) });
+
+    return;
+  }
+
+  if (docFile.code && (!textTools.hasAllowedText(docFile.code))) {
+    callback({ error: new errorCreator.InvalidCharacters({ expected: 'Alphanumeric', extraData: { paramName: 'code' } }) });
+
+    return;
+  }
+
+  if (docFile.code.length > appConfig.docFileCodeMaxLength || docFile.code < appConfig.docFileCodeMinLength) {
+    callback({
+      error: new errorCreator.InvalidLength({
+        expected: `Code length: ${appConfig.docFileCodeMinLength} - ${appConfig.docFileCodeMaxLength}`,
+        extraData: { param: 'code' },
+      }),
+    });
+
+    return;
+  }
+
+  if (docFile.text.join('').length > appConfig.docFileMaxLength || docFile.text.join('') < appConfig.docFileMinLength) {
+    callback({
+      error: new errorCreator.InvalidLength({
+        expected: `Text length: ${appConfig.docFileMinLength} - ${appConfig.docFileMaxLength}`,
+        extraData: { param: 'text' },
+      }),
+    });
+
+    return;
+  }
+
+  if (docFile.title.length > appConfig.docFileTitleMaxLength || docFile.title < appConfig.docFileTitleMinLength) {
+    callback({
+      error: new errorCreator.InvalidLength({
+        expected: `Title length: ${appConfig.docFileTitleMinLength} - ${appConfig.docFileTitleMaxLength}`,
+        extraData: { param: 'title' },
+      }),
+    });
+
+    return;
+  }
+
   authenticator.isUserAllowed({
     token,
     internalCallUser,
@@ -180,40 +270,14 @@ function createDocFile({
         return;
       }
 
-      if (!objectValidator.isValidData({ docFile }, { docFile: { text: true, title: true } })) {
-        callback({ error: new errorCreator.InvalidData({ expected: '{ docFile: { text, title } }' }) });
-
-        return;
-      }
-
-      if (docFile.code && (!textTools.hasAllowedText(docFile.code) || docFile.code.length > appConfig.docFileCodeMaxLength || docFile.code < appConfig.docFileCodeMinLength)) {
-        callback({ error: new errorCreator.InvalidCharacters({ expected: `Alphanumeric ${docFile.code}. Code length: ${appConfig.docFileCodeMinLength} - ${appConfig.docFileCodeMaxLength}` }) });
-
-        return;
-      }
-
-      if (docFile.text.join('').length > appConfig.docFileMaxLength || docFile.text.join('') < appConfig.docFileMinLength) {
-        callback({ error: new errorCreator.InvalidCharacters({ expected: `Text length: ${appConfig.docFileMinLength} - ${appConfig.docFileMaxLength}` }) });
-
-        return;
-      }
-
-      if (docFile.title.length > appConfig.docFileTitleMaxLength || docFile.title < appConfig.docFileTitleMinLength) {
-        callback({ error: new errorCreator.InvalidCharacters({ expected: `Title length: ${appConfig.docFileTitleMinLength} - ${appConfig.docFileTitleMaxLength}` }) });
-
-        return;
-      }
-
       const { user: authUser } = data;
       const newDocFile = docFile;
       newDocFile.ownerId = authUser.objectId;
       newDocFile.code = newDocFile.code || textTools.generateTextCode();
 
-      if (newDocFile.ownerAliasId && !authUser.aliases.includes(newDocFile.ownerAliasId)) {
-        callback({ error: new errorCreator.NotAllowed({ name: `create position with alias ${newDocFile.ownerAliasId}` }) });
+      const aliasAccess = authenticator.checkAliasAccess({ object: newDocFile, user: authUser, text: dbConfig.apiCommands.CreateDocFile.name });
 
-        return;
-      }
+      if (aliasAccess.error) { callback({ error: aliasAccess.error }); }
 
       if (images) {
         imager.createImage({
@@ -271,6 +335,28 @@ function updateDocFile({
   socket,
   internalCallUser,
 }) {
+  if (docFile.text && docFile.text.join('').length > appConfig.docFileMaxLength) {
+    callback({
+      error: new errorCreator.InvalidLength({
+        expected: `Text length: ${appConfig.docFileMaxLength}.`,
+        extraData: { param: 'text' },
+      }),
+    });
+
+    return;
+  }
+
+  if (docFile.title && docFile.title.length > appConfig.docFileTitleMaxLength) {
+    callback({
+      error: new errorCreator.InvalidLength({
+        expected: `Title length: ${appConfig.docFileTitleMaxLength}`,
+        extraData: { param: 'title' },
+      }),
+    });
+
+    return;
+  }
+
   authenticator.isUserAllowed({
     token,
     internalCallUser,
@@ -282,21 +368,9 @@ function updateDocFile({
         return;
       }
 
-      if (docFile.text && docFile.text.join('').length > appConfig.docFileMaxLength) {
-        callback({ error: new errorCreator.InvalidCharacters({ expected: `Text length: ${appConfig.docFileMaxLength}.` }) });
-
-        return;
-      }
-
-      if (docFile.title && docFile.title.length > appConfig.docFileTitleMaxLength) {
-        callback({ error: new errorCreator.InvalidCharacters({ expected: `Title length: ${appConfig.docFileTitleMaxLength}` }) });
-
-        return;
-      }
-
       const { user: authUser } = data;
 
-      getDocFileById({
+      getDocFile({
         docFileId,
         internalCallUser: authUser,
         callback: ({ error: getDocFileError, data: getDocFileData }) => {
@@ -364,7 +438,7 @@ function updateDocFile({
 }
 
 /**
- * Get doc file by code.
+ * Get doc file by code and id.
  * @param {Object} params Parameters.
  * @param {string} params.code Doc file Code.
  * @param {string} params.token jwt.
@@ -512,7 +586,7 @@ function getDocFilesByUser({
 
       callback({
         data: {
-          docFiles: docFiles.map(docFile => getFileByAccess({ user: authUser, docFile }).docFile),
+          docFiles: docFiles.map((docFile) => getFileByAccess({ user: authUser, docFile }).docFile),
         },
       });
     },
@@ -554,7 +628,7 @@ function updateAccess({
 
       const { user: authUser } = data;
 
-      getDocFileById({
+      getDocFile({
         docFileId,
         internalCallUser: authUser,
         callback: ({ error: docFileError, data: docFileData }) => {
@@ -598,7 +672,7 @@ function updateAccess({
 exports.createDocFile = createDocFile;
 exports.updateDocFile = updateDocFile;
 exports.unlockDocFile = unlockDocFile;
-exports.getDocFileById = getDocFileById;
+exports.getDocFile = getDocFile;
 exports.removeDocFile = removeDocFile;
 exports.getDocFilesByUser = getDocFilesByUser;
 exports.updateAccess = updateAccess;

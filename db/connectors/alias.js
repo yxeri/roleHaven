@@ -29,6 +29,9 @@ const aliasSchema = new mongoose.Schema(dbConnector.createSchema({
   followingRooms: { type: [String], default: [] },
   description: { type: [String], default: [] },
   pronouns: [String],
+  customFields: [dbConnector.customFieldSchema],
+  isVerified: { type: Boolean, default: true },
+  isBanned: { type: Boolean, default: false },
 }), { collection: 'aliases' });
 
 const Alias = mongoose.model('Alias', aliasSchema);
@@ -268,6 +271,8 @@ function updateAlias({
     ownerAliasId,
     isPublic,
     image,
+    description,
+    customFields,
   } = alias;
   const update = {};
   const set = {};
@@ -285,6 +290,8 @@ function updateAlias({
     set.aliasNameLowerCase = aliasName.toLowerCase();
   }
   if (image) { set.image = image; }
+  if (description) { set.description = description; }
+  if (customFields) { set.customFields = customFields; }
 
   if (Object.keys(set).length > 0) { update.$set = set; }
   if (Object.keys(unset).length > 0) { update.$unset = unset; }

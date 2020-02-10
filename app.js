@@ -22,12 +22,14 @@ const path = require('path');
 const bodyParser = require('body-parser');
 const morgan = require('morgan');
 const compression = require('compression');
+const firebase = require('firebase-admin');
 const { appConfig } = require('./config/defaults/config');
 const dbRoom = require('./db/connectors/room');
 const dbForum = require('./db/connectors/forum');
 const positionManager = require('./managers/positions');
 const triggerEventManager = require('./managers/triggerEvents');
 const { version: appVersion, name: appName } = require('./package');
+const walletManager = require('./managers/wallets');
 
 const app = express();
 const io = socketIo();
@@ -67,7 +69,16 @@ if (appConfig.mode !== appConfig.Modes.TEST) {
   dbForum.populateDbForums({});
 }
 
-if (!appConfig.disablePositionImport) {
+if (appConfig.firebaseConfig.private_key && appConfig.firebaseConfig.private_key_id && appConfig.firebaseDbUrl) {
+  console.log('Initializing Firebase.');
+
+  firebase.initializeApp({
+    credential: firebase.credential.cert(appConfig.firebaseConfig),
+    databaseURL: appConfig.firebaseDbUrl,
+  });
+}
+
+if (!appConfig.disablePositionImport && appConfig.mapLayersPath) {
   const getGooglePositions = () => {
     positionManager.getAndStoreGooglePositions({
       io,
@@ -78,13 +89,16 @@ if (!appConfig.disablePositionImport) {
           return;
         }
 
-        console.log(`Retrieved and saved ${data.positions.length + 1} positions from Google Maps`);
+        console.log(`Retrieved and saved ${data.positions.length + 1} positions from Google Maps.`);
       },
     });
   };
 
   getGooglePositions();
 }
+
+appConfig.startupFuncs.forEach((func) => func({ io }));
+walletManager.startOverdraftInterval({ io });
 
 /*
  * Catches all exceptions.

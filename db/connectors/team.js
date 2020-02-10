@@ -29,8 +29,9 @@ const teamSchema = new mongoose.Schema(dbConnector.createSchema({
   isProtected: { type: Boolean, default: false },
   members: { type: [String], default: [] },
   image: dbConnector.imageSchema,
-  locationName: String,
+  homeId: String,
   isPermissionsOnly: { type: Boolean, default: false },
+  description: { type: [String], default: [] },
 }), { collection: 'teams' });
 
 const Team = mongoose.model('Team', teamSchema);
@@ -225,6 +226,9 @@ function updateTeam({
     isVerified,
     isProtected,
     isPermissionsOnly,
+    homeId,
+    description,
+    image,
   } = team;
   const { resetOwnerAliasId } = options;
   const update = {};
@@ -265,6 +269,9 @@ function updateTeam({
     set.shortName = shortName;
     set.shortNameLowerCase = shortName.toLowerCase();
   }
+  if (homeId) { set.homeId = homeId; }
+  if (description) { set.description = description; }
+  if (image) { set.image = image; }
 
   if (Object.keys(set).length > 0) { update.$set = set; }
   if (Object.keys(unset).length > 0) { update.$unset = unset; }
@@ -404,7 +411,7 @@ function removeTeamMembers({ memberIds, teamId, callback }) {
   updateObject({
     callback,
     teamId,
-    update: { $pull: { members: { $each: memberIds } } },
+    update: { $pull: { members: { $in: memberIds } } },
   });
 }
 

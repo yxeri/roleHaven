@@ -53,7 +53,7 @@ before('Create all app default rooms', function createRooms(done) {
 
 before('Create admin user 1', (done) => {
   bcrypt.hash(starterData.adminUserOne.password, 10, (hashError, hash) => {
-    const user = Object.assign({}, starterData.adminUserOne);
+    const user = { ...starterData.adminUserOne };
     user.password = hash;
 
     dbUser.createUser({
@@ -72,7 +72,7 @@ before('Create admin user 1', (done) => {
 
 before('Create admin user 2', (done) => {
   bcrypt.hash(starterData.adminUserTwo.password, 10, (hashError, hash) => {
-    const user = Object.assign({}, starterData.adminUserTwo);
+    const user = { ...starterData.adminUserTwo };
     user.password = hash;
 
     dbUser.createUser({
@@ -91,7 +91,7 @@ before('Create admin user 2', (done) => {
 
 before('Create basic user 1', (done) => {
   bcrypt.hash(starterData.basicUserOne.password, 10, (hashError, hash) => {
-    const user = Object.assign({}, starterData.basicUserOne);
+    const user = { ...starterData.basicUserOne };
     user.password = hash;
 
     dbUser.createUser({
@@ -110,7 +110,7 @@ before('Create basic user 1', (done) => {
 
 before('Create basic user 2', (done) => {
   bcrypt.hash(starterData.basicUserTwo.password, 10, (hashError, hash) => {
-    const user = Object.assign({}, starterData.basicUserTwo);
+    const user = { ...starterData.basicUserTwo };
     user.password = hash;
 
     dbUser.createUser({
@@ -129,7 +129,7 @@ before('Create basic user 2', (done) => {
 
 before('Create moderator user 1', (done) => {
   bcrypt.hash(starterData.moderatorUserOne.password, 10, (hashError, hash) => {
-    const user = Object.assign({}, starterData.moderatorUserOne);
+    const user = { ...starterData.moderatorUserOne };
     user.password = hash;
 
     dbUser.createUser({
@@ -148,7 +148,7 @@ before('Create moderator user 1', (done) => {
 
 before('Create moderator user 2', (done) => {
   bcrypt.hash(starterData.moderatorUserTwo.password, 10, (hashError, hash) => {
-    const user = Object.assign({}, starterData.moderatorUserTwo);
+    const user = { ...starterData.moderatorUserTwo };
     user.password = hash;
     dbUser.createUser({
       user,
@@ -166,7 +166,7 @@ before('Create moderator user 2', (done) => {
 
 before('Create unverified user', (done) => {
   bcrypt.hash(starterData.unverifiedUser.password, 10, (hashError, hash) => {
-    const user = Object.assign({}, starterData.unverifiedUser);
+    const user = { ...starterData.unverifiedUser };
     user.password = hash;
 
     dbUser.createUser({
@@ -185,7 +185,7 @@ before('Create unverified user', (done) => {
 
 before('Create banned user', (done) => {
   bcrypt.hash(starterData.bannedUser.password, 10, (hashError, hash) => {
-    const user = Object.assign({}, starterData.bannedUser);
+    const user = { ...starterData.bannedUser };
     user.password = hash;
 
     dbUser.createUser({

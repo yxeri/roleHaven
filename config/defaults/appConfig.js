@@ -40,7 +40,6 @@ const gpsTrackingEnv = textTools.convertToBoolean(process.env.GPSTRACKING);
 const teamVerifyEnv = textTools.convertToBoolean(process.env.TEAMVERIFY);
 const disallowRegisterEnv = textTools.convertToBoolean(process.env.DISALLOWUSERREGISTER);
 const verboseErrorEnv = textTools.convertToBoolean(process.env.VERBOSEERROR);
-const allowMessageImageEnv = textTools.convertToBoolean(process.env.ALLOWMESSAGEIMAGE);
 const bypassExternalConnectionEnv = textTools.convertToBoolean(process.env.BYPASSEXTERNALCONNECTIONS);
 const userVerifyEnv = textTools.convertToBoolean(process.env.USERVERIFY);
 const showDevInfoEnv = textTools.convertToBoolean(process.env.SHOWDEVINFO);
@@ -148,6 +147,12 @@ config.routes = config.ignoreDefaultRoutes
     };
   });
 
+/**
+ * Array of functions that will be called on startup.
+ * @type {Function[]}
+ */
+config.startupFuncs = config.startupFuncs || [];
+
 /* eslint-disable */
 
 config.handlers = config.ignoreDefaultHandlers
@@ -225,7 +230,7 @@ config.Modes = {
  * Server mode.
  * @type {string}
  */
-config.mode = process.env.MODE || config.mode || config.Modes.DEV;
+config.mode = process.env.MODE || config.mode || config.Modes.PROD;
 
 /**
  * Database host name.
@@ -265,7 +270,7 @@ config.country = process.env.COUNTRY || config.country || 'Sweden';
 /**
  * Secret key used with JSON Web Token.
  */
-config.jsonKey = process.env.JSONKEY || (config.mode === config.Modes.TEST
+config.jsonKey = process.env.JSONKEY || (config.mode === config.Modes.TEST || config.mode === config.Modes.DEV
   ? 'TESTKEY'
   : undefined);
 
@@ -468,18 +473,10 @@ config.gameCodeLength = process.env.GAMECODELENGTH || config.gameCodeLength || 8
 config.maxHistoryAmount = process.env.MAXHISTORYAMOUNT || config.maxHistoryAmount || 60;
 
 /**
- * Should messages allowed to have an attached image?
- * @type {boolean}
- */
-config.allowMessageImage = typeof allowMessageImageEnv !== 'undefined'
-  ? allowMessageImageEnv
-  : config.allowMessageImage || false;
-
-/**
  * Maximum amount of characters in a message
  * @type {number}
  */
-config.messageMaxLength = process.env.MESSAGEMAXLENGTH || config.messageMaxLength || 2500;
+config.messageMaxLength = process.env.MESSAGEMAXLENGTH || config.messageMaxLength || 600;
 
 /**
  * Maximum amount of characters in a broadcast
@@ -570,7 +567,7 @@ config.offNameNameMaxLength = process.env.OFFNAMEMAXLENGTH || config.offNameName
  * Maximum amount of characters in a user's description.
  * @type {number}
  */
-config.userDescriptionMaxLength = process.env.USERDESCRIPTIONMAXLENGTH || config.userDescriptionMaxLength || 500;
+config.userDescriptionMaxLength = process.env.USERDESCRIPTIONMAXLENGTH || config.userDescriptionMaxLength || 300;
 
 /**
  * ********
@@ -590,7 +587,7 @@ config.teamVerify = typeof teamVerifyEnv !== 'undefined'
  * Maximum amount of characters in a team name
  * @type {number}
  */
-config.teamNameMaxLength = process.env.TEAMNAMEMAXLENGTH || config.teamNameMaxLength || 10;
+config.teamNameMaxLength = process.env.TEAMNAMEMAXLENGTH || config.teamNameMaxLength || 20;
 
 /**
  * Maximum amount of characters in a team acronym
@@ -659,10 +656,10 @@ config.docFileCodeMinLength = process.env.DOCFILECODEMINLENGTH || config.docFile
 config.roomNameMaxLength = process.env.ROOMNAMEMAXLENGTH || config.roomNameMaxLength || 20;
 
 /**
- * Maximum amount of characters in a room name
+ * Maximum amount of characters in the room topic
  * @type {number}
  */
-config.roomNameMinLength = process.env.ROOMNAMEMINLENGTH || config.roomNameMinLength || 3;
+config.topicMaxLength = process.env.TOPICMAXLENGTH || config.topicMaxLength || 300;
 
 /**
  * **********
@@ -701,6 +698,24 @@ config.defaultWalletAmount = process.env.DEFAULTWALLETAMOUNT || config.defaultWa
 config.walletMinimumAmount = process.env.WALLETMINIMUMAMOUNT || config.walletMinimumAmount || 0;
 
 /**
+ * Max length of the note text.
+ * @type {number}
+ */
+config.noteMaxLength = process.env.NOTEMAXLENGTH || config.noteMaxLength || 50;
+
+/**
+ * Percentage that will be deducted from a wallet that is over the limit.
+ * @type {number}
+ */
+config.overdraftRate = process.env.OVERDRAFTRATE || config.overdraftRate || 0.1;
+
+/**
+ * Overdraft frequency. Setting it to 0 will disable overdraft deductions.
+ * @type {number}
+ */
+config.overdraftInterval = process.env.OVERDRAFTINTERVAL || config.overdraftInterval || 0;
+
+/**
  * ************
  * * Position *
  * ************
@@ -716,7 +731,7 @@ config.positionNameMaxLength = process.env.POSITIONNAMEMAXLENGTH || config.posit
  * Minimum position accuracy. Positions with worse accuracy will not be stored nor sent to clients
  * @type {number}
  */
-config.minimumPositionAccuracy = process.env.MINIMUMPOSITIONACCURACY || config.minimumPositionAccuracy || 50;
+config.minimumPositionAccuracy = process.env.MINIMUMPOSITIONACCURACY || config.minimumPositionAccuracy || 100;
 
 /**
  * Maximum amount of time before a position is no longer valid. Used on clients.
@@ -748,13 +763,23 @@ config.defaultPositionRadius = process.env.DEFAULTPOSITIONRADIUS || config.defau
  * Maximum amount of characters in a forum title
  * @type {number}
  */
-config.forumTitleMaxLength = process.env.FORUMTITLEMAXLENGTH || config.forumTitleMaxLength || 50;
+config.forumTitleMaxLength = process.env.FORUMTITLEMAXLENGTH || config.forumTitleMaxLength || 40;
 
 /**
  * Maximum amount of characters in a forum post
  * @type {number}
  */
-config.forumPostMaxLength = process.env.FORUMPOSTMAXLENGTH || config.forumPostMaxLength || 2500;
+config.forumPostMaxLength = process.env.FORUMPOSTMAXLENGTH || config.forumPostMaxLength || 600;
+
+/**
+ * Should images be allowed in the specified content?
+ * @type {{PROFILE: boolean, DOCFILE: boolean, CHAT: boolean}}
+ */
+config.allowedImages = config.allowedImages || {
+  CHAT: true,
+  PROFILE: true,
+  DOCFILE: true,
+};
 
 /**
  * ***********
@@ -767,5 +792,27 @@ config.spotifyClientId = process.env.SPOTIFYCLIENTID;
 config.spotifySecret = process.env.SPOTIFYSECRET;
 
 config.spotifyRedirectUri = process.env.SPOTIFYREDIRECTURI;
+
+/**
+ * **********
+ * Firebase *
+ * **********
+ */
+
+config.firebaseDbUrl = process.env.FIREBASEDBURL;
+
+config.firebaseConfig = {
+  private_key: process.env.FIREBASEPRIVATEKEY,
+  private_key_id: process.env.FIREBASEPRIVATEKEYID,
+  type: 'service_account',
+  project_id: 'roleterminal-45929',
+  client_email: 'firebase-adminsdk-cnoqv@roleterminal-45929.iam.gserviceaccount.com',
+  client_id: '102663923125222547316',
+  auth_uri: 'https://accounts.google.com/o/oauth2/auth',
+  token_uri: 'https://oauth2.googleapis.com/token',
+  auth_provider_x509_cert_url: 'https://www.googleapis.com/oauth2/v1/certs',
+  client_x509_cert_url: 'https://www.googleapis.com/robot/v1/metadata/x509/firebase-adminsdk-cnoqv%40roleterminal-45929.iam.gserviceaccount.com',
+};
+
 
 module.exports = config;

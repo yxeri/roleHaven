@@ -44,6 +44,10 @@ const userSchema = new mongoose.Schema(dbConnector.createSchema({
   image: dbConnector.imageSchema,
   offName: String,
   pronouns: [String],
+  customFields: [dbConnector.customFieldSchema],
+  pushToken: String,
+  disableNotifications: Boolean,
+  code: String,
 }), { collection: 'users' });
 
 const User = mongoose.model('User', userSchema);
@@ -66,6 +70,7 @@ function modifyUserParameters({
 
   if (!noClean) {
     modifiedUser.mailAddress = typeof modifiedUser.mailAddress === 'string';
+    modifiedUser.code = true;
   }
 
   if (!includeOff) {
@@ -136,7 +141,7 @@ function updateObjects({ query, update, callback }) {
 
       callback({
         data: {
-          users: data.objects.map(object => modifyUserParameters({ user: object })),
+          users: data.objects.map((object) => modifyUserParameters({ user: object })),
         },
       });
     },
@@ -170,7 +175,7 @@ function getUsers({
 
       callback({
         data: {
-          users: data.objects.map(user => modifyUserParameters({ user, includeOff })),
+          users: data.objects.map((user) => modifyUserParameters({ user, includeOff })),
         },
       });
     },
@@ -181,7 +186,7 @@ function getUsers({
  * Get user
  * @private
  * @param {Object} params Parameters
- * @param {string} params.query Query to get alias
+ * @param {string} params.query Query to get user
  * @param {Function} params.callback Callback
  * @param {boolean} [params.getPassword] Should password hash be returned?
  */
@@ -240,7 +245,7 @@ function getUserById({
 }) {
   const query = userId
     ? { _id: userId }
-    : { username };
+    : { usernameLowerCase: username.toLowerCase() };
 
   getUser({
     query,
@@ -399,6 +404,7 @@ function updateOnline({
   userId,
   isOnline,
   socketId,
+  pushToken,
   callback,
   suppressError,
 }) {
@@ -409,12 +415,12 @@ function updateOnline({
   if (isOnline) {
     set.isOnline = true;
 
-    if (socketId) {
-      set.socketId = socketId;
-    }
+    if (socketId) { set.socketId = socketId; }
+    if (pushToken) { set.pushToken = pushToken; }
   } else {
     set.isOnline = false;
     unset.socketId = '';
+    unset.pushToken = '';
   }
 
   set.lastOnline = new Date();
@@ -459,6 +465,10 @@ function updateUser({
     image,
     offName,
     pronouns,
+    description,
+    customFields,
+    pushToken,
+    disableNotifications,
   } = user;
   const {
     resetSocket,
@@ -488,6 +498,10 @@ function updateUser({
   if (image) { set.image = image; }
   if (offName) { set.offName = offName; }
   if (pronouns) { set.pronouns = pronouns; }
+  if (description) { set.description = description; }
+  if (customFields) { set.customFields = customFields; }
+  if (pushToken) { set.pushToken = pushToken; }
+  if (typeof disableNotifications === 'boolean') { set.disableNotifications = disableNotifications; }
 
   if (Object.keys(set).length > 0) { update.$set = set; }
   if (Object.keys(unset).length > 0) { update.$unset = unset; }
@@ -758,7 +772,7 @@ function removeAliasFromAllUsers({
 function removeFromTeam({ userId, teamId, callback }) {
   updateObject({
     userId,
-    update: { partOfTeams: { $pull: teamId } },
+    update: { $pull: { partOfTeams: teamId } },
     callback: ({ error }) => {
       if (error) {
         callback({ error });
@@ -916,7 +930,17 @@ function unfollowRoom({
  * @param {Object} params Parameters.
  * @param {Function} params.callback Callback
  */
-function getAllUsers({ callback }) {
+function getAllUsers({
+  includeInactive = true,
+  callback,
+}) {
+  const query = {};
+
+  if (!includeInactive) {
+    query.isBanned = false;
+    query.isVerified = true;
+  }
+
   getUsers({
     callback,
     query: {},
@@ -944,6 +968,22 @@ function getUsersByAliases({
   });
 }
 
+/**
+ * Get user by user code
+ * @param {Object} params Parameters.
+ * @param {string} params.code Code.
+ * @param {Function} params.callback Callback.
+ */
+function getUserByCode({
+  code,
+  callback,
+}) {
+  getUser({
+    callback,
+    query: { code },
+  });
+}
+
 exports.createUser = createUser;
 exports.updateUser = updateUser;
 exports.verifyUser = verifyUser;
@@ -967,3 +1007,4 @@ exports.removeAliasFromAllUsers = removeAliasFromAllUsers;
 exports.getAllUsers = getAllUsers;
 exports.getUsersByAliases = getUsersByAliases;
 exports.doesUserSocketIdExist = doesUserSocketIdExist;
+exports.getUserByCode = getUserByCode;

@@ -60,7 +60,7 @@ function createToken({
       }
 
       if (!user.isVerified) {
-        callback({ error: new errorCreator.NotAllowed({ name: `user ${user.username} not verified` }) });
+        callback({ error: new errorCreator.NeedsVerification({ name: user.username }) });
 
         return;
       }
@@ -110,7 +110,7 @@ function isUserAllowed({
   callback,
 }) {
   const commandUsed = dbConfig.apiCommands[commandName];
-  const anonUser = dbConfig.anonymousUser;
+  const anonUser = dbConfig.users.anonymous;
 
   if (internalCallUser) {
     callback({ data: { user: internalCallUser } });
@@ -192,31 +192,34 @@ function hasAccessTo({
   toAuth,
 }) {
   const {
+    ownerId,
+    ownerAliasId,
+    teamId,
+    isPublic,
+    visibility,
     teamIds = [],
     userIds = [],
     userAdminIds = [],
     teamAdminIds = [],
-    ownerId,
-    ownerAliasId,
-    isPublic,
-    visibility,
   } = objectToAccess;
   const {
     hasFullAccess,
-    accessLevel,
+    accessLevel = dbConfig.AccessLevels.ANONYMOUS,
+    partOfTeams = [],
     objectId: authUserId,
     teamIds: authTeamIds = [],
     aliases = [],
   } = toAuth;
 
-  const foundOwnerAlias = ownerAliasId && aliases.find(aliasId => aliasId === ownerAliasId);
+  const foundOwnerAlias = ownerAliasId && aliases.includes(ownerAliasId);
+  const partOfTeam = teamId && partOfTeams.includes(teamId);
 
   const userHasAccess = userIds.concat([ownerId]).includes(authUserId);
-  const teamHasAccess = teamIds.find(teamId => authTeamIds.includes(teamId));
-  const aliasHasAccess = foundOwnerAlias || aliases.find(aliasId => userIds.includes(aliasId));
+  const teamHasAccess = partOfTeam || teamIds.find((id) => authTeamIds.includes(id));
+  const aliasHasAccess = foundOwnerAlias || aliases.find((aliasId) => userIds.includes(aliasId));
   const userHasAdminAccess = userAdminIds.includes(authUserId);
-  const aliasHasAdminAccess = foundOwnerAlias || aliases.find(aliasId => userAdminIds.includes(aliasId));
-  const teamHasAdminAccess = teamAdminIds.find(adminId => authTeamIds.includes(adminId));
+  const aliasHasAdminAccess = foundOwnerAlias || aliases.find((aliasId) => userAdminIds.includes(aliasId));
+  const teamHasAdminAccess = partOfTeam || teamAdminIds.find((adminId) => authTeamIds.includes(adminId));
   const isAdmin = ownerId === authUserId || hasFullAccess || accessLevel >= dbConfig.AccessLevels.ADMIN;
 
   return {
@@ -226,7 +229,32 @@ function hasAccessTo({
   };
 }
 
+/**
+ * Check if the user has access to the alias. Returns an empty object if the user has access.
+ * @param {Object} params Parameters.
+ * @param {Object} params.object Object to check.
+ * @param {Object} params.user User to check.
+ * @param {string} params.text Text to print on error.
+ * @return {Object} Returns an empty object on success.
+ */
+function checkAliasAccess({
+  object,
+  user,
+  text,
+}) {
+  if (object.ownerAliasId && !user.aliases.includes(object.ownerAliasId)) {
+    return { error: new errorCreator.NotAllowed({ name: `${text}. User: ${user.objectId}. Access alias ${object.ownerAliasId}` }) };
+  }
+
+  if (object.teamId && !user.partOfTeams.includes(object.teamId)) {
+    return { error: new errorCreator.NotAllowed({ name: `${text}. User: ${user.objectId}. Access team ${object.teamId}` }) };
+  }
+
+  return {};
+}
+
 exports.isUserAllowed = isUserAllowed;
 exports.createToken = createToken;
 exports.hasAccessTo = hasAccessTo;
 exports.isAllowedAccessLevel = isAllowedAccessLevel;
+exports.checkAliasAccess = checkAliasAccess;

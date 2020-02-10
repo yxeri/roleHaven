@@ -53,18 +53,6 @@ config.users.systemUser = config.users.systemUser || {
 };
 
 /**
- * Default user used when the client is not authenticated.
- */
-config.users.anonymous = config.users.anonymous || {
-  username: 'anonymous',
-  objectId: '222222222222222222222221',
-  partOfTeams: [],
-  aliases: [],
-  followingRooms: [],
-  visibility: config.AccessLevels.MODERATOR,
-};
-
-/**
  * Default rooms
  */
 
@@ -138,7 +126,7 @@ config.requiredRooms = [
   config.rooms.schedule.objectId,
 ];
 
-config.protectedRoomNames = Object.keys(config.rooms).map(objectId => config.rooms[objectId].roomName);
+config.protectedRoomNames = Object.keys(config.rooms).map((objectId) => config.rooms[objectId].roomName);
 
 config.roomsToBeHidden = [
   config.rooms.bcast.objectId,
@@ -155,17 +143,22 @@ config.forums.public = config.forums.public || {
 
 config.deviceRoomPrepend = 'device#';
 
-config.anonymousUser = {
-  username: 'ANONYMOUS_USER',
-  accessLevel: config.AccessLevels.ANONYMOUS,
-  visibility: config.AccessLevels.ANONYMOUS,
-  registerDevice: 'ANONYMOUS_USER',
-  followingRooms: Object.keys(config.rooms).map(key => config.rooms[key].objectId),
-  isVerified: true,
-  defaultRoomId: config.rooms.public.objectId,
+/**
+ * Default user used when the client is not authenticated.
+ */
+config.users.anonymous = config.users.anonymous || {
+  username: 'anonymous',
+  objectId: '222222222222222222222221',
   partOfTeams: [],
   aliases: [],
+  followingRooms: Object.keys(config.rooms).map((key) => config.rooms[key].objectId),
+  visibility: config.AccessLevels.MODERATOR,
+  registerDevice: 'ANONYMOUS_USER',
+  isVerified: true,
   isAnonymous: true,
+  customFields: [],
+  accessLevel: config.AccessLevels.ANONYMOUS,
+  defaultRoomId: config.rooms.public.objectId,
 };
 
 config.protectedNames = [
@@ -289,6 +282,8 @@ config.Pronouns = {
   IT: 'It',
 };
 
+config.customUserFields = config.customUserFields || [];
+
 /**
  * *******************
  * * Client settings *
@@ -301,14 +296,15 @@ config.Pronouns = {
  */
 config.defaultRoom = config.rooms.public;
 
+config.defaultForum = config.forums.public.objectId;
+
 /**
  * ***************************
  * * System and API commands *
  * ***************************
  */
 
-config.apiCommands = Object.assign({
-  /**
+config.apiCommands = { /**
    * Alias
    */
   CreateAlias: config.apiCommands.CreateAlias || {
@@ -489,7 +485,7 @@ config.apiCommands = Object.assign({
   },
   VerifyUser: config.apiCommands.VerifyUser || {
     name: 'VerifyUser',
-    accessLevel: config.AccessLevels.MODERATOR,
+    accessLevel: config.AccessLevels.PRIVILEGED,
   },
   UpdateId: config.apiCommands.UpdateId || {
     name: 'UpdateId',
@@ -847,6 +843,11 @@ config.apiCommands = Object.assign({
     name: 'AnonymousCreation',
     accessLevel: config.AccessLevels.ANONYMOUS,
   },
-}, config.apiCommands || {});
+  IncludeOff: config.apiCommands.IncludeOff || {
+    name: 'IncludeOff',
+    accessLevel: config.AccessLevels.MODERATOR,
+  },
+  ...config.apiCommands || {},
+};
 
 module.exports = config;

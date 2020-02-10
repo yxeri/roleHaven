@@ -27,6 +27,10 @@ const { dbConfig } = require('../config/defaults/config');
  * @return {Object} Stripped object.
  */
 function stripObject({ object }) {
+  if (!object) {
+    return undefined;
+  }
+
   const modifiedObject = object;
 
   modifiedObject.ownerId = modifiedObject.ownerAliasId || modifiedObject.ownerId;
@@ -349,7 +353,7 @@ function updateObject({
                   changeType: dbConfig.ChangeTypes.UPDATE,
                 },
               };
-              dataToSend.data[objectType] = stripObject({ object: Object.assign({}, updatedObject) });
+              dataToSend.data[objectType] = stripObject({ object: { ...updatedObject } });
 
               toStrip.forEach((stripVar) => {
                 dataToSend.data[objectType][stripVar] = undefined;
@@ -607,7 +611,7 @@ function updateAccess({
                   changeType: dbConfig.ChangeTypes.UPDATE,
                 },
               };
-              dataToSend.data[objectType] = stripObject({ object: Object.assign({}, foundObject) });
+              dataToSend.data[objectType] = stripObject({ object: { ...foundObject } });
 
               toStrip.forEach((stripVar) => {
                 dataToSend.data[objectType][stripVar] = undefined;

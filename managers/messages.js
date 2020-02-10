@@ -16,6 +16,7 @@
 
 'use strict';
 
+const firebase = require('firebase-admin');
 const appConfig = require('../config/defaults/appConfig');
 const dbConfig = require('../config/defaults/dbConfig');
 const authenticator = require('../helpers/authenticator');
@@ -58,6 +59,11 @@ function sendAndStoreMessage({
   emitType,
   image,
   socket,
+  room,
+  disableNotifications,
+  senderName = '',
+  receiverName = '',
+  pushTokens = [],
 }) {
   const messageCallback = (chatMsg) => {
     dbMessage.createMessage({
@@ -83,6 +89,20 @@ function sendAndStoreMessage({
         }
 
         callback(dataToSend);
+
+        if (firebase.app && !disableNotifications && pushTokens.length > 0) {
+          firebase.messaging().sendMulticast({
+            notification: {
+              title: room
+                ? `${senderName} -> ${room.roomName}`
+                : `${senderName} -> ${receiverName}`,
+              body: message.text.join(' '),
+            },
+            tokens: pushTokens,
+          }).catch((pushError) => {
+            console.log('send error', pushError);
+          });
+        }
       },
     });
   };
@@ -378,19 +398,33 @@ function sendBroadcastMsg({
       newMessage.messageType = dbConfig.MessageTypes.BROADCAST;
       newMessage.roomId = dbConfig.rooms.bcast.objectId;
 
-      if (message.ownerAliasId && !authUser.aliases.includes(message.ownerAliasId)) {
-        callback({ error: new errorCreator.NotAllowed({ name: `${dbConfig.apiCommands.SendBroadcast.name}. User: ${authUser.objectId}. Access alias ${message.ownerAliasId}` }) });
+      const aliasAccess = authenticator.checkAliasAccess({ object: newMessage, user: authUser, text: dbConfig.apiCommands.SendBroadcast.name });
 
-        return;
-      }
+      if (aliasAccess.error) { callback({ error: aliasAccess.error }); }
 
-      sendAndStoreMessage({
-        socket,
-        io,
-        callback,
-        image,
-        emitType: dbConfig.EmitTypes.BROADCAST,
-        message: newMessage,
+      userManager.getPushTokens({
+        internalCallUser: authUser,
+        callback: ({ error: pushError, data: pushData }) => {
+          if (pushError) {
+            callback({ error: pushError });
+
+            return;
+          }
+
+          const { pushTokens } = pushData;
+
+          sendAndStoreMessage({
+            socket,
+            io,
+            callback,
+            image,
+            pushTokens,
+            disableNotifications: authUser.disableNotifications,
+            senderName: 'BROADCAST',
+            emitType: dbConfig.EmitTypes.BROADCAST,
+            message: newMessage,
+          });
+        },
       });
     },
   });
@@ -445,30 +479,78 @@ function sendChatMsg({
       newMessage.messageType = dbConfig.MessageTypes.CHAT;
       newMessage.ownerId = authUser.objectId;
 
-      if (message.ownerAliasId && !authUser.aliases.includes(message.ownerAliasId)) {
-        callback({ error: new errorCreator.NotAllowed({ name: `${dbConfig.apiCommands.SendMessage.name}. User: ${authUser.objectId}. Access alias ${message.ownerAliasId}` }) });
+      const aliasAccess = authenticator.checkAliasAccess({ object: newMessage, user: authUser, text: dbConfig.apiCommands.SendMessage.name });
 
-        return;
-      }
+      if (aliasAccess.error) { callback({ error: aliasAccess.error }); }
 
       roomManager.getRoomById({
         needsAccess: true,
         internalCallUser: authUser,
         roomId: newMessage.roomId,
-        callback: ({ error: roomError }) => {
+        callback: ({ error: roomError, data: roomData }) => {
           if (roomError) {
             callback({ error: roomError });
 
             return;
           }
 
-          sendAndStoreMessage({
-            socket,
-            io,
-            callback,
-            image,
-            emitType: dbConfig.EmitTypes.CHATMSG,
-            message: newMessage,
+          const { room } = roomData;
+          const { followers } = room;
+
+          userManager.getPushTokens({
+            identities: followers,
+            internalCallUser: authUser,
+            callback: ({ error: pushError, data: pushData }) => {
+              if (pushError) {
+                callback({ error: pushError });
+
+                return;
+              }
+
+              const { pushTokens } = pushData;
+
+              if (newMessage.ownerAliasId) {
+                aliasManager.getAliasById({
+                  internalCallUser: authUser,
+                  aliasId: newMessage.ownerAliasId,
+                  callback: ({ error: aliasError, data: aliasData }) => {
+                    if (aliasError) {
+                      callback({ error: aliasError });
+
+                      return;
+                    }
+
+                    const { alias: authAlias } = aliasData;
+
+                    sendAndStoreMessage({
+                      socket,
+                      io,
+                      callback,
+                      image,
+                      room,
+                      pushTokens,
+                      disableNotifications: authUser.disableNotifications,
+                      senderName: authAlias.aliasName,
+                      emitType: dbConfig.EmitTypes.CHATMSG,
+                      message: newMessage,
+                    });
+                  },
+                });
+              }
+
+              sendAndStoreMessage({
+                socket,
+                io,
+                callback,
+                image,
+                room,
+                pushTokens,
+                disableNotifications: authUser.disableNotifications,
+                senderName: authUser.username,
+                emitType: dbConfig.EmitTypes.CHATMSG,
+                message: newMessage,
+              });
+            },
           });
         },
       });
@@ -524,7 +606,7 @@ function sendWhisperMsg({
       newMessage.text = textTools.cleanText(message.text);
       newMessage.messageType = dbConfig.MessageTypes.WHISPER;
       newMessage.ownerId = authUser.objectId;
-      newMessage.ownerAliasId = participantIds.find(participant => authUser.aliases.includes(participant));
+      newMessage.ownerAliasId = participantIds.find((participant) => authUser.aliases.includes(participant));
 
       if (message.ownerAliasId && !authUser.aliases.includes(message.ownerAliasId)) {
         callback({ error: new errorCreator.NotAllowed({ name: `${dbConfig.apiCommands.SendWhisper.name}. User: ${authUser.objectId}. Access alias ${message.ownerAliasId}` }) });
@@ -541,6 +623,80 @@ function sendWhisperMsg({
             return;
           }
 
+          const sendCall = (roomData) => {
+            if (roomData.error) {
+              callback({ error: roomData.error });
+
+              return;
+            }
+
+            userManager.getUserOrAliasOwner({
+              identityId: participantIds.find((participant) => {
+                return participant !== newMessage.ownerId && participant !== newMessage.ownerAliasId;
+              }),
+              internalCallUser: authUser,
+              callback: ({ error: userError, data: userData }) => {
+                if (userError) {
+                  callback({ error: userError });
+
+                  return;
+                }
+
+                const {
+                  user,
+                  alias,
+                } = userData;
+
+                if (newMessage.ownerAliasId) {
+                  aliasManager.getAliasById({
+                    internalCallUser: authUser,
+                    aliasId: newMessage.ownerAliasId,
+                    callback: ({ error: aliasError, data: aliasData }) => {
+                      if (aliasError) {
+                        callback({ error: aliasError });
+
+                        return;
+                      }
+
+                      const { alias: authAlias } = aliasData;
+
+                      sendAndStoreMessage({
+                        socket,
+                        io,
+                        callback,
+                        image,
+                        disableNotifications: authUser.disableNotifications,
+                        receiverName: alias
+                          ? alias.aliasName
+                          : user.username,
+                        senderName: authAlias.aliasName,
+                        pushTokens: [userData.user].map((usr) => { return usr.pushToken; }),
+                        emitType: dbConfig.EmitTypes.WHISPER,
+                        message: newMessage,
+                      });
+                    },
+                  });
+
+                  return;
+                }
+
+                sendAndStoreMessage({
+                  socket,
+                  io,
+                  callback,
+                  image,
+                  disableNotifications: authUser.disableNotifications,
+                  receiverName: alias
+                    ? alias.aliasName
+                    : user.username,
+                  senderName: authUser.username,
+                  pushTokens: [userData.user].map((usr) => { return usr.pushToken; }),
+                  emitType: dbConfig.EmitTypes.WHISPER,
+                  message: newMessage,
+                });
+              },
+            });
+          };
           const { exists } = existsData;
 
           if (!exists) {
@@ -563,22 +719,7 @@ function sendWhisperMsg({
                 roomManager.getRoomById({
                   roomId: newMessage.roomId,
                   internalCallUser: authUser,
-                  callback: (roomData) => {
-                    if (roomData.error) {
-                      callback({ error: roomData.error });
-
-                      return;
-                    }
-
-                    sendAndStoreMessage({
-                      socket,
-                      io,
-                      callback,
-                      image,
-                      emitType: dbConfig.EmitTypes.WHISPER,
-                      message: newMessage,
-                    });
-                  },
+                  callback: sendCall,
                 });
               },
             });
@@ -590,22 +731,7 @@ function sendWhisperMsg({
             needsAccess: true,
             roomId: newMessage.roomId,
             internalCallUser: authUser,
-            callback: (roomData) => {
-              if (roomData.error) {
-                callback({ error: roomData.error });
-
-                return;
-              }
-
-              sendAndStoreMessage({
-                socket,
-                io,
-                callback,
-                image,
-                emitType: dbConfig.EmitTypes.WHISPER,
-                message: newMessage,
-              });
-            },
+            callback: sendCall,
           });
         },
       });

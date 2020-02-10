@@ -17,7 +17,7 @@
 'use strict';
 
 const dbPost = require('../db/connectors/forumPost');
-const { dbConfig } = require('../config/defaults/config');
+const { appConfig, dbConfig } = require('../config/defaults/config');
 const errorCreator = require('../error/errorCreator');
 const authenticator = require('../helpers/authenticator');
 const forumManager = require('./forums');
@@ -78,14 +78,23 @@ function createPost({
 
       const { user: authUser } = data;
 
-      const postToCreate = post;
-      postToCreate.ownerId = authUser.objectId;
-
-      if (postToCreate.ownerAliasId && !authUser.aliases.includes(postToCreate.ownerAliasId)) {
-        callback({ error: new errorCreator.NotAllowed({ name: `create forum post with alias ${postToCreate.ownerAliasId}` }) });
+      if (post.text && post.text.join('').length > appConfig.forumPostMaxLength) {
+        callback({
+          error: new errorCreator.InvalidLength({
+            expected: `Text length: ${appConfig.forumPostMaxLength}.`,
+            extraData: { paramName: 'text' },
+          }),
+        });
 
         return;
       }
+
+      const postToCreate = post;
+      postToCreate.ownerId = authUser.objectId;
+
+      const aliasAccess = authenticator.checkAliasAccess({ object: postToCreate, user: authUser, text: dbConfig.apiCommands.CreateForumPost.name });
+
+      if (aliasAccess.error) { callback({ error: aliasAccess.error }); }
 
       threadManager.getThreadById({
         token,
@@ -123,7 +132,7 @@ function createPost({
                   const { post: createdPost } = postData;
                   const dataToSend = {
                     data: {
-                      post: managerHelper.stripObject({ object: Object.assign({}, createdPost) }),
+                      post: managerHelper.stripObject({ object: { ...createdPost } }),
                       changeType: dbConfig.ChangeTypes.CREATE,
                     },
                   };
@@ -174,6 +183,17 @@ function updatePost({
   internalCallUser,
   socket,
 }) {
+  if (post.text && post.text.join('').length > appConfig.forumPostMaxLength) {
+    callback({
+      error: new errorCreator.InvalidLength({
+        expected: `Text length: ${appConfig.forumPostMaxLength}.`,
+        extraData: { param: 'text' },
+      }),
+    });
+
+    return;
+  }
+
   managerHelper.updateObject({
     callback,
     options,
@@ -284,7 +304,7 @@ function getPostsByForum({ forumId, callback, token }) {
               }
 
               const { threads } = threadsData;
-              const threadIds = threads.map(thread => thread.objectId);
+              const threadIds = threads.map((thread) => thread.objectId);
 
               getPostsByThreads({
                 threadIds,

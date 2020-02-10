@@ -214,7 +214,7 @@ function createTriggerEvent({
           const { triggerEvent: createdEvent } = eventData;
           const dataToSend = {
             data: {
-              triggerEvent: managerHelper.stripObject({ object: Object.assign({}, createdEvent) }),
+              triggerEvent: managerHelper.stripObject({ object: { ...createdEvent } }),
               changeType: dbConfig.ChangeTypes.CREATE,
             },
           };

@@ -17,7 +17,7 @@
 'use strict';
 
 const dbThread = require('../db/connectors/forumThread');
-const { dbConfig } = require('../config/defaults/config');
+const { appConfig, dbConfig } = require('../config/defaults/config');
 const errorCreator = require('../error/errorCreator');
 const authenticator = require('../helpers/authenticator');
 const forumManager = require('./forums');
@@ -77,25 +77,47 @@ function createThread({
 
       const { user: authUser } = data;
 
+      if (thread.text && thread.text.join('').length > appConfig.forumPostMaxLength) {
+        callback({
+          error: new errorCreator.InvalidLength({
+            expected: `Text length: ${appConfig.forumPostMaxLength}.`,
+            extraData: { paramName: 'text' },
+          }),
+        });
+
+        return;
+      }
+
+      if (thread.title && thread.title.length > appConfig.forumTitleMaxLength) {
+        callback({
+          error: new errorCreator.InvalidLength({
+            expected: `Title length: ${appConfig.forumTitleMaxLength}`,
+            extraData: { paramName: 'title' },
+          }),
+        });
+
+        return;
+      }
+
       forumManager.getForumById({
         internalCallUser: authUser,
         forumId: thread.forumId,
         needsAccess: true,
-        callback: ({ error: forumError }) => {
+        callback: ({ error: forumError, data: forumData }) => {
           if (forumError) {
             callback({ error: forumError });
 
             return;
           }
 
+          const { forum } = forumData;
           const threadToCreate = thread;
           threadToCreate.ownerId = authUser.objectId;
+          threadToCreate.isPublic = forum.isPublic;
 
-          if (threadToCreate.ownerAliasId && !authUser.aliases.includes(threadToCreate.ownerAliasId)) {
-            callback({ error: new errorCreator.NotAllowed({ name: `create thread with alias ${threadToCreate.ownerAliasId}` }) });
+          const aliasAccess = authenticator.checkAliasAccess({ object: threadToCreate, user: authUser, text: dbConfig.apiCommands.CreateForumThread.name });
 
-            return;
-          }
+          if (aliasAccess.error) { callback({ error: aliasAccess.error }); }
 
           dbThread.createThread({
             thread: threadToCreate,
@@ -122,7 +144,7 @@ function createThread({
 
                   const dataToSend = {
                     data: {
-                      thread: managerHelper.stripObject({ object: Object.assign({}, createdThread) }),
+                      thread: managerHelper.stripObject({ object: { ...createdThread } }),
                       changeType: dbConfig.ChangeTypes.CREATE,
                     },
                   };
@@ -222,6 +244,28 @@ function updateThread({
   io,
   socket,
 }) {
+  if (thread.text && thread.text.join('').length > appConfig.forumPostMaxLength) {
+    callback({
+      error: new errorCreator.InvalidLength({
+        expected: `Text length: ${appConfig.forumPostMaxLength}.`,
+        extraData: { param: 'text' },
+      }),
+    });
+
+    return;
+  }
+
+  if (thread.title && thread.title.length > appConfig.forumTitleMaxLength) {
+    callback({
+      error: new errorCreator.InvalidLength({
+        expected: `Title length: ${appConfig.forumTitleMaxLength}`,
+        extraData: { param: 'title' },
+      }),
+    });
+
+    return;
+  }
+
   managerHelper.updateObject({
     callback,
     options,

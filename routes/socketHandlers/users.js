@@ -101,6 +101,14 @@ function handle(socket, io) {
 
     userManager.changePassword(params);
   });
+
+  socket.on('getUserByCode', (params, callback = () => {}) => {
+    params.callback = callback;
+    params.io = io;
+    params.socket = socket;
+
+    userManager.getUserByCode(params);
+  });
 }
 
 exports.handle = handle;

@@ -16,6 +16,7 @@
 
 'use strict';
 
+const crypto = require('crypto');
 const bcrypt = require('bcrypt');
 const dbUser = require('../db/connectors/user');
 const dbWallet = require('../db/connectors/wallet');
@@ -31,6 +32,7 @@ const managerHelper = require('../helpers/manager');
 const positionManager = require('./positions');
 const imager = require('../helpers/imager');
 const messageManager = require('./messages');
+const dbAlias = require('../db/connectors/alias');
 
 /**
  * Create a user.
@@ -83,7 +85,10 @@ function createUser({
 
       if (!textTools.isAllowedFull(user.username)) {
         callback({
-          error: new errorCreator.InvalidCharacters({ name: `User name: ${user.username}.` }),
+          error: new errorCreator.InvalidCharacters({
+            name: `User name: ${user.username}.`,
+            extraData: { param: 'characters' },
+          }),
         });
 
         return;
@@ -137,7 +142,7 @@ function createUser({
         callback({
           error: new errorCreator.InvalidCharacters({
             name: `protected name ${user.username}`,
-            extraData: { param: 'username' },
+            extraData: { param: 'protected' },
           }),
         });
 
@@ -168,6 +173,7 @@ function createUser({
       }
 
       const newUser = user;
+      newUser.username = textTools.trimSpace(newUser.username);
       newUser.usernameLowerCase = newUser.username.toLowerCase();
       newUser.isVerified = !appConfig.userVerify;
       newUser.followingRooms = dbConfig.requiredRooms;
@@ -175,6 +181,7 @@ function createUser({
       newUser.mailAddress = newUser.mailAddress
         ? newUser.mailAddress.toLowerCase()
         : undefined;
+      newUser.code = crypto.randomBytes(5).toString('hex');
 
       const userCallback = () => {
         dbUser.createUser({
@@ -276,25 +283,25 @@ function createUser({
                             };
                             const dataToSend = {
                               data: {
-                                user: managerHelper.stripObject({ object: Object.assign({}, createdUser) }),
+                                user: managerHelper.stripObject({ object: { ...createdUser } }),
                                 changeType: dbConfig.ChangeTypes.CREATE,
                               },
                             };
                             const roomDataToSend = {
                               data: {
-                                room: managerHelper.stripObject({ object: Object.assign({}, createdRoom) }),
+                                room: managerHelper.stripObject({ object: { ...createdRoom } }),
                                 changeType: dbConfig.ChangeTypes.CREATE,
                               },
                             };
                             const walletDataToSend = {
                               data: {
-                                wallet: managerHelper.stripObject({ object: Object.assign({}, createdWallet) }),
+                                wallet: managerHelper.stripObject({ object: { ...createdWallet } }),
                                 changeType: dbConfig.ChangeTypes.CREATE,
                               },
                             };
                             const forumDataToSend = {
                               data: {
-                                forum: managerHelper.stripObject({ object: Object.assign({}, createdForum) }),
+                                forum: managerHelper.stripObject({ object: { ...createdForum } }),
                               },
                             };
 
@@ -410,7 +417,7 @@ function getUsersByUser({
         includeInactive: authUser.accessLevel >= dbConfig.AccessLevels.MODERATOR
           ? true
           : includeInactive,
-        includeOff: authUser.accessLevel >= dbConfig.AccessLevels.STANDARD,
+        includeOff: authUser.accessLevel >= dbConfig.apiCommands.IncludeOff.accessLevel,
         callback: ({ error: userError, data: userData }) => {
           if (userError) {
             callback({ error: userError });
@@ -461,7 +468,7 @@ function getUsersByUser({
 }
 
 /**
- * Get user  Id or name.
+ * Get user by Id or name.
  * @param {Object} params Parameters.
  * @param {string} params.userId Id of the user to retrieve.
  * @param {Object} [params.internalCallUser] User to use on authentication. It will bypass token authentication.
@@ -513,7 +520,7 @@ function getUserById({
           });
 
           if (!canSee) {
-            callback({ error: errorCreator.NotAllowed({ name: `user ${username || userId}` }) });
+            callback({ error: new errorCreator.NotAllowed({ name: `user ${username || userId}` }) });
 
             return;
           }
@@ -525,6 +532,114 @@ function getUserById({
           }
 
           callback({ data: userData });
+        },
+      });
+    },
+  });
+}
+
+/**
+ * Get user or owner (user) of the alias.
+ * @param {Object} params Parameters.
+ * @param {string} params.identityId Id of the user or alias owner to retrieve.
+ * @param {Object} [params.internalCallUser] User to use on authentication. It will bypass token authentication.
+ * @param {Function} params.callback Callback.
+ */
+function getUserOrAliasOwner({
+  token,
+  identityId,
+  internalCallUser,
+  callback,
+}) {
+  authenticator.isUserAllowed({
+    token,
+    internalCallUser,
+    commandName: dbConfig.apiCommands.GetUser.name,
+    callback: ({ error, data }) => {
+      if (error) {
+        callback({ error });
+
+        return;
+      }
+
+      const { user: authUser } = data;
+      const userCall = ({ data: userData }) => {
+        const { user, alias } = userData;
+        const {
+          hasAccess,
+          canSee,
+        } = authenticator.hasAccessTo({
+          objectToAccess: user,
+          toAuth: authUser,
+        });
+
+        if (!canSee) {
+          callback({ error: new errorCreator.NotAllowed({ name: `identity ${identityId}` }) });
+
+          return;
+        }
+
+        if (!hasAccess) {
+          callback({
+            data: {
+              user: managerHelper.stripObject({ object: user }),
+              alias: managerHelper.stripObject({ object: alias }),
+            },
+          });
+
+          return;
+        }
+
+        callback({ data: userData });
+      };
+
+      if (identityId === authUser.objectId) {
+        callback({ data: { user: authUser } });
+
+        return;
+      }
+
+      dbUser.getUserById({
+        userId: identityId,
+        supressExistError: true,
+        callback: ({ error: userError, data: userData }) => {
+          if (userError) {
+            if (userError.type !== 'does not exist') {
+              callback({ error: userError });
+
+              return;
+            }
+
+            dbAlias.getAliasById({
+              aliasId: identityId,
+              callback: ({ error: aliasError, data: aliasData }) => {
+                if (aliasError) {
+                  callback({ error: aliasError });
+
+                  return;
+                }
+
+                const { alias } = aliasData;
+
+                dbUser.getUserById({
+                  userId: alias.ownerId,
+                  callback: ({ error: ownerError, data: ownerData }) => {
+                    if (ownerError) {
+                      callback({ error: ownerError });
+
+                      return;
+                    }
+
+                    userCall({ data: { user: ownerData.user, alias } });
+                  },
+                });
+              },
+            });
+
+            return;
+          }
+
+          userCall({ data: userData });
         },
       });
     },
@@ -576,7 +691,7 @@ function changePassword({
           });
 
           if (!hasFullAccess) {
-            callback({ error: errorCreator.NotAllowed({ name: `change password ${userId}` }) });
+            callback({ error: new errorCreator.NotAllowed({ name: `change password ${userId}` }) });
 
             return;
           }
@@ -663,9 +778,15 @@ function login({
   io,
   callback,
 }) {
+  const {
+    username,
+    password,
+    pushToken,
+  } = user;
+
   authenticator.createToken({
-    username: user.username,
-    password: user.password,
+    username,
+    password,
     callback: ({ error, data }) => {
       if (error) {
         callback({ error });
@@ -676,6 +797,7 @@ function login({
       const { token, user: authUser } = data;
       const {
         accessLevel,
+        partOfTeams = [],
         objectId: userId,
         followingRooms: roomIds,
       } = authUser;
@@ -684,6 +806,7 @@ function login({
       dbUser.updateOnline({
         userId,
         socketId,
+        pushToken,
         isOnline: true,
         callback: (socketData) => {
           if (socketData.error) {
@@ -696,7 +819,7 @@ function login({
             io,
             socketId,
             userId,
-            roomIds,
+            roomIds: roomIds.concat(partOfTeams),
           });
           socketUtils.joinRequiredRooms({
             io,
@@ -1050,7 +1173,7 @@ function updateUser({
                 const { user: updatedUser } = updateData;
                 const dataToSend = {
                   data: {
-                    user: managerHelper.stripObject({ object: Object.assign({}, updatedUser) }),
+                    user: managerHelper.stripObject({ object: { ...updatedUser } }),
                     changeType: dbConfig.ChangeTypes.UPDATE,
                   },
                 };
@@ -1128,6 +1251,7 @@ function updateId({
 
       const {
         accessLevel,
+        partOfTeams = [],
         objectId: userId,
         followingRooms: roomIds,
       } = authUser;
@@ -1162,7 +1286,7 @@ function updateId({
             io,
             socketId,
             userId,
-            roomIds,
+            roomIds: roomIds.concat(partOfTeams),
           });
           socketUtils.joinRequiredRooms({
             io,
@@ -1212,6 +1336,148 @@ function getAllUsers({
   });
 }
 
+/**
+ * Get push tokens from users.
+ * @param {Object} params Parameters
+ * @param {string[]} [params.identities] User or alias Ids to retrieve tokens from.
+ * @param {string} params.token Jwt.
+ * @param {function} params.callback Callback.
+ * @param {Object} [params.internalCallUser] Skip authentication and instead use this user.
+ */
+function getPushTokens({
+  identities,
+  token,
+  callback,
+  internalCallUser,
+}) {
+  authenticator.isUserAllowed({
+    token,
+    internalCallUser,
+    commandName: dbConfig.apiCommands.GetUsers.name,
+    callback: ({ error }) => {
+      if (error) {
+        callback({ error });
+
+        return;
+      }
+
+      dbUser.getAllUsers({
+        includeInactive: false,
+        callback: ({ error: userError, data: userData }) => {
+          if (userError) {
+            callback({ error: userError });
+
+            return;
+          }
+
+          const { users } = userData;
+
+          if (!identities) {
+            callback({
+              data: {
+                pushTokens: users
+                  .filter((user) => { return user.pushToken; })
+                  .map((user) => { return user.pushToken; }),
+              },
+            });
+
+            return;
+          }
+
+          dbAlias.getAllAliases({
+            callback: ({ error: aliasError, data: aliasData }) => {
+              if (aliasError) {
+                callback({ error: aliasError });
+
+                return;
+              }
+
+              const { aliases } = aliasData;
+              const aliasOwnerIds = aliases
+                .filter((alias) => { return identities.includes(alias.objectId); })
+                .map((alias) => { return alias.ownerId; });
+              const pushTokens = users
+                .filter((user) => {
+                  return user.pushToken && (identities.includes(user.objectId) || aliasOwnerIds.includes(user.objectId));
+                })
+                .map((user) => { return user.pushToken; });
+
+              callback({ data: { pushTokens } });
+            },
+          });
+        },
+      });
+    },
+  });
+}
+
+/**
+ * Get user by user code
+ * @param {Object} params Parameters.
+ * @param {string} params.code Code.
+ * @param {string} params.token JWT Token.
+ * @param {Function} params.callback Callback.
+ */
+function getUserByCode({
+  code,
+  token,
+  callback,
+}) {
+  authenticator.isUserAllowed({
+    token,
+    commandName: dbConfig.apiCommands.GetUser.name,
+    callback: ({ error, data }) => {
+      if (error) {
+        callback({ error });
+
+        return;
+      }
+
+      const { user: authUser } = data;
+
+      if (authUser.code === code) {
+        callback({ data: { user: authUser } });
+
+        return;
+      }
+
+      dbUser.getUserByCode({
+        code,
+        callback: ({ error: userError, data: userData }) => {
+          if (userError) {
+            callback({ error: userError });
+
+            return;
+          }
+
+          const { user: foundUser } = userData;
+          const {
+            hasAccess,
+            canSee,
+          } = authenticator.hasAccessTo({
+            objectToAccess: foundUser,
+            toAuth: authUser,
+          });
+
+          if (!canSee) {
+            callback({ error: errorCreator.NotAllowed({ name: `user code ${code}` }) });
+
+            return;
+          }
+
+          if (!hasAccess) {
+            callback({ data: { user: managerHelper.stripObject({ object: foundUser }) } });
+
+            return;
+          }
+
+          callback({ data: userData });
+        },
+      });
+    },
+  });
+}
+
 exports.createUser = createUser;
 exports.getUserById = getUserById;
 exports.changePassword = changePassword;
@@ -1224,3 +1490,6 @@ exports.updateUser = updateUser;
 exports.getUsersByUser = getUsersByUser;
 exports.updateId = updateId;
 exports.getAllUsers = getAllUsers;
+exports.getUserOrAliasOwner = getUserOrAliasOwner;
+exports.getPushTokens = getPushTokens;
+exports.getUserByCode = getUserByCode;

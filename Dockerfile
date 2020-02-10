@@ -1,4 +1,4 @@
-FROM node:9.8.0
+FROM node:10.16.3
 EXPOSE 8888
 RUN mkdir -p /usr/src/app
 WORKDIR /usr/src/app

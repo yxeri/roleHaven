@@ -90,6 +90,9 @@ function handle(io) {
         showDevInfo: appConfig.showDevInfo,
         dayModification: appConfig.dayModification,
         requireOffName: appConfig.requireOffName,
+        allowedImages: appConfig.allowedImages,
+        customUserFields: dbConfig.customUserFields,
+        defaultForum: dbConfig.defaultForum,
         permissions: {
           CreatePosition: dbConfig.apiCommands.CreatePosition,
           UpdatePosition: dbConfig.apiCommands.UpdatePosition,
@@ -107,6 +110,7 @@ function handle(io) {
           CreateUser: dbConfig.apiCommands.CreateUser,
           CreateTeam: dbConfig.apiCommands.CreateTeam,
           InviteToTeam: dbConfig.apiCommands.InviteToTeam,
+          IncludeOff: dbConfig.apiCommands.IncludeOff,
         },
       },
     });
@@ -142,7 +146,7 @@ function handle(io) {
       });
     });
 
-    appConfig.handlers.forEach(handlePath => require(path.resolve(handlePath)).handle(socket, io)); // eslint-disable-line global-require, import/no-dynamic-require
+    appConfig.handlers.forEach((handlePath) => require(path.resolve(handlePath)).handle(socket, io)); // eslint-disable-line global-require, import/no-dynamic-require
   });
 
   return router;
