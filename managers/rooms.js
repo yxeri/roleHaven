@@ -593,6 +593,17 @@ function createRoom({
     return;
   }
 
+  if (room.topic && room.topic.length > appConfig.topicMaxLength) {
+    callback({
+      error: new errorCreator.InvalidLength({
+        expected: 'length: 300',
+        extraData: { param: 'topic' },
+      }),
+    });
+
+    return;
+  }
+
   if (dbConfig.protectedRoomNames.indexOf(room.roomName.toLowerCase()) > -1) {
     callback({
       error: new errorCreator.InvalidCharacters({
