@@ -968,6 +968,12 @@ function getUsersByAliases({
   });
 }
 
+/**
+ * Get user by user code
+ * @param {Object} params Parameters.
+ * @param {string} params.code Code.
+ * @param {Function} params.callback Callback.
+ */
 function getUserByCode({
   code,
   callback,
