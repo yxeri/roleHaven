@@ -24,6 +24,8 @@ const transactionManager = require('../managers/transactions');
 const textTools = require('../utils/textTools');
 const docFileManager = require('./docFiles');
 const managerHelper = require('../helpers/manager');
+const teamManager = require('../managers/teams');
+const userManager = require('../managers/users');
 
 /**
  * Get a game code by Id.
@@ -130,6 +132,28 @@ function triggerUnlockedContent({
 
       break;
     }
+    case dbConfig.GameCodeTypes.ATTACK: {
+      userManager.attackUser({
+        token,
+        io,
+        callback,
+        userId: gameCode.codeContent[0],
+      });
+
+      if (user.partOfTeams[0]) {
+        teamManager.updateTeamScore({
+          io,
+          callback,
+          teamId: user.partOfTeams[0],
+          value: appConfig.gameCodeAmount,
+          shouldIncrease: true,
+        });
+      }
+
+      callback(dataToSend);
+
+      break;
+    }
     default: {
       callback({ error: new errorCreator.InvalidData({ name: `Unlock game code content. User: ${user.obj}. Game code: ${gameCode.objectId}. CodeType: ${gameCode.codeType}` }) });
 
@@ -201,7 +225,7 @@ function createGameCode({
  * Use game code.
  * @param {Object} params Parameters.
  * @param {Object} params.io Socket io. Will be used if socket is not set.
- * @param {string} params.code Code for a game code.
+ * @param {string} params.code Code.
  * @param {string} params.token jwt.
  * @param {Function} params.callback Callback.
  */
@@ -223,7 +247,7 @@ function useGameCode({
 
       const { user: authUser } = data;
 
-      dbGameCode.getGameCodeById({
+      dbGameCode.getGameCodeByCode({
         code,
         callback: ({ error: getError, data: getData }) => {
           if (getError) {
@@ -238,16 +262,18 @@ function useGameCode({
             return;
           }
 
+          const { gameCode: usedGameCode } = getData;
+
           dbGameCode.removeGameCode({
-            code,
-            callback: ({ error: removeError }) => {
+            gameCode: usedGameCode,
+            callback: ({ error: removeError, data: removedData }) => {
               if (removeError) {
                 callback({ error: removeError });
 
                 return;
               }
 
-              const { gameCode: usedGameCode } = getData;
+              const { gameCode: updatedGameCode } = removedData;
 
               triggerUnlockedContent({
                 token,
@@ -262,8 +288,10 @@ function useGameCode({
 
                   const dataToOwner = {
                     data: {
-                      gameCode: usedGameCode,
-                      changeType: dbConfig.ChangeTypes.REMOVE,
+                      gameCode: updatedGameCode,
+                      changeType: updatedGameCode.used
+                        ? dbConfig.ChangeTypes.REMOVE
+                        : dbConfig.ChangeTypes.UPDATE,
                     },
                   };
 

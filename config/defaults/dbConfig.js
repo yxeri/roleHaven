@@ -166,6 +166,11 @@ config.protectedNames = [
   config.users.anonymous.username,
 ];
 
+config.RewardTypes = {
+  CURRENCY: 'currency',
+  TEAM: 'team',
+};
+
 config.DeviceTypes = {
   USERDEVICE: 'userDevice',
   GPS: 'gps',

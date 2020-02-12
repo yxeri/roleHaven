@@ -972,6 +972,78 @@ function unbanUser({
 }
 
 /**
+ * @param {Object} params Parameters.
+ * @param {string} params.userId Id of the user to take a life from.
+ * @param {string} params.token JWT Token.
+ * @param {Object} params.io Socket.Io.
+ * @param {Function} params.callback Callback.
+ * @param {Object} [params.internalCallUser] User to use on authentication. It will bypass token authentication.
+ */
+function attackUser({
+  userId,
+  token,
+  io,
+  callback,
+  internalCallUser,
+}) {
+  if (!appConfig.activateTermination) {
+    callback({ error: new errorCreator.NotAllowed({ name: 'termination disabled' }) });
+
+    return;
+  }
+
+  authenticator.isUserAllowed({
+    token,
+    internalCallUser,
+    commandName: dbConfig.apiCommands.AttackUser.name,
+    callback: ({ error, data }) => {
+      if (error) {
+        callback({ error });
+
+        return;
+      }
+
+      if (userId === data.user.objectId) {
+        callback({ error: new errorCreator.InvalidData({ name: 'cannot attack self' }) });
+
+        return;
+      }
+
+      dbUser.lowerLives({
+        userId,
+        callback: ({ error: updateError, data: updateData }) => {
+          if (updateError) {
+            callback({ error: updateError });
+
+            return;
+          }
+
+          const { user: updatedUser } = updateData;
+
+          io.to(updatedUser.objectId).emit(
+            updatedUser.lives <= 0
+              ? dbConfig.EmitTypes.TERMINATE
+              : dbConfig.EmitTypes.ATTACK,
+            {
+              data: {},
+            },
+          );
+
+          io.emit(dbConfig.EmitTypes.USER, {
+            data: {
+              user: managerHelper.stripObject({ object: updatedUser }),
+              changeType: dbConfig.ChangeTypes.UPDATE,
+            },
+          });
+
+          callback({ data: { user: updatedUser } });
+        },
+      });
+    },
+  });
+}
+
+/**
  * Ban user.
  * @param {Object} params Parameters.
  * @param {Object} params.banUserId ID of the user to ban.
@@ -1520,3 +1592,4 @@ exports.getAllUsers = getAllUsers;
 exports.getUserOrAliasOwner = getUserOrAliasOwner;
 exports.getPushTokens = getPushTokens;
 exports.getUserByCode = getUserByCode;
+exports.attackUser = attackUser;
