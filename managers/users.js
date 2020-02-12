@@ -33,6 +33,7 @@ const positionManager = require('./positions');
 const imager = require('../helpers/imager');
 const messageManager = require('./messages');
 const dbAlias = require('../db/connectors/alias');
+const dbGameCode = require('../db/connectors/gameCode');
 
 /**
  * Create a user.
@@ -189,7 +190,7 @@ function createUser({
       newUser.mailAddress = newUser.mailAddress
         ? newUser.mailAddress.toLowerCase()
         : undefined;
-      newUser.code = crypto.randomBytes(5).toString('hex');
+      newUser.code = newUser.code || crypto.randomBytes(5).toString('hex');
 
       const userCallback = () => {
         dbUser.createUser({
@@ -275,79 +276,97 @@ function createUser({
                               return;
                             }
 
-                            const createdRoom = roomData.room;
-                            const createdWallet = walletData.wallet;
-                            const createdForum = forumData.forum;
-
-                            const creatorDataToSend = {
-                              data: {
-                                wallet: createdWallet,
-                                room: createdRoom,
-                                user: createdUser,
-                                forum: createdForum,
-                                isSender: true,
-                                changeType: dbConfig.ChangeTypes.CREATE,
+                            dbGameCode.createGameCode({
+                              gameCode: {
+                                ownerId: createdUser.objectId,
+                                code: createdUser.code,
+                                codeType: dbConfig.GameCodeTypes.ATTACK,
+                                codeContent: [createdUser.objectId],
                               },
-                            };
-                            const dataToSend = {
-                              data: {
-                                user: managerHelper.stripObject({ object: { ...createdUser } }),
-                                changeType: dbConfig.ChangeTypes.CREATE,
+                              callback: ({ error: codeError, data: codeData }) => {
+                                if (codeError) {
+                                  callback({ error: codeError });
+
+                                  return;
+                                }
+
+                                const createdGameCode = codeData.gameCode;
+                                const createdRoom = roomData.room;
+                                const createdWallet = walletData.wallet;
+                                const createdForum = forumData.forum;
+
+                                const creatorDataToSend = {
+                                  data: {
+                                    wallet: createdWallet,
+                                    room: createdRoom,
+                                    user: createdUser,
+                                    forum: createdForum,
+                                    gameCode: createdGameCode,
+                                    isSender: true,
+                                    changeType: dbConfig.ChangeTypes.CREATE,
+                                  },
+                                };
+                                const dataToSend = {
+                                  data: {
+                                    user: managerHelper.stripObject({ object: { ...createdUser } }),
+                                    changeType: dbConfig.ChangeTypes.CREATE,
+                                  },
+                                };
+                                const roomDataToSend = {
+                                  data: {
+                                    room: managerHelper.stripObject({ object: { ...createdRoom } }),
+                                    changeType: dbConfig.ChangeTypes.CREATE,
+                                  },
+                                };
+                                const walletDataToSend = {
+                                  data: {
+                                    wallet: managerHelper.stripObject({ object: { ...createdWallet } }),
+                                    changeType: dbConfig.ChangeTypes.CREATE,
+                                  },
+                                };
+                                const forumDataToSend = {
+                                  data: {
+                                    forum: managerHelper.stripObject({ object: { ...createdForum } }),
+                                  },
+                                };
+
+                                if (!socket) {
+                                  io.to(createdUser.objectId).emit(dbConfig.EmitTypes.USER, creatorDataToSend);
+                                }
+
+                                if (socket) {
+                                  socket.join(createdUser.objectId);
+                                  socket.broadcast.emit(dbConfig.EmitTypes.USER, dataToSend);
+                                } else {
+                                  const userSocket = socketUtils.getUserSocket({ io, socketId: user.socketId });
+
+                                  if (userSocket) {
+                                    userSocket.join(createdRoom.objectId);
+                                  }
+
+                                  io.emit(dbConfig.EmitTypes.USER, dataToSend);
+                                }
+
+                                io.emit(dbConfig.EmitTypes.FORUM, forumDataToSend);
+                                io.emit(dbConfig.EmitTypes.ROOM, roomDataToSend);
+                                io.emit(dbConfig.EmitTypes.WALLET, walletDataToSend);
+
+                                if (!createdUser.isVerified) {
+                                  messageManager.sendChatMsg({
+                                    io,
+                                    socket,
+                                    message: {
+                                      roomId: dbConfig.rooms.admin.objectId,
+                                      text: [`User ${createdUser.username} (${createdUser.objectId}) needs to be verified.`],
+                                    },
+                                    internalCallUser: dbConfig.users.systemUser,
+                                    callback: () => {},
+                                  });
+                                }
+
+                                callback(creatorDataToSend);
                               },
-                            };
-                            const roomDataToSend = {
-                              data: {
-                                room: managerHelper.stripObject({ object: { ...createdRoom } }),
-                                changeType: dbConfig.ChangeTypes.CREATE,
-                              },
-                            };
-                            const walletDataToSend = {
-                              data: {
-                                wallet: managerHelper.stripObject({ object: { ...createdWallet } }),
-                                changeType: dbConfig.ChangeTypes.CREATE,
-                              },
-                            };
-                            const forumDataToSend = {
-                              data: {
-                                forum: managerHelper.stripObject({ object: { ...createdForum } }),
-                              },
-                            };
-
-                            if (!socket) {
-                              io.to(createdUser.objectId).emit(dbConfig.EmitTypes.USER, creatorDataToSend);
-                            }
-
-                            if (socket) {
-                              socket.join(createdUser.objectId);
-                              socket.broadcast.emit(dbConfig.EmitTypes.USER, dataToSend);
-                            } else {
-                              const userSocket = socketUtils.getUserSocket({ io, socketId: user.socketId });
-
-                              if (userSocket) {
-                                userSocket.join(createdRoom.objectId);
-                              }
-
-                              io.emit(dbConfig.EmitTypes.USER, dataToSend);
-                            }
-
-                            io.emit(dbConfig.EmitTypes.FORUM, forumDataToSend);
-                            io.emit(dbConfig.EmitTypes.ROOM, roomDataToSend);
-                            io.emit(dbConfig.EmitTypes.WALLET, walletDataToSend);
-
-                            if (!createdUser.isVerified) {
-                              messageManager.sendChatMsg({
-                                io,
-                                socket,
-                                message: {
-                                  roomId: dbConfig.rooms.admin.objectId,
-                                  text: [`User ${createdUser.username} (${createdUser.objectId}) needs to be verified.`],
-                                },
-                                internalCallUser: dbConfig.users.systemUser,
-                                callback: () => {},
-                              });
-                            }
-
-                            callback(creatorDataToSend);
+                            });
                           },
                         });
                       },
