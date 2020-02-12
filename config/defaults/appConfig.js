@@ -602,6 +602,12 @@ config.shortTeamMaxLength = process.env.SHORTEAMMAXLENGTH || config.shortTeamMax
 config.maxUserTeam = process.env.MAXUSERTEAM || config.maxUserTeam || 1;
 
 /**
+ * Should users be automatically added to teams?
+ * @type {boolean}
+ */
+config.autoAddToTeam = process.env.AUTOADDTOTEAM || config.autoAddToTeam || false;
+
+/**
  * ************
  * * Doc File *
  * ************

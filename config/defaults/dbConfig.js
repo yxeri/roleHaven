@@ -28,6 +28,7 @@ config.rooms = config.rooms || {};
 config.users = config.users || {};
 config.apiCommands = config.apiCommands || {};
 config.forums = config.forums || {};
+config.teams = config.teams || {};
 
 /**
  * Access levels are used as permissions for users.

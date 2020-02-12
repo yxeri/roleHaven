@@ -49,6 +49,7 @@ const userSchema = new mongoose.Schema(dbConnector.createSchema({
   disableNotifications: Boolean,
   lives: { type: Number, default: 1 },
   code: String,
+  hasLoggedIn: { type: Boolean, default: false },
 }), { collection: 'users' });
 
 const User = mongoose.model('User', userSchema);
@@ -416,24 +417,24 @@ function updateOnline({
   callback,
   suppressError,
 }) {
-  const update = {};
-  const set = {};
+  const update = {
+    $set: { hasLoggedIn: true },
+  };
   const unset = {};
 
   if (isOnline) {
-    set.isOnline = true;
+    update.$set.isOnline = true;
 
-    if (socketId) { set.socketId = socketId; }
-    if (pushToken) { set.pushToken = pushToken; }
+    if (socketId) { update.$set.socketId = socketId; }
+    if (pushToken) { update.$set.pushToken = pushToken; }
   } else {
-    set.isOnline = false;
+    update.$set.isOnline = false;
     unset.socketId = '';
     unset.pushToken = '';
   }
 
-  set.lastOnline = new Date();
+  update.$set.lastOnline = new Date();
 
-  if (Object.keys(set).length > 0) { update.$set = set; }
   if (Object.keys(unset).length > 0) { update.$unset = unset; }
 
   updateObject({

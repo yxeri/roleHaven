@@ -254,12 +254,20 @@ function createTeamAndDependencies({
   team,
   io,
   callback,
+  skipUserAdd = false,
 }) {
   dbTeam.createTeam({
     team,
+    silentExistsError: skipUserAdd,
     callback: ({ error: createTeamError, data: createTeamData }) => {
       if (createTeamError) {
         callback({ error: createTeamError });
+
+        return;
+      }
+
+      if (createTeamData.exists) {
+        callback({ data: { exists: true } });
 
         return;
       }
@@ -312,25 +320,37 @@ function createTeamAndDependencies({
                 return;
               }
 
-              addUserToTeam({
-                teamId,
-                io,
-                isAdmin: true,
-                memberId: ownerAliasId || ownerId,
-                callback: ({ error: addError }) => {
-                  if (addError) {
-                    callback({ error: addError });
+              if (!skipUserAdd) {
+                addUserToTeam({
+                  teamId,
+                  io,
+                  isAdmin: true,
+                  memberId: ownerAliasId || ownerId,
+                  callback: ({ error: addError }) => {
+                    if (addError) {
+                      callback({ error: addError });
 
-                    return;
-                  }
+                      return;
+                    }
 
-                  callback({
-                    data: {
-                      room: roomData.room,
-                      wallet: walletData.wallet,
-                      team: newTeam,
-                    },
-                  });
+                    callback({
+                      data: {
+                        room: roomData.room,
+                        wallet: walletData.wallet,
+                        team: newTeam,
+                      },
+                    });
+                  },
+                });
+
+                return;
+              }
+
+              callback({
+                data: {
+                  room: roomData.room,
+                  wallet: walletData.wallet,
+                  team: newTeam,
                 },
               });
             },
@@ -978,3 +998,4 @@ exports.getTeamById = getTeamById;
 exports.leaveTeam = leaveTeam;
 exports.getTeamsByUser = getTeamsByUser;
 exports.updateTeamScore = updateTeamScore;
+exports.createTeamAndDependencies = createTeamAndDependencies;

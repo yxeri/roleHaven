@@ -34,6 +34,8 @@ const imager = require('../helpers/imager');
 const messageManager = require('./messages');
 const dbAlias = require('../db/connectors/alias');
 const dbGameCode = require('../db/connectors/gameCode');
+const dbTeams = require('../db/connectors/team');
+const teamManager = require('./teams');
 
 /**
  * Create a user.
@@ -279,7 +281,7 @@ function createUser({
                             dbGameCode.createGameCode({
                               gameCode: {
                                 ownerId: createdUser.objectId,
-                                code: createdUser.code,
+                                code: newUser.code,
                                 codeType: dbConfig.GameCodeTypes.ATTACK,
                                 codeContent: [createdUser.objectId],
                               },
@@ -824,11 +826,32 @@ function login({
       const { token, user: authUser } = data;
       const {
         accessLevel,
-        partOfTeams = [],
         objectId: userId,
         followingRooms: roomIds,
       } = authUser;
       const socketId = socket.id;
+      const socketFunc = ({ partOfTeams }) => {
+        socketUtils.joinRooms({
+          io,
+          socketId,
+          userId,
+          roomIds: roomIds.concat(partOfTeams),
+        });
+        socketUtils.joinRequiredRooms({
+          io,
+          userId,
+          socketId,
+          socket,
+          accessLevel,
+        });
+        socketUtils.joinAliasRooms({
+          io,
+          socketId,
+          aliases: authUser.aliases,
+        });
+
+        callback({ data: { user: authUser, token } });
+      };
 
       dbUser.updateOnline({
         userId,
@@ -842,26 +865,40 @@ function login({
             return;
           }
 
-          socketUtils.joinRooms({
-            io,
-            socketId,
-            userId,
-            roomIds: roomIds.concat(partOfTeams),
-          });
-          socketUtils.joinRequiredRooms({
-            io,
-            userId,
-            socketId,
-            socket,
-            accessLevel,
-          });
-          socketUtils.joinAliasRooms({
-            io,
-            socketId,
-            aliases: authUser.aliases,
-          });
+          if (!authUser.hasLoggedIn && appConfig.autoAddToTeam) {
+            dbTeams.getAutoTeams({
+              callback: ({ error: teamError, data: teamData }) => {
+                if (teamError) {
+                  callback({ error: teamError });
 
-          callback({ data: { user: authUser, token } });
+                  return;
+                }
+
+                // Get teamId from the team with the fewest members
+                const { objectId: teamId } = [...teamData.teams].sort((a, b) => { if (a.members.length > b.members.length) { return 1; } return -1; })[0];
+
+                teamManager.addUserToTeam({
+                  teamId,
+                  io,
+                  socket,
+                  memberId: userId,
+                  callback: ({ error: addError, data: addData }) => {
+                    if (addError) {
+                      callback({ error: addError });
+
+                      return;
+                    }
+
+                    socketFunc({ partOfTeams: addData.user.partOfTeams });
+                  },
+                });
+              },
+            });
+
+            return;
+          }
+
+          socketFunc({ partOfTeams: authUser.partOfTeams });
         },
       });
     },
