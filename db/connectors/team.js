@@ -32,6 +32,7 @@ const teamSchema = new mongoose.Schema(dbConnector.createSchema({
   homeId: String,
   isPermissionsOnly: { type: Boolean, default: false },
   description: { type: [String], default: [] },
+  score: { type: Number, default: 0 },
 }), { collection: 'teams' });
 
 const Team = mongoose.model('Team', teamSchema);
@@ -207,6 +208,34 @@ function createTeam({ team, callback }) {
 }
 
 /**
+ * Update a team's score.
+ * @param {Object} params Parameters.
+ * @param {string} params.teamId Id of the team to update.
+ * @param {number} params.value Amount to increase/decrease.
+ * @param {Function} params.callback Callback
+ * @param {boolean} [params.shouldIncrease] Should the score be increased?
+ */
+function updateTeamScore({
+  teamId,
+  value,
+  callback,
+  shouldIncrease = true,
+}) {
+  const amount = shouldIncrease
+    ? Math.abs(value)
+    : -Math.abs(value);
+  const update = {
+    $inc: { score: amount },
+  };
+
+  updateObject({
+    teamId,
+    update,
+    callback,
+  });
+}
+
+/**
  * Update team
  * @param {Object} params Parameters
  * @param {Object} params.team Fields to update
@@ -229,6 +258,7 @@ function updateTeam({
     homeId,
     description,
     image,
+    score,
   } = team;
   const { resetOwnerAliasId } = options;
   const update = {};
@@ -272,6 +302,7 @@ function updateTeam({
   if (homeId) { set.homeId = homeId; }
   if (description) { set.description = description; }
   if (image) { set.image = image; }
+  if (score) { set.score = score; }
 
   if (Object.keys(set).length > 0) { update.$set = set; }
   if (Object.keys(unset).length > 0) { update.$unset = unset; }
@@ -423,3 +454,4 @@ exports.getTeamById = getTeamById;
 exports.verifyTeam = verifyTeam;
 exports.addTeamMembers = addTeamMembers;
 exports.removeTeamMembers = removeTeamMembers;
+exports.updateTeamScore = updateTeamScore;
