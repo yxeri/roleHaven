@@ -814,5 +814,12 @@ config.firebaseConfig = {
   client_x509_cert_url: 'https://www.googleapis.com/robot/v1/metadata/x509/firebase-adminsdk-cnoqv%40roleterminal-45929.iam.gserviceaccount.com',
 };
 
+/**
+ * ***************************
+ * Player termination (game) *
+ * ***************************
+ */
+
+config.activateTermination = process.env.ACTIVATETERMINATION || false;
 
 module.exports = config;

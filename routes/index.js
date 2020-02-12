@@ -93,6 +93,7 @@ function handle(io) {
         allowedImages: appConfig.allowedImages,
         customUserFields: dbConfig.customUserFields,
         defaultForum: dbConfig.defaultForum,
+        activeTermination: appConfig.activateTermination,
         permissions: {
           CreatePosition: dbConfig.apiCommands.CreatePosition,
           UpdatePosition: dbConfig.apiCommands.UpdatePosition,
