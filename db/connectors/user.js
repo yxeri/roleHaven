@@ -47,7 +47,9 @@ const userSchema = new mongoose.Schema(dbConnector.createSchema({
   customFields: [dbConnector.customFieldSchema],
   pushToken: String,
   disableNotifications: Boolean,
+  lives: { type: Number, default: 1 },
   code: String,
+  hasLoggedIn: { type: Boolean, default: false },
 }), { collection: 'users' });
 
 const User = mongoose.model('User', userSchema);
@@ -240,12 +242,19 @@ function getUserById({
   userId,
   username,
   callback,
-  getPassword = false,
   supressExistError,
+  getPassword = false,
 }) {
-  const query = userId
-    ? { _id: userId }
-    : { usernameLowerCase: username.toLowerCase() };
+  const query = {};
+
+  if (userId) {
+    query._id = userId;
+  } else {
+    query.$or = [
+      { usernameLowerCase: username.toLowerCase() },
+      { code: username },
+    ];
+  }
 
   getUser({
     query,
@@ -408,24 +417,24 @@ function updateOnline({
   callback,
   suppressError,
 }) {
-  const update = {};
-  const set = {};
+  const update = {
+    $set: { hasLoggedIn: true },
+  };
   const unset = {};
 
   if (isOnline) {
-    set.isOnline = true;
+    update.$set.isOnline = true;
 
-    if (socketId) { set.socketId = socketId; }
-    if (pushToken) { set.pushToken = pushToken; }
+    if (socketId) { update.$set.socketId = socketId; }
+    if (pushToken) { update.$set.pushToken = pushToken; }
   } else {
-    set.isOnline = false;
+    update.$set.isOnline = false;
     unset.socketId = '';
     unset.pushToken = '';
   }
 
-  set.lastOnline = new Date();
+  update.$set.lastOnline = new Date();
 
-  if (Object.keys(set).length > 0) { update.$set = set; }
   if (Object.keys(unset).length > 0) { update.$unset = unset; }
 
   updateObject({
@@ -469,6 +478,7 @@ function updateUser({
     customFields,
     pushToken,
     disableNotifications,
+    lives,
   } = user;
   const {
     resetSocket,
@@ -502,6 +512,7 @@ function updateUser({
   if (customFields) { set.customFields = customFields; }
   if (pushToken) { set.pushToken = pushToken; }
   if (typeof disableNotifications === 'boolean') { set.disableNotifications = disableNotifications; }
+  if (lives) { set.lives = lives; }
 
   if (Object.keys(set).length > 0) { update.$set = set; }
   if (Object.keys(unset).length > 0) { update.$unset = unset; }
@@ -984,6 +995,30 @@ function getUserByCode({
   });
 }
 
+/**
+ *
+ * @param userId
+ * @param callback
+ * @param amount
+ */
+function lowerLives({
+  userId,
+  callback,
+  amount = 1,
+}) {
+  const update = {
+    $inc: {
+      lives: -Math.abs(amount),
+    },
+  };
+
+  updateObject({
+    userId,
+    callback,
+    update,
+  });
+}
+
 exports.createUser = createUser;
 exports.updateUser = updateUser;
 exports.verifyUser = verifyUser;
@@ -1008,3 +1043,4 @@ exports.getAllUsers = getAllUsers;
 exports.getUsersByAliases = getUsersByAliases;
 exports.doesUserSocketIdExist = doesUserSocketIdExist;
 exports.getUserByCode = getUserByCode;
+exports.lowerLives = lowerLives;

@@ -30,6 +30,7 @@ const positionManager = require('./managers/positions');
 const triggerEventManager = require('./managers/triggerEvents');
 const { version: appVersion, name: appName } = require('./package');
 const walletManager = require('./managers/wallets');
+const dbTeam = require('./db/connectors/team');
 
 const app = express();
 const io = socketIo();
@@ -67,6 +68,7 @@ if (!appConfig.jsonKey) {
 if (appConfig.mode !== appConfig.Modes.TEST) {
   dbRoom.populateDbRooms({});
   dbForum.populateDbForums({});
+  dbTeam.populateDbTeams({});
 }
 
 if (appConfig.firebaseConfig.private_key && appConfig.firebaseConfig.private_key_id && appConfig.firebaseDbUrl) {

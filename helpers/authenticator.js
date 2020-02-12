@@ -65,6 +65,12 @@ function createToken({
         return;
       }
 
+      if (user.lives <= 0) {
+        callback({ error: new errorCreator.Insufficient({ name: `${user.username} lives` }) });
+
+        return;
+      }
+
       bcrypt.compare(password, user.password, (hashError, result) => {
         if (hashError) {
           callback({ error: new errorCreator.Internal({ errorObject: hashError }) });

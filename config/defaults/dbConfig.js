@@ -28,6 +28,7 @@ config.rooms = config.rooms || {};
 config.users = config.users || {};
 config.apiCommands = config.apiCommands || {};
 config.forums = config.forums || {};
+config.teams = config.teams || {};
 
 /**
  * Access levels are used as permissions for users.
@@ -166,6 +167,11 @@ config.protectedNames = [
   config.users.anonymous.username,
 ];
 
+config.RewardTypes = {
+  CURRENCY: 'currency',
+  TEAM: 'team',
+};
+
 config.DeviceTypes = {
   USERDEVICE: 'userDevice',
   GPS: 'gps',
@@ -178,6 +184,7 @@ config.GameCodeTypes = {
   DOCFILE: 'docfile',
   TEXT: 'text',
   PROFILE: 'profile',
+  ATTACK: 'attack',
 };
 
 config.InvitationTypes = {
@@ -253,6 +260,8 @@ config.EmitTypes = {
   STARTUP: 'startup',
   SENDMSG: 'sendMessage',
   TRIGGEREVENT: 'triggerEvent',
+  TERMINATE: 'terminate',
+  ATTACK: 'attack',
 };
 
 config.TriggerEventTypes = {
@@ -538,6 +547,10 @@ config.apiCommands = { /**
   UpdateSelf: config.apiCommands.UpdateSelf || {
     name: 'UpdateSelf',
     accesslevel: config.AccessLevels.ADMIN,
+  },
+  AttackUser: config.apiCommands.AttackUser || {
+    name: 'AttackUser',
+    accessLevel: config.AccessLevels.STANDARD,
   },
 
   /**

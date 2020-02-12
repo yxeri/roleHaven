@@ -602,6 +602,12 @@ config.shortTeamMaxLength = process.env.SHORTEAMMAXLENGTH || config.shortTeamMax
 config.maxUserTeam = process.env.MAXUSERTEAM || config.maxUserTeam || 1;
 
 /**
+ * Should users be automatically added to teams?
+ * @type {boolean}
+ */
+config.autoAddToTeam = process.env.AUTOADDTOTEAM || config.autoAddToTeam || false;
+
+/**
  * ************
  * * Doc File *
  * ************
@@ -814,5 +820,12 @@ config.firebaseConfig = {
   client_x509_cert_url: 'https://www.googleapis.com/robot/v1/metadata/x509/firebase-adminsdk-cnoqv%40roleterminal-45929.iam.gserviceaccount.com',
 };
 
+/**
+ * ***************************
+ * Player termination (game) *
+ * ***************************
+ */
+
+config.activateTermination = process.env.ACTIVATETERMINATION || false;
 
 module.exports = config;

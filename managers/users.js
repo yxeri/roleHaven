@@ -33,6 +33,9 @@ const positionManager = require('./positions');
 const imager = require('../helpers/imager');
 const messageManager = require('./messages');
 const dbAlias = require('../db/connectors/alias');
+const dbGameCode = require('../db/connectors/gameCode');
+const dbTeams = require('../db/connectors/team');
+const teamManager = require('./teams');
 
 /**
  * Create a user.
@@ -49,6 +52,7 @@ function createUser({
   options,
   socket,
   image,
+  internalCallUser,
 }) {
   let command;
 
@@ -62,6 +66,7 @@ function createUser({
 
   authenticator.isUserAllowed({
     token,
+    internalCallUser,
     commandName: command.name,
     callback: ({ error, data }) => {
       if (error) {
@@ -172,6 +177,12 @@ function createUser({
         return;
       }
 
+      if (user.isVerified && (authUser.accessLevel < dbConfig.apiCommands.UpdateUserAccess.accessLevel)) {
+        callback({ error: new errorCreator.NotAllowed({ name: 'Set user is verified' }) });
+
+        return;
+      }
+
       const newUser = user;
       newUser.username = textTools.trimSpace(newUser.username);
       newUser.usernameLowerCase = newUser.username.toLowerCase();
@@ -181,7 +192,7 @@ function createUser({
       newUser.mailAddress = newUser.mailAddress
         ? newUser.mailAddress.toLowerCase()
         : undefined;
-      newUser.code = crypto.randomBytes(5).toString('hex');
+      newUser.code = newUser.code || crypto.randomBytes(5).toString('hex');
 
       const userCallback = () => {
         dbUser.createUser({
@@ -267,79 +278,97 @@ function createUser({
                               return;
                             }
 
-                            const createdRoom = roomData.room;
-                            const createdWallet = walletData.wallet;
-                            const createdForum = forumData.forum;
-
-                            const creatorDataToSend = {
-                              data: {
-                                wallet: createdWallet,
-                                room: createdRoom,
-                                user: createdUser,
-                                forum: createdForum,
-                                isSender: true,
-                                changeType: dbConfig.ChangeTypes.CREATE,
+                            dbGameCode.createGameCode({
+                              gameCode: {
+                                ownerId: createdUser.objectId,
+                                code: newUser.code,
+                                codeType: dbConfig.GameCodeTypes.ATTACK,
+                                codeContent: [createdUser.objectId],
                               },
-                            };
-                            const dataToSend = {
-                              data: {
-                                user: managerHelper.stripObject({ object: { ...createdUser } }),
-                                changeType: dbConfig.ChangeTypes.CREATE,
+                              callback: ({ error: codeError, data: codeData }) => {
+                                if (codeError) {
+                                  callback({ error: codeError });
+
+                                  return;
+                                }
+
+                                const createdGameCode = codeData.gameCode;
+                                const createdRoom = roomData.room;
+                                const createdWallet = walletData.wallet;
+                                const createdForum = forumData.forum;
+
+                                const creatorDataToSend = {
+                                  data: {
+                                    wallet: createdWallet,
+                                    room: createdRoom,
+                                    user: createdUser,
+                                    forum: createdForum,
+                                    gameCode: createdGameCode,
+                                    isSender: true,
+                                    changeType: dbConfig.ChangeTypes.CREATE,
+                                  },
+                                };
+                                const dataToSend = {
+                                  data: {
+                                    user: managerHelper.stripObject({ object: { ...createdUser } }),
+                                    changeType: dbConfig.ChangeTypes.CREATE,
+                                  },
+                                };
+                                const roomDataToSend = {
+                                  data: {
+                                    room: managerHelper.stripObject({ object: { ...createdRoom } }),
+                                    changeType: dbConfig.ChangeTypes.CREATE,
+                                  },
+                                };
+                                const walletDataToSend = {
+                                  data: {
+                                    wallet: managerHelper.stripObject({ object: { ...createdWallet } }),
+                                    changeType: dbConfig.ChangeTypes.CREATE,
+                                  },
+                                };
+                                const forumDataToSend = {
+                                  data: {
+                                    forum: managerHelper.stripObject({ object: { ...createdForum } }),
+                                  },
+                                };
+
+                                if (!socket) {
+                                  io.to(createdUser.objectId).emit(dbConfig.EmitTypes.USER, creatorDataToSend);
+                                }
+
+                                if (socket) {
+                                  socket.join(createdUser.objectId);
+                                  socket.broadcast.emit(dbConfig.EmitTypes.USER, dataToSend);
+                                } else {
+                                  const userSocket = socketUtils.getUserSocket({ io, socketId: user.socketId });
+
+                                  if (userSocket) {
+                                    userSocket.join(createdRoom.objectId);
+                                  }
+
+                                  io.emit(dbConfig.EmitTypes.USER, dataToSend);
+                                }
+
+                                io.emit(dbConfig.EmitTypes.FORUM, forumDataToSend);
+                                io.emit(dbConfig.EmitTypes.ROOM, roomDataToSend);
+                                io.emit(dbConfig.EmitTypes.WALLET, walletDataToSend);
+
+                                if (!createdUser.isVerified) {
+                                  messageManager.sendChatMsg({
+                                    io,
+                                    socket,
+                                    message: {
+                                      roomId: dbConfig.rooms.admin.objectId,
+                                      text: [`User ${createdUser.username} (${createdUser.objectId}) needs to be verified.`],
+                                    },
+                                    internalCallUser: dbConfig.users.systemUser,
+                                    callback: () => {},
+                                  });
+                                }
+
+                                callback(creatorDataToSend);
                               },
-                            };
-                            const roomDataToSend = {
-                              data: {
-                                room: managerHelper.stripObject({ object: { ...createdRoom } }),
-                                changeType: dbConfig.ChangeTypes.CREATE,
-                              },
-                            };
-                            const walletDataToSend = {
-                              data: {
-                                wallet: managerHelper.stripObject({ object: { ...createdWallet } }),
-                                changeType: dbConfig.ChangeTypes.CREATE,
-                              },
-                            };
-                            const forumDataToSend = {
-                              data: {
-                                forum: managerHelper.stripObject({ object: { ...createdForum } }),
-                              },
-                            };
-
-                            if (!socket) {
-                              io.to(createdUser.objectId).emit(dbConfig.EmitTypes.USER, creatorDataToSend);
-                            }
-
-                            if (socket) {
-                              socket.join(createdUser.objectId);
-                              socket.broadcast.emit(dbConfig.EmitTypes.USER, dataToSend);
-                            } else {
-                              const userSocket = socketUtils.getUserSocket({ io, socketId: user.socketId });
-
-                              if (userSocket) {
-                                userSocket.join(createdRoom.objectId);
-                              }
-
-                              io.emit(dbConfig.EmitTypes.USER, dataToSend);
-                            }
-
-                            io.emit(dbConfig.EmitTypes.FORUM, forumDataToSend);
-                            io.emit(dbConfig.EmitTypes.ROOM, roomDataToSend);
-                            io.emit(dbConfig.EmitTypes.WALLET, walletDataToSend);
-
-                            if (!createdUser.isVerified) {
-                              messageManager.sendChatMsg({
-                                io,
-                                socket,
-                                message: {
-                                  roomId: dbConfig.rooms.admin.objectId,
-                                  text: [`User ${createdUser.username} (${createdUser.objectId}) needs to be verified.`],
-                                },
-                                internalCallUser: dbConfig.users.systemUser,
-                                callback: () => {},
-                              });
-                            }
-
-                            callback(creatorDataToSend);
+                            });
                           },
                         });
                       },
@@ -797,11 +826,32 @@ function login({
       const { token, user: authUser } = data;
       const {
         accessLevel,
-        partOfTeams = [],
         objectId: userId,
         followingRooms: roomIds,
       } = authUser;
       const socketId = socket.id;
+      const socketFunc = ({ partOfTeams }) => {
+        socketUtils.joinRooms({
+          io,
+          socketId,
+          userId,
+          roomIds: roomIds.concat(partOfTeams),
+        });
+        socketUtils.joinRequiredRooms({
+          io,
+          userId,
+          socketId,
+          socket,
+          accessLevel,
+        });
+        socketUtils.joinAliasRooms({
+          io,
+          socketId,
+          aliases: authUser.aliases,
+        });
+
+        callback({ data: { user: authUser, token } });
+      };
 
       dbUser.updateOnline({
         userId,
@@ -815,26 +865,40 @@ function login({
             return;
           }
 
-          socketUtils.joinRooms({
-            io,
-            socketId,
-            userId,
-            roomIds: roomIds.concat(partOfTeams),
-          });
-          socketUtils.joinRequiredRooms({
-            io,
-            userId,
-            socketId,
-            socket,
-            accessLevel,
-          });
-          socketUtils.joinAliasRooms({
-            io,
-            socketId,
-            aliases: authUser.aliases,
-          });
+          if (!authUser.hasLoggedIn && appConfig.autoAddToTeam) {
+            dbTeams.getAutoTeams({
+              callback: ({ error: teamError, data: teamData }) => {
+                if (teamError) {
+                  callback({ error: teamError });
 
-          callback({ data: { user: authUser, token } });
+                  return;
+                }
+
+                // Get teamId from the team with the fewest members
+                const { objectId: teamId } = [...teamData.teams].sort((a, b) => { if (a.members.length > b.members.length) { return 1; } return -1; })[0];
+
+                teamManager.addUserToTeam({
+                  teamId,
+                  io,
+                  socket,
+                  memberId: userId,
+                  callback: ({ error: addError, data: addData }) => {
+                    if (addError) {
+                      callback({ error: addError });
+
+                      return;
+                    }
+
+                    socketFunc({ partOfTeams: addData.user.partOfTeams });
+                  },
+                });
+              },
+            });
+
+            return;
+          }
+
+          socketFunc({ partOfTeams: authUser.partOfTeams });
         },
       });
     },
@@ -938,6 +1002,78 @@ function unbanUser({
           io.emit(dbConfig.EmitTypes.USER, dataToSend);
 
           callback(dataToSend);
+        },
+      });
+    },
+  });
+}
+
+/**
+ * @param {Object} params Parameters.
+ * @param {string} params.userId Id of the user to take a life from.
+ * @param {string} params.token JWT Token.
+ * @param {Object} params.io Socket.Io.
+ * @param {Function} params.callback Callback.
+ * @param {Object} [params.internalCallUser] User to use on authentication. It will bypass token authentication.
+ */
+function attackUser({
+  userId,
+  token,
+  io,
+  callback,
+  internalCallUser,
+}) {
+  if (!appConfig.activateTermination) {
+    callback({ error: new errorCreator.NotAllowed({ name: 'termination disabled' }) });
+
+    return;
+  }
+
+  authenticator.isUserAllowed({
+    token,
+    internalCallUser,
+    commandName: dbConfig.apiCommands.AttackUser.name,
+    callback: ({ error, data }) => {
+      if (error) {
+        callback({ error });
+
+        return;
+      }
+
+      if (userId === data.user.objectId) {
+        callback({ error: new errorCreator.InvalidData({ name: 'cannot attack self' }) });
+
+        return;
+      }
+
+      dbUser.lowerLives({
+        userId,
+        callback: ({ error: updateError, data: updateData }) => {
+          if (updateError) {
+            callback({ error: updateError });
+
+            return;
+          }
+
+          const { user: updatedUser } = updateData;
+
+          io.to(updatedUser.objectId).emit(
+            updatedUser.lives <= 0
+              ? dbConfig.EmitTypes.TERMINATE
+              : dbConfig.EmitTypes.ATTACK,
+            {
+              data: {},
+            },
+          );
+
+          io.emit(dbConfig.EmitTypes.USER, {
+            data: {
+              user: managerHelper.stripObject({ object: updatedUser }),
+              changeType: dbConfig.ChangeTypes.UPDATE,
+            },
+          });
+
+          callback({ data: { user: updatedUser } });
         },
       });
     },
@@ -1493,3 +1629,4 @@ exports.getAllUsers = getAllUsers;
 exports.getUserOrAliasOwner = getUserOrAliasOwner;
 exports.getPushTokens = getPushTokens;
 exports.getUserByCode = getUserByCode;
+exports.attackUser = attackUser;
