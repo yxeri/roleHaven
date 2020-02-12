@@ -241,12 +241,19 @@ function getUserById({
   userId,
   username,
   callback,
-  getPassword = false,
   supressExistError,
+  getPassword = false,
 }) {
-  const query = userId
-    ? { _id: userId }
-    : { usernameLowerCase: username.toLowerCase() };
+  const query = {};
+
+  if (userId) {
+    query._id = userId;
+  } else {
+    query.$or = [
+      { usernameLowerCase: username.toLowerCase() },
+      { code: username },
+    ];
+  }
 
   getUser({
     query,
