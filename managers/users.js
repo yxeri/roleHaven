@@ -49,6 +49,7 @@ function createUser({
   options,
   socket,
   image,
+  internalCallUser,
 }) {
   let command;
 
@@ -62,6 +63,7 @@ function createUser({
 
   authenticator.isUserAllowed({
     token,
+    internalCallUser,
     commandName: command.name,
     callback: ({ error, data }) => {
       if (error) {
@@ -168,6 +170,12 @@ function createUser({
 
       if (user.visibility && (authUser.accessLevel < dbConfig.apiCommands.UpdateUserVisibility.accessLevel)) {
         callback({ error: new errorCreator.NotAllowed({ name: 'Set user visibility' }) });
+
+        return;
+      }
+
+      if (user.isVerified && (authUser.accessLevel < dbConfig.apiCommands.UpdateUserAccess.accessLevel)) {
+        callback({ error: new errorCreator.NotAllowed({ name: 'Set user is verified' }) });
 
         return;
       }
