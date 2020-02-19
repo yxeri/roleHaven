@@ -37,6 +37,7 @@ const dbAlias = require('../db/connectors/alias');
 const dbGameCode = require('../db/connectors/gameCode');
 const dbTeams = require('../db/connectors/team');
 const teamManager = require('./teams');
+const forumManager = require('./forums');
 
 /**
  * Create a user.
@@ -89,26 +90,39 @@ function createUser({
         return;
       }
 
-      if (!textTools.isAllowedFull(user.username)) {
-        callback({
-          error: new errorCreator.InvalidCharacters({
-            name: `User name: ${user.username}.`,
-            extraData: { param: 'characters' },
-          }),
-        });
+      if (user.username) {
+        if (!textTools.isAllowedFull(user.username)) {
+          callback({
+            error: new errorCreator.InvalidCharacters({
+              name: `User name: ${user.username}.`,
+              extraData: { param: 'characters' },
+            }),
+          });
 
-        return;
-      }
+          return;
+        }
 
-      if (user.username.length < appConfig.usernameMinLength || user.username.length > appConfig.usernameMaxLength) {
-        callback({
-          error: new errorCreator.InvalidLength({
-            name: `User name length: ${appConfig.usernameMinLength}-${appConfig.usernameMaxLength}`,
-            extraData: { param: 'username' },
-          }),
-        });
+        if (user.username.length < appConfig.usernameMinLength || user.username.length > appConfig.usernameMaxLength) {
+          callback({
+            error: new errorCreator.InvalidLength({
+              name: `User name length: ${appConfig.usernameMinLength}-${appConfig.usernameMaxLength}`,
+              extraData: { param: 'username' },
+            }),
+          });
 
-        return;
+          return;
+        }
+
+        if (dbConfig.protectedNames.includes(user.username.toLowerCase())) {
+          callback({
+            error: new errorCreator.InvalidCharacters({
+              name: `protected name ${user.username}`,
+              extraData: { param: 'protected' },
+            }),
+          });
+
+          return;
+        }
       }
 
       if (user.offName && (user.offName.length < appConfig.offNameMinLength || user.offName.length > appConfig.offNameNameMaxLength)) {
@@ -138,17 +152,6 @@ function createUser({
           error: new errorCreator.InvalidLength({
             name: `Device length: ${appConfig.deviceIdLength}`,
             extraData: { param: 'device' },
-          }),
-        });
-
-        return;
-      }
-
-      if (dbConfig.protectedNames.includes(user.username.toLowerCase())) {
-        callback({
-          error: new errorCreator.InvalidCharacters({
-            name: `protected name ${user.username}`,
-            extraData: { param: 'protected' },
           }),
         });
 
@@ -185,7 +188,10 @@ function createUser({
       }
 
       const newUser = user;
-      newUser.username = textTools.trimSpace(newUser.username);
+      newUser.hasSetName = typeof user.username === 'string';
+      newUser.username = user.username
+        ? textTools.trimSpace(newUser.username)
+        : `user-${crypto.randomBytes(3).toString('hex')}`;
       newUser.usernameLowerCase = newUser.username.toLowerCase();
       newUser.isVerified = !appConfig.userVerify;
       newUser.followingRooms = dbConfig.requiredRooms;
@@ -193,7 +199,9 @@ function createUser({
       newUser.mailAddress = newUser.mailAddress
         ? newUser.mailAddress.toLowerCase()
         : undefined;
-      newUser.code = newUser.code || crypto.randomBytes(5).toString('hex');
+      newUser.code = newUser.code
+        ? newUser.code.toLowerCase()
+        : crypto.randomBytes(4).toString('hex');
 
       const userCallback = () => {
         dbUser.createUser({
@@ -1296,6 +1304,17 @@ function updateUser({
               return;
             }
 
+            if (user.username && dbConfig.protectedNames.includes(user.username.toLowerCase())) {
+              callback({
+                error: new errorCreator.InvalidCharacters({
+                  name: `protected name ${user.username}`,
+                  extraData: { param: 'protected' },
+                }),
+              });
+
+              return;
+            }
+
             dbUser.updateUser({
               options,
               userId,
@@ -1326,6 +1345,18 @@ function updateUser({
                 } else {
                   io.emit(dbConfig.EmitTypes.USER, dataToSend);
                 }
+
+                forumManager.updateForum({
+                  token,
+                  socket,
+                  io,
+                  forum: {
+                    title: user.username,
+                  },
+                  internalCallUser: authUser,
+                  forumId: userId,
+                  callback: () => {},
+                });
 
                 callback(creatorDataToSend);
               },
