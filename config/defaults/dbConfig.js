@@ -480,6 +480,10 @@ config.apiCommands = { /**
     name: 'CreateDisallowedUser',
     accessLevel: config.AccessLevels.ADMIN,
   },
+  CreateMultipleUsers: config.apiCommands.CreateMultipleUsers || {
+    name: 'CreateMultipleUsers',
+    accessLevel: config.AccessLevels.ADMIN,
+  },
   CreateSockerUser: config.apiCommands.CreateSockerUser || {
     name: 'CreateSockerUser',
     accessLevel: config.AccessLevels.ANONYMOUS,

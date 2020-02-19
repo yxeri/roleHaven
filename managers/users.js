@@ -18,6 +18,7 @@
 
 const crypto = require('crypto');
 const bcrypt = require('bcrypt');
+const { Parser } = require('json2csv');
 const dbUser = require('../db/connectors/user');
 const dbWallet = require('../db/connectors/wallet');
 const { dbConfig, appConfig } = require('../config/defaults/config');
@@ -1614,6 +1615,49 @@ function getUserByCode({
   });
 }
 
+function generateUserBases({
+  codeLength = 4,
+  passwordLength = 4,
+  csv = false,
+  generatePassword = true,
+  generateUsername = true,
+  amount = 1,
+}) {
+  const userBases = [];
+  const fields = ['code'];
+
+  if (generatePassword) { fields.push('password'); }
+  if (generateUsername) { fields.push('username'); }
+
+  for (let i = 0; i < amount; i += 1) {
+    const user = {
+      code: crypto.randomBytes(codeLength).toString('hex'),
+    };
+
+    if (generatePassword) {
+      user.password = textTools.generateString(passwordLength);
+    }
+
+    if (generateUsername) {
+      user.username = `user-${crypto.randomBytes(3).toString('hex')}`;
+    }
+
+    userBases.push(user);
+  }
+
+  if (csv) {
+    try {
+      const parser = new Parser({ fields });
+
+      return parser.parse(userBases);
+    } catch (err) {
+      return err;
+    }
+  } else {
+    return userBases;
+  }
+}
+
 exports.createUser = createUser;
 exports.getUserById = getUserById;
 exports.changePassword = changePassword;
@@ -1630,3 +1674,4 @@ exports.getUserOrAliasOwner = getUserOrAliasOwner;
 exports.getPushTokens = getPushTokens;
 exports.getUserByCode = getUserByCode;
 exports.attackUser = attackUser;
+exports.generateUserBases = generateUserBases;

@@ -196,7 +196,7 @@ function handle(io) {
 
     authenticator.isUserAllowed({
       token,
-      commandName: dbConfig.apiCommands.CreateDisallowedUser.name,
+      commandName: dbConfig.apiCommands.CreateMultipleUsers.name,
       callback: ({ error, data }) => {
         if (error) {
           restErrorChecker.checkAndSendError({ response, error, sentData: {} });

@@ -18,6 +18,7 @@
 
 const allowedRegex = /^[\w\d-_]+$/;
 const fullTextRegex = /^[\w\d\såäöÅÄÖ_-]+$/;
+const chars = 'abcdefghkmnopqrstuvwxyz';
 
 /**
  * Replaces part of the sent string and returns it
@@ -172,6 +173,24 @@ function generateTextCode(amount = 8) {
 }
 
 /**
+ * Generate a random string.
+ * @param {number} amount Amount of chars in the string.
+ * @return {string} String
+ */
+function generateString(amount = 4) {
+  const randomLength = chars.length;
+  let result = '';
+
+  for (let i = 0; i < amount; i += 1) {
+    const randomVal = Math.round(Math.random() * (randomLength - 1));
+
+    result += chars[randomVal];
+  }
+
+  return result;
+}
+
+/**
  * Trims whitespaces from beginning and end of the string
  * Needed for Android 2.1. trim() is not supported
  * @static
@@ -207,3 +226,4 @@ exports.calculateMinutesDifference = calculateMinutesDifference;
 exports.generateTextCode = generateTextCode;
 exports.trimSpace = trimSpace;
 exports.buildFileName = buildFileName;
+exports.generateString = generateString;
