@@ -263,71 +263,85 @@ function useGameCode({
           }
 
           const { gameCode: usedGameCode } = getData;
+          const {
+            uses,
+            objectId: gameCodeId,
+          } = usedGameCode;
+          const updateFunc = ({ error: updateError, data: updateData }) => {
+            if (updateError) {
+              callback({ error: updateError });
 
-          dbGameCode.removeGameCode({
-            gameCode: usedGameCode,
-            callback: ({ error: removeError, data: removedData }) => {
-              if (removeError) {
-                callback({ error: removeError });
+              return;
+            }
 
-                return;
-              }
+            const { gameCode: updatedGameCode } = updateData;
 
-              const { gameCode: updatedGameCode } = removedData;
+            triggerUnlockedContent({
+              token,
+              user: authUser,
+              gameCode: usedGameCode,
+              callback: ({ error: unlockError, data: unlockData }) => {
+                if (unlockError) {
+                  callback({ error: unlockError });
 
-              triggerUnlockedContent({
-                token,
-                user: authUser,
-                gameCode: usedGameCode,
-                callback: ({ error: unlockError, data: unlockData }) => {
-                  if (unlockError) {
-                    callback({ error: unlockError });
+                  return;
+                }
 
-                    return;
-                  }
+                const dataToOwner = {
+                  data: {
+                    gameCode: updatedGameCode,
+                    changeType: updatedGameCode.used
+                      ? dbConfig.ChangeTypes.REMOVE
+                      : dbConfig.ChangeTypes.UPDATE,
+                  },
+                };
 
-                  const dataToOwner = {
-                    data: {
-                      gameCode: updatedGameCode,
-                      changeType: updatedGameCode.used
-                        ? dbConfig.ChangeTypes.REMOVE
-                        : dbConfig.ChangeTypes.UPDATE,
+                if (usedGameCode.isRenewable) {
+                  dbGameCode.createGameCode({
+                    gameCode: {
+                      ownerId: usedGameCode.ownerId,
+                      ownerAliasId: usedGameCode.ownerAliasId,
+                      codeType: usedGameCode.codeType,
+                      codeContent: usedGameCode.codeContent,
+                      isRenewable: true,
                     },
-                  };
+                    callback: ({ error: createError, data: createData }) => {
+                      if (createError) {
+                        callback({ error: createError });
 
-                  if (usedGameCode.isRenewable) {
-                    dbGameCode.createGameCode({
-                      gameCode: {
-                        ownerId: usedGameCode.ownerId,
-                        ownerAliasId: usedGameCode.ownerAliasId,
-                        codeType: usedGameCode.codeType,
-                        codeContent: usedGameCode.codeContent,
-                        isRenewable: true,
-                      },
-                      callback: ({ error: createError, data: createData }) => {
-                        if (createError) {
-                          callback({ error: createError });
+                        return;
+                      }
 
-                          return;
-                        }
+                      dataToOwner.data.newGameCode = createData.gameCode;
 
-                        dataToOwner.data.newGameCode = createData.gameCode;
-
-                        io.to(usedGameCode.ownerId).emit(dbConfig.EmitTypes.GAMECODE, dataToOwner);
-                      },
-                    });
-
-                    callback({ data: unlockData });
-
-                    return;
-                  }
-
-                  io.to(usedGameCode.ownerId).emit(dbConfig.EmitTypes.GAMECODE, dataToOwner);
+                      io.to(usedGameCode.ownerId).emit(dbConfig.EmitTypes.GAMECODE, dataToOwner);
+                    },
+                  });
 
                   callback({ data: unlockData });
-                },
-              });
-            },
+
+                  return;
+                }
+
+                io.to(usedGameCode.ownerId).emit(dbConfig.EmitTypes.GAMECODE, dataToOwner);
+
+                callback({ data: unlockData });
+              },
+            });
+          };
+
+          if (uses > 1) {
+            dbGameCode.lowerUses({
+              gameCodeId,
+              callback: (params) => { updateFunc(params); },
+            });
+
+            return;
+          }
+
+          dbGameCode.removeGameCode({
+            gameCodeId,
+            callback: (params) => { updateFunc(params); },
           });
         },
       });

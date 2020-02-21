@@ -276,24 +276,9 @@ function getGameCodeByCode({
  * @param {Function} params.callback Callback.
  */
 function removeGameCode({
-  gameCode,
+  gameCodeId,
   callback,
-  checkUses = true,
 }) {
-  const { objectId: gameCodeId } = gameCode;
-
-  if (checkUses && gameCode.uses > 1) {
-    updateObject({
-      gameCodeId,
-      callback,
-      update: {
-        $inc: { uses: -1 },
-      },
-    });
-
-    return;
-  }
-
   dbConnector.removeObject({
     object: GameCode,
     query: { _id: gameCodeId },
@@ -308,10 +293,12 @@ function removeGameCode({
         data: {
           ...data,
           gameCode: {
-            used: true, uses: 0,
+            objectId: gameCodeId,
+            used: true,
+            uses: 0,
           },
         },
-      })
+      });
     },
   });
 }
@@ -334,6 +321,38 @@ function getProfileGameCode({ ownerId, callback }) {
   });
 }
 
+/**
+ * Lower the amount of uses on a game code.
+ * @param {Object} params Parameters.
+ * @param {string} params.gameCodeId Id of the game code.
+ * @param {Function} params.callback Callback
+ */
+function lowerUses({ gameCodeId, callback }) {
+  updateObject({
+    gameCodeId,
+    callback,
+    update: {
+      $inc: { uses: -1 },
+    },
+  });
+}
+
+/**
+ * Increase the amount of uses on a game code.
+ * @param {Object} params Parameters.
+ * @param {string} params.gameCodeId Id of the game code.
+ * @param {Function} params.callback Callback.
+ */
+function increaseUses({ gameCodeId, callback }) {
+  updateObject({
+    gameCodeId,
+    callback,
+    update: {
+      $inc: { uses: 1 },
+    },
+  });
+}
+
 exports.createGameCode = createGameCode;
 exports.updateGameCode = updateGameCode;
 exports.removeGameCode = removeGameCode;
@@ -341,3 +360,5 @@ exports.getGameCodeById = getGameCodeById;
 exports.getGameCodesByUser = getGameCodesByUser;
 exports.getProfileGameCode = getProfileGameCode;
 exports.getGameCodeByCode = getGameCodeByCode;
+exports.lowerUses = lowerUses;
+exports.increaseUses = increaseUses;
