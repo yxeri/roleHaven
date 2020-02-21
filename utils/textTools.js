@@ -153,8 +153,8 @@ function isValidMail(address) {
 /**
  * Get minutes between dates.
  * @param {Object} params Parameters.
- * @param {Date} params.startDate Start date.
- * @param {Date} params.endDate Later date.
+ * @param {Date} params.firstDate Start date.
+ * @param {Date} params.secondDate Later date.
  * @returns {number} Minutes.
  */
 function calculateMinutesDifference({ firstDate, secondDate }) {

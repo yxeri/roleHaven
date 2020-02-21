@@ -1015,10 +1015,11 @@ function getUserByCode({
 }
 
 /**
- *
- * @param userId
- * @param callback
- * @param amount
+ * Lower the amount of lives on a user.
+ * @param {Object} params Parameters.
+ * @param {string} params.userId Id of the user to update.
+ * @param {Function} params.callback Callback.
+ * @param {number} [params.amount] Amount to lower with.
  */
 function lowerLives({
   userId,

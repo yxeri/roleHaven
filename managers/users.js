@@ -1646,6 +1646,17 @@ function getUserByCode({
   });
 }
 
+/**
+ * Generate bases to be used for multi-user creation.
+ * @param {Object} params Parameters.
+ * @param {number} [params.codeLength] Length of the code to generate for each user.
+ * @param {number} [params.passwordLength] Length of the password to generate for each user.
+ * @param {boolean} [params.csv] Should the returned result be parsed as csv?
+ * @param {boolean} [params.generatePassword] Should a password be generated for each user?
+ * @param {boolean} [params.generateUsername] Should a username be generated for each user?
+ * @param {number} [params.amount] Amount of users to create.
+ * @return {Object[]}
+ */
 function generateUserBases({
   codeLength = 4,
   passwordLength = 4,
