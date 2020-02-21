@@ -253,7 +253,7 @@ function getUserById({
   } else {
     query.$or = [
       { usernameLowerCase: username.toLowerCase() },
-      { code: username },
+      { code: username.toLowerCase() },
     ];
   }
 
@@ -307,9 +307,14 @@ function doesUserSocketIdExist({
  * @param {string} [params.mailAddress] Mail address connected to the user
  * @param {Function} params.callback Callback
  */
-function doesUserExist({ username, mailAddress, callback }) {
-  if (!username && !mailAddress) {
-    callback({ error: new errorCreator.InvalidData({ expected: 'username || mailAddress' }) });
+function doesUserExist({
+  code,
+  username,
+  mailAddress,
+  callback,
+}) {
+  if (!username && !mailAddress && !code) {
+    callback({ error: new errorCreator.InvalidData({ expected: 'username || mailAddress || code' }) });
 
     return;
   }
@@ -317,10 +322,18 @@ function doesUserExist({ username, mailAddress, callback }) {
   const query = { $or: [] };
 
   if (username) {
-    query.$or.push({ usernameLowerCase: username.toLowerCase() });
+    query.$or.push({
+      usernameLowerCase: username.toLowerCase(),
+      code: code.toLowerCase(),
+    });
   }
+
   if (mailAddress) {
     query.$or.push({ mailAddress });
+  }
+
+  if (code) {
+    query.$or.push({ code: code.toLowerCase() });
   }
 
   dbConnector.doesObjectExist({
@@ -359,6 +372,7 @@ function createUser({
   options = {},
 }) {
   doesUserExist({
+    code: user.code,
     username: user.username,
     mailAddress: user.mailAddress,
     callback: (nameData) => {
@@ -480,6 +494,7 @@ function updateUser({
     pushToken,
     disableNotifications,
     lives,
+    code,
   } = user;
   const {
     resetSocket,
@@ -515,13 +530,15 @@ function updateUser({
   if (pushToken) { set.pushToken = pushToken; }
   if (typeof disableNotifications === 'boolean') { set.disableNotifications = disableNotifications; }
   if (lives) { set.lives = lives; }
+  if (code) { set.code = code; }
 
   if (Object.keys(set).length > 0) { update.$set = set; }
   if (Object.keys(unset).length > 0) { update.$unset = unset; }
   if (Object.keys(addToSet).length > 0) { update.$addToSet = addToSet; }
 
-  if (username || mailAddress) {
+  if (username || mailAddress || code) {
     doesUserExist({
+      code,
       username,
       mailAddress,
       callback: (existsData) => {
