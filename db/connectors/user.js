@@ -322,10 +322,8 @@ function doesUserExist({
   const query = { $or: [] };
 
   if (username) {
-    query.$or.push({
-      usernameLowerCase: username.toLowerCase(),
-      code: code.toLowerCase(),
-    });
+    query.$or.push({ usernameLowerCase: username.toLowerCase() });
+    query.$or.push({ code: username.toLowerCase() });
   }
 
   if (mailAddress) {
