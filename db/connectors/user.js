@@ -50,6 +50,7 @@ const userSchema = new mongoose.Schema(dbConnector.createSchema({
   lives: { type: Number, default: 1 },
   code: String,
   hasLoggedIn: { type: Boolean, default: false },
+  hasSetName: { type: Boolean, default: false },
 }), { collection: 'users' });
 
 const User = mongoose.model('User', userSchema);
@@ -498,6 +499,7 @@ function updateUser({
   if (username) {
     set.username = username;
     set.usernameLowerCase = username.toLowerCase();
+    set.hasSetName = true;
   }
   if (visibility) { set.visibility = visibility; }
   if (accessLevel) { set.accessLevel = accessLevel; }
