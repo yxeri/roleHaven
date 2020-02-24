@@ -133,6 +133,12 @@ function triggerUnlockedContent({
       break;
     }
     case dbConfig.GameCodeTypes.ATTACK: {
+      if (!appConfig.activateTermination) {
+        callback({ error: new errorCreator.NotAllowed({ name: 'termination disabled' }) });
+
+        return;
+      }
+
       userManager.attackUser({
         token,
         io,
@@ -278,6 +284,7 @@ function useGameCode({
 
             triggerUnlockedContent({
               token,
+              io,
               user: authUser,
               gameCode: usedGameCode,
               callback: ({ error: unlockError, data: unlockData }) => {
