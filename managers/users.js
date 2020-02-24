@@ -188,7 +188,7 @@ function createUser({
       }
 
       const newUser = user;
-      newUser.hasSetName = typeof user.username === 'string';
+      newUser.hasSetName = typeof user.username === 'string' && user.username !== '';
       newUser.username = user.username
         ? textTools.trimSpace(newUser.username)
         : `user-${crypto.randomBytes(3).toString('hex')}`;
