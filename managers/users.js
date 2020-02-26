@@ -1655,7 +1655,7 @@ function getUserByCode({
  * @param {boolean} [params.generatePassword] Should a password be generated for each user?
  * @param {boolean} [params.generateUsername] Should a username be generated for each user?
  * @param {number} [params.amount] Amount of users to create.
- * @return {Object[]}
+ * @return {Object[]} User bases.
  */
 function generateUserBases({
   codeLength = 4,
@@ -1700,6 +1700,95 @@ function generateUserBases({
   }
 }
 
+/**
+ * Connect two users.
+ * @param {Object} params Parameters.
+ * @param {string} params.username Name of the user to connect with.
+ * @param {string} params.token Jwt.
+ * @param {Object} params.io Socket.io.
+ * @param {Function} params.callback Callback.
+ */
+function connectUser({
+  username,
+  token,
+  io,
+  callback,
+}) {
+  authenticator.isUserAllowed({
+    token,
+    commandName: dbConfig.apiCommands.ConnectUser.name,
+    callback: ({ error, data }) => {
+      if (error) {
+        callback({ error });
+
+        return;
+      }
+
+      const { user: authUser } = data;
+
+      if (authUser.usernameLowerCase === username) {
+        callback({ error: new errorCreator.NotAllowed({ name: 'self' }) });
+
+        return;
+      }
+
+      getUserById({
+        token,
+        username,
+        internalCallUser: authUser,
+        callback: ({ error: getError, data: getData }) => {
+          if (getError) {
+            callback({ error: getError });
+
+            return;
+          }
+
+          const { user } = getData;
+
+          if (!user.partOfTeams[0] || !authUser.partOfTeams[0]) {
+            callback({ error: new errorCreator.Internal({ name: 'not part of team' }) });
+
+            return;
+          }
+
+          if (authUser.connectedTo.includes(user.objectId)) {
+            callback({ error: new errorCreator.AlreadyExists({ name: `already connected ${authUser.objectId} ${user.objectId}` }) });
+
+            return;
+          }
+
+          const [authTeamId] = authUser.partOfTeams;
+          const [userTeamId] = user.partOfTeams;
+
+          teamManager.updateTeamScore({
+            io,
+            callback,
+            teamId: authTeamId === userTeamId
+              ? authTeamId
+              : userTeamId,
+            value: appConfig.gameCodeAmount,
+            shouldIncrease: true,
+          });
+
+          dbUser.connectUsers({
+            userId: authUser.objectId,
+            otherUserId: user.objectId,
+            callback: () => {
+              callback({
+                data: {
+                  success: authTeamId === userTeamId,
+                  userTeamId: authTeamId,
+                  targetTeamId: userTeamId,
+                },
+              });
+            },
+          });
+        },
+      });
+    },
+  });
+}
+
 exports.createUser = createUser;
 exports.getUserById = getUserById;
 exports.changePassword = changePassword;
@@ -1717,3 +1806,4 @@ exports.getPushTokens = getPushTokens;
 exports.getUserByCode = getUserByCode;
 exports.attackUser = attackUser;
 exports.generateUserBases = generateUserBases;
+exports.connectUser = connectUser;

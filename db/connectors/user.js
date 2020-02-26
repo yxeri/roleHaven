@@ -51,6 +51,7 @@ const userSchema = new mongoose.Schema(dbConnector.createSchema({
   code: String,
   hasLoggedIn: { type: Boolean, default: false },
   hasSetName: { type: Boolean, default: false },
+  connectedTo: { type: [String], default: [] },
 }), { collection: 'users' });
 
 const User = mongoose.model('User', userSchema);
@@ -1037,6 +1038,33 @@ function lowerLives({
   });
 }
 
+/**
+ * Connect two users.
+ * @param {Object} params Parameters.
+ * @param {string} params.userId Id of the user.
+ * @param {string} params.otherUserId Id of the other user.
+ * @param {Function} params.callback Callback.
+ */
+function connectUsers({
+  userId,
+  otherUserId,
+  callback,
+}) {
+  updateObject({
+    userId,
+    update: { $addToSet: { connectedTo: otherUserId } },
+    callback: () => {},
+  });
+
+  updateObject({
+    userId: otherUserId,
+    update: { $addToSet: { connectedTo: userId } },
+    callback: () => {},
+  });
+
+  callback({ data: { success: true } });
+}
+
 exports.createUser = createUser;
 exports.updateUser = updateUser;
 exports.verifyUser = verifyUser;
@@ -1062,3 +1090,4 @@ exports.getUsersByAliases = getUsersByAliases;
 exports.doesUserSocketIdExist = doesUserSocketIdExist;
 exports.getUserByCode = getUserByCode;
 exports.lowerLives = lowerLives;
+exports.connectUsers = connectUsers;

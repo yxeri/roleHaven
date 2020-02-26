@@ -854,6 +854,14 @@ config.apiCommands = { /**
   },
 
   /**
+   * Hidden identity game
+   */
+  ConnectUser: config.apiCommands.ConnectUser || {
+    name: 'ConnectUser',
+    accessLevel: config.AccessLevels.STANDARD,
+  },
+
+  /**
    * Other
    */
   AnonymousCreation: config.apiCommands.AnonymousCreation || {
