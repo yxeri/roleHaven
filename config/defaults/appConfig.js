@@ -45,6 +45,7 @@ const userVerifyEnv = textTools.convertToBoolean(process.env.USERVERIFY);
 const showDevInfoEnv = textTools.convertToBoolean(process.env.SHOWDEVINFO);
 const disablePositionImportEnv = textTools.convertToBoolean(process.env.DISABLEPOSITIONIMPORT);
 const requireOffNameEnv = textTools.convertToBoolean(process.env.REQUIREOFFNAME);
+const activateTerminationEnv = textTools.convertToBoolean(process.env.ACTIVATETERMINATION);
 
 /**
  * **********
@@ -140,6 +141,7 @@ config.routes = config.ignoreDefaultRoutes
     { sitePath: '/api/messages', filePath: '/routes/rest/messages' },
     { sitePath: '/api/transactions', filePath: '/routes/rest/transactions' },
     { sitePath: '/api/triggerEvents', filePath: '/routes/rest/triggerEvents' },
+    { sitePath: '/api/tools', filePath: '/routes/rest/tools' },
   ]).concat(config.routes || []).concat([{ sitePath: '*', filePath: '/routes/error.js' }]).map((route) => {
     return {
       sitePath: route.sitePath,
@@ -826,6 +828,8 @@ config.firebaseConfig = {
  * ***************************
  */
 
-config.activateTermination = process.env.ACTIVATETERMINATION || false;
+config.activateTermination = activateTerminationEnv || false;
+
+config.regenerateLivesInterval = process.env.REGENERATELIVESINTERVAL || 0;
 
 module.exports = config;

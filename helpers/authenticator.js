@@ -163,7 +163,7 @@ function isUserAllowed({
         const { user } = data;
         const { accessLevel } = commandUsed;
 
-        if (user.isBanned || !user.isVerified || accessLevel > user.accessLevel) {
+        if (user.isBanned || !user.isVerified || accessLevel > user.accessLevel || (appConfig.activateTermination && user.lives <= 0)) {
           callback({ error: new errorCreator.NotAllowed({ name: commandName }) });
 
           return;

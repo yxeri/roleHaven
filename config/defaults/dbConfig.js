@@ -480,6 +480,10 @@ config.apiCommands = { /**
     name: 'CreateDisallowedUser',
     accessLevel: config.AccessLevels.ADMIN,
   },
+  CreateMultipleUsers: config.apiCommands.CreateMultipleUsers || {
+    name: 'CreateMultipleUsers',
+    accessLevel: config.AccessLevels.ADMIN,
+  },
   CreateSockerUser: config.apiCommands.CreateSockerUser || {
     name: 'CreateSockerUser',
     accessLevel: config.AccessLevels.ANONYMOUS,
@@ -846,6 +850,14 @@ config.apiCommands = { /**
   },
   GetTriggerEvents: config.apiCommands.GetTriggerEvents || {
     name: 'GetTriggerEvents',
+    accessLevel: config.AccessLevels.STANDARD,
+  },
+
+  /**
+   * Hidden identity game
+   */
+  ConnectUser: config.apiCommands.ConnectUser || {
+    name: 'ConnectUser',
     accessLevel: config.AccessLevels.STANDARD,
   },
 

@@ -1,6 +1,6 @@
 {
   "name": "rolehaven",
-  "version": "1.5.2",
+  "version": "1.5.3",
   "description": "roleHaven is part of an initiative to create a platform to be used in-game during LARPs",
   "author": "Carmilla Mina Jankovic <carmillam@icloud.com>",
   "private": true,
@@ -45,6 +45,7 @@
     "firebase-admin": "^8.9.2",
     "hbs": "^4.1.0",
     "html-minifier": "^4.0.0",
+    "json2csv": "^4.5.4",
     "jsonwebtoken": "^8.5.1",
     "mongodb": "^3.5.2",
     "mongoose": "^5.8.10",

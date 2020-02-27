@@ -50,6 +50,8 @@ const userSchema = new mongoose.Schema(dbConnector.createSchema({
   lives: { type: Number, default: 1 },
   code: String,
   hasLoggedIn: { type: Boolean, default: false },
+  hasSetName: { type: Boolean, default: false },
+  connectedTo: { type: [String], default: [] },
 }), { collection: 'users' });
 
 const User = mongoose.model('User', userSchema);
@@ -252,7 +254,7 @@ function getUserById({
   } else {
     query.$or = [
       { usernameLowerCase: username.toLowerCase() },
-      { code: username },
+      { code: username.toLowerCase() },
     ];
   }
 
@@ -306,9 +308,14 @@ function doesUserSocketIdExist({
  * @param {string} [params.mailAddress] Mail address connected to the user
  * @param {Function} params.callback Callback
  */
-function doesUserExist({ username, mailAddress, callback }) {
-  if (!username && !mailAddress) {
-    callback({ error: new errorCreator.InvalidData({ expected: 'username || mailAddress' }) });
+function doesUserExist({
+  code,
+  username,
+  mailAddress,
+  callback,
+}) {
+  if (!username && !mailAddress && !code) {
+    callback({ error: new errorCreator.InvalidData({ expected: 'username || mailAddress || code' }) });
 
     return;
   }
@@ -317,9 +324,15 @@ function doesUserExist({ username, mailAddress, callback }) {
 
   if (username) {
     query.$or.push({ usernameLowerCase: username.toLowerCase() });
+    query.$or.push({ code: username.toLowerCase() });
   }
+
   if (mailAddress) {
     query.$or.push({ mailAddress });
+  }
+
+  if (code) {
+    query.$or.push({ code: code.toLowerCase() });
   }
 
   dbConnector.doesObjectExist({
@@ -358,6 +371,7 @@ function createUser({
   options = {},
 }) {
   doesUserExist({
+    code: user.code,
     username: user.username,
     mailAddress: user.mailAddress,
     callback: (nameData) => {
@@ -479,6 +493,7 @@ function updateUser({
     pushToken,
     disableNotifications,
     lives,
+    code,
   } = user;
   const {
     resetSocket,
@@ -498,6 +513,7 @@ function updateUser({
   if (username) {
     set.username = username;
     set.usernameLowerCase = username.toLowerCase();
+    set.hasSetName = true;
   }
   if (visibility) { set.visibility = visibility; }
   if (accessLevel) { set.accessLevel = accessLevel; }
@@ -513,13 +529,15 @@ function updateUser({
   if (pushToken) { set.pushToken = pushToken; }
   if (typeof disableNotifications === 'boolean') { set.disableNotifications = disableNotifications; }
   if (lives) { set.lives = lives; }
+  if (code) { set.code = code; }
 
   if (Object.keys(set).length > 0) { update.$set = set; }
   if (Object.keys(unset).length > 0) { update.$unset = unset; }
   if (Object.keys(addToSet).length > 0) { update.$addToSet = addToSet; }
 
-  if (username || mailAddress) {
+  if (username || mailAddress || code) {
     doesUserExist({
+      code,
       username,
       mailAddress,
       callback: (existsData) => {
@@ -996,10 +1014,11 @@ function getUserByCode({
 }
 
 /**
- *
- * @param userId
- * @param callback
- * @param amount
+ * Lower the amount of lives on a user.
+ * @param {Object} params Parameters.
+ * @param {string} params.userId Id of the user to update.
+ * @param {Function} params.callback Callback.
+ * @param {number} [params.amount] Amount to lower with.
  */
 function lowerLives({
   userId,
@@ -1016,6 +1035,44 @@ function lowerLives({
     userId,
     callback,
     update,
+  });
+}
+
+/**
+ * Connect two users.
+ * @param {Object} params Parameters.
+ * @param {string} params.userId Id of the user.
+ * @param {string} params.otherUserId Id of the other user.
+ * @param {Function} params.callback Callback.
+ */
+function connectUsers({
+  userId,
+  otherUserId,
+  callback,
+}) {
+  updateObject({
+    userId,
+    update: { $addToSet: { connectedTo: otherUserId } },
+    callback: () => {},
+  });
+
+  updateObject({
+    userId: otherUserId,
+    update: { $addToSet: { connectedTo: userId } },
+    callback: () => {},
+  });
+
+  callback({ data: { success: true } });
+}
+
+/**
+ * Set users who have 0 or less lives to 1.
+ */
+function regenerateLives() {
+  updateObjects({
+    query: { lives: { $lte: 0 } },
+    update: { $set: { lives: 1 } },
+    callback: () => {},
   });
 }
 
@@ -1044,3 +1101,5 @@ exports.getUsersByAliases = getUsersByAliases;
 exports.doesUserSocketIdExist = doesUserSocketIdExist;
 exports.getUserByCode = getUserByCode;
 exports.lowerLives = lowerLives;
+exports.connectUsers = connectUsers;
+exports.regenerateLives = regenerateLives;

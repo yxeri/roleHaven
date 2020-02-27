@@ -109,6 +109,16 @@ function handle(socket, io) {
 
     userManager.getUserByCode(params);
   });
+
+  socket.on('connectUser', (params, callback = () => {}) => {
+    params.callback = callback;
+    params.io = io;
+    params.socket = socket;
+
+    userManager.connectUser(params);
+  });
+
+
 }
 
 exports.handle = handle;

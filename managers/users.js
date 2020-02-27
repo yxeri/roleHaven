@@ -18,6 +18,7 @@
 
 const crypto = require('crypto');
 const bcrypt = require('bcrypt');
+const { Parser } = require('json2csv');
 const dbUser = require('../db/connectors/user');
 const dbWallet = require('../db/connectors/wallet');
 const { dbConfig, appConfig } = require('../config/defaults/config');
@@ -36,6 +37,7 @@ const dbAlias = require('../db/connectors/alias');
 const dbGameCode = require('../db/connectors/gameCode');
 const dbTeams = require('../db/connectors/team');
 const teamManager = require('./teams');
+const forumManager = require('./forums');
 
 /**
  * Create a user.
@@ -88,26 +90,39 @@ function createUser({
         return;
       }
 
-      if (!textTools.isAllowedFull(user.username)) {
-        callback({
-          error: new errorCreator.InvalidCharacters({
-            name: `User name: ${user.username}.`,
-            extraData: { param: 'characters' },
-          }),
-        });
+      if (user.username) {
+        if (!textTools.isAllowedFull(user.username)) {
+          callback({
+            error: new errorCreator.InvalidCharacters({
+              name: `User name: ${user.username}.`,
+              extraData: { param: 'characters' },
+            }),
+          });
 
-        return;
-      }
+          return;
+        }
 
-      if (user.username.length < appConfig.usernameMinLength || user.username.length > appConfig.usernameMaxLength) {
-        callback({
-          error: new errorCreator.InvalidLength({
-            name: `User name length: ${appConfig.usernameMinLength}-${appConfig.usernameMaxLength}`,
-            extraData: { param: 'username' },
-          }),
-        });
+        if (user.username.length < appConfig.usernameMinLength || user.username.length > appConfig.usernameMaxLength) {
+          callback({
+            error: new errorCreator.InvalidLength({
+              name: `User name length: ${appConfig.usernameMinLength}-${appConfig.usernameMaxLength}`,
+              extraData: { param: 'username' },
+            }),
+          });
 
-        return;
+          return;
+        }
+
+        if (dbConfig.protectedNames.includes(user.username.toLowerCase())) {
+          callback({
+            error: new errorCreator.InvalidCharacters({
+              name: `protected name ${user.username}`,
+              extraData: { param: 'protected' },
+            }),
+          });
+
+          return;
+        }
       }
 
       if (user.offName && (user.offName.length < appConfig.offNameMinLength || user.offName.length > appConfig.offNameNameMaxLength)) {
@@ -137,17 +152,6 @@ function createUser({
           error: new errorCreator.InvalidLength({
             name: `Device length: ${appConfig.deviceIdLength}`,
             extraData: { param: 'device' },
-          }),
-        });
-
-        return;
-      }
-
-      if (dbConfig.protectedNames.includes(user.username.toLowerCase())) {
-        callback({
-          error: new errorCreator.InvalidCharacters({
-            name: `protected name ${user.username}`,
-            extraData: { param: 'protected' },
           }),
         });
 
@@ -184,7 +188,10 @@ function createUser({
       }
 
       const newUser = user;
-      newUser.username = textTools.trimSpace(newUser.username);
+      newUser.hasSetName = typeof user.username === 'string' && user.username !== '';
+      newUser.username = user.username
+        ? textTools.trimSpace(newUser.username)
+        : `user-${crypto.randomBytes(3).toString('hex')}`;
       newUser.usernameLowerCase = newUser.username.toLowerCase();
       newUser.isVerified = !appConfig.userVerify;
       newUser.followingRooms = dbConfig.requiredRooms;
@@ -192,7 +199,9 @@ function createUser({
       newUser.mailAddress = newUser.mailAddress
         ? newUser.mailAddress.toLowerCase()
         : undefined;
-      newUser.code = newUser.code || crypto.randomBytes(5).toString('hex');
+      newUser.code = newUser.code
+        ? newUser.code.toLowerCase()
+        : crypto.randomBytes(4).toString('hex');
 
       const userCallback = () => {
         dbUser.createUser({
@@ -284,6 +293,8 @@ function createUser({
                                 code: newUser.code,
                                 codeType: dbConfig.GameCodeTypes.ATTACK,
                                 codeContent: [createdUser.objectId],
+                                isRenewable: true,
+                                lockCode: true,
                               },
                               callback: ({ error: codeError, data: codeData }) => {
                                 if (codeError) {
@@ -830,12 +841,12 @@ function login({
         followingRooms: roomIds,
       } = authUser;
       const socketId = socket.id;
-      const socketFunc = ({ partOfTeams }) => {
+      const socketFunc = ({ user: socketUser }) => {
         socketUtils.joinRooms({
           io,
           socketId,
           userId,
-          roomIds: roomIds.concat(partOfTeams),
+          roomIds: roomIds.concat(socketUser.partOfTeams),
         });
         socketUtils.joinRequiredRooms({
           io,
@@ -850,7 +861,7 @@ function login({
           aliases: authUser.aliases,
         });
 
-        callback({ data: { user: authUser, token } });
+        callback({ data: { user: socketUser, token } });
       };
 
       dbUser.updateOnline({
@@ -889,7 +900,7 @@ function login({
                       return;
                     }
 
-                    socketFunc({ partOfTeams: addData.user.partOfTeams });
+                    socketFunc({ user: addData.user });
                   },
                 });
               },
@@ -898,7 +909,7 @@ function login({
             return;
           }
 
-          socketFunc({ partOfTeams: authUser.partOfTeams });
+          socketFunc({ user: authUser });
         },
       });
     },
@@ -1295,6 +1306,17 @@ function updateUser({
               return;
             }
 
+            if (user.username && dbConfig.protectedNames.includes(user.username.toLowerCase())) {
+              callback({
+                error: new errorCreator.InvalidCharacters({
+                  name: `protected name ${user.username}`,
+                  extraData: { param: 'protected' },
+                }),
+              });
+
+              return;
+            }
+
             dbUser.updateUser({
               options,
               userId,
@@ -1325,6 +1347,18 @@ function updateUser({
                 } else {
                   io.emit(dbConfig.EmitTypes.USER, dataToSend);
                 }
+
+                forumManager.updateForum({
+                  token,
+                  socket,
+                  io,
+                  forum: {
+                    title: user.username,
+                  },
+                  internalCallUser: authUser,
+                  forumId: userId,
+                  callback: () => {},
+                });
 
                 callback(creatorDataToSend);
               },
@@ -1614,6 +1648,149 @@ function getUserByCode({
   });
 }
 
+/**
+ * Generate bases to be used for multi-user creation.
+ * @param {Object} params Parameters.
+ * @param {number} [params.codeLength] Length of the code to generate for each user.
+ * @param {number} [params.passwordLength] Length of the password to generate for each user.
+ * @param {boolean} [params.csv] Should the returned result be parsed as csv?
+ * @param {boolean} [params.generatePassword] Should a password be generated for each user?
+ * @param {boolean} [params.generateUsername] Should a username be generated for each user?
+ * @param {number} [params.amount] Amount of users to create.
+ * @return {Object[]} User bases.
+ */
+function generateUserBases({
+  codeLength = 4,
+  passwordLength = 4,
+  csv = false,
+  generatePassword = true,
+  generateUsername = true,
+  amount = 1,
+}) {
+  const userBases = [];
+  const fields = ['code'];
+
+  if (generatePassword) { fields.push('password'); }
+  if (generateUsername) { fields.push('username'); }
+
+  for (let i = 0; i < amount; i += 1) {
+    const user = {
+      code: crypto.randomBytes(codeLength).toString('hex'),
+    };
+
+    if (generatePassword) {
+      user.password = textTools.generateString(passwordLength);
+    }
+
+    if (generateUsername) {
+      user.username = `user-${crypto.randomBytes(3).toString('hex')}`;
+    }
+
+    userBases.push(user);
+  }
+
+  if (csv) {
+    try {
+      const parser = new Parser({ fields });
+
+      return parser.parse(userBases);
+    } catch (err) {
+      return err;
+    }
+  } else {
+    return userBases;
+  }
+}
+
+/**
+ * Connect two users.
+ * @param {Object} params Parameters.
+ * @param {string} params.username Name of the user to connect with.
+ * @param {string} params.token Jwt.
+ * @param {Object} params.io Socket.io.
+ * @param {Function} params.callback Callback.
+ */
+function connectUser({
+  username,
+  token,
+  io,
+  callback,
+}) {
+  authenticator.isUserAllowed({
+    token,
+    commandName: dbConfig.apiCommands.ConnectUser.name,
+    callback: ({ error, data }) => {
+      if (error) {
+        callback({ error });
+
+        return;
+      }
+
+      const { user: authUser } = data;
+
+      if (authUser.usernameLowerCase === username) {
+        callback({ error: new errorCreator.NotAllowed({ name: 'self' }) });
+
+        return;
+      }
+
+      getUserById({
+        token,
+        username,
+        internalCallUser: authUser,
+        callback: ({ error: getError, data: getData }) => {
+          if (getError) {
+            callback({ error: getError });
+
+            return;
+          }
+
+          const { user } = getData;
+
+          if (!user.partOfTeams[0] || !authUser.partOfTeams[0]) {
+            callback({ error: new errorCreator.Internal({ name: 'not part of team' }) });
+
+            return;
+          }
+
+          if (authUser.connectedTo.includes(user.objectId)) {
+            callback({ error: new errorCreator.AlreadyExists({ name: `already connected ${authUser.objectId} ${user.objectId}` }) });
+
+            return;
+          }
+
+          const [authTeamId] = authUser.partOfTeams;
+          const [userTeamId] = user.partOfTeams;
+
+          teamManager.updateTeamScore({
+            io,
+            callback,
+            teamId: authTeamId === userTeamId
+              ? authTeamId
+              : userTeamId,
+            value: appConfig.gameCodeAmount,
+            shouldIncrease: true,
+          });
+
+          dbUser.connectUsers({
+            userId: authUser.objectId,
+            otherUserId: user.objectId,
+            callback: () => {
+              callback({
+                data: {
+                  success: authTeamId === userTeamId,
+                  userTeamId: authTeamId,
+                  targetTeamId: userTeamId,
+                },
+              });
+            },
+          });
+        },
+      });
+    },
+  });
+}
+
 exports.createUser = createUser;
 exports.getUserById = getUserById;
 exports.changePassword = changePassword;
@@ -1630,3 +1807,5 @@ exports.getUserOrAliasOwner = getUserOrAliasOwner;
 exports.getPushTokens = getPushTokens;
 exports.getUserByCode = getUserByCode;
 exports.attackUser = attackUser;
+exports.generateUserBases = generateUserBases;
+exports.connectUser = connectUser;

@@ -18,6 +18,7 @@
 
 const allowedRegex = /^[\w\d-_]+$/;
 const fullTextRegex = /^[\w\d\såäöÅÄÖ_-]+$/;
+const chars = 'abcdefghkmnopqrstuvwxyz';
 
 /**
  * Replaces part of the sent string and returns it
@@ -152,8 +153,8 @@ function isValidMail(address) {
 /**
  * Get minutes between dates.
  * @param {Object} params Parameters.
- * @param {Date} params.startDate Start date.
- * @param {Date} params.endDate Later date.
+ * @param {Date} params.firstDate Start date.
+ * @param {Date} params.secondDate Later date.
  * @returns {number} Minutes.
  */
 function calculateMinutesDifference({ firstDate, secondDate }) {
@@ -169,6 +170,24 @@ function calculateMinutesDifference({ firstDate, secondDate }) {
  */
 function generateTextCode(amount = 8) {
   return shuffleArray(['0', '1', '2', '3', '4', '5', '6', '7', '8', '9', 'A', 'B', 'D', 'E', 'F', 'G', 'H', 'L', 'M', 'N', 'P', 'Q', 'R', 'S', 'T', 'U', 'V', 'W', 'X', 'Y', 'Z']).slice(0, amount).join('');
+}
+
+/**
+ * Generate a random string.
+ * @param {number} amount Amount of chars in the string.
+ * @return {string} String
+ */
+function generateString(amount = 4) {
+  const randomLength = chars.length;
+  let result = '';
+
+  for (let i = 0; i < amount; i += 1) {
+    const randomVal = Math.round(Math.random() * (randomLength - 1));
+
+    result += chars[randomVal];
+  }
+
+  return result;
 }
 
 /**
@@ -207,3 +226,4 @@ exports.calculateMinutesDifference = calculateMinutesDifference;
 exports.generateTextCode = generateTextCode;
 exports.trimSpace = trimSpace;
 exports.buildFileName = buildFileName;
+exports.generateString = generateString;
