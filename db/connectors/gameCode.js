@@ -28,6 +28,7 @@ const gameCodeSchema = new mongoose.Schema(dbConnector.createSchema({
   isRenewable: { type: Boolean, default: false },
   used: { type: Boolean, default: false },
   uses: { type: Number, default: 1 },
+  lockCode: { type: Boolean, default: false },
 }), { collection: 'gameCodes' });
 
 const GameCode = mongoose.model('GameCode', gameCodeSchema);
@@ -198,6 +199,7 @@ function updateGameCode({
     isRenewable,
     used,
     codeContent,
+    lockCode,
   } = gameCode;
 
   const update = { $set: {} };
@@ -206,6 +208,7 @@ function updateGameCode({
   if (codeType) { update.$set.codeType = codeType; }
   if (typeof isRenewable === 'boolean') { update.$set.isRenewable = isRenewable; }
   if (typeof used === 'boolean') { update.$set.used = used; }
+  if (typeof lockCode === 'boolean') { update.$set.lockCode = lockCode; }
 
   updateObject({
     update,

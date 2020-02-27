@@ -26,7 +26,7 @@ const router = new express.Router();
  */
 function handle() {
   /**
-   * @api {get} /tools/baseUsers Get a list of user data that can be used during the creation of users
+   * @api {get} /tools/userBases Get a list of user data that can be used during the creation of users
    * @apiVersion 8.0.0
    * @apiName GetBaseUsers
    * @apiGroup Tools

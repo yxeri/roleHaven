@@ -293,6 +293,8 @@ function createUser({
                                 code: newUser.code,
                                 codeType: dbConfig.GameCodeTypes.ATTACK,
                                 codeContent: [createdUser.objectId],
+                                isRenewable: true,
+                                lockCode: true,
                               },
                               callback: ({ error: codeError, data: codeData }) => {
                                 if (codeError) {
@@ -839,12 +841,12 @@ function login({
         followingRooms: roomIds,
       } = authUser;
       const socketId = socket.id;
-      const socketFunc = ({ partOfTeams }) => {
+      const socketFunc = ({ user: socketUser }) => {
         socketUtils.joinRooms({
           io,
           socketId,
           userId,
-          roomIds: roomIds.concat(partOfTeams),
+          roomIds: roomIds.concat(socketUser.partOfTeams),
         });
         socketUtils.joinRequiredRooms({
           io,
@@ -859,7 +861,7 @@ function login({
           aliases: authUser.aliases,
         });
 
-        callback({ data: { user: authUser, token } });
+        callback({ data: { user: socketUser, token } });
       };
 
       dbUser.updateOnline({
@@ -898,7 +900,7 @@ function login({
                       return;
                     }
 
-                    socketFunc({ partOfTeams: addData.user.partOfTeams });
+                    socketFunc({ user: addData.user });
                   },
                 });
               },
@@ -907,7 +909,7 @@ function login({
             return;
           }
 
-          socketFunc({ partOfTeams: authUser.partOfTeams });
+          socketFunc({ user: authUser });
         },
       });
     },

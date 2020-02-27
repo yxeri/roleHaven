@@ -26,6 +26,7 @@ const docFileManager = require('./docFiles');
 const managerHelper = require('../helpers/manager');
 const teamManager = require('../managers/teams');
 const userManager = require('../managers/users');
+const dbUser = require('../db/connectors/user');
 
 /**
  * Get a game code by Id.
@@ -68,6 +69,7 @@ function triggerUnlockedContent({
 }) {
   const dataToSend = {
     data: {
+      success: true,
       gameCode: {
         ownerId: gameCode.ownerAliasId || gameCode.ownerId,
         codeType: gameCode.codeType,
@@ -139,24 +141,47 @@ function triggerUnlockedContent({
         return;
       }
 
-      userManager.attackUser({
-        token,
-        io,
-        callback,
-        userId: gameCode.codeContent[0],
+      const userId = gameCode.codeContent[0];
+
+      dbUser.getUserById({
+        userId,
+        callback: ({ error: getError, data: getData }) => {
+          if (getError) {
+            callback({ error: getError });
+
+            return;
+          }
+
+          const { user: attackedUser } = getData;
+
+          if (attackedUser.lives <= 0) {
+            dataToSend.data.success = false;
+
+            callback(dataToSend);
+
+            return;
+          }
+
+          userManager.attackUser({
+            token,
+            io,
+            callback,
+            userId,
+          });
+
+          if (user.partOfTeams[0] && attackedUser.partOfTeams[0]) {
+            teamManager.updateTeamScore({
+              io,
+              callback,
+              teamId: user.partOfTeams[0],
+              value: appConfig.gameCodeAmount,
+              shouldIncrease: user.partOfTeams[0] !== attackedUser.partOfTeams[0],
+            });
+          }
+
+          callback(dataToSend);
+        },
       });
-
-      if (user.partOfTeams[0]) {
-        teamManager.updateTeamScore({
-          io,
-          callback,
-          teamId: user.partOfTeams[0],
-          value: appConfig.gameCodeAmount,
-          shouldIncrease: true,
-        });
-      }
-
-      callback(dataToSend);
 
       break;
     }
@@ -311,6 +336,10 @@ function useGameCode({
                       codeType: usedGameCode.codeType,
                       codeContent: usedGameCode.codeContent,
                       isRenewable: true,
+                      lockCode: usedGameCode.lockCode,
+                      code: usedGameCode.lockCode
+                        ? usedGameCode.code
+                        : undefined,
                     },
                     callback: ({ error: createError, data: createData }) => {
                       if (createError) {
