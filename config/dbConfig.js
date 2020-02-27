@@ -13,7 +13,7 @@ config.teams.detectives = {
 
 config.teams.androids = {
   objectId: '333333333333333333333331',
-  teamName: 'Free Androids',
+  teamName: 'Androids',
   shortName: 'FREE',
   isVerified: true,
   auto: true,
