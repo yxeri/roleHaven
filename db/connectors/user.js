@@ -1065,6 +1065,17 @@ function connectUsers({
   callback({ data: { success: true } });
 }
 
+/**
+ * Set users who have 0 or less lives to 1.
+ */
+function regenerateLives() {
+  updateObjects({
+    query: { lives: { $lte: 0 } },
+    update: { $set: { lives: 1 } },
+    callback: () => {},
+  });
+}
+
 exports.createUser = createUser;
 exports.updateUser = updateUser;
 exports.verifyUser = verifyUser;
@@ -1091,3 +1102,4 @@ exports.doesUserSocketIdExist = doesUserSocketIdExist;
 exports.getUserByCode = getUserByCode;
 exports.lowerLives = lowerLives;
 exports.connectUsers = connectUsers;
+exports.regenerateLives = regenerateLives;

@@ -45,6 +45,7 @@ const userVerifyEnv = textTools.convertToBoolean(process.env.USERVERIFY);
 const showDevInfoEnv = textTools.convertToBoolean(process.env.SHOWDEVINFO);
 const disablePositionImportEnv = textTools.convertToBoolean(process.env.DISABLEPOSITIONIMPORT);
 const requireOffNameEnv = textTools.convertToBoolean(process.env.REQUIREOFFNAME);
+const activateTerminationEnv = textTools.convertToBoolean(process.env.ACTIVATETERMINATION);
 
 /**
  * **********
@@ -827,6 +828,8 @@ config.firebaseConfig = {
  * ***************************
  */
 
-config.activateTermination = process.env.ACTIVATETERMINATION || false;
+config.activateTermination = activateTerminationEnv || false;
+
+config.regenerateLivesInterval = process.env.REGENERATELIVESINTERVAL || 0;
 
 module.exports = config;
