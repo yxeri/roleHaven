@@ -1452,6 +1452,34 @@ function updateId({
             return;
           }
 
+          if (!authUser.hasLoggedIn && appConfig.autoAddToTeam) {
+            dbTeams.getAutoTeams({
+              callback: ({error: teamError, data: teamData}) => {
+                if (teamError) {
+                  callback({error: teamError});
+
+                  return;
+                }
+
+                // Get teamId from the team with the fewest members
+                const {objectId: teamId} = [...teamData.teams].sort((a, b) => {
+                  if (a.members.length > b.members.length) {
+                    return 1;
+                  }
+                  return -1;
+                })[0];
+
+                teamManager.addUserToTeam({
+                  teamId,
+                  io,
+                  socket,
+                  callback: () => {},
+                  memberId: userId,
+                });
+              },
+            });
+          }
+
           socketUtils.joinRooms({
             io,
             socketId,
