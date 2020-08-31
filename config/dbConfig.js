@@ -14,66 +14,7 @@ config.AccessLevels = {
   GOD: 6,
 };
 
-config.customUserFields = [{
-  parent: 'spoony',
-  name: 'spoony',
-  type: 'checkBox',
-  revealOnClick: true,
-}, {
-  hidden: true,
-  parent: 'spoony',
-  name: 'spoony-describe',
-  type: 'textArea',
-  maxLength: 50,
-}, {
-  hidden: true,
-  parent: 'spoony',
-  name: 'spoony-twoCreatures',
-  type: 'input',
-  maxLength: 20,
-}, {
-  hidden: true,
-  parent: 'spoony',
-  name: 'spoony-twoItems',
-  type: 'input',
-  maxLength: 20,
-}, {
-  hidden: true,
-  parent: 'spoony',
-  name: 'spoony-space',
-  type: 'input',
-  maxLength: 20,
-}, {
-  hidden: true,
-  parent: 'spoony',
-  name: 'spoony-std',
-  type: 'textArea',
-  maxLength: 50,
-}, {
-  hidden: true,
-  parent: 'spoony',
-  name: 'spoony-stone',
-  type: 'textArea',
-  maxLength: 50,
-}, {
-  hidden: true,
-  parent: 'spoony',
-  name: 'spoony-appearance',
-  type: 'textArea',
-  maxLength: 100,
-}, {
-  hidden: true,
-  parent: 'spoony',
-  name: 'spoony-turnOn',
-  type: 'textArea',
-  maxLength: 100,
-}, {
-  hidden: true,
-  parent: 'spoony',
-  name: 'spoony-description',
-  type: 'textArea',
-  maxLength: 200,
-}];
+config.customUserFields = [];
 
 config.apiCommands = {};
 config.apiCommands = {
@@ -157,7 +98,7 @@ config.apiCommands = {
    */
   CreateAlias: {
     name: 'CreateAlias',
-    accessLevel: process.env.CREATEALIASLEVEL || config.AccessLevels.PRIVILEGED,
+    accessLevel: process.env.CREATEALIASLEVEL || config.AccessLevels.STANDARD,
   },
   /**
    * Others
