@@ -117,8 +117,6 @@ function handle(socket, io) {
 
     userManager.connectUser(params);
   });
-
-
 }
 
 exports.handle = handle;
