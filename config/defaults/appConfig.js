@@ -24,7 +24,7 @@ let clientConfig = {};
 let config = {};
 
 try {
-  clientConfig = Object.assign({},require('../../../../private/config/config')); // eslint-disable-line
+  clientConfig = Object.assign({},require('../../../../config/config')); // eslint-disable-line
 } catch (err) {
   console.log('Did not find client config. Using defaults.');
 }
@@ -63,13 +63,7 @@ config.host = process.env.VIRTUAL_HOST || '127.0.0.1';
  * Base directory for public files.
  * @type {string}
  */
-config.publicBase = path.normalize(`${__dirname}/../../../../public`);
-
-/**
- * Base directory for private files.
- * @type {string}
- */
-config.privateBase = path.normalize(`${__dirname}/../../../../private`);
+config.publicBase = path.normalize(`${__dirname}/../../../../build`);
 
 /**
  * Default index name that will be served to public view.
@@ -89,24 +83,6 @@ config.mainJsName = process.env.MAINJSNAME || config.mainJsName || 'default';
  */
 config.mainCssName = process.env.MAINCSSNAME || config.mainCssName || 'default';
 
-/**
- * Admin interface index name that will be served to public view.
- * @type {string}
- */
-config.adminIndexName = process.env.ADMININDEXNAME || config.adminIndexName || 'admin';
-
-/**
- * Admin interface Javascript file that will be served to public view.
- * @type {string}
- */
-config.adminJsName = process.env.ADMINJSNAME || config.adminJsName || 'admin';
-
-/**
- * Admin interface Javascript file that will be served to public view.
- * @type {string}
- */
-config.adminCssName = process.env.ADMINCSSNAME || config.adminCssName || 'admin';
-
 // TODO Routes should be empty by defaults. Move all routes to app-specific instances
 /**
  * Array of route paths.
@@ -123,7 +99,7 @@ config.adminCssName = process.env.ADMINCSSNAME || config.adminCssName || 'admin'
  */
 config.routes = config.ignoreDefaultRoutes
   ? config.routes || []
-  : [{ sitePath: '/', filePath: '/routes/index.js' }].concat([
+  : [{ sitePath: '/', filePath: '/routes/index.vbjs' }].concat([
     { sitePath: '/api/authenticate', filePath: '/routes/rest/authenticate.js' },
     { sitePath: '/api/gameCodes', filePath: '/routes/rest/gameCodes.js' },
     { sitePath: '/api/rooms', filePath: '/routes/rest/rooms.js' },
@@ -179,34 +155,6 @@ config.handlers = config.ignoreDefaultHandlers
 ].concat(config.handlers || []).map(path => `${__dirname}/../..${path}`);
 
 /* eslint-enable */
-
-/**
- * Path to directory with views.
- * Will be appended to the base directories.
- * @type {string}
- */
-config.viewsPath = 'views';
-
-/**
- * Path to directory with stylesheets.
- * Will be appended to the base directories.
- * @type {string}
- */
-config.stylesPath = 'styles';
-
-/**
- * Path to directory with scripts. Will be minified.
- * Will be appended to the base directories.
- * @type {string}
- */
-config.scriptsPath = 'scripts';
-
-/**
- * Path to directory with scripts that should not be minified.
- * Will be appended to the base directories.
- * @type {string}
- */
-config.requiredPath = 'required';
 
 config.jsVersion = clientConfig && clientConfig.version
   ? clientConfig.version

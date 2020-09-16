@@ -42,18 +42,6 @@ function handle(io) {
     });
   });
 
-  router.get('/admin', (req, res) => {
-    res.render(appConfig.adminIndexName, {
-      title: appConfig.title,
-      gMapsKey: appConfig.gMapsKey,
-      socketPath: appConfig.socketPath,
-      adminJs: `scripts/${appConfig.adminIndexName}.js?version=${appConfig.jsVersion}`,
-      adminCss: req.query.style && !Number.isNaN(req.query.style)
-        ? `styles/admin${req.query.style}.css?version=${appConfig.jsVersion}`
-        : `styles/${appConfig.adminCssName}.css?version=${appConfig.jsVersion}`,
-    });
-  });
-
   io.on('connection', (socket) => {
     socketUtils.joinRequiredRooms({
       io,

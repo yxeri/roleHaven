@@ -43,7 +43,7 @@ app.io = io;
 app.disable('x-powered-by');
 
 // view engine setup
-app.set('views', path.join(appConfig.publicBase, appConfig.viewsPath));
+app.set('views', appConfig.publicBase);
 app.set('view engine', 'html');
 // eslint-disable-next-line no-underscore-dangle, import/newline-after-import
 app.engine('html', require('hbs').__express);
