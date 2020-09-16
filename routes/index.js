@@ -35,10 +35,6 @@ function handle(io) {
       title: appConfig.title,
       gMapsKey: appConfig.gMapsKey,
       socketPath: appConfig.socketPath,
-      mainJs: `scripts/${appConfig.mainJsName}.js?version=${appConfig.jsVersion}`,
-      mainCss: req.query.style && !Number.isNaN(req.query.style)
-        ? `styles/${req.query.style}.css?version=${appConfig.jsVersion}`
-        : `styles/${appConfig.mainCssName}.css?version=${appConfig.jsVersion}`,
     });
   });
 

@@ -69,19 +69,7 @@ config.publicBase = path.normalize(`${__dirname}/../../../../build`);
  * Default index name that will be served to public view.
  * @type {string}
  */
-config.indexName = process.env.INDEXNAME || config.indexName || 'default';
-
-/**
- * Default main Javascript file that will be served to public view.
- * @type {string}
- */
-config.mainJsName = process.env.MAINJSNAME || config.mainJsName || 'default';
-
-/**
- * Default main Javascript file that will be served to public view.
- * @type {string}
- */
-config.mainCssName = process.env.MAINCSSNAME || config.mainCssName || 'default';
+config.indexName = process.env.INDEXNAME || config.indexName || 'index';
 
 // TODO Routes should be empty by defaults. Move all routes to app-specific instances
 /**
