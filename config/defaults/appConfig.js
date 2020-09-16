@@ -99,7 +99,7 @@ config.mainCssName = process.env.MAINCSSNAME || config.mainCssName || 'default';
  */
 config.routes = config.ignoreDefaultRoutes
   ? config.routes || []
-  : [{ sitePath: '/', filePath: '/routes/index.vbjs' }].concat([
+  : [{ sitePath: '/', filePath: '/routes/index.js' }].concat([
     { sitePath: '/api/authenticate', filePath: '/routes/rest/authenticate.js' },
     { sitePath: '/api/gameCodes', filePath: '/routes/rest/gameCodes.js' },
     { sitePath: '/api/rooms', filePath: '/routes/rest/rooms.js' },
