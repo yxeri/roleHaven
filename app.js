@@ -53,7 +53,7 @@ app.use(compression());
 app.use(morgan(appConfig.logLevel));
 
 // Serve files from public path
-app.use(express.static(appConfig.publicBase));
+app.use(express.static(path.join(appConfig.publicBase, 'static')));
 
 appConfig.routes.forEach((route) => {
   // eslint-disable-next-line global-require, import/no-dynamic-require
