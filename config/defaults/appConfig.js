@@ -194,15 +194,6 @@ config.dbName = `${config.mode}-${process.env.DBNAME || config.dbName || 'roleHa
  */
 config.port = process.env.PORT || config.port || 8888;
 
-/**
- * Retrieve socket.io from local server or cdn.
- * Note! Android 2.2 fails when using cdn.
- * @type {string}
- */
-config.socketPath = (process.env.SOCKETPATH === 'cdn' || config.socketPath === 'cdn')
-  ? 'https://cdnjs.cloudflare.com/ajax/libs/socket.io/2.0.1/socket.io.slim.js'
-  : (process.env.SOCKETPATH || config.socketPath || '/scripts/socket.io.js');
-
 config.country = process.env.COUNTRY || config.country || 'Sweden';
 
 /**
@@ -350,12 +341,6 @@ config.maxZoomLevel = textTools.convertToInt(process.env.MAXZOOMLEVEL || config.
  * * Maps *
  * ********
  */
-
-/**
- * Google Maps API key.
- * @type {string}
- */
-config.gMapsKey = process.env.GMAPSKEY || config.gMapsKey;
 
 /**
  * URL to Google Maps layer that will be imported

@@ -6,5 +6,4 @@ COPY . /usr/src/app
 
 RUN npm prune && npm install
 
-RUN /usr/src/app/start.sh
 CMD ["npm", "start"]
