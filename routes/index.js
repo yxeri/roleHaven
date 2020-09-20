@@ -30,12 +30,8 @@ const router = new express.Router();
  * @returns {Object} Router
  */
 function handle(io) {
-  router.get('/', (req, res) => {
-    res.render(appConfig.indexName, {
-      title: appConfig.title,
-      gMapsKey: appConfig.gMapsKey,
-      socketPath: appConfig.socketPath,
-    });
+  router.get('*', (req, res) => {
+    res.render(appConfig.indexName);
   });
 
   io.on('connection', (socket) => {
