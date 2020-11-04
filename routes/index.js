@@ -30,7 +30,7 @@ const router = new express.Router();
  * @returns {Object} Router
  */
 function handle(io) {
-  router.get('*', (req, res) => {
+  router.get('/', (req, res) => {
     res.render(appConfig.indexName);
   });
 
