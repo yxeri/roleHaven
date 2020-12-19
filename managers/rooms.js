@@ -643,8 +643,7 @@ function createRoom({
       }
 
       const newRoom = room;
-      const { user } = data;
-      newRoom.ownerId = user.objectId;
+      newRoom.ownerId = authUser.objectId;
       newRoom.roomNameLowerCase = newRoom.roomName.toLowerCase();
       newRoom.password = newRoom.password && newRoom.password !== ''
         ? newRoom.password
@@ -662,28 +661,14 @@ function createRoom({
             }
 
             const createdRoom = roomData.room;
-            const dataToSend = {
-              data: {
-                room: createdRoom,
-                changeType: dbConfig.ChangeTypes.CREATE,
-              },
-            };
-
-            if (socket) {
-              socket.broadcast.emit(dbConfig.EmitTypes.ROOM, dataToSend);
-            } else {
-              io.emit(dbConfig.EmitTypes.ROOM, dataToSend);
-            }
-
-            callback(dataToSend);
 
             follow({
-              user,
               socket,
               io,
+              callback,
+              user: authUser,
               invited: true,
-              callback: () => {},
-              userId: user.objectId,
+              userId: authUser.objectId,
               roomId: createdRoom.objectId,
             });
           },
