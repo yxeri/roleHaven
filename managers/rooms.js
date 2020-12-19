@@ -458,8 +458,9 @@ function follow({
                   changeType: dbConfig.ChangeTypes.UPDATE,
                 },
               };
-              const userToReturn = {
+              const callbackReturn = {
                 data: {
+                  room: updatedRoom,
                   user: users[0] || { objectId: userId },
                   changeType: dbConfig.ChangeTypes.UPDATE,
                 },
@@ -484,19 +485,16 @@ function follow({
               }
 
               if (socket) {
-                socket.to(idToAdd).emit(dbConfig.EmitTypes.USER, userToReturn);
                 socket.to(roomId).emit(dbConfig.EmitTypes.ROOM, toReturn);
 
                 if (invited) {
-                  socket.to(idToAdd).emit(dbConfig.EmitTypes.FOLLOW, toReturn);
+                  socket.to(idToAdd).emit(dbConfig.EmitTypes.FOLLOW, callbackReturn);
                 }
               } else {
-                io.to(idToAdd).emit(dbConfig.EmitTypes.FOLLOW, toReturn);
-                io.to(idToAdd).emit(dbConfig.EmitTypes.USER, userToReturn);
-                io.to(roomId).emit(dbConfig.EmitTypes.ROOM, toReturn);
+                io.to(idToAdd).emit(dbConfig.EmitTypes.FOLLOW, callbackReturn);
               }
 
-              callback(toReturn);
+              callback(callbackReturn);
             },
           });
         },
@@ -745,7 +743,13 @@ function followRoom({
       const { user: authUser } = data;
 
       if (aliasId && !authUser.aliases.includes(aliasId)) {
-        callback({ error: new errorCreator.NotAllowed(`follow room ${roomId} with alias ${aliasId}`) });
+        callback({ error: new errorCreator.NotAllowed({ name: `follow room ${roomId} with alias ${aliasId}` }) });
+
+        return;
+      }
+
+      if (authUser.followingRooms.includes(roomId)) {
+        callback({ error: new errorCreator.AlreadyExists({ name: `already following ${roomId} with userId ${authUser.objectId}` }) });
 
         return;
       }
