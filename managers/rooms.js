@@ -662,6 +662,19 @@ function createRoom({
 
             const createdRoom = roomData.room;
 
+            const dataToSend = {
+              data: {
+                room: createdRoom,
+                changeType: dbConfig.ChangeTypes.CREATE,
+              },
+            };
+
+            if (socket) {
+              socket.broadcast.emit(dbConfig.EmitTypes.ROOM, dataToSend);
+            } else {
+              io.emit(dbConfig.EmitTypes.ROOM, dataToSend);
+            }
+
             follow({
               socket,
               io,
