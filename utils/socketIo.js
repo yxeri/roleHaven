@@ -33,11 +33,11 @@ function getUserSocket({ io, socketId }) {
  * Get all sockets from a room.
  * @return {Object[]} - All sockets in the room.
  */
-function getSocketsByRoom({ io, roomId }) {
+function getSocketIdsByRoom({ io, roomId }) {
   const room = io.sockets.adapter.rooms[roomId];
 
   return room
-    ? room.sockets
+    ? Object.keys(room.sockets)
     : [];
 }
 
@@ -141,7 +141,7 @@ function leaveRooms({ roomIds, io, socketId }) {
 }
 
 exports.getUserSocket = getUserSocket;
-exports.getSocketsByRoom = getSocketsByRoom;
+exports.getSocketIdsByRoom = getSocketIdsByRoom;
 exports.joinRooms = joinRooms;
 exports.leaveRooms = leaveRooms;
 exports.joinRequiredRooms = joinRequiredRooms;

@@ -887,8 +887,8 @@ function getRoomsByUser({
 
             return room;
           }).sort((a, b) => {
-            const aName = a.roomName;
-            const bName = b.roomName;
+            const aName = a.roomName.toLowerCase();
+            const bName = b.roomName.toLowerCase();
 
             if (aName < bName) {
               return -1;
@@ -1036,8 +1036,12 @@ function removeRoom({
                 },
               };
 
-              socketUtils.getSocketsByRoom({ io, roomId }).forEach((roomSocket) => {
-                roomSocket.leave(roomId);
+              socketUtils.getSocketIdsByRoom({ io, roomId }).forEach((socketId) => {
+                const userSocket = io.sockets.connected[socketId];
+
+                if (userSocket) {
+                  userSocket.leave(roomId);
+                }
               });
 
               io.emit(dbConfig.EmitTypes.ROOM, dataToSend);

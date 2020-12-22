@@ -690,7 +690,7 @@ function sendWhisperMsg({
                     ? alias.aliasName
                     : user.username,
                   senderName: authUser.username,
-                  pushTokens: [userData.user].map((usr) => { return usr.pushToken; }),
+                  pushTokens: [userData.user].map((usr) => usr.pushToken),
                   emitType: dbConfig.EmitTypes.WHISPER,
                   message: newMessage,
                 });
