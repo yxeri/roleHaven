@@ -293,6 +293,14 @@ config.Pronouns = {
 
 config.customUserFields = config.customUserFields || [];
 
+config.activeApps = {
+  CHAT: true,
+  MAP: true,
+  WALLET: true,
+  DOCFILE: true,
+  FORUM: true,
+};
+
 /**
  * *******************
  * * Client settings *

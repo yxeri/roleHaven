@@ -350,6 +350,9 @@ function createUser({
                                 if (socket) {
                                   socket.join(createdUser.objectId);
                                   socket.broadcast.emit(dbConfig.EmitTypes.USER, dataToSend);
+                                  socket.broadcast.emit(dbConfig.EmitTypes.FORUM, forumDataToSend);
+                                  socket.broadcast.emit(dbConfig.EmitTypes.ROOM, roomDataToSend);
+                                  socket.broadcast.emit(dbConfig.EmitTypes.WALLET, walletDataToSend);
                                 } else {
                                   const userSocket = socketUtils.getUserSocket({ io, socketId: user.socketId });
 
@@ -358,11 +361,10 @@ function createUser({
                                   }
 
                                   io.emit(dbConfig.EmitTypes.USER, dataToSend);
+                                  io.emit(dbConfig.EmitTypes.FORUM, forumDataToSend);
+                                  io.emit(dbConfig.EmitTypes.ROOM, roomDataToSend);
+                                  io.emit(dbConfig.EmitTypes.WALLET, walletDataToSend);
                                 }
-
-                                io.emit(dbConfig.EmitTypes.FORUM, forumDataToSend);
-                                io.emit(dbConfig.EmitTypes.ROOM, roomDataToSend);
-                                io.emit(dbConfig.EmitTypes.WALLET, walletDataToSend);
 
                                 if (!createdUser.isVerified) {
                                   messageManager.sendChatMsg({
