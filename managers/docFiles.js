@@ -113,13 +113,7 @@ function saveAndTransmitDocFile({
         socket.broadcast.emit(dbConfig.EmitTypes.DOCFILE, dataToSend);
       } else {
         io.emit(dbConfig.EmitTypes.DOCFILE, dataToSend);
-        io.to(docFile.ownerAliasId || docFile.ownerId).emit(dbConfig.EmitTypes.DOCFILE, {
-          data: {
-            isSender: true,
-            docFile: fullDocFile,
-            changeType: dbConfig.ChangeTypes.UPDATE,
-          },
-        });
+        io.to(docFile.ownerAliasId || docFile.ownerId).emit(dbConfig.EmitTypes.DOCFILE, creatorDataToSend);
       }
 
       callback(creatorDataToSend);
@@ -226,10 +220,10 @@ function createDocFile({
     return;
   }
 
-  if (docFile.code.length > appConfig.docFileCodeMaxLength || docFile.code < appConfig.docFileCodeMinLength) {
+  if (docFile.code && docFile.code.length > appConfig.docFileCodeMaxLength) {
     callback({
       error: new errorCreator.InvalidLength({
-        expected: `Code length: ${appConfig.docFileCodeMinLength} - ${appConfig.docFileCodeMaxLength}`,
+        expected: `Code length max: ${appConfig.docFileCodeMaxLength}`,
         extraData: { param: 'code' },
       }),
     });
@@ -248,7 +242,7 @@ function createDocFile({
     return;
   }
 
-  if (docFile.title.length > appConfig.docFileTitleMaxLength || docFile.title < appConfig.docFileTitleMinLength) {
+  if (docFile.title.length > appConfig.docFileTitleMaxLength || docFile.title.length < appConfig.docFileTitleMinLength) {
     callback({
       error: new errorCreator.InvalidLength({
         expected: `Title length: ${appConfig.docFileTitleMinLength} - ${appConfig.docFileTitleMaxLength}`,
@@ -277,7 +271,11 @@ function createDocFile({
 
       const aliasAccess = authenticator.checkAliasAccess({ object: newDocFile, user: authUser, text: dbConfig.apiCommands.CreateDocFile.name });
 
-      if (aliasAccess.error) { callback({ error: aliasAccess.error }); }
+      if (aliasAccess.error) {
+        callback({ error: aliasAccess.error });
+
+        return;
+      }
 
       if (images) {
         imager.createImage({

@@ -207,26 +207,16 @@ function createTransaction({
               const { fromWallet, toWallet } = runTransactionData;
               const fromDataToSend = {
                 data: {
+                  wallet: fromWallet,
                   transaction: createdTransaction,
                   changeType: dbConfig.ChangeTypes.CREATE,
                 },
               };
               const toDataToSend = {
                 data: {
+                  wallet: toWallet,
                   transaction: createdTransaction,
                   changeType: dbConfig.ChangeTypes.CREATE,
-                },
-              };
-              const fromWalletData = {
-                data: {
-                  wallet: fromWallet,
-                  changeType: dbConfig.ChangeTypes.UPDATE,
-                },
-              };
-              const toWalletData = {
-                data: {
-                  wallet: toWallet,
-                  changeType: dbConfig.ChangeTypes.UPDATE,
                 },
               };
 
@@ -238,10 +228,8 @@ function createTransaction({
                 io.to(toWallet.objectId).emit(dbConfig.EmitTypes.TRANSACTION, toDataToSend);
               }
 
-              io.to(fromWallet.objectId).emit(dbConfig.EmitTypes.WALLET, fromWalletData);
-              io.to(toWallet.objectId).emit(dbConfig.EmitTypes.WALLET, toWalletData);
-              io.to(dbConfig.AccessLevels.MODERATOR).emit(dbConfig.EmitTypes.WALLET, fromWalletData);
-              io.to(dbConfig.AccessLevels.MODERATOR).emit(dbConfig.EmitTypes.WALLET, toWalletData);
+              io.to(dbConfig.AccessLevels.MODERATOR).emit(dbConfig.EmitTypes.TRANSACTION, fromDataToSend);
+              io.to(dbConfig.AccessLevels.MODERATOR).emit(dbConfig.EmitTypes.TRANSACTION, toDataToSend);
 
               callback(fromDataToSend);
             },
@@ -454,6 +442,14 @@ function updateTransaction({
       }
 
       const { user: authUser } = data;
+
+      const aliasAccess = authenticator.checkAliasAccess({ object: transaction, user: authUser, text: dbConfig.apiCommands.UpdateTransaction.name });
+
+      if (aliasAccess.error) {
+        callback({ error: aliasAccess.error });
+
+        return;
+      }
 
       getTransactionById({
         transactionId,

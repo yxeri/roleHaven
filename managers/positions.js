@@ -256,7 +256,11 @@ function createPosition({
 
       const aliasAccess = authenticator.checkAliasAccess({ object: newPosition, user: authUser, text: dbConfig.apiCommands.CreatePosition.name });
 
-      if (aliasAccess.error) { callback({ error: aliasAccess.error }); }
+      if (aliasAccess.error) {
+        callback({ error: aliasAccess.error });
+
+        return;
+      }
 
       dbPosition.createPosition({
         suppressExistsError: isUserPosition,
@@ -285,7 +289,7 @@ function createPosition({
             },
           };
 
-          if (socket && !isUserPosition) {
+          if (socket) {
             socket.broadcast.emit(dbConfig.EmitTypes.POSITION, dataToSend);
           } else {
             io.emit(dbConfig.EmitTypes.POSITION, dataToSend);

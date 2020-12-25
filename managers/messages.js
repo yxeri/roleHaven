@@ -400,7 +400,11 @@ function sendBroadcastMsg({
 
       const aliasAccess = authenticator.checkAliasAccess({ object: newMessage, user: authUser, text: dbConfig.apiCommands.SendBroadcast.name });
 
-      if (aliasAccess.error) { callback({ error: aliasAccess.error }); }
+      if (aliasAccess.error) {
+        callback({ error: aliasAccess.error });
+
+        return;
+      }
 
       userManager.getPushTokens({
         internalCallUser: authUser,
@@ -481,7 +485,11 @@ function sendChatMsg({
 
       const aliasAccess = authenticator.checkAliasAccess({ object: newMessage, user: authUser, text: dbConfig.apiCommands.SendMessage.name });
 
-      if (aliasAccess.error) { callback({ error: aliasAccess.error }); }
+      if (aliasAccess.error) {
+        callback({ error: aliasAccess.error });
+
+        return;
+      }
 
       roomManager.getRoomById({
         needsAccess: true,

@@ -558,7 +558,7 @@ config.docFileTitleMaxLength = process.env.DOCFILETITLEMAXLENGTH || config.docFi
  * Minimum amount of characters in a document title
  * @type {number}
  */
-config.docFileTitleMinLength = process.env.DOCFILETITLEMINLENGTH || config.docFileTitleMinLength || 3;
+config.docFileTitleMinLength = process.env.DOCFILETITLEMINLENGTH || config.docFileTitleMinLength || 1;
 
 /**
  * Maximum amount of alphanumeric in a document id
