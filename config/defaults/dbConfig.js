@@ -197,6 +197,7 @@ config.MessageTypes = {
   WHISPER: 'whisper',
   BROADCAST: 'broadcast',
   MESSAGE: 'message',
+  NEWS: 'news',
 };
 
 config.PositionTypes = {

@@ -480,7 +480,12 @@ function sendChatMsg({
       const { user: authUser } = data;
       const newMessage = message;
       newMessage.text = textTools.cleanText(message.text);
-      newMessage.messageType = dbConfig.MessageTypes.CHAT;
+      newMessage.messageType = newMessage.messageType === dbConfig.MessageTypes.NEWS
+        ? dbConfig.MessageTypes.NEWS
+        : dbConfig.MessageTypes.CHAT;
+      newMessage.roomId = newMessage.messageType === dbConfig.MessageTypes.NEWS
+        ? dbConfig.rooms.news.objectId
+        : newMessage.roomId;
       newMessage.ownerId = authUser.objectId;
 
       const aliasAccess = authenticator.checkAliasAccess({ object: newMessage, user: authUser, text: dbConfig.apiCommands.SendMessage.name });

@@ -45,6 +45,8 @@ function handle(io) {
       data: {
         activeApps: dbConfig.activeApps,
         publicRoomId: dbConfig.rooms.public.objectId,
+        broadcastId: dbConfig.rooms.bcast.objectId,
+        newsRoomId: dbConfig.rooms.news.objectId,
         defaultLanguage: appConfig.defaultLanguage,
         forceFullscreen: appConfig.forceFullscreen,
         gpsTracking: appConfig.gpsTracking,

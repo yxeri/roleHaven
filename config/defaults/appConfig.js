@@ -399,13 +399,13 @@ config.maxHistoryAmount = process.env.MAXHISTORYAMOUNT || config.maxHistoryAmoun
  * Maximum amount of characters in a message
  * @type {number}
  */
-config.messageMaxLength = process.env.MESSAGEMAXLENGTH || config.messageMaxLength || 600;
+config.messageMaxLength = process.env.MESSAGEMAXLENGTH || config.messageMaxLength || 700;
 
 /**
  * Maximum amount of characters in a broadcast
  * @type {number}
  */
-config.broadcastMaxLength = process.env.BROADCASTMAXLENGTH || config.broadcastMaxLength || 600;
+config.broadcastMaxLength = process.env.BROADCASTMAXLENGTH || config.broadcastMaxLength || 700;
 
 /**
  * *********

@@ -52,6 +52,11 @@ function handle(socket, io) {
 
         break;
       }
+      case dbConfig.MessageTypes.NEWS: {
+        messageManager.sendChatMsg(params);
+
+        break;
+      }
       default: {
         callback({ error: new errorCreator.Incorrect({ name: 'messageType' }) });
 
