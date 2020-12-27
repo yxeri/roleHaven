@@ -92,7 +92,7 @@ function saveAndTransmitDocFile({
         newDocFile.isLocked = true;
         newDocFile.code = undefined;
         newDocFile.text = undefined;
-        newDocFile.pictures = undefined;
+        newDocFile.images = undefined;
       }
 
       const creatorDataToSend = {

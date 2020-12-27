@@ -442,7 +442,7 @@ config.usernameMinLength = process.env.USERNAMEMINLENGTH || config.usernameMinLe
  * Maximum amount of characters in a user name
  * @type {number}
  */
-config.usernameMaxLength = process.env.USERNAMEMAXLENGTH || config.usernameMaxLength || 20;
+config.usernameMaxLength = process.env.USERNAMEMAXLENGTH || config.usernameMaxLength || 30;
 
 /**
  * Maximum amount warnings before a user account is banned
@@ -454,7 +454,7 @@ config.maxUserWarnings = process.env.MAXUSERWARNINGS || config.maxUserWarnings |
  * Minimum amount of characters in a password
  * @type {number}
  */
-config.passwordMinLength = process.env.PASSWORDMINLENGTH || config.passwordMinLength || 3;
+config.passwordMinLength = process.env.PASSWORDMINLENGTH || config.passwordMinLength || 4;
 
 /**
  * Maximum amount of characters in a password

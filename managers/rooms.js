@@ -662,6 +662,10 @@ function createRoom({
 
             const createdRoom = roomData.room;
 
+            if (newRoom.password) {
+              createdRoom.isLocked = true;
+            }
+
             const dataToSend = {
               data: {
                 room: createdRoom,
@@ -876,10 +880,15 @@ function getRoomsByUser({
 
           const { rooms } = getData;
           const allRooms = rooms.map((room) => {
-            const { hasFullAccess } = authenticator.hasAccessTo({
+            const { hasAccess, hasFullAccess } = authenticator.hasAccessTo({
               toAuth: authUser,
               objectToAccess: room,
             });
+            const currentRoom = room;
+
+            if (!hasAccess && currentRoom.password) {
+              currentRoom.isLocked = true;
+            }
 
             if (!hasFullAccess) {
               return managerHelper.stripObject({ object: room });
