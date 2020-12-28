@@ -51,7 +51,7 @@ function createImage({
       sharp(imgBuffer)
         .resize(appConfig.imageThumbMaxWidth, appConfig.imageThumbMaxHeight, { fit: 'inside' })
         .rotate()
-        .toFile(`${appConfig.publicBase}/upload/images/imgThumb-${fileName}`, (thumbError) => {
+        .toFile(`${appConfig.publicBase}/upload/images/imgThumb-${fileName}`, (thumbError, thumbInfo) => {
           if (thumbError) {
             callback({ error: thumbError });
 
@@ -62,9 +62,12 @@ function createImage({
             data: {
               image: {
                 fileName,
+                thumbFileName: `imgThumb-${fileName}`,
                 imageName: image.imageName,
                 width: info.width,
                 height: info.height,
+                thumbWidth: thumbInfo.width,
+                thumbHeight: thumbInfo.height,
               },
             },
           });

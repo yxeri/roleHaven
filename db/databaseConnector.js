@@ -49,6 +49,8 @@ const imageSchema = {
   width: Number,
   imageName: String,
   fileName: String,
+  thumbWidth: Number,
+  thumbHeight: Number,
 };
 
 const coordinatesSchema = {
