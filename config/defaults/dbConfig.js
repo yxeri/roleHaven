@@ -369,6 +369,10 @@ config.apiCommands = { /**
     name: 'SendMessage',
     accessLevel: config.AccessLevels.STANDARD,
   },
+  SendNewsMessage: config.apiCommands.SendNewsMessage || {
+    name: 'SendNewsMessage',
+    accessLevel: config.AccessLevels.STANDARD,
+  },
   SendWhisper: config.apiCommands.SendWhisper || {
     name: 'SendWhisper',
     accessLevel: config.AccessLevels.STANDARD,

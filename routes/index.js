@@ -43,6 +43,7 @@ function handle(io) {
 
     socket.emit(dbConfig.EmitTypes.STARTUP, {
       data: {
+        newsCost: appConfig.newsCost,
         activeApps: dbConfig.activeApps,
         publicRoomId: dbConfig.rooms.public.objectId,
         broadcastId: dbConfig.rooms.bcast.objectId,

@@ -222,10 +222,16 @@ function createTransaction({
 
               if (socket) {
                 socket.broadcast.to(fromWallet.objectId).emit(dbConfig.EmitTypes.TRANSACTION, fromDataToSend);
-                socket.broadcast.to(toWallet.objectId).emit(dbConfig.EmitTypes.TRANSACTION, toDataToSend);
+
+                if (toWallet) {
+                  socket.broadcast.to(toWallet.objectId).emit(dbConfig.EmitTypes.TRANSACTION, toDataToSend);
+                }
               } else {
                 io.to(fromWallet.objectId).emit(dbConfig.EmitTypes.TRANSACTION, fromDataToSend);
-                io.to(toWallet.objectId).emit(dbConfig.EmitTypes.TRANSACTION, toDataToSend);
+
+                if (toWallet) {
+                  io.to(toWallet.objectId).emit(dbConfig.EmitTypes.TRANSACTION, toDataToSend);
+                }
               }
 
               io.to(dbConfig.AccessLevels.ADMIN).emit(dbConfig.EmitTypes.TRANSACTION, fromDataToSend);
@@ -268,6 +274,7 @@ function createTransactionBasedOnToken({
       const { user: authUser } = data;
 
       walletManager.getWalletById({
+        needsAccess: true,
         internalCallUser: authUser,
         walletId: transaction.fromWalletId,
         callback: ({ error: walletError, data: walletData }) => {
@@ -283,6 +290,14 @@ function createTransactionBasedOnToken({
           transactionToCreate.teamId = foundWallet.teamId;
           transactionToCreate.ownerId = foundWallet.ownerId;
           transactionToCreate.ownerAliasId = foundWallet.ownerAliasId;
+
+          const aliasAccess = authenticator.checkAliasAccess({ object: transactionToCreate, user: authUser, text: dbConfig.apiCommands.CreateTransaction.name });
+
+          if (aliasAccess.error) {
+            callback({ error: aliasAccess.error });
+
+            return;
+          }
 
           createTransaction({
             io,

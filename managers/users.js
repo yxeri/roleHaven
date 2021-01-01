@@ -1350,17 +1350,19 @@ function updateUser({
                   io.emit(dbConfig.EmitTypes.USER, dataToSend);
                 }
 
-                forumManager.updateForum({
-                  token,
-                  socket,
-                  io,
-                  forum: {
-                    title: user.username,
-                  },
-                  internalCallUser: authUser,
-                  forumId: userId,
-                  callback: () => {},
-                });
+                if (user.username) {
+                  forumManager.updateForum({
+                    token,
+                    socket,
+                    io,
+                    forum: {
+                      title: user.username,
+                    },
+                    internalCallUser: authUser,
+                    forumId: userId,
+                    callback: () => {},
+                  });
+                }
 
                 callback(creatorDataToSend);
               },
@@ -1759,7 +1761,7 @@ function connectUser({
 
       const { user: authUser } = data;
 
-      if (authUser.usernameLowerCase === username) {
+      if (authUser.usernameLowerCase === username.toLowerCase()) {
         callback({ error: new errorCreator.NotAllowed({ name: 'self' }) });
 
         return;

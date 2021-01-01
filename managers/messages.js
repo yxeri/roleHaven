@@ -29,6 +29,7 @@ const managerHelper = require('../helpers/manager');
 const userManager = require('./users');
 const aliasManager = require('./aliases');
 const imager = require('../helpers/imager');
+const transactionManager = require('./transactions');
 
 /**
  * Get an emit type based on the message type
@@ -427,6 +428,119 @@ function sendBroadcastMsg({
             senderName: 'BROADCAST',
             emitType: dbConfig.EmitTypes.BROADCAST,
             message: newMessage,
+          });
+        },
+      });
+    },
+  });
+}
+
+function sendNewsMsg({
+  token,
+  message,
+  socket,
+  callback,
+  io,
+  image,
+  internalCallUser,
+}) {
+  authenticator.isUserAllowed({
+    token,
+    internalCallUser,
+    commandName: dbConfig.apiCommands.SendNewsMessage.name,
+    callback: ({ error, data }) => {
+      if (error) {
+        callback({ error });
+
+        return;
+      }
+
+      if (!objectValidator.isValidData({ message, io }, { message: { text: true }, io: true })) {
+        callback({ error: new errorCreator.InvalidData({ expected: '{ message: { text }, io }' }) });
+
+        return;
+      }
+
+      const text = message.text.join('');
+
+      if (!image && (text.length > appConfig.newsMessageMaxLength || text.length <= 0)) {
+        callback({ error: new errorCreator.InvalidCharacters({ expected: `text length ${appConfig.newsMessageMaxLength}` }) });
+
+        return;
+      }
+
+      const { user: authUser } = data;
+      const newMessage = message;
+      newMessage.text = textTools.cleanText(message.text);
+      newMessage.messageType = dbConfig.MessageTypes.NEWS;
+      newMessage.roomId = dbConfig.rooms.news.objectId;
+      newMessage.ownerId = authUser.objectId;
+
+      const aliasAccess = authenticator.checkAliasAccess({ object: newMessage, user: authUser, text: dbConfig.apiCommands.SendNewsMessage.name });
+
+      if (aliasAccess.error) {
+        callback({ error: aliasAccess.error });
+
+        return;
+      }
+
+      roomManager.getRoomById({
+        needsAccess: true,
+        internalCallUser: authUser,
+        roomId: newMessage.roomId,
+        callback: ({ error: roomError, data: roomData }) => {
+          if (roomError) {
+            callback({ error: roomError });
+
+            return;
+          }
+
+          const { room } = roomData;
+          const transaction = {
+            amount: appConfig.newsCost,
+            fromWalletId: newMessage.ownerAliasId || newMessage.ownerId,
+            toWalletId: appConfig.newsWallet,
+            note: 'ARTICLE FEE',
+          };
+
+          transactionManager.createTransaction({
+            io,
+            socket,
+            transaction,
+            callback: ({ error: transactionError, data: transactionData }) => {
+              if (transactionError) {
+                callback({ error: transactionError });
+
+                return;
+              }
+
+              sendAndStoreMessage({
+                socket,
+                io,
+                image,
+                room,
+                emitType: dbConfig.EmitTypes.CHATMSG,
+                message: newMessage,
+                callback: ({ error: messageError, data: messageData }) => {
+                  if (messageError) {
+                    callback({ error: messageError });
+
+                    return;
+                  }
+
+                  const dataTosend = {
+                    data: {
+                      changeType: dbConfig.ChangeTypes.CREATE,
+                      message: messageData.message,
+                      wallet: transactionData.wallet,
+                      transaction: transactionData.transaction,
+                    },
+                  };
+
+                  callback({ data: dataTosend });
+                },
+              });
+            },
           });
         },
       });
@@ -886,6 +1000,7 @@ function updateMessage({
   });
 }
 
+exports.sendNewsMsg = sendNewsMsg;
 exports.sendBroadcastMsg = sendBroadcastMsg;
 exports.sendChatMsg = sendChatMsg;
 exports.sendWhisperMsg = sendWhisperMsg;

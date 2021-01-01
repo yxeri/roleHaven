@@ -399,13 +399,13 @@ config.maxHistoryAmount = process.env.MAXHISTORYAMOUNT || config.maxHistoryAmoun
  * Maximum amount of characters in a message
  * @type {number}
  */
-config.messageMaxLength = process.env.MESSAGEMAXLENGTH || config.messageMaxLength || 700;
+config.messageMaxLength = process.env.MESSAGEMAXLENGTH || config.messageMaxLength || 600;
 
 /**
  * Maximum amount of characters in a broadcast
  * @type {number}
  */
-config.broadcastMaxLength = process.env.BROADCASTMAXLENGTH || config.broadcastMaxLength || 700;
+config.broadcastMaxLength = process.env.BROADCASTMAXLENGTH || config.broadcastMaxLength || 600;
 
 /**
  * *********
@@ -522,7 +522,7 @@ config.shortTeamMaxLength = process.env.SHORTEAMMAXLENGTH || config.shortTeamMax
  * Max amount of teams that a user can be part of.
  * @type {number}
  */
-config.maxUserTeam = process.env.MAXUSERTEAM || config.maxUserTeam || 1;
+config.maxUserTeam = process.env.MAXUSERTEAM || config.maxUserTeam || 99;
 
 /**
  * Should users be automatically added to teams?
@@ -754,3 +754,23 @@ config.activateTermination = activateTerminationEnv || false;
 config.regenerateLivesInterval = process.env.REGENERATELIVESINTERVAL || 0;
 
 module.exports = config;
+
+/**
+ * ******
+ * News *
+ * ******
+ */
+
+config.newsCost = process.env.NEWSCOST || 1;
+
+/**
+ * Maximum amount of characters in a news message
+ * @type {number}
+ */
+config.newsMessageMaxLength = process.env.NEWSMESSAGEMAXLENGTH || config.newsMessageMaxLength || 1000;
+
+/**
+ * Wallet Id that will receive transfers for news creation
+ * @type {string}
+ */
+config.newsWallet = process.env.NEWSWALLET || config.newsWallet || '222222222222222222222220';

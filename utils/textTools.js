@@ -17,7 +17,7 @@
 'use strict';
 
 const allowedRegex = /^[\w\d-_]+$/;
-const fullTextRegex = /^[\w\d\såäöÅÄÖ_-]+$/;
+const fullTextRegex = /^[\w\d\s_-]+$/;
 const chars = 'abcdefghkmnopqrstuvwxyz';
 
 /**

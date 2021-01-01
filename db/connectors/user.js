@@ -52,6 +52,7 @@ const userSchema = new mongoose.Schema(dbConnector.createSchema({
   hasLoggedIn: { type: Boolean, default: false },
   hasSetName: { type: Boolean, default: false },
   connectedTo: { type: [String], default: [] },
+  systemConfig: { type: {}, default: {} },
 }), { collection: 'users' });
 
 const User = mongoose.model('User', userSchema);
@@ -494,6 +495,7 @@ function updateUser({
     disableNotifications,
     lives,
     code,
+    systemConfig,
   } = user;
   const {
     resetSocket,
@@ -530,6 +532,7 @@ function updateUser({
   if (typeof disableNotifications === 'boolean') { set.disableNotifications = disableNotifications; }
   if (lives) { set.lives = lives; }
   if (code) { set.code = code; }
+  if (systemConfig) { set.systemConfig = systemConfig; }
 
   if (Object.keys(set).length > 0) { update.$set = set; }
   if (Object.keys(unset).length > 0) { update.$unset = unset; }

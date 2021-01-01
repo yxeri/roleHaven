@@ -215,6 +215,7 @@ function updateMessage({
     extro,
     customTimeCreated,
     customlastUpdated,
+    tags,
   } = message;
 
   const update = {};
@@ -234,6 +235,7 @@ function updateMessage({
   if (customTimeCreated) { set.customTimeCreated = customTimeCreated; }
   if (customlastUpdated) { set.customlastUpdated = customlastUpdated; }
   if (roomId) { set.roomId = roomId; }
+  if (tags) { set.tags = tags; }
 
   if (Object.keys(set).length > 0) { update.$set = set; }
   if (Object.keys(unset).length > 0) { update.$unset = unset; }

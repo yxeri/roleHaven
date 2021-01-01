@@ -53,7 +53,7 @@ function handle(socket, io) {
         break;
       }
       case dbConfig.MessageTypes.NEWS: {
-        messageManager.sendChatMsg(params);
+        messageManager.sendNewsMsg(params);
 
         break;
       }

@@ -206,6 +206,7 @@ function updateDocFile({
     visibility,
     isPublic,
     ownerAliasId,
+    tags,
   } = docFile;
 
   const update = {};
@@ -216,6 +217,7 @@ function updateDocFile({
   if (title) { set.title = title; }
   if (visibility) { set.visibility = visibility; }
   if (typeof isPublic === 'boolean') { set.isPublic = isPublic; }
+  if (tags) { set.tags = tags; }
 
   if (resetOwnerAliasId) {
     unset.ownerAliasId = '';

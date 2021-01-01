@@ -42,6 +42,7 @@ const baseSchema = {
   points: { type: Number, default: 0 },
   likes: { type: Number, default: 0 },
   dislikes: { type: Number, default: 0 },
+  tags: { type: [String], default: [] },
 };
 
 const imageSchema = {
