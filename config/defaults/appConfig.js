@@ -46,6 +46,8 @@ const showDevInfoEnv = textTools.convertToBoolean(process.env.SHOWDEVINFO);
 const disablePositionImportEnv = textTools.convertToBoolean(process.env.DISABLEPOSITIONIMPORT);
 const requireOffNameEnv = textTools.convertToBoolean(process.env.REQUIREOFFNAME);
 const activateTerminationEnv = textTools.convertToBoolean(process.env.ACTIVATETERMINATION);
+const onlySeenEnv = textTools.convertToBoolean(process.env.ONLYSEEN);
+const allowPartialSearchEnv = textTools.convertToBoolean(process.env.ALLOWPARTIALSEARCH);
 
 /**
  * **********
@@ -491,6 +493,14 @@ config.offNameNameMaxLength = process.env.OFFNAMEMAXLENGTH || config.offNameName
  * @type {number}
  */
 config.userDescriptionMaxLength = process.env.USERDESCRIPTIONMAXLENGTH || config.userDescriptionMaxLength || 300;
+
+config.onlySeen = typeof onlySeenEnv !== 'undefined'
+  ? onlySeenEnv
+  : config.onlySeen || false;
+
+config.allowPartialSearch = typeof allowPartialSearchEnv !== 'undefined'
+  ? allowPartialSearchEnv
+  : config.allowPartialSearch || true;
 
 /**
  * ********

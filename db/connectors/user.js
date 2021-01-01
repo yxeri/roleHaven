@@ -53,6 +53,7 @@ const userSchema = new mongoose.Schema(dbConnector.createSchema({
   hasSetName: { type: Boolean, default: false },
   connectedTo: { type: [String], default: [] },
   systemConfig: { type: {}, default: {} },
+  hasSeen: { type: [String], default: [] },
 }), { collection: 'users' });
 
 const User = mongoose.model('User', userSchema);
@@ -496,6 +497,7 @@ function updateUser({
     lives,
     code,
     systemConfig,
+    hasSeen,
   } = user;
   const {
     resetSocket,
@@ -533,6 +535,7 @@ function updateUser({
   if (lives) { set.lives = lives; }
   if (code) { set.code = code; }
   if (systemConfig) { set.systemConfig = systemConfig; }
+  if (hasSeen) { set.hasSeen = hasSeen; }
 
   if (Object.keys(set).length > 0) { update.$set = set; }
   if (Object.keys(unset).length > 0) { update.$unset = unset; }

@@ -824,6 +824,7 @@ function sendWhisperMsg({
               },
             });
           };
+
           const { exists } = existsData;
 
           if (!exists) {

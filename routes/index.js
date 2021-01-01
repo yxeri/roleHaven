@@ -43,6 +43,8 @@ function handle(io) {
 
     socket.emit(dbConfig.EmitTypes.STARTUP, {
       data: {
+        allowPartialSearch: appConfig.allowPartialSearch,
+        onlySeen: appConfig.onlySeen,
         newsCost: appConfig.newsCost,
         activeApps: dbConfig.activeApps,
         publicRoomId: dbConfig.rooms.public.objectId,
