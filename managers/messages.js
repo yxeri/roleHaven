@@ -537,7 +537,7 @@ function sendNewsMsg({
                     },
                   };
 
-                  callback({ data: dataTosend });
+                  callback(dataTosend);
                 },
               });
             },

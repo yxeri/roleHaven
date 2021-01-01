@@ -235,7 +235,10 @@ function createTransaction({
               }
 
               io.to(dbConfig.AccessLevels.ADMIN).emit(dbConfig.EmitTypes.TRANSACTION, fromDataToSend);
-              io.to(dbConfig.AccessLevels.ADMIN).emit(dbConfig.EmitTypes.TRANSACTION, toDataToSend);
+
+              if (toWallet) {
+                io.to(dbConfig.AccessLevels.ADMIN).emit(dbConfig.EmitTypes.TRANSACTION, toDataToSend);
+              }
 
               callback(fromDataToSend);
             },
