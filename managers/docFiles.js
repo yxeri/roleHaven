@@ -446,7 +446,7 @@ function updateDocFile({
 function unlockDocFile({
   io,
   docFileId,
-  code,
+  code = '',
   token,
   callback,
   internalCallUser,
@@ -478,12 +478,15 @@ function unlockDocFile({
           const foundDocFile = docFileData.data.docFile;
           const dataToSend = {
             data: {
-              docFile: foundDocFile,
+              docFile: {
+                ...foundDocFile,
+                isLocked: false,
+              },
               changeType: dbConfig.ChangeTypes.UPDATE,
             },
           };
 
-          if (foundDocFile.code !== code || foundDocFile.accessLevel > authUser.accessLevel) {
+          if ((authUser.accessLevel < dbConfig.AccessLevels.ADMIN && (!foundDocFile.isPublic && foundDocFile.code !== code)) || foundDocFile.accessLevel > authUser.accessLevel) {
             callback({ error: new errorCreator.NotAllowed({ name: `docFile ${code}` }) });
 
             return;
