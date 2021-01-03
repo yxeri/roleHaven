@@ -196,6 +196,7 @@ function isAllowedAccessLevel({ objectToCreate, toAuth }) {
 function hasAccessTo({
   objectToAccess,
   toAuth,
+  adminLevel = dbConfig.AccessLevels.ADMIN,
 }) {
   const {
     ownerId,
@@ -226,12 +227,13 @@ function hasAccessTo({
   const userHasAdminAccess = userAdminIds.includes(authUserId);
   const aliasHasAdminAccess = foundOwnerAlias || aliases.find((aliasId) => userAdminIds.includes(aliasId));
   const teamHasAdminAccess = partOfTeam || teamAdminIds.find((adminId) => authTeamIds.includes(adminId));
-  const isAdmin = ownerId === authUserId || hasFullAccess || accessLevel >= dbConfig.AccessLevels.ADMIN;
+  const isAdmin = ownerId === authUserId || hasFullAccess || accessLevel >= adminLevel;
 
   return {
     canSee: isAdmin || isPublic || userHasAccess || teamHasAccess || aliasHasAccess || accessLevel >= visibility,
     hasAccess: isAdmin || isPublic || userHasAccess || teamHasAccess || aliasHasAccess,
     hasFullAccess: isAdmin || userHasAdminAccess || teamHasAdminAccess || aliasHasAdminAccess,
+    adminAccess: !isPublic && !userHasAccess && !teamHasAccess && !aliasHasAccess && isAdmin,
   };
 }
 

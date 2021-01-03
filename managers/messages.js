@@ -185,7 +185,7 @@ function getMessagesByRoom({
 
       const { user: authUser } = data;
 
-      if (!authUser.accessLevel < dbConfig.AccessLevels.ADMIN && !authUser.followingRooms.includes(roomId)) {
+      if (!authUser.followingRooms.includes(roomId)) {
         callback({ error: new errorCreator.NotAllowed({ name: `${dbConfig.apiCommands.GetHistory.name}. User: ${authUser.objectId}. Access: messages room ${roomId}` }) });
 
         return;

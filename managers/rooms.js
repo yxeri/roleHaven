@@ -318,6 +318,15 @@ function createAndFollowWhisperRoom({
                 }
 
                 io.to(newRoomId).emit(dbConfig.EmitTypes.ROOM, dataToSend);
+                io.to(dbConfig.AccessLevels.MODERATOR).emit(dbConfig.EmitTypes.ROOM, {
+                  data: {
+                    room: {
+                      ...newRoom,
+                      spyMode: true,
+                    },
+                    changeType: dbConfig.ChangeTypes.CREATE,
+                  },
+                });
 
                 callback(roomData);
               },
@@ -880,21 +889,26 @@ function getRoomsByUser({
 
           const { rooms } = getData;
           const allRooms = rooms.map((room) => {
-            const { hasAccess, hasFullAccess } = authenticator.hasAccessTo({
+            const { hasAccess, hasFullAccess, adminAccess } = authenticator.hasAccessTo({
               toAuth: authUser,
               objectToAccess: room,
+              adminLevel: dbConfig.AccessLevels.MODERATOR,
             });
             const currentRoom = room;
 
-            if (!hasAccess && currentRoom.password) {
+            if ((!hasAccess || adminAccess) && currentRoom.password) {
               currentRoom.isLocked = true;
             }
 
             if (!hasFullAccess) {
-              return managerHelper.stripObject({ object: room });
+              return managerHelper.stripObject({ object: currentRoom });
             }
 
-            return room;
+            if (room.isWhisper && !room.participantIds.some((id) => id === authUser.objectId || authUser.aliases.includes(id))) {
+              currentRoom.spyMode = true;
+            }
+
+            return currentRoom;
           }).sort((a, b) => {
             const aName = a.roomName.toLowerCase();
             const bName = b.roomName.toLowerCase();

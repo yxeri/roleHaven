@@ -33,19 +33,20 @@ function getFileByAccess({ user, docFile }) {
   const {
     hasAccess,
     hasFullAccess,
+    adminAccess,
   } = authenticator.hasAccessTo({
     objectToAccess: docFile,
     toAuth: user,
   });
 
-  if (hasFullAccess) {
+  if (hasFullAccess && !adminAccess) {
     const fullDocFile = docFile;
     fullDocFile.isLocked = false;
 
     return { docFile: fullDocFile, isLocked: false };
   }
 
-  if (hasAccess) {
+  if (hasAccess && !adminAccess) {
     const strippedDocFile = managerHelper.stripObject({ object: docFile });
     strippedDocFile.isLocked = false;
 
@@ -486,7 +487,7 @@ function unlockDocFile({
             },
           };
 
-          if ((authUser.accessLevel < dbConfig.AccessLevels.ADMIN && (!foundDocFile.isPublic && foundDocFile.code !== code)) || foundDocFile.accessLevel > authUser.accessLevel) {
+          if ((authUser.accessLevel < dbConfig.AccessLevels.MODERATOR && (!foundDocFile.isPublic && foundDocFile.code !== code)) || foundDocFile.accessLevel > authUser.accessLevel) {
             callback({ error: new errorCreator.NotAllowed({ name: `docFile ${code}` }) });
 
             return;
