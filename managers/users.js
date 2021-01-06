@@ -147,17 +147,6 @@ function createUser({
         return;
       }
 
-      if (user.registerDevice.length > appConfig.deviceIdLength) {
-        callback({
-          error: new errorCreator.InvalidLength({
-            name: `Device length: ${appConfig.deviceIdLength}`,
-            extraData: { param: 'device' },
-          }),
-        });
-
-        return;
-      }
-
       if (user.description && user.description.join('').length > appConfig.userDescriptionMaxLength) {
         callback({
           error: new errorCreator.InvalidLength({
@@ -1350,6 +1339,8 @@ function updateUser({
                   io.emit(dbConfig.EmitTypes.USER, dataToSend);
                 }
 
+                io.to(updatedUser.objectId).emit(dbConfig.EmitTypes.USER, creatorDataToSend);
+
                 if (user.username) {
                   forumManager.updateForum({
                     token,
@@ -1430,20 +1421,6 @@ function updateId({
         followingRooms: roomIds,
       } = authUser;
       const socketId = socket.id;
-
-      if (authUser.isAnonymous) {
-        socketUtils.joinRequiredRooms({
-          io,
-          userId,
-          socketId,
-          socket,
-          accessLevel: 0,
-        });
-
-        callback({ data: { user: authUser } });
-
-        return;
-      }
 
       dbUser.updateOnline({
         userId,

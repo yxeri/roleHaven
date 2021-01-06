@@ -22,7 +22,7 @@ const { dbConfig } = require('../../config/defaults/config');
 const dbConnector = require('../databaseConnector');
 
 const deviceSchema = new mongoose.Schema(dbConnector.createSchema({
-  deviceName: { type: String, unique: true },
+  deviceName: String,
   socketId: String,
   lastUserId: String,
   connectedToUser: { type: String, unique: true, sparse: true },
@@ -127,61 +127,26 @@ function getDevice({ query, callback }) {
 }
 
 /**
- * Does the device exist?
- * @param {Object} params Parameters
- * @param {string} params.deviceName Name of the device
- * @param {Function} params.callback Callback
- */
-function doesDeviceExist({ deviceName, callback }) {
-  dbConnector.doesObjectExist({
-    callback,
-    query: { deviceName },
-    object: Device,
-  });
-}
-
-/**
  * Create and save device
  * @param {Object} params Parameters
  * @param {Object} params.device New device
  * @param {Function} params.callback Callback
  */
 function createDevice({ device, callback }) {
-  doesDeviceExist({
-    deviceName: device.deviceName,
-    callback: (nameData) => {
-      if (nameData.error) {
-        callback({ error: nameData.error });
+  dbConnector.saveObject({
+    object: new Device(device),
+    objectType: 'device',
+    callback: ({ error, data }) => {
+      if (error) {
+        callback({ error });
 
         return;
       }
 
-      if (nameData.data.exists) {
-        callback({ error: new errorCreator.AlreadyExists({ name: `device ${device.deviceName}` }) });
-
-        return;
-      }
-
-      dbConnector.saveObject({
-        object: new Device(device),
-        objectType: 'device',
-        callback: ({ error, data }) => {
-          if (error) {
-            callback({ error });
-
-            return;
-          }
-
-          callback({ data: { device: data.savedObject } });
-        },
-      });
+      callback({ data: { device: data.savedObject } });
     },
   });
 }
-
-// function updateUserDevice({ deviceId, device, callback }) {
-//
-// }
 
 /**
  * Update device properties. Creates a new device if one doesn't exist with sent deviceId.
@@ -231,35 +196,6 @@ function updateDevice({
 
   if (Object.keys(set).length > 0) { update.$set = set; }
   if (Object.keys(unset).length > 0) { update.$unset = unset; }
-
-  if (deviceName) {
-    doesDeviceExist({
-      deviceName,
-      callback: (nameData) => {
-        if (nameData.error) {
-          callback({ error: nameData.error });
-
-          return;
-        }
-
-        if (nameData.data.exists) {
-          callback({ error: new errorCreator.AlreadyExists({ name: `device name ${deviceName}` }) });
-
-          return;
-        }
-
-        updateObject({
-          suppressError,
-          deviceSocketId,
-          deviceId,
-          update,
-          callback,
-        });
-      },
-    });
-
-    return;
-  }
 
   updateObject({
     deviceId,

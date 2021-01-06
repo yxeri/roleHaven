@@ -31,7 +31,7 @@ const userSchema = new mongoose.Schema(dbConnector.createSchema({
   socketId: String,
   lastOnline: Date,
   registerDevice: String,
-  description: [String],
+  description: { type: [String], default: [] },
   hasFullAccess: { type: Boolean, default: false },
   isVerified: { type: Boolean, default: false },
   isBanned: { type: Boolean, default: false },
