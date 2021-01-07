@@ -22,7 +22,6 @@ const path = require('path');
 const bodyParser = require('body-parser');
 const morgan = require('morgan');
 const compression = require('compression');
-const firebase = require('firebase-admin');
 const { appConfig } = require('./config/defaults/config');
 const dbRoom = require('./db/connectors/room');
 const dbForum = require('./db/connectors/forum');
@@ -74,15 +73,6 @@ if (appConfig.mode !== appConfig.Modes.TEST) {
 
 if (appConfig.regenerateLivesInterval > 0) {
   setInterval(() => { dbUser.regenerateLives(); }, appConfig.regenerateLivesInterval);
-}
-
-if (appConfig.firebaseConfig.private_key && appConfig.firebaseConfig.private_key_id && appConfig.firebaseDbUrl) {
-  console.log('Initializing Firebase.');
-
-  firebase.initializeApp({
-    credential: firebase.credential.cert(appConfig.firebaseConfig),
-    databaseURL: appConfig.firebaseDbUrl,
-  });
 }
 
 if (!appConfig.disablePositionImport && appConfig.mapLayersPath) {
