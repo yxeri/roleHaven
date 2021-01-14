@@ -569,6 +569,14 @@ config.apiCommands = { /**
     name: 'AttackUser',
     accessLevel: config.AccessLevels.STANDARD,
   },
+  UpdateUserStatus: config.apiCommands.UpdateUserStatus || {
+    name: 'UpdateUserStatus',
+    accessLevel: config.AccessLevels.PRIVILEGED,
+  },
+  UpdateUserOccupation: config.apiCommands.UpdateUserOccupation || {
+    name: 'UpdateUserOccupation',
+    accessLevel: config.AccessLevels.STANDARD,
+  },
 
   /**
    * Misc.

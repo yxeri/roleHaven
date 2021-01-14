@@ -48,6 +48,7 @@ const requireOffNameEnv = textTools.convertToBoolean(process.env.REQUIREOFFNAME)
 const activateTerminationEnv = textTools.convertToBoolean(process.env.ACTIVATETERMINATION);
 const onlySeenEnv = textTools.convertToBoolean(process.env.ONLYSEEN);
 const allowPartialSearchEnv = textTools.convertToBoolean(process.env.ALLOWPARTIALSEARCH);
+const disallowProfileEditEnv = textTools.convertToBoolean(process.env.DISALLOWPROFILEEDIT);
 
 /**
  * **********
@@ -486,7 +487,7 @@ config.offNameMinLength = process.env.OFFNAMEMINLENGTH || config.offNameMinLengt
  * Maximum amount of characters in a user's off-game name.
  * @type {number}
  */
-config.offNameNameMaxLength = process.env.OFFNAMEMAXLENGTH || config.offNameNameMaxLength || 40;
+config.offNameNameMaxLength = process.env.OFFNAMEMAXLENGTH || config.offNameNameMaxLength || 100;
 
 /**
  * Maximum amount of characters in a user's description.
@@ -501,6 +502,10 @@ config.onlySeen = typeof onlySeenEnv !== 'undefined'
 config.allowPartialSearch = typeof allowPartialSearchEnv !== 'undefined'
   ? allowPartialSearchEnv
   : config.allowPartialSearch || true;
+
+config.disallowProfileEdit = typeof disallowProfileEditEnv !== 'undefined'
+  ? disallowProfileEditEnv
+  : config.disallowProfileEdit || false;
 
 /**
  * ********

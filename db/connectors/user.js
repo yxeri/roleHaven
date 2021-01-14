@@ -54,6 +54,8 @@ const userSchema = new mongoose.Schema(dbConnector.createSchema({
   connectedTo: { type: [String], default: [] },
   systemConfig: { type: {}, default: {} },
   hasSeen: { type: [String], default: [] },
+  status: String,
+  occupation: String,
 }), { collection: 'users' });
 
 const User = mongoose.model('User', userSchema);
@@ -498,9 +500,12 @@ function updateUser({
     code,
     systemConfig,
     hasSeen,
+    status,
+    occupation,
   } = user;
   const {
     resetSocket,
+    resetImage,
   } = options;
   const update = {};
   const set = {};
@@ -508,9 +513,15 @@ function updateUser({
   const addToSet = {};
 
   if (resetSocket) {
-    set.socketId = '';
+    unset.socketId = '';
   } else if (socketId) {
     set.socketId = socketId;
+  }
+
+  if (resetImage) {
+    unset.image = '';
+  } else if (image) {
+    set.image = image;
   }
 
   if (mailAddress) { set.mailAddress = mailAddress; }
@@ -525,7 +536,6 @@ function updateUser({
   if (typeof isLootable === 'boolean') { set.isLootable = isLootable; }
   if (typeof hasFullAccess === 'boolean') { set.hasFullAccess = hasFullAccess; }
   if (aliases) { addToSet.aliases = { $each: aliases }; }
-  if (image) { set.image = image; }
   if (offName) { set.offName = offName; }
   if (pronouns) { set.pronouns = pronouns; }
   if (description) { set.description = description; }
@@ -536,6 +546,8 @@ function updateUser({
   if (code) { set.code = code; }
   if (systemConfig) { set.systemConfig = systemConfig; }
   if (hasSeen) { set.hasSeen = hasSeen; }
+  if (status) { set.status = status; }
+  if (occupation) { set.occupantion = occupation; }
 
   if (Object.keys(set).length > 0) { update.$set = set; }
   if (Object.keys(unset).length > 0) { update.$unset = unset; }

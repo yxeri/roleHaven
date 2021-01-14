@@ -43,6 +43,7 @@ function handle(io) {
 
     socket.emit(dbConfig.EmitTypes.STARTUP, {
       data: {
+        disallowProfileEdit: appConfig.disallowProfileEdit,
         allowPartialSearch: appConfig.allowPartialSearch,
         onlySeen: appConfig.onlySeen,
         newsCost: appConfig.newsCost,
@@ -98,6 +99,8 @@ function handle(io) {
           CreateTeam: dbConfig.apiCommands.CreateTeam,
           InviteToTeam: dbConfig.apiCommands.InviteToTeam,
           IncludeOff: dbConfig.apiCommands.IncludeOff,
+          UpdateUserStatus: dbConfig.apiCommands.UpdateUserStatus,
+          UpdateUserOccupation: dbConfig.apiCommands.UpdateUserOccupation,
         },
       },
     });
