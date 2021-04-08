@@ -31,7 +31,7 @@ function handle(socket, io) {
     params.io = io;
     params.socket = socket;
 
-    transactionManager.createTransaction(params);
+    transactionManager.createTransactionBasedOnToken(params);
   });
 
   socket.on('updateTransaction', (params, callback = () => {

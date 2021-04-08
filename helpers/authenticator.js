@@ -65,6 +65,12 @@ function createToken({
         return;
       }
 
+      if (user.lives <= 0) {
+        callback({ error: new errorCreator.Insufficient({ name: `${user.username} lives` }) });
+
+        return;
+      }
+
       bcrypt.compare(password, user.password, (hashError, result) => {
         if (hashError) {
           callback({ error: new errorCreator.Internal({ errorObject: hashError }) });
@@ -157,7 +163,7 @@ function isUserAllowed({
         const { user } = data;
         const { accessLevel } = commandUsed;
 
-        if (user.isBanned || !user.isVerified || accessLevel > user.accessLevel) {
+        if (user.isBanned || !user.isVerified || accessLevel > user.accessLevel || (appConfig.activateTermination && user.lives <= 0)) {
           callback({ error: new errorCreator.NotAllowed({ name: commandName }) });
 
           return;
@@ -190,6 +196,7 @@ function isAllowedAccessLevel({ objectToCreate, toAuth }) {
 function hasAccessTo({
   objectToAccess,
   toAuth,
+  adminLevel = dbConfig.AccessLevels.ADMIN,
 }) {
   const {
     ownerId,
@@ -220,12 +227,13 @@ function hasAccessTo({
   const userHasAdminAccess = userAdminIds.includes(authUserId);
   const aliasHasAdminAccess = foundOwnerAlias || aliases.find((aliasId) => userAdminIds.includes(aliasId));
   const teamHasAdminAccess = partOfTeam || teamAdminIds.find((adminId) => authTeamIds.includes(adminId));
-  const isAdmin = ownerId === authUserId || hasFullAccess || accessLevel >= dbConfig.AccessLevels.ADMIN;
+  const isAdmin = ownerId === authUserId || hasFullAccess || accessLevel >= adminLevel;
 
   return {
     canSee: isAdmin || isPublic || userHasAccess || teamHasAccess || aliasHasAccess || accessLevel >= visibility,
     hasAccess: isAdmin || isPublic || userHasAccess || teamHasAccess || aliasHasAccess,
     hasFullAccess: isAdmin || userHasAdminAccess || teamHasAdminAccess || aliasHasAdminAccess,
+    adminAccess: !isPublic && !userHasAccess && !teamHasAccess && !aliasHasAccess && isAdmin,
   };
 }
 

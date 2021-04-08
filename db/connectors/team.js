@@ -19,6 +19,8 @@
 const mongoose = require('mongoose');
 const errorCreator = require('../../error/errorCreator');
 const dbConnector = require('../databaseConnector');
+const { dbConfig } = require('../../config/defaults/config');
+const teamManager = require('../../managers/teams');
 
 const teamSchema = new mongoose.Schema(dbConnector.createSchema({
   teamName: { type: String, unique: true },
@@ -32,6 +34,8 @@ const teamSchema = new mongoose.Schema(dbConnector.createSchema({
   homeId: String,
   isPermissionsOnly: { type: Boolean, default: false },
   description: { type: [String], default: [] },
+  score: { type: Number, default: 0 },
+  auto: { type: Boolean, default: false },
 }), { collection: 'teams' });
 
 const Team = mongoose.model('Team', teamSchema);
@@ -168,7 +172,11 @@ function doesTeamExist({
  * @param {Object} params.team New team
  * @param {Function} params.callback Callback
  */
-function createTeam({ team, callback }) {
+function createTeam({
+  team,
+  callback,
+  silentExistsError,
+}) {
   doesTeamExist({
     teamName: team.teamName,
     shortName: team.shortName,
@@ -180,7 +188,11 @@ function createTeam({ team, callback }) {
       }
 
       if (nameData.data.exists) {
-        callback({ error: new errorCreator.AlreadyExists({ name: `team ${team.teamName} ${team.shortName}` }) });
+        if (silentExistsError) {
+          callback({ data: { exists: true } });
+        } else {
+          callback({ error: new errorCreator.AlreadyExists({ name: `team ${team.teamName} ${team.shortName}` }) });
+        }
 
         return;
       }
@@ -207,6 +219,34 @@ function createTeam({ team, callback }) {
 }
 
 /**
+ * Update a team's score.
+ * @param {Object} params Parameters.
+ * @param {string} params.teamId Id of the team to update.
+ * @param {number} params.value Amount to increase/decrease.
+ * @param {Function} params.callback Callback
+ * @param {boolean} [params.shouldIncrease] Should the score be increased?
+ */
+function updateTeamScore({
+  teamId,
+  value,
+  callback,
+  shouldIncrease = true,
+}) {
+  const amount = shouldIncrease
+    ? Math.abs(value)
+    : -Math.abs(value);
+  const update = {
+    $inc: { score: amount },
+  };
+
+  updateObject({
+    teamId,
+    update,
+    callback,
+  });
+}
+
+/**
  * Update team
  * @param {Object} params Parameters
  * @param {Object} params.team Fields to update
@@ -229,6 +269,7 @@ function updateTeam({
     homeId,
     description,
     image,
+    score,
   } = team;
   const { resetOwnerAliasId } = options;
   const update = {};
@@ -272,6 +313,7 @@ function updateTeam({
   if (homeId) { set.homeId = homeId; }
   if (description) { set.description = description; }
   if (image) { set.image = image; }
+  if (score) { set.score = score; }
 
   if (Object.keys(set).length > 0) { update.$set = set; }
   if (Object.keys(unset).length > 0) { update.$unset = unset; }
@@ -415,6 +457,61 @@ function removeTeamMembers({ memberIds, teamId, callback }) {
   });
 }
 
+/**
+ * Add teams to db.
+ * @param {Object} params Parameters.
+ * @param {Function} params.callback Callback.
+ */
+function populateDbTeams({ callback = () => {} }) {
+  console.info('Creating default teams, if needed');
+
+  const { teams } = dbConfig;
+
+  /**
+   * Adds a room to database. Recursive.
+   * @param {string[]} teamNames Team names.
+   */
+  function addTeam(teamNames) {
+    const teamName = teamNames.shift();
+
+    if (teamName) {
+      teamManager.createTeamAndDependencies({
+        skipUserAdd: true,
+        team: teams[teamName],
+        silentExistsError: true,
+        options: { setId: true },
+        callback: ({ error }) => {
+          if (error) {
+            callback({ error });
+
+            return;
+          }
+
+          addTeam(teamNames);
+        },
+      });
+
+      return;
+    }
+
+    callback({ data: { success: true } });
+  }
+
+  addTeam(Object.keys(teams));
+}
+
+/**
+ * Get auto-selectable teams.
+ * @param {Object} params Parameters.
+ * @param {Function} params.callback Callback.
+ */
+function getAutoTeams({ callback }) {
+  getTeams({
+    callback,
+    query: { auto: true },
+  });
+}
+
 exports.createTeam = createTeam;
 exports.getTeamsByUser = getTeamsByUser;
 exports.updateTeam = updateTeam;
@@ -423,3 +520,6 @@ exports.getTeamById = getTeamById;
 exports.verifyTeam = verifyTeam;
 exports.addTeamMembers = addTeamMembers;
 exports.removeTeamMembers = removeTeamMembers;
+exports.updateTeamScore = updateTeamScore;
+exports.populateDbTeams = populateDbTeams;
+exports.getAutoTeams = getAutoTeams;

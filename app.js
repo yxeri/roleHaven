@@ -22,7 +22,6 @@ const path = require('path');
 const bodyParser = require('body-parser');
 const morgan = require('morgan');
 const compression = require('compression');
-const firebase = require('firebase-admin');
 const { appConfig } = require('./config/defaults/config');
 const dbRoom = require('./db/connectors/room');
 const dbForum = require('./db/connectors/forum');
@@ -30,6 +29,8 @@ const positionManager = require('./managers/positions');
 const triggerEventManager = require('./managers/triggerEvents');
 const { version: appVersion, name: appName } = require('./package');
 const walletManager = require('./managers/wallets');
+const dbTeam = require('./db/connectors/team');
+const dbUser = require('./db/connectors/user');
 
 const app = express();
 const io = socketIo();
@@ -41,7 +42,7 @@ app.io = io;
 app.disable('x-powered-by');
 
 // view engine setup
-app.set('views', path.join(appConfig.publicBase, appConfig.viewsPath));
+app.set('views', appConfig.publicBase);
 app.set('view engine', 'html');
 // eslint-disable-next-line no-underscore-dangle, import/newline-after-import
 app.engine('html', require('hbs').__express);
@@ -67,15 +68,11 @@ if (!appConfig.jsonKey) {
 if (appConfig.mode !== appConfig.Modes.TEST) {
   dbRoom.populateDbRooms({});
   dbForum.populateDbForums({});
+  dbTeam.populateDbTeams({});
 }
 
-if (appConfig.firebaseConfig.private_key && appConfig.firebaseConfig.private_key_id && appConfig.firebaseDbUrl) {
-  console.log('Initializing Firebase.');
-
-  firebase.initializeApp({
-    credential: firebase.credential.cert(appConfig.firebaseConfig),
-    databaseURL: appConfig.firebaseDbUrl,
-  });
+if (appConfig.regenerateLivesInterval > 0) {
+  setInterval(() => { dbUser.regenerateLives(); }, appConfig.regenerateLivesInterval);
 }
 
 if (!appConfig.disablePositionImport && appConfig.mapLayersPath) {

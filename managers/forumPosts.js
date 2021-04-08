@@ -94,7 +94,11 @@ function createPost({
 
       const aliasAccess = authenticator.checkAliasAccess({ object: postToCreate, user: authUser, text: dbConfig.apiCommands.CreateForumPost.name });
 
-      if (aliasAccess.error) { callback({ error: aliasAccess.error }); }
+      if (aliasAccess.error) {
+        callback({ error: aliasAccess.error });
+
+        return;
+      }
 
       threadManager.getThreadById({
         token,

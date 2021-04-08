@@ -120,7 +120,11 @@ function createForum({
 
       const aliasAccess = authenticator.checkAliasAccess({ object: forumToCreate, user: authUser, text: dbConfig.apiCommands.CreateForum.name });
 
-      if (aliasAccess.error) { callback({ error: aliasAccess.error }); }
+      if (aliasAccess.error) {
+        callback({ error: aliasAccess.error });
+
+        return;
+      }
 
       dbForum.createForum({
         forum: forumToCreate,

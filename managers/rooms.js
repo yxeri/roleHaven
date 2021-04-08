@@ -318,6 +318,15 @@ function createAndFollowWhisperRoom({
                 }
 
                 io.to(newRoomId).emit(dbConfig.EmitTypes.ROOM, dataToSend);
+                io.to(dbConfig.AccessLevels.MODERATOR).emit(dbConfig.EmitTypes.ROOM, {
+                  data: {
+                    room: {
+                      ...newRoom,
+                      spyMode: true,
+                    },
+                    changeType: dbConfig.ChangeTypes.CREATE,
+                  },
+                });
 
                 callback(roomData);
               },
@@ -458,8 +467,9 @@ function follow({
                   changeType: dbConfig.ChangeTypes.UPDATE,
                 },
               };
-              const userToReturn = {
+              const callbackReturn = {
                 data: {
+                  room: updatedRoom,
                   user: users[0] || { objectId: userId },
                   changeType: dbConfig.ChangeTypes.UPDATE,
                 },
@@ -484,19 +494,16 @@ function follow({
               }
 
               if (socket) {
-                socket.to(idToAdd).emit(dbConfig.EmitTypes.USER, userToReturn);
                 socket.to(roomId).emit(dbConfig.EmitTypes.ROOM, toReturn);
 
                 if (invited) {
-                  socket.to(idToAdd).emit(dbConfig.EmitTypes.FOLLOW, toReturn);
+                  socket.to(idToAdd).emit(dbConfig.EmitTypes.FOLLOW, callbackReturn);
                 }
               } else {
-                io.to(idToAdd).emit(dbConfig.EmitTypes.FOLLOW, toReturn);
-                io.to(idToAdd).emit(dbConfig.EmitTypes.USER, userToReturn);
-                io.to(roomId).emit(dbConfig.EmitTypes.ROOM, toReturn);
+                io.to(idToAdd).emit(dbConfig.EmitTypes.FOLLOW, callbackReturn);
               }
 
-              callback(toReturn);
+              callback(callbackReturn);
             },
           });
         },
@@ -645,8 +652,7 @@ function createRoom({
       }
 
       const newRoom = room;
-      const { user } = data;
-      newRoom.ownerId = user.objectId;
+      newRoom.ownerId = authUser.objectId;
       newRoom.roomNameLowerCase = newRoom.roomName.toLowerCase();
       newRoom.password = newRoom.password && newRoom.password !== ''
         ? newRoom.password
@@ -664,6 +670,11 @@ function createRoom({
             }
 
             const createdRoom = roomData.room;
+
+            if (newRoom.password) {
+              createdRoom.isLocked = true;
+            }
+
             const dataToSend = {
               data: {
                 room: createdRoom,
@@ -677,15 +688,13 @@ function createRoom({
               io.emit(dbConfig.EmitTypes.ROOM, dataToSend);
             }
 
-            callback(dataToSend);
-
             follow({
-              user,
               socket,
               io,
+              callback,
+              user: authUser,
               invited: true,
-              callback: () => {},
-              userId: user.objectId,
+              userId: authUser.objectId,
               roomId: createdRoom.objectId,
             });
           },
@@ -745,7 +754,13 @@ function followRoom({
       const { user: authUser } = data;
 
       if (aliasId && !authUser.aliases.includes(aliasId)) {
-        callback({ error: new errorCreator.NotAllowed(`follow room ${roomId} with alias ${aliasId}`) });
+        callback({ error: new errorCreator.NotAllowed({ name: `follow room ${roomId} with alias ${aliasId}` }) });
+
+        return;
+      }
+
+      if (authUser.followingRooms.includes(roomId)) {
+        callback({ error: new errorCreator.AlreadyExists({ name: `already following ${roomId} with userId ${authUser.objectId}` }) });
 
         return;
       }
@@ -874,19 +889,29 @@ function getRoomsByUser({
 
           const { rooms } = getData;
           const allRooms = rooms.map((room) => {
-            const { hasFullAccess } = authenticator.hasAccessTo({
+            const { hasAccess, hasFullAccess, adminAccess } = authenticator.hasAccessTo({
               toAuth: authUser,
               objectToAccess: room,
+              adminLevel: dbConfig.AccessLevels.MODERATOR,
             });
+            const currentRoom = room;
 
-            if (!hasFullAccess) {
-              return managerHelper.stripObject({ object: room });
+            if ((!hasAccess || adminAccess) && currentRoom.password) {
+              currentRoom.isLocked = true;
             }
 
-            return room;
+            if (!hasFullAccess) {
+              return managerHelper.stripObject({ object: currentRoom });
+            }
+
+            if (room.isWhisper && !room.participantIds.some((id) => id === authUser.objectId || authUser.aliases.includes(id))) {
+              currentRoom.spyMode = true;
+            }
+
+            return currentRoom;
           }).sort((a, b) => {
-            const aName = a.roomName;
-            const bName = b.roomName;
+            const aName = a.roomName.toLowerCase();
+            const bName = b.roomName.toLowerCase();
 
             if (aName < bName) {
               return -1;
@@ -1034,8 +1059,12 @@ function removeRoom({
                 },
               };
 
-              socketUtils.getSocketsByRoom({ io, roomId }).forEach((roomSocket) => {
-                roomSocket.leave(roomId);
+              socketUtils.getSocketIdsByRoom({ io, roomId }).forEach((socketId) => {
+                const userSocket = io.sockets.connected[socketId];
+
+                if (userSocket) {
+                  userSocket.leave(roomId);
+                }
               });
 
               io.emit(dbConfig.EmitTypes.ROOM, dataToSend);

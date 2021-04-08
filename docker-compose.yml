@@ -9,4 +9,4 @@ rolehaven:
     ports:
         - "8888:8888"
     volumes:
-        - images:/usr/src/app/public/images
+        - images:/usr/src/app/build/upload/images

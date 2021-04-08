@@ -24,7 +24,7 @@ let clientConfig = {};
 let config = {};
 
 try {
-  clientConfig = Object.assign({},require('../../../../private/config/config')); // eslint-disable-line
+  clientConfig = Object.assign({},require('../../../../config/config')); // eslint-disable-line
 } catch (err) {
   console.log('Did not find client config. Using defaults.');
 }
@@ -45,6 +45,10 @@ const userVerifyEnv = textTools.convertToBoolean(process.env.USERVERIFY);
 const showDevInfoEnv = textTools.convertToBoolean(process.env.SHOWDEVINFO);
 const disablePositionImportEnv = textTools.convertToBoolean(process.env.DISABLEPOSITIONIMPORT);
 const requireOffNameEnv = textTools.convertToBoolean(process.env.REQUIREOFFNAME);
+const activateTerminationEnv = textTools.convertToBoolean(process.env.ACTIVATETERMINATION);
+const onlySeenEnv = textTools.convertToBoolean(process.env.ONLYSEEN);
+const allowPartialSearchEnv = textTools.convertToBoolean(process.env.ALLOWPARTIALSEARCH);
+const disallowProfileEditEnv = textTools.convertToBoolean(process.env.DISALLOWPROFILEEDIT);
 
 /**
  * **********
@@ -62,49 +66,13 @@ config.host = process.env.VIRTUAL_HOST || '127.0.0.1';
  * Base directory for public files.
  * @type {string}
  */
-config.publicBase = path.normalize(`${__dirname}/../../../../public`);
-
-/**
- * Base directory for private files.
- * @type {string}
- */
-config.privateBase = path.normalize(`${__dirname}/../../../../private`);
+config.publicBase = path.normalize(`${__dirname}/../../../../build`);
 
 /**
  * Default index name that will be served to public view.
  * @type {string}
  */
-config.indexName = process.env.INDEXNAME || config.indexName || 'default';
-
-/**
- * Default main Javascript file that will be served to public view.
- * @type {string}
- */
-config.mainJsName = process.env.MAINJSNAME || config.mainJsName || 'default';
-
-/**
- * Default main Javascript file that will be served to public view.
- * @type {string}
- */
-config.mainCssName = process.env.MAINCSSNAME || config.mainCssName || 'default';
-
-/**
- * Admin interface index name that will be served to public view.
- * @type {string}
- */
-config.adminIndexName = process.env.ADMININDEXNAME || config.adminIndexName || 'admin';
-
-/**
- * Admin interface Javascript file that will be served to public view.
- * @type {string}
- */
-config.adminJsName = process.env.ADMINJSNAME || config.adminJsName || 'admin';
-
-/**
- * Admin interface Javascript file that will be served to public view.
- * @type {string}
- */
-config.adminCssName = process.env.ADMINCSSNAME || config.adminCssName || 'admin';
+config.indexName = process.env.INDEXNAME || config.indexName || 'index';
 
 // TODO Routes should be empty by defaults. Move all routes to app-specific instances
 /**
@@ -140,6 +108,7 @@ config.routes = config.ignoreDefaultRoutes
     { sitePath: '/api/messages', filePath: '/routes/rest/messages' },
     { sitePath: '/api/transactions', filePath: '/routes/rest/transactions' },
     { sitePath: '/api/triggerEvents', filePath: '/routes/rest/triggerEvents' },
+    { sitePath: '/api/tools', filePath: '/routes/rest/tools' },
   ]).concat(config.routes || []).concat([{ sitePath: '*', filePath: '/routes/error.js' }]).map((route) => {
     return {
       sitePath: route.sitePath,
@@ -177,34 +146,6 @@ config.handlers = config.ignoreDefaultHandlers
 ].concat(config.handlers || []).map(path => `${__dirname}/../..${path}`);
 
 /* eslint-enable */
-
-/**
- * Path to directory with views.
- * Will be appended to the base directories.
- * @type {string}
- */
-config.viewsPath = 'views';
-
-/**
- * Path to directory with stylesheets.
- * Will be appended to the base directories.
- * @type {string}
- */
-config.stylesPath = 'styles';
-
-/**
- * Path to directory with scripts. Will be minified.
- * Will be appended to the base directories.
- * @type {string}
- */
-config.scriptsPath = 'scripts';
-
-/**
- * Path to directory with scripts that should not be minified.
- * Will be appended to the base directories.
- * @type {string}
- */
-config.requiredPath = 'required';
 
 config.jsVersion = clientConfig && clientConfig.version
   ? clientConfig.version
@@ -255,15 +196,6 @@ config.dbName = `${config.mode}-${process.env.DBNAME || config.dbName || 'roleHa
  * @type {number}
  */
 config.port = process.env.PORT || config.port || 8888;
-
-/**
- * Retrieve socket.io from local server or cdn.
- * Note! Android 2.2 fails when using cdn.
- * @type {string}
- */
-config.socketPath = (process.env.SOCKETPATH === 'cdn' || config.socketPath === 'cdn')
-  ? 'https://cdnjs.cloudflare.com/ajax/libs/socket.io/2.0.1/socket.io.slim.js'
-  : (process.env.SOCKETPATH || config.socketPath || '/scripts/socket.io.js');
 
 config.country = process.env.COUNTRY || config.country || 'Sweden';
 
@@ -414,12 +346,6 @@ config.maxZoomLevel = textTools.convertToInt(process.env.MAXZOOMLEVEL || config.
  */
 
 /**
- * Google Maps API key.
- * @type {string}
- */
-config.gMapsKey = process.env.GMAPSKEY || config.gMapsKey;
-
-/**
  * URL to Google Maps layer that will be imported
  * @type {string}
  */
@@ -519,7 +445,7 @@ config.usernameMinLength = process.env.USERNAMEMINLENGTH || config.usernameMinLe
  * Maximum amount of characters in a user name
  * @type {number}
  */
-config.usernameMaxLength = process.env.USERNAMEMAXLENGTH || config.usernameMaxLength || 20;
+config.usernameMaxLength = process.env.USERNAMEMAXLENGTH || config.usernameMaxLength || 30;
 
 /**
  * Maximum amount warnings before a user account is banned
@@ -531,7 +457,7 @@ config.maxUserWarnings = process.env.MAXUSERWARNINGS || config.maxUserWarnings |
  * Minimum amount of characters in a password
  * @type {number}
  */
-config.passwordMinLength = process.env.PASSWORDMINLENGTH || config.passwordMinLength || 3;
+config.passwordMinLength = process.env.PASSWORDMINLENGTH || config.passwordMinLength || 4;
 
 /**
  * Maximum amount of characters in a password
@@ -561,13 +487,25 @@ config.offNameMinLength = process.env.OFFNAMEMINLENGTH || config.offNameMinLengt
  * Maximum amount of characters in a user's off-game name.
  * @type {number}
  */
-config.offNameNameMaxLength = process.env.OFFNAMEMAXLENGTH || config.offNameNameMaxLength || 40;
+config.offNameNameMaxLength = process.env.OFFNAMEMAXLENGTH || config.offNameNameMaxLength || 100;
 
 /**
  * Maximum amount of characters in a user's description.
  * @type {number}
  */
 config.userDescriptionMaxLength = process.env.USERDESCRIPTIONMAXLENGTH || config.userDescriptionMaxLength || 300;
+
+config.onlySeen = typeof onlySeenEnv !== 'undefined'
+  ? onlySeenEnv
+  : config.onlySeen || false;
+
+config.allowPartialSearch = typeof allowPartialSearchEnv !== 'undefined'
+  ? allowPartialSearchEnv
+  : config.allowPartialSearch || true;
+
+config.disallowProfileEdit = typeof disallowProfileEditEnv !== 'undefined'
+  ? disallowProfileEditEnv
+  : config.disallowProfileEdit || false;
 
 /**
  * ********
@@ -599,7 +537,13 @@ config.shortTeamMaxLength = process.env.SHORTEAMMAXLENGTH || config.shortTeamMax
  * Max amount of teams that a user can be part of.
  * @type {number}
  */
-config.maxUserTeam = process.env.MAXUSERTEAM || config.maxUserTeam || 1;
+config.maxUserTeam = process.env.MAXUSERTEAM || config.maxUserTeam || 99;
+
+/**
+ * Should users be automatically added to teams?
+ * @type {boolean}
+ */
+config.autoAddToTeam = process.env.AUTOADDTOTEAM || config.autoAddToTeam || false;
 
 /**
  * ************
@@ -629,7 +573,7 @@ config.docFileTitleMaxLength = process.env.DOCFILETITLEMAXLENGTH || config.docFi
  * Minimum amount of characters in a document title
  * @type {number}
  */
-config.docFileTitleMinLength = process.env.DOCFILETITLEMINLENGTH || config.docFileTitleMinLength || 3;
+config.docFileTitleMinLength = process.env.DOCFILETITLEMINLENGTH || config.docFileTitleMinLength || 1;
 
 /**
  * Maximum amount of alphanumeric in a document id
@@ -794,25 +738,33 @@ config.spotifySecret = process.env.SPOTIFYSECRET;
 config.spotifyRedirectUri = process.env.SPOTIFYREDIRECTURI;
 
 /**
- * **********
- * Firebase *
- * **********
+ * ***************************
+ * Player termination (game) *
+ * ***************************
  */
 
-config.firebaseDbUrl = process.env.FIREBASEDBURL;
+config.activateTermination = activateTerminationEnv || false;
 
-config.firebaseConfig = {
-  private_key: process.env.FIREBASEPRIVATEKEY,
-  private_key_id: process.env.FIREBASEPRIVATEKEYID,
-  type: 'service_account',
-  project_id: 'roleterminal-45929',
-  client_email: 'firebase-adminsdk-cnoqv@roleterminal-45929.iam.gserviceaccount.com',
-  client_id: '102663923125222547316',
-  auth_uri: 'https://accounts.google.com/o/oauth2/auth',
-  token_uri: 'https://oauth2.googleapis.com/token',
-  auth_provider_x509_cert_url: 'https://www.googleapis.com/oauth2/v1/certs',
-  client_x509_cert_url: 'https://www.googleapis.com/robot/v1/metadata/x509/firebase-adminsdk-cnoqv%40roleterminal-45929.iam.gserviceaccount.com',
-};
-
+config.regenerateLivesInterval = process.env.REGENERATELIVESINTERVAL || 0;
 
 module.exports = config;
+
+/**
+ * ******
+ * News *
+ * ******
+ */
+
+config.newsCost = process.env.NEWSCOST || 1;
+
+/**
+ * Maximum amount of characters in a news message
+ * @type {number}
+ */
+config.newsMessageMaxLength = process.env.NEWSMESSAGEMAXLENGTH || config.newsMessageMaxLength || 1000;
+
+/**
+ * Wallet Id that will receive transfers for news creation
+ * @type {string}
+ */
+config.newsWallet = process.env.NEWSWALLET || config.newsWallet || '222222222222222222222220';

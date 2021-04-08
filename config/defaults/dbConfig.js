@@ -28,6 +28,7 @@ config.rooms = config.rooms || {};
 config.users = config.users || {};
 config.apiCommands = config.apiCommands || {};
 config.forums = config.forums || {};
+config.teams = config.teams || {};
 
 /**
  * Access levels are used as permissions for users.
@@ -166,6 +167,11 @@ config.protectedNames = [
   config.users.anonymous.username,
 ];
 
+config.RewardTypes = {
+  CURRENCY: 'currency',
+  TEAM: 'team',
+};
+
 config.DeviceTypes = {
   USERDEVICE: 'userDevice',
   GPS: 'gps',
@@ -178,6 +184,7 @@ config.GameCodeTypes = {
   DOCFILE: 'docfile',
   TEXT: 'text',
   PROFILE: 'profile',
+  ATTACK: 'attack',
 };
 
 config.InvitationTypes = {
@@ -190,6 +197,7 @@ config.MessageTypes = {
   WHISPER: 'whisper',
   BROADCAST: 'broadcast',
   MESSAGE: 'message',
+  NEWS: 'news',
 };
 
 config.PositionTypes = {
@@ -253,6 +261,8 @@ config.EmitTypes = {
   STARTUP: 'startup',
   SENDMSG: 'sendMessage',
   TRIGGEREVENT: 'triggerEvent',
+  TERMINATE: 'terminate',
+  ATTACK: 'attack',
 };
 
 config.TriggerEventTypes = {
@@ -283,6 +293,17 @@ config.Pronouns = {
 };
 
 config.customUserFields = config.customUserFields || [];
+
+config.activeApps = {
+  CHAT: true,
+  MAP: true,
+  WALLET: true,
+  DOCFILE: true,
+  FORUM: true,
+  TERMINAL: true,
+  USERS: true,
+  TEAMS: true,
+};
 
 /**
  * *******************
@@ -349,6 +370,10 @@ config.apiCommands = { /**
   },
   SendMessage: config.apiCommands.SendMessage || {
     name: 'SendMessage',
+    accessLevel: config.AccessLevels.STANDARD,
+  },
+  SendNewsMessage: config.apiCommands.SendNewsMessage || {
+    name: 'SendNewsMessage',
     accessLevel: config.AccessLevels.STANDARD,
   },
   SendWhisper: config.apiCommands.SendWhisper || {
@@ -471,6 +496,10 @@ config.apiCommands = { /**
     name: 'CreateDisallowedUser',
     accessLevel: config.AccessLevels.ADMIN,
   },
+  CreateMultipleUsers: config.apiCommands.CreateMultipleUsers || {
+    name: 'CreateMultipleUsers',
+    accessLevel: config.AccessLevels.ADMIN,
+  },
   CreateSockerUser: config.apiCommands.CreateSockerUser || {
     name: 'CreateSockerUser',
     accessLevel: config.AccessLevels.ANONYMOUS,
@@ -538,6 +567,18 @@ config.apiCommands = { /**
   UpdateSelf: config.apiCommands.UpdateSelf || {
     name: 'UpdateSelf',
     accesslevel: config.AccessLevels.ADMIN,
+  },
+  AttackUser: config.apiCommands.AttackUser || {
+    name: 'AttackUser',
+    accessLevel: config.AccessLevels.STANDARD,
+  },
+  UpdateUserStatus: config.apiCommands.UpdateUserStatus || {
+    name: 'UpdateUserStatus',
+    accessLevel: config.AccessLevels.PRIVILEGED,
+  },
+  UpdateUserOccupation: config.apiCommands.UpdateUserOccupation || {
+    name: 'UpdateUserOccupation',
+    accessLevel: config.AccessLevels.STANDARD,
   },
 
   /**
@@ -833,6 +874,14 @@ config.apiCommands = { /**
   },
   GetTriggerEvents: config.apiCommands.GetTriggerEvents || {
     name: 'GetTriggerEvents',
+    accessLevel: config.AccessLevels.STANDARD,
+  },
+
+  /**
+   * Hidden identity game
+   */
+  ConnectUser: config.apiCommands.ConnectUser || {
+    name: 'ConnectUser',
     accessLevel: config.AccessLevels.STANDARD,
   },
 

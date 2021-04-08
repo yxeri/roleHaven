@@ -254,12 +254,20 @@ function createTeamAndDependencies({
   team,
   io,
   callback,
+  skipUserAdd = false,
 }) {
   dbTeam.createTeam({
     team,
+    silentExistsError: skipUserAdd,
     callback: ({ error: createTeamError, data: createTeamData }) => {
       if (createTeamError) {
         callback({ error: createTeamError });
+
+        return;
+      }
+
+      if (createTeamData.exists) {
+        callback({ data: { exists: true } });
 
         return;
       }
@@ -312,25 +320,37 @@ function createTeamAndDependencies({
                 return;
               }
 
-              addUserToTeam({
-                teamId,
-                io,
-                isAdmin: true,
-                memberId: ownerAliasId || ownerId,
-                callback: ({ error: addError }) => {
-                  if (addError) {
-                    callback({ error: addError });
+              if (!skipUserAdd) {
+                addUserToTeam({
+                  teamId,
+                  io,
+                  isAdmin: true,
+                  memberId: ownerAliasId || ownerId,
+                  callback: ({ error: addError }) => {
+                    if (addError) {
+                      callback({ error: addError });
 
-                    return;
-                  }
+                      return;
+                    }
 
-                  callback({
-                    data: {
-                      room: roomData.room,
-                      wallet: walletData.wallet,
-                      team: newTeam,
-                    },
-                  });
+                    callback({
+                      data: {
+                        room: roomData.room,
+                        wallet: walletData.wallet,
+                        team: newTeam,
+                      },
+                    });
+                  },
+                });
+
+                return;
+              }
+
+              callback({
+                data: {
+                  room: roomData.room,
+                  wallet: walletData.wallet,
+                  team: newTeam,
                 },
               });
             },
@@ -815,6 +835,45 @@ function leaveTeam({
 }
 
 /**
+ * Increase or decrease team score.
+ * @param {Object} params Parameters.
+ * @param {string} params.teamId Id of the team to update.
+ * @param {string} params.value Amount.
+ * @param {boolean} params.shouldIncrease Should the score be increased?
+ * @param {Object} params.io Socket.io.
+ * @param {Function} params.callback Callback.
+ */
+function updateTeamScore({
+  teamId,
+  value,
+  shouldIncrease,
+  io,
+  callback,
+}) {
+  dbTeam.updateTeamScore({
+    teamId,
+    value,
+    shouldIncrease,
+    callback: ({ error, data }) => {
+      if (error) {
+        callback({ error });
+
+        return;
+      }
+
+      const { team } = data;
+
+      io.emit(dbConfig.EmitTypes.TEAM, {
+        data: {
+          team: managerHelper.stripObject({ object: team }),
+          changeType: dbConfig.ChangeTypes.UPDATE,
+        },
+      });
+    },
+  });
+}
+
+/**
  * Update a team.
  * @param {Object} params Parameters.
  * @param {string} params.teamId ID of the team to update.
@@ -831,9 +890,11 @@ function updateTeam({
   callback,
   socket,
   image,
+  internalCallUser,
 }) {
   authenticator.isUserAllowed({
     token,
+    internalCallUser,
     commandName: dbConfig.apiCommands.UpdateTeam.name,
     callback: ({ error, data }) => {
       if (error) {
@@ -936,3 +997,5 @@ exports.acceptTeamInvitation = acceptTeamInvitation;
 exports.getTeamById = getTeamById;
 exports.leaveTeam = leaveTeam;
 exports.getTeamsByUser = getTeamsByUser;
+exports.updateTeamScore = updateTeamScore;
+exports.createTeamAndDependencies = createTeamAndDependencies;

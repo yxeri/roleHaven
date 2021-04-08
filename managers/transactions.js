@@ -207,41 +207,38 @@ function createTransaction({
               const { fromWallet, toWallet } = runTransactionData;
               const fromDataToSend = {
                 data: {
+                  wallet: fromWallet,
                   transaction: createdTransaction,
                   changeType: dbConfig.ChangeTypes.CREATE,
                 },
               };
               const toDataToSend = {
                 data: {
+                  wallet: toWallet,
                   transaction: createdTransaction,
                   changeType: dbConfig.ChangeTypes.CREATE,
-                },
-              };
-              const fromWalletData = {
-                data: {
-                  wallet: fromWallet,
-                  changeType: dbConfig.ChangeTypes.UPDATE,
-                },
-              };
-              const toWalletData = {
-                data: {
-                  wallet: toWallet,
-                  changeType: dbConfig.ChangeTypes.UPDATE,
                 },
               };
 
               if (socket) {
                 socket.broadcast.to(fromWallet.objectId).emit(dbConfig.EmitTypes.TRANSACTION, fromDataToSend);
-                socket.broadcast.to(toWallet.objectId).emit(dbConfig.EmitTypes.TRANSACTION, toDataToSend);
+
+                if (toWallet) {
+                  socket.broadcast.to(toWallet.objectId).emit(dbConfig.EmitTypes.TRANSACTION, toDataToSend);
+                }
               } else {
                 io.to(fromWallet.objectId).emit(dbConfig.EmitTypes.TRANSACTION, fromDataToSend);
-                io.to(toWallet.objectId).emit(dbConfig.EmitTypes.TRANSACTION, toDataToSend);
+
+                if (toWallet) {
+                  io.to(toWallet.objectId).emit(dbConfig.EmitTypes.TRANSACTION, toDataToSend);
+                }
               }
 
-              io.to(fromWallet.objectId).emit(dbConfig.EmitTypes.WALLET, fromWalletData);
-              io.to(toWallet.objectId).emit(dbConfig.EmitTypes.WALLET, toWalletData);
-              io.to(dbConfig.AccessLevels.MODERATOR).emit(dbConfig.EmitTypes.WALLET, fromWalletData);
-              io.to(dbConfig.AccessLevels.MODERATOR).emit(dbConfig.EmitTypes.WALLET, toWalletData);
+              io.to(dbConfig.AccessLevels.MODERATOR).emit(dbConfig.EmitTypes.TRANSACTION, fromDataToSend);
+
+              if (toWallet) {
+                io.to(dbConfig.AccessLevels.MODERATOR).emit(dbConfig.EmitTypes.TRANSACTION, toDataToSend);
+              }
 
               callback(fromDataToSend);
             },
@@ -280,6 +277,7 @@ function createTransactionBasedOnToken({
       const { user: authUser } = data;
 
       walletManager.getWalletById({
+        needsAccess: true,
         internalCallUser: authUser,
         walletId: transaction.fromWalletId,
         callback: ({ error: walletError, data: walletData }) => {
@@ -295,6 +293,14 @@ function createTransactionBasedOnToken({
           transactionToCreate.teamId = foundWallet.teamId;
           transactionToCreate.ownerId = foundWallet.ownerId;
           transactionToCreate.ownerAliasId = foundWallet.ownerAliasId;
+
+          const aliasAccess = authenticator.checkAliasAccess({ object: transactionToCreate, user: authUser, text: dbConfig.apiCommands.CreateTransaction.name });
+
+          if (aliasAccess.error) {
+            callback({ error: aliasAccess.error });
+
+            return;
+          }
 
           createTransaction({
             io,
@@ -454,6 +460,14 @@ function updateTransaction({
       }
 
       const { user: authUser } = data;
+
+      const aliasAccess = authenticator.checkAliasAccess({ object: transaction, user: authUser, text: dbConfig.apiCommands.UpdateTransaction.name });
+
+      if (aliasAccess.error) {
+        callback({ error: aliasAccess.error });
+
+        return;
+      }
 
       getTransactionById({
         transactionId,

@@ -27,6 +27,8 @@ const gameCodeSchema = new mongoose.Schema(dbConnector.createSchema({
   codeContent: { type: [String], default: [] },
   isRenewable: { type: Boolean, default: false },
   used: { type: Boolean, default: false },
+  uses: { type: Number, default: 1 },
+  lockCode: { type: Boolean, default: false },
 }), { collection: 'gameCodes' });
 
 const GameCode = mongoose.model('GameCode', gameCodeSchema);
@@ -183,7 +185,7 @@ function createGameCode({ gameCode, callback }) {
  * @param {Function} params.callback Callback.
  * @param {Object} params.gameCode Game code.
  * @param {string} [params.gameCode.code] Game code.
- * @param {string} 8params.gameCode.codeType] Type of game code.
+ * @param {string} [params.gameCode.codeType] Type of game code.
  * @param {boolean} [params.gameCode.isRenewable] Should a new game code be created after usage?
  * @param {string[]} [params.gameCode.codeContent] Content that will be retrieved by user that uses the code.
  */
@@ -197,6 +199,7 @@ function updateGameCode({
     isRenewable,
     used,
     codeContent,
+    lockCode,
   } = gameCode;
 
   const update = { $set: {} };
@@ -205,6 +208,7 @@ function updateGameCode({
   if (codeType) { update.$set.codeType = codeType; }
   if (typeof isRenewable === 'boolean') { update.$set.isRenewable = isRenewable; }
   if (typeof used === 'boolean') { update.$set.used = used; }
+  if (typeof lockCode === 'boolean') { update.$set.lockCode = lockCode; }
 
   updateObject({
     update,
@@ -251,16 +255,54 @@ function getGameCodeById({
 }
 
 /**
- * Remove game code.
- * @param {Object} params Parameters.
- * @param {string} params.gameCodeId Id of the game code.
+ * Get game code by code.
+ * @param {Object} params Parameters
+ * @param {string} params.code Code of the game code to retrieve.
  * @param {Function} params.callback Callback.
  */
-function removeGameCode({ gameCodeId, callback }) {
-  dbConnector.removeObject({
+function getGameCodeByCode({
+  code,
+  callback,
+}) {
+  const query = { code };
+
+  getGameCode({
+    query,
     callback,
+  });
+}
+
+/**
+ * Remove game code.
+ * @param {Object} params Parameters.
+ * @param {Object} params.gameCode Game code.
+ * @param {Function} params.callback Callback.
+ */
+function removeGameCode({
+  gameCodeId,
+  callback,
+}) {
+  dbConnector.removeObject({
     object: GameCode,
     query: { _id: gameCodeId },
+    callback: ({ error, data }) => {
+      if (error) {
+        callback({ error });
+
+        return;
+      }
+
+      callback({
+        data: {
+          ...data,
+          gameCode: {
+            objectId: gameCodeId,
+            used: true,
+            uses: 0,
+          },
+        },
+      });
+    },
   });
 }
 
@@ -282,9 +324,44 @@ function getProfileGameCode({ ownerId, callback }) {
   });
 }
 
+/**
+ * Lower the amount of uses on a game code.
+ * @param {Object} params Parameters.
+ * @param {string} params.gameCodeId Id of the game code.
+ * @param {Function} params.callback Callback
+ */
+function lowerUses({ gameCodeId, callback }) {
+  updateObject({
+    gameCodeId,
+    callback,
+    update: {
+      $inc: { uses: -1 },
+    },
+  });
+}
+
+/**
+ * Increase the amount of uses on a game code.
+ * @param {Object} params Parameters.
+ * @param {string} params.gameCodeId Id of the game code.
+ * @param {Function} params.callback Callback.
+ */
+function increaseUses({ gameCodeId, callback }) {
+  updateObject({
+    gameCodeId,
+    callback,
+    update: {
+      $inc: { uses: 1 },
+    },
+  });
+}
+
 exports.createGameCode = createGameCode;
 exports.updateGameCode = updateGameCode;
 exports.removeGameCode = removeGameCode;
 exports.getGameCodeById = getGameCodeById;
 exports.getGameCodesByUser = getGameCodesByUser;
 exports.getProfileGameCode = getProfileGameCode;
+exports.getGameCodeByCode = getGameCodeByCode;
+exports.lowerUses = lowerUses;
+exports.increaseUses = increaseUses;

@@ -32,6 +32,9 @@ const aliasSchema = new mongoose.Schema(dbConnector.createSchema({
   customFields: [dbConnector.customFieldSchema],
   isVerified: { type: Boolean, default: true },
   isBanned: { type: Boolean, default: false },
+  connectedTo: { type: [String], default: [] },
+  status: String,
+  occupation: String,
 }), { collection: 'aliases' });
 
 const Alias = mongoose.model('Alias', aliasSchema);
@@ -265,7 +268,10 @@ function updateAlias({
   callback,
   options = {},
 }) {
-  const { resetOwnerAliasId } = options;
+  const {
+    resetOwnerAliasId,
+    resetImage,
+  } = options;
   const {
     aliasName,
     ownerAliasId,
@@ -273,6 +279,8 @@ function updateAlias({
     image,
     description,
     customFields,
+    occupation,
+    status,
   } = alias;
   const update = {};
   const set = {};
@@ -284,14 +292,21 @@ function updateAlias({
     set.ownerAliasId = ownerAliasId;
   }
 
+  if (resetImage) {
+    unset.image = '';
+  } else if (image) {
+    set.image = image;
+  }
+
   if (typeof isPublic === 'boolean') { set.isPublic = isPublic; }
   if (aliasName) {
     set.aliasName = aliasName;
     set.aliasNameLowerCase = aliasName.toLowerCase();
   }
-  if (image) { set.image = image; }
   if (description) { set.description = description; }
   if (customFields) { set.customFields = customFields; }
+  if (status) { set.status = status; }
+  if (occupation) { set.occupantion = occupation; }
 
   if (Object.keys(set).length > 0) { update.$set = set; }
   if (Object.keys(unset).length > 0) { update.$unset = unset; }

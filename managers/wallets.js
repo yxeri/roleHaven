@@ -240,26 +240,38 @@ function runTransaction({ transaction, callback }) {
         return;
       }
 
-      dbWallet.updateWallet({
-        walletId: toWalletId,
-        wallet: { amount },
-        options: { shouldDecreaseAmount: false },
-        callback: ({ error: increaseError, data: increaseData }) => {
-          if (increaseError) {
-            callback({ error: increaseError });
+      if (toWalletId !== dbConfig.users.systemUser.objectId) {
+        dbWallet.updateWallet({
+          walletId: toWalletId,
+          wallet: { amount },
+          options: { shouldDecreaseAmount: false },
+          callback: ({ error: increaseError, data: increaseData }) => {
+            if (increaseError) {
+              callback({ error: increaseError });
 
-            return;
-          }
+              return;
+            }
 
-          const { wallet: fromWallet } = decreaseData;
-          const { wallet: toWallet } = increaseData;
+            const { wallet: fromWallet } = decreaseData;
+            const { wallet: toWallet } = increaseData;
 
-          callback({
-            data: {
-              fromWallet,
-              toWallet,
-            },
-          });
+            callback({
+              data: {
+                fromWallet,
+                toWallet,
+              },
+            });
+          },
+        });
+
+        return;
+      }
+
+      const { wallet: fromWallet } = decreaseData;
+
+      callback({
+        data: {
+          fromWallet,
         },
       });
     },
