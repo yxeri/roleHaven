@@ -502,6 +502,7 @@ function updateUser({
     hasSeen,
     status,
     occupation,
+    tags,
   } = user;
   const {
     resetSocket,
@@ -547,7 +548,8 @@ function updateUser({
   if (systemConfig) { set.systemConfig = systemConfig; }
   if (hasSeen) { set.hasSeen = hasSeen; }
   if (status) { set.status = status; }
-  if (occupation) { set.occupantion = occupation; }
+  if (occupation) { set.occupation = occupation; }
+  if (tags) { set.taqs = tags; }
 
   if (Object.keys(set).length > 0) { update.$set = set; }
   if (Object.keys(unset).length > 0) { update.$unset = unset; }

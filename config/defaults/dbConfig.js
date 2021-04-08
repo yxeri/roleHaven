@@ -300,6 +300,9 @@ config.activeApps = {
   WALLET: true,
   DOCFILE: true,
   FORUM: true,
+  TERMINAL: true,
+  USERS: true,
+  TEAMS: true,
 };
 
 /**

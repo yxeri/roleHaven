@@ -37,40 +37,74 @@ function createImage({
   });
   const imgBuffer = Buffer.from(image.source.replace(/data:image\/((png)|(jpeg)|(pjpeg));base64,/, ''), 'base64');
 
-  sharp(imgBuffer)
-    .resize(appConfig.imageMaxWidth, appConfig.imageMaxHeight, { fit: 'inside' })
-    .rotate()
-    .toFile(`${appConfig.publicBase}/upload/images/${fileName}`, (error, info) => {
-      if (error) {
-        console.log(error);
-        callback({ error });
+  const sharpImage = sharp(imgBuffer);
 
-        return;
-      }
-
-      sharp(imgBuffer)
-        .resize(appConfig.imageThumbMaxWidth, appConfig.imageThumbMaxHeight, { fit: 'inside' })
+  sharpImage
+    .metadata()
+    .then(({ width, height }) => {
+      sharpImage
         .rotate()
-        .toFile(`${appConfig.publicBase}/upload/images/imgThumb-${fileName}`, (thumbError, thumbInfo) => {
-          if (thumbError) {
-            callback({ error: thumbError });
+        .extract({
+          left: image.crop
+            ? Math.round(image.crop.x)
+            : 0,
+          top: image.crop
+            ? Math.round(image.crop.y)
+            : 0,
+          width: image.crop
+            ? Math.round(width * (image.crop.width * 0.01))
+            : width,
+          height: image.crop
+            ? Math.round(height * (image.crop.height * 0.01))
+            : height,
+        })
+        .resize(appConfig.imageMaxWidth, appConfig.imageMaxHeight, { fit: 'inside' })
+        .toFile(`${appConfig.publicBase}/upload/images/${fileName}`, (error, info) => {
+          if (error) {
+            console.log(error);
+            callback({ error });
 
             return;
           }
 
-          callback({
-            data: {
-              image: {
-                fileName,
-                thumbFileName: `imgThumb-${fileName}`,
-                imageName: image.imageName,
-                width: info.width,
-                height: info.height,
-                thumbWidth: thumbInfo.width,
-                thumbHeight: thumbInfo.height,
-              },
-            },
-          });
+          sharp(imgBuffer)
+            .rotate()
+            .extract({
+              left: image.crop
+                ? Math.round(image.crop.x)
+                : 0,
+              top: image.crop
+                ? Math.round(image.crop.y)
+                : 0,
+              width: image.crop
+                ? Math.round(width * (image.crop.width * 0.01))
+                : width,
+              height: image.crop
+                ? Math.round(height * (image.crop.height * 0.01))
+                : height,
+            })
+            .resize(appConfig.imageThumbMaxWidth, appConfig.imageThumbMaxHeight, { fit: 'inside' })
+            .toFile(`${appConfig.publicBase}/upload/images/imgThumb-${fileName}`, (thumbError, thumbInfo) => {
+              if (thumbError) {
+                callback({ error: thumbError });
+
+                return;
+              }
+
+              callback({
+                data: {
+                  image: {
+                    fileName,
+                    thumbFileName: `imgThumb-${fileName}`,
+                    imageName: image.imageName,
+                    width: info.width,
+                    height: info.height,
+                    thumbWidth: thumbInfo.width,
+                    thumbHeight: thumbInfo.height,
+                  },
+                },
+              });
+            });
         });
     });
 }
