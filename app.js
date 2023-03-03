@@ -27,7 +27,7 @@ const dbRoom = require('./db/connectors/room');
 const dbForum = require('./db/connectors/forum');
 const positionManager = require('./managers/positions');
 const triggerEventManager = require('./managers/triggerEvents');
-const { version: appVersion, name: appName } = require('./package');
+const { version: appVersion, name: appName } = require('./package.json');
 const walletManager = require('./managers/wallets');
 const dbTeam = require('./db/connectors/team');
 const dbUser = require('./db/connectors/user');
@@ -41,11 +41,6 @@ app.io = io;
 
 app.disable('x-powered-by');
 
-// view engine setup
-app.set('views', appConfig.publicBase);
-app.set('view engine', 'html');
-// eslint-disable-next-line no-underscore-dangle, import/newline-after-import
-app.engine('html', require('hbs').__express);
 app.use(bodyParser.json());
 app.use(compression());
 // Logging
