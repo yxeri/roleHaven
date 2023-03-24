@@ -35,6 +35,7 @@ const roomSchema = new mongoose.Schema(dbConnector.createSchema({
   isUser: { type: Boolean, default: false },
   isTeam: { type: Boolean, default: false },
   topic: { type: String, default: '' },
+  image: dbConnector.imageSchema,
 }), { collection: 'rooms' });
 
 const Room = mongoose.model('Room', roomSchema);
@@ -398,6 +399,7 @@ function updateRoom({
   const {
     resetOwnerAliasId,
     resetPassword,
+    resetImage,
   } = options;
   const {
     roomName,
@@ -408,6 +410,7 @@ function updateRoom({
     isAnonymous,
     password,
     topic,
+    image,
   } = room;
   const update = {};
   const set = {};
@@ -434,6 +437,12 @@ function updateRoom({
     set.roomNameLowerCase = roomName.toLowerCase();
   }
   if (topic) { set.topic = topic; }
+
+  if (resetImage) {
+    unset.image = '';
+  } else if (image) {
+    set.image = image;
+  }
 
   if (Object.keys(set).length > 0) { update.$set = set; }
   if (Object.keys(unset).length > 0) { update.$unset = unset; }

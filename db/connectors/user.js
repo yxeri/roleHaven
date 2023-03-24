@@ -31,7 +31,7 @@ const userSchema = new mongoose.Schema(dbConnector.createSchema({
   socketId: String,
   lastOnline: Date,
   registerDevice: String,
-  description: [String],
+  description: { type: [String], default: [] },
   hasFullAccess: { type: Boolean, default: false },
   isVerified: { type: Boolean, default: false },
   isBanned: { type: Boolean, default: false },
@@ -47,7 +47,15 @@ const userSchema = new mongoose.Schema(dbConnector.createSchema({
   customFields: [dbConnector.customFieldSchema],
   pushToken: String,
   disableNotifications: Boolean,
+  lives: { type: Number, default: 1 },
   code: String,
+  hasLoggedIn: { type: Boolean, default: false },
+  hasSetName: { type: Boolean, default: false },
+  connectedTo: { type: [String], default: [] },
+  systemConfig: { type: {}, default: {} },
+  hasSeen: { type: [String], default: [] },
+  status: String,
+  occupation: String,
 }), { collection: 'users' });
 
 const User = mongoose.model('User', userSchema);
@@ -240,12 +248,19 @@ function getUserById({
   userId,
   username,
   callback,
-  getPassword = false,
   supressExistError,
+  getPassword = false,
 }) {
-  const query = userId
-    ? { _id: userId }
-    : { usernameLowerCase: username.toLowerCase() };
+  const query = {};
+
+  if (userId) {
+    query._id = userId;
+  } else {
+    query.$or = [
+      { usernameLowerCase: username.toLowerCase() },
+      { code: username.toLowerCase() },
+    ];
+  }
 
   getUser({
     query,
@@ -297,9 +312,14 @@ function doesUserSocketIdExist({
  * @param {string} [params.mailAddress] Mail address connected to the user
  * @param {Function} params.callback Callback
  */
-function doesUserExist({ username, mailAddress, callback }) {
-  if (!username && !mailAddress) {
-    callback({ error: new errorCreator.InvalidData({ expected: 'username || mailAddress' }) });
+function doesUserExist({
+  code,
+  username,
+  mailAddress,
+  callback,
+}) {
+  if (!username && !mailAddress && !code) {
+    callback({ error: new errorCreator.InvalidData({ expected: 'username || mailAddress || code' }) });
 
     return;
   }
@@ -308,9 +328,15 @@ function doesUserExist({ username, mailAddress, callback }) {
 
   if (username) {
     query.$or.push({ usernameLowerCase: username.toLowerCase() });
+    query.$or.push({ code: username.toLowerCase() });
   }
+
   if (mailAddress) {
     query.$or.push({ mailAddress });
+  }
+
+  if (code) {
+    query.$or.push({ code: code.toLowerCase() });
   }
 
   dbConnector.doesObjectExist({
@@ -349,6 +375,7 @@ function createUser({
   options = {},
 }) {
   doesUserExist({
+    code: user.code,
     username: user.username,
     mailAddress: user.mailAddress,
     callback: (nameData) => {
@@ -408,24 +435,24 @@ function updateOnline({
   callback,
   suppressError,
 }) {
-  const update = {};
-  const set = {};
+  const update = {
+    $set: { hasLoggedIn: true },
+  };
   const unset = {};
 
   if (isOnline) {
-    set.isOnline = true;
+    update.$set.isOnline = true;
 
-    if (socketId) { set.socketId = socketId; }
-    if (pushToken) { set.pushToken = pushToken; }
+    if (socketId) { update.$set.socketId = socketId; }
+    if (pushToken) { update.$set.pushToken = pushToken; }
   } else {
-    set.isOnline = false;
+    update.$set.isOnline = false;
     unset.socketId = '';
     unset.pushToken = '';
   }
 
-  set.lastOnline = new Date();
+  update.$set.lastOnline = new Date();
 
-  if (Object.keys(set).length > 0) { update.$set = set; }
   if (Object.keys(unset).length > 0) { update.$unset = unset; }
 
   updateObject({
@@ -469,9 +496,17 @@ function updateUser({
     customFields,
     pushToken,
     disableNotifications,
+    lives,
+    code,
+    systemConfig,
+    hasSeen,
+    status,
+    occupation,
+    tags,
   } = user;
   const {
     resetSocket,
+    resetImage,
   } = options;
   const update = {};
   const set = {};
@@ -479,15 +514,22 @@ function updateUser({
   const addToSet = {};
 
   if (resetSocket) {
-    set.socketId = '';
+    unset.socketId = '';
   } else if (socketId) {
     set.socketId = socketId;
+  }
+
+  if (resetImage) {
+    unset.image = '';
+  } else if (image) {
+    set.image = image;
   }
 
   if (mailAddress) { set.mailAddress = mailAddress; }
   if (username) {
     set.username = username;
     set.usernameLowerCase = username.toLowerCase();
+    set.hasSetName = true;
   }
   if (visibility) { set.visibility = visibility; }
   if (accessLevel) { set.accessLevel = accessLevel; }
@@ -495,20 +537,27 @@ function updateUser({
   if (typeof isLootable === 'boolean') { set.isLootable = isLootable; }
   if (typeof hasFullAccess === 'boolean') { set.hasFullAccess = hasFullAccess; }
   if (aliases) { addToSet.aliases = { $each: aliases }; }
-  if (image) { set.image = image; }
   if (offName) { set.offName = offName; }
   if (pronouns) { set.pronouns = pronouns; }
   if (description) { set.description = description; }
   if (customFields) { set.customFields = customFields; }
   if (pushToken) { set.pushToken = pushToken; }
   if (typeof disableNotifications === 'boolean') { set.disableNotifications = disableNotifications; }
+  if (lives) { set.lives = lives; }
+  if (code) { set.code = code; }
+  if (systemConfig) { set.systemConfig = systemConfig; }
+  if (hasSeen) { set.hasSeen = hasSeen; }
+  if (status) { set.status = status; }
+  if (occupation) { set.occupation = occupation; }
+  if (tags) { set.taqs = tags; }
 
   if (Object.keys(set).length > 0) { update.$set = set; }
   if (Object.keys(unset).length > 0) { update.$unset = unset; }
   if (Object.keys(addToSet).length > 0) { update.$addToSet = addToSet; }
 
-  if (username || mailAddress) {
+  if (username || mailAddress || code) {
     doesUserExist({
+      code,
       username,
       mailAddress,
       callback: (existsData) => {
@@ -984,6 +1033,69 @@ function getUserByCode({
   });
 }
 
+/**
+ * Lower the amount of lives on a user.
+ * @param {Object} params Parameters.
+ * @param {string} params.userId Id of the user to update.
+ * @param {Function} params.callback Callback.
+ * @param {number} [params.amount] Amount to lower with.
+ */
+function lowerLives({
+  userId,
+  callback,
+  amount = 1,
+}) {
+  const update = {
+    $inc: {
+      lives: -Math.abs(amount),
+    },
+  };
+
+  updateObject({
+    userId,
+    callback,
+    update,
+  });
+}
+
+/**
+ * Connect two users.
+ * @param {Object} params Parameters.
+ * @param {string} params.userId Id of the user.
+ * @param {string} params.otherUserId Id of the other user.
+ * @param {Function} params.callback Callback.
+ */
+function connectUsers({
+  userId,
+  otherUserId,
+  callback,
+}) {
+  updateObject({
+    userId,
+    update: { $addToSet: { connectedTo: otherUserId } },
+    callback: () => {},
+  });
+
+  updateObject({
+    userId: otherUserId,
+    update: { $addToSet: { connectedTo: userId } },
+    callback: () => {},
+  });
+
+  callback({ data: { success: true } });
+}
+
+/**
+ * Set users who have 0 or less lives to 1.
+ */
+function regenerateLives() {
+  updateObjects({
+    query: { lives: { $lte: 0 } },
+    update: { $set: { lives: 1 } },
+    callback: () => {},
+  });
+}
+
 exports.createUser = createUser;
 exports.updateUser = updateUser;
 exports.verifyUser = verifyUser;
@@ -1008,3 +1120,6 @@ exports.getAllUsers = getAllUsers;
 exports.getUsersByAliases = getUsersByAliases;
 exports.doesUserSocketIdExist = doesUserSocketIdExist;
 exports.getUserByCode = getUserByCode;
+exports.lowerLives = lowerLives;
+exports.connectUsers = connectUsers;
+exports.regenerateLives = regenerateLives;

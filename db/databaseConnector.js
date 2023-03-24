@@ -39,6 +39,10 @@ const baseSchema = {
   bannedIds: { type: [String], default: [] },
   isPublic: { type: Boolean, default: false },
   triggerEvents: { type: [String], default: [] },
+  points: { type: Number, default: 0 },
+  likes: { type: Number, default: 0 },
+  dislikes: { type: Number, default: 0 },
+  tags: { type: [String], default: [] },
 };
 
 const imageSchema = {
@@ -46,6 +50,9 @@ const imageSchema = {
   width: Number,
   imageName: String,
   fileName: String,
+  thumbWidth: Number,
+  thumbHeight: Number,
+  thumbFileName: String,
 };
 
 const coordinatesSchema = {

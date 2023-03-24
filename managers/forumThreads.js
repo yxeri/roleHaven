@@ -117,7 +117,11 @@ function createThread({
 
           const aliasAccess = authenticator.checkAliasAccess({ object: threadToCreate, user: authUser, text: dbConfig.apiCommands.CreateForumThread.name });
 
-          if (aliasAccess.error) { callback({ error: aliasAccess.error }); }
+          if (aliasAccess.error) {
+            callback({ error: aliasAccess.error });
+
+            return;
+          }
 
           dbThread.createThread({
             thread: threadToCreate,

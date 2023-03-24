@@ -20,6 +20,7 @@ const mongoose = require('mongoose');
 const dbConnector = require('../databaseConnector');
 const errorCreator = require('../../error/errorCreator');
 const dbWallet = require('./wallet');
+const { dbConfig } = require('../../config/defaults/config');
 
 const transactionSchema = new mongoose.Schema(dbConnector.createSchema({
   amount: Number,
@@ -142,7 +143,7 @@ function getTransactionsByWallet({ walletId, callback }) {
 function getTransactionsByUser({ user, callback }) {
   dbWallet.getWalletsByUser({
     user,
-    noVisibility: true,
+    noVisibility: user.accessLevel < dbConfig.AccessLevels.ADMIN,
     callback: ({ error: walletError, data: walletData }) => {
       if (walletError) {
         callback({ error: walletError });

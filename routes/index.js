@@ -31,27 +31,7 @@ const router = new express.Router();
  */
 function handle(io) {
   router.get('/', (req, res) => {
-    res.render(appConfig.indexName, {
-      title: appConfig.title,
-      gMapsKey: appConfig.gMapsKey,
-      socketPath: appConfig.socketPath,
-      mainJs: `scripts/${appConfig.mainJsName}.js?version=${appConfig.jsVersion}`,
-      mainCss: req.query.style && !Number.isNaN(req.query.style)
-        ? `styles/${req.query.style}.css?version=${appConfig.jsVersion}`
-        : `styles/${appConfig.mainCssName}.css?version=${appConfig.jsVersion}`,
-    });
-  });
-
-  router.get('/admin', (req, res) => {
-    res.render(appConfig.adminIndexName, {
-      title: appConfig.title,
-      gMapsKey: appConfig.gMapsKey,
-      socketPath: appConfig.socketPath,
-      adminJs: `scripts/${appConfig.adminIndexName}.js?version=${appConfig.jsVersion}`,
-      adminCss: req.query.style && !Number.isNaN(req.query.style)
-        ? `styles/admin${req.query.style}.css?version=${appConfig.jsVersion}`
-        : `styles/${appConfig.adminCssName}.css?version=${appConfig.jsVersion}`,
-    });
+    res.render(appConfig.indexName);
   });
 
   io.on('connection', (socket) => {
@@ -63,7 +43,14 @@ function handle(io) {
 
     socket.emit(dbConfig.EmitTypes.STARTUP, {
       data: {
+        disallowProfileEdit: appConfig.disallowProfileEdit,
+        allowPartialSearch: appConfig.allowPartialSearch,
+        onlySeen: appConfig.onlySeen,
+        newsCost: appConfig.newsCost,
+        activeApps: dbConfig.activeApps,
         publicRoomId: dbConfig.rooms.public.objectId,
+        broadcastId: dbConfig.rooms.bcast.objectId,
+        newsRoomId: dbConfig.rooms.news.objectId,
         defaultLanguage: appConfig.defaultLanguage,
         forceFullscreen: appConfig.forceFullscreen,
         gpsTracking: appConfig.gpsTracking,
@@ -93,6 +80,7 @@ function handle(io) {
         allowedImages: appConfig.allowedImages,
         customUserFields: dbConfig.customUserFields,
         defaultForum: dbConfig.defaultForum,
+        activeTermination: appConfig.activateTermination,
         permissions: {
           CreatePosition: dbConfig.apiCommands.CreatePosition,
           UpdatePosition: dbConfig.apiCommands.UpdatePosition,
@@ -111,6 +99,8 @@ function handle(io) {
           CreateTeam: dbConfig.apiCommands.CreateTeam,
           InviteToTeam: dbConfig.apiCommands.InviteToTeam,
           IncludeOff: dbConfig.apiCommands.IncludeOff,
+          UpdateUserStatus: dbConfig.apiCommands.UpdateUserStatus,
+          UpdateUserOccupation: dbConfig.apiCommands.UpdateUserOccupation,
         },
       },
     });

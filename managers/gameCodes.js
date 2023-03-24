@@ -24,6 +24,9 @@ const transactionManager = require('../managers/transactions');
 const textTools = require('../utils/textTools');
 const docFileManager = require('./docFiles');
 const managerHelper = require('../helpers/manager');
+const teamManager = require('../managers/teams');
+const userManager = require('../managers/users');
+const dbUser = require('../db/connectors/user');
 
 /**
  * Get a game code by Id.
@@ -66,6 +69,7 @@ function triggerUnlockedContent({
 }) {
   const dataToSend = {
     data: {
+      success: true,
       gameCode: {
         ownerId: gameCode.ownerAliasId || gameCode.ownerId,
         codeType: gameCode.codeType,
@@ -127,6 +131,57 @@ function triggerUnlockedContent({
       dataToSend.data.text = gameCode.codeContent;
 
       callback(dataToSend);
+
+      break;
+    }
+    case dbConfig.GameCodeTypes.ATTACK: {
+      if (!appConfig.activateTermination) {
+        callback({ error: new errorCreator.NotAllowed({ name: 'termination disabled' }) });
+
+        return;
+      }
+
+      const userId = gameCode.codeContent[0];
+
+      dbUser.getUserById({
+        userId,
+        callback: ({ error: getError, data: getData }) => {
+          if (getError) {
+            callback({ error: getError });
+
+            return;
+          }
+
+          const { user: attackedUser } = getData;
+
+          if (attackedUser.lives <= 0) {
+            dataToSend.data.success = false;
+
+            callback(dataToSend);
+
+            return;
+          }
+
+          userManager.attackUser({
+            token,
+            io,
+            callback,
+            userId,
+          });
+
+          if (user.partOfTeams[0] && attackedUser.partOfTeams[0]) {
+            teamManager.updateTeamScore({
+              io,
+              callback,
+              teamId: user.partOfTeams[0],
+              value: appConfig.gameCodeAmount,
+              shouldIncrease: user.partOfTeams[0] !== attackedUser.partOfTeams[0],
+            });
+          }
+
+          callback(dataToSend);
+        },
+      });
 
       break;
     }
@@ -201,7 +256,7 @@ function createGameCode({
  * Use game code.
  * @param {Object} params Parameters.
  * @param {Object} params.io Socket io. Will be used if socket is not set.
- * @param {string} params.code Code for a game code.
+ * @param {string} params.code Code.
  * @param {string} params.token jwt.
  * @param {Function} params.callback Callback.
  */
@@ -223,7 +278,7 @@ function useGameCode({
 
       const { user: authUser } = data;
 
-      dbGameCode.getGameCodeById({
+      dbGameCode.getGameCodeByCode({
         code,
         callback: ({ error: getError, data: getData }) => {
           if (getError) {
@@ -238,68 +293,91 @@ function useGameCode({
             return;
           }
 
-          dbGameCode.removeGameCode({
-            code,
-            callback: ({ error: removeError }) => {
-              if (removeError) {
-                callback({ error: removeError });
+          const { gameCode: usedGameCode } = getData;
+          const {
+            uses,
+            objectId: gameCodeId,
+          } = usedGameCode;
+          const updateFunc = ({ error: updateError, data: updateData }) => {
+            if (updateError) {
+              callback({ error: updateError });
 
-                return;
-              }
+              return;
+            }
 
-              const { gameCode: usedGameCode } = getData;
+            const { gameCode: updatedGameCode } = updateData;
 
-              triggerUnlockedContent({
-                token,
-                user: authUser,
-                gameCode: usedGameCode,
-                callback: ({ error: unlockError, data: unlockData }) => {
-                  if (unlockError) {
-                    callback({ error: unlockError });
+            triggerUnlockedContent({
+              token,
+              io,
+              user: authUser,
+              gameCode: usedGameCode,
+              callback: ({ error: unlockError, data: unlockData }) => {
+                if (unlockError) {
+                  callback({ error: unlockError });
 
-                    return;
-                  }
+                  return;
+                }
 
-                  const dataToOwner = {
-                    data: {
-                      gameCode: usedGameCode,
-                      changeType: dbConfig.ChangeTypes.REMOVE,
+                const dataToOwner = {
+                  data: {
+                    gameCode: updatedGameCode,
+                    changeType: updatedGameCode.used
+                      ? dbConfig.ChangeTypes.REMOVE
+                      : dbConfig.ChangeTypes.UPDATE,
+                  },
+                };
+
+                if (usedGameCode.isRenewable) {
+                  dbGameCode.createGameCode({
+                    gameCode: {
+                      ownerId: usedGameCode.ownerId,
+                      ownerAliasId: usedGameCode.ownerAliasId,
+                      codeType: usedGameCode.codeType,
+                      codeContent: usedGameCode.codeContent,
+                      isRenewable: true,
+                      lockCode: usedGameCode.lockCode,
+                      code: usedGameCode.lockCode
+                        ? usedGameCode.code
+                        : undefined,
                     },
-                  };
+                    callback: ({ error: createError, data: createData }) => {
+                      if (createError) {
+                        callback({ error: createError });
 
-                  if (usedGameCode.isRenewable) {
-                    dbGameCode.createGameCode({
-                      gameCode: {
-                        ownerId: usedGameCode.ownerId,
-                        ownerAliasId: usedGameCode.ownerAliasId,
-                        codeType: usedGameCode.codeType,
-                        codeContent: usedGameCode.codeContent,
-                        isRenewable: true,
-                      },
-                      callback: ({ error: createError, data: createData }) => {
-                        if (createError) {
-                          callback({ error: createError });
+                        return;
+                      }
 
-                          return;
-                        }
+                      dataToOwner.data.newGameCode = createData.gameCode;
 
-                        dataToOwner.data.newGameCode = createData.gameCode;
-
-                        io.to(usedGameCode.ownerId).emit(dbConfig.EmitTypes.GAMECODE, dataToOwner);
-                      },
-                    });
-
-                    callback({ data: unlockData });
-
-                    return;
-                  }
-
-                  io.to(usedGameCode.ownerId).emit(dbConfig.EmitTypes.GAMECODE, dataToOwner);
+                      io.to(usedGameCode.ownerId).emit(dbConfig.EmitTypes.GAMECODE, dataToOwner);
+                    },
+                  });
 
                   callback({ data: unlockData });
-                },
-              });
-            },
+
+                  return;
+                }
+
+                io.to(usedGameCode.ownerId).emit(dbConfig.EmitTypes.GAMECODE, dataToOwner);
+
+                callback({ data: unlockData });
+              },
+            });
+          };
+
+          if (uses > 1) {
+            dbGameCode.lowerUses({
+              gameCodeId,
+              callback: (params) => { updateFunc(params); },
+            });
+
+            return;
+          }
+
+          dbGameCode.removeGameCode({
+            gameCodeId,
+            callback: (params) => { updateFunc(params); },
           });
         },
       });

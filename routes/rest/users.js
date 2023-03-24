@@ -24,6 +24,7 @@ const aliasManager = require('../../managers/aliases');
 const restErrorChecker = require('../../helpers/restErrorChecker');
 const errorCreator = require('../../error/errorCreator');
 const { dbConfig } = require('../../config/defaults/config');
+const authenticator = require('../../helpers/authenticator');
 
 const router = new express.Router();
 
@@ -162,6 +163,65 @@ function handle(io) {
         }
 
         response.json({ data });
+      },
+    });
+  });
+
+  /**
+   * @api {post} /users/users Create multiple users.
+   * @apiVersion 8.0.0
+   * @apiName CreateUsers
+   * @apiGroup Users
+   *
+   * @apiHeader {string} Authorization Your JSON Web Token.
+   *
+   * @apiDescription Create users.
+   *
+   * @apiParam {Object} data
+   * @apiParam {Object[]} data.users Users to create.
+   * @apiParam {string} [data.options] Update options.
+   *
+   * @apiSuccess {Object} data
+   * @apiSuccess {boolean} data.success It is not an indication that all users have been created, only that the call was received.
+   */
+  router.post('/users', (request, response) => {
+    if (!objectValidator.isValidData(request.body, { data: { users: true } })) {
+      restErrorChecker.checkAndSendError({ response, error: new errorCreator.InvalidData({ expected: '{ data: { users } }' }), sentData: {} });
+
+      return;
+    }
+
+    const { authorization: token } = request.headers;
+    const { users, options } = request.body.data;
+
+    authenticator.isUserAllowed({
+      token,
+      commandName: dbConfig.apiCommands.CreateMultipleUsers.name,
+      callback: ({ error, data }) => {
+        if (error) {
+          restErrorChecker.checkAndSendError({ response, error, sentData: {} });
+
+          return;
+        }
+
+        const { user: authUser } = data;
+
+        users.forEach((user) => {
+          const userToCreate = user;
+          userToCreate.registerDevice = dbConfig.DeviceTypes.RESTAPI;
+          userToCreate.isVerified = true;
+
+          userManager.createUser({
+            token,
+            io,
+            options,
+            internalCallUser: authUser,
+            callback: () => {},
+            user: userToCreate,
+          });
+        });
+
+        response.json({ data: { success: true } });
       },
     });
   });

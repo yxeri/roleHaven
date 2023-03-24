@@ -16,7 +16,7 @@
 
 'use strict';
 
-const firebase = require('firebase-admin');
+const { Expo } = require('expo-server-sdk');
 const appConfig = require('../config/defaults/appConfig');
 const dbConfig = require('../config/defaults/dbConfig');
 const authenticator = require('../helpers/authenticator');
@@ -29,6 +29,9 @@ const managerHelper = require('../helpers/manager');
 const userManager = require('./users');
 const aliasManager = require('./aliases');
 const imager = require('../helpers/imager');
+const transactionManager = require('./transactions');
+
+const expo = new Expo();
 
 /**
  * Get an emit type based on the message type
@@ -90,18 +93,85 @@ function sendAndStoreMessage({
 
         callback(dataToSend);
 
-        if (firebase.app && !disableNotifications && pushTokens.length > 0) {
-          firebase.messaging().sendMulticast({
-            notification: {
-              title: room
+        if (!disableNotifications && pushTokens.length > 0 && expo) {
+          const messages = [...new Set(pushTokens)]
+            .filter((token) => {
+              const isValid = Expo.isExpoPushToken(token);
+
+              if (!isValid) {
+                console.error(`Expo push token ${token} is invalid.`);
+              }
+
+              return Expo.isExpoPushToken(token);
+            })
+            .map((token) => ({
+              to: token,
+              title: !room.isWhisper
                 ? `${senderName} -> ${room.roomName}`
                 : `${senderName} -> ${receiverName}`,
               body: message.text.join(' '),
-            },
-            tokens: pushTokens,
-          }).catch((pushError) => {
-            console.log('send error', pushError);
-          });
+              data: {
+                roomId: room.objectId,
+                messageType: message.messageType,
+              },
+            }));
+
+          if (messages.length === 0) {
+            console.error('No found valid push tokens', pushTokens);
+          }
+
+          const chunks = expo.chunkPushNotifications(messages);
+          const tickets = [];
+
+          (async () => {
+            try {
+              // eslint-disable-next-line no-restricted-syntax
+              for (const chunk of chunks) {
+                // eslint-disable-next-line no-await-in-loop
+                const ticketChunk = await expo.sendPushNotificationsAsync(chunk);
+
+                console.log(ticketChunk);
+
+                tickets.push(...ticketChunk);
+              }
+            } catch (sendError) {
+              console.error('sendError', error);
+            }
+          })();
+
+          setTimeout(() => {
+            const receiptIds = tickets.map((ticket) => ticket.id);
+            const receiptIdChunks = expo.chunkPushNotificationReceiptIds(receiptIds);
+
+            (async () => {
+              // eslint-disable-next-line no-restricted-syntax
+              for (const chunk of receiptIdChunks) {
+                try {
+                  // eslint-disable-next-line no-await-in-loop
+                  const receipts = await expo.getPushNotificationReceiptsAsync(chunk);
+
+                  console.log(receipts);
+
+                  receipts.forEach((receipt) => {
+                    const { status, message: receiptMessage, details } = receipt;
+
+                    if (status === 'error') {
+                      console.error(`There was an error sending a notification: ${receiptMessage}. ${status}. ${details}`);
+
+                      if (details && details.error) {
+                        // The error codes are listed in the Expo documentation:
+                        // https://docs.expo.io/push-notifications/sending-notifications/#individual-errors
+                        // You must handle the errors appropriately.
+                        console.error(`The error code is ${details.error}`);
+                      }
+                    }
+                  });
+                } catch (receiptError) {
+                  console.error('receiptError', receiptError);
+                }
+              }
+            })();
+          }, 60000);
         }
       },
     });
@@ -184,7 +254,7 @@ function getMessagesByRoom({
 
       const { user: authUser } = data;
 
-      if (!authUser.accessLevel < dbConfig.AccessLevels.ADMIN && !authUser.followingRooms.includes(roomId)) {
+      if (!authUser.followingRooms.includes(roomId)) {
         callback({ error: new errorCreator.NotAllowed({ name: `${dbConfig.apiCommands.GetHistory.name}. User: ${authUser.objectId}. Access: messages room ${roomId}` }) });
 
         return;
@@ -400,7 +470,11 @@ function sendBroadcastMsg({
 
       const aliasAccess = authenticator.checkAliasAccess({ object: newMessage, user: authUser, text: dbConfig.apiCommands.SendBroadcast.name });
 
-      if (aliasAccess.error) { callback({ error: aliasAccess.error }); }
+      if (aliasAccess.error) {
+        callback({ error: aliasAccess.error });
+
+        return;
+      }
 
       userManager.getPushTokens({
         internalCallUser: authUser,
@@ -423,6 +497,119 @@ function sendBroadcastMsg({
             senderName: 'BROADCAST',
             emitType: dbConfig.EmitTypes.BROADCAST,
             message: newMessage,
+          });
+        },
+      });
+    },
+  });
+}
+
+function sendNewsMsg({
+  token,
+  message,
+  socket,
+  callback,
+  io,
+  image,
+  internalCallUser,
+}) {
+  authenticator.isUserAllowed({
+    token,
+    internalCallUser,
+    commandName: dbConfig.apiCommands.SendNewsMessage.name,
+    callback: ({ error, data }) => {
+      if (error) {
+        callback({ error });
+
+        return;
+      }
+
+      if (!objectValidator.isValidData({ message, io }, { message: { text: true }, io: true })) {
+        callback({ error: new errorCreator.InvalidData({ expected: '{ message: { text }, io }' }) });
+
+        return;
+      }
+
+      const text = message.text.join('');
+
+      if (!image && (text.length > appConfig.newsMessageMaxLength || text.length <= 0)) {
+        callback({ error: new errorCreator.InvalidCharacters({ expected: `text length ${appConfig.newsMessageMaxLength}` }) });
+
+        return;
+      }
+
+      const { user: authUser } = data;
+      const newMessage = message;
+      newMessage.text = textTools.cleanText(message.text);
+      newMessage.messageType = dbConfig.MessageTypes.NEWS;
+      newMessage.roomId = dbConfig.rooms.news.objectId;
+      newMessage.ownerId = authUser.objectId;
+
+      const aliasAccess = authenticator.checkAliasAccess({ object: newMessage, user: authUser, text: dbConfig.apiCommands.SendNewsMessage.name });
+
+      if (aliasAccess.error) {
+        callback({ error: aliasAccess.error });
+
+        return;
+      }
+
+      roomManager.getRoomById({
+        needsAccess: true,
+        internalCallUser: authUser,
+        roomId: newMessage.roomId,
+        callback: ({ error: roomError, data: roomData }) => {
+          if (roomError) {
+            callback({ error: roomError });
+
+            return;
+          }
+
+          const { room } = roomData;
+          const transaction = {
+            amount: appConfig.newsCost,
+            fromWalletId: newMessage.ownerAliasId || newMessage.ownerId,
+            toWalletId: appConfig.newsWallet,
+            note: 'ARTICLE FEE',
+          };
+
+          transactionManager.createTransaction({
+            io,
+            socket,
+            transaction,
+            callback: ({ error: transactionError, data: transactionData }) => {
+              if (transactionError) {
+                callback({ error: transactionError });
+
+                return;
+              }
+
+              sendAndStoreMessage({
+                socket,
+                io,
+                image,
+                room,
+                emitType: dbConfig.EmitTypes.CHATMSG,
+                message: newMessage,
+                callback: ({ error: messageError, data: messageData }) => {
+                  if (messageError) {
+                    callback({ error: messageError });
+
+                    return;
+                  }
+
+                  const dataTosend = {
+                    data: {
+                      changeType: dbConfig.ChangeTypes.CREATE,
+                      message: messageData.message,
+                      wallet: transactionData.wallet,
+                      transaction: transactionData.transaction,
+                    },
+                  };
+
+                  callback(dataTosend);
+                },
+              });
+            },
           });
         },
       });
@@ -476,12 +663,21 @@ function sendChatMsg({
       const { user: authUser } = data;
       const newMessage = message;
       newMessage.text = textTools.cleanText(message.text);
-      newMessage.messageType = dbConfig.MessageTypes.CHAT;
+      newMessage.messageType = newMessage.messageType === dbConfig.MessageTypes.NEWS
+        ? dbConfig.MessageTypes.NEWS
+        : dbConfig.MessageTypes.CHAT;
+      newMessage.roomId = newMessage.messageType === dbConfig.MessageTypes.NEWS
+        ? dbConfig.rooms.news.objectId
+        : newMessage.roomId;
       newMessage.ownerId = authUser.objectId;
 
       const aliasAccess = authenticator.checkAliasAccess({ object: newMessage, user: authUser, text: dbConfig.apiCommands.SendMessage.name });
 
-      if (aliasAccess.error) { callback({ error: aliasAccess.error }); }
+      if (aliasAccess.error) {
+        callback({ error: aliasAccess.error });
+
+        return;
+      }
 
       roomManager.getRoomById({
         needsAccess: true,
@@ -670,7 +866,7 @@ function sendWhisperMsg({
                           ? alias.aliasName
                           : user.username,
                         senderName: authAlias.aliasName,
-                        pushTokens: [userData.user].map((usr) => { return usr.pushToken; }),
+                        pushTokens: [userData.user].map((usr) => usr.pushToken),
                         emitType: dbConfig.EmitTypes.WHISPER,
                         message: newMessage,
                       });
@@ -685,18 +881,20 @@ function sendWhisperMsg({
                   io,
                   callback,
                   image,
+                  room: roomData.room,
                   disableNotifications: authUser.disableNotifications,
                   receiverName: alias
                     ? alias.aliasName
                     : user.username,
                   senderName: authUser.username,
-                  pushTokens: [userData.user].map((usr) => { return usr.pushToken; }),
+                  pushTokens: [userData.user].map((usr) => usr.pushToken),
                   emitType: dbConfig.EmitTypes.WHISPER,
                   message: newMessage,
                 });
               },
             });
           };
+
           const { exists } = existsData;
 
           if (!exists) {
@@ -873,6 +1071,7 @@ function updateMessage({
   });
 }
 
+exports.sendNewsMsg = sendNewsMsg;
 exports.sendBroadcastMsg = sendBroadcastMsg;
 exports.sendChatMsg = sendChatMsg;
 exports.sendWhisperMsg = sendWhisperMsg;

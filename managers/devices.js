@@ -100,9 +100,13 @@ function createDevice({
   callback,
   io,
   socket,
+  firstStartup = false,
 }) {
   authenticator.isUserAllowed({
     token,
+    internalCallUser: firstStartup
+      ? dbConfig.users.systemUser
+      : undefined,
     commandName: dbConfig.apiCommands.CreateDevice.name,
     callback: ({ error, data }) => {
       if (error) {

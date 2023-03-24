@@ -33,19 +33,20 @@ function getFileByAccess({ user, docFile }) {
   const {
     hasAccess,
     hasFullAccess,
+    adminAccess,
   } = authenticator.hasAccessTo({
     objectToAccess: docFile,
     toAuth: user,
   });
 
-  if (hasFullAccess) {
+  if (hasFullAccess && !adminAccess) {
     const fullDocFile = docFile;
     fullDocFile.isLocked = false;
 
     return { docFile: fullDocFile, isLocked: false };
   }
 
-  if (hasAccess) {
+  if (hasAccess && !adminAccess) {
     const strippedDocFile = managerHelper.stripObject({ object: docFile });
     strippedDocFile.isLocked = false;
 
@@ -92,7 +93,7 @@ function saveAndTransmitDocFile({
         newDocFile.isLocked = true;
         newDocFile.code = undefined;
         newDocFile.text = undefined;
-        newDocFile.pictures = undefined;
+        newDocFile.images = undefined;
       }
 
       const creatorDataToSend = {
@@ -113,13 +114,7 @@ function saveAndTransmitDocFile({
         socket.broadcast.emit(dbConfig.EmitTypes.DOCFILE, dataToSend);
       } else {
         io.emit(dbConfig.EmitTypes.DOCFILE, dataToSend);
-        io.to(docFile.ownerAliasId || docFile.ownerId).emit(dbConfig.EmitTypes.DOCFILE, {
-          data: {
-            isSender: true,
-            docFile: fullDocFile,
-            changeType: dbConfig.ChangeTypes.UPDATE,
-          },
-        });
+        io.to(docFile.ownerAliasId || docFile.ownerId).emit(dbConfig.EmitTypes.DOCFILE, creatorDataToSend);
       }
 
       callback(creatorDataToSend);
@@ -226,10 +221,10 @@ function createDocFile({
     return;
   }
 
-  if (docFile.code.length > appConfig.docFileCodeMaxLength || docFile.code < appConfig.docFileCodeMinLength) {
+  if (docFile.code && docFile.code.length > appConfig.docFileCodeMaxLength) {
     callback({
       error: new errorCreator.InvalidLength({
-        expected: `Code length: ${appConfig.docFileCodeMinLength} - ${appConfig.docFileCodeMaxLength}`,
+        expected: `Code length max: ${appConfig.docFileCodeMaxLength}`,
         extraData: { param: 'code' },
       }),
     });
@@ -248,7 +243,7 @@ function createDocFile({
     return;
   }
 
-  if (docFile.title.length > appConfig.docFileTitleMaxLength || docFile.title < appConfig.docFileTitleMinLength) {
+  if (docFile.title.length > appConfig.docFileTitleMaxLength || docFile.title.length < appConfig.docFileTitleMinLength) {
     callback({
       error: new errorCreator.InvalidLength({
         expected: `Title length: ${appConfig.docFileTitleMinLength} - ${appConfig.docFileTitleMaxLength}`,
@@ -277,7 +272,11 @@ function createDocFile({
 
       const aliasAccess = authenticator.checkAliasAccess({ object: newDocFile, user: authUser, text: dbConfig.apiCommands.CreateDocFile.name });
 
-      if (aliasAccess.error) { callback({ error: aliasAccess.error }); }
+      if (aliasAccess.error) {
+        callback({ error: aliasAccess.error });
+
+        return;
+      }
 
       if (images) {
         imager.createImage({
@@ -448,7 +447,7 @@ function updateDocFile({
 function unlockDocFile({
   io,
   docFileId,
-  code,
+  code = '',
   token,
   callback,
   internalCallUser,
@@ -480,12 +479,15 @@ function unlockDocFile({
           const foundDocFile = docFileData.data.docFile;
           const dataToSend = {
             data: {
-              docFile: foundDocFile,
+              docFile: {
+                ...foundDocFile,
+                isLocked: false,
+              },
               changeType: dbConfig.ChangeTypes.UPDATE,
             },
           };
 
-          if (foundDocFile.code !== code || foundDocFile.accessLevel > authUser.accessLevel) {
+          if ((authUser.accessLevel < dbConfig.AccessLevels.MODERATOR && (!foundDocFile.isPublic && foundDocFile.code !== code)) || foundDocFile.accessLevel > authUser.accessLevel) {
             callback({ error: new errorCreator.NotAllowed({ name: `docFile ${code}` }) });
 
             return;

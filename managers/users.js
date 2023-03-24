@@ -18,6 +18,7 @@
 
 const crypto = require('crypto');
 const bcrypt = require('bcrypt');
+const { Parser } = require('json2csv');
 const dbUser = require('../db/connectors/user');
 const dbWallet = require('../db/connectors/wallet');
 const { dbConfig, appConfig } = require('../config/defaults/config');
@@ -33,6 +34,10 @@ const positionManager = require('./positions');
 const imager = require('../helpers/imager');
 const messageManager = require('./messages');
 const dbAlias = require('../db/connectors/alias');
+const dbGameCode = require('../db/connectors/gameCode');
+const dbTeams = require('../db/connectors/team');
+const teamManager = require('./teams');
+const forumManager = require('./forums');
 
 /**
  * Create a user.
@@ -49,6 +54,7 @@ function createUser({
   options,
   socket,
   image,
+  internalCallUser,
 }) {
   let command;
 
@@ -62,6 +68,7 @@ function createUser({
 
   authenticator.isUserAllowed({
     token,
+    internalCallUser,
     commandName: command.name,
     callback: ({ error, data }) => {
       if (error) {
@@ -83,26 +90,39 @@ function createUser({
         return;
       }
 
-      if (!textTools.isAllowedFull(user.username)) {
-        callback({
-          error: new errorCreator.InvalidCharacters({
-            name: `User name: ${user.username}.`,
-            extraData: { param: 'characters' },
-          }),
-        });
+      if (user.username) {
+        if (!textTools.isAllowedFull(user.username)) {
+          callback({
+            error: new errorCreator.InvalidCharacters({
+              name: `User name: ${user.username}.`,
+              extraData: { param: 'characters' },
+            }),
+          });
 
-        return;
-      }
+          return;
+        }
 
-      if (user.username.length < appConfig.usernameMinLength || user.username.length > appConfig.usernameMaxLength) {
-        callback({
-          error: new errorCreator.InvalidLength({
-            name: `User name length: ${appConfig.usernameMinLength}-${appConfig.usernameMaxLength}`,
-            extraData: { param: 'username' },
-          }),
-        });
+        if (user.username.length < appConfig.usernameMinLength || user.username.length > appConfig.usernameMaxLength) {
+          callback({
+            error: new errorCreator.InvalidLength({
+              name: `User name length: ${appConfig.usernameMinLength}-${appConfig.usernameMaxLength}`,
+              extraData: { param: 'username' },
+            }),
+          });
 
-        return;
+          return;
+        }
+
+        if (dbConfig.protectedNames.includes(user.username.toLowerCase())) {
+          callback({
+            error: new errorCreator.InvalidCharacters({
+              name: `protected name ${user.username}`,
+              extraData: { param: 'protected' },
+            }),
+          });
+
+          return;
+        }
       }
 
       if (user.offName && (user.offName.length < appConfig.offNameMinLength || user.offName.length > appConfig.offNameNameMaxLength)) {
@@ -121,28 +141,6 @@ function createUser({
           error: new errorCreator.InvalidLength({
             name: `Password length: ${appConfig.passwordMinLength}-${appConfig.passwordMaxLength}`,
             extraData: { param: 'password' },
-          }),
-        });
-
-        return;
-      }
-
-      if (user.registerDevice.length > appConfig.deviceIdLength) {
-        callback({
-          error: new errorCreator.InvalidLength({
-            name: `Device length: ${appConfig.deviceIdLength}`,
-            extraData: { param: 'device' },
-          }),
-        });
-
-        return;
-      }
-
-      if (dbConfig.protectedNames.includes(user.username.toLowerCase())) {
-        callback({
-          error: new errorCreator.InvalidCharacters({
-            name: `protected name ${user.username}`,
-            extraData: { param: 'protected' },
           }),
         });
 
@@ -172,8 +170,17 @@ function createUser({
         return;
       }
 
+      if (user.isVerified && (authUser.accessLevel < dbConfig.apiCommands.UpdateUserAccess.accessLevel)) {
+        callback({ error: new errorCreator.NotAllowed({ name: 'Set user is verified' }) });
+
+        return;
+      }
+
       const newUser = user;
-      newUser.username = textTools.trimSpace(newUser.username);
+      newUser.hasSetName = typeof user.username === 'string' && user.username !== '';
+      newUser.username = user.username
+        ? textTools.trimSpace(newUser.username)
+        : `user-${crypto.randomBytes(3).toString('hex')}`;
       newUser.usernameLowerCase = newUser.username.toLowerCase();
       newUser.isVerified = !appConfig.userVerify;
       newUser.followingRooms = dbConfig.requiredRooms;
@@ -181,7 +188,9 @@ function createUser({
       newUser.mailAddress = newUser.mailAddress
         ? newUser.mailAddress.toLowerCase()
         : undefined;
-      newUser.code = crypto.randomBytes(5).toString('hex');
+      newUser.code = newUser.code
+        ? newUser.code.toLowerCase()
+        : crypto.randomBytes(4).toString('hex');
 
       const userCallback = () => {
         dbUser.createUser({
@@ -267,79 +276,101 @@ function createUser({
                               return;
                             }
 
-                            const createdRoom = roomData.room;
-                            const createdWallet = walletData.wallet;
-                            const createdForum = forumData.forum;
-
-                            const creatorDataToSend = {
-                              data: {
-                                wallet: createdWallet,
-                                room: createdRoom,
-                                user: createdUser,
-                                forum: createdForum,
-                                isSender: true,
-                                changeType: dbConfig.ChangeTypes.CREATE,
+                            dbGameCode.createGameCode({
+                              gameCode: {
+                                ownerId: createdUser.objectId,
+                                code: newUser.code,
+                                codeType: dbConfig.GameCodeTypes.ATTACK,
+                                codeContent: [createdUser.objectId],
+                                isRenewable: true,
+                                lockCode: true,
                               },
-                            };
-                            const dataToSend = {
-                              data: {
-                                user: managerHelper.stripObject({ object: { ...createdUser } }),
-                                changeType: dbConfig.ChangeTypes.CREATE,
+                              callback: ({ error: codeError, data: codeData }) => {
+                                if (codeError) {
+                                  callback({ error: codeError });
+
+                                  return;
+                                }
+
+                                const createdGameCode = codeData.gameCode;
+                                const createdRoom = roomData.room;
+                                const createdWallet = walletData.wallet;
+                                const createdForum = forumData.forum;
+
+                                const creatorDataToSend = {
+                                  data: {
+                                    wallet: createdWallet,
+                                    room: createdRoom,
+                                    user: createdUser,
+                                    forum: createdForum,
+                                    gameCode: createdGameCode,
+                                    isSender: true,
+                                    changeType: dbConfig.ChangeTypes.CREATE,
+                                  },
+                                };
+                                const dataToSend = {
+                                  data: {
+                                    user: managerHelper.stripObject({ object: { ...createdUser } }),
+                                    changeType: dbConfig.ChangeTypes.CREATE,
+                                  },
+                                };
+                                const roomDataToSend = {
+                                  data: {
+                                    room: managerHelper.stripObject({ object: { ...createdRoom } }),
+                                    changeType: dbConfig.ChangeTypes.CREATE,
+                                  },
+                                };
+                                const walletDataToSend = {
+                                  data: {
+                                    wallet: managerHelper.stripObject({ object: { ...createdWallet } }),
+                                    changeType: dbConfig.ChangeTypes.CREATE,
+                                  },
+                                };
+                                const forumDataToSend = {
+                                  data: {
+                                    forum: managerHelper.stripObject({ object: { ...createdForum } }),
+                                  },
+                                };
+
+                                if (!socket) {
+                                  io.to(createdUser.objectId).emit(dbConfig.EmitTypes.USER, creatorDataToSend);
+                                }
+
+                                if (socket) {
+                                  socket.join(createdUser.objectId);
+                                  socket.broadcast.emit(dbConfig.EmitTypes.USER, dataToSend);
+                                  socket.broadcast.emit(dbConfig.EmitTypes.FORUM, forumDataToSend);
+                                  socket.broadcast.emit(dbConfig.EmitTypes.ROOM, roomDataToSend);
+                                  socket.broadcast.emit(dbConfig.EmitTypes.WALLET, walletDataToSend);
+                                } else {
+                                  const userSocket = socketUtils.getUserSocket({ io, socketId: user.socketId });
+
+                                  if (userSocket) {
+                                    userSocket.join(createdRoom.objectId);
+                                  }
+
+                                  io.emit(dbConfig.EmitTypes.USER, dataToSend);
+                                  io.emit(dbConfig.EmitTypes.FORUM, forumDataToSend);
+                                  io.emit(dbConfig.EmitTypes.ROOM, roomDataToSend);
+                                  io.emit(dbConfig.EmitTypes.WALLET, walletDataToSend);
+                                }
+
+                                if (!createdUser.isVerified) {
+                                  messageManager.sendChatMsg({
+                                    io,
+                                    socket,
+                                    message: {
+                                      roomId: dbConfig.rooms.admin.objectId,
+                                      text: [`User ${createdUser.username} (${createdUser.objectId}) needs to be verified.`],
+                                    },
+                                    internalCallUser: dbConfig.users.systemUser,
+                                    callback: () => {},
+                                  });
+                                }
+
+                                callback(creatorDataToSend);
                               },
-                            };
-                            const roomDataToSend = {
-                              data: {
-                                room: managerHelper.stripObject({ object: { ...createdRoom } }),
-                                changeType: dbConfig.ChangeTypes.CREATE,
-                              },
-                            };
-                            const walletDataToSend = {
-                              data: {
-                                wallet: managerHelper.stripObject({ object: { ...createdWallet } }),
-                                changeType: dbConfig.ChangeTypes.CREATE,
-                              },
-                            };
-                            const forumDataToSend = {
-                              data: {
-                                forum: managerHelper.stripObject({ object: { ...createdForum } }),
-                              },
-                            };
-
-                            if (!socket) {
-                              io.to(createdUser.objectId).emit(dbConfig.EmitTypes.USER, creatorDataToSend);
-                            }
-
-                            if (socket) {
-                              socket.join(createdUser.objectId);
-                              socket.broadcast.emit(dbConfig.EmitTypes.USER, dataToSend);
-                            } else {
-                              const userSocket = socketUtils.getUserSocket({ io, socketId: user.socketId });
-
-                              if (userSocket) {
-                                userSocket.join(createdRoom.objectId);
-                              }
-
-                              io.emit(dbConfig.EmitTypes.USER, dataToSend);
-                            }
-
-                            io.emit(dbConfig.EmitTypes.FORUM, forumDataToSend);
-                            io.emit(dbConfig.EmitTypes.ROOM, roomDataToSend);
-                            io.emit(dbConfig.EmitTypes.WALLET, walletDataToSend);
-
-                            if (!createdUser.isVerified) {
-                              messageManager.sendChatMsg({
-                                io,
-                                socket,
-                                message: {
-                                  roomId: dbConfig.rooms.admin.objectId,
-                                  text: [`User ${createdUser.username} (${createdUser.objectId}) needs to be verified.`],
-                                },
-                                internalCallUser: dbConfig.users.systemUser,
-                                callback: () => {},
-                              });
-                            }
-
-                            callback(creatorDataToSend);
+                            });
                           },
                         });
                       },
@@ -797,11 +828,32 @@ function login({
       const { token, user: authUser } = data;
       const {
         accessLevel,
-        partOfTeams = [],
         objectId: userId,
         followingRooms: roomIds,
       } = authUser;
       const socketId = socket.id;
+      const socketFunc = ({ user: socketUser }) => {
+        socketUtils.joinRooms({
+          io,
+          socketId,
+          userId,
+          roomIds: roomIds.concat(socketUser.partOfTeams),
+        });
+        socketUtils.joinRequiredRooms({
+          io,
+          userId,
+          socketId,
+          socket,
+          accessLevel,
+        });
+        socketUtils.joinAliasRooms({
+          io,
+          socketId,
+          aliases: authUser.aliases,
+        });
+
+        callback({ data: { user: socketUser, token } });
+      };
 
       dbUser.updateOnline({
         userId,
@@ -815,26 +867,40 @@ function login({
             return;
           }
 
-          socketUtils.joinRooms({
-            io,
-            socketId,
-            userId,
-            roomIds: roomIds.concat(partOfTeams),
-          });
-          socketUtils.joinRequiredRooms({
-            io,
-            userId,
-            socketId,
-            socket,
-            accessLevel,
-          });
-          socketUtils.joinAliasRooms({
-            io,
-            socketId,
-            aliases: authUser.aliases,
-          });
+          if (!authUser.hasLoggedIn && appConfig.autoAddToTeam) {
+            dbTeams.getAutoTeams({
+              callback: ({ error: teamError, data: teamData }) => {
+                if (teamError) {
+                  callback({ error: teamError });
 
-          callback({ data: { user: authUser, token } });
+                  return;
+                }
+
+                // Get teamId from the team with the fewest members
+                const { objectId: teamId } = [...teamData.teams].sort((a, b) => { if (a.members.length > b.members.length) { return 1; } return -1; })[0];
+
+                teamManager.addUserToTeam({
+                  teamId,
+                  io,
+                  socket,
+                  memberId: userId,
+                  callback: ({ error: addError, data: addData }) => {
+                    if (addError) {
+                      callback({ error: addError });
+
+                      return;
+                    }
+
+                    socketFunc({ user: addData.user });
+                  },
+                });
+              },
+            });
+
+            return;
+          }
+
+          socketFunc({ user: authUser });
         },
       });
     },
@@ -938,6 +1004,78 @@ function unbanUser({
           io.emit(dbConfig.EmitTypes.USER, dataToSend);
 
           callback(dataToSend);
+        },
+      });
+    },
+  });
+}
+
+/**
+ * @param {Object} params Parameters.
+ * @param {string} params.userId Id of the user to take a life from.
+ * @param {string} params.token JWT Token.
+ * @param {Object} params.io Socket.Io.
+ * @param {Function} params.callback Callback.
+ * @param {Object} [params.internalCallUser] User to use on authentication. It will bypass token authentication.
+ */
+function attackUser({
+  userId,
+  token,
+  io,
+  callback,
+  internalCallUser,
+}) {
+  if (!appConfig.activateTermination) {
+    callback({ error: new errorCreator.NotAllowed({ name: 'termination disabled' }) });
+
+    return;
+  }
+
+  authenticator.isUserAllowed({
+    token,
+    internalCallUser,
+    commandName: dbConfig.apiCommands.AttackUser.name,
+    callback: ({ error, data }) => {
+      if (error) {
+        callback({ error });
+
+        return;
+      }
+
+      if (userId === data.user.objectId) {
+        callback({ error: new errorCreator.InvalidData({ name: 'cannot attack self' }) });
+
+        return;
+      }
+
+      dbUser.lowerLives({
+        userId,
+        callback: ({ error: updateError, data: updateData }) => {
+          if (updateError) {
+            callback({ error: updateError });
+
+            return;
+          }
+
+          const { user: updatedUser } = updateData;
+
+          io.to(updatedUser.objectId).emit(
+            updatedUser.lives <= 0
+              ? dbConfig.EmitTypes.TERMINATE
+              : dbConfig.EmitTypes.ATTACK,
+            {
+              data: {},
+            },
+          );
+
+          io.emit(dbConfig.EmitTypes.USER, {
+            data: {
+              user: managerHelper.stripObject({ object: updatedUser }),
+              changeType: dbConfig.ChangeTypes.UPDATE,
+            },
+          });
+
+          callback({ data: { user: updatedUser } });
         },
       });
     },
@@ -1159,6 +1297,17 @@ function updateUser({
               return;
             }
 
+            if (user.username && dbConfig.protectedNames.includes(user.username.toLowerCase())) {
+              callback({
+                error: new errorCreator.InvalidCharacters({
+                  name: `protected name ${user.username}`,
+                  extraData: { param: 'protected' },
+                }),
+              });
+
+              return;
+            }
+
             dbUser.updateUser({
               options,
               userId,
@@ -1188,6 +1337,22 @@ function updateUser({
                   socket.broadcast.emit(dbConfig.EmitTypes.USER, dataToSend);
                 } else {
                   io.emit(dbConfig.EmitTypes.USER, dataToSend);
+                }
+
+                io.to(updatedUser.objectId).emit(dbConfig.EmitTypes.USER, creatorDataToSend);
+
+                if (user.username) {
+                  forumManager.updateForum({
+                    token,
+                    socket,
+                    io,
+                    forum: {
+                      title: user.username,
+                    },
+                    internalCallUser: authUser,
+                    forumId: userId,
+                    callback: () => {},
+                  });
                 }
 
                 callback(creatorDataToSend);
@@ -1257,20 +1422,6 @@ function updateId({
       } = authUser;
       const socketId = socket.id;
 
-      if (authUser.isAnonymous) {
-        socketUtils.joinRequiredRooms({
-          io,
-          userId,
-          socketId,
-          socket,
-          accessLevel: 0,
-        });
-
-        callback({ data: { user: authUser } });
-
-        return;
-      }
-
       dbUser.updateOnline({
         userId,
         socketId,
@@ -1280,6 +1431,35 @@ function updateId({
             callback({ error: socketData.error });
 
             return;
+          }
+
+          if (!authUser.hasLoggedIn && appConfig.autoAddToTeam) {
+            dbTeams.getAutoTeams({
+              callback: ({ error: teamError, data: teamData }) => {
+                if (teamError) {
+                  callback({ error: teamError });
+
+                  return;
+                }
+
+                // Get teamId from the team with the fewest members
+                const { objectId: teamId } = [...teamData.teams].sort((a, b) => {
+                  if (a.members.length > b.members.length) {
+                    return 1;
+                  }
+
+                  return -1;
+                })[0];
+
+                teamManager.addUserToTeam({
+                  teamId,
+                  io,
+                  socket,
+                  callback: () => {},
+                  memberId: userId,
+                });
+              },
+            });
           }
 
           socketUtils.joinRooms({
@@ -1478,6 +1658,149 @@ function getUserByCode({
   });
 }
 
+/**
+ * Generate bases to be used for multi-user creation.
+ * @param {Object} params Parameters.
+ * @param {number} [params.codeLength] Length of the code to generate for each user.
+ * @param {number} [params.passwordLength] Length of the password to generate for each user.
+ * @param {boolean} [params.csv] Should the returned result be parsed as csv?
+ * @param {boolean} [params.generatePassword] Should a password be generated for each user?
+ * @param {boolean} [params.generateUsername] Should a username be generated for each user?
+ * @param {number} [params.amount] Amount of users to create.
+ * @return {Object[]} User bases.
+ */
+function generateUserBases({
+  codeLength = 4,
+  passwordLength = 4,
+  csv = false,
+  generatePassword = true,
+  generateUsername = true,
+  amount = 1,
+}) {
+  const userBases = [];
+  const fields = ['code'];
+
+  if (generatePassword) { fields.push('password'); }
+  if (generateUsername) { fields.push('username'); }
+
+  for (let i = 0; i < amount; i += 1) {
+    const user = {
+      code: crypto.randomBytes(codeLength).toString('hex'),
+    };
+
+    if (generatePassword) {
+      user.password = textTools.generateString(passwordLength);
+    }
+
+    if (generateUsername) {
+      user.username = `user-${crypto.randomBytes(3).toString('hex')}`;
+    }
+
+    userBases.push(user);
+  }
+
+  if (csv) {
+    try {
+      const parser = new Parser({ fields });
+
+      return parser.parse(userBases);
+    } catch (err) {
+      return err;
+    }
+  } else {
+    return userBases;
+  }
+}
+
+/**
+ * Connect two users.
+ * @param {Object} params Parameters.
+ * @param {string} params.username Name of the user to connect with.
+ * @param {string} params.token Jwt.
+ * @param {Object} params.io Socket.io.
+ * @param {Function} params.callback Callback.
+ */
+function connectUser({
+  username,
+  token,
+  io,
+  callback,
+}) {
+  authenticator.isUserAllowed({
+    token,
+    commandName: dbConfig.apiCommands.ConnectUser.name,
+    callback: ({ error, data }) => {
+      if (error) {
+        callback({ error });
+
+        return;
+      }
+
+      const { user: authUser } = data;
+
+      if (authUser.usernameLowerCase === username.toLowerCase()) {
+        callback({ error: new errorCreator.NotAllowed({ name: 'self' }) });
+
+        return;
+      }
+
+      getUserById({
+        token,
+        username,
+        internalCallUser: authUser,
+        callback: ({ error: getError, data: getData }) => {
+          if (getError) {
+            callback({ error: getError });
+
+            return;
+          }
+
+          const { user } = getData;
+
+          if (!user.partOfTeams[0] || !authUser.partOfTeams[0]) {
+            callback({ error: new errorCreator.Internal({ name: 'not part of team' }) });
+
+            return;
+          }
+
+          if (authUser.connectedTo.includes(user.objectId)) {
+            callback({ error: new errorCreator.AlreadyExists({ name: `already connected ${authUser.objectId} ${user.objectId}` }) });
+
+            return;
+          }
+
+          const [authTeamId] = authUser.partOfTeams;
+          const [userTeamId] = user.partOfTeams;
+
+          teamManager.updateTeamScore({
+            io,
+            callback,
+            teamId: authTeamId === userTeamId
+              ? authTeamId
+              : userTeamId,
+            value: appConfig.gameCodeAmount,
+            shouldIncrease: true,
+          });
+
+          dbUser.connectUsers({
+            userId: authUser.objectId,
+            otherUserId: user.objectId,
+            callback: () => {
+              callback({
+                data: {
+                  success: authTeamId === userTeamId,
+                  userTeamId: authTeamId,
+                  targetTeamId: userTeamId,
+                },
+              });
+            },
+          });
+        },
+      });
+    },
+  });
+}
+
 exports.createUser = createUser;
 exports.getUserById = getUserById;
 exports.changePassword = changePassword;
@@ -1493,3 +1816,6 @@ exports.getAllUsers = getAllUsers;
 exports.getUserOrAliasOwner = getUserOrAliasOwner;
 exports.getPushTokens = getPushTokens;
 exports.getUserByCode = getUserByCode;
+exports.attackUser = attackUser;
+exports.generateUserBases = generateUserBases;
+exports.connectUser = connectUser;
