@@ -459,7 +459,9 @@ async function updateObjects<T>({
       data: updatedData = { objects: [] },
     } = await getObjects({
       object,
-      query: { lastUpdated: now },
+      query: {
+        lastUpdated: now,
+      },
     });
 
     if (errorGet) {
