@@ -459,7 +459,7 @@ async function updateObjects<T>({
       data: updatedData = { objects: [] },
     } = await getObjects({
       object,
-      query: {
+      query: { 
         lastUpdated: now,
       },
     });
