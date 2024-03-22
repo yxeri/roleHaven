@@ -1,0 +1,27 @@
+'use strict';
+const tools = require('../helper/tools');
+const schemas = {};
+schemas.simpleMsg = tools.buildLiteSchema({
+    type: 'object',
+    required: ['text'],
+    properties: {
+        text: { type: 'string' },
+    },
+});
+schemas.fullSimpleMsg = tools.buildFullSchema({
+    type: 'object',
+    required: ['text'],
+    properties: {
+        text: { type: 'string' },
+    },
+});
+schemas.simpleMsgs = {
+    type: 'array',
+    items: schemas.simpleMsg,
+};
+schemas.fullSimpleMsgs = {
+    type: 'array',
+    items: schemas.fullSimpleMsg,
+};
+export default schemas;
+//# sourceMappingURL=data:application/json;base64,eyJ2ZXJzaW9uIjozLCJmaWxlIjoic2ltcGxlTXNncy5qcyIsInNvdXJjZVJvb3QiOiIiLCJzb3VyY2VzIjpbInNpbXBsZU1zZ3MudHMiXSwibmFtZXMiOltdLCJtYXBwaW5ncyI6IkFBQUEsWUFBWSxDQUFDO0FBRWIsTUFBTSxLQUFLLEdBQUcsT0FBTyxDQUFDLGlCQUFpQixDQUFDLENBQUM7QUFFekMsTUFBTSxPQUFPLEdBQUcsRUFBRSxDQUFDO0FBRW5CLE9BQU8sQ0FBQyxTQUFTLEdBQUcsS0FBSyxDQUFDLGVBQWUsQ0FBQztJQUN4QyxJQUFJLEVBQUUsUUFBUTtJQUNkLFFBQVEsRUFBRSxDQUFDLE1BQU0sQ0FBQztJQUNsQixVQUFVLEVBQUU7UUFDVixJQUFJLEVBQUUsRUFBRSxJQUFJLEVBQUUsUUFBUSxFQUFFO0tBQ3pCO0NBQ0YsQ0FBQyxDQUFDO0FBRUgsT0FBTyxDQUFDLGFBQWEsR0FBRyxLQUFLLENBQUMsZUFBZSxDQUFDO0lBQzVDLElBQUksRUFBRSxRQUFRO0lBQ2QsUUFBUSxFQUFFLENBQUMsTUFBTSxDQUFDO0lBQ2xCLFVBQVUsRUFBRTtRQUNWLElBQUksRUFBRSxFQUFFLElBQUksRUFBRSxRQUFRLEVBQUU7S0FDekI7Q0FDRixDQUFDLENBQUM7QUFFSCxPQUFPLENBQUMsVUFBVSxHQUFHO0lBQ25CLElBQUksRUFBRSxPQUFPO0lBQ2IsS0FBSyxFQUFFLE9BQU8sQ0FBQyxTQUFTO0NBQ3pCLENBQUM7QUFFRixPQUFPLENBQUMsY0FBYyxHQUFHO0lBQ3ZCLElBQUksRUFBRSxPQUFPO0lBQ2IsS0FBSyxFQUFFLE9BQU8sQ0FBQyxhQUFhO0NBQzdCLENBQUM7QUFFRixlQUFlLE9BQU8sQ0FBQyJ9

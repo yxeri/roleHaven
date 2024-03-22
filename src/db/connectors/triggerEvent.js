@@ -1,0 +1,217 @@
+'use strict';
+import mongoose from 'mongoose';
+import { dbConfig } from '../../config/defaults/config';
+import errorCreator from '../../error/errorCreator';
+import dbConnector from '../databaseConnector';
+const triggerEventSchema = new mongoose.Schema(dbConnector.createSchema({
+    startTime: Date,
+    terminationTime: Date,
+    duration: Number,
+    eventType: String,
+    content: Object,
+    iterations: Number,
+    isRecurring: {
+        type: Boolean,
+        default: false,
+    },
+    isActive: {
+        type: Boolean,
+        default: false,
+    },
+    changeType: {
+        type: String,
+        default: dbConfig.TriggerChangeTypes.CREATE,
+    },
+    triggeredBy: {
+        type: [String],
+        default: [],
+    },
+    shouldTargetSingle: {
+        type: Boolean,
+        default: false,
+    },
+    singleUse: {
+        type: Boolean,
+        default: true,
+    },
+    triggerType: {
+        type: String,
+        default: dbConfig.TriggerTypes.MANUAL,
+    },
+    coordinates: {
+        positionId: String,
+        longitude: Number,
+        latitude: Number,
+        radius: Number,
+    },
+}), { collection: 'triggerEvents' });
+const TriggerEvent = mongoose.model('TriggerEvent', triggerEventSchema);
+function updateObject({ eventId, update, callback, suppressError, }) {
+    const query = { _id: eventId };
+    dbConnector.updateObject({
+        update,
+        query,
+        suppressError,
+        object: TriggerEvent,
+        errorNameContent: 'updateTriggerEventObject',
+        callback: ({ error, data, }) => {
+            if (error) {
+                callback({ error });
+                return;
+            }
+            callback({ data: { triggerEvent: data.object } });
+        },
+    });
+}
+function getTriggerEvents({ query, callback, filter, }) {
+    dbConnector.getObjects({
+        query,
+        filter,
+        object: TriggerEvent,
+        callback: ({ error, data, }) => {
+            if (error) {
+                callback({ error });
+                return;
+            }
+            callback({ data: { triggerEvents: data.objects } });
+        },
+    });
+}
+function getTriggerEvent({ query, callback, }) {
+    dbConnector.getObject({
+        query,
+        object: TriggerEvent,
+        callback: ({ error, data, }) => {
+            if (error) {
+                callback({ error });
+                return;
+            }
+            if (!data.object) {
+                callback({ error: new errorCreator.DoesNotExist({ name: `triggerEvent ${JSON.stringify(query, null, 4)}` }) });
+                return;
+            }
+            callback({ data: { triggerEvent: data.object } });
+        },
+    });
+}
+function createTriggerEvent({ triggerEvent, callback, }) {
+    dbConnector.saveObject({
+        object: new TriggerEvent(triggerEvent),
+        objectType: 'triggerEvent',
+        callback: ({ error, data, }) => {
+            if (error) {
+                callback({ error });
+                return;
+            }
+            callback({ data: { triggerEvent: data.savedObject } });
+        },
+    });
+}
+function updateTriggerEvent({ eventId, triggerEvent, callback, options = {}, }) {
+    const { startTime, terminationTime, duration, isRecurring, eventType, content, isActive, iterations, } = triggerEvent;
+    const { resetTerminatonTime, resetDuration, } = options;
+    const update = {};
+    const set = {};
+    const unset = {};
+    if (resetDuration) {
+        unset.duration = '';
+    }
+    else if (duration) {
+        set.duration = duration;
+    }
+    if (resetTerminatonTime) {
+        unset.terminationTime = '';
+    }
+    else if (terminationTime) {
+        set.terminationTime = terminationTime;
+    }
+    if (startTime) {
+        set.startTime = startTime;
+    }
+    if (eventType) {
+        set.eventType = eventType;
+    }
+    if (content) {
+        set.content = content;
+    }
+    if (isRecurring) {
+        set.isRecurring = isRecurring;
+    }
+    if (isActive) {
+        set.isActive = isActive;
+    }
+    if (iterations) {
+        set.iterations = iterations;
+    }
+    if (Object.keys(set).length > 0) {
+        update.$set = set;
+    }
+    if (Object.keys(unset).length > 0) {
+        update.$unset = unset;
+    }
+    updateObject({
+        eventId,
+        update,
+        callback,
+    });
+}
+function updateAccess(params) {
+    const accessParams = params;
+    const { callback } = params;
+    accessParams.objectId = params.eventId;
+    accessParams.object = TriggerEvent;
+    accessParams.callback = ({ error, data, }) => {
+        if (error) {
+            callback({ error });
+            return;
+        }
+        callback({ data: { device: data.object } });
+    };
+    if (params.shouldRemove) {
+        dbConnector.removeObjectAccess(params);
+    }
+    else {
+        dbConnector.addObjectAccess(params);
+    }
+}
+function removeTriggerEvent({ eventId, callback, }) {
+    dbConnector.removeObject({
+        callback,
+        object: TriggerEvent,
+        query: { _id: eventId },
+    });
+}
+function getTriggerEventById({ eventId, callback, }) {
+    getTriggerEvent({
+        callback,
+        query: { _id: eventId },
+    });
+}
+function getTriggerEventsByOwner({ ownerId, callback, }) {
+    const query = { ownerId };
+    getTriggerEvents({
+        query,
+        callback,
+    });
+}
+function getTimedTriggerEvents({ callback }) {
+    const query = {
+        $or: [
+            { isRecurring: true },
+            { startTime: { $exists: true } },
+            { terminationTime: { $exists: true } },
+        ],
+    };
+    getTriggerEvents({
+        query,
+        callback,
+    });
+}
+export { getTriggerEventById };
+export { removeTriggerEvent };
+export { updateAccess };
+export { createTriggerEvent };
+export { updateTriggerEvent };
+export { getTriggerEventsByOwner };
+export { getTimedTriggerEvents };
+//# sourceMappingURL=data:application/json;base64,eyJ2ZXJzaW9uIjozLCJmaWxlIjoidHJpZ2dlckV2ZW50LmpzIiwic291cmNlUm9vdCI6IiIsInNvdXJjZXMiOlsidHJpZ2dlckV2ZW50LnRzIl0sIm5hbWVzIjpbXSwibWFwcGluZ3MiOiJBQUFBLFlBQVksQ0FBQztBQUViLE9BQU8sUUFBUSxNQUFNLFVBQVUsQ0FBQztBQUNoQyxPQUFPLEVBQUUsUUFBUSxFQUFFLE1BQU0sOEJBQThCLENBQUM7QUFDeEQsT0FBTyxZQUFZLE1BQU0sMEJBQTBCLENBQUM7QUFFcEQsT0FBTyxXQUFXLE1BQU0sc0JBQXNCLENBQUM7QUFFL0MsTUFBTSxrQkFBa0IsR0FBRyxJQUFJLFFBQVEsQ0FBQyxNQUFNLENBQUMsV0FBVyxDQUFDLFlBQVksQ0FBQztJQUN0RSxTQUFTLEVBQUUsSUFBSTtJQUNmLGVBQWUsRUFBRSxJQUFJO0lBQ3JCLFFBQVEsRUFBRSxNQUFNO0lBQ2hCLFNBQVMsRUFBRSxNQUFNO0lBQ2pCLE9BQU8sRUFBRSxNQUFNO0lBQ2YsVUFBVSxFQUFFLE1BQU07SUFDbEIsV0FBVyxFQUFFO1FBQ1gsSUFBSSxFQUFFLE9BQU87UUFDYixPQUFPLEVBQUUsS0FBSztLQUNmO0lBQ0QsUUFBUSxFQUFFO1FBQ1IsSUFBSSxFQUFFLE9BQU87UUFDYixPQUFPLEVBQUUsS0FBSztLQUNmO0lBQ0QsVUFBVSxFQUFFO1FBQ1YsSUFBSSxFQUFFLE1BQU07UUFDWixPQUFPLEVBQUUsUUFBUSxDQUFDLGtCQUFrQixDQUFDLE1BQU07S0FDNUM7SUFDRCxXQUFXLEVBQUU7UUFDWCxJQUFJLEVBQUUsQ0FBQyxNQUFNLENBQUM7UUFDZCxPQUFPLEVBQUUsRUFBRTtLQUNaO0lBQ0Qsa0JBQWtCLEVBQUU7UUFDbEIsSUFBSSxFQUFFLE9BQU87UUFDYixPQUFPLEVBQUUsS0FBSztLQUNmO0lBQ0QsU0FBUyxFQUFFO1FBQ1QsSUFBSSxFQUFFLE9BQU87UUFDYixPQUFPLEVBQUUsSUFBSTtLQUNkO0lBQ0QsV0FBVyxFQUFFO1FBQ1gsSUFBSSxFQUFFLE1BQU07UUFDWixPQUFPLEVBQUUs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

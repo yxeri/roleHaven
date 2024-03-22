@@ -1,0 +1,40 @@
+'use strict';
+const tools = require('../helper/tools');
+const { appConfig } = require('../../../config/defaults/config');
+const data = {};
+data.create = {
+    first: {
+        teamName: tools.createRandString({ length: appConfig.teamNameMaxLength }),
+        shortName: tools.createRandString({ length: appConfig.shortTeamMaxLength }),
+    },
+    second: {
+        teamName: tools.createRandString({ length: appConfig.teamNameMaxLength }),
+        shortName: tools.createRandString({ length: appConfig.shortTeamMaxLength }),
+    },
+    missing: {
+        teamName: tools.createRandString({ length: appConfig.teamNameMaxLength }),
+        shortName: tools.createRandString({ length: appConfig.shortTeamMaxLength }),
+    },
+};
+data.update = {
+    toUpdate: {
+        teamName: tools.createRandString({ length: appConfig.teamNameMaxLength }),
+        shortName: tools.createRandString({ length: appConfig.shortTeamMaxLength }),
+    },
+    updateWith: {
+        teamName: tools.createRandString({ length: appConfig.teamNameMaxLength }),
+        shortName: tools.createRandString({ length: appConfig.shortTeamMaxLength }),
+    },
+};
+data.remove = {
+    toRemove: {
+        teamName: tools.createRandString({ length: appConfig.teamNameMaxLength }),
+        shortName: tools.createRandString({ length: appConfig.shortTeamMaxLength }),
+    },
+    secondToRemove: {
+        teamName: tools.createRandString({ length: appConfig.teamNameMaxLength }),
+        shortName: tools.createRandString({ length: appConfig.shortTeamMaxLength }),
+    },
+};
+export default data;
+//# sourceMappingURL=data:application/json;base64,eyJ2ZXJzaW9uIjozLCJmaWxlIjoidGVhbXMuanMiLCJzb3VyY2VSb290IjoiIiwic291cmNlcyI6WyJ0ZWFtcy50cyJdLCJuYW1lcyI6W10sIm1hcHBpbmdzIjoiQUFBQSxZQUFZLENBQUM7QUFFYixNQUFNLEtBQUssR0FBRyxPQUFPLENBQUMsaUJBQWlCLENBQUMsQ0FBQztBQUN6QyxNQUFNLEVBQUUsU0FBUyxFQUFFLEdBQUcsT0FBTyxDQUFDLGlDQUFpQyxDQUFDLENBQUM7QUFFakUsTUFBTSxJQUFJLEdBQUcsRUFBRSxDQUFDO0FBRWhCLElBQUksQ0FBQyxNQUFNLEdBQUc7SUFDWixLQUFLLEVBQUU7UUFDTCxRQUFRLEVBQUUsS0FBSyxDQUFDLGdCQUFnQixDQUFDLEVBQUUsTUFBTSxFQUFFLFNBQVMsQ0FBQyxpQkFBaUIsRUFBRSxDQUFDO1FBQ3pFLFNBQVMsRUFBRSxLQUFLLENBQUMsZ0JBQWdCLENBQUMsRUFBRSxNQUFNLEVBQUUsU0FBUyxDQUFDLGtCQUFrQixFQUFFLENBQUM7S0FDNUU7SUFDRCxNQUFNLEVBQUU7UUFDTixRQUFRLEVBQUUsS0FBSyxDQUFDLGdCQUFnQixDQUFDLEVBQUUsTUFBTSxFQUFFLFNBQVMsQ0FBQyxpQkFBaUIsRUFBRSxDQUFDO1FBQ3pFLFNBQVMsRUFBRSxLQUFLLENBQUMsZ0JBQWdCLENBQUMsRUFBRSxNQUFNLEVBQUUsU0FBUyxDQUFDLGtCQUFrQixFQUFFLENBQUM7S0FDNUU7SUFDRCxPQUFPLEVBQUU7UUFDUCxRQUFRLEVBQUUsS0FBSyxDQUFDLGdCQUFnQixDQUFDLEVBQUUsTUFBTSxFQUFFLFNBQVMsQ0FBQyxpQkFBaUIsRUFBRSxDQUFDO1FBQ3pFLFNBQVMsRUFBRSxLQUFLLENBQUMsZ0JBQWdCLENBQUMsRUFBRSxNQUFNLEVBQUUsU0FBUyxDQUFDLGtCQUFrQixFQUFFLENBQUM7S0FDNUU7Q0FDRixDQUFDO0FBRUYsSUFBSSxDQUFDLE1BQU0sR0FBRztJQUNaLFFBQVEsRUFBRTtRQUNSLFFBQVEsRUFBRSxLQUFLLENBQUMsZ0JBQWdCLENBQUMsRUFBRSxNQUFNLEVBQUUsU0FBUyxDQUFDLGlCQUFpQixFQUFFLENBQUM7UUFDekUsU0FBUyxFQUFFLEtBQUssQ0FBQyxnQkFBZ0IsQ0FBQyxFQUFFLE1BQU0sRUFBRSxTQUFTLENBQUMsa0JBQWtCLEVBQUUsQ0FBQztLQUM1RTtJQUNELFVBQVUsRUFBRTtRQUNWLFFBQVEsRUFBRSxLQUFLLENBQUMsZ0JBQWdCLENBQUMsRUFBRSxNQUFNLEVBQUUsU0FBUyxDQUFDLGlCQUFpQixFQUFFLENBQUM7UUFDekUsU0FBUyxFQUFFLEtBQUssQ0FBQyxnQkFBZ0IsQ0FBQyxFQUFFLE1BQU0sRUFBRSxTQUFTLENBQUMsa0JBQWtCLEVBQUUsQ0FBQztLQUM1RTtDQUNGLENBQUM7QUFFRixJQUFJLENBQUMsTUFBTSxHQUFHO0lBQ1osUUFBUSxFQUFFO1FBQ1IsUUFBUSxFQUFFLEtBQUssQ0FBQyxnQkFBZ0IsQ0FBQyxFQUFFLE1BQU0sRUFBRSxTQUFTLENBQUMsaUJBQWlCLEVBQUUsQ0FBQztRQUN6RSxTQUFTLEVBQUUsS0FBSyxDQUFDLGdCQUFnQixDQUFDLEVBQUUsTUFBTSxFQUFFLFNBQVMsQ0FBQyxrQkFBa0IsRUFBRSxDQUFDO0tBQzVFO0lBQ0QsY0FBYyxFQUFFO1FBQ2QsUUFBUSxFQUFFLEtBQUssQ0FBQyxnQkFBZ0IsQ0FBQyxFQUFFLE1BQU0sRUFBRSxTQUFTLENBQUMsaUJBQWlCLEVBQUUsQ0FBQztRQUN6RSxTQUFTLEVBQUUsS0FBSyxDQUFDLGdCQUFnQixDQUFDLEVBQUUsTUFBTSxFQUFFLFNBQVMsQ0FBQyxrQkFBa0IsRUFBRSxDQUFDO0tBQzVFO0NBQ0YsQ0FBQztBQUVGLGVBQWUsSUFBSSxDQUFDIn0=

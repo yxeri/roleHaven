@@ -1,0 +1,25 @@
+#!/usr/bin/env node
+
+'use strict'
+
+import { appConfig } from '../config/defaults/index.js'
+import app from './../app'
+
+/**
+ * Start server
+ */
+function run () {
+  // Sets server port
+  app.set('port', appConfig.port)
+
+  // Starts Express server
+  const server = app.listen(app.get('port'), () => {
+  })
+
+  // SocketIO
+  const { io } = app
+
+  io.attach(server)
+}
+
+run()

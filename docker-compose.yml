@@ -1,12 +1,15 @@
-db:
+name: rolehaven
+
+services:
+  db:
     image: mongo
-rolehaven:
+  rolehaven:
     build: .
     environment:
-        - DBHOST=db
+      - DBHOST=db
     links:
-        - db
+      - db
     ports:
-        - "8888:8888"
+      - "8888:8888"
     volumes:
-        - images:/usr/src/app/public/images
+      - images:/usr/src/app/public/images

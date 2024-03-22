@@ -1,5 +1,8 @@
-node_modules
 out
 private/required
 docs
 coverage
+bbrdocs
+.nyc_output
+.travis
+.yarn

@@ -1,0 +1,595 @@
+'use strict';
+import { ObjectId } from 'mongodb';
+import mongoose from 'mongoose';
+import dbConfig from '../../config/defaults/dbConfig.js';
+import errorCreator from '../../error/errorCreator.js';
+import dbConnector, { BaseSchemaDef } from '../databaseConnector.js';
+import dbAlias from './alias.js';
+import dbTeam, { Team } from './team.js';
+const userSchema = new mongoose.Schema({
+    ...BaseSchemaDef,
+    username: {
+        type: String,
+        unique: true,
+    },
+    usernameLowerCase: {
+        type: String,
+        unique: true,
+    },
+    mailAddress: {
+        type: String,
+        unique: true,
+        sparse: true,
+    },
+    password: String,
+    socketId: String,
+    lastOnline: Date,
+    registerDevice: String,
+    description: [String],
+    hasFullAccess: {
+        type: Boolean,
+        default: false,
+    },
+    isVerified: {
+        type: Boolean,
+        default: false,
+    },
+    isBanned: {
+        type: Boolean,
+        default: false,
+    },
+    isOnline: {
+        type: Boolean,
+        default: false,
+    },
+    isLootable: {
+        type: Boolean,
+        default: false,
+    },
+    defaultRoomId: {
+        type: String,
+        default: dbConfig.rooms.public.objectId,
+    },
+    partOfTeams: {
+        type: [String],
+        default: [],
+    },
+    followingRooms: {
+        type: [String],
+        default: [],
+    },
+    aliases: {
+        type: [String],
+        default: [],
+    },
+    image: dbConnector.imageSchema,
+    offName: String,
+    pronouns: [String],
+    customFields: [dbConnector.customFieldSchema],
+}, { collection: 'users' });
+const UserModel = mongoose.model('User', userSchema);
+function modifyUserParameters({ user, noClean, includeOff = false, }) {
+    if (!user) {
+        return {};
+    }
+    return {
+        ...user,
+        mailAddress: !noClean
+            ? typeof user.mailAddress === 'string'
+            : user.mailAddress,
+        offName: !includeOff
+            ? typeof user.offName === 'string'
+            : user.offName,
+    };
+}
+async function updateObject({ socketId, userId, update, suppressError, includeOff, }) {
+    const query = userId
+        ? { _id: userId }
+        : { socketId };
+    const { data, error } = await dbConnector.updateObject({
+        update,
+        query,
+        suppressError,
+        object: UserModel,
+    });
+    if (error) {
+        return { error };
+    }
+    return {
+        data: {
+            user: modifyUserParameters({
+                user: data?.object,
+                includeOff,
+            }),
+        },
+    };
+}
+async function updateObjects({ query, update, }) {
+    const { data, error } = await dbConnector.updateObjects({
+        update,
+        query,
+        object: UserModel,
+    });
+    if (error) {
+        return { error };
+    }
+    return {
+        data: {
+            users: data?.objects.map((object) => modifyUserParameters({ user: object })),
+        },
+    };
+}
+async function getUsers({ filter, query, includeOff, }) {
+    const { data, error } = await dbConnector.getObjects({
+        query,
+        filter,
+        object: UserModel,
+    });
+    if (error) {
+        return { error };
+    }
+    return {
+        data: {
+            users: data?.objects.map((user) => modifyUserParameters({
+                user,
+                includeOff,
+            })),
+        },
+    };
+}
+async function getUser({ filter, query, supressExistError, getPassword, }) {
+    const { data, error } = await dbConnector.getObject({
+        query,
+        filter,
+        noClean: getPassword,
+        object: UserModel,
+    });
+    if (error) {
+        return { error };
+    }
+    if (!data?.object) {
+        return {
+            error: new errorCreator.DoesNotExist({
+                suppressPrint: supressExistError,
+                name: `user ${JSON.stringify(query, null, 4)}`,
+            }),
+        };
+    }
+    return {
+        data: {
+            user: modifyUserParameters({
+                user: data.object,
+                noClean: getPassword,
+            }),
+        },
+    };
+}
+async function getUserById({ userId, username, getPassword = false, supressExistError, }) {
+    const query = userId
+        ? { _id: userId }
+        : { usernameLowerCase: username?.toLowerCase() };
+    const { error, data } = await getUser({
+        query,
+        supressExistError,
+        getPassword,
+    });
+    if (error) {
+        return { error };
+    }
+    return { data };
+}
+async function doesUserSocketIdExist({ socketId, }) {
+    const query = { socketId };
+    const { data, error } = await dbConnector.doesObjectExist({
+        query,
+        object: UserModel,
+    });
+    if (error) {
+        return { error: new errorCreator.Database({ errorObject: error }) };
+    }
+    return { data };
+}
+async function doesUserExist({ username, mailAddress, }) {
+    if (!username && !mailAddress) {
+        return { error: new errorCreator.InvalidData({ expected: 'username || mailAddress' }) };
+    }
+    const query = { $or: [] };
+    if (username) {
+        query.$or.push({ usernameLowerCase: username.toLowerCase() });
+    }
+    if (mailAddress) {
+        query.$or.push({ mailAddress });
+    }
+    const { data, error } = await dbConnector.doesObjectExist({
+        query,
+        object: UserModel,
+    });
+    if (error) {
+        return { error: new errorCreator.Database({ errorObject: error }) };
+    }
+    if (data?.exists) {
+        return { data };
+    }
+    if (!username) {
+        return { data: { exists: false, object: null } };
+    }
+    return dbAlias.doesAliasExist({
+        aliasName: username,
+    });
+}
+async function createUser({ user, options = {}, }) {
+    const { error, data } = await doesUserExist({
+        username: user.username,
+        mailAddress: user.mailAddress,
+    });
+    if (error) {
+        return { error };
+    }
+    if (data?.exists) {
+        return { error: new errorCreator.AlreadyExists({ name: `username: ${user.username}` }) };
+    }
+    const userToSave = user;
+    userToSave.usernameLowerCase = userToSave.username?.toLowerCase();
+    if (options.setId && userToSave.objectId) {
+        userToSave._id = new ObjectId(userToSave.objectId);
+    }
+    else {
+        userToSave._id = new ObjectId();
+    }
+    userToSave.ownerId = userToSave._id.toString();
+    const { error: saveError, data: saveData } = await dbConnector.saveObject({
+        object: UserModel,
+        objectData: userToSave,
+        objectType: 'user',
+    });
+    if (saveError) {
+        return { error: saveError };
+    }
+    if (!saveData?.savedObject) {
+        return { error: new errorCreator.Database({ errorObject: 'Could not save user' }) };
+    }
+    return {
+        data: {
+            user: modifyUserParameters({
+                user: saveData?.savedObject,
+                includeOff: true,
+            }),
+        },
+    };
+}
+async function updateOnline({ userId, isOnline, socketId, suppressError, }) {
+    const update = {};
+    const set = {};
+    const unset = {};
+    if (isOnline) {
+        set.isOnline = true;
+        if (socketId) {
+            set.socketId = socketId;
+        }
+    }
+    else {
+        set.isOnline = false;
+        unset.socketId = '';
+    }
+    set.lastOnline = new Date();
+    if (Object.keys(set).length > 0) {
+        update.$set = set;
+    }
+    if (Object.keys(unset).length > 0) {
+        update.$unset = unset;
+    }
+    return await updateObject({
+        userId,
+        socketId,
+        update,
+        suppressError,
+    });
+}
+async function updateUser({ userSocketId, userId, user, options = {}, }) {
+    const { mailAddress, username, visibility, accessLevel, defaultRoomId, isLootable, hasFullAccess, socketId, aliases, image, offName, pronouns, description, customFields, } = user;
+    const { resetSocket, } = options;
+    const update = {};
+    const set = {};
+    const unset = {};
+    const addToSet = {};
+    if (resetSocket) {
+        set.socketId = '';
+    }
+    else if (socketId) {
+        set.socketId = socketId;
+    }
+    if (mailAddress) {
+        set.mailAddress = mailAddress;
+    }
+    if (username) {
+        set.username = username;
+        set.usernameLowerCase = username.toLowerCase();
+    }
+    if (visibility) {
+        set.visibility = visibility;
+    }
+    if (accessLevel) {
+        set.accessLevel = accessLevel;
+    }
+    if (defaultRoomId) {
+        set.defaultRoomId = defaultRoomId;
+    }
+    if (typeof isLootable === 'boolean') {
+        set.isLootable = isLootable;
+    }
+    if (typeof hasFullAccess === 'boolean') {
+        set.hasFullAccess = hasFullAccess;
+    }
+    if (aliases) {
+        addToSet.aliases = { $each: aliases };
+    }
+    if (image) {
+        set.image = image;
+    }
+    if (offName) {
+        set.offName = offName;
+    }
+    if (pronouns) {
+        set.pronouns = pronouns;
+    }
+    if (description) {
+        set.description = description;
+    }
+    if (customFields) {
+        set.customFields = customFields;
+    }
+    if (Object.keys(set).length > 0) {
+        update.$set = set;
+    }
+    if (Object.keys(unset).length > 0) {
+        update.$unset = unset;
+    }
+    if (Object.keys(addToSet).length > 0) {
+        update.$addToSet = addToSet;
+    }
+    if (username || mailAddress) {
+        const { data, error } = await doesUserExist({
+            username,
+            mailAddress,
+        });
+        if (error) {
+            return { error };
+        }
+        if (data?.exists) {
+            return { error: new errorCreator.AlreadyExists({ name: `user mail ${mailAddress} username ${username}` }) };
+        }
+        return updateObject({
+            update,
+            socketId: userSocketId,
+            userId,
+            includeOff: typeof offName !== 'undefined',
+        });
+    }
+    return updateObject({
+        update,
+        userId,
+    });
+}
+async function verifyUser({ userId, }) {
+    return updateObject({
+        userId,
+        update: { isVerified: true },
+    });
+}
+async function updateBanUser({ shouldBan, userId, }) {
+    const update = {
+        $set: { isBanned: shouldBan },
+        $unset: { socketId: '' },
+    };
+    const { data, error } = await updateObject({
+        userId,
+        update,
+    });
+    if (error) {
+        return ({ error });
+    }
+    if (!data?.user) {
+        return ({ error: new errorCreator.DoesNotExist({ name: `user ${userId}` }) });
+    }
+    return { data: { user: modifyUserParameters({ user: data.user }) } };
+}
+async function updateUserPassword({ userId, password, }) {
+    const update = { $set: { password } };
+    return updateObject({
+        userId,
+        update,
+    });
+}
+async function getUsersByUser({ includeInactive, user, includeOff, }) {
+    const query = dbConnector.createUserQuery({ user });
+    if (!includeInactive) {
+        query.isBanned = false;
+        query.isVerified = true;
+    }
+    const { data, error } = await getUsers({
+        query,
+        includeOff,
+    });
+    if (error) {
+        return { error };
+    }
+    return { data: { users: data?.users } };
+}
+async function addToTeam({ userIds, teamId, isAdmin, }) {
+    const { error, data: userData } = await updateObjects({
+        query: { _id: { $in: userIds } },
+        update: { $addToSet: { partOfTeams: teamId } },
+    });
+    if (error) {
+        return { error };
+    }
+    const { error: teamAddError } = await dbTeam.addTeamMembers({
+        teamId,
+        memberIds: userIds,
+    });
+    if (teamAddError) {
+        return { error: teamAddError };
+    }
+    const { data: teamData, error: teamError } = await dbConnector.updateAccess({
+        userIds,
+        object: Team,
+        objectId: teamId,
+        userAdminIds: isAdmin
+            ?
+                userIds
+            :
+                undefined,
+    });
+    if (teamError) {
+        return { error: teamError };
+    }
+    return {
+        data: {
+            team: teamData.object,
+            users: userData?.users,
+        },
+    };
+}
+async function addAlias({ aliasId, userId, }) {
+    return updateObject({
+        userId,
+        update: { $addToSet: { aliases: aliasId } },
+    });
+}
+async function removeAlias({ aliasId, userId, }) {
+    return updateObject({
+        userId,
+        update: { aliases: { $pull: aliasId } },
+    });
+}
+async function removeAliasFromAllUsers({ aliasId, }) {
+    return updateObjects({
+        query: {},
+        update: { aliases: { $pull: aliasId } },
+    });
+}
+async function removeFromTeam({ userId, teamId, }) {
+    const { error, data } = await updateObject({
+        userId,
+        update: { $pull: { partOfTeams: teamId } },
+    });
+    if (error) {
+        return { error };
+    }
+    const { error: removeError } = await dbTeam.removeTeamMembers({
+        teamId,
+        memberIds: [userId],
+    });
+    if (removeError) {
+        return { error: removeError };
+    }
+    const { error: accessError, data: accessData } = await dbConnector.updateAccess({
+        object: Team,
+        objectId: teamId,
+        shouldRemove: true,
+        userIds: [userId],
+        userAdminIds: [userId],
+    });
+    if (accessError) {
+        return { error: accessError };
+    }
+    return {
+        data: {
+            team: accessData.object,
+            user: data.user,
+        },
+    };
+}
+async function getAllSocketIds() {
+    const { data, error } = await getUsers({
+        query: { socketId: { $exists: true } },
+    });
+    if (error) {
+        return { error };
+    }
+    const userSocketIds = {};
+    data?.users?.forEach((user) => {
+        userSocketIds[user.objectId] = user.socketId;
+    });
+    return { data: { userSocketIds } };
+}
+async function removeRoomFromAll({ roomId, }) {
+    return updateObjects({
+        query: {},
+        update: { $pull: { followingRooms: roomId } },
+    });
+}
+async function removeTeamFromAll({ teamId, }) {
+    return updateObjects({
+        query: {},
+        update: { $pull: { partOfTeams: teamId } },
+    });
+}
+async function getInactiveUsers() {
+    const query = {
+        $or: [
+            { isBanned: true },
+            { isVerified: false },
+        ],
+    };
+    return getUsers({
+        query,
+    });
+}
+async function followRoom({ roomId, userIds = [], }) {
+    return updateObjects({
+        query: {
+            _id: { $in: userIds },
+        },
+        update: { $addToSet: { followingRooms: roomId } },
+    });
+}
+async function unfollowRoom({ roomId, userId, }) {
+    return updateObject({
+        userId,
+        update: {
+            followingRooms: { $pull: roomId },
+        },
+    });
+}
+async function getAllUsers() {
+    return getUsers({
+        query: {},
+    });
+}
+async function getUsersByAliases({ aliasIds, }) {
+    return getUsers({
+        query: {
+            $or: [
+                { _id: { $in: aliasIds } },
+                { aliases: { $in: aliasIds } },
+            ],
+        },
+    });
+}
+export default {
+    createUser,
+    updateUser,
+    verifyUser,
+    updateBanUser,
+    updateUserPassword,
+    getUserById,
+    doesUserExist,
+    getAllSocketIds,
+    addToTeam,
+    removeFromTeam,
+    removeRoomFromAll,
+    removeTeamFromAll,
+    updateOnline,
+    getInactiveUsers,
+    followRoom,
+    unfollowRoom,
+    getUsersByUser,
+    addAlias,
+    removeAlias,
+    removeAliasFromAllUsers,
+    getAllUsers,
+    getUsersByAliases,
+    doesUserSocketIdExist,
+};
+//# sourceMappingURL=data:application/json;base64,eyJ2ZXJzaW9uIjozLCJmaWxlIjoidXNlci5qcyIsInNvdXJjZVJvb3QiOiIiLCJzb3VyY2VzIjpbInVzZXIudHMiXSwibmFtZXMiOltdLCJtYXBwaW5ncyI6IkFBQUEsWUFBWSxDQUFDO0FBRWIsT0FBTyxFQUFFLFFBQVEsRUFBRSxNQUFNLFNBQVMsQ0FBQztBQUNuQyxPQUFPLFFBQVEsTUFBTSxVQUFVLENBQUM7QUFFaEMsT0FBTyxRQUFRLE1BQU0sbUNBQW1DLENBQUM7QUFDekQsT0FBTyxZQUFZLE1BQU0sNkJBQTZCLENBQUM7QUFDdkQsT0FBTyxXQUFXLEVBQUUsRUFBYyxhQUFhLEVBQWtDLE1BQU0seUJBQXlCLENBQUM7QUFDakgsT0FBTyxPQUF3QixNQUFNLFlBQVksQ0FBQztBQUNsRCxPQUFPLE1BQU0sRUFBRSxFQUFFLElBQUksRUFBRSxNQUFNLFdBQVcsQ0FBQztBQTBCekMsTUFBTSxVQUFVLEdBQUcsSUFBSSxRQUFRLENBQUMsTUFBTSxDQUFhO0lBQ2pELEdBQUcsYUFBYTtJQUNoQixRQUFRLEVBQUU7UUFDUixJQUFJLEVBQUUsTUFBTTtRQUNaLE1BQU0sRUFBRSxJQUFJO0tBQ2I7SUFDRCxpQkFBaUIsRUFBRTtRQUNqQixJQUFJLEVBQUUsTUFBTTtRQUNaLE1BQU0sRUFBRSxJQUFJO0tBQ2I7SUFDRCxXQUFXLEVBQUU7UUFDWCxJQUFJLEVBQUUsTUFBTTtRQUNaLE1BQU0sRUFBRSxJQUFJO1FBQ1osTUFBTSxFQUFFLElBQUk7S0FDYjtJQUNELFFBQVEsRUFBRSxNQUFNO0lBQ2hCLFFBQVEsRUFBRSxNQUFNO0lBQ2hCLFVBQVUsRUFBRSxJQUFJO0lBQ2hCLGNBQWMsRUFBRSxNQUFNO0lBQ3RCLFdBQVcsRUFBRSxDQUFDLE1BQU0sQ0FBQztJQUNyQixhQUFhLEVBQUU7UUFDYixJQUFJLEVBQUUsT0FBTztRQUNiLE9BQU8sRUFBRSxLQUFLO0tBQ2Y7SUFDRCxVQUFVLEVBQUU7UUFDVixJQUFJLEVBQUUsT0FBTztRQUNiLE9BQU8sRUFBRSxLQUFLO0tBQ2Y7SUFDRCxRQUFRLEVBQUU7UUFD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

@@ -1,0 +1,195 @@
+import { ObjectId } from 'mongodb';
+import mongoose from 'mongoose';
+import dbConfig from 'src/config/defaults/dbConfig.js';
+import dbForumThread from 'src/db/connectors/forumThread.js';
+import dbConnector from 'src/db/databaseConnector.js';
+import errorCreator from 'src/error/errorCreator.js';
+const forumSchema = new mongoose.Schema({
+    title: {
+        type: String,
+        unique: true
+    },
+    text: {
+        type: [String],
+        default: []
+    },
+    isPersonal: {
+        type: Boolean,
+        default: false
+    },
+    image: dbConnector.imageSchema,
+}, { collection: 'forums' });
+const Forum = mongoose.model('Forum', forumSchema);
+async function updateObject({ forumId, update, }) {
+    const { error, data } = await dbConnector.updateObject({
+        update,
+        object: Forum,
+        query: { _id: forumId },
+        errorNameContent: 'updateForum',
+    });
+    if (error) {
+        return { error };
+    }
+    if (!data?.object) {
+        return { error: new errorCreator.DoesNotExist({ name: `forum ${forumId}` }) };
+    }
+    return { data: { forum: data.object } };
+}
+async function getForums({ query, filter, }) {
+    const { error, data } = await dbConnector.getObjects({
+        query,
+        filter,
+        object: Forum,
+    });
+    if (error) {
+        return { error };
+    }
+    return {
+        data: {
+            forums: data?.objects,
+        },
+    };
+}
+async function getForum({ query, }) {
+    const { error, data } = await dbConnector.getObject({
+        query,
+        object: Forum,
+    });
+    if (error) {
+        return { error };
+    }
+    return { data: { forum: data.object } };
+}
+async function doesForumExist({ title, }) {
+    return dbConnector.doesObjectExist({
+        query: { title },
+        object: Forum,
+    });
+}
+async function createForum({ forum, silentExistsError, options = {}, }) {
+    const { setId } = options;
+    const { error, data } = await doesForumExist({
+        title: forum.title,
+    });
+    if (error) {
+        return { error };
+    }
+    if (data.exists) {
+        if (silentExistsError) {
+            return { data: { exists: true } };
+        }
+        return { error: new errorCreator.AlreadyExists({ name: `createForum ${forum.title}` }) };
+    }
+    const forumToSave = forum;
+    if (setId) {
+        forumToSave._id = new ObjectId(forumToSave.objectId);
+    }
+    const { error: saveError, data: saveData } = await dbConnector.saveObject({
+        object: Forum,
+        objectData: forumToSave,
+        objectType: 'forum',
+    });
+    if (saveError) {
+        return { error: saveError };
+    }
+    return { data: { forum: saveData.savedObject } };
+}
+async function getForumById({ forumId, }) {
+    return getForum({
+        query: { _id: forumId },
+    });
+}
+async function getForumsByIds({ forumIds, }) {
+    return getForums({
+        query: { _id: { $in: forumIds } },
+    });
+}
+async function getAllForums() {
+    return getForums({ query: {} });
+}
+async function updateForum({ forumId, forum, }) {
+    const update = { $set: forum };
+    if (forum.title) {
+        const { error, data } = await doesForumExist({
+            title: forum.title,
+        });
+        if (error) {
+            return { error };
+        }
+        if (data.exists) {
+            return { error: new errorCreator.AlreadyExists({ name: `forum title ${forum.title}` }) };
+        }
+        return updateObject({
+            forumId,
+            update,
+        });
+    }
+    return updateObject({
+        update,
+        forumId,
+    });
+}
+async function removeForum({ forumId, fullRemoval, }) {
+    const { error } = await dbConnector.removeObjects({
+        object: Forum,
+        query: { _id: forumId },
+    });
+    if (error) {
+        return {
+            error: new errorCreator.Database({
+                errorObject: error,
+                name: 'removeForum'
+            })
+        };
+    }
+    if (fullRemoval) {
+        const { error: getError, data: getData } = await dbForumThread.getThreadsByForum({
+            forumId,
+        });
+        if (getError) {
+            return { error: getError };
+        }
+        return dbForumThread.removeThreads({
+            threadIds: getData.threads.map((forumThread) => forumThread.objectId),
+            fullRemoval: true,
+        });
+    }
+    return { data: { success: true } };
+}
+async function getForumsByUser({ user, }) {
+    const query = dbConnector.createUserQuery({ user });
+    return getForums({
+        query,
+    });
+}
+async function populateDbForums() {
+    console.info('Creating default forums, if needed');
+    const { forums } = dbConfig;
+    async function addForum(forumNames) {
+        const forumName = forumNames.shift();
+        if (forumName) {
+            const { error } = await createForum({
+                forum: forums[forumName],
+                silentExistsError: true,
+                options: { setId: true },
+            });
+            if (error) {
+                return { error };
+            }
+            return addForum(forumNames);
+        }
+        return { data: { success: true } };
+    }
+    return addForum(Object.keys(forums));
+}
+export default {
+    createForum,
+    getForumById,
+    updateForum,
+    getAllForums,
+    getForumsByIds,
+    removeForum,
+    getForumsByUser,
+    populateDbForums,
+};
+//# sourceMappingURL=data:application/json;base64,eyJ2ZXJzaW9uIjozLCJmaWxlIjoiZm9ydW0uanMiLCJzb3VyY2VSb290IjoiIiwic291cmNlcyI6WyJmb3J1bS50cyJdLCJuYW1lcyI6W10sIm1hcHBpbmdzIjoiQUFBQSxPQUFPLEVBQUUsUUFBUSxFQUFFLE1BQU0sU0FBUyxDQUFDO0FBQ25DLE9BQU8sUUFBUSxNQUFNLFVBQVUsQ0FBQztBQUNoQyxPQUFPLFFBQXNCLE1BQU0saUNBQWlDLENBQUM7QUFDckUsT0FBTyxhQUFhLE1BQU0sa0NBQWtDLENBQUM7QUFFN0QsT0FBTyxXQUF3QyxNQUFNLDZCQUE2QixDQUFDO0FBQ25GLE9BQU8sWUFBWSxNQUFNLDJCQUEyQixDQUFDO0FBU3JELE1BQU0sV0FBVyxHQUFHLElBQUksUUFBUSxDQUFDLE1BQU0sQ0FBYztJQUNuRCxLQUFLLEVBQUU7UUFDTCxJQUFJLEVBQUUsTUFBTTtRQUNaLE1BQU0sRUFBRSxJQUFJO0tBQ2I7SUFDRCxJQUFJLEVBQUU7UUFDSixJQUFJLEVBQUUsQ0FBQyxNQUFNLENBQUM7UUFDZCxPQUFPLEVBQUUsRUFBRTtLQUNaO0lBQ0QsVUFBVSxFQUFFO1FBQ1YsSUFBSSxFQUFFLE9BQU87UUFDYixPQUFPLEVBQUUsS0FBSztLQUNmO0lBQ0QsS0FBSyxFQUFFLFdBQVcsQ0FBQyxXQUFXO0NBQy9CLEVBQUUsRUFBRSxVQUFVLEVBQUUsUUFBUSxFQUFFLENBQUMsQ0FBQztBQUU3QixNQUFNLEtBQUssR0FBRyxRQUFRLENBQUMsS0FBSyxDQUFDLE9BQU8sRUFBRSxXQUFXLENBQUMsQ0FBQztBQUVuRCxLQUFLLFVBQVUsWUFBWSxDQUFDLEVBQzFCLE9BQU8sRUFDUCxNQUFNLEdBSVA7SUFDQyxNQUFNLEVBQUUsS0FBSyxFQUFFLElBQUksRUFBRSxHQUFHLE1BQU0sV0FBVyxDQUFDLFlBQVksQ0FBQztRQUNyRCxNQUFNO1FBQ04sTUFBTSxFQUFFLEtBQUs7UUFDYixLQUFLLEVBQUUsRUFBRSxHQUFHLEVBQUUsT0FBTyxFQUFFO1FBQ3ZCLGdCQUFnQixFQUFFLGFBQWE7S0FDaEMsQ0FBQyxD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

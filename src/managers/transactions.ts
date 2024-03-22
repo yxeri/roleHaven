@@ -1,0 +1,617 @@
+'use strict';
+
+import { dbConfig } from '../config/defaults/config';
+
+import errorCreator from '../error/errorCreator';
+import authenticator from '../helpers/authenticator';
+import walletManager from './wallets';
+import managerHelper from '../helpers/manager';
+
+/**
+ * Get transaction by Id.
+ * @param {Object} params Parameters.
+ * @param {string} params.transactionId Id of the transaction to retrieve.
+ * @param {string} params.token jwt.
+ * @param {Function} params.callback Callback.
+ */
+function getTransactionById({
+  transactionId,
+  token,
+  internalCallUser,
+  callback,
+}) {
+  authenticator.isUserAllowed({
+    token,
+    internalCallUser,
+    commandName: dbConfig.apiCommands.GetTransaction.name,
+    callback: ({
+      error,
+      data,
+    }) => {
+      if (error) {
+        callback({ error });
+
+        return;
+      }
+
+      const { user: authUser } = data;
+
+      getTransactionById({
+        transactionId,
+        callback: ({
+          error: transactionError,
+          data: transactionData,
+        }) => {
+          if (transactionError) {
+            callback({ error: transactionError });
+
+            return;
+          }
+
+          const { transaction: foundTransaction } = transactionData;
+          const {
+            hasAccess,
+            canSee,
+          } = authenticator.hasAccessTo({
+            objectToAccess: foundTransaction,
+            toAuth: authUser,
+          });
+
+          if (!canSee) {
+            callback({ error: errorCreator.NotAllowed({ name: `transaction ${transactionId}` }) });
+
+            return;
+          }
+
+          if (!hasAccess) {
+            callback({ data: { transaction: managerHelper.stripObject({ object: foundTransaction }) } });
+
+            return;
+          }
+
+          callback({ data: transactionData });
+        },
+      });
+    },
+  });
+}
+
+/**
+ * Get transactions for a wallet.
+ * @param {Object} params Parameters.
+ * @param {string} walletId Id of the wallet.
+ * @param {Function} params.callback Callback.
+ */
+function getTransactionsByWallet({
+  walletId,
+  token,
+  callback,
+}) {
+  authenticator.isUserAllowed({
+    token,
+    commandName: dbConfig.apiCommands.GetTransaction.name,
+    callback: ({
+      error,
+      data,
+    }) => {
+      if (error) {
+        callback({ error });
+
+        return;
+      }
+
+      const { user: authUser } = data;
+
+      walletManager.getWalletById({
+        walletId,
+        internalCallUser: authUser,
+        callback: ({ error: walletError }) => {
+          if (walletError) {
+            callback({ error: walletError });
+
+            return;
+          }
+
+          getTransactionsByWallet({
+            walletId,
+            callback: ({
+              error: transError,
+              data: transData,
+            }) => {
+              if (transError) {
+                callback({ error: transError });
+
+                return;
+              }
+
+              const { transactions } = transData;
+
+              callback({ data: { transactions } });
+            },
+          });
+        },
+      });
+    },
+  });
+}
+
+/**
+ * Create transaction.
+ * @param {Object} params Parameters.
+ * @param {Object} params.transaction Transaction parameters to create.
+ * @param {Object} params.io Socket io. Used if socket is not set.
+ * @param {Function} callback Callback.
+ */
+function createTransaction({
+  transaction,
+  io,
+  socket,
+  callback,
+}) {
+  if (transaction.fromWalletId === transaction.toWalletId) {
+    callback({ error: new errorCreator.InvalidData({ name: 'transfer to self' }) });
+
+    return;
+  }
+
+  if (transaction.amount <= 0) {
+    callback({ error: new errorCreator.Insufficient({ name: 'amount is 0 or less' }) });
+
+    return;
+  }
+
+  const newTransaction = transaction;
+  newTransaction.amount = Math.abs(newTransaction.amount);
+  newTransaction.ownerId = newTransaction.ownerId || dbConfig.users.systemUser.objectId;
+
+  walletManager.checkAmount({
+    walletId: newTransaction.fromWalletId,
+    amount: newTransaction.amount,
+    callback: ({ error: amountError }) => {
+      if (amountError) {
+        callback({ error: amountError });
+
+        return;
+      }
+
+      createTransaction({
+        transaction: newTransaction,
+        callback: ({
+          error: transactionError,
+          data: transactionData,
+        }) => {
+          if (transactionError) {
+            callback({ error: transactionError });
+
+            return;
+          }
+
+          const { transaction: createdTransaction } = transactionData;
+
+          walletManager.runTransaction({
+            transaction: createdTransaction,
+            callback: ({
+              error: runTransactionError,
+              data: runTransactionData,
+            }) => {
+              if (runTransactionError) {
+                callback({ error: runTransactionError });
+
+                return;
+              }
+
+              const {
+                fromWallet,
+                toWallet,
+              } = runTransactionData;
+              const fromDataToSend = {
+                data: {
+                  transaction: createdTransaction,
+                  changeType: dbConfig.ChangeTypes.CREATE,
+                },
+              };
+              const toDataToSend = {
+                data: {
+                  transaction: createdTransaction,
+                  changeType: dbConfig.ChangeTypes.CREATE,
+                },
+              };
+              const fromWalletData = {
+                data: {
+                  wallet: fromWallet,
+                  changeType: dbConfig.ChangeTypes.UPDATE,
+                },
+              };
+              const toWalletData = {
+                data: {
+                  wallet: toWallet,
+                  changeType: dbConfig.ChangeTypes.UPDATE,
+                },
+              };
+
+              if (socket) {
+                socket.broadcast.to(fromWallet.objectId)
+                  .emit(dbConfig.EmitTypes.TRANSACTION, fromDataToSend);
+                socket.broadcast.to(toWallet.objectId)
+                  .emit(dbConfig.EmitTypes.TRANSACTION, toDataToSend);
+              } else {
+                io.to(fromWallet.objectId)
+                  .emit(dbConfig.EmitTypes.TRANSACTION, fromDataToSend);
+                io.to(toWallet.objectId)
+                  .emit(dbConfig.EmitTypes.TRANSACTION, toDataToSend);
+              }
+
+              io.to(fromWallet.objectId)
+                .emit(dbConfig.EmitTypes.WALLET, fromWalletData);
+              io.to(toWallet.objectId)
+                .emit(dbConfig.EmitTypes.WALLET, toWalletData);
+
+              callback(fromDataToSend);
+            },
+          });
+        },
+      });
+    },
+  });
+}
+
+/**
+ * Create transaction based on user access.
+ * @param {Object} params Parameters.
+ * @param {Object} params.token jwt.
+ * @param {Object} params.transaction New transaction.
+ * @param {Object} params.io Socket.io.
+ * @param {Function} params.callback Callback.
+ */
+function createTransactionBasedOnToken({
+  transaction,
+  io,
+  token,
+  socket,
+  callback,
+}) {
+  authenticator.isUserAllowed({
+    token,
+    commandName: dbConfig.apiCommands.CreateTransaction.name,
+    callback: ({
+      error,
+      data,
+    }) => {
+      if (error) {
+        callback({ error });
+
+        return;
+      }
+
+      const { user: authUser } = data;
+
+      walletManager.getWalletById({
+        internalCallUser: authUser,
+        walletId: transaction.fromWalletId,
+        callback: ({
+          error: walletError,
+          data: walletData,
+        }) => {
+          if (walletError) {
+            callback({ error: walletError });
+
+            return;
+          }
+
+          const transactionToCreate = transaction;
+          const { wallet: foundWallet } = walletData;
+
+          transactionToCreate.teamId = foundWallet.teamId;
+          transactionToCreate.ownerId = foundWallet.ownerId;
+          transactionToCreate.ownerAliasId = foundWallet.ownerAliasId;
+
+          createTransaction({
+            io,
+            callback,
+            socket,
+            transaction: transactionToCreate,
+          });
+        },
+      });
+    },
+  });
+}
+
+/**
+ * Remove a transaction.
+ * @param {Object} params Parameters.
+ * @param {string} params.token jwt.
+ * @param {string} params.transactionId Id of the transaction to remove.
+ * @param {Function} params.callback Callback.
+ * @param {Object} params.io Socket.io.
+ */
+function removeTransaction({
+  token,
+  transactionId,
+  callback,
+  io,
+}) {
+  authenticator.isUserAllowed({
+    token,
+    commandName: dbConfig.apiCommands.RemoveTransaction.name,
+    callback: ({
+      error,
+      data,
+    }) => {
+      if (error) {
+        callback({ error });
+
+        return;
+      }
+
+      const { user: authUser } = data;
+
+      getTransactionById({
+        transactionId,
+        internalCallUser: authUser,
+        callback: ({
+          error: getTransactionError,
+          data: getTransactionData,
+        }) => {
+          if (getTransactionError) {
+            callback({ error: getTransactionError });
+
+            return;
+          }
+
+          const { transaction: foundTransaction } = getTransactionData;
+          const {
+            hasFullAccess,
+          } = authenticator.hasAccessTo({
+            objectToAccess: foundTransaction,
+            toAuth: authUser,
+          });
+
+          if (!hasFullAccess) {
+            callback({ error: new errorCreator.NotAllowed({ name: `remove transaction ${transactionId}` }) });
+
+            return;
+          }
+
+          const {
+            amount,
+            fromWalletId,
+            toWalletId,
+          } = foundTransaction;
+          const reversedTransaction = {
+            amount,
+            objectId: transactionId,
+            fromWalletId: toWalletId,
+            toWalletId: fromWalletId,
+          };
+
+          walletManager.runTransaction({
+            transaction: reversedTransaction,
+            callback: ({
+              error: runTransactionError,
+              data: runTransactionData,
+            }) => {
+              if (runTransactionError) {
+                callback({ error: runTransactionError });
+
+                return;
+              }
+
+              const {
+                fromWallet: updatedFromWallet,
+                toWallet: updatedToWallet,
+              } = runTransactionData;
+
+              removeTransaction({
+                transactionId,
+                callback: ({ error: transactionError }) => {
+                  if (transactionError) {
+                    callback({ error: transactionError });
+
+                    return;
+                  }
+
+                  const toDataToSend = {
+                    data: {
+                      wallet: updatedToWallet,
+                      changeType: dbConfig.ChangeTypes.REMOVE,
+                      transaction: { objectId: transactionId },
+                    },
+                  };
+                  const fromDataToSend = {
+                    data: {
+                      wallet: updatedFromWallet,
+                      transaction: { objectId: transactionId },
+                      changeType: dbConfig.ChangeTypes.UPDATE,
+                    },
+                  };
+
+                  io.to(updatedToWallet.objectId)
+                    .emit(dbConfig.EmitTypes.TRANSACTION, toDataToSend);
+                  io.to(updatedFromWallet.objectId)
+                    .emit(dbConfig.EmitTypes.TRANSACTION, fromDataToSend);
+
+                  callback({
+                    data: {
+                      fromWallet: updatedFromWallet,
+                      toWallet: updatedToWallet,
+                      transaction: reversedTransaction,
+                      changeType: dbConfig.ChangeTypes.REMOVE,
+                    },
+                  });
+                },
+              });
+            },
+          });
+        },
+      });
+    },
+  });
+}
+
+/**
+ * Update transaction.
+ * @param {Object} params Parameters.
+ * @param {Object} params.transaction Transaction.
+ * @parm {Object} params.options Options.
+ * @param {Function} params.callback Callback.
+ * @param {Object} params.io Socket io.
+ */
+function updateTransaction({
+  token,
+  transaction,
+  transactionId,
+  options,
+  callback,
+  io,
+  socket,
+}) {
+  authenticator.isUserAllowed({
+    token,
+    commandName: dbConfig.apiCommands.UpdateTransaction.name,
+    callback: ({
+      error,
+      data,
+    }) => {
+      if (error) {
+        callback({ error });
+
+        return;
+      }
+
+      const { user: authUser } = data;
+
+      getTransactionById({
+        transactionId,
+        internalCallUser: authUser,
+        callback: ({
+          error: transactionError,
+          data: transactionData,
+        }) => {
+          if (transactionError) {
+            callback({ error: transactionError });
+
+            return;
+          }
+
+          const { transaction: foundTransaction } = transactionData;
+          const {
+            hasFullAccess,
+          } = authenticator.hasAccessTo({
+            objectToAccess: foundTransaction,
+            toAuth: authUser,
+          });
+
+          if (!hasFullAccess) {
+            callback({ error: new errorCreator.NotAllowed({ name: `update transaction ${transactionId}` }) });
+
+            return;
+          }
+
+          updateTransaction({
+            options,
+            transaction,
+            transactionId,
+            callback: ({
+              error: updateError,
+              data: updateData,
+            }) => {
+              if (updateError) {
+                callback({ error: updateError });
+
+                return;
+              }
+
+              const { transaction: updatedTransaction } = updateData;
+              const dataToSend = {
+                data: {
+                  transaction: updatedTransaction,
+                  changeType: dbConfig.ChangeTypes.UPDATE,
+                },
+              };
+
+              if (socket) {
+                socket.broadcast.to(updatedTransaction.fromWalletId)
+                  .emit(dbConfig.EmitTypes.TRANSACTION, dataToSend);
+                socket.broadcast.to(updatedTransaction.toWalletId)
+                  .emit(dbConfig.EmitTypes.TRANSACTION, dataToSend);
+              } else {
+                io.to(updatedTransaction.fromWalletId)
+                  .emit(dbConfig.EmitTypes.TRANSACTION, dataToSend);
+                io.to(updatedTransaction.toWalletId)
+                  .emit(dbConfig.EmitTypes.TRANSACTION, dataToSend);
+              }
+
+              callback(dataToSend);
+            },
+          });
+        },
+      });
+    },
+  });
+}
+
+/**
+ * Get transactions that the user has access to.
+ * @param {Object} params Parameters.
+ * @param {Object} params.token jwt.
+ * @param {Function} params.callback Callback.
+ */
+function getTransactionsByUser({
+  token,
+  callback,
+}) {
+  authenticator.isUserAllowed({
+    token,
+    commandName: dbConfig.apiCommands.GetTransaction.name,
+    callback: ({
+      error,
+      data,
+    }) => {
+      if (error) {
+        callback({ error });
+
+        return;
+      }
+
+      const { user: authUser } = data;
+
+      getTransactionsByUser({
+        user: authUser,
+        callback: ({
+          error: transactionError,
+          data: transactionData,
+        }) => {
+          if (transactionError) {
+            callback({ error: transactionError });
+
+            return;
+          }
+
+          const { transactions } = transactionData;
+          const allTransactions = transactions.map((transaction) => {
+            const { hasFullAccess } = authenticator.hasAccessTo({
+              toAuth: authUser,
+              objectToAccess: transaction,
+            });
+            if (!hasFullAccess) {
+              return managerHelper.stripObject({ object: transaction });
+            }
+
+            return transaction;
+          });
+
+          callback({ data: { transactions: allTransactions } });
+        },
+      });
+    },
+  });
+}
+
+export { createTransactionBasedOnToken };
+export { getTransactionsByWallet };
+export { createTransaction };
+export { getTransactionById };
+export { removeTransaction };
+export { updateTransaction };
+export { getTransactionsByUser };

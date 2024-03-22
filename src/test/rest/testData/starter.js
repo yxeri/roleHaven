@@ -1,0 +1,70 @@
+'use strict';
+const { appConfig, dbConfig, } = require('../../../config/defaults/config');
+const tools = require('../helper/tools');
+const data = {};
+data.adminUserOne = {
+    username: 'adminOne',
+    password: tools.createRandString({ length: appConfig.passwordMaxLength }),
+    registerDevice: tools.createRandString({ length: appConfig.deviceIdLength }),
+    accessLevel: dbConfig.AccessLevels.ADMIN,
+    visibility: dbConfig.AccessLevels.ADMIN,
+    isVerified: true,
+};
+data.adminUserTwo = {
+    username: 'adminTwo',
+    password: tools.createRandString({ length: appConfig.passwordMaxLength }),
+    registerDevice: tools.createRandString({ length: appConfig.deviceIdLength }),
+    accessLevel: dbConfig.AccessLevels.ADMIN,
+    visibility: dbConfig.AccessLevels.STANDARD,
+    isVerified: true,
+};
+data.basicUserOne = {
+    username: 'basicOne',
+    password: tools.createRandString({ length: appConfig.passwordMaxLength }),
+    registerDevice: tools.createRandString({ length: appConfig.deviceIdLength }),
+    isVerified: true,
+    accessLevel: dbConfig.AccessLevels.STANDARD,
+};
+data.basicUserTwo = {
+    username: 'basicTwo',
+    password: tools.createRandString({ length: appConfig.passwordMaxLength }),
+    registerDevice: tools.createRandString({ length: appConfig.deviceIdLength }),
+    isVerified: true,
+    accessLevel: dbConfig.AccessLevels.STANDARD,
+};
+data.moderatorUserOne = {
+    username: 'moderatorOne',
+    password: tools.createRandString({ length: appConfig.passwordMaxLength }),
+    registerDevice: tools.createRandString({ length: appConfig.deviceIdLength }),
+    isVerified: true,
+    accessLevel: dbConfig.AccessLevels.MODERATOR,
+};
+data.moderatorUserTwo = {
+    username: 'moderatorTwo',
+    password: tools.createRandString({ length: appConfig.passwordMaxLength }),
+    registerDevice: tools.createRandString({ length: appConfig.deviceIdLength }),
+    isVerified: true,
+    accessLevel: dbConfig.AccessLevels.MODERATOR,
+};
+data.unverifiedUser = {
+    username: 'unverified',
+    password: tools.createRandString({ length: appConfig.passwordMaxLength }),
+    registerDevice: tools.createRandString({ length: appConfig.deviceIdLength }),
+    isVerified: false,
+};
+data.bannedUser = {
+    username: 'banned',
+    password: tools.createRandString({ length: appConfig.passwordMaxLength }),
+    registerDevice: tools.createRandString({ length: appConfig.deviceIdLength }),
+    isVerified: true,
+    isBanned: true,
+};
+data.nonExistingUser = {
+    username: 'nonExisting',
+    password: tools.createRandString({ length: appConfig.passwordMaxLength }),
+    registerDevice: tools.createRandString({ length: appConfig.deviceIdLength }),
+    isVerified: true,
+    isBanned: true,
+};
+export default data;
+//# sourceMappingURL=data:application/json;base64,eyJ2ZXJzaW9uIjozLCJmaWxlIjoic3RhcnRlci5qcyIsInNvdXJjZVJvb3QiOiIiLCJzb3VyY2VzIjpbInN0YXJ0ZXIudHMiXSwibmFtZXMiOltdLCJtYXBwaW5ncyI6IkFBQUEsWUFBWSxDQUFDO0FBRWIsTUFBTSxFQUNKLFNBQVMsRUFDVCxRQUFRLEdBQ1QsR0FBRyxPQUFPLENBQUMsaUNBQWlDLENBQUMsQ0FBQztBQUMvQyxNQUFNLEtBQUssR0FBRyxPQUFPLENBQUMsaUJBQWlCLENBQUMsQ0FBQztBQUV6QyxNQUFNLElBQUksR0FBRyxFQUFFLENBQUM7QUFFaEIsSUFBSSxDQUFDLFlBQVksR0FBRztJQUNsQixRQUFRLEVBQUUsVUFBVTtJQUNwQixRQUFRLEVBQUUsS0FBSyxDQUFDLGdCQUFnQixDQUFDLEVBQUUsTUFBTSxFQUFFLFNBQVMsQ0FBQyxpQkFBaUIsRUFBRSxDQUFDO0lBQ3pFLGNBQWMsRUFBRSxLQUFLLENBQUMsZ0JBQWdCLENBQUMsRUFBRSxNQUFNLEVBQUUsU0FBUyxDQUFDLGNBQWMsRUFBRSxDQUFDO0lBQzVFLFdBQVcsRUFBRSxRQUFRLENBQUMsWUFBWSxDQUFDLEtBQUs7SUFDeEMsVUFBVSxFQUFFLFFBQVEsQ0FBQyxZQUFZLENBQUMsS0FBSztJQUN2QyxVQUFVLEVBQUUsSUFBSTtDQUNqQixDQUFDO0FBRUYsSUFBSSxDQUFDLFlBQVksR0FBRztJQUNsQixRQUFRLEVBQUUsVUFBVTtJQUNwQixRQUFRLEVBQUUsS0FBSyxDQUFDLGdCQUFnQixDQUFDLEVBQUUsTUFBTSxFQUFFLFNBQVMsQ0FBQyxpQkFBaUIsRUFBRSxDQUFDO0lBQ3pFLGNBQWMsRUFBRSxLQUFLLENBQUMsZ0JBQWdCLENBQUMsRUFBRSxNQUFNLEVBQUUsU0FBUyxDQUFDLGNBQWMsRUFBRSxDQUFDO0lBQzVFLFdBQVcsRUFBRSxRQUFRLENBQUMsWUFBWSxDQUFDLEtBQUs7SUFDeEMsVUFBVSxFQUFFLFFBQVEsQ0FBQyxZQUFZLENBQUMsUUFBUTtJQUMxQyxVQUFVLEVBQUUsSUFBSTtDQUNqQixDQUFDO0FBRUYs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

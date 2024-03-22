@@ -1,0 +1,122 @@
+'use strict';
+import mongoose from 'mongoose';
+import { dbConfig } from '../../config/defaults/config';
+import errorCreator from '../../error/errorCreator';
+import dbConnector from '../databaseConnector';
+const missionSchema = new mongoose.Schema(dbConnector.createSchema({
+    reward: {
+        type: Number,
+        default: 0,
+    },
+    rewardType: {
+        type: String,
+        default: dbConfig.RewardTypes.CURRENCY,
+    },
+    completed: {
+        type: Boolean,
+        default: false,
+    },
+    completedBy: String,
+    standalone: {
+        type: Boolean,
+        default: true,
+    },
+}), { collection: 'missions' });
+const Mission = mongoose.model('Mission', missionSchema);
+function updateObject({ missionId, update, callback, suppressError, }) {
+    const query = { _id: missionId };
+    dbConnector.updateObject({
+        update,
+        query,
+        suppressError,
+        object: Mission,
+        errorNameContent: 'updateMissionObject',
+        callback: ({ error, data, }) => {
+            if (error) {
+                callback({ error });
+                return;
+            }
+            callback({ data: { mission: data.object } });
+        },
+    });
+}
+function getMissions({ query, callback, }) {
+    dbConnector.getObjects({
+        query,
+        object: Mission,
+        callback: ({ error, data, }) => {
+            if (error) {
+                callback({ error });
+                return;
+            }
+            callback({ data: { missions: data.objects } });
+        },
+    });
+}
+function getMission({ query, callback, }) {
+    dbConnector.getObject({
+        query,
+        object: Mission,
+        callback: ({ error, data, }) => {
+            if (error) {
+                callback({ error });
+                return;
+            }
+            if (!data.object) {
+                callback({ error: new errorCreator.DoesNotExist({ name: `mission ${JSON.stringify(query, null, 4)}` }) });
+                return;
+            }
+            callback({ data: { mission: data.object } });
+        },
+    });
+}
+function createMission({ mission, callback, }) {
+    dbConnector.saveObject({
+        object: new Mission(mission),
+        objectType: 'mission',
+        callback: ({ error, data, }) => {
+            if (error) {
+                callback({ error });
+                return;
+            }
+            callback({ data: { mission: data.savedObject } });
+        },
+    });
+}
+function updateProgram({ missionId, mission, callback, suppressError, }) {
+    const { completed, } = mission;
+    const update = {};
+    const set = {};
+    if (completed) {
+        set.completed = completed;
+    }
+    if (Object.keys(set).length > 0) {
+        update.$set = set;
+    }
+    updateObject({
+        suppressError,
+        missionId,
+        update,
+        callback,
+    });
+}
+function getMissionsByUser({ user, callback, }) {
+    const query = dbConnector.createUserQuery({ user });
+    const { objectId, aliases = [], } = user;
+    query.$or.completedBy = { $in: aliases.concat([objectId]) };
+    getMissions({
+        query,
+        callback,
+    });
+}
+function getMissionById({ missionId, callback, }) {
+    getMission({
+        callback,
+        query: { _id: missionId },
+    });
+}
+export { updateProgram as updateDevice };
+export { createMission as createDevice };
+export { getMissionsByUser as getDevicesByUser };
+export { getMissionById as getDeviceById };
+//# sourceMappingURL=data:application/json;base64,eyJ2ZXJzaW9uIjozLCJmaWxlIjoibWlzc2lvbi5qcyIsInNvdXJjZVJvb3QiOiIiLCJzb3VyY2VzIjpbIm1pc3Npb24udHMiXSwibmFtZXMiOltdLCJtYXBwaW5ncyI6IkFBQUEsWUFBWSxDQUFDO0FBRWIsT0FBTyxRQUFRLE1BQU0sVUFBVSxDQUFDO0FBQ2hDLE9BQU8sRUFBRSxRQUFRLEVBQUUsTUFBTSw4QkFBOEIsQ0FBQztBQUN4RCxPQUFPLFlBQVksTUFBTSwwQkFBMEIsQ0FBQztBQUNwRCxPQUFPLFdBQVcsTUFBTSxzQkFBc0IsQ0FBQztBQUUvQyxNQUFNLGFBQWEsR0FBRyxJQUFJLFFBQVEsQ0FBQyxNQUFNLENBQUMsV0FBVyxDQUFDLFlBQVksQ0FBQztJQUNqRSxNQUFNLEVBQUU7UUFDTixJQUFJLEVBQUUsTUFBTTtRQUNaLE9BQU8sRUFBRSxDQUFDO0tBQ1g7SUFDRCxVQUFVLEVBQUU7UUFDVixJQUFJLEVBQUUsTUFBTTtRQUNaLE9BQU8sRUFBRSxRQUFRLENBQUMsV0FBVyxDQUFDLFFBQVE7S0FDdkM7SUFDRCxTQUFTLEVBQUU7UUFDVCxJQUFJLEVBQUUsT0FBTztRQUNiLE9BQU8sRUFBRSxLQUFLO0tBQ2Y7SUFDRCxXQUFXLEVBQUUsTUFBTTtJQUNuQixVQUFVLEVBQUU7UUFDVixJQUFJLEVBQUUsT0FBTztRQUNiLE9BQU8sRUFBRSxJQUFJO0tBQ2Q7Q0FDRixDQUFDLEVBQUUsRUFBRSxVQUFVLEVBQUUsVUFBVSxFQUFFLENBQUMsQ0FBQztBQUVoQyxNQUFNLE9BQU8sR0FBRyxRQUFRLENBQUMsS0FBSyxDQUFDLFNBQVMsRUFBRSxhQUFhLENBQUMsQ0FBQztBQVN6RCxTQUFTLFlBQVksQ0FBQyxFQUNwQixTQUFTLEVBQ1QsTUFBTSxFQUNOLFFBQVEsRUFDUixhQUFhLEdBQ2Q7SUFDQyxNQUFNLEtBQUssR0FBRyxFQUFFLEdBQUcsRUFBRSxTQUFTLEVBQUUsQ0FBQztJQUVqQyxXQUFXLENBQUMsWUFBWSxDQUFDO1FBQ3ZCLE1BQU07UUFDTixLQUFLO1FBQ0wsYUFBYTtRQUNiLE1BQU0s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
